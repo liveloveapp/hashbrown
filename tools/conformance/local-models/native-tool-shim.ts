@@ -5,9 +5,10 @@ export async function installNativeToolShim(
   page: Page,
   url: string,
   validIds = false,
+  holdFinalAfter?: string,
 ): Promise<void> {
   await page.addInitScript(
-    ({ url, validIds }) => {
+    ({ url, validIds, holdFinalAfter }) => {
       type Init = {
         callID: string;
         name: string;
@@ -236,6 +237,26 @@ export async function installNativeToolShim(
                         if (choice.delta.content) {
                           text += choice.delta.content;
                           yield choice.delta.content;
+                          if (
+                            options2.responseConstraint &&
+                            holdFinalAfter &&
+                            text.includes(holdFinalAfter)
+                          ) {
+                            await new Promise<void>((resolve) => {
+                              const release = () => {
+                                signal.removeEventListener('abort', release);
+                                resolve();
+                              };
+                              Object.assign(globalThis, {
+                                __nativeToolReleaseFinal: release,
+                              });
+                              signal.addEventListener('abort', release, {
+                                once: true,
+                              });
+                              if (signal.aborted) release();
+                            });
+                            holdFinalAfter = undefined;
+                          }
                         }
                         for (const call of choice.delta.tool_calls ?? []) {
                           const previous = calls.get(call.index) ?? {
@@ -319,7 +340,7 @@ export async function installNativeToolShim(
         __nativeToolActive: () => active,
       });
     },
-    { url, validIds },
+    { url, validIds, holdFinalAfter },
   );
 }
 

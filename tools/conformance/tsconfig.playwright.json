@@ -21,7 +21,9 @@
     "local-media.playwright.config.ts",
     "local-workflows.playwright.config.ts",
     "local-native-tools.playwright.config.ts",
-    "local-native-schema.playwright.config.ts"
+    "local-native-schema.playwright.config.ts",
+    "local-native-ui.playwright.config.ts",
+    "local-native-ui-phases.playwright.config.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }

@@ -309,8 +309,9 @@ composes the existing structured chat schema with framework-owned native tools.
 Planning is unconstrained and its prose is private to the native session. Valid
 calls return to normal Hashbrown handlers; dependent calls can request more
 rounds. A call-free planning turn triggers one same-session constrained final
-prompt. Only final text reaches Skillet. UI and media composition remain
-unsupported, and the default native-tools factory still rejects schemas.
+prompt. Only final text reaches Skillet. Media composition remains unsupported,
+and the default native-tools factory still rejects schemas. The same opt-in also
+supports the component UI workflow below.
 
 ```sh
 NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-schema-contract-e2e conformance
@@ -332,6 +333,92 @@ Capability reporting distinguishes the opt-in adapter policy from unverified
 inference. A passing exact-token sample does not prove arbitrary schema grammar
 support or model reliability. Never remove fences or weaken exact assertions to
 make a live result pass. Keep quality failures separate from lifecycle defects.
+
+### Native tools followed by component UI
+
+Use the same finalization policy with `useUiChat` or `uiChatResource` and your
+existing exposed components. Tools gather data first; the terminal response uses
+the exact generated component schema and streams through the existing parser and
+renderer. Components are not executable tools. UI requires an object response
+schema; default transport rejection and media restrictions remain.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-workflow-smoke conformance
+```
+
+These uncached targets inherit CI refusal and single-worker execution. The
+fixtures use real framework UI APIs and application-owned lookup/dependent
+tools. Contracts inspect phase constraints, exact tool data in actual DOM,
+canonical replay, malformed UI and cancellation/recovery. The shim can hold a
+terminal response mid-prop to verify fallback rendering before completion; it
+does not enforce or repair the model's schema. Evidence and reports are retained
+under `test-results/conformance/native-ui`.
+
+Each scenario offers a bounded catalog: lookup + status, dependent lookup/follow
++ status, lookup + status/panel for nesting, or status alone without tools. Tests
+assert the actual native tool declarations and exact terminal component schema,
+as well as exact handler operations and output. The fixture query
+`uiWorkflow=broad` retains the original broader catalog for research; qualification
+uses the scenario-specific `uiWorkflow` values.
+Two fixed production samples with these bounded declarations passed 2/8 then
+4/8; only the no-tools cases passed in both. Passing deterministic contracts
+does not establish native tool-driven UI reliability. Retain all model failures
+and keep the native quality gate separate from CI.
+
+Adapter capability `ui` follows the opt-in policy; inference remains unknown.
+Measure the exact component kit separately from a simple structured response.
+Bounded child composition does not establish unrestricted recursive-schema
+support. See the [dated research](../../docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
+for current measurements and limitations.
+
+### Application-controlled native UI phases
+
+Use `toolPhase(context)` with the existing schema-finalization opt-in to select
+exactly one tool or direct finalization from immutable current-turn results. Tool
+phases reject missing, repeated and out-of-phase calls before execution. The
+final phase permits zero executable calls. Chrome requires historical native
+declarations for typed replay, so finalization retains only names referenced by
+validated history, including previous turns; unused declarations are omitted.
+The final stream rejects every non-text chunk regardless of retained names.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-phase-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance
+```
+
+These targets opt into `LOCAL_LLM_APPLICATION_TOOL_PHASES=1`, are uncached, inherit
+the CI refusal and run one browser at a time. They retain separate reports under
+`test-results/conformance/native-ui-phases`. The model-led targets above remain
+separate. Contracts cover real React/Angular rendering, exact active/retained
+declarations, direct terminal schemas, raw output, replay, Stop/recovery and
+adversarial zero/repeated/out-of-phase calls. Private phase instructions append
+to the same native prompt after unchanged history and never enter canonical
+history. Native qualification includes both framework workflows and a subsequent
+user turn reusing typed history.
+
+The [phase research](../../docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
+records the rejected zero-declaration replay and the separate exact-value failure
+in the compatibility alternative. A passing capability/replay probe is not proof
+of correct component output. Keep exact assertions and all native failures.
+Two predetermined phase samples each passed 8/10, with the same single-component
+cases passing in both (16/16). The full native command includes the still-failing
+nested canaries; they remain strict failures with raw evidence. One sample failed
+inside Chrome before tool execution; another rendered the wrong panel heading.
+Nested UI is not qualified by the passing deterministic contracts.
+The approved scope is the measured single-component lookup/dependent/no-tools/
+replay workflows. To run those cases explicitly, use:
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance -- --grep-invert='native UI nested'
+```
+
+The unfiltered command above retains both nested research cases and currently
+returns failures for them. No assertion is weakened and no test is marked skipped
+or expected-to-fail. Qualification does not imply arbitrary prompt reliability.
 
 ### Native tools through actual framework handlers
 

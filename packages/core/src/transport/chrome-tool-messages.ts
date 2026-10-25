@@ -117,8 +117,8 @@ export function prepareChromeToolMessages(
 ) {
   const extension = readHashbrownExtension(input);
   if (
-    (!schemaFinalization && extension?.responseSchema !== undefined) ||
-    extension?.ui
+    !schemaFinalization &&
+    (extension?.responseSchema !== undefined || extension?.ui)
   )
     throw chromeToolError(
       'Native tools do not support structured output or UI composition.',
@@ -127,6 +127,11 @@ export function prepareChromeToolMessages(
     extension?.responseSchema === undefined
       ? undefined
       : chromeToolObject(extension.responseSchema);
+  if (
+    extension?.ui &&
+    (responseSchema as { type?: unknown } | undefined)?.type !== 'object'
+  )
+    throw chromeToolError('Native UI requires an object response schema.');
   const tools = prepareChromeToolDeclarations(input.tools);
   const calls = new Map<string, string>();
   const results = new Set<string>();

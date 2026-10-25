@@ -306,6 +306,68 @@
           "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
         }
       }
+    },
+    "local-native-ui-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui.playwright.config.ts"
+      }
+    },
+    "local-native-ui-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
+        }
+      }
+    },
+    "local-native-ui-phase-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui-phases.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_APPLICATION_TOOL_PHASES": "1"
+        }
+      }
+    },
+    "local-native-ui-phase-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui-phases.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1",
+          "LOCAL_LLM_APPLICATION_TOOL_PHASES": "1"
+        }
+      }
     }
   },
   "implicitDependencies": [

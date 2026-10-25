@@ -494,7 +494,7 @@ The recorder separately checks unavailable APIs, download progress/failure, canc
 
 ## Keep local capabilities explicit
 
-The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. Schema output requires an explicit finalization policy; UI/media composition remains unsupported. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
+The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. Structured and component UI output require an explicit finalization policy; media composition remains unsupported. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
 
 Chrome image/audio input requires an explicit `experimental_chrome` media configuration and an application resolver. WebLLM uses a separately managed engine. These are advanced options with different resource and capability contracts; the trip-brief example uses text only.
 
@@ -653,8 +653,9 @@ The tested Chrome 155/v4 model emits empty native `callID` values. The adapter
 assigns a stable canonical ID only when that completed turn contains exactly
 one call. Ambiguous batches requiring ID repair fail before execution. Valid
 native IDs are preserved; malformed, conflicting and duplicate IDs fail.
-By default, schema-plus-tools is rejected. Generative UI, media and media tool
-results remain unsupported even when schema finalization is enabled. Use `experimental_chrome()` for the existing
+By default, schema-plus-tools and UI requests are rejected. The finalization
+opt-in also accepts component UI through the existing UI chat APIs. Media and
+media tool results remain unsupported. Use `experimental_chrome()` for the existing
 text/schema or explicitly enabled media paths. The adapter never removes a
 schema silently to make a tool request work.
 
@@ -694,8 +695,97 @@ pass when tools are declared. A finalization tool call fails before execution;
 unsupported schemas and invalid output surface as errors. There is no weaker
 constraint retry, fence removal or hosted fallback. The capability report's
 `adapter.structuredOutput` describes adapter policy; `inference: 'unknown'`
-means the actual model/schema combination still needs verification. UI and
-media composition remain unsupported.
+means the actual model/schema combination still needs verification. Media
+composition remains unsupported.
+
+For component UI, use `useUiChat` with the same transport, your existing
+`exposeComponent(...)` definitions and ordinary tools. The generated component
+wrapper is the final response schema; you do not supply another schema or turn
+components into executable tools. For an exposed `counterComponent` whose numeric
+`value` prop displays the result of the existing counter tool:
+
+```ts
+import { useUiChat } from '@hashbrownai/react';
+
+const chat = useUiChat({
+  transport,
+  components: [counterComponent],
+  tools: [readCounter],
+  system: 'Call read_counter before answering. Render the counter component with the exact value returned by the tool.',
+});
+```
+
+Only final UI text reaches the existing Skillet parser and trusted component
+renderer. The model still has to select a component and copy tool data correctly.
+A successful simple-object response does not establish support for every UI kit,
+recursive children or larger catalogs. Test the exact kit on your browser/model;
+unsupported native constraints and transport failures surface as errors. Component
+parsing keeps the existing renderer behavior: unknown components are omitted and
+invalid props can retain a fallback without mounting the trusted component. Capability
+`adapter.ui` describes the explicit adapter policy, while inference stays unknown.
+
+The initial real Chrome 155/v4 component canary failed strict workflow checks
+with a catalog offering both status and panel components: it made unrequested tool calls, attempted
+undeclared rendering tools, or added components. Clearer instructions passed 4/8 cases but did not establish reliability. The
+[dated component UI research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
+records the failures separately from the passing adapter and renderer contracts.
+A follow-up with workflow-specific catalogs passed 2/8 and 4/8 in two fixed
+production samples. Only the no-tools cases passed in both samples; tool-driven
+component UI has not met the native qualification gate.
+
+Expose only the tools and components needed for the current workflow. A lookup
+that renders a leaf does not need a dependent tool or a container component.
+Dependent workflows can expose both required tools while keeping the component
+kit small. Tool argument validation and component schemas check structure; they
+do not guarantee that the model follows the requested sequence or returns the
+requested number of components. Keep permission checks in application handlers
+and measure exact tool calls and rendered output on the actual model.
+
+Applications can opt into explicit tool phases when a workflow has known steps:
+
+```ts
+const transport = experimental_chrome_tools({
+  schemaFinalization: 'after-tool-planning',
+  toolPhase({ completedCalls }) {
+    if (completedCalls.some((call) => call.result.type === 'error')) {
+      throw new Error('The counter lookup failed.');
+    }
+    return completedCalls.length === 0
+      ? { type: 'tool', name: 'read_counter' }
+      : { type: 'finalize' };
+  },
+});
+```
+
+The selector runs once per request against an owned, deeply frozen snapshot of
+the current user turn. It includes the user message, thread/run IDs and completed
+calls with argument objects and raw success/error text. Earlier user turns do not
+advance the current phase. Keep this function pure; use the existing tool handlers
+and permission gates for application actions. The application decides how to
+handle failed tools; there is no automatic retry or phase counter.
+
+A tool phase exposes only the selected tool and requires exactly one call before
+any handler can run. Zero calls, multiple calls or an out-of-phase name fail. Its
+planning prose is hidden. A final phase directly constrains the full conversation
+and tool results without another planning turn. Every attempted finalization
+tool call fails before execution, including a call after partial streamed text.
+
+Chrome requires native tool declarations to replay typed tool history. During
+finalization Hashbrown retains only declarations referenced in validated history,
+including earlier turns, in the original catalog order. These are visible to the
+model for replay compatibility; the final phase permits zero executable calls.
+With no historical calls it retains none. History is not flattened into prose.
+A private phase instruction is appended to the same native prompt after the
+unchanged history; it adds no inference pass and is omitted from framework history.
+
+This policy controls execution phases, not UI cardinality or model quality. The
+[phase research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
+records browser compatibility and exact-output results separately.
+Two fixed production samples each passed 8/10 phase cases. All single-component
+lookup, dependent, no-tools and cross-turn replay cases passed in both frameworks
+in both samples (16/16). Nested workflows failed either inside Chrome before a
+handler ran or by choosing the wrong panel heading. The full native suites remain
+failed; nested UI is unqualified on this measured Chrome/model configuration.
 
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime
