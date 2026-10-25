@@ -729,6 +729,9 @@ with a catalog offering both status and panel components: it made unrequested to
 undeclared rendering tools, or added components. Clearer instructions passed 4/8 cases but did not establish reliability. The
 [dated component UI research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
 records the failures separately from the passing adapter and renderer contracts.
+A follow-up with workflow-specific catalogs passed 2/8 and 4/8 in two fixed
+production samples. Only the no-tools cases passed in both samples; tool-driven
+component UI has not met the native qualification gate.
 
 Expose only the tools and components needed for the current workflow. A lookup
 that renders a leaf does not need a dependent tool or a container component.
@@ -737,6 +740,47 @@ kit small. Tool argument validation and component schemas check structure; they
 do not guarantee that the model follows the requested sequence or returns the
 requested number of components. Keep permission checks in application handlers
 and measure exact tool calls and rendered output on the actual model.
+
+Applications can opt into explicit tool phases when a workflow has known steps:
+
+```ts
+const transport = experimental_chrome_tools({
+  schemaFinalization: 'after-tool-planning',
+  toolPhase({ completedCalls }) {
+    if (completedCalls.some((call) => call.result.type === 'error')) {
+      throw new Error('The counter lookup failed.');
+    }
+    return completedCalls.length === 0
+      ? { type: 'tool', name: 'read_counter' }
+      : { type: 'finalize' };
+  },
+});
+```
+
+The selector runs once per request against an owned, deeply frozen snapshot of
+the current user turn. It includes the user message, thread/run IDs and completed
+calls with argument objects and raw success/error text. Earlier user turns do not
+advance the current phase. Keep this function pure; use the existing tool handlers
+and permission gates for application actions. The application decides how to
+handle failed tools; there is no automatic retry or phase counter.
+
+A tool phase exposes only the selected tool and requires exactly one call before
+any handler can run. Zero calls, multiple calls or an out-of-phase name fail. Its
+planning prose is hidden. A final phase directly constrains the full conversation
+and tool results without another planning turn. Every attempted finalization
+tool call fails before execution, including a call after partial streamed text.
+
+Chrome requires native tool declarations to replay typed tool history. During
+finalization Hashbrown retains only declarations referenced in validated history,
+including earlier turns, in the original catalog order. These are visible to the
+model for replay compatibility; the final phase permits zero executable calls.
+With no historical calls it retains none. History is not flattened into prose.
+A private phase instruction is appended to the same native prompt after the
+unchanged history; it adds no inference pass and is omitted from framework history.
+
+This policy controls execution phases, not UI cardinality or model quality. The
+[phase research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
+records browser compatibility and exact-output results separately.
 
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime

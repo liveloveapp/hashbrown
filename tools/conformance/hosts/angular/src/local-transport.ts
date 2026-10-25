@@ -1,5 +1,7 @@
 import {
   type Chat,
+  type ChromeToolPhase,
+  type ChromeToolsTurnContext,
   experimental_chrome,
   experimental_chrome_tools,
   experimental_webllm,
@@ -7,17 +9,55 @@ import {
   type WebLlmEngine,
 } from '@hashbrownai/core';
 
+/** Selects a phase solely from the current canonical user turn and completed results. */
+function selectUiToolPhase(
+  context: ChromeToolsTurnContext,
+  workflow: string | null,
+): ChromeToolPhase {
+  if (context.completedCalls.some((call) => call.result.type === 'error')) {
+    throw new Error('Application tool phase refuses a failed tool result.');
+  }
+  if (
+    workflow === 'no-tools' ||
+    context.userMessage.content.startsWith('Without calling tools')
+  ) {
+    return { type: 'finalize' };
+  }
+  if (context.completedCalls.length === 0)
+    return { type: 'tool', name: 'lookup_secret' };
+  if (workflow === 'dependent' && context.completedCalls.length === 1)
+    return { type: 'tool', name: 'follow_secret' };
+  return { type: 'finalize' };
+}
+
 /** Selects an explicitly requested local transport for the fixture hosts. */
 export function readLocalTransport(): TransportFactory | undefined {
-  const name = new URL(globalThis.location.href).searchParams.get('localModel');
-  if (name === 'chrome-tools' || name === 'chrome-tools-schema') {
+  const parameters = new URL(globalThis.location.href).searchParams;
+  const name = parameters.get('localModel');
+  if (
+    name === 'chrome-tools' ||
+    name === 'chrome-tools-schema' ||
+    name === 'chrome-tools-phases'
+  ) {
     const runtime = globalThis as unknown as {
       __hashbrownNativeTools: { created: number; destroyed: number };
     };
     runtime.__hashbrownNativeTools = { created: 0, destroyed: 0 };
     return experimental_chrome_tools({
-      ...(name === 'chrome-tools-schema'
+      ...(name === 'chrome-tools-schema' || name === 'chrome-tools-phases'
         ? { schemaFinalization: 'after-tool-planning' as const }
+        : {}),
+      ...(name === 'chrome-tools-phases'
+        ? {
+            toolPhase: (context: ChromeToolsTurnContext) =>
+              selectUiToolPhase(
+                context,
+                parameters.get('uiWorkflow') ??
+                  (parameters.get('noTools') === 'true'
+                    ? 'no-tools'
+                    : 'lookup'),
+              ),
+          }
         : {}),
       timeoutMs: 120_000,
       events: {

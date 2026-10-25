@@ -45,7 +45,7 @@ inference evidence distinct from adapter policy, and add local-only conformance.
 
 ## Task 3: Real inference, docs and regression
 
-- [ ] Run real v4 leaf/dependent and bounded composition workflows sequentially
+- [x] Run real v4 leaf/dependent and bounded composition workflows sequentially
   with the existing downloaded profile and refusal of downloads/fallback. Retain
   raw prompts/chunks, exact schema, DOM and resource counts. Assess recursive
   schemas separately and record limitations honestly.
@@ -75,13 +75,42 @@ broad-catalog failures as research on October 25, 2026.
 
 ## Approved bounded qualification
 
-- [ ] Assert exact declared tools and response schemas for each workflow before
+- [x] Assert exact declared tools and response schemas for each workflow before
   narrowing fixtures. Preserve broad catalog access for research.
-- [ ] Lookup/stream/error/Stop use lookup + status; dependent uses lookup/follow +
+- [x] Lookup/stream/error/Stop use lookup + status; dependent uses lookup/follow +
   status; nested uses lookup + status/panel; no-tools uses status only.
-- [ ] Pass local deterministic contracts, then run two predetermined full native
+- [x] Pass local deterministic contracts, then run two predetermined full native
   samples against production builds without changing strict result assertions.
   Retain any failure; do not rerun unchanged samples until green.
-- [ ] Record all native failures and bounded scope; update docs and PR.
+- [x] Record all native failures and bounded scope; update docs and PR.
 - [ ] Review changes, synchronize current main, run affected checks and exact-head
   CI, merge on green and verify merge contents on main.
+
+Bounded samples completed at `e80e25bf`: 2/8 and 4/8 passed. Only no-tools cases
+passed both samples. Native qualification and successful repetition remain
+unmet; a further scope decision is required before merging. CI alone is not the
+remaining release gate.
+
+## Interrupted verification checkpoint
+
+Bounded fixture commit `6a8dcbdd` and main integration `e80e25bf` are local and
+unpushed. Source checks passed after integration: production builds; applicable
+lint; core API report; core 1,848, React 213, Angular 281, conformance 45 and site
+937 unit tests; 22 UI contracts and 64 standard browser conformance cases.
+
+The additional regression run hit host setup errors: Nx holds a per-target server
+lock regardless of port, then provider tests used separate default port variables.
+Independent static hosts fixed the first issue; corrected provider environment
+variables were prepared, but interruption removed those hosts before retry.
+Provider/local regression completion remains outstanding. Final docs edits also
+need build/test/lint. Automatic approval review rejected that verification command
+because application network permission was revoked; it reported a review failure,
+not an unsafe action determination. Do not bypass it. PR body draft is saved at
+`/tmp/hashbrown-ui-pr-body.md`; results/docs changes are uncommitted and unpushed.
+Resume only after permissions allow the required commands, retain native failures
+and obtain the next release-scope decision before merging.
+
+The user subsequently approved application-controlled phase design and
+implementation. Network permissions are available again. Continue in
+[the phase plan](2026-10-25-chrome-tool-phases.md); the model-led failure evidence
+stays retained and phase qualification is the active native release gate.

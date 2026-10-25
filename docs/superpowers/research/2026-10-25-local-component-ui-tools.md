@@ -30,6 +30,16 @@ next request must preserve historical rendering; current parsing can accept a
 previously offered component even after removal. Do not silently promise stricter
 catalog enforcement as a side effect of native transport support.
 
+## Model terminology
+
+“Native v4” names the tested Chrome configuration, not a four-billion-parameter
+model. Native means Hashbrown calls Chrome's built-in `LanguageModel` API. The
+`AIApiFoundationalModel:model_version/v4` selection is a browser feature setting;
+the downloaded profile manifest identifies `gemma4-2b-it`, base
+`2026.06.10.0000`, component `2026.8.7.929`. This evidence does not identify the
+model as Gemini Nano 4B or establish which model an ordinary user's browser
+receives. WebLLM is a separate application-owned engine path.
+
 ## Primary-source findings
 
 ### Chrome: tools and rendering are separate application responsibilities
@@ -268,9 +278,57 @@ without tools for a literal response. Exact declared catalogs, operation counts,
 terminal schemas, raw JSON, parsed UI, DOM and cleanup remain qualification
 requirements. The PR stays unmerged until bounded native validation and CI pass.
 
+### Bounded catalog qualification
+
+The approved fixtures now narrow actual declarations per workflow rather than
+relying only on instructions. New assertions failed in both frameworks against
+the broad tool lists and schemas before implementation. All 22 bounded aimock
+contracts passed, including a repeat after synchronizing current main. Two
+predetermined full native samples use production builds at
+`e80e25bf46280499b05566d7b3ba2cf559446c1d`, the same instructions/assertions and
+the existing downloaded profile. No output repair or unchanged retry-until-green
+is allowed.
+
+Sample 1 passed **2/8 cases** in 478.6s. Both no-tools cases passed; every workflow
+requiring tools failed. Angular lookup received Chrome `kErrorUnknown` before
+any handler ran. Angular dependent repeated lookup/follow and then requested an
+undeclared `status` tool, which was rejected. Angular nested called lookup five
+times. React lookup rendered two identical status cards. React dependent ran
+lookup/follow/lookup/follow/lookup. React nested rendered the two correct leaf
+values/counts at the top level without the requested panel. Every case settled
+with zero active readers, balanced sessions, no page errors and no hosted
+fallback. The Chrome runtime error is distinct from planning and layout failures.
+
+Sample 1 evidence: `/tmp/hashbrown-ui-v4-bounded-1-evidence/`, including
+`live-report.json`, `cases.json` and per-framework/scenario raw evidence JSON.
+Sample 2 passed **4/8 cases** in 88.0s: both lookup and both no-tools cases.
+Angular dependent added another lookup after lookup/follow. Angular nested called
+lookup three times. React dependent requested an undeclared `status` tool after
+the correct lookup/follow pair; React nested called lookup twice. All cases again
+settled with zero active readers, balanced sessions, no page errors and no hosted
+fallback. Evidence: `/tmp/hashbrown-ui-v4-bounded-2-evidence/`.
+
+| Workflow | Sample 1 Angular / React | Sample 2 Angular / React |
+| --- | --- | --- |
+| Lookup + leaf | Fail / Fail | Pass / Pass |
+| Dependent tools + leaf | Fail / Fail | Fail / Fail |
+| Lookup + nested UI | Fail / Fail | Fail / Fail |
+| No tools + leaf | Pass / Pass | Pass / Pass |
+
+These are the two predetermined samples, with no intervening source, instruction
+or assertion changes. No complete bounded native sample passed. Only no-tools UI
+passed in both samples; tool-driven UI remains unqualified. Narrow declarations
+prevent exposing unrelated handlers but do not bound repeated calls to a declared
+tool or enforce the requested component count. Further work requires choosing
+between application-controlled phases, explicitly accepting the measured
+experimental model limitations, or waiting for browser/model improvements.
+The native-quality gate stays unmet; do not merge on CI alone.
+
 ## Pending decisions and external action
 
 - User approved option 1: tools gather data, then generate component UI.
 - Chromium report: posted as [#577500782](https://issues.chromium.org/issues/577500782).
-- User approved bounded qualification; native measurements and release checks
-  remain pending.
+- Bounded qualification ran twice (2/8 then 4/8); release qualification remains
+  unmet. The user approved application-controlled tool phases as the next step;
+  see [phase research](2026-10-25-chrome-tool-phases.md). PR #749 remains open
+  pending phase qualification.

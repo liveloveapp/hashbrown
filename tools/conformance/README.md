@@ -362,12 +362,47 @@ assert the actual native tool declarations and exact terminal component schema,
 as well as exact handler operations and output. The fixture query
 `uiWorkflow=broad` retains the original broader catalog for research; qualification
 uses the scenario-specific `uiWorkflow` values.
+Two fixed production samples with these bounded declarations passed 2/8 then
+4/8; only the no-tools cases passed in both. Passing deterministic contracts
+does not establish native tool-driven UI reliability. Retain all model failures
+and keep the native quality gate separate from CI.
 
 Adapter capability `ui` follows the opt-in policy; inference remains unknown.
 Measure the exact component kit separately from a simple structured response.
 Bounded child composition does not establish unrestricted recursive-schema
 support. See the [dated research](../../docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
 for current measurements and limitations.
+
+### Application-controlled native UI phases
+
+Use `toolPhase(context)` with the existing schema-finalization opt-in to select
+exactly one tool or direct finalization from immutable current-turn results. Tool
+phases reject missing, repeated and out-of-phase calls before execution. The
+final phase permits zero executable calls. Chrome requires historical native
+declarations for typed replay, so finalization retains only names referenced by
+validated history, including previous turns; unused declarations are omitted.
+The final stream rejects every non-text chunk regardless of retained names.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-phase-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance
+```
+
+These targets opt into `LOCAL_LLM_APPLICATION_TOOL_PHASES=1`, are uncached, inherit
+the CI refusal and run one browser at a time. They retain separate reports under
+`test-results/conformance/native-ui-phases`. The model-led targets above remain
+separate. Contracts cover real React/Angular rendering, exact active/retained
+declarations, direct terminal schemas, raw output, replay, Stop/recovery and
+adversarial zero/repeated/out-of-phase calls. Private phase instructions append
+to the same native prompt after unchanged history and never enter canonical
+history. Native qualification includes both framework workflows and a subsequent
+user turn reusing typed history.
+
+The [phase research](../../docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
+records the rejected zero-declaration replay and the separate exact-value failure
+in the compatibility alternative. A passing capability/replay probe is not proof
+of correct component output. Keep exact assertions and all native failures.
 
 ### Native tools through actual framework handlers
 

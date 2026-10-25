@@ -18,18 +18,18 @@ framework handlers and final output rendering. No shared phase counter or deps.
 Files: new `packages/core/src/transport/chrome-tool-phase.ts` and `.spec.ts`;
 `experimental-chrome-tools-transport.ts` / `.spec.ts`; `transport/index.ts`.
 
-- [ ] Write failing tests for context extraction and deeply frozen ownership,
+- [x] Write failing tests for context extraction and deeply frozen ownership,
   including raw errors, previous turns, missing user and rejected selections.
-- [ ] Run `npx nx test core --runInBand --testPathPatterns='chrome-tool-phase|experimental-chrome-tools-transport'`;
+- [x] Run `npx nx test core --runInBand --testPathPatterns='chrome-tool-phase|experimental-chrome-tools-transport'`;
   verify intended failures before implementation.
-- [ ] Implement the public types/context+selection helper in a focused file.
+- [x] Implement the public types/context+selection helper in a focused file.
   Evaluate once before capability checks after full history validation.
-- [ ] Add transport tests for selected-only declarations, unchanged typed history,
+- [x] Add transport tests for selected-only declarations, unchanged typed history,
   direct constrained terminal request with historical-only native declarations, atomic exactly-one selected call, no-call
   error, no tool-phase prose, abort/disposal and overlapping turns/defaults.
-- [ ] Implement explicit tool/finalize stream modes without altering defaults.
+- [x] Implement explicit tool/finalize stream modes without altering defaults.
   Export public types and document all reusable/public functions.
-- [ ] Run focused/full core tests, build/lint/API report; review spec and quality.
+- [x] Run focused/full core tests, build/lint/API report; review spec and quality.
 
 ## 2. Native replay feasibility and framework contracts
 
@@ -37,15 +37,15 @@ Files: both hosts' `local-transport.ts`, optional shared phase policy;
 `tools/conformance/local-models/native-ui-workflows.e2e.ts` and native config/targets
 if needed to keep model-led evidence/tests distinct; conformance README.
 
-- [ ] Add an explicit application-phase fixture opt-in and failing aimock tests
+- [x] Add an explicit application-phase fixture opt-in and failing aimock tests
   before wiring. Keep model-led fixtures/22 contracts available unchanged.
-- [ ] Select phase from completedCalls/current user, not mutable closure state;
+- [x] Select phase from completedCalls/current user, not mutable closure state;
   lookup-only and dependent workflows finalize immediately after required result.
-- [ ] Verify exact selected tool lists, number of prompts, raw schema/tree, real
+- [x] Verify exact selected tool lists, number of prompts, raw schema/tree, real
   operations/props/DOM, replay and Stop/recovery with adversarial repeats.
 - [ ] Build hosts and run native typed-history compatibility for changed tool and
   terminal sessions retaining historical declarations but no executable calls. Stop for a design decision if Chrome rejects replay.
-- [ ] Run deterministic phase and existing model-led contracts; keep CI refusal.
+- [x] Run deterministic phase and existing model-led contracts; keep CI refusal.
 
 ## 3. Qualification and integration
 
@@ -80,7 +80,9 @@ Update the earlier blocked zero-native-declaration design to this explicit
 contract, retain both raw probe failures and resume implementation.
 
 Predetermined native matrix: both frameworks each run lookup/leaf, dependent
-lookup/follow/leaf, lookup/nested and no-tools/leaf (8 cases), then a second full
+lookup/follow/leaf, lookup/nested and no-tools/leaf (8 cases), plus a dependent
+workflow followed by a new user turn with no additional tools (2 replay cases),
+then a second full
 sample with unchanged source/instructions/assertions. Include assistant replay
 and fresh current-turn context in deterministic contracts. The native phase
 identity/declarations, exact tool operations, raw constrained output, parsed

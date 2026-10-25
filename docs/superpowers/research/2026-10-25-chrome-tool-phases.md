@@ -14,10 +14,12 @@ output and reject zero/multiple/out-of-phase calls before handler execution.
 Finalization was designed to offer no tools while replaying full typed history.
 
 Core test-first work produced the intended failures before implementation. The
-checkpoint passes 93 focused tests and 1,873 full core tests (89 suites, 14
+checkpoint passes 99 focused tests and 1,879 full core tests (89 suites, 14
 snapshots), core production build and API reporting, and applicable lint with
 existing warnings. Those are mocked contract checks, not browser compatibility.
-No framework phase fixture or phase workflow qualification has been implemented.
+Both framework phase fixtures are implemented; all 30 deterministic phase
+contracts and 22 unchanged model-led contracts pass. Framework phase inference
+qualification remains pending.
 
 ## Native compatibility gate
 
@@ -74,3 +76,20 @@ controlled phase semantics within the browser constraint; no history summary,
 dummy tool or weaker execution policy is introduced. Implementation resumes on
 this explicit contract. The exact-value probe failure remains quality evidence;
 PR #749 must not merge on core/CI results alone.
+
+## Production qualification matrix
+
+Both production hosts consume the reviewed private-directive core build. Phase
+contracts pass 30/30, including atomic call rejection, held partial UI rollback,
+Stop/recovery and canonical replay. Existing model-led contracts pass 22/22;
+conformance unit tests pass 45/45. Host/conformance builds, TypeScript and lint
+pass. Reports are under `test-results/conformance/native-ui-phases`, separate
+from the earlier model-led reports.
+
+Before inference, the final native list contains exactly 10 cases: lookup/leaf,
+dependent/leaf, lookup/nested, no-tools/leaf and dependent-followed-by-new-user
+replay for each framework. Two predetermined complete samples use the same
+production code, instructions, schemas and strict assertions. The replay case
+compares complete typed call/results in both final prompts and verifies both raw
+answer trees, exact handler order and resulting DOM. Every run must balance
+readers/sessions and avoid hosted fallback/downloads. Results are pending.

@@ -95,6 +95,32 @@ function replayAssistantTrees(replay: unknown): unknown[] {
     .map((text) => JSON.parse(text));
 }
 
+/** Extracts typed native call/result parts without flattening their IDs, arguments, or result text. */
+function nativeToolParts(input: unknown): unknown[] {
+  const prompts = input as {
+    role: string;
+    content: string | { type: string; value: Record<string, unknown> }[];
+  }[];
+  return prompts.flatMap((prompt) =>
+    typeof prompt.content === 'string'
+      ? []
+      : prompt.content
+          .filter(
+            (part) =>
+              part.type === 'tool-call' || part.type === 'tool-response',
+          )
+          .map((part) => ({
+            role: prompt.role,
+            type: part.type,
+            callId: part.value['callID'] ?? part.value['callId'],
+            name: part.value['name'],
+            ...(part.type === 'tool-call'
+              ? { arguments: part.value['arguments'] }
+              : { result: part.value['result'] }),
+          })),
+  );
+}
+
 /** Builds the independent schema catalog expected for a bounded workflow. */
 function expectedConstraint(scenario: Scenario) {
   return createUiJsonSchema({
@@ -109,9 +135,85 @@ function expectedConstraint(scenario: Scenario) {
 function expectedTools(scenario: Scenario): string[] {
   return scenario === 'no-tools'
     ? []
-    : scenario === 'dependent'
+    : scenario === 'dependent' ||
+        scenario === 'phase-out-of-phase' ||
+        scenario === 'phase-replay'
       ? ['lookup_secret', 'follow_secret']
       : ['lookup_secret'];
+}
+
+/** Checks selected tool phases and terminal declarations retained solely for typed history. */
+function expectedDeclarations(
+  scenario: Scenario,
+  observed: Awaited<ReturnType<typeof evidence>>,
+): string[][] {
+  if (!applicationPhases)
+    return Array.from({ length: observed.sessions?.created ?? 0 }, () =>
+      expectedTools(scenario),
+    );
+  if (live)
+    return scenario === 'phase-replay'
+      ? [
+          ['lookup_secret'],
+          ['follow_secret'],
+          ['lookup_secret', 'follow_secret'],
+          ['lookup_secret', 'follow_secret'],
+        ]
+      : scenario === 'no-tools'
+        ? [[]]
+        : scenario === 'dependent'
+          ? [
+              ['lookup_secret'],
+              ['follow_secret'],
+              ['lookup_secret', 'follow_secret'],
+            ]
+          : [['lookup_secret'], ['lookup_secret']];
+  const requests = observed.requests as {
+    response_format?: unknown;
+    messages: {
+      role: string;
+      content: unknown;
+      tool_calls?: { function: { name: string } }[];
+    }[];
+  }[];
+  return requests.map((request) => {
+    if (request.response_format) {
+      const referenced = new Set(
+        request.messages.flatMap((message) =>
+          (message.tool_calls ?? []).map((call) => call.function.name),
+        ),
+      );
+      return expectedTools(scenario).filter((name) => referenced.has(name));
+    }
+    const user = request.messages.findLastIndex(
+      (message) =>
+        message.role === 'user' &&
+        /^(Call lookup_secret|Without calling tools)/.test(
+          String(message.content),
+        ),
+    );
+    const completed = request.messages
+      .slice(user + 1)
+      .filter((message) => message.role === 'tool').length;
+    return [
+      scenario === 'dependent' && completed === 1
+        ? 'follow_secret'
+        : 'lookup_secret',
+    ];
+  });
+}
+
+/** Counts actual model prompts without an extra model-led planning completion. */
+function expectedRequestCount(scenario: Scenario): number {
+  return scenario === 'no-tools'
+    ? 1
+    : scenario === 'dependent'
+      ? applicationPhases
+        ? 3
+        : 4
+      : applicationPhases
+        ? 2
+        : 3;
 }
 
 /** Records native create declarations after page initialization, without changing inference. */
@@ -133,6 +235,8 @@ async function observeDeclarations(page: Page): Promise<void> {
 }
 
 const live = process.env['LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE'] === '1';
+const applicationPhases =
+  process.env['LOCAL_LLM_APPLICATION_TOOL_PHASES'] === '1';
 const test = live
   ? base.extend({
       context: async ({ playwright, baseURL, launchOptions }, use) => {
@@ -161,7 +265,12 @@ type Scenario =
   | 'invalid-props'
   | 'stop-planning'
   | 'stop-finalization'
-  | 'stream';
+  | 'stream'
+  | 'phase-no-call'
+  | 'phase-repeated-call'
+  | 'phase-out-of-phase'
+  | 'phase-replay'
+  | 'phase-final-call-after-text';
 /** Builds calls alongside prose that must stay out of canonical history. */
 const call = (id: string, name: string, args: object): FixtureResponse => ({
   content: 'PRIVATE_PLANNING_PROSE',
@@ -205,6 +314,20 @@ function respond(
       token?: string;
       receipt?: string;
     };
+    if (scenario === 'phase-final-call-after-text') {
+      if (typeof result.token !== 'string')
+        throw new Error('Rollback response requires the actual lookup result.');
+      return {
+        content: JSON.stringify(tree(result.token)),
+        toolCalls: [
+          {
+            id: 'forbidden-after-ui',
+            name: 'lookup_secret',
+            arguments: JSON.stringify({ record: 'beta' }),
+          },
+        ],
+      };
+    }
     return {
       content: JSON.stringify(
         tree(
@@ -213,6 +336,28 @@ function respond(
         ),
       ),
     };
+  }
+  if (applicationPhases && !results.length) {
+    if (scenario === 'phase-no-call')
+      return { content: 'PRIVATE_PLANNING_PROSE' };
+    if (scenario === 'phase-out-of-phase')
+      return call('wrong-phase', 'follow_secret', { token: 'untrusted' });
+    if (scenario === 'phase-repeated-call')
+      return {
+        content: 'PRIVATE_PLANNING_PROSE',
+        toolCalls: [
+          {
+            id: 'repeat-a',
+            name: 'lookup_secret',
+            arguments: JSON.stringify({ record: 'alpha' }),
+          },
+          {
+            id: 'repeat-b',
+            name: 'lookup_secret',
+            arguments: JSON.stringify({ record: 'alpha' }),
+          },
+        ],
+      };
   }
   if (!results.length && scenario !== 'no-tools')
     return call(`lookup-${lastUser}`, 'lookup_secret', { record: 'alpha' });
@@ -271,26 +416,28 @@ async function workflow(
         page,
         mock.url,
         true,
-        scenario === 'stream' || scenario === 'stop-finalization'
+        scenario === 'stream' ||
+          scenario === 'stop-finalization' ||
+          scenario === 'phase-final-call-after-text'
           ? '","'
           : undefined,
       );
     else await installNativeToolObserver(page);
     await page.goto(
-      '/?localUiWorkflow=true&localModel=chrome-tools-schema&runUrl=' +
+      `/?localUiWorkflow=true&localModel=${applicationPhases ? 'chrome-tools-phases' : 'chrome-tools-schema'}&runUrl=` +
         encodeURIComponent('http://127.0.0.1:1/unused') +
         `&sample=${Date.now()}` +
-        `&uiWorkflow=${scenario === 'dependent' || scenario === 'nested' || scenario === 'no-tools' ? scenario : 'lookup'}`,
+        `&uiWorkflow=${scenario === 'phase-out-of-phase' || scenario === 'phase-replay' ? 'dependent' : scenario === 'dependent' || scenario === 'nested' || scenario === 'no-tools' ? scenario : 'lookup'}`,
     );
     await observeDeclarations(page);
     await run();
     const observed = await evidence(page);
     expect(observed.declarations?.length).toBeGreaterThan(0);
-    for (const declaration of observed.declarations ?? []) {
-      expect((declaration.tools ?? []).map((tool) => tool.name)).toEqual(
-        expectedTools(scenario),
-      );
-    }
+    expect(
+      observed.declarations?.map((declaration) =>
+        (declaration.tools ?? []).map((tool) => tool.name),
+      ),
+    ).toEqual(expectedDeclarations(scenario, observed));
     if (!live) {
       const requests = observed.requests as {
         response_format?: { json_schema: { schema: object } };
@@ -301,6 +448,11 @@ async function workflow(
             expectedConstraint(scenario),
           );
       }
+    }
+    if (applicationPhases) {
+      const history = await page.getByTestId('history').innerText();
+      expect(history).not.toContain('The application selected');
+      expect(history).not.toContain('The application has completed');
     }
     expect(errors).toEqual([]);
     expect(fallback).toEqual([]);
@@ -317,6 +469,7 @@ async function workflow(
       body: JSON.stringify(
         {
           live,
+          applicationPhases,
           scenario,
           project: info.project.name,
           profile: process.env['LOCAL_LLM_PROFILE'],
@@ -420,24 +573,22 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
         ).toEqual(tree(value, scenario === 'nested'));
         expect(history).not.toContain('PRIVATE_PLANNING_PROSE');
         expect(history).not.toContain('Return the final answer');
+        if (applicationPhases) {
+          expect(history).not.toContain('The application selected');
+          expect(history).not.toContain('The application has completed');
+        }
         const observed = await evidence(page);
         expect(
           observed.declarations?.map((declaration) =>
             (declaration.tools ?? []).map((tool) => tool.name),
           ),
-        ).toEqual(
-          Array.from({ length: observed.sessions?.created ?? 0 }, () =>
-            expectedTools(scenario),
-          ),
-        );
+        ).toEqual(expectedDeclarations(scenario, observed));
         if (!live) {
           const requests = observed.requests as {
             response_format?: { json_schema: { schema: object } };
             messages: { role: string; content: unknown }[];
           }[];
-          expect(requests).toHaveLength(
-            scenario === 'dependent' ? 4 : scenario === 'no-tools' ? 1 : 3,
-          );
+          expect(requests).toHaveLength(expectedRequestCount(scenario));
           expect(
             requests.slice(0, -1).every((request) => !request.response_format),
           ).toBe(true);
@@ -455,7 +606,10 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
           await page.getByTestId('send').click();
           await expect
             .poll(async () => ((await evidence(page)).requests ?? []).length)
-            .toBe(requests.length + (scenario === 'no-tools' ? 1 : 2));
+            .toBe(
+              requests.length +
+                (applicationPhases || scenario === 'no-tools' ? 1 : 2),
+            );
           await expect(page.getByTestId('status')).toHaveText('idle');
           await expect(page.getByTestId('error')).toBeEmpty();
           await expect(page.getByTestId('ui-value').last()).toHaveText(value);
@@ -469,6 +623,17 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
           const replay = ((await evidence(page)).canonical as unknown[][])[
             requests.length
           ];
+          if (applicationPhases) {
+            const assistants = (replay as { role: string }[]).filter(
+              (message) => message.role === 'assistant',
+            );
+            expect(JSON.stringify(assistants)).not.toContain(
+              'The application selected',
+            );
+            expect(JSON.stringify(assistants)).not.toContain(
+              'The application has completed',
+            );
+          }
           expect(replayAssistantTrees(replay)).toEqual([
             tree(value, scenario === 'nested'),
           ]);
@@ -485,9 +650,7 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
             value?: unknown;
           }[];
           const prompts = events.filter((event) => event.phase === 'prompt');
-          expect(prompts).toHaveLength(
-            scenario === 'dependent' ? 4 : scenario === 'no-tools' ? 1 : 3,
-          );
+          expect(prompts).toHaveLength(expectedRequestCount(scenario));
           expect(
             prompts
               .slice(0, -1)
@@ -514,6 +677,167 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
       });
     },
   );
+}
+
+if (applicationPhases && live) {
+  test('native UI application tool phases replay a subsequent user turn with typed prior results', async ({
+    page,
+  }, info) => {
+    await workflow(page, info, 'phase-replay', async () => {
+      await send(page, true, 'phase-replay');
+
+      await expect(page.getByTestId('operation-count')).toHaveText('2');
+      await expect(page.getByTestId('status')).toHaveText('idle');
+      await expect(page.getByTestId('error')).toBeEmpty();
+      const operations = JSON.parse(
+        await page.getByTestId('operations').innerText(),
+      ) as { name: string; record?: string; token: string; receipt?: string }[];
+      expect(operations.map((operation) => operation.name)).toEqual([
+        'lookup_secret',
+        'follow_secret',
+      ]);
+      expect(operations[0].record).toBe('alpha');
+      expect(operations[1].token).toBe(operations[0].token);
+      const receipt = operations[1].receipt;
+      if (typeof receipt !== 'string')
+        throw new Error('Dependent handler did not return a receipt.');
+      expect(receipt).toMatch(/^HB_RECEIPT_/);
+      await expect(page.getByTestId('ui-value')).toHaveText([receipt]);
+      await expect(page.getByTestId('ui-count')).toHaveText(['1']);
+
+      await page
+        .getByTestId('prompt')
+        .fill(
+          'Without calling tools, render exactly one top-level status with the previous exact status title and count 1.',
+        );
+      await page.getByTestId('send').click();
+
+      await expect(page.getByTestId('ui-value')).toHaveText([receipt, receipt]);
+      await expect(page.getByTestId('ui-count')).toHaveText(['1', '1']);
+      await expect(page.getByTestId('ui-leaf')).toHaveCount(2);
+      await expect(page.getByTestId('ui-fallback')).toHaveCount(0);
+      await expect(page.getByTestId('status')).toHaveText('idle');
+      await expect(page.getByTestId('error')).toBeEmpty();
+      await expect(page.getByTestId('operation-count')).toHaveText('2');
+      expect(
+        JSON.parse(await page.getByTestId('operations').innerText()),
+      ).toEqual(operations);
+      const history = JSON.parse(
+        await page.getByTestId('history').innerText(),
+      ) as {
+        role: string;
+        content: unknown;
+        toolCalls?: { toolCallId: string; name: string; args: object }[];
+      }[];
+      const assistantTrees = history
+        .filter(
+          (message) =>
+            message.role === 'assistant' &&
+            typeof message.content === 'object' &&
+            message.content !== null &&
+            'ui' in message.content,
+        )
+        .map((message) => resolvedTree(message.content));
+      expect(assistantTrees).toEqual([tree(receipt), tree(receipt)]);
+      const observed = await evidence(page);
+      expect(
+        observed.declarations?.map((declaration) =>
+          (declaration.tools ?? []).map((tool) => tool.name),
+        ),
+      ).toEqual([
+        ['lookup_secret'],
+        ['follow_secret'],
+        ['lookup_secret', 'follow_secret'],
+        ['lookup_secret', 'follow_secret'],
+      ]);
+      const events = observed.events as {
+        phase: string;
+        input?: unknown;
+        options?: { responseConstraint?: object };
+        value?: unknown;
+      }[];
+      const prompts = events.filter((event) => event.phase === 'prompt');
+      expect(prompts).toHaveLength(4);
+      expect(
+        prompts.map((prompt) => prompt.options?.responseConstraint),
+      ).toEqual([
+        undefined,
+        undefined,
+        expectedConstraint('phase-replay'),
+        expectedConstraint('phase-replay'),
+      ]);
+      const calls = history.flatMap((message) =>
+        message.role === 'assistant' ? (message.toolCalls ?? []) : [],
+      );
+      expect(calls.map((call) => call.name)).toEqual([
+        'lookup_secret',
+        'follow_secret',
+      ]);
+      expect(calls[0].toolCallId).not.toBe('');
+      expect(calls[1].toolCallId).not.toBe('');
+      expect(calls[1].toolCallId).not.toBe(calls[0].toolCallId);
+      const expectedParts = [
+        {
+          role: 'assistant',
+          type: 'tool-call',
+          callId: calls[0].toolCallId,
+          name: 'lookup_secret',
+          arguments: { record: 'alpha' },
+        },
+        {
+          role: 'user',
+          type: 'tool-response',
+          callId: calls[0].toolCallId,
+          name: 'lookup_secret',
+          result: [
+            {
+              type: 'text',
+              value: JSON.stringify({
+                record: 'alpha',
+                token: operations[0].token,
+              }),
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          type: 'tool-call',
+          callId: calls[1].toolCallId,
+          name: 'follow_secret',
+          arguments: { token: operations[0].token },
+        },
+        {
+          role: 'user',
+          type: 'tool-response',
+          callId: calls[1].toolCallId,
+          name: 'follow_secret',
+          result: [{ type: 'text', value: JSON.stringify({ receipt }) }],
+        },
+      ];
+      expect(nativeToolParts(prompts[2].input)).toEqual(expectedParts);
+      expect(nativeToolParts(prompts[3].input)).toEqual(expectedParts);
+      const firstFinal = events.indexOf(prompts[2]);
+      const nextPrompt = events.indexOf(prompts[3]);
+      const firstText = events
+        .slice(firstFinal + 1, nextPrompt)
+        .filter(
+          (event) => event.phase === 'chunk' && typeof event.value === 'string',
+        )
+        .map((event) => event.value)
+        .join('');
+      expect(JSON.parse(firstText)).toEqual(tree(receipt));
+      expect(replayAssistantTrees(prompts[3].input)).toEqual([tree(receipt)]);
+      const final = events.findLastIndex((event) => event.phase === 'prompt');
+      const text = events
+        .slice(final + 1)
+        .filter(
+          (event) => event.phase === 'chunk' && typeof event.value === 'string',
+        )
+        .map((event) => event.value)
+        .join('');
+      expect(JSON.parse(text)).toEqual(tree(receipt));
+    });
+  });
 }
 
 if (!live) {
@@ -548,6 +872,81 @@ if (!live) {
     });
   });
 
+  if (applicationPhases) {
+    test('native UI application finalization rolls back valid partial UI before a forbidden tool call', async ({
+      page,
+    }, info) => {
+      await workflow(page, info, 'phase-final-call-after-text', async () => {
+        await send(page);
+
+        await expect(page.getByTestId('ui-fallback')).toHaveText(/^HB_alpha_/);
+        const operations = JSON.parse(
+          await page.getByTestId('operations').innerText(),
+        ) as { token: string }[];
+        await expect(page.getByTestId('ui-fallback')).toHaveText(
+          operations[0].token,
+        );
+        await expect(page.getByTestId('status')).toHaveText('loading');
+        await expect(page.getByTestId('ui-leaf')).toHaveCount(0);
+        await page.evaluate(() =>
+          (
+            globalThis as unknown as { __nativeToolReleaseFinal: () => void }
+          ).__nativeToolReleaseFinal(),
+        );
+
+        await expect(page.getByTestId('error')).not.toBeEmpty();
+        await expect(page.getByTestId('status')).toHaveText('idle');
+        await expect(page.getByTestId('operation-count')).toHaveText('1');
+        expect(
+          JSON.parse(await page.getByTestId('operations').innerText()),
+        ).toEqual(operations);
+        await expect(page.getByTestId('ui-leaf')).toHaveCount(0);
+        await expect(page.getByTestId('ui-fallback')).toHaveCount(0);
+        const observed = await evidence(page);
+        expect(observed.requests).toHaveLength(2);
+      });
+    });
+  }
+
+  if (applicationPhases) {
+    for (const scenario of [
+      'phase-no-call',
+      'phase-repeated-call',
+      'phase-out-of-phase',
+    ] as const) {
+      test(`native UI application tool phase rejects ${scenario} atomically`, async ({
+        page,
+      }, info) => {
+        await workflow(page, info, scenario, async () => {
+          await send(page);
+
+          await expect(page.getByTestId('error')).not.toBeEmpty();
+          await expect(page.getByTestId('status')).toHaveText('idle');
+          await expect(page.getByTestId('operation-count')).toHaveText('0');
+          await expect(page.getByTestId('ui-leaf')).toHaveCount(0);
+          await expect(page.getByTestId('ui-fallback')).toHaveCount(0);
+          const observed = await evidence(page);
+          expect(observed.requests).toHaveLength(1);
+          expect(
+            (observed.requests as { response_format?: unknown }[])[0]
+              .response_format,
+          ).toBeUndefined();
+          const history = await page.getByTestId('history').innerText();
+          expect(history).not.toContain('PRIVATE_PLANNING_PROSE');
+          const messages = JSON.parse(history) as {
+            role: string;
+            toolCalls?: unknown[];
+          }[];
+          expect(
+            messages.flatMap((message) =>
+              message.role === 'assistant' ? (message.toolCalls ?? []) : [],
+            ),
+          ).toEqual([]);
+        });
+      });
+    }
+  }
+
   for (const scenario of [
     'final-tool',
     'malformed',
@@ -562,7 +961,7 @@ if (!live) {
 
         await expect
           .poll(async () => ((await evidence(page)).requests ?? []).length)
-          .toBe(3);
+          .toBe(applicationPhases ? 2 : 3);
         if (scenario === 'final-tool' || scenario === 'malformed') {
           await expect(page.getByTestId('error')).not.toBeEmpty();
         }
