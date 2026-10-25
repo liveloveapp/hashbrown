@@ -10,6 +10,10 @@ test.each([
   'agent-routing',
   'agent-fallback',
   'local-models',
+  'json-parser-react',
+  'json-parser-angular',
+  'ui-chatbot-react',
+  'ui-chatbot-angular',
 ])('%s has accessible recorded media and a result screenshot', (id) => {
   const root = resolve(import.meta.dirname, '../../public/video/docs');
   const suffixes = [

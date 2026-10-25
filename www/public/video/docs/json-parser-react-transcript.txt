@@ -1,0 +1,7 @@
+json-parser-react
+
+Recorded through the checked React component after both React and Angular passed browser behavior checks. The real public parser consumes a finite local JSON stream; no weather API, no live model and no narration. Presentation styles are added.
+
+The first two seconds preview the final result. The complete interaction follows. Start stream to inspect accumulated JSON beside the preview. The ordinary city string waits for its closing quote. The streaming forecast grows before its closing quote. An alert appears once its required field values are complete, even before its closing brace arrives. This does not establish a complete JSON document. Partial values do not establish a complete valid document. Completion requires source EOF, parser completion and final JSON/schema validation.
+
+Choose Stop during a stream. The preview stops changing. Choose Reset to discard the previous source and values, then Start stream to recover. A second Start stream replaces the active source. The recording ends on a complete valid document. Malformed JSON, schema-invalid values, incomplete documents, cancellation, replacement, reset and component cleanup are checked separately in both frameworks. State clears on refresh.
