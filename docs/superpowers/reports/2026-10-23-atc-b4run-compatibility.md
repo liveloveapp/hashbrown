@@ -476,3 +476,40 @@ Next: merge the follow-up after required CI, refresh and validate the version PR
 release through the supported controller, install the new registry package set,
 and repeat server/browser/build/Postgres checks. Hosted smoke validation still
 requires deployment configuration and remains separate from local evidence.
+
+
+### Upstream merges and release arbitration
+
+PR #1106 merged as `b8024a6f9dd7ec48895b34ee61d6f3b8fa092c56` after complete
+CI passed on corrected head `eafdcba0167e89ab754e40a6244e2a7941bc19f2`.
+The first full run had 12,642 passes and one stale expectation in the real
+Hono/Postgres roundtrip: the new fourth store acquires four migration locks,
+while that test separately expected three. The exact-count assertion was updated;
+the actual emitted Hono app passed locally against disposable Postgres and its
+WebSocket proxy, then the corrected full CI passed, including native Vercel.
+
+The refreshed Version Packages PR #1105 targets 0.15.4 and includes both merged
+compatibility fixes plus the peer-range correction. Its normal CI was approved
+and is running; it has not been merged or published.
+
+The release controller's arbitration selects older unfinished tagged candidates
+before a newer version candidate. The preserved observation for failed run
+`40195141825` identifies 0.15.3 at
+`2ef24c2453b031e068e99ced4cc57355f49e63d6` as `CANDIDATE_TAGGED`, with the next
+transition `prepare-artifacts`, no Release or assets, and no registry mutation.
+Its prepare job failed and its npm publishing job skipped. The annotated tag
+object is `8221db88b2936394254847bcf220bcacb474cff7`. A fresh registry sweep
+at `2026-10-25T15:44:38.456Z` returned 404 for all 21 exact 0.15.3 package versions.
+
+The live release workflow exposes reconciliation only. Its documented terminal
+recovery command and committed-record schema cover an older escrowed-draft
+case, not this tag-only preparation failure. No tag was deleted or moved, no
+terminal evidence was invented, and no release-control rule was bypassed.
+A narrow recovery design is awaiting approval before any new recovery behavior
+is implemented. Until that is resolved, keep 0.15.4 unmerged and Hashbrown's
+registry pins unchanged.
+
+A fresh clean registry-only install also passes all 1,515 core tests, core
+build/lint, lifecycle build/98 tests/lint, and the default OpenAI ATC build.
+The workspace uses that registry install again; source-package evidence remains
+separate from released-package validation.

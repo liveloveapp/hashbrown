@@ -128,9 +128,11 @@ That release still drops `maxOutputTokens`; the agent fails startup rather than
 dropping its cap. The passing agent/browser results used the patched local
 package set recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
 The output-cap and replay fixes are merged in [b4.run #1101](https://github.com/cacheplane/b4run/pull/1101).
-Generated deployments also need the request-owned client-tool store fix in
-[b4.run #1106](https://github.com/cacheplane/b4run/pull/1106). A release containing
+The request-owned client-tool store fix for generated deployments is also merged
+in [b4.run #1106](https://github.com/cacheplane/b4run/pull/1106). A release containing
 both fixes, a dependency-pin update, and registry-package validation remain required.
+The 0.15.4 version PR contains those fixes; the unfinished 0.15.3 candidate needs
+a reviewed recovery path before the controller can advance to it.
 
 ### Optional hosted build
 
