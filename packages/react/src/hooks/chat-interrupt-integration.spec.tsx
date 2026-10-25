@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
+  type ConversationRestoreOptions,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -257,3 +258,85 @@ test('UI chat interruption projections are readonly public values', () => {
     readonly isResuming: boolean;
   }>();
 });
+
+test.each(families)(
+  '$name chat restores canonical history without sending',
+  async (family) => {
+    const control = controlledTransport();
+    const { result, unmount } = renderHook(
+      () =>
+        family.use({
+          system: 'test',
+          transport: control.transport,
+          debounceTime: 0,
+        }),
+      { wrapper },
+    );
+    act(() => result.current.sendMessage({ role: 'user', content: 'go' }));
+    await waitFor(() => expect(result.current.pendingInterrupts).toBeDefined());
+    const input = control.requests[0].input;
+    expect(result.current.getRecoveryConfiguration().system).toBe('test');
+    const batch = requireBatch(result.current.pendingInterrupts);
+
+    act(() =>
+      result.current.restoreConversation(
+        {
+          threadId: input.threadId,
+          messages: input.messages,
+          configuredSystemMessageId: input.messages[0].id,
+        },
+        { expectedRevision: result.current.recovery.revision },
+      ),
+    );
+    await act(async () => undefined);
+
+    expect(result.current.pendingInterrupts).toBeUndefined();
+    expect(result.current.recovery.required).toBe(false);
+    expect(control.requests).toHaveLength(1);
+    expect(() =>
+      result.current.resume({ batchId: batch.id, entries }),
+    ).toThrow();
+    unmount();
+  },
+);
+
+test.each(families)(
+  '$name chat forwards public diagnostic recovery options',
+  async (family) => {
+    const control = controlledTransport();
+    const { result, unmount } = renderHook(
+      () => family.use({ system: '', transport: control.transport }),
+      { wrapper },
+    );
+    const options: ConversationRestoreOptions = {
+      expectedRevision: result.current.recovery.revision,
+      structuredHistory: 'preserve-diagnostics',
+    };
+
+    act(() =>
+      result.current.restoreConversation(
+        {
+          threadId: 'cold',
+          messages: [
+            {
+              id: 'invalid',
+              role: 'assistant',
+              content: '<b>ordinary historical text</b>',
+            },
+          ],
+        },
+        options,
+      ),
+    );
+    await act(async () => undefined);
+
+    expect(control.requests).toHaveLength(0);
+    expect(result.current.recovery.diagnostics?.[0].content).toBe(
+      family.name === 'text' ? undefined : '<b>ordinary historical text</b>',
+    );
+    expect(result.current.messages).toHaveLength(
+      family.name === 'text' ? 1 : 0,
+    );
+    unmount();
+  },
+);

@@ -1,3 +1,5 @@
+import { restoreHistoryDiagnostics } from '../models/history-diagnostics';
+import { ɵrestoreCancelledTurnProvenance } from '../models/cancelled-turn';
 import {
   ɵPROVIDER_HISTORY_EVENT_NAME,
   ɵPROVIDER_HISTORY_METADATA_KEY,
@@ -115,6 +117,11 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
 export const reducer = createReducer(
   initialAgUiMessagesState,
+  on(devActions.restoreConversation, (_state, action): AgUiMessagesState => ({
+    ...initialAgUiMessagesState,
+    committed: action.payload.canonicalMessages,
+    systemMessage: action.payload.systemMessage,
+  })),
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
     const committed = ownRestored(action.payload.canonicalMessages);
@@ -227,23 +234,27 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.resendMessages, (state): AgUiMessagesState => rollback(state)),
-  on(internalActions.toolTurnSettled, (state, action): AgUiMessagesState => {
-    const canonicalMessages = readPreparedCanonicalMessages(action);
-    if (!canonicalMessages) {
-      return state;
-    }
+  on(
+    internalActions.toolTurnSettled,
+    internalActions.generationCancelled,
+    (state, action): AgUiMessagesState => {
+      const canonicalMessages = readPreparedCanonicalMessages(action);
+      if (!canonicalMessages) {
+        return state;
+      }
 
-    return {
-      ...state,
-      committed: canonicalMessages,
-      draft: Object.freeze([]),
-      attemptActive: false,
-      protocolError: undefined,
-      attemptStartToolCallIds: Object.freeze([]),
-      draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveAttempt(),
-    };
-  }),
+      return {
+        ...state,
+        committed: canonicalMessages,
+        draft: Object.freeze([]),
+        attemptActive: false,
+        protocolError: undefined,
+        attemptStartToolCallIds: Object.freeze([]),
+        draftFinishedTextMessageIds: Object.freeze([]),
+        ...inactiveAttempt(),
+      };
+    },
+  ),
 );
 
 /** Selects the committed synchronized AG-UI history. @internal */
@@ -409,7 +420,13 @@ export function applyCanonicalMessageEvent(
       return mergeSnapshotActivities(
         messages,
         recomputeActivityLinks(
-          ɵreadAgUiMessageSnapshot(event),
+          restoreHistoryDiagnostics(
+            messages,
+            ɵrestoreCancelledTurnProvenance(
+              messages,
+              ɵreadAgUiMessageSnapshot(event),
+            ),
+          ),
           context?.activityArrival?.runId,
         ),
       );

@@ -1,3 +1,4 @@
+import { fixtureCredential } from './recovery';
 import { HashbrownProvider } from '@hashbrownai/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -43,7 +44,11 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <HashbrownProvider url={runUrl} transport={localTransport}>
+    <HashbrownProvider
+      url={runUrl}
+      transport={localTransport}
+      middleware={[fixtureCredential]}
+    >
       <App />
     </HashbrownProvider>
   </StrictMode>,

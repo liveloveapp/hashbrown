@@ -10,6 +10,10 @@ import {
 import {
   Chat,
   type ComponentTreeSchema,
+  type ConversationRecoveryConfiguration,
+  type ConversationRecoveryState,
+  type ConversationRestoreOptions,
+  type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
   type PendingInterruptBatch,
@@ -122,6 +126,22 @@ export interface UiChatResourceRef<
   readonly isResuming: Signal<boolean>;
   /** Submit a complete response batch to resume the interrupted interaction. */
   resume(options: ResumeOptions): void;
+
+  /** The local recovery revision and whether an explicit restore is required. */
+  readonly recovery: Signal<ConversationRecoveryState>;
+
+  /** Read owned trusted request configuration for an authenticated recovery lookup. */
+  getRecoveryConfiguration(): ConversationRecoveryConfiguration;
+
+  /**
+   * Atomically restore idle conversation history without scheduling work.
+   * @param snapshot - The canonical history and optional shared state and interrupts.
+   * @param options - The local revision captured before the recovery lookup.
+   */
+  restoreConversation(
+    snapshot: ConversationSnapshot<State>,
+    options: ConversationRestoreOptions,
+  ): void;
 
   /** Replace shared agent state without starting a generation. */
   setState(state: State): void;

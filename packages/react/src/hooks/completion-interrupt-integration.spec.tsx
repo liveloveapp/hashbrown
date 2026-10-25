@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   type Chat,
+  type ConversationSnapshot,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -61,6 +62,13 @@ function setup(
   let threadId = 'original';
   return {
     control,
+    configuration: () => hook.result.current.getRecoveryConfiguration(),
+    restore: (snapshot: ConversationSnapshot) =>
+      act(() =>
+        hook.result.current.restoreConversation(snapshot, {
+          expectedRevision: hook.result.current.recovery.revision,
+        }),
+      ),
     scheduling: () => ɵgetRuntimeSchedulingState(hook.result.current)(),
     batch: () => hook.result.current.pendingInterrupts,
     resuming: () => hook.result.current.isResuming,
@@ -515,3 +523,28 @@ test('completion interruption projections use readonly public values and expose 
     (clearStreamingMessage?: boolean) => void
   >();
 });
+
+test.each(families)(
+  '$name completion consumes its current input on restoration',
+  async (family) => {
+    const h = setup(family);
+    await h.wait(() => expect(h.batch()).toBeDefined());
+    const input = h.control.requests[0].input;
+    expect(h.configuration().system).toBe('test');
+    h.change('B');
+
+    h.restore({
+      threadId: 'restored',
+      messages: input.messages,
+      configuredSystemMessageId: input.messages[0].id,
+    });
+    await h.flush();
+
+    expect(h.batch()).toBeUndefined();
+    expect(h.control.requests).toHaveLength(1);
+    h.change('C');
+    await h.wait(() => expect(h.control.requests).toHaveLength(2));
+    expect(h.control.requests[1].input.threadId).toBe('restored');
+    h.cleanup();
+  },
+);

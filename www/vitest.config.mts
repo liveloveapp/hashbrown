@@ -17,6 +17,10 @@ export default defineConfig({
         import.meta.dirname,
         '../packages/react/src/index.ts',
       ),
+      '@hashbrownai/openai': resolve(
+        import.meta.dirname,
+        '../packages/openai/src/index.ts',
+      ),
       '@hashbrownai/typesafe': resolve(
         import.meta.dirname,
         '../packages/typesafe/src/index.ts',

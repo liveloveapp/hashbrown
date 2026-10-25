@@ -31,6 +31,10 @@ export const initialAgentState: AgentStateState = {
 
 export const reducer = createReducer(
   initialAgentState,
+  on(devActions.restoreConversation, (_state, action): AgentStateState => ({
+    ...initialAgentState,
+    committed: action.payload.state,
+  })),
   on(devActions.init, (_, action): AgentStateState => {
     const lastCanonicalMessage = action.payload.canonicalMessages.findLast(
       (message) =>

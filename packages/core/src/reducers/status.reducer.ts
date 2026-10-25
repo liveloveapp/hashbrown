@@ -40,6 +40,7 @@ export const initialStatusState: StatusState = {
 
 export const reducer = createReducer(
   initialStatusState,
+  on(devActions.restoreConversation, () => initialStatusState),
   on(devActions.init, (state, action) => {
     const messages = action.payload.messages ?? [];
     // Trailing activities are display material, never the last turn.

@@ -3,7 +3,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { expect, test } from 'vitest';
-import { rehypeShiki } from '../src/lib/rehype-shiki';
+import { highlightCode, rehypeShiki } from '../src/lib/rehype-shiki';
 
 const toHast = async (md: string) => {
   const processor = unified()
@@ -51,4 +51,54 @@ test('marks the highlighted pre with the language actually used', async () => {
 
   expect(known).toContain('"dataLanguage":"typescript"');
   expect(unknown).toContain('"dataLanguage":"text"');
+});
+
+for (const language of ['csharp', 'cs', 'c#']) {
+  test(`highlights fenced ${language} as C# with distinct syntax colors`, async () => {
+    const markdown = `\`\`\`${language}\npublic class Message { public string Text = "Hello"; }\n\`\`\``;
+
+    const tree = await toHast(markdown);
+    const colors = new Set(
+      [...tree.matchAll(/"style":"color:([^";]+)/g)].map((match) => match[1]),
+    );
+
+    expect(tree).toContain('"dataLanguage":"csharp"');
+    expect(colors.size).toBeGreaterThan(1);
+  });
+}
+
+test('highlights fenced XML with distinct syntax colors and preserves markup as text', async () => {
+  const markdown = '```xml\n<Project Sdk="Microsoft.NET.Sdk">Hello</Project>\n```';
+
+  const tree = await toHast(markdown);
+  const colors = new Set(
+    [...tree.matchAll(/"style":"color:([^";]+)/g)].map((match) => match[1]),
+  );
+
+  expect(tree).toContain('"dataLanguage":"xml"');
+  expect(colors.size).toBeGreaterThan(1);
+  expect(tree).not.toContain('"tagName":"Project"');
+  expect(tree).toContain('Microsoft.NET.Sdk');
+});
+
+for (const language of ['csharp', 'cs', 'c#']) {
+  test(`highlightCode supports ${language} with distinct syntax colors`, async () => {
+    const code = 'public class Message { public string Text = "Hello"; }';
+
+    const html = await highlightCode(code, language);
+    const colors = new Set(
+      [...html.matchAll(/<span style="color:([^";]+)/g)].map((match) => match[1]),
+    );
+
+    expect(html).toContain('class="shiki hashbrown"');
+    expect(colors.size).toBeGreaterThan(1);
+  });
+}
+
+test('highlightCode rejects unknown languages', async () => {
+  const code = 'hello';
+
+  const highlighted = highlightCode(code, 'nope');
+
+  await expect(highlighted).rejects.toThrow();
 });

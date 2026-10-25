@@ -2,6 +2,8 @@ import { s } from '@hashbrownai/core';
 import { useChat, useTool } from '@hashbrownai/react';
 import { useState } from 'react';
 import { InterruptControls } from './interrupt-controls';
+import { useRecoveryControls, useRecoveryThread } from './recovery-controls';
+import { rememberThread } from './recovery';
 
 interface PlainSmokeProps {
   readonly scenario: 'plain' | 'tool';
@@ -18,7 +20,7 @@ function errorText(error: unknown): string {
 /** Plain React chat fixture used by the shared runtime smoke scenarios. */
 export function PlainSmoke({ scenario }: PlainSmokeProps) {
   const [prompt, setPrompt] = useState('');
-  const [threadId, setThreadId] = useState(() => crypto.randomUUID());
+  const { threadId, setThreadId } = useRecoveryThread();
   const [commandError, setCommandError] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [toolCount, setToolCount] = useState(0);
@@ -35,6 +37,12 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     },
     deps: [],
   });
+  const chat = useChat({
+    system: 'Runtime smoke system prompt.',
+    threadId,
+    tools: scenario === 'tool' ? [getWeather] : [],
+  });
+  const recovery = useRecoveryControls(chat, threadId, setThreadId);
   const {
     error,
     state,
@@ -48,11 +56,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     sendMessage,
     sendingError,
     stop,
-  } = useChat({
-    system: 'Runtime smoke system prompt.',
-    threadId,
-    tools: scenario === 'tool' ? [getWeather] : [],
-  });
+  } = chat;
   const reasoningMessage = [...messages]
     .reverse()
     .find(
@@ -72,6 +76,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
   );
 
   function send() {
+    rememberThread(threadId);
     setSubmitted(prompt);
     setCommandError('');
     try {
@@ -88,13 +93,19 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
         value={prompt}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
-      <button data-testid="send" type="button" onClick={send}>
+      <button
+        data-testid="send"
+        type="button"
+        disabled={recovery.disabled}
+        onClick={send}
+      >
         Send
       </button>
       <button data-testid="stop" type="button" onClick={() => stop()}>
         Stop
       </button>
       <InterruptControls
+        disabled={recovery.disabled}
         batch={pendingInterrupts}
         isResuming={isResuming}
         resume={resume}
@@ -102,10 +113,36 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       <button
         data-testid="new-thread"
         type="button"
-        onClick={() => setThreadId(crypto.randomUUID())}
+        onClick={recovery.newThread}
       >
         New thread
       </button>
+      {recovery.enabled && (
+        <button
+          data-testid="refresh-recovery"
+          disabled={recovery.fetching || isLoading}
+          onClick={() => void recovery.refresh()}
+        >
+          Refresh recovery
+        </button>
+      )}
+      <div data-testid="recovery-status">{recovery.status}</div>
+      <div data-testid="recovery-fetching">{String(recovery.fetching)}</div>
+      <div data-testid="recovery-required">
+        {String(chat.recovery.required)}
+      </div>
+      <div data-testid="recovery-thread">{threadId}</div>
+      {chat.recovery.diagnostics?.map((diagnostic) => (
+        <pre
+          key={diagnostic.messageId}
+          data-testid="recovery-diagnostic"
+          data-message-id={diagnostic.messageId}
+          data-thread-id={diagnostic.threadId}
+          data-kind={diagnostic.kind}
+        >
+          {diagnostic.content}
+        </pre>
+      ))}
       <div data-testid="shared-state">{JSON.stringify(state)}</div>
       <div data-testid="command-error">{commandError}</div>
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>

@@ -14,6 +14,12 @@ meta:
 
 ---
 
+## Before we start
+
+Keep the endpoint and provider configuration from the [Quickstart](/docs/react/start/quick). We will extend its trusted-component setup. Read [Skillet schemas](/docs/react/concept/schema) for the values each component accepts.
+
+The snippets below focus on the component API. `Markdown` represents a component in your application that accepts a string `data` prop; its implementation is omitted here. For complete checked examples, use [UI Chatbot with Tools](/docs/react/recipes/ui-chatbot) or [Magic Text](/docs/react/recipes/magic-text), which renders streamed Markdown.
+
 ## The `exposeComponent()` Function
 
 The @hashbrownai/react!exposeComponent:function function exposes React components to the LLM that can be generated.
@@ -373,7 +379,6 @@ Prefer rules over sample answers. A rule in a description lives next to the comp
 <img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
 
 The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
-
 
 ## Next Steps
 

@@ -302,6 +302,37 @@ not native multi-call identity correlation. See the
 for component versions and measurements. These raw probes do not run framework
 handlers or establish generative-UI/schema-plus-tools support.
 
+### Native tools with schema finalization
+
+`experimental_chrome_tools({ schemaFinalization: 'after-tool-planning' })`
+composes the existing structured chat schema with framework-owned native tools.
+Planning is unconstrained and its prose is private to the native session. Valid
+calls return to normal Hashbrown handlers; dependent calls can request more
+rounds. A call-free planning turn triggers one same-session constrained final
+prompt. Only final text reaches Skillet. UI and media composition remain
+unsupported, and the default native-tools factory still rejects schemas.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-schema-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-schema-workflow-smoke conformance
+```
+
+These cache-free targets inherit the native tools CI refusal and run one browser
+at a time. The live target uses the already downloaded v4 profile and refuses
+downloads. The actual React/Angular fixtures use `useStructuredChat` and
+`structuredChatResource`, real lookup/dependent handlers and hidden random
+tokens. Contracts cover phase constraints, exact schema consumption, rejected
+final tools/malformed output and Stop/recovery. The shim retains within-session
+history and forwards the constraint for inspection without enforcing or repairing
+model output. The native observer records actual prompt options and chunks.
+Reports are separate under `test-results/conformance/native-schema`.
+
+Capability reporting distinguishes the opt-in adapter policy from unverified
+inference. A passing exact-token sample does not prove arbitrary schema grammar
+support or model reliability. Never remove fences or weaken exact assertions to
+make a live result pass. Keep quality failures separate from lifecycle defects.
+
 ### Native tools through actual framework handlers
 
 ```sh
@@ -346,6 +377,24 @@ occurred before tests; these results come from completed sequential or standalon
 runs. Existing warnings remain visible in logs. The installed-model workflow
 receipt-copy failures described above remain visible and keep that live quality
 suite from being green.
+
+### Explicit cancellation history follow-up
+
+Shared core now preserves a stopped or superseded user request with a factual
+runtime cancellation record before later model input. It keeps committed tool
+results and existing rollback behavior; the record is hidden from ordinary,
+structured, UI and streaming assistant projections. Exact metadata-free agent
+snapshot echoes preserve locally owned marker identity.
+
+The updated standard browser cancellation assertions passed in both frameworks
+(full suite 72/72), as did all 18 native aimock workflows and the final focused
+Stop contracts. Real v4 Stop/fresh-lookup cases now passed 2/2 with the exact
+original request, marker, new lookup and hidden token: both history and source
+boundary evidence flags were true, sessions balanced 3/3 and active readers
+returned to zero. This focused result does not regrade the historical ten-case
+quality suite above or imply constrained final text. Evidence and the approved
+policy are recorded in `docs/superpowers/research/2026-10-24-cancelled-turn-markers.md`.
+Local installed-model and native aimock targets remain outside CI.
 
 ## Model and schema measurements
 
@@ -396,3 +445,37 @@ npx nx local-webllm-smoke conformance
 ```
 
 This provides a collection entry point; Windows execution remains unverified.
+
+## .NET cold recovery and maintenance
+
+The .NET provider matrix uses genuine OpenAI and Azure clients with aimock at
+only the model boundary. `npx nx provider-e2e dotnet-conformance` builds the two
+browser hosts, compiles the exact eight recipe combinations and tests both
+frameworks/providers. Cold structured/UI cases exercise the source SDK's
+explicit historical-diagnostics restore policy. This opt-in is unreleased;
+0.8.1 consumers retain strict restoration. Tests preserve exact native history
+and require a new explicit approval after reload. Diagnostics are escaped text,
+not proof of cancellation ownership or permission to execute work.
+
+`npx nx test dotnet-conformance` includes real PostgreSQL retention tests. Set
+`DOTNET_TEST_POSTGRES` to an isolated test database or allow the fixtures to own
+a disposable PostgreSQL 18 container. The tests create unique schemas and
+remove only their own resources. Maintenance commits independently of admission,
+uses bounded row-locked batches and preserves unresolved post-effect metadata.
+
+To collect timing evidence for the original worker-restart case, set
+`DOTNET_RECOVERY_TIMINGS=1` and run:
+
+```sh
+npx nx provider-e2e dotnet-conformance \
+  --grep='reload after worker death' --repeat-each=5
+```
+
+Failed cases attach a `recovery-timeline` automatically. It contains one Node
+monotonic clock domain, opaque fixture span IDs, fixed phase/component fields
+and numeric HTTP statuses. Each case caps collection at 256 events and 32 spans
+and reports dropped counts. It adds no transcript, URL, exception text or
+credential capture. Compare route upstream headers, first bytes and browser
+response boundaries; `/health` proves process liveness, not provider readiness.
+Keep the original five-second assertion and zero retries when investigating.
+A repeat pass alone does not establish the cause of an earlier failure.

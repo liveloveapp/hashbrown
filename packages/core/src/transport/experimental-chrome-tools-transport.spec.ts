@@ -627,7 +627,7 @@ test('supports public native tools declarations in a Node-only consumer without 
       monitor(monitor) { monitor.addEventListener('downloadprogress', (event) => { void event.loaded; }); },
     };
     const session: ChromeToolsSession = {
-      promptStreaming() { return new ReadableStream<unknown>(); }, destroy() {},
+      promptStreaming(input, promptOptions) { void input; const schema: object | undefined = promptOptions.responseConstraint; void schema; return new ReadableStream<unknown>(); }, destroy() {},
     };
     void [options, session];`;
   const options: ts.CompilerOptions = {
@@ -858,5 +858,464 @@ test.each([EventType.TOOL_CALL_START, EventType.TOOL_CALL_ARGS])(
     ).rejects.toMatchObject({ code: 'PROMPT_API_ABORTED' });
     expect(events).not.toContain(EventType.TOOL_CALL_END);
     expect(native.destroy).toHaveBeenCalledTimes(1);
+  },
+);
+
+function schemaRequest(tools = true): TransportRequest {
+  const source = request();
+  source.input.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: { answer: { type: 'string' } },
+      },
+    },
+  };
+  if (!tools) source.input.tools = [];
+  return source;
+}
+
+function nativeTurn(chunks: unknown[]): ReadableStream<unknown> {
+  return new ReadableStream({
+    start(controller) {
+      chunks.forEach((chunk) => controller.enqueue(chunk));
+      controller.close();
+    },
+  });
+}
+
+async function schemaEvents(source = schemaRequest(), turns: unknown[][] = []) {
+  const native = install();
+  const prompt = jest.fn((input: readonly object[], options: object) => {
+    void input;
+    void options;
+    return nativeTurn(turns.shift() ?? []);
+  });
+  const response = await experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    createSession: async () => ({
+      promptStreaming: prompt,
+      destroy: native.destroy,
+    }),
+  })().send(source);
+  const events = [];
+  for await (const event of response.events) events.push(event);
+  return { events, prompt, native };
+}
+
+test('opt-in schema planning suppresses all prose and emits only validated calls', async () => {
+  const { events, prompt } = await schemaEvents(schemaRequest(), [
+    [
+      'private planning',
+      {
+        type: 'tool-call',
+        value: { callID: 'id', name: 'lookup', arguments: {} },
+      },
+      'private after',
+    ],
+  ]);
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TOOL_CALL_START,
+    EventType.TOOL_CALL_ARGS,
+    EventType.TOOL_CALL_END,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(prompt).toHaveBeenCalledTimes(1);
+  expect(prompt.mock.calls[0][1]).not.toHaveProperty('responseConstraint');
+});
+
+test('terminal planning finalizes once in the same session with an owned exact schema', async () => {
+  const source = schemaRequest();
+  const original = JSON.stringify(source.input);
+
+  const { events, prompt, native } = await schemaEvents(source, [
+    ['private reasoning'],
+    ['{"answer":', '"receipt"}'],
+  ]);
+
+  expect(prompt).toHaveBeenCalledTimes(2);
+  expect(prompt.mock.calls[0][0]).toEqual([
+    { role: 'user', content: 'look up' },
+  ]);
+  expect(prompt.mock.calls[0][1]).not.toHaveProperty('responseConstraint');
+  expect(prompt.mock.calls[1][0]).toEqual([
+    { role: 'user', content: expect.stringContaining('without calling tools') },
+  ]);
+  expect(prompt.mock.calls[1][1]).toMatchObject({
+    responseConstraint: {
+      type: 'object',
+      properties: { answer: { type: 'string' } },
+    },
+  });
+  expect(
+    events
+      .filter((event) => event.type === EventType.TEXT_MESSAGE_CONTENT)
+      .map((event) => event.delta),
+  ).toEqual(['{"answer":', '"receipt"}']);
+  expect(JSON.stringify(source.input)).toBe(original);
+  expect(native.destroy).toHaveBeenCalledTimes(1);
+});
+
+test('schema without tools constrains authoritative history directly and preserves raw text', async () => {
+  const { events, prompt } = await schemaEvents(schemaRequest(false), [
+    ['```json\n{bad}\n```'],
+  ]);
+
+  expect(prompt).toHaveBeenCalledTimes(1);
+  expect(prompt.mock.calls[0][0]).toEqual([
+    { role: 'user', content: 'look up' },
+  ]);
+  expect(prompt.mock.calls[0][1]).toHaveProperty('responseConstraint');
+  expect(
+    events
+      .filter((event) => event.type === EventType.TEXT_MESSAGE_CONTENT)
+      .map((event) => event.delta),
+  ).toEqual(['```json\n{bad}\n```']);
+});
+
+test.each([false, true])(
+  'finalization rejects typed calls without executable events (tools=%s)',
+  async (tools) => {
+    install();
+    const turns = [
+      ...(tools ? [['private']] : []),
+      [
+        {
+          type: 'tool-call',
+          value: { callID: 'id', name: 'lookup', arguments: {} },
+        },
+      ],
+    ];
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      createSession: async () => ({
+        destroy: jest.fn(),
+        promptStreaming: () => nativeTurn(turns.shift() ?? []),
+      }),
+    })().send(schemaRequest(tools));
+    const events: string[] = [];
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) events.push(event.type);
+      })(),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(events).not.toContain(EventType.TOOL_CALL_START);
+  },
+);
+
+test('schema finalization capability reports policy while inference remains unknown', async () => {
+  install();
+
+  const result = await detectChromeToolsCapabilities({
+    schemaFinalization: 'after-tool-planning',
+  });
+
+  expect(result.adapter.structuredOutput).toBe(true);
+  expect(result.adapter.schemaFinalization).toBe('after-tool-planning');
+  expect(result.inference).toBe('unknown');
+  expect(result.adapter.ui).toBe(false);
+  expect(result.adapter.media).toBe(false);
+});
+
+test('rejects invalid schema policies before native creation and detection', async () => {
+  const native = install();
+  const invalid = { schemaFinalization: 'always' } as never;
+
+  expect(() => experimental_chrome_tools(invalid)).toThrow();
+  await expect(detectChromeToolsCapabilities(invalid)).rejects.toMatchObject({
+    code: 'FEATURE_UNSUPPORTED',
+  });
+  expect(native.create).not.toHaveBeenCalled();
+});
+
+test.each([
+  [],
+  { type: 'object', padding: 'x'.repeat(1024 * 1024) },
+  { bad: () => undefined },
+])(
+  'bounds and validates schema before creating native sessions',
+  async (responseSchema) => {
+    const native = install();
+    const source = schemaRequest();
+    source.input.forwardedProps = { hashbrown: { responseSchema } };
+
+    await expect(
+      experimental_chrome_tools({
+        schemaFinalization: 'after-tool-planning',
+      })().send(source),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(native.create).not.toHaveBeenCalled();
+  },
+);
+
+test('schema ownership survives source mutation while native creation is pending', async () => {
+  const native = install();
+  const source = schemaRequest(false);
+  const schema = { type: 'object', properties: { answer: { type: 'string' } } };
+  source.input.forwardedProps = { hashbrown: { responseSchema: schema } };
+  let created!: () => void;
+  const starting = new Promise<void>((resolve) => {
+    created = resolve;
+  });
+  let resume!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  const prompt = jest.fn(
+    (
+      input: readonly object[],
+      options: { signal: AbortSignal; responseConstraint?: object },
+    ) => {
+      void input;
+      void options;
+      return nativeTurn(['{}']);
+    },
+  );
+  const sending = experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    createSession: async () => {
+      created();
+      await waiting;
+      return { destroy: native.destroy, promptStreaming: prompt };
+    },
+  })().send(source);
+  await starting;
+
+  schema.properties.answer.type = 'number';
+  resume();
+  const response = await sending;
+  for await (const event of response.events) void event;
+
+  const owned = prompt.mock.calls[0][1].responseConstraint;
+  expect(owned).toEqual({
+    type: 'object',
+    properties: { answer: { type: 'string' } },
+  });
+  expect(owned).not.toBe(schema);
+  expect(Object.isFrozen(owned)).toBe(true);
+  expect(Object.isFrozen((owned as typeof schema).properties.answer)).toBe(
+    true,
+  );
+});
+
+test('additional canonical tool rounds replay results into fresh unconstrained planning sessions', async () => {
+  const source = schemaRequest();
+  source.input.messages.push(
+    {
+      id: 'a',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'first',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+    { id: 'b', role: 'tool', toolCallId: 'first', content: 'hidden-token' },
+  );
+
+  const { prompt, events } = await schemaEvents(source, [
+    [
+      'private',
+      {
+        type: 'tool-call',
+        value: {
+          callID: 'dependent',
+          name: 'lookup',
+          arguments: { token: 'hidden-token' },
+        },
+      },
+    ],
+  ]);
+
+  expect(prompt.mock.calls[0][0]).toEqual(
+    expect.arrayContaining([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool-response',
+            value: expect.objectContaining({
+              callID: 'first',
+              result: [{ type: 'text', value: 'hidden-token' }],
+            }),
+          },
+        ],
+      },
+    ]),
+  );
+  expect(prompt.mock.calls[0][1]).not.toHaveProperty('responseConstraint');
+  expect(
+    events.filter((event) => event.type === EventType.TOOL_CALL_END),
+  ).toEqual([expect.objectContaining({ toolCallId: 'dependent' })]);
+});
+
+test.each(['planning', 'finalization'] as const)(
+  'schema %s shares cancellation and nonblocking hung native cleanup',
+  async (phase) => {
+    install();
+    const controller = new AbortController();
+    const cancel = jest.fn(() => new Promise<void>(() => undefined));
+    const destroy = jest.fn(() => new Promise<void>(() => undefined));
+    let started!: () => void;
+    const starting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let count = 0;
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      createSession: async () => ({
+        destroy,
+        promptStreaming: () => {
+          if (phase === 'finalization' && count++ === 0)
+            return nativeTurn(['private']);
+          started();
+          return new ReadableStream({ cancel });
+        },
+      }),
+    })().send({ ...schemaRequest(), signal: controller.signal });
+    const consuming = (async () => {
+      for await (const event of response.events) void event;
+    })();
+    const rejected = expect(consuming).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    await starting;
+
+    controller.abort();
+    await rejected;
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(['planning', 'finalization'] as const)(
+  'schema %s timeout owns a late prompt stream',
+  async (phase) => {
+    install();
+    const cancel = jest.fn();
+    const destroy = jest.fn();
+    let resolve!: (stream: ReadableStream<unknown>) => void;
+    const pending = new Promise<ReadableStream<unknown>>((done) => {
+      resolve = done;
+    });
+    let count = 0;
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      timeoutMs: 40,
+      createSession: async () => ({
+        destroy,
+        promptStreaming: () =>
+          phase === 'finalization' && count++ === 0
+            ? nativeTurn(['private'])
+            : pending,
+      }),
+    })().send(schemaRequest());
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) void event;
+      })(),
+    ).rejects.toMatchObject({ code: 'PROMPT_API_ABORTED' });
+    resolve(new ReadableStream({ cancel }));
+    await pending;
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('schema planning withholds every call and all prose for a malformed completed batch', async () => {
+  install();
+  const response = await experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    createSession: async () => ({
+      destroy: jest.fn(),
+      promptStreaming: () =>
+        nativeTurn([
+          'private',
+          {
+            type: 'tool-call',
+            value: { callID: 'same', name: 'lookup', arguments: {} },
+          },
+          {
+            type: 'tool-call',
+            value: { callID: 'same', name: 'lookup', arguments: {} },
+          },
+        ]),
+    }),
+  })().send(schemaRequest());
+  const events: string[] = [];
+
+  await expect(
+    (async () => {
+      for await (const event of response.events) events.push(event.type);
+    })(),
+  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+  expect(events).toEqual([EventType.RUN_STARTED]);
+});
+
+test('opt-in schema requests continue to reject UI before session creation', async () => {
+  const native = install();
+  const source = schemaRequest();
+  source.input.forwardedProps = { hashbrown: { responseSchema: {}, ui: true } };
+
+  await expect(
+    experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+    })().send(source),
+  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+  expect(native.create).not.toHaveBeenCalled();
+});
+
+test.each(['planning', 'finalization'] as const)(
+  'schema %s retains the native turn output bound',
+  async (phase) => {
+    install();
+    let count = 0;
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      createSession: async () => ({
+        destroy: jest.fn(),
+        promptStreaming: () =>
+          phase === 'finalization' && count++ === 0
+            ? nativeTurn(['private'])
+            : nativeTurn(['x'.repeat(4 * 1024 * 1024 + 1)]),
+      }),
+    })().send(schemaRequest());
+    const types: string[] = [];
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) types.push(event.type);
+      })(),
+    ).rejects.toThrow('output bounds');
+    expect(types).toEqual([EventType.RUN_STARTED]);
+  },
+);
+
+test.each([null, 42, { type: 'text', value: '{}' }, { type: 'unknown' }])(
+  'schema finalization rejects every non-string chunk without falling back',
+  async (chunk) => {
+    install();
+    const promptStreaming = jest.fn(() => nativeTurn([chunk]));
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      createSession: async () => ({ destroy: jest.fn(), promptStreaming }),
+    })().send(schemaRequest(false));
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) void event;
+      })(),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(promptStreaming).toHaveBeenCalledTimes(1);
   },
 );

@@ -28,7 +28,7 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
       <button
         data-testid="resume"
         type="button"
-        [disabled]="!batch() || isResuming()"
+        [disabled]="disabled() || !batch() || isResuming()"
         (click)="submit()"
       >
         Resume
@@ -36,7 +36,7 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
       <button
         data-testid="decline"
         type="button"
-        [disabled]="!batch() || isResuming()"
+        [disabled]="disabled() || !batch() || isResuming()"
         (click)="submit('decline')"
       >
         Decline
@@ -44,7 +44,7 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
       <button
         data-testid="cancel"
         type="button"
-        [disabled]="!batch() || isResuming()"
+        [disabled]="disabled() || !batch() || isResuming()"
         (click)="submit('cancel')"
       >
         Cancel
@@ -54,6 +54,8 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
   `,
 })
 export class InterruptControls {
+  /** Whether application recovery policy blocks decisions. */
+  readonly disabled = input(false);
   /** The currently displayed immutable interrupt batch. */
   readonly batch = input.required<PendingInterruptBatch | undefined>();
   /** Whether a complete resume interaction is in progress. */

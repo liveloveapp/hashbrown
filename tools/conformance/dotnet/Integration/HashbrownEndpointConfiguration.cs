@@ -78,7 +78,7 @@ public static class HashbrownEndpointConfiguration
     {
         public async Task ExecuteAsync(HttpContext context)
         {
-            try { await inner.ExecuteAsync(context); }
+            try { await new CheckpointCaptureResult(inner, pending, claim).ExecuteAsync(context); }
             finally { await CleanupAsync(context, pending, claim); }
         }
     }

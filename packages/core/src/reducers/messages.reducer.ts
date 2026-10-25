@@ -84,36 +84,40 @@ export const reducer = createReducer(
       ),
     };
   }),
-  on(devActions.setMessages, (state, action) => {
-    const messages =
-      action.payload.localProjection?.messages ??
-      projectCanonical(
-        action.payload.canonicalMessages,
-        action.payload.toolsByName ?? {},
-        action.payload.responseSchema,
-      );
-    return {
-      ...state,
-      messages,
-      committed: messages,
-      draft: [],
-      attemptActive: false,
-      activeAssistantMessageId: undefined,
-      activeIgnoredTextMessageId: undefined,
-      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
-      committedCanonicalIds: ɵindexAgUiCanonicalIds(
-        action.payload.canonicalMessages,
-      ),
-      localProvenance: createLocalProvenance(
-        action.payload.localProjection,
-        action.payload.canonicalMessages,
-      ),
-      committedLocalProvenance: createLocalProvenance(
-        action.payload.localProjection,
-        action.payload.canonicalMessages,
-      ),
-    };
-  }),
+  on(
+    devActions.setMessages,
+    devActions.restoreConversation,
+    (state, action) => {
+      const messages =
+        action.payload.localProjection?.messages ??
+        projectCanonical(
+          action.payload.canonicalMessages,
+          action.payload.toolsByName ?? {},
+          action.payload.responseSchema,
+        );
+      return {
+        ...state,
+        messages,
+        committed: messages,
+        draft: [],
+        attemptActive: false,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+        committedCanonicalIds: ɵindexAgUiCanonicalIds(
+          action.payload.canonicalMessages,
+        ),
+        localProvenance: createLocalProvenance(
+          action.payload.localProjection,
+          action.payload.canonicalMessages,
+        ),
+        committedLocalProvenance: createLocalProvenance(
+          action.payload.localProjection,
+          action.payload.canonicalMessages,
+        ),
+      };
+    },
+  ),
   on(devActions.sendMessage, (state, action) => {
     if (action.payload.canonicalAppendCompatible === false) return state;
     let canonicalIds: ɵAgUiCanonicalIdIndex;
@@ -408,36 +412,56 @@ export const reducer = createReducer(
     (state): MessagesState => rollback(state),
   ),
   on(devActions.resendMessages, (state): MessagesState => rollback(state)),
-  on(internalActions.toolTurnSettled, (state, action): MessagesState => {
-    const preparedProjection = readPreparedProjection(action);
-    if (!preparedProjection) {
-      return state;
-    }
-
-    const reconciled = reconcilePreparedMessages(
-      state.attemptActive ? state.draft : state.committed,
-      preparedProjection.projection.messages,
-      preparedProjection.messageSources,
-      state.attemptActive
-        ? (state.localProvenance ?? {})
-        : (state.committedLocalProvenance ?? {}),
-    );
-    const messages = reconciled.draft;
+  on(devActions.updateOptions, (state, action): MessagesState => {
+    const projection = readPreparedProjection(action);
+    if (!projection) return state;
+    const committed = (
+      action as unknown as {
+        readonly ɵcommittedProjection: ɵAgUiMessageProjectionCache;
+      }
+    ).ɵcommittedProjection;
     return {
       ...state,
-      messages,
-      committed: messages,
-      draft: [],
-      attemptActive: false,
-      activeAssistantMessageId: undefined,
-      activeIgnoredTextMessageId: undefined,
-      canonicalIds: preparedProjection.canonicalIds,
-      committedCanonicalIds: preparedProjection.canonicalIds,
-      preparedProjection,
-      localProvenance: reconciled.localProvenance,
-      committedLocalProvenance: reconciled.localProvenance,
+      messages: projection.projection.messages,
+      committed: committed.projection.messages,
+      draft: state.attemptActive ? projection.projection.messages : state.draft,
+      preparedProjection: projection,
     };
   }),
+  on(
+    internalActions.toolTurnSettled,
+    internalActions.generationCancelled,
+    (state, action): MessagesState => {
+      const preparedProjection = readPreparedProjection(action);
+      if (!preparedProjection) {
+        return state;
+      }
+
+      const reconciled = reconcilePreparedMessages(
+        state.attemptActive ? state.draft : state.committed,
+        preparedProjection.projection.messages,
+        preparedProjection.messageSources,
+        state.attemptActive
+          ? (state.localProvenance ?? {})
+          : (state.committedLocalProvenance ?? {}),
+      );
+      const messages = reconciled.draft;
+      return {
+        ...state,
+        messages,
+        committed: messages,
+        draft: [],
+        attemptActive: false,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: preparedProjection.canonicalIds,
+        committedCanonicalIds: preparedProjection.canonicalIds,
+        preparedProjection,
+        localProvenance: reconciled.localProvenance,
+        committedLocalProvenance: reconciled.localProvenance,
+      };
+    },
+  ),
   on(apiActions.generateMessageError, (state, action) => {
     const errorMessage: ErrorMessage = {
       role: 'error',

@@ -93,3 +93,32 @@ test('a new thread discards prior input and resume ownership without a thread ca
   expect(replacement.send).toBe(true);
   expect(repeated.send).toBe(false);
 });
+
+test('restoration consumes unchanged completion input until an explicit input change', () => {
+  const submitted = ɵreconcileCompletionInput(undefined, 'A', idle, true).state;
+  const paused = ɵreconcileCompletionInput(
+    submitted,
+    'B',
+    { ...idle, pending: true },
+    true,
+  ).state;
+  const recovered = { ...idle, threadEpoch: 1, restorationEpoch: 1 };
+
+  const restored = ɵreconcileCompletionInput(paused, 'B', recovered, true);
+  const unchanged = ɵreconcileCompletionInput(
+    restored.state,
+    'B',
+    recovered,
+    true,
+  );
+  const changed = ɵreconcileCompletionInput(
+    unchanged.state,
+    'C',
+    recovered,
+    true,
+  );
+
+  expect(restored.send).toBe(false);
+  expect(unchanged.send).toBe(false);
+  expect(changed.send).toBe(true);
+});

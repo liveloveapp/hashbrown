@@ -2,55 +2,46 @@
 title: 'Platforms: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown uses the adapter pattern for supporting multiple platforms.'
+    content: 'Connect Hashbrown to a provider, a decision service, or a browser-local model.'
 ---
 
 # Platforms
 
-Hashbrown uses the adapter pattern for supporting multiple platforms.
+Your components and client APIs stay in your application. Choose where the model runs, then connect that runtime to Hashbrown. Let's separate streaming chat, decisions, and browser-local inference so each setup has a clear starting point.
 
-## Official Adapters
+## Stream through a server adapter
 
-| Platform                                             | Adapter Package          |
-| ---------------------------------------------------- | ------------------------ |
-| [OpenAI](/docs/angular/platform/openai)              | `@hashbrownai/openai`    |
-| [Microsoft Azure](/docs/angular/platform/azure)      | `@hashbrownai/azure`     |
-| [Anthropic Claude](/docs/angular/platform/anthropic) | `@hashbrownai/anthropic` |
-| [Amazon Bedrock](/docs/angular/platform/bedrock)     | `@hashbrownai/bedrock`   |
-| [Google Gemini](/docs/angular/platform/google)       | `@hashbrownai/google`    |
-| [Ollama](/docs/angular/platform/ollama)              | `@hashbrownai/ollama`    |
-| [TypeSafe](/docs/angular/platform/typesafe)          | `@hashbrownai/typesafe`  |
+These adapters translate provider responses into the AG-UI events your Hashbrown client consumes. They map text, tool calls and structured-output requests. The selected model or deployment must support the features you request; an adapter does not add a missing model capability.
 
-## Custom Adapters
+| Provider setup                                   | Hashbrown package        |
+| ------------------------------------------------ | ------------------------ |
+| [OpenAI](/docs/angular/platform/openai)          | `@hashbrownai/openai`    |
+| [Azure OpenAI](/docs/angular/platform/azure)     | `@hashbrownai/azure`     |
+| [Anthropic](/docs/angular/platform/anthropic)    | `@hashbrownai/anthropic` |
+| [Amazon Bedrock](/docs/angular/platform/bedrock) | `@hashbrownai/bedrock`   |
+| [Google Gemini](/docs/angular/platform/google)   | `@hashbrownai/google`    |
+| [Ollama](/docs/angular/platform/ollama)          | `@hashbrownai/ollama`    |
 
-Use an ASP.NET Core backend with the [tested .NET AG-UI recipe for OpenAI and Azure OpenAI](/docs/angular/platform/dotnet). The browser APIs stay the same.
+Each setup guide includes its provider SDK dependency and server configuration. Keep credentials on the server, select the model there, and return the adapter's stream from your endpoint. Start with the [Quickstart](/docs/angular/start/quick) for the browser-to-endpoint wiring.
 
-Can't find your preferred AI provider? [Create a custom adapter](/docs/angular/platform/custom) for any LLM that supports streaming chat completions.
+The OpenAI and Azure adapters use the Responses API. An OpenAI-compatible Chat Completions endpoint alone is not enough for those adapters. Ollama uses its own adapter and server; it is a separate setup from a model running inside the browser.
 
-## Platform Capabilities
+Structured-output support and accepted schema constructs depend on the provider and model. Verify your schema and tool flow against the deployment you will use. [Request customization](/docs/angular/concept/transform-request-options) shows how to adjust the provider request on the server.
 
-| Platform         | Text | Streaming | Tools | Structured Output |
-| ---------------- | ---- | --------- | ----- | ----------------- |
-| OpenAI           | ✅   | ✅        | ✅    | ✅                |
-| Microsoft Azure  | ✅   | ✅        | ✅    | ✅                |
-| Anthropic Claude | ✅   | ✅        | ✅    | ✅                |
-| Amazon Bedrock   | ✅   | ✅        | ✅    | ✅                |
-| Google Gemini    | ✅   | ✅        | ✅    | ✅                |
-| Ollama           | ✅   | ✅        | ✅    | ✅                |
-| TypeSafe         | ❌   | ❌        | ❌    | ❌                |
+## Answer decisions with TypeSafe
 
-## Platform Limitations
+Use [`@hashbrownai/typesafe`](/docs/angular/platform/typesafe) when the task is to choose among known options. Its server adapter validates a decision request, calls TypeSafe, and returns a JSON decision response. It uses global `fetch` and needs no separate provider SDK.
 
-| Platform         | Limitations                                      |
-| ---------------- | ------------------------------------------------ |
-| OpenAI           | None                                             |
-| Microsoft Azure  | None                                             |
-| Anthropic Claude | Requires `@anthropic-ai/sdk` peer dependency     |
-| Amazon Bedrock   | Native structured output support varies by model |
-| Google Gemini    | Native structured output support varies by model |
-| Ollama           | Limited model support                            |
-| TypeSafe         | Decisions only: no text, streaming or tools      |
+TypeSafe is a decision service, so it does not replace the streaming chat endpoint. An agent can use a decision to select a workflow, then generate a response with another provider. Follow [Decisions in Agents](/docs/angular/recipes/decisions-in-agents) for that boundary and a recorded example.
 
-## Where is X platform?
+## Run a model in the browser
 
-Need a platform that is not listed here? [Open an issue on GitHub](https://github.com/liveloveapp/hashbrown/issues/new) and tell us what you are building. If your team wants a finished, headful agent UI with enterprise support, take a look at [threadplane](https://threadplane.ai/?utm_source=hashbrown&utm_medium=docs).
+[Local Models](/docs/angular/recipes/local-models) covers Chrome and Edge transports and an application-owned WebLLM engine. These use browser-side inference instead of the server adapters above. Availability, preparation, downloads and fallback behavior belong in the application flow; the checked recipe begins with an explicit preparation action.
+
+The local-model recording uses real Chrome inference. The guide distinguishes that verified path from the other runtime options.
+
+## Use another server
+
+For ASP.NET Core, use the [tested .NET AG-UI integration](/docs/angular/platform/dotnet). For another provider or agent runtime, [create a custom adapter](/docs/angular/platform/custom) that produces the AG-UI events your client needs. Start from the event contract and verify tool continuation and structured output as part of that integration.
+
+If you need a complete chat interface, [Threadplane](/docs/angular/recipes/threadplane) supplies the presentation layer around the runtime. It is a separate choice from the provider that answers requests.

@@ -494,7 +494,7 @@ The recorder separately checks unavailable APIs, download progress/failure, canc
 
 ## Keep local capabilities explicit
 
-The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. It explicitly rejects schema/UI/media composition. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
+The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. Schema output requires an explicit finalization policy; UI/media composition remains unsupported. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
 
 Chrome image/audio input requires an explicit `experimental_chrome` media configuration and an application resolver. WebLLM uses a separately managed engine. These are advanced options with different resource and capability contracts; the trip-brief example uses text only.
 
@@ -653,19 +653,57 @@ The tested Chrome 155/v4 model emits empty native `callID` values. The adapter
 assigns a stable canonical ID only when that completed turn contains exactly
 one call. Ambiguous batches requiring ID repair fail before execution. Valid
 native IDs are preserved; malformed, conflicting and duplicate IDs fail.
-Schema-plus-tools, generative UI, media and media tool results are unsupported
-by this separate factory. Use `experimental_chrome()` for the existing
+By default, schema-plus-tools is rejected. Generative UI, media and media tool
+results remain unsupported even when schema finalization is enabled. Use `experimental_chrome()` for the existing
 text/schema or explicitly enabled media paths. The adapter never removes a
 schema silently to make a tool request work.
 
-Final replies remain unconstrained text. Clear application instructions can
+Without the finalization option, final replies remain unconstrained text. Clear application instructions can
 ask the model to extract a particular property from a JSON tool result, but
 formatting is a model-quality concern: an initial native workflow returned a
 correct receipt inside fenced JSON despite a plain-string request. Hashbrown
-preserves that output. Live tests also found that a fresh session can continue
-a cancelled request when it remains in canonical user history, even after the
-old session has stopped and been destroyed. Test follow-up instructions on the
-actual model. This factory does not promise schema-constrained replies.
+preserves that output. The default factory does not constrain final replies.
+
+To opt into schema output after tool planning, use `useStructuredChat` with your existing schema:
+
+```ts
+import { useStructuredChat } from '@hashbrownai/react';
+
+const transport = experimental_chrome_tools({
+  schemaFinalization: 'after-tool-planning',
+});
+
+const chat = useStructuredChat({
+  transport,
+  tools: [readCounter],
+  schema: s.object('Counter answer', { value: s.number('Current counter') }),
+  system: 'Call read_counter first. Return a JSON object with only value containing the current counter.',
+});
+```
+
+Tool planning runs without a response constraint so it can request additional or
+dependent tools. Hashbrown executes validated calls through the usual handlers
+and permission gates. Planning prose is excluded from the public conversation.
+Once a planning turn contains no calls, the same native session receives one
+additional prompt with `responseConstraint` set to the chat schema. Only that
+final answer streams through Skillet. With no tools declared, the schema is
+applied directly without an extra planning pass.
+
+This is an experimental, opt-in orchestration policy, and adds a terminal model
+pass when tools are declared. A finalization tool call fails before execution;
+unsupported schemas and invalid output surface as errors. There is no weaker
+constraint retry, fence removal or hosted fallback. The capability report's
+`adapter.structuredOutput` describes adapter policy; `inference: 'unknown'`
+means the actual model/schema combination still needs verification. UI and
+media composition remain unsupported.
+
+Stopping a conversational run or sending a replacement request retains the
+original user request and committed history with an explicit runtime
+cancellation marker before subsequent input. The marker stays in model
+history and is omitted from ordinary assistant rendering and schema/UI parsing.
+Both real v4 Stop cases returned the exact new lookup token with that marker;
+cleanup and history assertions passed independently. Keep testing follow-up
+instructions on the actual model; a marker does not guarantee model obedience.
 
 `detectChromeToolsCapabilities()` reports serializable exact-option and model
 availability evidence without downloading or inferring. Its `inference` value
