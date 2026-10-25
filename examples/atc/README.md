@@ -123,12 +123,13 @@ keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
 
 **Package compatibility:** the agent path requires a coherent b4.run package
 set containing the browser-tool replay fixes and `agent({ maxOutputTokens })`.
-The dependency pins are now `0.15.1`, installed and tested from the registry.
+The dependency pins are now `0.15.2`, installed and tested from the registry.
 That release still drops `maxOutputTokens`; the agent fails startup rather than
 dropping its cap. The passing agent/browser results used the patched local
 package set recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
-The compatibility commits still need to be merged and released, followed by
-another dependency-pin update and complete agent validation.
+The compatibility fixes are now in upstream draft [b4.run #1101](https://github.com/cacheplane/b4run/pull/1101).
+They still need review, merge and release, followed by another dependency-pin
+update and complete agent validation.
 
 ### Optional hosted build
 

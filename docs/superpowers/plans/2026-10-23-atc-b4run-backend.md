@@ -66,6 +66,22 @@ The user authorized continuing implementation after the upstream fixes and is
 handling releases independently. No dependency additions are authorized; ask
 before introducing any if the existing packages cannot support these APIs.
 
+## Registry 0.15.2 continuation (2026-10-24)
+
+Updated the same existing pins and lockfile to `0.15.2` and validated a fresh
+registry-only install. This release still drops `maxOutputTokens`, so six
+server tests remain blocked by the compatibility guard. Shared Postgres store
+tests pass (3), lifecycle build/test/lint pass (98 tests), and the full core
+suite passes serially (1515 tests; the initial concurrent run had one timeout).
+
+The missing source fixes are now rebased onto b4.run main at `014918499` and
+published as draft https://github.com/cacheplane/b4run/pull/1101. Rebase review
+found a cancelled-parallel-call replay intersection; the fix now preserves its
+arguments while reopening the call, with a failing-then-passing regression.
+Review, CI, merge and a release containing those changes must precede another
+pin update and complete agent/Postgres/artifact validation. No merge, release
+or deployment was performed here.
+
 ## Released-package follow-up (2026-10-24)
 
 Pins/lockfile now use registry packages `0.15.1`, and verification uses a clean

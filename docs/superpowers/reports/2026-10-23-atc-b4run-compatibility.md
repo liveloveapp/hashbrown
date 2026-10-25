@@ -9,7 +9,7 @@ Plan: `../plans/2026-10-23-atc-b4run-backend.md`.
 
 The user authorized continuing source implementation and will handle releases
 separately. See the source-fix follow-up and the 2026-10-24 released-package
-validation below. Released 0.15.1 artifacts still fail the output-cap gate; the
+validation below. Released 0.15.2 artifacts still fail the output-cap gate; the
 initial findings in this report describe the earlier 0.14.0 investigation.
 
 The installed b4.run 0.14.0 runtime embeds through a public fetch API and can
@@ -376,3 +376,47 @@ agent/server/browser/build checks, then validate complete cross-instance agent
 execution and generated-artifact ownership against Postgres. Finally configure
 the intended hosted database/signing secret and run deployed-host smoke tests.
 No upstream release, deployment, or existing user-state cleanup was performed.
+
+
+## Registry 0.15.2 continuation: 2026-10-24
+
+The user requested continuation after release 0.15.2. CLI, core, SDK and Postgres
+storage pins/lockfile now use that coherent set, tested with a fresh
+`npm ci --ignore-scripts` install at `/private/tmp/atc-0152-deps`.
+
+The published SDK still lacks `maxOutputTokens` in both the descriptor builder
+and its declarations. A direct registry-artifact probe reports
+`{"releasedVersion":"0.15.2","capRetained":false}`. Server tests reproduce
+156 passes / 6 failures at the unchanged compatibility guard. No cap bypass was
+introduced. Complete browser and optional artifact runs were not repeated after
+this decisive startup failure; the earlier matrix failures remain explained by
+the same guard.
+
+Checks with 0.15.2: the 3 real Postgres store tests pass; lifecycle build, 98
+tests and lint pass; server build/lint and the default ATC artifact build pass
+(including isolated OpenAI startup). The full core suite passes 1515
+tests in 76 suites with `--runInBand`; its earlier concurrent run had one
+5-second timeout in the existing 25-tool-round test. The temporary Postgres
+container was removed after validation.
+
+To remove the missing upstream prerequisite, the local compatibility branch was
+rebased onto b4.run main at `014918499` and opened as **draft PR
+https://github.com/cacheplane/b4run/pull/1101**, head `527bee1a1`. This includes
+output-limit propagation and parent/argument replay fixes. Conflict resolution
+preserves the newer tool-step metadata and reopens cancelled parallel tools
+without clearing their replayed arguments. Its combined regression was observed
+failing and then passing; read-only review has no remaining significant finding.
+
+Upstream validation: CLI dependency graph builds; affected SDK/LangChain/AG-UI/
+CLI typecheck and lint pass with existing warnings. SDK has 264 passing tests;
+AG-UI broad run has 702 passes plus a TypeScript compiler timeout that passes
+on focused rerun (6 tests); Angular has 185 passes. Model-adapter broad run has
+579 passes plus a Mistral-import timeout that passes on focused rerun (17
+tests). CLI expanded focused run has 57 passes and 3 unchanged macOS `/tmp`
+versus `/private/tmp` artifact-boundary failures. The broad CLI run was stopped
+after overload-related timeouts; full repository CI and production boundaries
+are not claimed as locally passing. The draft records these limits.
+
+Next prerequisite is review/merge/release of that upstream PR, followed by pins
+and complete agent/Postgres/generated-artifact checks. No release or deployment
+was performed; the user's original b4.run working checkout remains untouched.
