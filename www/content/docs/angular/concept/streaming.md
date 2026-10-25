@@ -2,12 +2,12 @@
 title: 'Streaming: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Show complete items as they arrive while keeping application changes explicit.'
+    content: 'Show resolved item values as they arrive while keeping application changes explicit.'
 ---
 
 # Streaming
 
-We do not need to wait for the whole shopping list before showing its first item. Let's stream complete items into a draft while keeping **Apply list** disabled until the run finishes.
+We do not need to wait for the whole shopping list before showing its first item. Let's stream item values into a draft while keeping **Apply list** disabled until the run finishes.
 
 <hb-docs-demo demo="streaming-data">
 </hb-docs-demo>
@@ -17,6 +17,8 @@ We do not need to wait for the whole shopping list before showing its first item
 Use the checked shopping-list component from [Structured output](/docs/angular/concept/structured-output). It includes the schema, endpoint setup links, loading and error states, and the explicit Apply action. No second component is needed for this page.
 
 If you are following the Fundamentals section in order, complete the [Quickstart](/docs/angular/start/quick), then read [Skillet schemas](/docs/angular/concept/schema) and Structured output before returning here.
+
+To explore parsing without an endpoint or model key, start with the [JSON Parser](/docs/angular/recipes/json-parser) recipe. It streams a finite local weather response into a preview.
 
 ## Choose what can appear early
 
@@ -32,15 +34,15 @@ items: s.streaming.array(
 );
 ```
 
-The array can expose completed items as they arrive. Each item waits for its required name and quantity before it appears. We do not mark the item object or its fields as streaming because the interface needs both values together.
+The array can expose an item once its required name and quantity resolve. We do not mark the item object or its fields as streaming because the interface needs both values together. The object can resolve before its closing brace arrives; that preview does not prove the JSON document is complete.
 
 ## Follow one response
 
 | Response stage                            | Draft list                            | Apply list                             |
 | ----------------------------------------- | ------------------------------------- | -------------------------------------- |
 | Waiting for the endpoint                  | No new items                          | Disabled                               |
-| First item complete                       | Two apples                            | Disabled                               |
-| Second item complete                      | Two apples and one loaf of bread      | Still disabled while the run is active |
+| First item fields resolved                | Two apples                            | Disabled                               |
+| Second item fields resolved               | Two apples and one loaf of bread      | Still disabled while the run is active |
 | Run finished and application rules passed | Completed draft                       | Available for explicit review          |
 | Request failed or was cancelled           | Any visible draft remains uncommitted | Disabled                               |
 
@@ -54,7 +56,7 @@ There are two different questions here: **Can this item be displayed?** and **Ca
 
 ## Choose a different streaming boundary
 
-Use `s.streaming.string` when the interface can display a string as it grows. Use `s.streaming.object` when the interface can handle fields becoming available separately. Leave an object unmarked when it must be complete before display, as each shopping item does here.
+Use `s.streaming.string` when the interface can display a string as it grows. Use `s.streaming.object` when the interface can handle fields becoming available separately. Leave an object unmarked when its required field values should appear together, as each shopping item does here. The [JSON Parser](/docs/angular/recipes/json-parser) recipe shows those values resolving before the closing brace and validates the full document when its local source ends.
 
 A streaming marker does not authorize an action, validate application-specific rules, or guarantee that the run will succeed. Keep buttons that change application state tied to a completed, reviewed result.
 

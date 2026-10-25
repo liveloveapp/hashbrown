@@ -1,0 +1,19 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Preview of the completed interaction.
+
+00:00:02.000 --> 00:00:03.830
+Start a local JSON stream.
+
+00:00:03.830 --> 00:00:05.042
+Stop keeps a partial preview.
+
+00:00:05.042 --> 00:00:06.059
+Reset clears the preview.
+
+00:00:06.059 --> 00:00:08.935
+Start again.
+
+00:00:08.935 --> 00:00:14.666
+Fields resolve. Validate the finished document.

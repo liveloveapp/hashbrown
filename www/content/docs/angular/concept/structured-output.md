@@ -22,7 +22,7 @@ Keep `runtime/shopping-list.ts` beside the `react` and `angular` example directo
 
 Our response has one `items` array. Each item has a string `name` and integer `quantity`. Hashbrown parses the model's response with this schema and exposes typed assistant content.
 
-We use `s.streaming.array` around ordinary `s.object` items. That lets complete items appear before the whole list finishes. [Streaming](/docs/angular/concept/streaming) explains where to place the streaming markers.
+We use `s.streaming.array` around ordinary `s.object` items. That lets items appear once their required field values resolve, before the whole list finishes. [Streaming](/docs/angular/concept/streaming) explains where to place the streaming markers.
 
 The shared file also checks our application's rules: 1–10 items, names with 1–80 characters after trimming, and quantities from 1–20. A value can match the schema and still fail these rules. For example, zero is an integer, but it is not a useful quantity in this list.
 
@@ -33,7 +33,7 @@ The shared file also checks our application's rules: 1–10 items, names with 1�
 ```ts
 import { s } from '@hashbrownai/core';
 
-/** Streams complete shopping-list items while withholding unfinished objects. */
+/** Streams shopping-list items once their required field values resolve. */
 export const shoppingListSchema = s.object('A shopping list draft', {
   items: s.streaming.array(
     'The requested shopping items',
@@ -292,7 +292,7 @@ export class StructuredList {
 
 ## Read the typed content
 
-The latest assistant message carries the parsed response in `content`. Before a response is available, there may be no assistant message. During generation, the list can grow as complete items arrive.
+The latest assistant message carries the parsed response in `content`. Before a response is available, there may be no assistant message. During generation, the list can grow as item names and quantities resolve, even before an item’s closing brace arrives. These values are a preview of the response.
 
 Keep the **Draft list** separate from the **Applied list**. Showing generated data is useful feedback; it does not mean the run has finished or the user has accepted it.
 
@@ -302,7 +302,7 @@ Keep the **Draft list** separate from the **Applied list**. Showing generated da
 
 **Apply list** becomes available only for a new, completed draft that passes our validation. The handler checks again before copying its items into application state. Starting another generation or selecting **Cancel** makes the draft ineligible immediately, including while the request is waiting to send.
 
-A failed request keeps the previously applied list. A cancelled request cannot be applied, even if it already displayed complete items. A replacement request without a new assistant answer cannot reuse the previous draft.
+A failed request keeps the previously applied list. A cancelled request cannot be applied, even if it already displayed items. A replacement request without a new assistant answer cannot reuse the previous draft.
 
 This example updates local component state. It does not buy anything, write to a server, or save across a refresh. Validate and authorize any real server write separately.
 
@@ -325,4 +325,4 @@ Skillet also accepts its supported Standard JSON Schema inputs. See [schema inpu
 
 ## Next steps
 
-Continue with [Streaming](/docs/angular/concept/streaming) to see why completed items appear progressively. Then use [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect review and validation to your application's form. For model-selected components, continue with [Exposing components](/docs/angular/concept/components).
+Continue with [Streaming](/docs/angular/concept/streaming) to see why resolved item values appear progressively. Then use [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect review and validation to your application's form. For model-selected components, continue with [Exposing components](/docs/angular/concept/components).

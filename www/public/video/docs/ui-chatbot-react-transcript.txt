@@ -1,0 +1,7 @@
+ui-chatbot-react
+
+Recorded through the checked React component after both React and Angular passed browser behavior checks. Scripted AG-UI responses enter at the HTTP transport boundary; the SDK hooks, real browser tool handler, trusted component renderer and application-owned light state run normally. Presentation styles added; no real device, no live model and no narration. State clears on refresh.
+
+The first two seconds preview the completed conversation. Send “Set the desk light to 40%.” The actual readLights browser tool returns the Desk light at 80%. The scripted continuation selects LightProposal with validated props. Apply brightness remains disabled during streaming. After successful completion the user chooses Apply brightness, changing the local light to 40% and advancing its revision. The proposal can be applied only once. Send “What is the desk light set to now?” The actual tool returns 40% and the trusted LightReading component displays that value.
+
+Invalid IDs and brightness, failed and truncated runs, streaming-time Apply, stale and repeated proposals, cancellation, late responses, keyboard operation and unmount cleanup are checked separately in both frameworks. No model props authorize an action. The recording ends with a hold on the result.
