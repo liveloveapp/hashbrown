@@ -403,6 +403,22 @@ The [phase research](../../docs/superpowers/research/2026-10-25-chrome-tool-phas
 records the rejected zero-declaration replay and the separate exact-value failure
 in the compatibility alternative. A passing capability/replay probe is not proof
 of correct component output. Keep exact assertions and all native failures.
+Two predetermined phase samples each passed 8/10, with the same single-component
+cases passing in both (16/16). The full native command includes the still-failing
+nested canaries; they remain strict failures with raw evidence. One sample failed
+inside Chrome before tool execution; another rendered the wrong panel heading.
+Nested UI is not qualified by the passing deterministic contracts.
+The approved scope is the measured single-component lookup/dependent/no-tools/
+replay workflows. To run those cases explicitly, use:
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance -- --grep-invert='native UI nested'
+```
+
+The unfiltered command above retains both nested research cases and currently
+returns failures for them. No assertion is weakened and no test is marked skipped
+or expected-to-fail. Qualification does not imply arbitrary prompt reliability.
 
 ### Native tools through actual framework handlers
 

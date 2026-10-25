@@ -92,4 +92,67 @@ replay for each framework. Two predetermined complete samples use the same
 production code, instructions, schemas and strict assertions. The replay case
 compares complete typed call/results in both final prompts and verifies both raw
 answer trees, exact handler order and resulting DOM. Every run must balance
-readers/sessions and avoid hosted fallback/downloads. Results are pending.
+readers/sessions and avoid hosted fallback/downloads.
+
+### Application-phase sample 1
+
+At production commit `54c8bd35d8e025939a98c0fdeb2b8dfbc30bf37b`, the first fixed
+sample passed **8/10 cases** in 324.9s. Both frameworks passed lookup/leaf,
+dependent/leaf, no-tools/leaf and subsequent-user typed replay. Those cases
+passed exact tool order, native declarations, prompt/schema phases, raw JSON,
+parsed trees, DOM, canonical privacy and complete typed-history assertions.
+
+Both nested workflow cases failed with Chrome `UnknownError: An unknown error
+occurred: kErrorUnknown` during the first selected lookup phase. No handler ran,
+no native call chunk was emitted, and no terminal response constraint had yet
+been supplied. This is a native inference failure in the nested-request workflow,
+not evidence that Chrome rejected the component schema or renderer. The strict
+operation-count assertion remained failed; no retry or output repair occurred.
+All 10 cases ended with zero active readers, balanced sessions, no page errors
+and no hosted fallback. Evidence: `/tmp/hashbrown-ui-v4-phases-1-evidence/`
+(`live-report.json`, `cases.json`, per-case raw JSON and traces).
+
+### Application-phase sample 2
+
+The second predetermined sample at the same commit passed **8/10 cases** in
+336.1s. The same eight single-component cases passed again with all exact
+assertions. Both nested workflows executed lookup exactly once and rendered the
+requested two status children with correct token values/counts, but set the panel
+heading to that token instead of the requested literal `Workflow`. The raw final
+JSON confirms the incorrect heading; no output repair or relaxed assertion was
+used. This sample demonstrates schema-valid nested rendering, not reliable
+layout/prop selection. Evidence: `/tmp/hashbrown-ui-v4-phases-2-evidence/`.
+
+| Workflow | Sample 1 Angular / React | Sample 2 Angular / React |
+| --- | --- | --- |
+| Lookup + leaf | Pass / Pass | Pass / Pass |
+| Dependent tools + leaf | Pass / Pass | Pass / Pass |
+| Lookup + nested UI | Chrome error / Chrome error | Wrong heading / Wrong heading |
+| No tools + leaf | Pass / Pass | Pass / Pass |
+| New user with typed tool replay + leaf | Pass / Pass | Pass / Pass |
+
+All 20 cases settled with zero active readers, balanced sessions, no page errors
+and no hosted fallback. The same code/instructions/schemas/assertions were used
+in both samples. Single-component cases passed 16/16 across the two fixed
+samples. The complete suites remain failed at 8/10 each; nested UI is not
+qualified. No unchanged retry was performed.
+
+The user approved shipping the verified single-component workflows on October
+25, 2026, with nested failures retained as strict research canaries. The measured
+support scope is lookup/leaf, dependent/leaf, no-tools/leaf and cross-turn typed
+replay/leaf in these framework fixtures and this Chrome/model configuration.
+This does not promise arbitrary single-component prompts or nested UI reliability.
+The unfiltered native suite remains 8/10 in each sample; no tests were reclassified
+as passing, skipped or relaxed. Exact-head CI and merge verification remain.
+
+## Final implementation regression checks
+
+Core 1,879, React 213, Angular 281, conformance 45 and site 937 unit tests pass;
+core has 89 suites/14 snapshots and 99 focused phase/transport cases. All affected
+production builds, TypeScript, applicable lint and core API reporting pass.
+React has no lint target. Existing tool-step unused-variable, deprecation/API
+and chunk-size warnings remain. Phase contracts pass 30/30 and unchanged
+model-led contracts 22/22. Standard/provider browser suites pass 64/8; existing
+local transport/media/native tools/schema contracts pass 24/4/18/10. The new
+phase target refuses CI as expected. All independent reviews approved source;
+native limitations remain separate from adapter/renderer correctness.

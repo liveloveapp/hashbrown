@@ -49,7 +49,7 @@ if needed to keep model-led evidence/tests distinct; conformance README.
 
 ## 3. Qualification and integration
 
-- [ ] Run two predetermined complete native production phase samples, retaining
+- [x] Run two predetermined complete native production phase samples, retaining
   all prompts/chunks/schemas/DOM/errors/resources; do not retry unchanged to pass.
 - [ ] Update recipes/research/API and the PR body with actual scope/results.
 - [ ] Synchronize main without overwriting pending checkpoint docs; run affected
@@ -94,3 +94,11 @@ terminal instructions state tools are complete. Context extraction happens
 before appending, no extra inference pass occurs and default mode stays
 unchanged. Verify directives remain absent from canonical/replayed history and
 rendered output; raw evidence retains them. Instructions do not relax validation.
+
+Both fixed native samples at `54c8bd35` completed: 8/10 each, with all eight
+single-component workflows passing in both samples (16/16). Nested sample1
+failed inside Chrome before handlers; sample2 rendered schema-valid panels with
+the token as heading instead of Workflow. Source/runtime checks pass; native
+nested qualification remains unmet. The user approved shipping the verified
+single-component scope while retaining nested failures as research on October 25.
+Exact-head CI and merge verification remain; do not skip or relax nested canaries.

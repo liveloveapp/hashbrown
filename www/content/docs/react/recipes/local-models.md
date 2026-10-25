@@ -781,6 +781,11 @@ unchanged history; it adds no inference pass and is omitted from framework histo
 This policy controls execution phases, not UI cardinality or model quality. The
 [phase research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
 records browser compatibility and exact-output results separately.
+Two fixed production samples each passed 8/10 phase cases. All single-component
+lookup, dependent, no-tools and cross-turn replay cases passed in both frameworks
+in both samples (16/16). Nested workflows failed either inside Chrome before a
+handler ran or by choosing the wrong panel heading. The full native suites remain
+failed; nested UI is unqualified on this measured Chrome/model configuration.
 
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime
