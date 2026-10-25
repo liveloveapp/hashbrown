@@ -14,6 +14,7 @@ import {
   Chat,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   createChatRuntime,
   type FinishReason,
@@ -74,7 +75,7 @@ export interface ChatResourceRef<
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
 
   /** Replace shared agent state without starting a generation. */

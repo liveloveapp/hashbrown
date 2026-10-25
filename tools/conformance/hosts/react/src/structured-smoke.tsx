@@ -102,6 +102,17 @@ export function StructuredSmoke() {
         {String(chat.recovery.required)}
       </div>
       <div data-testid="recovery-thread">{threadId}</div>
+      {chat.recovery.diagnostics?.map((diagnostic) => (
+        <pre
+          key={diagnostic.messageId}
+          data-testid="recovery-diagnostic"
+          data-message-id={diagnostic.messageId}
+          data-thread-id={diagnostic.threadId}
+          data-kind={diagnostic.kind}
+        >
+          {diagnostic.content}
+        </pre>
+      ))}
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-message">{submitted}</div>
       <div data-testid="assistant"></div>

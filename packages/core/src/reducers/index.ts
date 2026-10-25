@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { retireHistoryDiagnostics } from '../models/history-diagnostics';
 import { ɵcreateCancelledTurnMarker } from '../models/cancelled-turn';
 import type { Message } from '@ag-ui/core';
 import { assertInterruptsNotExpired } from '../transport/interrupt-validation';
@@ -321,6 +322,36 @@ export function ɵprepareRootAction(
       };
     } catch {
       return { type: '@hashbrown/noop' };
+    }
+  }
+  if (action.type === devActions.updateOptions.type) {
+    const update = action as ReturnType<typeof devActions.updateOptions>;
+    const threadChanged =
+      Object.hasOwn(update.payload, 'threadId') &&
+      update.payload.threadId !== state.thread.threadId;
+    if (update.payload.responseSchema || threadChanged) {
+      const config = fromConfig.reducer(state.config, update);
+      if (threadChanged) {
+        retireHistoryDiagnostics(state.agUiMessages.committed);
+        retireHistoryDiagnostics(state.agUiMessages.draft);
+      }
+      return {
+        ...action,
+        ɵagUiMessageProjection: ɵreconcileAgUiMessageProjection(
+          undefined,
+          state.agUiMessages.attemptActive
+            ? state.agUiMessages.draft
+            : state.agUiMessages.committed,
+          state.tools.entities,
+          config.responseSchema,
+        ),
+        ɵcommittedProjection: ɵreconcileAgUiMessageProjection(
+          undefined,
+          state.agUiMessages.committed,
+          state.tools.entities,
+          config.responseSchema,
+        ),
+      };
     }
   }
   if (action.type !== apiActions.generateMessageEvent.type) {

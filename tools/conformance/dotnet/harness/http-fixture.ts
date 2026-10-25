@@ -7,6 +7,10 @@ import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { createEventGate } from '../../harness/event-gate';
+import {
+  recoveryRequestRecorder,
+  traceRecoveryRequest,
+} from './recovery-timings';
 
 /** Test-only gate applied after actual native model text frames have passed through. */
 export interface ModelStreamControl {
@@ -40,12 +44,15 @@ export async function withDotnetFixture<T>(
   streamControl?: ModelStreamControl,
   environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
+  const workerTrace = traceRecoveryRequest('worker');
+  const beginModelTrace = recoveryRequestRecorder('model');
   const mock = new LLMock({ port: 0, strict: true });
   mock.onMessage('Hello fixture', { content: 'Hello from .NET' });
   await mock.start();
   const requests: ModelRequest[] = [];
   let upstreamAborted = false;
   const proxy = createServer(async (request, response) => {
+    const trace = beginModelTrace();
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const body = Buffer.concat(chunks);
@@ -61,7 +68,10 @@ export async function withDotnetFixture<T>(
     const cancellation = new AbortController();
     let completed = false;
     response.once('close', () => {
-      if (!completed) upstreamAborted = true;
+      if (!completed) {
+        upstreamAborted = true;
+        trace('cancel');
+      }
       cancellation.abort();
     });
     try {
@@ -71,16 +81,23 @@ export async function withDotnetFixture<T>(
         body,
         signal: cancellation.signal,
       });
+      trace('upstream-headers', upstream.status);
       response.writeHead(upstream.status, {
         'Content-Type':
           upstream.headers.get('content-type') ?? 'text/event-stream',
       });
+      let firstByte = true;
+      response.on('drain', () => trace('drain'));
       let pending = Buffer.alloc(0);
       let characters = 0;
       let paused = false;
       for await (const chunk of upstream.body ?? []) {
+        if (firstByte) {
+          firstByte = false;
+          trace('first-byte');
+        }
         if (!streamControl) {
-          response.write(chunk);
+          if (!response.write(chunk)) trace('backpressure');
           continue;
         }
         pending = Buffer.concat([pending, chunk]);
@@ -88,7 +105,7 @@ export async function withDotnetFixture<T>(
         while (boundary !== -1) {
           const frame = pending.subarray(0, boundary + 2);
           pending = pending.subarray(boundary + 2);
-          response.write(frame);
+          if (!response.write(frame)) trace('backpressure');
           const data = frame.toString('utf8').match(/^data:\s*(\{.*\})/m)?.[1];
           if (data) {
             const payload = JSON.parse(data) as {
@@ -105,8 +122,10 @@ export async function withDotnetFixture<T>(
       }
       if (pending.length) response.write(pending);
       completed = true;
+      trace('end');
       response.end();
     } catch {
+      trace('error');
       response.destroy();
     }
   });
@@ -168,6 +187,7 @@ export async function withDotnetFixture<T>(
     });
     const health = await fetch(`${url}/health`);
     if (!health.ok) throw new Error(`.NET health failed: ${output}`);
+    workerTrace('ready');
     return await use({
       url,
       mock,
@@ -177,6 +197,7 @@ export async function withDotnetFixture<T>(
       stop: async () => {
         if (child.exitCode !== null || child.signalCode !== null) return;
         const exited = once(child, 'exit');
+        workerTrace('stop');
         child.kill('SIGKILL');
         await exited;
       },
@@ -197,6 +218,7 @@ export async function withDotnetFixture<T>(
       child.signalCode === null
     ) {
       const exited = once(child, 'exit');
+      workerTrace('stop');
       child.kill('SIGTERM');
       const force = setTimeout(() => child.kill('SIGKILL'), 3_000);
       await exited;

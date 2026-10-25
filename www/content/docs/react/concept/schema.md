@@ -38,7 +38,7 @@ type ShoppingList = s.Infer<typeof shoppingListSchema>;
 
 The root object contains an `items` array. Each item has a string name and integer quantity. The descriptions explain what those values mean to the model. `s.Infer<typeof shoppingListSchema>` derives the TypeScript response type from the same schema.
 
-The streaming array can reveal complete items before the whole response finishes. Each item is an ordinary object, so the interface gets its name and quantity together. Continue with [Structured output](/docs/react/concept/structured-output) for the complete checked example and [Streaming](/docs/react/concept/streaming) for other streaming boundaries.
+The streaming array can reveal an item once its required name and quantity resolve. An ordinary object keeps those values together, but it can resolve before its closing brace arrives. Treat it as a preview until the response finishes and application validation passes. Continue with [Structured output](/docs/react/concept/structured-output) for the complete checked example and [Streaming](/docs/react/concept/streaming) for other streaming boundaries.
 
 ## Choose the fields your interface needs
 

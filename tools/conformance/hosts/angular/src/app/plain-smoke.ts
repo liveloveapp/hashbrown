@@ -74,6 +74,18 @@ function errorText(error: unknown): string {
       <div data-testid="recovery-fetching">{{ recovery.fetching() }}</div>
       <div data-testid="recovery-required">{{ chat.recovery().required }}</div>
       <div data-testid="recovery-thread">{{ threadId() }}</div>
+      @for (
+        diagnostic of chat.recovery().diagnostics ?? [];
+        track diagnostic.messageId
+      ) {
+        <pre
+          data-testid="recovery-diagnostic"
+          [attr.data-message-id]="diagnostic.messageId"
+          [attr.data-thread-id]="diagnostic.threadId"
+          [attr.data-kind]="diagnostic.kind"
+          [textContent]="diagnostic.content"
+        ></pre>
+      }
       <div data-testid="shared-state">{{ sharedState() }}</div>
       <div data-testid="command-error">{{ commandError() }}</div>
       <div

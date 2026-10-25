@@ -61,6 +61,7 @@ public static class FixtureRecoveryControls
             return Results.Json(new { rejected, before = before.Recovery, after = after.Recovery });
         });
         if (source is null) return;
+        FixtureRetentionControls.Map(app, source, schema);
         app.MapPost("/__test/legacy-schema", async () =>
         {
             await using var command = source.CreateCommand($"""

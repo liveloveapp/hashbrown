@@ -90,14 +90,8 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await ExecuteAsync(connection, $"SELECT id FROM {Metadata} WHERE id=1 FOR UPDATE", cancellationToken);
+        await CleanupAsync(connection, cancellationToken);
         var now = await NowAsync(connection, cancellationToken);
-        await ExecuteAsync(connection, $"WITH expired AS (SELECT id FROM {Batches} WHERE (state='Pending' AND expires_at<=@now) OR (state='Claimed' AND expires_at<=@now AND lease_until<=@now) OR (state IN ('Completed','Declined','FailedBeforeEffect','FailedAfterEffect','Reconciled') AND completed_at<=@retained) ORDER BY id LIMIT {_options.CleanupBatchSize}) DELETE FROM {Batches} WHERE id IN (SELECT id FROM expired)", cancellationToken, ("now", now), ("retained", now - _options.TerminalRetention));
-        await ExecuteAsync(connection, $"""
-            WITH expired AS (SELECT id FROM {Batches} WHERE created_at<=@snapshot AND (original_request IS NOT NULL OR terminal_snapshot IS NOT NULL) ORDER BY id LIMIT {_options.CleanupBatchSize})
-            UPDATE {Batches} SET original_request=NULL,terminal_snapshot=NULL,revision=revision+1 WHERE id IN (SELECT id FROM expired);
-            WITH expired AS (SELECT id FROM {Audit} WHERE recorded_at<=@audit ORDER BY id LIMIT {_options.CleanupBatchSize})
-            DELETE FROM {Audit} WHERE id IN (SELECT id FROM expired);
-            """, cancellationToken, ("snapshot", now - _options.SnapshotRetention), ("audit", now - _options.AuditRetention));
         var existing = await ReadAsync(connection, $"SELECT b.* FROM {Batches} b WHERE scope=@scope AND thread_id=@thread AND state IN ('Pending','Claimed','EffectStarted') FOR UPDATE", cancellationToken, ("scope", scope), ("thread", input.ThreadId));
         if (existing is not null)
         {

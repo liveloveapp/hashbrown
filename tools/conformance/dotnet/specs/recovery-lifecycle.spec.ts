@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
 import { withRoutedEndpoint } from '../harness/routed-endpoint';
+import { withRecoveryEvidence } from '../harness/recovery-timings';
 import {
   control,
   durableEffects,
@@ -29,33 +30,35 @@ async function refresh(page: Page, disposition: string) {
 test('reload after worker death recovers on another instance without model or effect work', async ({
   page,
 }, info) => {
-  await withDurableCluster(
-    info.project.metadata['provider'] as 'openai' | 'azure',
-    async (cluster) => {
-      const first = await cluster.start();
-      await withRoutedEndpoint(`${first.url}/run`, async (endpoint) => {
-        await pending(page, endpoint.url);
-        const original = JSON.parse(endpoint.requests[0]);
-        await first.stop();
-        const second = await cluster.start({ CheckpointCode: 'BAD' });
-        endpoint.routeTo(`${second.url}/run`);
+  await withRecoveryEvidence(page, info, () =>
+    withDurableCluster(
+      info.project.metadata['provider'] as 'openai' | 'azure',
+      async (cluster) => {
+        const first = await cluster.start();
+        await withRoutedEndpoint(`${first.url}/run`, async (endpoint) => {
+          await pending(page, endpoint.url);
+          const original = JSON.parse(endpoint.requests[0]);
+          await first.stop();
+          const second = await cluster.start({ CheckpointCode: 'BAD' });
+          endpoint.routeTo(`${second.url}/run`);
 
-        await page.reload();
-        await refresh(page, 'Pending');
+          await page.reload();
+          await refresh(page, 'Pending');
 
-        expect(second.requests).toHaveLength(0);
-        expect(await durableEffects(second)).toBe(0);
-        await page.getByTestId('resume').click();
-        await expect(createAppDriver(page).assistant()).toHaveText(
-          'Hello from .NET',
-        );
-        expect(JSON.parse(endpoint.requests[1]).messages).toEqual(
-          original.messages,
-        );
-        expect(second.requests).toHaveLength(1);
-        expect(await durableEffects(second)).toBe(1);
-      });
-    },
+          expect(second.requests).toHaveLength(0);
+          expect(await durableEffects(second)).toBe(0);
+          await page.getByTestId('resume').click();
+          await expect(createAppDriver(page).assistant()).toHaveText(
+            'Hello from .NET',
+          );
+          expect(JSON.parse(endpoint.requests[1]).messages).toEqual(
+            original.messages,
+          );
+          expect(second.requests).toHaveLength(1);
+          expect(await durableEffects(second)).toBe(1);
+        });
+      },
+    ),
   );
 });
 

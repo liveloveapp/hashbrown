@@ -4,6 +4,7 @@ import {
   Chat,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
@@ -122,7 +123,7 @@ export interface UiCompletionResourceRef<
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;

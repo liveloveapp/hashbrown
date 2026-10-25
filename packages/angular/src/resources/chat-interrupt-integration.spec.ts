@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
+  type ConversationRestoreOptions,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -267,5 +268,42 @@ test.each(families)(
     expect(control.requests).toHaveLength(1);
     expect(() => chat.resume({ batchId: batch.id, entries })).toThrow();
     TestBed.resetTestingModule();
+  },
+);
+
+test.each(families)(
+  '$name chat forwards public diagnostic recovery options',
+  (family) => {
+    TestBed.configureTestingModule({
+      providers: [provideHashbrown({ baseUrl: '/chat' })],
+    });
+    const control = controlledTransport();
+    const resource = TestBed.runInInjectionContext(() =>
+      family.create({ system: '', transport: control.transport }),
+    );
+    const options: ConversationRestoreOptions = {
+      expectedRevision: resource.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    };
+
+    resource.restoreConversation(
+      {
+        threadId: 'cold',
+        messages: [
+          {
+            id: 'invalid',
+            role: 'assistant',
+            content: '<b>ordinary historical text</b>',
+          },
+        ],
+      },
+      options,
+    );
+    TestBed.tick();
+
+    expect(control.requests).toHaveLength(0);
+    expect(resource.recovery().diagnostics?.[0].content).toBe(
+      family.name === 'text' ? undefined : '<b>ordinary historical text</b>',
+    );
   },
 );

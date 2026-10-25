@@ -3,6 +3,7 @@ import {
   type ChatRuntime,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   createChatRuntime,
   type FinishReason,
@@ -132,7 +133,7 @@ export interface UseStructuredChatResult<
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
 
   /**
