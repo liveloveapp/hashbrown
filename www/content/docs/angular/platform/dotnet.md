@@ -11,7 +11,7 @@ Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same H
 
 The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. This is a source recipe, not a Hashbrown NuGet package.
 
-The recovery examples below are validated against Hashbrown’s current source-workspace SDK builds. Use a workspace build or a published SDK release that includes `getRecoveryConfiguration` and `restoreConversation`; the currently published `0.8.0` SDKs do not include these APIs. SDK publishing/versioning is a separate release step.
+The recovery examples below require Hashbrown SDK **0.8.1 or later**, which includes `getRecoveryConfiguration` and `restoreConversation`; SDK 0.8.0 does not include these APIs. Install matching core and framework SDK versions.
 
 ## Server dependencies
 

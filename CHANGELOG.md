@@ -1,3 +1,29 @@
+## 0.8.1 (2026-10-24)
+
+### 🩹 Fixes
+
+- **core, react, angular:** expose `getRecoveryConfiguration` and `restoreConversation` to restore canonical conversation checkpoints, retain answers, keep historical browser tools inert, and reject stale or incompatible recovery. The .NET recipes add durable effect reconciliation and reload recovery across replicas ([#740](https://github.com/liveloveapp/hashbrown/pull/740)). Cold structured/UI recovery still rejects cancellation text whose private runtime provenance was lost; keep recovery blocked or deliberately start a new thread.
+- **core:** preserve locally owned cancellation markers through exact same-thread history echoes, record stopped/superseded turns, and exclude owned markers from UI/structured projections while retaining their text in model history ([#741](https://github.com/liveloveapp/hashbrown/pull/741), [#740](https://github.com/liveloveapp/hashbrown/pull/740)).
+- **core:** enforce QuickJS execution deadlines even when synchronous code blocks abort timers ([#725](https://github.com/liveloveapp/hashbrown/pull/725)).
+- **ollama, openai:** settle cancellation while HTTP headers or iterator cleanup stall and prevent incomplete tool calls from executing ([#729](https://github.com/liveloveapp/hashbrown/pull/729)).
+- Align published runtime dependency pins with the validated AG-UI 1.0.3 and Cacheplane releases: core uses `@cacheplane/json-stream` 0.1.1 and framework packages use `@cacheplane/partial-json` 0.3.1. Preserve compatibility with Anthropic 0.122.0 and Ollama 0.6.3 while also accepting the tested Anthropic 0.135.0 and Ollama 0.6.4 versions through explicit peer unions.
+
+### 🚀 Additions
+
+- **anthropic, google, bedrock:** expose provider tool steps, native history replay, built-in tools and available source attribution. Availability and replay depend on the provider/model; Google Search Suggestions retain their required rendering contract ([#715](https://github.com/liveloveapp/hashbrown/pull/715), [#730](https://github.com/liveloveapp/hashbrown/pull/730), [#736](https://github.com/liveloveapp/hashbrown/pull/736)).
+- **core:** add opt-in experimental WebLLM and browser-native local-model transports, Chrome media input, and Chrome native tools. These experimental capabilities depend on browser/model support and do not add runtime package dependencies ([#726](https://github.com/liveloveapp/hashbrown/pull/726), [#733](https://github.com/liveloveapp/hashbrown/pull/733), [#737](https://github.com/liveloveapp/hashbrown/pull/737)).
+
+- **core:** experimental Chrome native tools can opt into tool execution followed by a final JSON-schema response; existing behavior remains the default ([#746](https://github.com/liveloveapp/hashbrown/pull/746)).
+
+### 🧪 Experimental compatibility
+
+- Chrome’s `@alpha` `PromptMessage.content` now accepts media content arrays as well as strings, and `SupportedOutputLanguage` adds `de` and `fr`. Custom Chrome and Edge adapters consuming these experimental types must narrow content before treating it as text; exhaustive language checks must handle the added languages. Existing text requests remain supported ([#733](https://github.com/liveloveapp/hashbrown/pull/733)).
+
+### 📖 Documentation
+
+- Add tested .NET 10 AG-UI recipes for OpenAI and Azure, durable confirmations, recovery and reconciliation, plus recorded agent, authenticated endpoint, server-thread and JavaScript runtime workflows ([#727](https://github.com/liveloveapp/hashbrown/pull/727), [#734](https://github.com/liveloveapp/hashbrown/pull/734), [#740](https://github.com/liveloveapp/hashbrown/pull/740), [#724](https://github.com/liveloveapp/hashbrown/pull/724), [#725](https://github.com/liveloveapp/hashbrown/pull/725), [#732](https://github.com/liveloveapp/hashbrown/pull/732), [#735](https://github.com/liveloveapp/hashbrown/pull/735)).
+- Refresh schema/streaming examples, docs navigation, local-model guidance and Threadplane integration guides ([#728](https://github.com/liveloveapp/hashbrown/pull/728), [#738](https://github.com/liveloveapp/hashbrown/pull/738), [#742](https://github.com/liveloveapp/hashbrown/pull/742), [#747](https://github.com/liveloveapp/hashbrown/pull/747)).
+
 ## 0.8.0 (2026-10-22)
 
 ### 🧭 Migrating from 0.7
