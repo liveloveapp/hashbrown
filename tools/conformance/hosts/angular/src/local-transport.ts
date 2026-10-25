@@ -10,12 +10,15 @@ import {
 /** Selects an explicitly requested local transport for the fixture hosts. */
 export function readLocalTransport(): TransportFactory | undefined {
   const name = new URL(globalThis.location.href).searchParams.get('localModel');
-  if (name === 'chrome-tools') {
+  if (name === 'chrome-tools' || name === 'chrome-tools-schema') {
     const runtime = globalThis as unknown as {
       __hashbrownNativeTools: { created: number; destroyed: number };
     };
     runtime.__hashbrownNativeTools = { created: 0, destroyed: 0 };
     return experimental_chrome_tools({
+      ...(name === 'chrome-tools-schema'
+        ? { schemaFinalization: 'after-tool-planning' as const }
+        : {}),
       timeoutMs: 120_000,
       events: {
         downloadRequired() {
