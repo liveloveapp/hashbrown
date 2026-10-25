@@ -494,7 +494,7 @@ The recorder separately checks unavailable APIs, download progress/failure, canc
 
 ## Keep local capabilities explicit
 
-The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. Schema output requires an explicit finalization policy; UI/media composition remains unsupported. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
+The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. Structured and component UI output require an explicit finalization policy; media composition remains unsupported. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
 
 Chrome image/audio input requires an explicit `experimental_chrome` media configuration and an application resolver. WebLLM uses a separately managed engine. These are advanced options with different resource and capability contracts; the trip-brief example uses text only.
 
@@ -653,8 +653,9 @@ The tested Chrome 155/v4 model emits empty native `callID` values. The adapter
 assigns a stable canonical ID only when that completed turn contains exactly
 one call. Ambiguous batches requiring ID repair fail before execution. Valid
 native IDs are preserved; malformed, conflicting and duplicate IDs fail.
-By default, schema-plus-tools is rejected. Generative UI, media and media tool
-results remain unsupported even when schema finalization is enabled. Use `experimental_chrome()` for the existing
+By default, schema-plus-tools and UI requests are rejected. The finalization
+opt-in also accepts component UI through the existing UI chat APIs. Media and
+media tool results remain unsupported. Use `experimental_chrome()` for the existing
 text/schema or explicitly enabled media paths. The adapter never removes a
 schema silently to make a tool request work.
 
@@ -694,8 +695,34 @@ pass when tools are declared. A finalization tool call fails before execution;
 unsupported schemas and invalid output surface as errors. There is no weaker
 constraint retry, fence removal or hosted fallback. The capability report's
 `adapter.structuredOutput` describes adapter policy; `inference: 'unknown'`
-means the actual model/schema combination still needs verification. UI and
-media composition remain unsupported.
+means the actual model/schema combination still needs verification. Media
+composition remains unsupported.
+
+For component UI, use `useUiChat` with the same transport, your existing
+`exposeComponent(...)` definitions and ordinary tools. The generated component
+wrapper is the final response schema; you do not supply another schema or turn
+components into executable tools. For an exposed `counterComponent` whose numeric
+`value` prop displays the result of the existing counter tool:
+
+```ts
+import { useUiChat } from '@hashbrownai/react';
+
+const chat = useUiChat({
+  transport,
+  components: [counterComponent],
+  tools: [readCounter],
+  system: 'Call read_counter before answering. Render the counter component with the exact value returned by the tool.',
+});
+```
+
+Only final UI text reaches the existing Skillet parser and trusted component
+renderer. The model still has to select a component and copy tool data correctly.
+A successful simple-object response does not establish support for every UI kit,
+recursive children or larger catalogs. Test the exact kit on your browser/model;
+unsupported native constraints and transport failures surface as errors. Component
+parsing keeps the existing renderer behavior: unknown components are omitted and
+invalid props can retain a fallback without mounting the trusted component. Capability
+`adapter.ui` describes the explicit adapter policy, while inference stays unknown.
 
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime

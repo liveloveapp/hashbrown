@@ -1,3 +1,4 @@
+import { LocalUiWorkflow } from './local-ui-workflow';
 import { LocalMedia } from './local-media';
 import { LocalWorkflow } from './local-workflow';
 import { LocalSchemaWorkflow } from './local-schema-workflow';
@@ -39,10 +40,16 @@ export function App() {
       'localSchemaWorkflow',
     ) === 'true';
 
+  const localUiWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localUiWorkflow') ===
+    'true';
+
   return (
     <main data-testid="fixture-ready">
       {localMedia === 'image' || localMedia === 'audio' ? (
         <LocalMedia />
+      ) : localUiWorkflow ? (
+        <LocalUiWorkflow />
       ) : localSchemaWorkflow ? (
         <LocalSchemaWorkflow />
       ) : localWorkflow ? (

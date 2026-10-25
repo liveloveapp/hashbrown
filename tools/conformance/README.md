@@ -309,8 +309,9 @@ composes the existing structured chat schema with framework-owned native tools.
 Planning is unconstrained and its prose is private to the native session. Valid
 calls return to normal Hashbrown handlers; dependent calls can request more
 rounds. A call-free planning turn triggers one same-session constrained final
-prompt. Only final text reaches Skillet. UI and media composition remain
-unsupported, and the default native-tools factory still rejects schemas.
+prompt. Only final text reaches Skillet. Media composition remains unsupported,
+and the default native-tools factory still rejects schemas. The same opt-in also
+supports the component UI workflow below.
 
 ```sh
 NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-schema-contract-e2e conformance
@@ -332,6 +333,34 @@ Capability reporting distinguishes the opt-in adapter policy from unverified
 inference. A passing exact-token sample does not prove arbitrary schema grammar
 support or model reliability. Never remove fences or weaken exact assertions to
 make a live result pass. Keep quality failures separate from lifecycle defects.
+
+### Native tools followed by component UI
+
+Use the same finalization policy with `useUiChat` or `uiChatResource` and your
+existing exposed components. Tools gather data first; the terminal response uses
+the exact generated component schema and streams through the existing parser and
+renderer. Components are not executable tools. UI requires an object response
+schema; default transport rejection and media restrictions remain.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-workflow-smoke conformance
+```
+
+These uncached targets inherit CI refusal and single-worker execution. The
+fixtures use real framework UI APIs and application-owned lookup/dependent
+tools. Contracts inspect phase constraints, exact tool data in actual DOM,
+canonical replay, malformed UI and cancellation/recovery. The shim can hold a
+terminal response mid-prop to verify fallback rendering before completion; it
+does not enforce or repair the model's schema. Evidence and reports are retained
+under `test-results/conformance/native-ui`.
+
+Adapter capability `ui` follows the opt-in policy; inference remains unknown.
+Measure the exact component kit separately from a simple structured response.
+Bounded child composition does not establish unrestricted recursive-schema
+support. See the [dated research](../../docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
+for current measurements and limitations.
 
 ### Native tools through actual framework handlers
 
