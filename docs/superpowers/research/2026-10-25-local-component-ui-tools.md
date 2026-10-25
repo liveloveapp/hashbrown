@@ -1,10 +1,10 @@
 # Component generative UI with local tool calling
 
 Research date: October 25, 2026. This document distinguishes source contracts,
-previous measured inference, and proposed work. No new component inference has
-been run for this research. Implementation and model quality remain unverified.
+the initial audit, implementation verification and measured model-quality results.
+The native failures below remain part of the evidence.
 
-## Current Hashbrown boundary
+## Baseline before this follow-up
 
 PR #746 supplied opt-in tools-then-schema finalization. Its measured React and
 Angular cases used a simple `{ value: string }` schema. They did not generate
@@ -133,7 +133,7 @@ No new package dependency is required by this proposal.
 
 These options are not equivalent. The first is a bounded extension of the merged
 local-model work; the other two change the meaning and timing of UI messages.
-Confirm which meaning of “using tool calling” is intended before implementation.
+The user selected option 1 before implementation.
 
 ## Proposed first-increment design and evidence gate
 
@@ -168,8 +168,105 @@ Keep native and local aimock targets outside CI, uncached and explicitly opted i
 Run affected package build/test/lint/API checks plus standard conformance, then
 review, PR, merge only on the exact reviewed green head, and verify main.
 
+## Implementation and measured results
+
+Implementation is published in [PR #749](https://github.com/liveloveapp/hashbrown/pull/749).
+The user approved tools followed by component UI. The opt-in now accepts the
+existing framework UI schema, requires root `type: 'object'` before session
+creation, and reports UI adapter policy separately from inference. No renderer,
+framework public API, dependency or default transport behavior changed.
+
+The test-first transport cases failed at the existing UI rejection and capability
+boundary, then passed 97 focused tests. Full core passed 1,822 tests; React 210,
+Angular 278, conformance 45 and the site 882 passed. Core build/lint/API reporting,
+framework and production host builds, applicable lint/type checks and the site
+production build/lint passed. React has no lint target. Existing three core
+unused-variable warnings and build/API/deprecation warnings remain.
+
+All 22 local UI aimock contracts passed, including exact parsed assistant trees,
+assistant-specific canonical replay, dependent result correlation, held-response
+fallback rendering, invalid-component/prop handling and cancellation/recovery.
+The stronger Stop test observes an unfinished fallback before stopping, verifies
+its removal, then requires exactly one recovered card with the exact fresh tool
+token. The existing default `stop()` satisfied that test; no cancellation policy
+was changed. Unknown components are omitted and invalid props can retain the
+existing fallback without mounting the trusted component. Malformed JSON and
+terminal tool calls surface errors. The Angular fixture guards resource values
+on error, matching the existing UI host.
+
+Standard browser conformance passed 64 cases and provider conformance 8. Existing
+local transport, media, tools and schema contracts passed 24, 4, 18 and 10 cases.
+The new local UI target explicitly refused `CI=1`. Local suites remain uncached
+and outside CI. Independent spec and code-quality reviews approved the source.
+
+### Fresh v4 acquisition and initial broad-catalog sample
+
+The previous temporary model profile was absent. The existing user-authorized
+download flow restored it in 9m40s and passed a raw compatibility round trip.
+Observed Chrome remains 155.0.8059.85; the downloaded manifest again identifies
+`gemma4-2b-it`, base `2026.06.10.0000`, component `2026.8.7.929`. Profile size is
+approximately 2.4 GiB. Subsequent UI tests refuse downloads and hosted fallback.
+
+The initial real framework sample failed **all eight strict cases** (464.8s),
+despite successful deterministic contracts. Both frameworks offered `lookup_secret`
+and `follow_secret` together, and a kit containing status and bounded panel
+components. Failures must not be reported as native UI passes:
+
+- Both lookup cases executed an unrequested dependent tool.
+- Both dependent cases produced undeclared rendering calls (`render_status` or
+  `render_ui`), which the adapter rejected before execution.
+- Nested cases made extra tool calls; React also attempted undeclared rendering.
+- Both no-tools cases returned a schema-valid panel wrapping the requested status,
+  rather than the exact expected top-level status. The initial user instruction
+  did not explicitly forbid that wrapper, so the next sample makes layout exact.
+
+Every case recorded zero active readers at settlement, balanced session creation
+and destruction, zero page errors and zero hosted fallback requests. These are
+model planning/layout failures, not resource cleanup failures. Raw evidence is
+retained under `/tmp/hashbrown-ui-v4-initial-evidence/`, including exact native
+prompts, constraints, chunks, constructor-backed fields and actual framework
+history/DOM. No model output was repaired or normalized.
+
+### Separate recursive-schema probe
+
+A raw text-only probe supplied the exact expected two-level panel tree and a
+`createUiJsonSchema` kit whose panel has `children: 'any'`. Chrome accepted the
+recursive schema and returned the exact requested tree with a fresh nonce.
+Evidence: `/tmp/hashbrown-ui-recursive-evidence.json`; script:
+`/tmp/hashbrown-ui-recursive-probe.cjs`. This is an acceptance/copy canary, not
+framework rendering, free composition, constraint-enforcement proof or arbitrary
+depth/grammar support.
+
+### Clarified sample and release gate
+
+A second production sample retains the same tool declarations, component kit
+and strict output assertions. Fixture instructions explicitly distinguish JSON
+components from callable tools, forbid an unrequested dependent call and specify
+the top-level layout. All 22 deterministic contracts pass with those instructions.
+The clarified sample passed **4/8 cases** in 329.7s: Angular dependent, React
+lookup and both no-tools cases. Angular lookup added two empty panels; Angular
+nested made four unrequested dependent calls; React dependent rendered four
+receipt cards instead of one; React nested skipped the required lookup. Every
+case again had zero active readers, balanced sessions, no page errors and no
+hosted fallback. Exact native phase/schema/raw-JSON and parsed/DOM assertions
+passed in the four successful cases. Evidence is retained under
+`/tmp/hashbrown-ui-v4-clarified-evidence/`.
+
+These are different instruction samples, not a repeatability demonstration.
+No entire native UI suite has passed, and the planned successful production
+repetition gate has not been met. The extra calls are declared tools that the
+framework is allowed to execute; structural validation does not establish user
+intent. Workflow-specific tool exposure and application-owned permission gates
+remain meaningful controls. Do not retry unchanged prompts until a green
+result appears or broaden the assertions to accept these failures.
+
+The user has been asked whether to verify a narrower per-workflow tool/component
+catalog, retain broad-catalog reliability as a merge gate, or merge experimental
+adapter support with native-quality failures explicitly documented. The PR stays
+unmerged while that decision and native validation are outstanding.
+
 ## Pending decisions and external action
 
 - User approved option 1: tools gather data, then generate component UI.
 - Chromium report: posted as [#577500782](https://issues.chromium.org/issues/577500782).
-- No component feature, PR or new inference success is claimed by this research.
+- Release qualification is pending the native-quality decision above.

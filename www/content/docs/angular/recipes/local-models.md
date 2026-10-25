@@ -771,6 +771,12 @@ parsing keeps the existing renderer behavior: unknown components are omitted and
 invalid props can retain a fallback without mounting the trusted component. Capability
 `adapter.ui` describes the explicit adapter policy, while inference stays unknown.
 
+The initial real Chrome 155/v4 component canary failed strict workflow checks
+with a catalog offering both status and panel components: it made unrequested tool calls, attempted
+undeclared rendering tools, or added components. Clearer instructions passed 4/8 cases but did not establish reliability. The
+[dated component UI research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
+records the failures separately from the passing adapter and renderer contracts.
+
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime
 cancellation marker before subsequent input. The marker stays in model

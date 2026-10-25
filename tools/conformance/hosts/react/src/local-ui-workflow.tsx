@@ -105,7 +105,7 @@ export function LocalUiWorkflow() {
   });
   const chat = useUiChat({
     system:
-      'Complete requested lookup_secret and follow_secret steps before rendering UI. Never guess unknown tokens or receipts. Render status components using the exact requested token or receipt as title and requested count. A panel may contain only status children. Without tools render the requested literal title.',
+      'Call only declared tools explicitly requested by the user. status and panel are JSON output components, never callable tools. When only lookup_secret is requested, call it exactly once and do not call follow_secret. Call follow_secret only when explicitly requested, using the exact token from lookup_secret. Complete the requested steps before rendering UI. Never guess unknown tokens or receipts. Render status components using the exact requested token or receipt as title and requested count. A panel may contain only status children. Without tools render the requested literal title.',
     components: [statusComponent, panelComponent],
     tools:
       new URL(globalThis.location.href).searchParams.get('noTools') === 'true'

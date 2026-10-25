@@ -244,6 +244,7 @@ async function workflow(
     await page.goto(
       '/?localUiWorkflow=true&localModel=chrome-tools-schema&runUrl=' +
         encodeURIComponent('http://127.0.0.1:1/unused') +
+        `&sample=${Date.now()}` +
         (scenario === 'no-tools' ? '&noTools=true' : ''),
     );
     await run();
@@ -291,8 +292,8 @@ async function send(
     .getByTestId('prompt')
     .fill(
       scenario === 'no-tools'
-        ? 'Without calling tools, render one status with title NO_TOOLS and count 1.'
-        : `${dependent ? 'Call lookup_secret for alpha then follow_secret with the exact token. Use the receipt' : 'Call lookup_secret for alpha exactly once. Use the token'} as the exact status title and count 1. ${scenario === 'nested' ? 'Render a panel heading Workflow containing two status children with that same title and counts 1 and 2.' : 'Render one status.'}`,
+        ? 'Without calling tools, render exactly one top-level status with title NO_TOOLS and count 1. Do not include a panel or other components.'
+        : `${dependent ? 'Call lookup_secret for alpha then follow_secret with the exact token. Use the receipt' : 'Call lookup_secret for alpha exactly once. Use the token'} as the exact status title and count 1. ${scenario === 'nested' ? 'Render a panel heading Workflow containing two status children with that same title and counts 1 and 2.' : 'Render exactly one top-level status, with no panel and no other components.'}`,
     );
   await page.getByTestId('send').click();
 }
@@ -310,7 +311,7 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
           scenario === 'dependent' ? '2' : scenario === 'no-tools' ? '0' : '1',
         );
         await expect(page.getByTestId('status')).toHaveText('idle');
-        await expect(page.getByTestId('error')).toBeEmpty();
+        expect(await page.getByTestId('error').innerText()).toBe('');
         const operations = JSON.parse(
           await page.getByTestId('operations').innerText(),
         ) as {
@@ -574,7 +575,7 @@ if (!live) {
           phase === 'planning' ? '1' : '2',
         );
         await expect(page.getByTestId('status')).toHaveText('idle');
-        await expect(page.getByTestId('error')).toBeEmpty();
+        expect(await page.getByTestId('error').innerText()).toBe('');
         const operations = JSON.parse(
           await page.getByTestId('operations').innerText(),
         ) as { token: string }[];

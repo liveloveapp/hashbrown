@@ -15,32 +15,32 @@ inference evidence distinct from adapter policy, and add local-only conformance.
 
 ## Task 1: Guarded core support
 
-- [ ] Add failing tests in `packages/core/src/transport/chrome-tool-messages.spec.ts`
+- [x] Add failing tests in `packages/core/src/transport/chrome-tool-messages.spec.ts`
   and `experimental-chrome-tools-transport.spec.ts`: opt-in UI requires a response
   schema, default rejection remains, exact schema reaches terminal prompt only,
   no-tools UI constrains directly, UI capability follows policy/inference unknown.
-- [ ] Run `npx nx test core --runInBand --testPathPatterns='chrome-tool-messages|experimental-chrome-tools-transport'`
+- [x] Run `npx nx test core --runInBand --testPathPatterns='chrome-tool-messages|experimental-chrome-tools-transport'`
   and retain expected missing-feature failures.
-- [ ] Update `chrome-tool-messages.ts` guard to allow UI only with the existing
+- [x] Update `chrome-tool-messages.ts` guard to allow UI only with the existing
   policy and object schema. Update capability `ui` to boolean and set it from the
   policy. Extend public option docs. Preserve stream handling.
-- [ ] Re-run focused tests, then build/test/lint/API core and commit tested change.
+- [x] Re-run focused tests, then build/test/lint/API core and commit tested change.
 
 ## Task 2: Framework fixtures and local contracts
 
-- [ ] Add failing browser assertions in a new
+- [x] Add failing browser assertions in a new
   `tools/conformance/local-models/native-ui-workflows.e2e.ts`, a config extending
   `local-native-tools.playwright.config.ts`, and uncached local targets in
   `tools/conformance/project.json`. The initial run must fail at missing fixture.
-- [ ] Add React/Angular UI fixtures beside the schema fixtures, route them in
+- [x] Add React/Angular UI fixtures beside the schema fixtures, route them in
   `hosts/react/src/app.tsx` / `hosts/angular/src/app/app.ts`, and expose a bounded
   component kit using actual framework APIs. Share existing workflow tools and
   local transport selection. No new framework public API.
-- [ ] Script aimock from actual tool results. Assert exact native constraints,
+- [x] Script aimock from actual tool results. Assert exact native constraints,
   actual DOM/props, dependent handler correlation, progressive final rendering,
   canonical replay, no tools, malformed/unknown components/invalid props, terminal
   tool rejection, Stop/recovery and balanced sessions/readers. Run local contracts.
-- [ ] Run host builds/lint, conformance build/test/lint and its TypeScript checks;
+- [x] Run host builds/lint, conformance build/test/lint and its TypeScript checks;
   commit fixtures and tests after checks pass.
 
 ## Task 3: Real inference, docs and regression
@@ -58,8 +58,15 @@ inference evidence distinct from adapter policy, and add local-only conformance.
 
 ## Task 4: Review and integration
 
-- [ ] Independent spec/plan review before implementation; fix actionable findings.
-- [ ] Independent final code review and diff check; fix and retest feedback.
-- [ ] Create PR with concrete behavior and measured validation; attach it.
+- [x] Independent spec/plan review before implementation; fix actionable findings.
+- [x] Independent final code review and diff check; fix and retest feedback.
+- [x] Create PR with concrete behavior and measured validation; attach it.
 - [ ] Wait for exact-head CI, address feedback, merge on green and verify the
   merged tree equals the reviewed tree and is on current origin/main.
+
+## Native-quality decision checkpoint
+
+PR #749 is open and attached, not merged. Initial broad-catalog v4 sample failed
+8/8; clarified instructions passed 4/8. All 22 aimock contracts and listed standard
+regressions pass. Recursive-schema copy canary passed separately. Successful
+native workflow repetition remains unmet; user release-gate decision is pending.
