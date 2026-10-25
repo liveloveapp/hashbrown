@@ -225,3 +225,20 @@ test('unbound message index migration only adds one partial index on growth_jobs
   expect(statements[0]).toContain('provider_email_id IS NOT NULL');
   expect(statements[0]).toContain('rfc_message_id IS NULL');
 });
+
+test('dead Gmail schema migration drops the seed column and index and narrows job kinds', async () => {
+  const sql = await read('0010_growth_drop_gmail_schema.sql');
+
+  const statements = sql
+    .split(';')
+    .map((statement) =>
+      statement.replace(/--.*$/gmu, '').replace(/\s+/gu, ' ').trim(),
+    )
+    .filter(Boolean);
+
+  expect(statements).toEqual([
+    'DROP INDEX growth_jobs_gmail_seed',
+    'ALTER TABLE growth_jobs DROP COLUMN gmail_seed_message_id',
+    "ALTER TABLE growth_jobs DROP CONSTRAINT growth_jobs_kind_check, ADD CONSTRAINT growth_jobs_kind_check CHECK (kind IN ('fulfill', 'notify', 'send_step', 'digest'))",
+  ]);
+});
