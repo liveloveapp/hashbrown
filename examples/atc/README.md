@@ -121,18 +121,13 @@ prevents another visitor from continuing that conversation. Reloading starts a
 new conversation; no history restoration endpoint is exposed. Local signing
 keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
 
-**Package compatibility:** the agent path requires a coherent b4.run package
-set containing the browser-tool replay fixes and `agent({ maxOutputTokens })`.
-The dependency pins are now `0.15.2`, installed and tested from the registry.
-That release still drops `maxOutputTokens`; the agent fails startup rather than
-dropping its cap. The passing agent/browser results used the patched local
-package set recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
-The output-cap and replay fixes are merged in [b4.run #1101](https://github.com/cacheplane/b4run/pull/1101).
-The request-owned client-tool store fix for generated deployments is also merged
-in [b4.run #1106](https://github.com/cacheplane/b4run/pull/1106). A release containing
-both fixes, a dependency-pin update, and registry-package validation remain required.
-The 0.15.4 version PR contains those fixes; the unfinished 0.15.3 candidate needs
-a reviewed recovery path before the controller can advance to it.
+**Package compatibility:** the optional agent backend uses the published
+[b4.run 0.15.4 package set](https://github.com/cacheplane/b4run/releases/tag/v0.15.4)
+for the output-token cap, browser-tool replay, and request-owned Postgres
+client-tool store. Keep the b4.run dependency pins aligned when updating them.
+The runtime guard rejects an SDK that drops `agent({ maxOutputTokens })`.
+Release and registry-validation evidence is recorded in the
+[compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
 
 ### Optional hosted build
 

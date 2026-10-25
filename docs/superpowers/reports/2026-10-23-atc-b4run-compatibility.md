@@ -5,12 +5,19 @@ Plan: `../plans/2026-10-23-atc-b4run-backend.md`.
 
 ## Decision
 
-**Source compatibility gate now passes against the patched local b4.run branch.**
+**Compatibility passes against the published b4.run 0.15.4 package set.**
 
-The user authorized continuing source implementation and will handle releases
-separately. See the source-fix follow-up and the 2026-10-24 released-package
-validation below. Released 0.15.2 artifacts still fail the output-cap gate; the
-initial findings in this report describe the earlier 0.14.0 investigation.
+The direct Hashbrown OpenAI provider remains the default. The optional agent
+backend preserves browser tools, pinned response schemas, and the 4096-token
+output cap. A clean registry install passes the server, browser, generated
+artifact, real Postgres, core, and lifecycle checks recorded at the end of this
+report. No local b4.run source overlay is active.
+
+Earlier sections retain the historical 0.14.0 investigation and intermediate
+0.15.x findings. The final release and registry-validation section describes
+the current state. Hosted deployment validation remains separate.
+
+## Initial findings: 2026-10-23
 
 The installed b4.run 0.14.0 runtime embeds through a public fetch API and can
 park/resume browser tools while binding ATC's schemas. However:
@@ -478,63 +485,123 @@ and repeat server/browser/build/Postgres checks. Hosted smoke validation still
 requires deployment configuration and remains separate from local evidence.
 
 
-### Upstream merges and release arbitration
+### Upstream merges, terminal recovery, and 0.15.4 release
 
-PR #1106 merged as `b8024a6f9dd7ec48895b34ee61d6f3b8fa092c56` after complete
-CI passed on corrected head `eafdcba0167e89ab754e40a6244e2a7941bc19f2`.
-The first full run had 12,642 passes and one stale expectation in the real
-Hono/Postgres roundtrip: the new fourth store acquires four migration locks,
-while that test separately expected three. The exact-count assertion was updated;
-the actual emitted Hono app passed locally against disposable Postgres and its
-WebSocket proxy, then the corrected full CI passed, including native Vercel.
+The output-cap and replay fixes merged in
+[b4.run #1101](https://github.com/cacheplane/b4run/pull/1101) as
+`dec5fefb2e59c020784e1f39e1a78528ed05c81f`. The request-owned client-tool store
+fix merged in [#1106](https://github.com/cacheplane/b4run/pull/1106) as
+`b8024a6f9dd7ec48895b34ee61d6f3b8fa092c56`. Complete CI passed for both,
+including native Vercel and CopilotKit. The first #1106 run exposed a stale
+Hono/Postgres assertion expecting three migration locks instead of the new
+fourth store's four; the corrected real emitted-app roundtrip and final CI passed.
 
-The refreshed Version Packages PR #1105 targets 0.15.4 and includes both merged
-compatibility fixes plus the peer-range correction. Its initial normal CI passed;
-it must refresh after recovery merges and pass on its final head before merging.
-It has not been merged or published.
+The older tagged 0.15.3 candidate could not complete immutable preparation.
+Its exact optional LangGraph peer conflicted with the resolved consumer graph;
+main corrected the peer ranges, but ordinary arbitration still selected the
+unfinished tag before newer candidates. Recovery preserves candidate
+`2ef24c2453b031e068e99ced4cc57355f49e63d6` and annotated tag object
+`8221db88b2936394254847bcf220bcacb474cff7`.
 
-The release controller's arbitration selects older unfinished tagged candidates
-before a newer version candidate. The preserved observation for failed run
-`40195141825` identifies 0.15.3 at
-`2ef24c2453b031e068e99ced4cc57355f49e63d6` as `CANDIDATE_TAGGED`, with the next
-transition `prepare-artifacts`, no Release or assets, and no registry mutation.
-Its prepare job failed and its npm publishing job skipped. The annotated tag
-object is `8221db88b2936394254847bcf220bcacb474cff7`. A fresh registry sweep
-at `2026-10-25T15:44:38.456Z` returned 404 for all 21 exact 0.15.3 package versions.
-A second sweep at `2026-10-25T15:45:57.664Z` again returned 21 exact-version
-404s, more than sixty seconds after the first. These are diagnostic observations,
-not a synthetic terminal record. A full scheduled read-only controller observation
-was stopped after six minutes without a report; the arbitration conclusion comes
-from the controller source and the preserved failed-run observation above.
+The incident-specific recovery implementation merged in
+[#1107](https://github.com/cacheplane/b4run/pull/1107) as
+`15451034aa3797f4218c8018d10130ff4d2e9f44`. All 4,057 local controller tests,
+complete final-head CI, and main CI passed. CI also exposed an unrelated Docker
+test assumption twice: independently rebuilt images were required to have equal
+OCI index IDs despite changing provenance attestations. The corrected test
+compares recipe inputs and runtime contents, verifies each immutable image
+binding, and retains the original work-order image. Production identity and
+provenance behavior are unchanged. Both affected real-Docker tests and all
+1,412 example unit tests passed locally, followed by complete green CI.
 
-The live release workflow exposes reconciliation only. Its documented terminal
-recovery command and committed-record schema cover an older escrowed-draft
-case, not this tag-only preparation failure. No tag was deleted or moved, no
-terminal evidence was invented, and no release-control rule was bypassed.
-The narrow recovery design is approved and implemented in
-[b4.run PR #1107](https://github.com/cacheplane/b4run/pull/1107). It adds a Git-only
-terminal record restricted to this exact incident, a read-only evidence collector,
-and a nonterminal hold preventing the new controller from retrying the old tag
-before a separately reviewed production record is merged. Local validation
-passes all 4,057 release-controller tests. No production terminal record has
-been committed yet.
+The code-only merge's automatic owner run `40233703501` reported
+`tagged-0153-recovery-pending`, a blocked plan with no next transition, and all
+mutation jobs skipped. That hold provided no terminal authority. Fresh evidence
+was captured from the exact clean reviewed implementation SHA, without fixture
+or hand-edited facts:
 
-CI exposed an unrelated Docker test assumption twice: independent cached builds
-were required to have equal OCI index IDs despite changing provenance
-attestations. The test correction compares validated recipe inputs and runtime
-contents, verifies both immutable image bindings, and preserves production
-identity and provenance behavior. Both affected Docker tests and all 1,412
-example unit tests pass locally, as do build, typecheck and lint. Final-head CI
-is running at `a5decb4b160910d75029f098f58c31c5135741df`.
+- All 21 exact 0.15.3 package versions returned ABSENT/404/E404 at
+  `2026-10-25T21:20:38.862Z` and `21:21:39.503Z`, 60.641 seconds apart.
+- Complete workflow/run/job inventories verified all owners terminal and every
+  attempt of all six candidate runs completed with publication skipped,
+  including the additional automatically relayed attempt `40231454153`.
+- Matching fresh GitHub snapshots bracketed both sweeps and verified repository,
+  operator, main ancestry, unchanged annotated tag/direct peel, and absent Release.
+- Operator `blove` completed capture at `2026-10-25T21:22:02.335Z`. Canonical
+  record SHA-256: `b818fced559d1c0ba1d8f7bd0930885598783c85ff53f3fa97c81dd0858230f4`.
 
-After the code merges, all release-owner attempts must settle before fresh
-evidence is captured from that exact reviewed SHA. The separate record-only PR
-must pass CI and receive an independent evidence recheck immediately before
-merge. Then refresh and merge the 0.15.4 version PR and use the ordinary release
-workflow. Keep Hashbrown's registry pins unchanged until that release is
-published and independently audited.
+The separate record-only [PR #1108](https://github.com/cacheplane/b4run/pull/1108)
+passed all 4,057 local controller tests, 33 integrity tests, lint, independent
+review, and complete CI (`40236124931`). Immediately before merge, a second
+live capture verified both 21-package absence sweeps at `22:00:34.421Z` and
+`22:01:34.903Z`, with the same tag, absent Release, operator, and six candidate
+attempts. Capture completed `22:01:55.904Z`; its SHA-256 was
+`afe6e1f36a436c393a07a7071489c9af800be9d48f4131330916e8b7be792441`.
+Independent comparison found identical stable facts, with only observation and
+capture timestamps differing. The reviewed record bytes were not replaced.
 
-A fresh clean registry-only install also passes all 1,515 core tests, core
-build/lint, lifecycle build/98 tests/lint, and the default OpenAI ATC build.
-The workspace uses that registry install again; source-package evidence remains
-separate from released-package validation.
+The record merged as `2a28bb2ee1435f33c1a5eaf8f760135abcf2ea9f`. Its ordinary
+controller observation (`40238366206`) succeeded with `NO_CANDIDATE`, no
+conflicts, and no proposed mutations. No 0.15.3 tag was moved or deleted and no
+Release, tombstone asset, altered package, or synthetic terminal evidence was
+created for that candidate.
+
+The refreshed [Version Packages PR #1105](https://github.com/cacheplane/b4run/pull/1105)
+included both compatibility fixes, the peer correction, recovery implementation,
+and terminal record. All 21 publishable packages targeted 0.15.4. Final-head CI
+`40238436403` passed at `cf9db839c7e421cc2255c33b346b26dd800145b3`; the approved
+PR merged as `c2040dfb12ffabe48d399e1b4fcf5f6d55e97ace`. Exact merged-candidate
+CI `40240867253` also passed completely before tagging.
+
+The existing release workflow created annotated tag `v0.15.4`, object
+`eea78f6f7e3b477987ee5b37f5ae49ef7bbabaa6`, directly peeling to that exact
+merged candidate. Release run
+[40242549602](https://github.com/cacheplane/b4run/actions/runs/40242549602)
+passed immutable preparation, attestation, escrow, npm publication/reconciliation,
+all five published-package smoke lanes, smoke reconciliation, and independent
+audit. [B4 v0.15.4](https://github.com/cacheplane/b4run/releases/tag/v0.15.4)
+was published at `2026-10-25T23:36:39Z` (Release ID `423724655`, 52 assets).
+An independent GitHub API read confirmed `draft: false` and `immutable: true`.
+At `23:38:13.439Z`, independent public registry reads confirmed all 21 exact
+0.15.4 package names/versions with integrity and tarball metadata. No direct npm
+publication, tag rewrite, CI bypass, or release-run cancellation was used.
+
+### Clean 0.15.4 registry validation: 2026-10-25
+
+Hashbrown's four existing CLI/core/SDK/Postgres dependency pins and lockfile now
+use 0.15.4. A clean `npm ci --ignore-scripts` installed the registry packages.
+All 11 b4.run lock entries resolve to exact 0.15.4 registry tarballs with
+integrity hashes; no package entries were added or removed, no unrelated
+versions changed, and the installed direct packages are not source symlinks.
+
+| Check | Result |
+| --- | --- |
+| Core build, tests, lint | Passed: 1,515 tests, 76 suites, 14 snapshots |
+| ATC server build, tests, lint | Passed: 162 tests; the default run skips one Postgres-only test, exercised in the dedicated suite |
+| Lifecycle build, tests, lint, check | Passed: 98 tests; final Vercel adapter verified in isolation |
+| Real Postgres store/runtime suite | Passed: eight tests against disposable Postgres 17 |
+| Angular/React browser matrix, direct OpenAI and b4.run | Passed: all 86 cases |
+| Default ATC build | Passed uncached; direct Hashbrown OpenAI function verified in isolation |
+| Optional b4.run ATC build | Passed uncached; packaged agent startup verified in isolation |
+| Generated Vercel artifact with shared Postgres | Passed across two isolated copies: continuation, ownership, schema/cap, duplicate-result handling, and bypass denial |
+
+The artifact test uses deterministic HTTP provider responses and asserts that the
+resumed model receives the exact browser result and the final assistant output
+reaches the client. These are released-package results, superseding the earlier
+local-source-only evidence and 0.15.2 output-cap startup failure.
+
+Warnings remain visible: the root install reports the same 67 audit advisories
+(3 low, 45 moderate, 19 high) as the previous clean 0.15.2 install, along with
+existing deprecation/color warnings. The optional build reports that its staging
+app does not declare runtime deployment dependencies; the final wrapper packages
+those dependencies and passes isolated startup plus the real Postgres artifact
+test. The build also reports that root Vercel configuration reconciliation is off.
+No unrelated dependency remediation or project-setting change was made.
+
+The remaining operational step is a hosted deployment smoke with
+`ATC_CHAT_BACKEND=b4run`, a dedicated `ATC_B4RUN_DATABASE_URL`, and a stable
+`ATC_B4RUN_COOKIE_SECRET` shared by every instance. Verify browser-tool
+continuation and cancellation over the deployed endpoint, including instance
+changes. Local disposable-Postgres evidence does not establish production
+connectivity or hosted project settings. No ATC deployment or live-model eval
+was performed; the direct Hashbrown OpenAI provider remains the default.
