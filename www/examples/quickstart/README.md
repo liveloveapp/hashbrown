@@ -105,3 +105,48 @@ Run `npx nx docs-agent-decisions-demo www` for both SDK checks and the `agent-ro
 `runtime/local-models.ts`, `LocalModels.tsx` and `local-models.ts` provide explicit Prepare model / Generate locally / Cancel actions around the real `experimental_chrome` transport. The small schema extracts a destination and day count; only a fresh, successful, complete, bounded response becomes a ready preview. Preparation owns and destroys its temporary download session, including late cancellation. Generation owns separate transport sessions and rejects implicit downloads. No backend, API key, hosted fallback or new dependency is needed.
 
 Run `npx nx docs-local-models-demo www` locally with an already available native Chrome model in the dedicated test profile. The recorder runs deterministic native-API contract checks in both clients, then real native inference in both frameworks before recording React. It never downloads weights. Mobile checks use the shim for layout/contracts, not native inference. `DOCS_SKIP_RECORDING=1` verifies without replacing assets; `DOCS_DEMO_MODES=local-models` selects the sole supported ID. Captures, masters, static builds and reports stay in ignored `dist/docs-local-models`. Run sequentially with other recorders and GPU suites.
+
+## Streaming JSON parser
+
+`npx nx docs-parser-demo www` compiles the checked examples and verifies both real
+framework clients before making separate `json-parser-react` and
+`json-parser-angular` recordings. Use `DOCS_SKIP_RECORDING=1` to verify without
+replacing public assets, and `DOCS_DEMO_MODES=json-parser-react,json-parser-angular`
+to select captures. Unknown names fail before assets change. Both clients are
+verified even when only one recording is selected.
+
+The source is finite local JSON supplied by an owned timer. No weather service,
+provider key, or model is used. Checks cover ordinary versus streaming strings,
+required item field values before their closing brace, trailing garbage after a valid-looking preview, invalid
+schema values, truncation, missing streaming fields, wrong field types, Stop,
+Reset, midstream preset changes, replacement, unmount, and mobile layout. Final
+success requires source EOF, parser completion and validation of the complete
+original JSON; partial typed values are previews.
+
+Each run preserves its build, raw captures, measured frames, phase timestamps,
+masters and verification report under a unique ignored `dist/docs-parser` folder.
+The public media include MP4/WebM, poster, result screenshot, captions and a
+framework-specific text walkthrough. Run sequentially with other recorders that
+share `dist/docs-quickstart/compiled`.
+
+## Generative UI chatbot
+
+`LightChatbot.tsx` / `light-chatbot.ts` use `runtime/light-chatbot.ts` for a
+simulated Desk light. The real browser tool reads its current brightness. A
+trusted proposal component waits for successful completion and an explicit
+Apply action; a follow-up reads the updated state. Changes remain in browser
+memory and reset on refresh. No real device is controlled.
+
+Run `npx nx docs-ui-chatbot-demo www` to verify both actual clients, then record
+separate `ui-chatbot-react` and `ui-chatbot-angular` demos. The HTTP fixture emits
+AG-UI tool calls, checks the real handler's canonical result, and supplies the
+trusted UI response. No live model or provider key is needed to record.
+
+`DOCS_SKIP_RECORDING=1` runs browser checks without replacing media.
+`DOCS_DEMO_MODES` selects these target-specific capture IDs; both clients are
+verified first. Checks include invalid values, failed and incomplete runs,
+streaming-time Apply, repeats, revision changes, newer requests, cancellation,
+overlapping late delivery, keyboard operation, unmount, and mobile layout.
+Unique ignored `dist/docs-ui-chatbot` directories preserve browser builds,
+requests, raw captures, masters, measured phases, and verification reports.
+Run sequentially with other recorders that share compiled output.

@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-24. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
+Updated 2026-10-25. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
 
 ## Current recordings
 
@@ -58,6 +58,22 @@ Three task-based recipes use the checked clients in `www/examples/quickstart` an
 
 Magic Text and suggestions use scripted AG-UI responses; UI selection uses scripted decision responses. These are real client interactions with added presentation CSS, no narration or live model calls. The packing list is component-local state. A source citation does not establish factual correctness, and decision confidence is not a calibrated measure of usefulness. The checked `server/selection-server.ts` pins the selection questions for real TypeSafe requests; the recorder substitutes responses without requiring credentials.
 
+## Streaming JSON parser recordings
+
+`json-parser-react` and `json-parser-angular` record the separate checked framework clients and shared `runtime/json-parser-demo.ts`. A finite local source sends JSON chunks without a model, weather service, or provider key. Both clients pass desktop and mobile checks before either recording is captured.
+
+The interaction starts, stops, resets, and restarts the stream. A city waits for its closing quote, forecast text grows as it arrives, and an alert appears when its required field values resolve. The final success state requires source EOF, parser completion, and validation of the raw document. Browser checks also cover malformed, truncated, missing-field, wrong-type, and schema-invalid inputs, cancellation, replacement, unmount, and recovery. Both recordings include independently reviewed MP4/WebM, poster, captions, walkthrough, and result screenshot.
+
+Reproduce with `npx nx docs-parser-demo www`. Use `DOCS_SKIP_RECORDING=1` for browser checks without replacing media, or `DOCS_DEMO_MODES=json-parser-react,json-parser-angular` to select captures. Both clients are verified even when selecting one capture. Unique run directories under ignored `dist/docs-parser` preserve raw captures, masters, measured phases, and verification reports.
+
+## Generative UI chatbot recordings
+
+`ui-chatbot-react` and `ui-chatbot-angular` record the separate checked `LightChatbot.tsx` / `light-chatbot.ts` clients and shared `runtime/light-chatbot.ts`. The actual browser tool reads a simulated Desk light at 80%. A scripted HTTP AG-UI continuation selects a trusted proposal component; explicit Apply changes local state to 40%. A second real tool call reads revision 1 and the trusted reading component displays 40%. No real device or live model is used.
+
+Both clients pass desktop, mobile, keyboard, invalid-value, unsuccessful-run, streaming-time Apply, repeat/revision, cancellation, unmount, and overlapping-response checks before capture. The overlap check holds an old terminal response until a newer turn completes, then verifies it cannot authorize an old card. Each recording includes reviewed MP4/WebM, poster, captions, walkthrough and result screenshot.
+
+Reproduce with `npx nx docs-ui-chatbot-demo www`. `DOCS_SKIP_RECORDING=1` runs checks without replacing assets; `DOCS_DEMO_MODES=ui-chatbot-react,ui-chatbot-angular` selects captures. Both clients are always verified. Unique ignored `dist/docs-ui-chatbot` directories preserve wire requests, raw captures, masters, measured phases and verification reports.
+
 ## Remaining production work
 
 Record the uncovered tasks listed below using each guide's own interaction. Each recording needs a deterministic fixture, an example owner, a visible success result, and a written guide that stands on its own. Reuse installed recording tools; no new hosting dependency.
@@ -100,7 +116,7 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
 | `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                                      |
 | `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.              |
-| `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/json-parser`                         | Recorded              | json-parser-react and json-parser-angular; finite local chunks, partial previews, stop/reset, and raw-document validation. |
 | `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                      |
 | `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                               |
 | `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                 |
@@ -108,13 +124,13 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                    |
 | `recipes/threadplane`                         | Recorded              | threadplane-react and threadplane-angular; separately installed consumers, runtime checks and media review passed. |
 | `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                              |
-| `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/ui-chatbot`                          | Recorded              | ui-chatbot-react and ui-chatbot-angular; real browser read tool, trusted proposal, explicit Apply, and updated follow-up. |
 | `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                          |
 | `recipes/ui-selection`                        | Recorded              | ui-selection; app-owned summary/list views and manual fallback.                                                  |
 | `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                                |
 | `start/intro`                                 | Recorded              | welcome-card                                                                                                     |
-| `start/overview`                              | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
-| `start/platforms`                             | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `start/overview`                              | Intentional exception | Decision table links to checked task recordings; no separate interaction to demonstrate.                         |
+| `start/platforms`                             | Intentional exception | Runtime and provider setup comparison links to runnable guides and their recordings.                             |
 | `start/quick`                                 | Recorded              | welcome-card                                                                                                     |
 | `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                                      |
 

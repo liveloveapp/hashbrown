@@ -2,49 +2,52 @@
 title: 'Choosing an API: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Choose an API based on the result your feature needs.'
+    content: 'Choose a Hashbrown API by result shape, conversation behavior, and runtime.'
 ---
 
 # Choosing an API
 
-Start with the result you want to show. Then choose whether your feature needs one response or a conversation with earlier turns.
+Start with what your interface needs to show: text, typed data, your own components, or a choice among known options. Then decide whether the request needs earlier conversation turns.
 
-## Choose by goal
+New to Hashbrown? Build the trusted welcome card in the [Quickstart](/docs/angular/start/quick) first. The examples below extend that setup.
 
-| I want to…                                 | Start with                                                 |
-| ------------------------------------------ | ---------------------------------------------------------- |
-| Render your components in a conversation   | @hashbrownai/angular!uiChatResource:function               |
-| Build a text conversation                  | @hashbrownai/angular!chatResource:function                 |
-| Keep a conversation with typed JSON output | @hashbrownai/angular!structuredChatResource:function       |
-| Generate text from one input               | @hashbrownai/angular!completionResource:function           |
-| Generate typed data from one input         | @hashbrownai/angular!structuredCompletionResource:function |
-| Choose among named options                 | @hashbrownai/angular!decisionResource:function             |
-| Choose which UI components to offer        | @hashbrownai/angular!uiDecisionResource:function           |
+## Choose by result
 
-New to Hashbrown? The [Quickstart](/docs/angular/start/quick) uses `uiChatResource()` to render a trusted welcome card.
+| I want to…                                         | API                                                        | Context       | Continue with                                                         |
+| -------------------------------------------------- | ---------------------------------------------------------- | ------------- | --------------------------------------------------------------------- |
+| Render trusted components in a conversation        | @hashbrownai/angular!uiChatResource:function               | Earlier turns | [Light chatbot](/docs/angular/recipes/ui-chatbot)                     |
+| Build a text conversation                          | @hashbrownai/angular!chatResource:function                 | Earlier turns | [Messages and turns](/docs/angular/concept/ai-basics)                 |
+| Keep a conversation with typed data                | @hashbrownai/angular!structuredChatResource:function       | Earlier turns | [Shopping-list draft](/docs/angular/concept/structured-output)        |
+| Generate text from the current input               | @hashbrownai/angular!completionResource:function           | Current input | [Chat or completion](/docs/angular/start/overview#chat-or-completion) |
+| Generate typed data from the current input         | @hashbrownai/angular!structuredCompletionResource:function | Current input | [Predictive suggestions](/docs/angular/recipes/predictive-actions)    |
+| Generate trusted components from the current input | @hashbrownai/angular!uiCompletionResource:function         | Current input | [Exposing components](/docs/angular/concept/components)               |
+| Choose among named options                         | @hashbrownai/angular!decisionResource:function             | Current input | [Decisions](/docs/angular/concept/decisions)                          |
+| Narrow the components available to a chat          | @hashbrownai/angular!uiDecisionResource:function           | Chat mode     | [UI Selection](/docs/angular/recipes/ui-selection)                    |
 
-## Compare capabilities
+The API links open the reference for exact options and return values. For UI selection, the recipe starts with application-owned views and props. Use the UI decision API's chat mode when a decision should narrow the components a UI chat can generate; its standalone mode can also select among supplied components.
 
-| Resource                                                   | Multi-turn chat | Single-turn input | Structured output (schema) | Tool calling | Generate UI components |
-| ---------------------------------------------------------- | --------------- | ----------------- | -------------------------- | ------------ | ---------------------- |
-| @hashbrownai/angular!chatResource:function                 | ✅              | ❌                | ❌                         | ✅           | ❌                     |
-| @hashbrownai/angular!structuredChatResource:function       | ✅              | ❌                | ✅                         | ✅           | ❌                     |
-| @hashbrownai/angular!completionResource:function           | ❌              | ✅                | ❌                         | ❌           | ❌                     |
-| @hashbrownai/angular!structuredCompletionResource:function | ❌              | ✅                | ✅                         | ✅           | ❌                     |
-| @hashbrownai/angular!uiChatResource:function               | ✅              | ❌                | ✅                         | ✅           | ✅                     |
-| @hashbrownai/angular!decisionResource:function             | ❌              | ✅                | ✅                         | ❌           | ❌                     |
-| @hashbrownai/angular!uiDecisionResource:function           | ❌¹             | ✅                | ✅                         | ❌¹          | ✅                     |
+## Chat or completion?
 
-¹ In chat mode, uiDecisionResource narrows a chat created with uiChatResource, which supplies multi-turn chat and tool calling.
+A chat keeps earlier turns in its current instance. Send a message when the user asks a follow-up or when the answer depends on the conversation so far. The [light chatbot](/docs/angular/recipes/ui-chatbot) reads a light, proposes a change, and reads the updated state on the next turn.
 
-A completion responds to the current input. A chat keeps earlier turns in its current instance. Neither automatically persists your conversation after a refresh. See [Message history](/docs/angular/concept/message-history) for persistence and restoration.
+A completion responds to the current input. Use it for a focused transformation, such as generating suggestions from the current form values. Input changes can schedule another completion; keep the input absent until the application is ready to request it. See [Predictive suggestions](/docs/angular/recipes/predictive-actions) for an explicit request and review flow.
 
-## Follow a complete example
+Neither choice automatically persists a conversation after refresh. [Message history](/docs/angular/concept/message-history) explains what the application must save and restore.
 
-If you want to produce typed data, follow [Skillet schemas](/docs/angular/concept/schema) → [Structured output](/docs/angular/concept/structured-output) → [Streaming](/docs/angular/concept/streaming) → [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data). These pages use the same shopping-list example, so each step builds on the last.
+## Decide or generate?
 
-For a conversation, start with [Messages and turns](/docs/angular/concept/ai-basics), then [System instructions](/docs/angular/concept/system-instructions) and [Message history](/docs/angular/concept/message-history). Add [Tool calling](/docs/angular/concept/functions) when the assistant needs application data.
+Use a decision when the possible answers are known: choose a workflow, classify intent, or select a view. The application owns those options and handles unavailable or unsuitable results. Follow [Decisions in Agents](/docs/angular/recipes/decisions-in-agents) to route a request through a server-owned decision contract.
 
-## Next steps
+Use structured output when the model must produce new values within a schema. Use generative UI when it should select trusted components and supply their props. A decision can narrow that component set before generation.
 
-Continue with [Messages and turns](/docs/angular/concept/ai-basics), [Structured output](/docs/angular/concept/structured-output), or [Decisions](/docs/angular/concept/decisions), depending on the result you need.
+## Choose where the work runs
+
+The framework API owns browser state and rendering. A [provider adapter](/docs/angular/start/platforms) connects your server endpoint to a hosted model or an Ollama server. Keep provider credentials and endpoint policy on the server; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
+
+For on-device inference, follow [Local Models](/docs/angular/recipes/local-models). For parsing an existing JSON stream without a model or endpoint, use [JSON Parser](/docs/angular/recipes/json-parser). For a finished chat interface around your runtime, see [Threadplane](/docs/angular/recipes/threadplane).
+
+## Follow one learning path
+
+- **Typed data:** [Skillet schemas](/docs/angular/concept/schema) → [Structured output](/docs/angular/concept/structured-output) → [Streaming](/docs/angular/concept/streaming) → [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data). The same shopping-list task carries through each guide.
+- **A conversation with components:** [Messages and turns](/docs/angular/concept/ai-basics) → [Tool calling](/docs/angular/concept/functions) → [Exposing components](/docs/angular/concept/components) → [Light chatbot](/docs/angular/recipes/ui-chatbot).
+- **A production endpoint:** [Request customization](/docs/angular/concept/transform-request-options) → [Securing a public endpoint](/docs/angular/recipes/public-endpoint) → [Threads](/docs/angular/recipes/threads).
