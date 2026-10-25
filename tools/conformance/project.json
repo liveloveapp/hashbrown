@@ -277,6 +277,35 @@
           "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
         }
       }
+    },
+    "local-native-schema-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-schema.playwright.config.ts"
+      }
+    },
+    "local-native-schema-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-schema.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
+        }
+      }
     }
   },
   "implicitDependencies": [

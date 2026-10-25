@@ -302,6 +302,37 @@ not native multi-call identity correlation. See the
 for component versions and measurements. These raw probes do not run framework
 handlers or establish generative-UI/schema-plus-tools support.
 
+### Native tools with schema finalization
+
+`experimental_chrome_tools({ schemaFinalization: 'after-tool-planning' })`
+composes the existing structured chat schema with framework-owned native tools.
+Planning is unconstrained and its prose is private to the native session. Valid
+calls return to normal Hashbrown handlers; dependent calls can request more
+rounds. A call-free planning turn triggers one same-session constrained final
+prompt. Only final text reaches Skillet. UI and media composition remain
+unsupported, and the default native-tools factory still rejects schemas.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-schema-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-schema-workflow-smoke conformance
+```
+
+These cache-free targets inherit the native tools CI refusal and run one browser
+at a time. The live target uses the already downloaded v4 profile and refuses
+downloads. The actual React/Angular fixtures use `useStructuredChat` and
+`structuredChatResource`, real lookup/dependent handlers and hidden random
+tokens. Contracts cover phase constraints, exact schema consumption, rejected
+final tools/malformed output and Stop/recovery. The shim retains within-session
+history and forwards the constraint for inspection without enforcing or repairing
+model output. The native observer records actual prompt options and chunks.
+Reports are separate under `test-results/conformance/native-schema`.
+
+Capability reporting distinguishes the opt-in adapter policy from unverified
+inference. A passing exact-token sample does not prove arbitrary schema grammar
+support or model reliability. Never remove fences or weaken exact assertions to
+make a live result pass. Keep quality failures separate from lifecycle defects.
+
 ### Native tools through actual framework handlers
 
 ```sh
