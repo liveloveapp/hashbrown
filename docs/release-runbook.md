@@ -160,6 +160,28 @@ git push --force-with-lease origin npm/latest
 
 `npm/latest` is a movable trigger tag. It is not the public release tag.
 
+### Retry An Existing Stable Release After A Workflow Repair
+
+If publication fails before publishing any packages because the workflow needs a
+repair, preserve the immutable version tag. Merge the workflow repair through
+normal protected-branch checks, then run the repaired workflow from `main`:
+
+```sh
+gh workflow run npm-publish.yml --ref main -f release_tag=vX.Y.Z
+```
+
+The manual retry publishes to `latest`. It accepts only an existing stable
+`vX.Y.Z` tag that is an ancestor of `origin/main`, checks atomic manifest versions
+against that tag, and checks out that release source. It installs the release's
+pinned .NET SDK and runs all release-package, .NET integration-unit and bootstrap
+test/lint targets instead of selecting affected projects using the manual run's
+main SHA. Build, serial trusted publication, and registry verification remain
+required. npm's trusted publisher must still name `npm-publish.yml`.
+
+Inspect the failed run and registry before retrying: an already-published version
+is immutable. Do not move the version tag, replace its artifacts, or introduce a
+publishing token to recover from a workflow setup failure.
+
 ## Verify The Release
 
 The `NPM Publish` workflow should:
