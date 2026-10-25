@@ -500,6 +500,11 @@ transition `prepare-artifacts`, no Release or assets, and no registry mutation.
 Its prepare job failed and its npm publishing job skipped. The annotated tag
 object is `8221db88b2936394254847bcf220bcacb474cff7`. A fresh registry sweep
 at `2026-10-25T15:44:38.456Z` returned 404 for all 21 exact 0.15.3 package versions.
+A second sweep at `2026-10-25T15:45:57.664Z` again returned 21 exact-version
+404s, more than sixty seconds after the first. These are diagnostic observations,
+not a synthetic terminal record. A full scheduled read-only controller observation
+was stopped after six minutes without a report; the arbitration conclusion comes
+from the controller source and the preserved failed-run observation above.
 
 The live release workflow exposes reconciliation only. Its documented terminal
 recovery command and committed-record schema cover an older escrowed-draft
