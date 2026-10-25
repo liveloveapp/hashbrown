@@ -8,6 +8,7 @@ import {
 import type {
   ConversationRecoveryConfiguration,
   ConversationRecoveryState,
+  ConversationRestoreOptions,
   ConversationSnapshot,
 } from '@hashbrownai/core';
 import {
@@ -23,7 +24,7 @@ interface RecoverableChat {
   getRecoveryConfiguration(): ConversationRecoveryConfiguration;
   restoreConversation(
     snapshot: ConversationSnapshot,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
 }
 
@@ -68,7 +69,10 @@ export function createRecoveryControls(
       const envelope = readRecovery(await response.json());
       if (!current()) return;
       if (envelope.snapshot)
-        chat.restoreConversation(envelope.snapshot, { expectedRevision });
+        chat.restoreConversation(envelope.snapshot, {
+          expectedRevision,
+          structuredHistory: 'preserve-diagnostics',
+        });
       status.set(
         envelope.reconciliationOutcome
           ? `${envelope.disposition}: ${envelope.reconciliationOutcome}`

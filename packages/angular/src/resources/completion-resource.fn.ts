@@ -14,6 +14,7 @@ import {
   Chat,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   createChatRuntime,
   type FinishReason,
@@ -64,7 +65,7 @@ export interface CompletionResourceRef<State = unknown> extends Resource<
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;

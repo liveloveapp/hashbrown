@@ -1,6 +1,7 @@
 import { once } from 'node:events';
 import { createServer, request as upstreamRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { recoveryRequestRecorder } from './recovery-timings';
 
 /** Stable browser address with captured request bodies and selectable application instance. */
 export interface RoutedEndpoint {
@@ -16,6 +17,8 @@ export async function withRoutedEndpoint<T>(
 ): Promise<T> {
   let target = initialTarget;
   const requests: string[] = [];
+  const beginTrace = recoveryRequestRecorder('route');
+  const routeTrace = beginTrace();
   const server = createServer(async (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader(
@@ -27,6 +30,7 @@ export async function withRoutedEndpoint<T>(
       response.writeHead(204).end();
       return;
     }
+    const trace = beginTrace();
     try {
       const destination = new URL(
         request.url ?? '/run',
@@ -49,20 +53,34 @@ export async function withRoutedEndpoint<T>(
             : {}),
         },
       });
-      response.once('close', () => upstream.destroy());
+      response.once('close', () => {
+        if (!response.writableFinished) trace('cancel');
+        upstream.destroy();
+      });
+      response.on('drain', () => trace('drain'));
       upstream.once('response', (result) => {
+        trace('upstream-headers', result.statusCode);
+        result.once('data', () => trace('first-byte'));
+        result.once('end', () => trace('end'));
         response.writeHead(result.statusCode ?? 502, {
           'Content-Type': result.headers['content-type'] ?? 'text/event-stream',
           ...(result.headers['cache-control']
             ? { 'Cache-Control': result.headers['cache-control'] }
             : {}),
         });
-        result.once('error', () => response.destroy());
+        result.once('error', () => {
+          trace('error');
+          response.destroy();
+        });
         result.pipe(response);
       });
-      upstream.once('error', () => response.destroy());
+      upstream.once('error', () => {
+        trace('error');
+        response.destroy();
+      });
       upstream.end(body);
     } catch {
+      trace('error');
       response.destroy();
     }
   });
@@ -74,6 +92,7 @@ export async function withRoutedEndpoint<T>(
       requests,
       routeTo: (destination) => {
         target = destination;
+        routeTrace('route-change');
       },
     });
   } finally {

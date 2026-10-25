@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  bindHistoryDiagnostic,
+  readHistoryDiagnostic,
+} from './models/history-diagnostics';
 import type {
   ConversationRecoveryConfiguration,
   ConversationRecoveryState,
+  ConversationRestoreOptions,
   ConversationSnapshot,
 } from './models/conversation-recovery';
 import type { PendingInterruptBatch, ResumeOptions } from './models/interrupt';
@@ -169,7 +174,7 @@ export interface ChatRuntime<
   /** Atomically install retained canonical history while idle, without starting work. */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { readonly expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
   /** The current batch, retained until the server acknowledges resume. */
   readonly pendingInterrupts: StateSignal<PendingInterruptBatch | undefined>;
@@ -674,9 +679,15 @@ export function createChatRuntime(init: {
 
   function restoreConversation(
     snapshot: ConversationSnapshot,
-    options: { readonly expectedRevision: number },
+    options: ConversationRestoreOptions,
   ) {
     assertRestoreAllowed(options?.expectedRevision);
+    if (
+      options.structuredHistory !== undefined &&
+      options.structuredHistory !== 'strict' &&
+      options.structuredHistory !== 'preserve-diagnostics'
+    )
+      throw new TypeError('Invalid structured history policy.');
     if (
       !snapshot ||
       typeof snapshot.threadId !== 'string' ||
@@ -714,6 +725,41 @@ export function createChatRuntime(init: {
       : canonicalMessages;
     const responseSchema = state.read(selectResponseSchema);
     const toolsByName = state.read(selectToolEntities);
+    if (
+      options.structuredHistory === 'preserve-diagnostics' &&
+      responseSchema
+    ) {
+      for (const message of history) {
+        if (
+          message.role === 'assistant' &&
+          typeof message.content === 'string' &&
+          message.toolCalls === undefined &&
+          message.encryptedValue === undefined &&
+          Object.keys(message).every((key) =>
+            [
+              'id',
+              'role',
+              'content',
+              'name',
+              'metadata',
+              'subagentRunId',
+            ].includes(key),
+          ) &&
+          !ɵisCancelledTurnMarker(message)
+        ) {
+          const projected = projectAgUiMessages(
+            [message],
+            toolsByName,
+            responseSchema,
+          );
+          if (
+            projected.messages[0]?.role === 'assistant' &&
+            projected.messages[0].contentResolved === undefined
+          )
+            bindHistoryDiagnostic(message, snapshot.threadId);
+        }
+      }
+    }
     const projection = projectAgUiMessages(
       history,
       toolsByName,
@@ -735,6 +781,7 @@ export function createChatRuntime(init: {
       if (
         responseSchema &&
         !ɵisCancelledTurnMarker(message) &&
+        !readHistoryDiagnostic(message, responseSchema) &&
         message.content !== undefined &&
         projection.messages.find(
           (candidate) =>
@@ -881,7 +928,21 @@ export function createChatRuntime(init: {
         (root: Parameters<typeof ɵselectInterrupts>[0]) => root.recovery,
         (root: Parameters<typeof ɵselectInterrupts>[0]) =>
           root.interrupts.recoveryRequired,
-        (recovery, required) => ({ revision: recovery.revision, required }),
+        ɵselectCommittedAgUiMessages,
+        selectResponseSchema,
+        (recovery, required, messages, schema) => {
+          const diagnostics = messages.flatMap((message) => {
+            const diagnostic = readHistoryDiagnostic(message, schema);
+            return diagnostic ? [diagnostic] : [];
+          });
+          return {
+            revision: recovery.revision,
+            required,
+            ...(diagnostics.length
+              ? { diagnostics: Object.freeze(diagnostics) }
+              : {}),
+          };
+        },
       ),
     ),
     resume,

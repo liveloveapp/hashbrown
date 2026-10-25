@@ -9,6 +9,8 @@ export { groupTurns, type Turn } from './group-turns';
 export type { FinishReason, TokenUsage } from './run-finish';
 export type {
   ConversationSnapshot,
+  ConversationRestoreOptions,
+  ConversationRecoveryDiagnostic,
   ConversationRecoveryState,
   ConversationRecoveryConfiguration,
 } from './conversation-recovery';

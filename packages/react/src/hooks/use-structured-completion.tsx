@@ -2,6 +2,7 @@ import {
   Chat,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
@@ -113,7 +114,7 @@ export interface UseStructuredCompletionResult<Output, State = unknown> {
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
   /** Stops active execution without submitting cancellation answers. */
   stop(clearStreamingMessage?: boolean): void;

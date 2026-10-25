@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
+  type ConversationRestoreOptions,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -295,6 +296,47 @@ test.each(families)(
     expect(() =>
       result.current.resume({ batchId: batch.id, entries }),
     ).toThrow();
+    unmount();
+  },
+);
+
+test.each(families)(
+  '$name chat forwards public diagnostic recovery options',
+  async (family) => {
+    const control = controlledTransport();
+    const { result, unmount } = renderHook(
+      () => family.use({ system: '', transport: control.transport }),
+      { wrapper },
+    );
+    const options: ConversationRestoreOptions = {
+      expectedRevision: result.current.recovery.revision,
+      structuredHistory: 'preserve-diagnostics',
+    };
+
+    act(() =>
+      result.current.restoreConversation(
+        {
+          threadId: 'cold',
+          messages: [
+            {
+              id: 'invalid',
+              role: 'assistant',
+              content: '<b>ordinary historical text</b>',
+            },
+          ],
+        },
+        options,
+      ),
+    );
+    await act(async () => undefined);
+
+    expect(control.requests).toHaveLength(0);
+    expect(result.current.recovery.diagnostics?.[0].content).toBe(
+      family.name === 'text' ? undefined : '<b>ordinary historical text</b>',
+    );
+    expect(result.current.messages).toHaveLength(
+      family.name === 'text' ? 1 : 0,
+    );
     unmount();
   },
 );
