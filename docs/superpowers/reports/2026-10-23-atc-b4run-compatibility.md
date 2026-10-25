@@ -489,8 +489,9 @@ the actual emitted Hono app passed locally against disposable Postgres and its
 WebSocket proxy, then the corrected full CI passed, including native Vercel.
 
 The refreshed Version Packages PR #1105 targets 0.15.4 and includes both merged
-compatibility fixes plus the peer-range correction. Its normal CI was approved
-and is running; it has not been merged or published.
+compatibility fixes plus the peer-range correction. Its initial normal CI passed;
+it must refresh after recovery merges and pass on its final head before merging.
+It has not been merged or published.
 
 The release controller's arbitration selects older unfinished tagged candidates
 before a newer version candidate. The preserved observation for failed run
@@ -510,9 +511,28 @@ The live release workflow exposes reconciliation only. Its documented terminal
 recovery command and committed-record schema cover an older escrowed-draft
 case, not this tag-only preparation failure. No tag was deleted or moved, no
 terminal evidence was invented, and no release-control rule was bypassed.
-A narrow recovery design is awaiting approval before any new recovery behavior
-is implemented. Until that is resolved, keep 0.15.4 unmerged and Hashbrown's
-registry pins unchanged.
+The narrow recovery design is approved and implemented in
+[b4.run PR #1107](https://github.com/cacheplane/b4run/pull/1107). It adds a Git-only
+terminal record restricted to this exact incident, a read-only evidence collector,
+and a nonterminal hold preventing the new controller from retrying the old tag
+before a separately reviewed production record is merged. Local validation
+passes all 4,057 release-controller tests. No production terminal record has
+been committed yet.
+
+CI exposed an unrelated Docker test assumption twice: independent cached builds
+were required to have equal OCI index IDs despite changing provenance
+attestations. The test correction compares validated recipe inputs and runtime
+contents, verifies both immutable image bindings, and preserves production
+identity and provenance behavior. Both affected Docker tests and all 1,412
+example unit tests pass locally, as do build, typecheck and lint. Final-head CI
+is running at `a5decb4b160910d75029f098f58c31c5135741df`.
+
+After the code merges, all release-owner attempts must settle before fresh
+evidence is captured from that exact reviewed SHA. The separate record-only PR
+must pass CI and receive an independent evidence recheck immediately before
+merge. Then refresh and merge the 0.15.4 version PR and use the ordinary release
+workflow. Keep Hashbrown's registry pins unchanged until that release is
+published and independently audited.
 
 A fresh clean registry-only install also passes all 1,515 core tests, core
 build/lint, lifecycle build/98 tests/lint, and the default OpenAI ATC build.
