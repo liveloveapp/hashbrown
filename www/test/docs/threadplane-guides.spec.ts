@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { listDocs, readDoc, SDKS } from '../../src/lib/content';
 
@@ -16,8 +18,23 @@ test.each(SDKS)(
     expect(migration?.body).toContain(`/docs/${sdk}/recipes/threadplane`);
     for (const page of [recipe, migration]) {
       expect(page?.body).not.toMatch(/\bpreview\b/i);
-      expect(page?.body).not.toMatch(/<hb-docs-demo[^>]*demo="threadplane/);
     }
+  },
+);
+
+test.each(SDKS)(
+  '%s Threadplane recipe opens with its own installed-consumer recording',
+  (sdk) => {
+    const body = readDoc(sdk, ['recipes', 'threadplane'])?.body ?? '';
+    const id = `threadplane-${sdk}`;
+
+    const opening = body.indexOf(`<hb-docs-demo demo="${id}">`);
+
+    expect(opening).toBeGreaterThan(-1);
+    expect(opening).toBeLessThan(body.indexOf('\n## '));
+    expect(body).toContain(`/video/docs/${id}-result.png`);
+    expect(body).toContain('installed');
+    expect(body).toContain('scripted');
   },
 );
 
@@ -100,3 +117,71 @@ test.each(SDKS)(
     expect(body).toContain('thread');
   },
 );
+
+test.each(SDKS)(
+  '%s Threadplane guide publishes its exact checked component and mounting source',
+  (sdk) => {
+    const body = readDoc(sdk, ['recipes', 'threadplane'])?.body ?? '';
+    const files =
+      sdk === 'react'
+        ? [
+            ['src/ThreadplaneChat.tsx', 'react/src/ThreadplaneChat.tsx'],
+            ['src/main.tsx', 'react/src/main.tsx'],
+          ]
+        : [
+            [
+              'src/app/threadplane-chat.ts',
+              'angular/src/app/threadplane-chat.ts',
+            ],
+            ['src/main.ts', 'angular/src/main.ts'],
+          ];
+
+    for (const [header, path] of files) {
+      const section = body.split(`<hb-code-example header="${header}">`)[1];
+      const checked = readFileSync(
+        resolve(
+          import.meta.dirname,
+          '../../examples/threadplane-consumers',
+          path,
+        ),
+        'utf8',
+      ).trim();
+
+      expect(section?.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1].trim()).toBe(
+        checked,
+      );
+      expect(body).toContain(`<hb-expander title="Complete ${header}">`);
+      expect(body).not.toMatch(/<hb-expander[^>]*\bopen[=>\s]/);
+    }
+  },
+);
+
+test.each(SDKS)(
+  '%s Threadplane migration points to its own recorded installation walkthrough',
+  (sdk) => {
+    const body = readDoc(sdk, ['migrations', 'threadplane'])?.body ?? '';
+
+    expect(body).toContain(`/docs/${sdk}/recipes/threadplane`);
+    expect(body).toContain(`threadplane-${sdk}`);
+  },
+);
+
+test('React Stop instructions match the observed Hashbrown 0.8.0 cancellation behavior', () => {
+  const recipe = readDoc('react', ['recipes', 'threadplane'])?.body ?? '';
+  const migration = readDoc('react', ['migrations', 'threadplane'])?.body ?? '';
+
+  for (const body of [recipe, migration]) {
+    expect(body).toContain('0.8.0');
+    expect(body).toContain('unfinished assistant reply is removed');
+    expect(body).toContain('completed turns');
+    expect(body).not.toContain('Text already received stays');
+  }
+});
+
+test('Angular Stop instructions match the observed Threadplane 0.3.3 retention behavior', () => {
+  const recipe = readDoc('angular', ['recipes', 'threadplane'])?.body ?? '';
+
+  expect(recipe).toContain('0.3.3');
+  expect(recipe).toContain('Stop generating');
+  expect(recipe).toContain('Text already received stays in the conversation');
+});

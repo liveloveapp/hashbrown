@@ -11,9 +11,18 @@ Let's keep our Hashbrown conversation and give it a Threadplane message list and
 
 We'll build a text conversation. If you already have a custom Hashbrown chat screen, use the [migration checklist](/docs/react/migrations/threadplane) to decide which parts to replace.
 
+<hb-docs-demo demo="threadplane-react">
+</hb-docs-demo>
+
+<img src="/video/docs/threadplane-react-result.png" alt="The React Threadplane conversation shows a shipping question, its reply, and a follow-up about delivery estimates." width="920" height="552" loading="lazy" />
+
+This walkthrough uses a separately installed React consumer and the actual Hashbrown OpenAI server adapter. Provider-native Responses events are scripted over local HTTP; there is no live model call or provider key. Presentation styles, header, and footer are added for the recording. The React footage uses its own components and input controls.
+
 ## Before we start
 
-Start with the [Quickstart](/docs/react/start/quick) server and a React 19.2.4 application, or a compatible later 19.x release, using Vite and TypeScript. Keep the server's API key and model configuration on the server. The browser will continue to call `/api/chat` through the existing development proxy.
+Start with the [Quickstart](/docs/react/start/quick) server and a Vite application using TypeScript. The installed consumer for this walkthrough uses **React and React DOM 19.2.8** with **Hashbrown core and React 0.8.0**.
+
+Threadplane’s React peer range starts at React 19.2.4; keep React and React DOM on matching versions. Keep the server's API key and model configuration on the server. The browser will continue to call `/api/chat` through the existing development proxy.
 
 The React components used here are in Threadplane's **source workspace**. At the checked revision, `@threadplane/react`, `@threadplane/core`, and `@threadplane/content` are private packages. We'll build and install those local packages. There is no registry installation command for them in this recipe.
 
@@ -42,6 +51,18 @@ npm install --install-links ../threadplane/dist/libs/core ../threadplane/dist/li
 Use [`--install-links`](https://docs.npmjs.com/cli/v11/commands/npm-install/#install-links) to pack these external directory dependencies into regular installed packages. This keeps their peer resolution in your frontend's dependency tree, rather than following a symlink back to the Threadplane checkout and potentially loading another React instance or missing local peers. The flag doesn't change npm workspace links.
 
 Keep your existing `@hashbrownai/core` and `@hashbrownai/react` dependencies. These local Threadplane packages supply presentation; they don't replace the Hashbrown runtime.
+
+Make sure the frontend TypeScript configuration includes Vite's client types. They provide declarations for imports such as `@threadplane/react/chat/styles.css`:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["vite/client", "react", "react-dom"]
+  }
+}
+```
+
+Merge this setting into the existing frontend `tsconfig`; keep its other options. If the starter has a `src/vite-env.d.ts` that references `vite/client` already, retain that reference. Restart the development server after changing the configuration.
 
 ## Add the conversation
 
@@ -111,6 +132,8 @@ The transcript renders text literally, including Markdown punctuation. This smal
 
 Replace the Quickstart's root component with `ThreadplaneChat`. Import Threadplane's opt-in chat stylesheet once in the frontend entry point:
 
+<hb-expander title="Complete src/main.tsx">
+
 <hb-code-example header="src/main.tsx">
 
 ```tsx
@@ -131,15 +154,25 @@ createRoot(root).render(
 
 </hb-code-example>
 
-Keep the Quickstart proxy in `vite.config.ts`: `/api` forwards to `http://127.0.0.1:3001`. Start the existing Node server and your frontend development server. No Threadplane server or extra browser endpoint is needed.
+</hb-expander>
+
+Keep the Quickstart proxy in `vite.config.ts`: `/api` forwards to `http://127.0.0.1:3001`. Start the existing Node server in one terminal, then run the frontend from your React project in another:
+
+```sh
+npm run dev
+```
+
+No Threadplane server or extra browser endpoint is needed.
 
 `useChat` owns this conversation's runtime and history. `TextTranscript` receives rows; `ChatInput` receives callbacks. They don't create another agent session. Keep the hook's owner mounted while you want to retain its in-memory conversation.
 
 ## Send, stop, and try again
 
-Select **Send**. You should see your message followed by a streaming assistant reply. Sending another message includes the earlier conversation through the same `useChat` instance. Enter sends; Shift+Enter adds a line.
+Select **Send**. You should see your message followed by a streaming assistant reply. Then send **Does that include delivery estimates?** The same `useChat` instance sends the first question and completed assistant reply with that follow-up. Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer.
 
-Select **Stop** during a response to cancel the active request. Text already received stays in the conversation. If a request fails, the page displays an error; restore the connection and explicitly send again. There is no automatic message on page load or automatic retry in this component.
+Select **Stop** during a response to cancel the active request. With the tested Hashbrown **0.8.0** client, the unfinished assistant reply is removed; completed turns stay in the conversation. If a request fails, the page displays an error; restore the connection and explicitly send again. There is no automatic message on page load or automatic retry in this component.
+
+The scripted walkthrough answers “Shipping information is on the Shipping page in Help,” then confirms that it includes delivery estimates and tracking information. A live model's wording and content depend on the instructions and product information your server supplies. The recording demonstrates the installed UI and request path, not a model's knowledge of your product.
 
 The server still owns authentication, authorization, provider credentials, and model selection. The browser `system` option supplies model instructions; it isn't an access-control boundary. Use the [public endpoint pattern](/docs/react/recipes/public-endpoint) for an application that accesses customer data, and [server request customization](/docs/react/concept/transform-request-options) for trusted instructions and context.
 

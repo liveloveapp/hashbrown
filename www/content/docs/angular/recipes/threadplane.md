@@ -11,9 +11,16 @@ Let's use Threadplane for the chat screen and keep Hashbrown on the server. Thre
 
 We'll start with text messages. If you're replacing an existing `chatResource` screen, follow the [migration checklist](/docs/angular/migrations/threadplane) before removing its tools or saved history.
 
+<hb-docs-demo demo="threadplane-angular">
+</hb-docs-demo>
+
+<img src="/video/docs/threadplane-angular-result.png" alt="The Angular Threadplane conversation shows a shipping question, its reply, and a follow-up about delivery estimates." width="920" height="626" loading="lazy" />
+
+This walkthrough uses a separately installed Angular consumer and the actual Hashbrown OpenAI server adapter. Provider-native Responses events are scripted over local HTTP; there is no live model call or provider key. Presentation styles, header, and footer are added for the recording. The Angular footage uses its own components and input controls.
+
 ## Before we start
 
-Start with an Angular 20–22 application and the [Quickstart server](/docs/angular/start/quick). Hashbrown's text adapter accepts the standard AG-UI run input and streams AG-UI events, which Threadplane's adapter can consume.
+Start with the [Quickstart server](/docs/angular/start/quick) and an Angular application. This walkthrough’s installed build uses **Angular 22.1.1** and **Threadplane chat and AG-UI 0.3.3**. The packages support Angular 20–22; satisfy the peer dependencies for the version you choose. Hashbrown's text adapter accepts the standard AG-UI run input and streams AG-UI events, which Threadplane's adapter can consume.
 
 Keep the provider API key and model on the server. Continue using the same-origin `/api/chat` path and the Quickstart development proxy to `http://127.0.0.1:3001`.
 
@@ -24,7 +31,7 @@ This frontend will use Threadplane's AG-UI runtime. It doesn't create a Hashbrow
 In your Angular frontend project, install:
 
 ```sh
-npm install @threadplane/chat @threadplane/ag-ui @ag-ui/client @ag-ui/core marked
+npm install @threadplane/chat@0.3.3 @threadplane/ag-ui@0.3.3 @ag-ui/client@1.0.2 @ag-ui/core@1.0.2 marked@^16.0.0
 ```
 
 `marked` is the chat renderer's Markdown parser peer. Keep the Threadplane packages on matching versions and satisfy the peer dependencies reported by npm. This example follows the [Threadplane AG-UI adapter](https://github.com/cacheplane/threadplane/tree/2c7f01fa958441f3ed94e2559987217be284e94a/libs/ag-ui) and [chat composition](https://github.com/cacheplane/threadplane/tree/2c7f01fa958441f3ed94e2559987217be284e94a/libs/chat) APIs.
@@ -69,7 +76,6 @@ import { ChatComponent } from '@threadplane/chat';
       display: block;
     }
     chat {
-      display: block;
       height: min(42rem, 85dvh);
     }
   `,
@@ -89,6 +95,8 @@ The component-scoped provider gives this screen its own agent. The adapter regis
 
 Bootstrap the component in `src/main.ts`:
 
+<hb-expander title="Complete src/main.ts">
+
 <hb-code-example header="src/main.ts">
 
 ```ts
@@ -102,19 +110,33 @@ bootstrapApplication(ThreadplaneChat).catch((error: unknown) => {
 
 </hb-code-example>
 
+</hb-expander>
+
 Replace the root element in `src/index.html` with:
 
 ```html
 <app-threadplane-chat></app-threadplane-chat>
 ```
 
-Keep the existing `/api` proxy. Start the Quickstart server and run your Angular development server with that proxy configuration. This standalone screen doesn't need `provideHashbrown`; retain that provider if other mounted components still use Hashbrown resources.
+Keep the Quickstart `/api/**` proxy pointing to `http://127.0.0.1:3001`. Start the Quickstart server in one terminal, then run the frontend from your Angular project in another:
+
+```sh
+ng serve --proxy-config proxy.conf.json
+```
+
+This standalone screen doesn't need `provideHashbrown`; retain that provider if other mounted components still use Hashbrown resources.
 
 ## Try the conversation
 
-Send **Where can I find shipping information?** You should see the message and a streamed reply. Send a follow-up and confirm that the same conversation is sent to the existing server. Use the chat's stop control during a response, then explicitly send again when you're ready.
+Type **Where can I find shipping information?** and select **Send message**. You should see the question and a streaming assistant reply. Then send **Does that include delivery estimates?** The adapter sends the earlier conversation with this follow-up to the same endpoint.
+
+Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer. The welcome composer becomes the conversation's composer after the first message.
+
+Select **Stop generating** during a response to cancel the active request. Text already received stays in the conversation with the tested Threadplane **0.3.3** adapter. Wait for **Send message** to return, then send a new message explicitly when you're ready to continue.
 
 No request is required to display an empty chat. A failed run is displayed through the adapter's error state. Check the frontend proxy, server process, and provider configuration before sending another message.
+
+The scripted walkthrough answers “Shipping information is on the Shipping page in Help,” then confirms that it includes delivery estimates and tracking information. A live model's wording and content depend on the instructions and product information your server supplies. The recording demonstrates the installed UI and request path, not a model's knowledge of your product.
 
 ## Keep policy on the server
 
