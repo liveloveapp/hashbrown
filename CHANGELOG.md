@@ -12,7 +12,7 @@
 ### 📖 Documentation and examples
 
 - Fix C#/XML syntax highlighting and document diagnostic recovery from SDK 0.8.2. Add bounded timeout evidence without changing assertions or retries; the historical recovery timeout did not reproduce ([#751](https://github.com/liveloveapp/hashbrown/pull/751)).
-- Complete parser/chatbot learning paths and recorded examples, fix announcement-margin clicks, and add the optional b4.run ATC backend with disconnect cancellation ([#750](https://github.com/liveloveapp/hashbrown/pull/750), [#752](https://github.com/liveloveapp/hashbrown/pull/752), [#731](https://github.com/liveloveapp/hashbrown/pull/731), [#755](https://github.com/liveloveapp/hashbrown/pull/755)).
+- Complete parser/chatbot learning paths and recorded examples, add the canonical Angular/React docs workbench, fix announcement-margin clicks, and add the optional b4.run ATC backend with disconnect cancellation ([#750](https://github.com/liveloveapp/hashbrown/pull/750), [#762](https://github.com/liveloveapp/hashbrown/pull/762), [#752](https://github.com/liveloveapp/hashbrown/pull/752), [#731](https://github.com/liveloveapp/hashbrown/pull/731), [#755](https://github.com/liveloveapp/hashbrown/pull/755)).
 
 ## 0.8.1 (2026-10-24)
 
