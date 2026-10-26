@@ -71,6 +71,8 @@ The checked OpenAI boundary uses the callback here:
 ```ts
 transformRequestOptions: async (mapped) => {
   const before = { ...mapped, max_output_tokens: 2048 };
+  if (lessonId === 'system-instructions')
+    instructions = traceWorkbenchInstructions(mapped);
   if (lessonId !== 'request-transformation') return before;
   const after = await transformWorkbenchRequest(
     before,

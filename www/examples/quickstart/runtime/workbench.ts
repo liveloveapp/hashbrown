@@ -1,4 +1,8 @@
 import {
+  workbenchInstructionsSystem,
+  type WorkbenchInstructionsTrace,
+} from './workbench-onboarding';
+import {
   isWorkbenchRecipe,
   type WorkbenchActionId,
   type WorkbenchCitation,
@@ -70,6 +74,7 @@ export interface WorkbenchFrame {
   readonly citation?: WorkbenchCitation & { readonly origin: string };
   readonly dismissedPredictions?: readonly WorkbenchActionId[];
   readonly transformation?: WorkbenchTransformationTrace;
+  readonly instructions?: WorkbenchInstructionsTrace;
   readonly json: string;
   readonly props: {
     readonly title?: string;
@@ -317,6 +322,7 @@ export function createWorkbenchStore(
   let citation: (WorkbenchCitation & { readonly origin: string }) | undefined;
   let dismissedPredictions: readonly WorkbenchActionId[] = [];
   let transformation: WorkbenchTransformationTrace | undefined;
+  let instructions: WorkbenchInstructionsTrace | undefined;
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
   let turn = 0;
@@ -364,6 +370,7 @@ export function createWorkbenchStore(
     if (kind === 'request') {
       json = '';
       transformation = undefined;
+      instructions = undefined;
     }
     if (
       kind === 'event' &&
@@ -371,6 +378,21 @@ export function createWorkbenchStore(
       raw['name'] === 'workbench.request-transformation'
     )
       transformation = copy(raw['value'] as WorkbenchTransformationTrace);
+    if (
+      kind === 'event' &&
+      raw?.['type'] === 'CUSTOM' &&
+      raw['name'] === 'workbench.system-instructions'
+    ) {
+      const value = object(raw['value']);
+      if (
+        value?.['origin'] === 'OpenAI adapter mapping' &&
+        value['policy'] === workbenchInstructionsSystem
+      )
+        instructions = {
+          origin: 'OpenAI adapter mapping',
+          policy: workbenchInstructionsSystem,
+        };
+    }
     if (kind === 'event' && raw?.['type'] === 'TEXT_MESSAGE_START') json = '';
     if (
       kind === 'event' &&
@@ -407,6 +429,7 @@ export function createWorkbenchStore(
         ...(citation ? { citation } : {}),
         dismissedPredictions,
         ...(transformation ? { transformation } : {}),
+        ...(instructions ? { instructions } : {}),
         messages,
         json,
         props,
@@ -463,6 +486,7 @@ export function createWorkbenchStore(
       citation = undefined;
       dismissedPredictions = [];
       transformation = undefined;
+      instructions = undefined;
       propsReady = false;
       json = '';
       finishReason = undefined;
@@ -776,6 +800,7 @@ export function createWorkbenchStore(
       props = null;
       decision = undefined;
       transformation = undefined;
+      instructions = undefined;
       propsReady = false;
       finishReason = undefined;
       recipe = undefined;
