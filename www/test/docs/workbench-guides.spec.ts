@@ -10,6 +10,9 @@ test.each(SDKS)(
       ['components', 'ui'],
       ['functions', 'tools'],
       ['structured-output', 'structured'],
+      ['streaming', 'streaming'],
+      ['schema', 'schemas'],
+      ['decisions', 'decisions'],
     ] as const;
 
     for (const [slug, lesson] of lessons) {
@@ -20,10 +23,12 @@ test.each(SDKS)(
       expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
       expect(body).toContain('two-step plan');
       expect(body).toContain(
-        `/${sdk}.html?lesson=${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : 'structured-output'}`,
+        `/${sdk}.html?lesson=${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : slug === 'schema' ? 'schemas' : slug}`,
       );
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
-      expect(body).toContain('Accept plan');
+      expect(body).toContain(
+        lesson === 'decisions' ? 'Use suggestion' : 'Accept plan',
+      );
       expect(body).not.toMatch(/shopping-list|MarkdownComponent|fetchUser/);
     }
   },
@@ -32,9 +37,14 @@ test.each(SDKS)(
 test.each(SDKS)(
   '%s lesson excerpts come directly from the checked workbench clients',
   (sdk) => {
-    const pages = ['components', 'functions', 'structured-output'].map(
-      (slug) => readDoc(sdk, ['concept', slug])?.body ?? '',
-    );
+    const pages = [
+      'components',
+      'functions',
+      'structured-output',
+      'streaming',
+      'schema',
+      'decisions',
+    ].map((slug) => readDoc(sdk, ['concept', slug])?.body ?? '');
     let checked = 0;
 
     for (const body of pages) {

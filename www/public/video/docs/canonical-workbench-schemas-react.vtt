@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:08.090
+The shared response contract stays visible beside the SDK-resolved plan preview.
+
+00:00:08.090 --> 00:00:11.824
+Review the completed plan. Accept plan updates application state to revision 1.
+
+00:00:11.824 --> 00:00:20.862
+The follow-up reads the accepted plan and proposes a shorter second step.
+
+00:00:20.862 --> 00:00:28.214
+Replay follows captured chat, JSON, UI and state. It makes no new requests.
+
+00:00:28.214 --> 00:00:30.200
+Return to live to continue the conversation. The accepted plan stays at revision 1.

@@ -1,11 +1,17 @@
-/** The three checked, server-owned workbench lessons. */
-export type WorkbenchLessonId = 'generative-ui' | 'tools' | 'structured-output';
+/** The checked, server-owned workbench lessons. */
+export type WorkbenchLessonId =
+  | 'generative-ui'
+  | 'tools'
+  | 'structured-output'
+  | 'streaming'
+  | 'schemas'
+  | 'decisions';
 /** Metadata shared by framework clients and their workbench shell. */
 export interface WorkbenchLesson {
   readonly id: WorkbenchLessonId;
   readonly title: string;
-  readonly format: 'ui' | 'structured';
-  readonly inspector: 'JSON' | 'Requests' | 'UI' | 'State';
+  readonly format: 'ui' | 'structured' | 'decision';
+  readonly inspector: 'JSON' | 'Requests' | 'UI' | 'State' | 'Schema';
   readonly endpoint: string;
 }
 /** The allowlisted lesson catalog; browser input cannot select arbitrary endpoints. */
@@ -30,6 +36,27 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     format: 'structured',
     inspector: 'JSON',
     endpoint: '/api/workbench/structured-output',
+  },
+  {
+    id: 'streaming',
+    title: 'Streaming',
+    format: 'structured',
+    inspector: 'JSON',
+    endpoint: '/api/workbench/streaming',
+  },
+  {
+    id: 'schemas',
+    title: 'Schemas',
+    format: 'structured',
+    inspector: 'Schema',
+    endpoint: '/api/workbench/schemas',
+  },
+  {
+    id: 'decisions',
+    title: 'Decisions',
+    format: 'decision',
+    inspector: 'JSON',
+    endpoint: '/api/workbench/decisions',
   },
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */

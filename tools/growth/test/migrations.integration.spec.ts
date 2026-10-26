@@ -35,6 +35,7 @@ test('migrations apply twice against Postgres and the second run applies nothing
     '0008_growth_health_alerts.sql',
     '0009_growth_unbound_message_index.sql',
     '0010_growth_drop_gmail_schema.sql',
+    '0011_growth_strip_form_agreement.sql',
   ]);
 
   const tables = await executor.execute<{ table_name: string }>(`
@@ -105,6 +106,7 @@ test('migrations apply twice against Postgres and the second run applies nothing
     { name: '0008_growth_health_alerts.sql', checksum_length: 64 },
     { name: '0009_growth_unbound_message_index.sql', checksum_length: 64 },
     { name: '0010_growth_drop_gmail_schema.sql', checksum_length: 64 },
+    { name: '0011_growth_strip_form_agreement.sql', checksum_length: 64 },
   ]);
 });
 

@@ -16,7 +16,7 @@ import {
 import { createTool, structuredChatResource } from '@hashbrownai/angular';
 import {
   createWorkbenchStore,
-  workbenchPlanSchema,
+  getWorkbenchPlanSchema,
   workbenchStructuredProps,
   workbenchStructuredSystem,
 } from '../../../runtime/workbench';
@@ -40,7 +40,9 @@ export class StructuredWorkbenchSession {
   readonly users = signal<Readonly<Record<string, ProposalOrigin>>>({});
   readonly chat = structuredChatResource({
     system: workbenchStructuredSystem,
-    schema: workbenchPlanSchema,
+    schema: getWorkbenchPlanSchema(
+      getWorkbenchLesson(window.location.search).id,
+    ),
     transport: createWorkbenchTransport(
       this.store,
       undefined,

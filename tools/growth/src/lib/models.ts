@@ -16,24 +16,12 @@ export type GrowthDeliveryStatus =
 /** The kinds of work the growth job queue runs. */
 export type GrowthJobKind = 'fulfill' | 'notify' | 'send_step' | 'digest';
 
-/** The framework choices on the Get unstuck form. */
-export const UNSTUCK_FRAMEWORKS = [
-  'react',
-  'angular',
-  'both',
-  'not_sure',
-] as const;
-
-/** One of {@link UNSTUCK_FRAMEWORKS}. */
-export type UnstuckFramework = (typeof UNSTUCK_FRAMEWORKS)[number];
-
 /** Whether a submitted address looks like a work or personal mailbox. */
 export type GrowthEmailClassification = 'work' | 'personal' | 'unknown';
 
 /** Payload of the `form.outreach_approved` activity. */
 export interface FormOutreachApprovedActivityData {
   email_classification: GrowthEmailClassification;
-  policy_version: string;
   source: string;
   source_form: string;
   verification: 'server_verified';

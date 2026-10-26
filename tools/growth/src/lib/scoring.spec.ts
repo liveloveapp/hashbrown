@@ -195,7 +195,6 @@ test('recomputeContactScore reads approvals and linked runtime observations and 
           data: {
             email_classification: 'work',
             verification: 'server_verified',
-            policy_version: 'growth-v1',
             source: 'website',
             source_form: 'unstuck',
           },
@@ -245,6 +244,35 @@ test('recomputeContactScore reads approvals and linked runtime observations and 
   ]);
   expect(JSON.parse(String(upsert?.params[4]))).toEqual(result.reasons);
   expect(upsert?.params[5]).toEqual(now);
+});
+
+test('a form approval without a policy version still earns the work email form points', async () => {
+  const { executor } = executorWith({
+    'read-score-contact': () => ({
+      rows: [{ id: contactId, deleted_at: null }],
+    }),
+    'read-contact-score-approvals': () => ({
+      rows: [
+        {
+          kind: 'form.outreach_approved',
+          data: {
+            email_classification: 'work',
+            verification: 'server_verified',
+            source: 'website',
+            source_form: 'unstuck',
+          },
+        },
+      ],
+    }),
+    'read-contact-score-runtime': () => ({ rows: [] }),
+    'upsert-contact-score': () => ({ rows: [] }),
+  });
+
+  const result = await recomputeContactScore(executor, { contactId, now });
+
+  expect(result.reasons).toContainEqual(
+    expect.objectContaining({ code: 'contact.approved_work_email_form' }),
+  );
 });
 
 test('recomputeContactScore removes the stored score of a deleted contact and throws for a missing one', async () => {

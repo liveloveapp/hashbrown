@@ -1,3 +1,4 @@
+import type { WorkbenchLessonId } from './workbench-lessons';
 import { s } from '@hashbrownai/core';
 
 /** A validated, application-owned plan, independent of rendered proposals. */
@@ -5,16 +6,24 @@ export interface WorkbenchPlan {
   readonly title: string;
   readonly steps: readonly string[];
 }
+/** The decoded decision and its model confidence. */
+export interface WorkbenchDecision {
+  readonly nextAction: 'record' | 'review' | 'clarify';
+  readonly confidence: number;
+}
 /** The committed application snapshot. */
 export interface WorkbenchApplication {
   readonly revision: number;
   readonly plan: WorkbenchPlan | null;
+  readonly nextAction?: WorkbenchDecision['nextAction'] | null;
 }
 /** Runtime state for one captured user turn. */
 export type WorkbenchStatus =
   'idle' | 'loading' | 'complete' | 'error' | 'cancelled';
 /** The origin of an observable change in the canonical example. */
 export type WorkbenchEventKind =
+  | 'decision'
+  | 'choose'
   | 'request'
   | 'event'
   | 'tool'
@@ -39,7 +48,9 @@ export interface WorkbenchFrame {
     readonly role: 'user' | 'assistant';
     readonly content: string;
     readonly props?: WorkbenchFrame['props'];
+    readonly decision?: WorkbenchDecision;
   }[];
+  readonly decision?: WorkbenchDecision;
   readonly json: string;
   readonly props: {
     readonly title?: string;
@@ -69,6 +80,8 @@ export interface WorkbenchStore {
     status: 'complete' | 'error' | 'cancelled',
     finishReason?: string,
   ): void;
+  recordDecision(result: WorkbenchDecision, requestId: string): void;
+  applyDecision(): boolean;
   accept(proposal: WorkbenchPlan): boolean;
   seek(index: number): void;
   live(): void;
@@ -87,6 +100,47 @@ export const workbenchPlanSchema = s.object('A two-step plan proposal', {
     s.string('A clear action'),
   ),
 });
+/** Plan schema that streams its title as well as its step array. */
+export const workbenchStreamingPlanSchema = s.object(
+  'A two-step plan proposal',
+  {
+    title: s.streaming.string('A concise plan title'),
+    steps: s.streaming.array(
+      'Exactly two concise steps',
+      s.string('A clear action'),
+    ),
+  },
+);
+/** Selects the schema owned by the allowlisted lesson. */
+export function getWorkbenchPlanSchema(lessonId: WorkbenchLessonId) {
+  return lessonId === 'streaming'
+    ? workbenchStreamingPlanSchema
+    : workbenchPlanSchema;
+}
+/** The bounded options the decision model can suggest. */
+export const workbenchDecisionSchema = s.object(
+  'Choose the next action for this plan',
+  {
+    nextAction: s.enumeration('The next useful action', {
+      record: 'Record the demo after the outline is complete.',
+      review: 'Review the demo after it has been recorded.',
+      clarify: 'Ask for clarification when progress is unclear.',
+    }),
+  },
+);
+/** App-owned plan supplied as context to the decision model. */
+export const workbenchDecisionPlan: WorkbenchPlan = {
+  title: 'Show how a model renders trusted UI',
+  steps: ['Outline the trusted UI demo.', 'Record the demo.'],
+};
+/** User actions that start the independent decision turns. */
+export const workbenchDecisionPrompts = [
+  'The outline is complete. What should I do next?',
+  'The demo is recorded. What should I do next?',
+] as const;
+/** Server-owned decision policy; suggestions never change application state. */
+export const workbenchDecisionSystem =
+  'Choose the next useful action from the supplied application snapshot and progress prompt. When the outline is complete choose record. When the demo is recorded choose review. If progress is unclear choose clarify. Suggest only; the user must explicitly use the suggestion.';
 /** Fixed instructions for plain structured output and explicit application review. */
 export const workbenchStructuredSystem =
   'You help a developer create a small two-step plan. Before every answer call readContext exactly once to read the current application revision and accepted plan. Return a plain typed plan with a short title and exactly two concise steps. The first request should create a plan with outline and record steps. A follow-up requesting a shorter second step should revise that step while retaining the first step verbatim. Returning data does not apply a plan; only the user accepts it. Do not claim application state changed.';
@@ -162,11 +216,42 @@ export function isWorkbenchPlan(input: unknown): input is WorkbenchPlan {
   );
 }
 
+/** Identifies the live user request before a decision runtime can publish or settle it. */
+export function isCurrentWorkbenchDecision(
+  snapshot: WorkbenchSnapshot,
+  requestId: string,
+): boolean {
+  return (
+    snapshot.status === 'loading' &&
+    snapshot.frame?.messages.filter((message) => message.role === 'user').at(-1)
+      ?.id === requestId
+  );
+}
+
+/** Reads explicit application choice events to identify an already-used suggestion. */
+export function wasWorkbenchDecisionApplied(
+  snapshot: WorkbenchSnapshot,
+  messageId: string,
+): boolean {
+  return snapshot.events.some(
+    (event) =>
+      event.kind === 'choose' && event.messages.at(-1)?.id === messageId,
+  );
+}
+
 /** Creates an isolated capture. Seeking changes only the selected frame, never live state. */
 export function createWorkbenchStore(
-  format: 'ui' | 'structured' = 'ui',
+  format: 'ui' | 'structured' | 'decision' = 'ui',
 ): WorkbenchStore {
-  let application: WorkbenchApplication = freeze({ revision: 0, plan: null });
+  const initialApplication = (): WorkbenchApplication =>
+    freeze(
+      format === 'decision'
+        ? { revision: 0, plan: copy(workbenchDecisionPlan), nextAction: null }
+        : { revision: 0, plan: null },
+    );
+  let application = initialApplication();
+  let decision: WorkbenchDecision | undefined;
+  let decisionRevision = -1;
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
   let turn = 0;
@@ -207,6 +292,8 @@ export function createWorkbenchStore(
       return;
     }
     const raw = object(payload);
+    if (format === 'decision' && kind === 'event')
+      json = JSON.stringify(payload, null, 2);
     if (kind === 'request') json = '';
     if (kind === 'event' && raw?.['type'] === 'TEXT_MESSAGE_START') json = '';
     if (
@@ -239,6 +326,7 @@ export function createWorkbenchStore(
               : 'Application',
         elapsedMs: Math.round(Math.max(0, performance.now() - started)),
         application,
+        ...(decision ? { decision } : {}),
         messages,
         json,
         props,
@@ -272,6 +360,7 @@ export function createWorkbenchStore(
       turn++;
       status = 'loading';
       props = null;
+      decision = undefined;
       propsReady = false;
       json = '';
       finishReason = undefined;
@@ -338,6 +427,54 @@ export function createWorkbenchStore(
         { status: next, finishReason: reason },
       );
     },
+    recordDecision(result, requestId) {
+      if (
+        format !== 'decision' ||
+        status !== 'loading' ||
+        messages.filter((message) => message.role === 'user').at(-1)?.id !==
+          requestId ||
+        !['record', 'review', 'clarify'].includes(result.nextAction) ||
+        !Number.isFinite(result.confidence) ||
+        result.confidence < 0 ||
+        result.confidence > 1
+      )
+        return;
+      decision = freeze(copy(result));
+      decisionRevision = application.revision;
+      messages = [
+        ...messages.filter((message) => message.id !== `decision-${requestId}`),
+        {
+          id: `decision-${requestId}`,
+          role: 'assistant',
+          content: json,
+          decision,
+        },
+      ];
+      record('decision', result);
+    },
+    applyDecision() {
+      if (
+        format !== 'decision' ||
+        cursor !== null ||
+        status !== 'complete' ||
+        finishReason !== 'stop' ||
+        appliedTurn === turn ||
+        !decision ||
+        decision.confidence < 0.75 ||
+        decisionRevision !== application.revision
+      )
+        return false;
+      application = freeze(
+        copy({
+          ...application,
+          revision: application.revision + 1,
+          nextAction: decision.nextAction,
+        }),
+      );
+      appliedTurn = turn;
+      record('choose', application);
+      return true;
+    },
     accept(proposal) {
       if (
         cursor !== null ||
@@ -379,7 +516,7 @@ export function createWorkbenchStore(
     },
     clear() {
       generation++;
-      application = freeze({ revision: 0, plan: null });
+      application = initialApplication();
       events = [];
       cursor = null;
       turn = 0;
@@ -387,6 +524,7 @@ export function createWorkbenchStore(
       messages = [];
       json = '';
       props = null;
+      decision = undefined;
       propsReady = false;
       finishReason = undefined;
       appliedTurn = -1;

@@ -42,6 +42,8 @@ export function workbenchMilestones(
         accept: 'Plan accepted',
         error: 'Error',
         cancel: 'Cancelled',
+        decision: 'Decision',
+        choose: 'Suggestion applied',
       };
       label = names[event.kind];
     }

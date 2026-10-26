@@ -83,7 +83,6 @@ export const INSTALL_DIGEST_CANDIDATE_LIMIT = 200;
 const INSTALL_DIGEST_CONTEXT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const FOUNDER_STOP_PATH = '/_/growth/stop';
 const SIGNATURE = 'Brian';
-const UNKNOWN_FRAMEWORK = 'not given';
 
 const FIRST_NAME_PATTERN = /^[A-Za-z][A-Za-z'’-]{0,29}$/u;
 const PLAIN_NAME_PATTERN = /^[A-Za-z'’.-]+(?:\s[A-Za-z'’.-]+){0,5}$/u;
@@ -574,7 +573,6 @@ async function dispatchNotifyJob(
     scoreVersion: score.scoreVersion,
     scoreReasons: score.reasons.map(({ code, points }) => ({ code, points })),
     submission: {
-      framework: submission?.framework ?? UNKNOWN_FRAMEWORK,
       messagePresent: message !== null,
       messageLength: message?.length ?? 0,
       ...(message === null ? {} : { message }),
