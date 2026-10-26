@@ -57,7 +57,9 @@ const navigation = {
 };
 function button(host: HTMLElement, text: string) {
   const result = [...host.querySelectorAll('button')].find(
-    (node) => node.textContent?.trim() === text,
+    (node) =>
+      node.textContent?.trim() === text ||
+      node.getAttribute('aria-label') === text,
   );
   if (!result) throw new Error(`Missing button ${text}`);
   return result;

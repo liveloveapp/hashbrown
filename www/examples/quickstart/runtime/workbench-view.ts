@@ -10,6 +10,15 @@ import {
   type WorkbenchLessonId,
   workbenchLessons,
 } from './workbench-lessons';
+import { workbenchIcon, type WorkbenchIconName } from './workbench-icons';
+import {
+  adjacentTurnIndex,
+  formatPlaybackSeconds,
+  nextPlaybackSpeed,
+  workbenchShortcut,
+  workbenchTickPercent,
+  workbenchTurnSegments,
+} from './workbench-player';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
 import { createWorkbenchSplit } from './workbench-split';
 import { workbenchRecipePrompts } from './workbench-recipes';
@@ -146,6 +155,19 @@ function button(text: string, action: () => void): HTMLButtonElement {
   node.type = 'button';
   node.onclick = action;
   return node;
+}
+function iconButton(
+  label: string,
+  icon: WorkbenchIconName,
+  action: () => void,
+): HTMLButtonElement {
+  const node = button('', action);
+  node.setAttribute('aria-label', label);
+  node.append(workbenchIcon(icon));
+  return node;
+}
+function playbackSpeedLabel(speed: number): string {
+  return speed === 0.5 ? '½×' : `${speed}×`;
 }
 function pre(value: unknown): HTMLPreElement {
   return element(
@@ -460,12 +482,11 @@ export function mountWorkbench(
   );
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
-  const controls = element('div', '', 'wb-actions');
   let rawEvents = false;
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
-  const play = button('Play', () => {
+  const play = iconButton('Play', 'play', () => {
     if (playing) {
       pause();
       return;
@@ -480,22 +501,22 @@ export function mountWorkbench(
     schedule();
     render();
   });
-  const returnLive = button('Return to live', () => {
+  play.classList.add('wb-play');
+  const returnLive = button('', () => {
     pause();
     store.live();
   });
-  const rate = element('select');
-  rate.setAttribute('aria-label', 'Playback speed');
-  [0.5, 1, 2].forEach((value) => {
-    const option = element('option', `${value}×`);
-    option.value = String(value);
-    rate.append(option);
-  });
-  rate.value = '1';
-  rate.onchange = () => {
-    speed = Number(rate.value);
+  returnLive.className = 'wb-live';
+  returnLive.setAttribute('aria-label', 'Return to live');
+  const liveLabel = document.createTextNode('LIVE');
+  returnLive.append(element('span', '', 'wb-live-dot'), liveLabel);
+  const speedButton = button(playbackSpeedLabel(speed), () => {
+    speed = nextPlaybackSpeed(speed);
+    speedButton.textContent = playbackSpeedLabel(speed);
     if (playing) schedule();
-  };
+  });
+  speedButton.className = 'wb-speed';
+  speedButton.setAttribute('aria-label', 'Playback speed');
   const seek = element('input');
   seek.type = 'range';
   seek.min = '0';
@@ -504,16 +525,19 @@ export function mountWorkbench(
     pause();
     store.seek(Number(seek.value));
   };
-  const timing = element('span', 'No captured events', 'wb-mono');
+  const timing = element('span', 'No captured events', 'wb-time wb-mono');
+  const segments = element('div', '', 'wb-segments');
   const events = element('div', '', 'wb-events');
-  const previous = button('Previous event', () => {
+  const flag = element('span', '', 'wb-flag');
+  flag.setAttribute('aria-hidden', 'true');
+  const previous = iconButton('Previous event', 'previous-event', () => {
     pause();
     const snapshot = store.getSnapshot();
     store.seek(
       Math.max(0, (snapshot.cursor ?? snapshot.events.length - 1) - 1),
     );
   });
-  const next = button('Next event', () => {
+  const next = iconButton('Next event', 'next-event', () => {
     pause();
     const snapshot = store.getSnapshot();
     store.seek(
@@ -523,31 +547,65 @@ export function mountWorkbench(
       ),
     );
   });
-  const turns = element('select');
-  turns.setAttribute('aria-label', 'Conversation turn');
-  turns.onchange = () => {
+  const jumpTurn = (direction: -1 | 1) => () => {
     pause();
-    const index = store
-      .getSnapshot()
-      .events.findIndex((event) => event.turn === Number(turns.value));
-    if (index >= 0) store.seek(index);
+    const snapshot = store.getSnapshot();
+    const index = adjacentTurnIndex(
+      snapshot.events,
+      snapshot.cursor,
+      direction,
+    );
+    if (index !== null) store.seek(index);
   };
-  const rawToggle = button('Raw events', () => {
+  const previousTurn = iconButton(
+    'Previous turn',
+    'previous-turn',
+    jumpTurn(-1),
+  );
+  const nextTurn = iconButton('Next turn', 'next-turn', jumpTurn(1));
+  const rawToggle = iconButton('Raw events', 'raw-events', () => {
     rawEvents = !rawEvents;
     render();
   });
   rawToggle.setAttribute('aria-pressed', 'false');
-  controls.append(
-    play,
-    previous,
-    next,
-    returnLive,
-    turns,
-    rate,
-    rawToggle,
+  const transport = element('div', '', 'wb-transport');
+  transport.append(previousTurn, previous, play, next, nextTurn);
+  const scrubber = element('div', '', 'wb-scrubber');
+  scrubber.append(segments, seek, events, flag);
+  const player = element('div', '', 'wb-player');
+  player.append(
+    transport,
+    scrubber,
     timing,
+    speedButton,
+    rawToggle,
+    returnLive,
   );
-  footer.append(controls, events, seek);
+  footer.append(player);
+  const shortcutTargets = {
+    'toggle-play': play,
+    'previous-event': previous,
+    'next-event': next,
+    'previous-turn': previousTurn,
+    'next-turn': nextTurn,
+    live: returnLive,
+  } as const;
+  function onShortcut(event: KeyboardEvent) {
+    if (event.defaultPrevented || !root.isConnected) return;
+    if (root.closest('[hidden]')) return;
+    const shortcut = workbenchShortcut(event, event.target);
+    if (!shortcut) return;
+    if (shortcut === 'toggle-sidebar') {
+      event.preventDefault();
+      layoutStore.set({ rail: !layoutStore.get().rail });
+      return;
+    }
+    const target = shortcutTargets[shortcut];
+    if (target.disabled) return;
+    event.preventDefault();
+    target.click();
+  }
+  document.addEventListener('keydown', onShortcut);
   const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
   layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
@@ -555,7 +613,13 @@ export function mountWorkbench(
   function pause() {
     playing = false;
     clearTimeout(timer);
-    play.textContent = 'Play';
+    syncPlayButton();
+  }
+  function syncPlayButton() {
+    const label = playing ? 'Pause' : 'Play';
+    if (play.getAttribute('aria-label') === label) return;
+    play.setAttribute('aria-label', label);
+    play.replaceChildren(workbenchIcon(playing ? 'pause' : 'play'));
   }
   function schedule() {
     clearTimeout(timer);
@@ -954,8 +1018,8 @@ export function mountWorkbench(
       inspection.append(issue);
     }
     events.replaceChildren();
-    const rows = new Map<number, HTMLElement>();
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
+    const total = snapshot.events.length;
     const milestones = rawEvents
       ? snapshot.events.map((event, index) => ({
           index,
@@ -965,46 +1029,59 @@ export function mountWorkbench(
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
-      .at(-1)?.index;
+      .at(-1);
     milestones.forEach(({ index, label }) => {
       const event = snapshot.events[index];
-      let row = rows.get(event.turn);
-      if (!row) {
-        row = element('div', '', 'wb-timeline-row');
-        row.append(element('span', `Turn ${event.turn}`, 'wb-mono'));
-        rows.set(event.turn, row);
-        events.append(row);
-      }
       const item = button(label, () => {
         pause();
         store.seek(index);
       });
       item.disabled = busy;
+      item.style.left = `${workbenchTickPercent(index, total)}%`;
       item.setAttribute(
         'aria-label',
         `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
       );
-      item.setAttribute('aria-pressed', String(index === activeMilestone));
-      row.append(item);
+      item.setAttribute(
+        'aria-pressed',
+        String(index === activeMilestone?.index),
+      );
+      events.append(item);
     });
+    segments.replaceChildren(
+      ...workbenchTurnSegments(snapshot.events).map(({ turn, start, end }) => {
+        const segment = element('div', '', 'wb-segment');
+        const left = workbenchTickPercent(start, total);
+        segment.style.left = `${left}%`;
+        segment.style.width = `${workbenchTickPercent(end, total) - left}%`;
+        segment.toggleAttribute('data-played', selectedIndex >= start);
+        segment.append(element('span', `Turn ${turn}`, 'wb-mono'));
+        return segment;
+      }),
+    );
+    flag.textContent = total ? (activeMilestone?.label ?? '') : '';
+    flag.style.left = total
+      ? `${workbenchTickPercent(selectedIndex, total)}%`
+      : '';
     previous.disabled = busy || selectedIndex <= 0;
-    next.disabled = busy || selectedIndex >= snapshot.events.length - 1;
-    turns.replaceChildren();
-    [...new Set(snapshot.events.map((event) => event.turn))].forEach((turn) => {
-      const option = element('option', `Turn ${turn}`);
-      option.value = String(turn);
-      turns.append(option);
-    });
-    turns.value = String(frame?.turn ?? snapshot.turn);
-    turns.disabled = busy || !snapshot.events.length;
-    seek.max = String(Math.max(0, snapshot.events.length - 1));
-    seek.value = String(snapshot.cursor ?? snapshot.events.length - 1);
-    seek.disabled = busy || !snapshot.events.length;
-    play.disabled = busy || snapshot.events.length < 2;
-    play.textContent = playing ? 'Pause' : 'Play';
-    timing.textContent = frame
-      ? `${frame.elapsedMs} ms · event ${(snapshot.cursor ?? snapshot.events.length - 1) + 1} / ${snapshot.events.length}`
-      : 'No captured events';
+    next.disabled = busy || selectedIndex >= total - 1;
+    previousTurn.disabled =
+      busy || adjacentTurnIndex(snapshot.events, snapshot.cursor, -1) === null;
+    nextTurn.disabled =
+      busy || adjacentTurnIndex(snapshot.events, snapshot.cursor, 1) === null;
+    seek.max = String(Math.max(0, total - 1));
+    seek.value = String(snapshot.cursor ?? total - 1);
+    seek.disabled = busy || !total;
+    play.disabled = busy || total < 2;
+    syncPlayButton();
+    returnLive.disabled = !historical;
+    returnLive.toggleAttribute('data-live', !historical);
+    liveLabel.data = historical ? 'Go live' : 'LIVE';
+    const last = snapshot.events.at(-1);
+    timing.textContent =
+      frame && last
+        ? `${formatPlaybackSeconds(frame.elapsedMs)} / ${formatPlaybackSeconds(last.elapsedMs)}`
+        : 'No captured events';
     queueMicrotask(() => {
       if (historical) replay.scrollTop = replay.scrollHeight;
       else if (following) live.scrollTop = live.scrollHeight;
@@ -1023,6 +1100,7 @@ export function mountWorkbench(
     },
     dispose: () => {
       pause();
+      document.removeEventListener('keydown', onShortcut);
       unsubscribe();
       unsubscribeLayout();
       split.dispose();

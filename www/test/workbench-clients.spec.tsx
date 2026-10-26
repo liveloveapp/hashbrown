@@ -166,7 +166,9 @@ test('seeks with explicit event controls and stops scheduled playback on dispose
   store.settle('cancelled');
   const byText = (text: string) =>
     [...host.querySelectorAll('button')].find(
-      (button) => button.textContent === text,
+      (button) =>
+        button.textContent?.trim() === text ||
+        button.getAttribute('aria-label') === text,
     ) ??
     (() => {
       throw new Error(`Missing ${text} button`);
@@ -343,7 +345,9 @@ test('labels captured fixture provenance and pauses playback when selecting the 
   store.record('source', { source: 'test-fixture' });
   store.settle('complete', 'stop');
   const play = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Play',
+    (button) =>
+      button.textContent?.trim() === 'Play' ||
+      button.getAttribute('aria-label') === 'Play',
   );
   const conversation = [...host.querySelectorAll('button')].find(
     (button) => button.textContent?.trim() === 'Two-step plan',
@@ -440,7 +444,9 @@ test('keeps every inspector panel visible and exposes raw timeline frames on dem
   store.settle('cancelled');
   const timeline = host.querySelector('.wb-events');
   const toggle = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Raw events',
+    (button) =>
+      button.textContent?.trim() === 'Raw events' ||
+      button.getAttribute('aria-label') === 'Raw events',
   );
 
   expect(host.querySelector<HTMLElement>('.wb-inspector')?.hidden).toBe(false);

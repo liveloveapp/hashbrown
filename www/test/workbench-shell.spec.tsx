@@ -315,3 +315,192 @@ test('keeps the handle across store updates', () => {
   expect(before?.querySelectorAll('.wb-grip polyline')).toHaveLength(2);
   shell.dispose();
 });
+
+function recordTwoTurns(store: ReturnType<typeof createWorkbenchStore>) {
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
+  const secondTurnStart = store.getSnapshot().events.length;
+  store.send('Shorter');
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
+  return secondTurnStart;
+}
+
+function playerButton(host: HTMLElement, label: string) {
+  const result = host.querySelector<HTMLButtonElement>(
+    `.wb-player button[aria-label="${label}"]`,
+  );
+  if (!result) throw new Error(`Missing ${label} button`);
+  return result;
+}
+
+function press(
+  target: EventTarget,
+  key: string,
+  init: KeyboardEventInit = {},
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+test('jumps turns and cycles speed from the player', () => {
+  const { host, store, shell } = mountShell();
+  const secondTurnStart = recordTwoTurns(store);
+  const speed = host.querySelector<HTMLButtonElement>('.wb-player .wb-speed');
+
+  playerButton(host, 'Previous turn').click();
+  const afterFirstPrevious = store.getSnapshot().cursor;
+  playerButton(host, 'Previous turn').click();
+  const afterSecondPrevious = store.getSnapshot().cursor;
+  playerButton(host, 'Next turn').click();
+  const afterNext = store.getSnapshot().cursor;
+  const speeds = [speed?.textContent];
+  speed?.click();
+  speeds.push(speed?.textContent);
+  speed?.click();
+  speeds.push(speed?.textContent);
+
+  expect(secondTurnStart).toBeGreaterThan(0);
+  expect(afterFirstPrevious).toBe(secondTurnStart);
+  expect(afterSecondPrevious).toBe(0);
+  expect(afterNext).toBe(secondTurnStart);
+  expect(speed?.getAttribute('aria-label')).toBe('Playback speed');
+  expect(speeds).toEqual(['1×', '2×', '½×']);
+  expect(host.querySelectorAll('.wb-scrubber .wb-segment')).toHaveLength(2);
+  expect(host.querySelector('select')).toBeNull();
+  shell.dispose();
+});
+
+test('shows LIVE at the head and Return to live in replay', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const live = host.querySelector<HTMLButtonElement>('.wb-player .wb-live');
+  const atHead = {
+    disabled: live?.disabled,
+    marked: live?.hasAttribute('data-live'),
+    text: live?.textContent?.trim(),
+    dot: !!live?.querySelector('.wb-live-dot'),
+  };
+
+  playerButton(host, 'Previous event').click();
+  const inReplay = {
+    disabled: live?.disabled,
+    marked: live?.hasAttribute('data-live'),
+    text: live?.textContent?.trim(),
+  };
+  live?.click();
+
+  expect(live?.getAttribute('aria-label')).toBe('Return to live');
+  expect(atHead).toEqual({
+    disabled: true,
+    marked: true,
+    text: 'LIVE',
+    dot: true,
+  });
+  expect(inReplay).toEqual({ disabled: false, marked: false, text: 'Go live' });
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('toggles the play label and icon and reports playback time', () => {
+  vi.useFakeTimers();
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const play = playerButton(host, 'Play');
+  const time = host.querySelector('.wb-player .wb-time');
+
+  play.click();
+  const playing = {
+    label: play.getAttribute('aria-label'),
+    playing: play.classList.contains('wb-play'),
+    text: play.textContent?.trim(),
+    icon: !!play.querySelector('svg'),
+  };
+  shell.pause();
+
+  expect(playing).toEqual({
+    label: 'Pause',
+    playing: true,
+    text: '',
+    icon: true,
+  });
+  expect(play.getAttribute('aria-label')).toBe('Play');
+  expect(time?.textContent).toMatch(/^\d+\.\d{2} s \/ \d+\.\d{2} s$/);
+  shell.dispose();
+  vi.useRealTimers();
+});
+
+test('positions ticks and the flag on the scrubber', () => {
+  const { host, store, shell } = mountShell();
+  const empty = host.querySelector('.wb-player .wb-time')?.textContent;
+  recordTwoTurns(store);
+
+  playerButton(host, 'Previous turn').click();
+
+  const ticks = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-scrubber .wb-events button',
+    ),
+  ];
+  const flag = host.querySelector<HTMLElement>('.wb-scrubber .wb-flag');
+  const pressed = ticks.find(
+    (tick) => tick.getAttribute('aria-pressed') === 'true',
+  );
+  const segments = [
+    ...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment'),
+  ];
+  expect(empty).toBe('No captured events');
+  expect(ticks.every((tick) => tick.style.left.endsWith('%'))).toBe(true);
+  expect(flag?.getAttribute('aria-hidden')).toBe('true');
+  expect(flag?.textContent).toBe(pressed?.textContent);
+  expect(flag?.style.left).toBe('60%');
+  expect(
+    segments.map((segment) => segment.hasAttribute('data-played')),
+  ).toEqual([true, true]);
+  expect(segments[1]?.textContent).toContain('Turn 2');
+  shell.dispose();
+});
+
+test('drives playback from shortcuts only on the visible instance', () => {
+  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const first = mountShell(layout);
+  const second = mountShell(layout);
+  second.host.hidden = true;
+  recordTwoTurns(first.store);
+  recordTwoTurns(second.store);
+
+  const arrow = press(document.body, 'ArrowLeft');
+  const afterArrow = [
+    first.store.getSnapshot().cursor,
+    second.store.getSnapshot().cursor,
+  ];
+  const space = press(playerButton(first.host, 'Play'), ' ');
+  const afterSpace = first.store.getSnapshot().cursor;
+  first.shell.dispose();
+  press(document.body, 'ArrowLeft');
+  const afterDispose = first.store.getSnapshot().cursor;
+
+  expect(arrow.defaultPrevented).toBe(true);
+  expect(afterArrow).toEqual([4, null]);
+  expect(space.defaultPrevented).toBe(false);
+  expect(afterSpace).toBe(4);
+  expect(afterDispose).toBe(4);
+  expect(second.store.getSnapshot().cursor).toBeNull();
+  second.shell.dispose();
+});
+
+test('toggles the rail with Cmd+B', () => {
+  const { shell, layout } = mountShell();
+
+  press(document.body, 'b', { metaKey: true });
+
+  expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});
