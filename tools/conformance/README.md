@@ -580,8 +580,8 @@ The .NET provider matrix uses genuine OpenAI and Azure clients with aimock at
 only the model boundary. `npx nx provider-e2e dotnet-conformance` builds the two
 browser hosts, compiles the exact eight recipe combinations and tests both
 frameworks/providers. Cold structured/UI cases exercise the source SDK's
-explicit historical-diagnostics restore policy. This opt-in is unreleased;
-0.8.1 consumers retain strict restoration. Tests preserve exact native history
+explicit historical-diagnostics restore policy, available in SDK 0.8.2 or
+later. Version 0.8.1 consumers retain strict restoration. Tests preserve exact native history
 and require a new explicit approval after reload. Diagnostics are escaped text,
 not proof of cancellation ownership or permission to execute work.
 
