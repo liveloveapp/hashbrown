@@ -110,7 +110,11 @@ protocol. No system instruction, output schema or history is silently discarded.
 Two fresh npm reads, including `--prefer-online`, still returned core **0.8.1**,
 `gitHead: 7b38a6074818c9f92b641242aec20dc8a7c2347e`, at this snapshot.
 GitHub's latest release was v0.8.1. That commit predates #749, so publication of
-the phase API is not yet verified. A version/tag clarification is pending.
+the phase API is not yet verified. Direct inspection of the downloaded 0.8.1
+npm tarball confirms native tools and `schemaFinalization` declarations are
+present, while `toolPhase` and `ChromeToolsTurnContext` are absent. Package
+integrity: `sha512-W01Xb86KbgoirQ2rbA9EhSLIyefziTZ8XQpe/7trwanshjo8MbZmuaYKTLdp4vN9xJKNMI9xcC6/ThmLRJ9fGQ==`.
+A version/tag clarification is pending.
 
 Remaining: choose additional Nano versus Gemma 4B download/qualification;
 minimize nested UI failures without weakening canaries; follow Chromium empty
