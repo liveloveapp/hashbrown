@@ -112,8 +112,8 @@ hardware configuration. The existing 2B phase canaries remain unchanged.
 ### Upstream and interoperability follow-ups
 
 A separate [Chromium report draft](2026-10-25-gemma4b-tool-session-report.md)
-contains the raw create-only reproduction and text control. It has not been
-posted. Posting requires a separate user instruction.
+contains the raw create-only reproduction and text control. The user asked to
+skip posting; the report remains a draft and no issue/comment was submitted.
 
 The WebLLM image proposal is technically feasible without a dependency, but its
 legacy serializer moves images before text. A bounded opt-in would accept only
