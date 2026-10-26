@@ -4,8 +4,6 @@ import {
   jsonResponse,
   trustedFormClientIp,
   UNSTUCK_FALLBACK_ADDRESS,
-  UNSTUCK_FORM_DISCLOSURE,
-  UNSTUCK_FORM_POLICY_VERSION,
   unstuckFormEnabled,
 } from '../../src/lib/growth/form-route';
 
@@ -54,11 +52,7 @@ test('the switch accepts only exact true and logs a misconfigured value once wit
   expect(warn).toHaveBeenCalledWith('[unstuck-form-misconfigured]');
 });
 
-test('the consent text, version and fallback address are the approved values', () => {
-  expect(UNSTUCK_FORM_POLICY_VERSION).toBe('unstuck_v1.2026-10-22');
-  expect(UNSTUCK_FORM_DISCLOSURE).toBe(
-    'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.',
-  );
+test('the fallback address is brian@hashbrown.dev', () => {
   expect(UNSTUCK_FALLBACK_ADDRESS).toBe('brian@hashbrown.dev');
 });
 

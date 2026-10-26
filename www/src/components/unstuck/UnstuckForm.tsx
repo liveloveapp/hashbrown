@@ -2,17 +2,13 @@
 
 import { type FormEvent, type ReactNode, useRef, useState } from 'react';
 import styles from './UnstuckForm.module.css';
-import { type UnstuckFacts, useUnstuckForm } from './use-unstuck-form';
-
-const FRAMEWORKS = [
-  ['react', 'React'],
-  ['angular', 'Angular'],
-  ['both', 'Both'],
-  ['not_sure', 'Not sure yet'],
-] as const;
+import { useUnstuckForm } from './use-unstuck-form';
 
 const MESSAGE_MIN = 20;
 const MESSAGE_MAX = 1_000;
+/** The prompt shown under the message box. */
+const MESSAGE_HINT =
+  'What you expected, what happened instead, and any error text.';
 
 /**
  * Loose shape check, something@something.tld, refusing `<` and `>` as the
@@ -29,23 +25,22 @@ function focusOnMount(element: HTMLElement | null) {
 
 function emailError(value: string): string | null {
   const email = value.trim();
-  if (email.length === 0) return 'Enter your email address.';
-  if (!EMAIL_SHAPE.test(email))
-    return 'Enter a full address, like jordan@acme.dev.';
+  if (email.length === 0) return 'I need your email to write back.';
+  if (!EMAIL_SHAPE.test(email)) {
+    return "That doesn't look like a full address. Try something like jordan@acme.dev.";
+  }
   return null;
-}
-
-function frameworkError(value: string): string | null {
-  return value === '' ? 'Pick the framework you are using.' : null;
 }
 
 /** Measured like the server: trimmed, in UTF-16 code units. */
 function messageError(value: string): string | null {
   const length = value.trim().length;
   if (length < MESSAGE_MIN) {
-    return 'Tell Brian a little more, at least 20 characters.';
+    return 'Give me a bit more to go on, at least 20 characters.';
   }
-  if (length > MESSAGE_MAX) return 'Keep it to 1,000 characters or fewer.';
+  if (length > MESSAGE_MAX) {
+    return "That's over 1,000 characters. Send the short version and we'll go from there.";
+  }
   return null;
 }
 
@@ -88,32 +83,23 @@ function controlProps(id: string, error: string | null, extra?: string) {
 }
 
 /**
- * The Get unstuck form: email, framework and "Where are you stuck?", the
- * consent disclosure, and Send. Validation is by hand (`noValidate`) so errors
- * are linked to their fields; the first invalid field takes focus on submit.
+ * The Get unstuck form: two fields, "Your email" and "Where are you stuck?",
+ * then Send with the email address beside it for anyone who would rather
+ * write directly. There is no consent disclosure. Each field validates when it
+ * loses focus and again on every change while it shows an error. Validation is
+ * by hand (`noValidate`) so errors are linked to their fields; the first
+ * invalid field takes focus on submit.
  *
- * @param props.policyVersion - The consent copy version sent with the request.
- * @param props.disclosure - The consent copy shown above the button.
- * @param props.fallbackAddress - Where to write if sending fails.
+ * @param props.fallbackAddress - The address offered beside Send, in the sent
+ * copy and when sending fails.
  */
-export function UnstuckForm({
-  policyVersion,
-  disclosure,
-  fallbackAddress,
-}: {
-  policyVersion: string;
-  disclosure: string;
-  fallbackAddress: string;
-}) {
-  const form = useUnstuckForm({ policyVersion });
+export function UnstuckForm({ fallbackAddress }: { fallbackAddress: string }) {
+  const form = useUnstuckForm();
   const [email, setEmail] = useState('');
-  const [framework, setFramework] = useState('');
   const [message, setMessage] = useState('');
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
-  const [frameworkMessage, setFrameworkMessage] = useState<string | null>(null);
   const [messageMessage, setMessageMessage] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
-  const frameworkRef = useRef<HTMLSelectElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
   /** Dismiss a lingering failure alert once the visitor starts editing. */
@@ -123,23 +109,15 @@ export function UnstuckForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const problems = [
-      emailError(email),
-      frameworkError(framework),
-      messageError(message),
-    ] as const;
-    setEmailMessage(problems[0]);
-    setFrameworkMessage(problems[1]);
-    setMessageMessage(problems[2]);
-    if (problems[0]) {
+    const emailProblem = emailError(email);
+    const messageProblem = messageError(message);
+    setEmailMessage(emailProblem);
+    setMessageMessage(messageProblem);
+    if (emailProblem) {
       emailRef.current?.focus();
       return;
     }
-    if (problems[1]) {
-      frameworkRef.current?.focus();
-      return;
-    }
-    if (problems[2]) {
+    if (messageProblem) {
       messageRef.current?.focus();
       return;
     }
@@ -147,7 +125,6 @@ export function UnstuckForm({
     const honeypot = new FormData(event.currentTarget).get('website_url');
     void form.submit({
       email: email.trim(),
-      framework: framework as UnstuckFacts['framework'],
       message: message.trim(),
       website_url: typeof honeypot === 'string' ? honeypot : '',
     });
@@ -161,31 +138,8 @@ export function UnstuckForm({
         tabIndex={-1}
         ref={focusOnMount}
       >
-        <strong>Got it.</strong> Brian reads every one of these and replies from
-        brian@hashbrown.dev.
-      </div>
-    );
-  }
-
-  if (form.status === 'stale') {
-    return (
-      <div
-        className={styles.status}
-        role="alert"
-        tabIndex={-1}
-        ref={focusOnMount}
-      >
-        <p>
-          <strong>This page is out of date.</strong> Refresh it before sending
-          again.
-        </p>
-        <button
-          className={styles.button}
-          type="button"
-          onClick={() => window.location.reload()}
-        >
-          Refresh page
-        </button>
+        <strong>Got it.</strong> A confirmation is on its way, and I&apos;ll
+        reply from {fallbackAddress}.
       </div>
     );
   }
@@ -207,7 +161,7 @@ export function UnstuckForm({
           defaultValue=""
         />
       </div>
-      <Field id="unstuck-email" label="Email" error={emailMessage}>
+      <Field id="unstuck-email" label="Your email" error={emailMessage}>
         <input
           {...controlProps('unstuck-email', emailMessage)}
           ref={emailRef}
@@ -224,36 +178,17 @@ export function UnstuckForm({
           onBlur={() => setEmailMessage(emailError(email))}
         />
       </Field>
-      <Field id="unstuck-framework" label="Framework" error={frameworkMessage}>
-        <select
-          {...controlProps('unstuck-framework', frameworkMessage)}
-          ref={frameworkRef}
-          value={framework}
-          onChange={(event) => {
-            edited();
-            setFramework(event.target.value);
-            if (frameworkMessage) {
-              setFrameworkMessage(frameworkError(event.target.value));
-            }
-          }}
-        >
-          <option value="" disabled>
-            Select a framework
-          </option>
-          {FRAMEWORKS.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </Field>
       <Field
         id="unstuck-message"
         label="Where are you stuck?"
         error={messageMessage}
       >
         <textarea
-          {...controlProps('unstuck-message', messageMessage, 'unstuck-count')}
+          {...controlProps(
+            'unstuck-message',
+            messageMessage,
+            'unstuck-hint unstuck-count',
+          )}
           ref={messageRef}
           rows={6}
           value={message}
@@ -263,31 +198,38 @@ export function UnstuckForm({
             if (messageMessage)
               setMessageMessage(messageError(event.target.value));
           }}
+          onBlur={() => setMessageMessage(messageError(message))}
         />
-        <p
-          className={length > MESSAGE_MAX ? styles.countOver : styles.count}
-          id="unstuck-count"
-        >
-          {length.toLocaleString('en-US')} / 1,000
-        </p>
+        <div className={styles.below}>
+          <p className={styles.hint} id="unstuck-hint">
+            {MESSAGE_HINT}
+          </p>
+          <p
+            className={length > MESSAGE_MAX ? styles.countOver : styles.count}
+            id="unstuck-count"
+          >
+            {length.toLocaleString('en-US')} / 1,000
+          </p>
+        </div>
       </Field>
-      <p className={styles.disclosure} id="unstuck-disclosure">
-        {disclosure}
-      </p>
-      <button
-        className={styles.button}
-        type="submit"
-        aria-describedby="unstuck-disclosure"
-        aria-busy={pending || undefined}
-        disabled={pending}
-      >
-        {pending ? 'Sending…' : 'Send to Brian'}
-      </button>
+      <div className={styles.footerRow}>
+        <button
+          className={styles.button}
+          type="submit"
+          aria-busy={pending || undefined}
+          disabled={pending}
+        >
+          {pending ? 'Sending…' : 'Send'}
+        </button>
+        <p className={styles.alternative}>
+          Rather email?{' '}
+          <a href={`mailto:${fallbackAddress}`}>{fallbackAddress}</a>
+        </p>
+      </div>
       {form.status === 'failed' ? (
         <div className={styles.status} role="alert">
-          <strong>That did not send.</strong> Write to Brian at{' '}
-          <a href={`mailto:${fallbackAddress}`}>{fallbackAddress}</a> instead,
-          or try again.
+          <strong>That didn&apos;t send.</strong> Try again, or email me at{' '}
+          <a href={`mailto:${fallbackAddress}`}>{fallbackAddress}</a>.
         </div>
       ) : null}
     </form>

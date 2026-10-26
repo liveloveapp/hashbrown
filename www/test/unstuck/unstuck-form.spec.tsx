@@ -9,35 +9,28 @@ import {
 import posthog from 'posthog-js';
 import { expect, test, vi } from 'vitest';
 import { UnstuckForm } from '../../src/components/unstuck/UnstuckForm';
-import {
-  UNSTUCK_FALLBACK_ADDRESS,
-  UNSTUCK_FORM_DISCLOSURE,
-  UNSTUCK_FORM_POLICY_VERSION,
-} from '../../src/lib/growth/form-route';
+import { UNSTUCK_FALLBACK_ADDRESS } from '../../src/lib/growth/form-route';
 
 vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), init: vi.fn() } }));
 
 const MESSAGE = 'I cannot get streaming tool calls to render in my app.';
+const EMAIL_EMPTY = 'I need your email to write back.';
+const EMAIL_MALFORMED =
+  "That doesn't look like a full address. Try something like jordan@acme.dev.";
+const MESSAGE_SHORT = 'Give me a bit more to go on, at least 20 characters.';
+const MESSAGE_LONG =
+  "That's over 1,000 characters. Send the short version and we'll go from there.";
 
 /** Mounts a fresh form; clears the previous test's DOM first. */
 function mount() {
   cleanup();
   vi.mocked(posthog.capture).mockClear();
-  return render(
-    <UnstuckForm
-      policyVersion={UNSTUCK_FORM_POLICY_VERSION}
-      disclosure={UNSTUCK_FORM_DISCLOSURE}
-      fallbackAddress={UNSTUCK_FALLBACK_ADDRESS}
-    />,
-  );
+  return render(<UnstuckForm fallbackAddress={UNSTUCK_FALLBACK_ADDRESS} />);
 }
 
-function fill(email: string, framework: string, message: string) {
-  fireEvent.change(screen.getByLabelText('Email'), {
+function fill(email: string, message: string) {
+  fireEvent.change(screen.getByLabelText('Your email'), {
     target: { value: email },
-  });
-  fireEvent.change(screen.getByLabelText('Framework'), {
-    target: { value: framework },
   });
   fireEvent.change(screen.getByLabelText('Where are you stuck?'), {
     target: { value: message },
@@ -45,7 +38,7 @@ function fill(email: string, framework: string, message: string) {
 }
 
 function send() {
-  fireEvent.click(screen.getByRole('button', { name: 'Send to Brian' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
 
 function respond(status: number, body: unknown = { ok: true }) {
@@ -61,35 +54,31 @@ function sentBody(fetchMock: ReturnType<typeof respond>, call = 0) {
   return JSON.parse(init[1].body as string) as Record<string, unknown>;
 }
 
-test('renders every field, the disclosure before the button, and the button describes it', () => {
+test('renders two fields, the hint, the count and the email fallback beside Send, with no disclosure', () => {
   mount();
 
-  const email = screen.getByLabelText('Email');
-  const framework = screen.getByLabelText('Framework') as HTMLSelectElement;
+  const email = screen.getByLabelText('Your email');
   const message = screen.getByLabelText('Where are you stuck?');
-  const button = screen.getByRole('button', { name: 'Send to Brian' });
-  const disclosure = screen.getByText(UNSTUCK_FORM_DISCLOSURE);
+  const button = screen.getByRole('button', { name: 'Send' });
+  const hint = screen.getByText(
+    'What you expected, what happened instead, and any error text.',
+  );
+  const link = screen.getByRole('link', { name: UNSTUCK_FALLBACK_ADDRESS });
 
   expect(email.closest('form')?.noValidate).toBe(true);
-  expect(Array.from(framework.options).map((o) => o.text)).toEqual([
-    'Select a framework',
-    'React',
-    'Angular',
-    'Both',
-    'Not sure yet',
-  ]);
-  expect(framework.options[0].disabled).toBe(true);
+  expect(screen.queryByLabelText('Framework')).toBeNull();
   expect(message.tagName).toBe('TEXTAREA');
-  expect(disclosure.id).toBe('unstuck-disclosure');
-  expect(button.getAttribute('aria-describedby')).toBe('unstuck-disclosure');
-  expect(
-    message.compareDocumentPosition(disclosure) &
-      Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
-  expect(
-    disclosure.compareDocumentPosition(button) &
-      Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
+  expect(hint.id).toBe('unstuck-hint');
+  expect(message.getAttribute('aria-describedby')).toBe(
+    'unstuck-hint unstuck-count',
+  );
+  expect(screen.getByText('0 / 1,000').id).toBe('unstuck-count');
+  expect(link.getAttribute('href')).toBe('mailto:brian@hashbrown.dev');
+  expect(link.closest('p')?.textContent).toBe(
+    'Rather email? brian@hashbrown.dev',
+  );
+  expect(screen.queryByText(/By sending/)).toBeNull();
+  expect(button.getAttribute('aria-describedby')).toBeNull();
   const trap = document.querySelector<HTMLInputElement>(
     'input[name="website_url"]',
   );
@@ -97,27 +86,48 @@ test('renders every field, the disclosure before the button, and the button desc
   expect(trap?.closest('[aria-hidden="true"]')).not.toBeNull();
 });
 
-test('email is validated on blur with the design copy and re-validated on change', () => {
+test('email validates on blur with the new copy', () => {
   mount();
-  const email = screen.getByLabelText('Email');
+  const email = screen.getByLabelText('Your email');
 
-  fireEvent.change(email, { target: { value: 'jordan' } });
   fireEvent.blur(email);
 
-  expect(
-    screen.getByText('Enter a full address, like jordan@acme.dev.').id,
-  ).toBe('unstuck-email-error');
+  expect(screen.getByText(EMAIL_EMPTY).id).toBe('unstuck-email-error');
   expect(email.getAttribute('aria-invalid')).toBe('true');
-  expect(email.getAttribute('aria-describedby')).toContain(
-    'unstuck-email-error',
-  );
+  expect(email.getAttribute('aria-describedby')).toBe('unstuck-email-error');
+
+  fireEvent.change(email, { target: { value: 'jordan@acme' } });
+  fireEvent.blur(email);
+
+  expect(screen.getByText(EMAIL_MALFORMED).id).toBe('unstuck-email-error');
 
   fireEvent.change(email, { target: { value: 'jordan@acme.dev' } });
 
-  expect(
-    screen.queryByText('Enter a full address, like jordan@acme.dev.'),
-  ).toBeNull();
+  expect(screen.queryByText(EMAIL_MALFORMED)).toBeNull();
   expect(email.getAttribute('aria-invalid')).toBeNull();
+});
+
+test('message validates on blur and clears as soon as it is valid', () => {
+  mount();
+  const message = screen.getByLabelText('Where are you stuck?');
+
+  fireEvent.blur(message);
+
+  expect(screen.getByText(MESSAGE_SHORT).id).toBe('unstuck-message-error');
+  expect(message.getAttribute('aria-invalid')).toBe('true');
+  expect(message.getAttribute('aria-describedby')).toBe(
+    'unstuck-hint unstuck-count unstuck-message-error',
+  );
+
+  fireEvent.change(message, { target: { value: MESSAGE } });
+
+  expect(screen.queryByText(MESSAGE_SHORT)).toBeNull();
+  expect(message.getAttribute('aria-invalid')).toBeNull();
+
+  fireEvent.change(message, { target: { value: 'a'.repeat(1_001) } });
+  fireEvent.blur(message);
+
+  expect(screen.getByText(MESSAGE_LONG).id).toBe('unstuck-message-error');
 });
 
 test('the message counter measures the trimmed UTF-16 length', () => {
@@ -136,16 +146,15 @@ test('submit focuses the first invalid field and sends nothing', () => {
 
   send();
 
-  expect(document.activeElement).toBe(screen.getByLabelText('Email'));
-  expect(screen.getByText('Pick the framework you are using.').id).toBe(
-    'unstuck-framework-error',
-  );
+  expect(document.activeElement).toBe(screen.getByLabelText('Your email'));
+  expect(screen.getByText(EMAIL_EMPTY)).toBeTruthy();
+  expect(screen.getByText(MESSAGE_SHORT)).toBeTruthy();
   expect(
     screen.getByLabelText('Where are you stuck?').getAttribute('aria-invalid'),
   ).toBe('true');
   expect(fetchMock).not.toHaveBeenCalled();
 
-  fill('jordan@acme.dev', 'react', 'too short');
+  fill('jordan@acme.dev', 'too short');
   send();
 
   expect(document.activeElement).toBe(
@@ -157,36 +166,36 @@ test('submit focuses the first invalid field and sends nothing', () => {
 test('a valid submission posts the envelope once, shows the success copy and fires submit then success', async () => {
   const fetchMock = respond(200);
   mount();
-  fill(' jordan@acme.dev ', 'angular', `  ${MESSAGE}  `);
+  fill(' jordan@acme.dev ', `  ${MESSAGE}  `);
 
   send();
   fireEvent.submit(
-    screen.getByLabelText('Email').closest('form') as HTMLFormElement,
+    screen.getByLabelText('Your email').closest('form') as HTMLFormElement,
   );
 
   await waitFor(() =>
-    expect(screen.getByRole('status').textContent).toContain(
-      'Got it. Brian reads every one of these and replies from brian@hashbrown.dev.',
+    expect(screen.getByRole('status').textContent).toBe(
+      "Got it. A confirmation is on its way, and I'll reply from brian@hashbrown.dev.",
     ),
   );
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(sentBody(fetchMock)).toMatchObject({
-    policy_version: UNSTUCK_FORM_POLICY_VERSION,
+  expect(sentBody(fetchMock)).toEqual({
+    submission_id: expect.any(String),
     email: 'jordan@acme.dev',
-    framework: 'angular',
     message: MESSAGE,
+    website_url: '',
   });
   expect(vi.mocked(posthog.capture).mock.calls.map((c) => c[0])).toEqual([
     'marketing:unstuck_form_submit',
     'marketing:unstuck_form_success',
   ]);
-  expect(screen.queryByRole('button', { name: 'Send to Brian' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
 });
 
 test('a retry with identical facts reuses the submission id; changed facts mint a new one', async () => {
   const fetchMock = respond(503, { error: 'x', retryable: true });
   mount();
-  fill('jordan@acme.dev', 'react', MESSAGE);
+  fill('jordan@acme.dev', MESSAGE);
 
   send();
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
@@ -207,30 +216,10 @@ test('a retry with identical facts reuses the submission id; changed facts mint 
   );
 });
 
-test('409 shows the refresh screen and fires fail with stale_form', async () => {
-  respond(409, { policy_version: 'newer' });
-  mount();
-  fill('jordan@acme.dev', 'both', MESSAGE);
-
-  send();
-
-  await waitFor(() =>
-    expect(screen.getByRole('alert').textContent).toContain('out of date'),
-  );
-  expect(screen.getByRole('button', { name: 'Refresh page' })).toBeTruthy();
-  expect(vi.mocked(posthog.capture).mock.calls.map((c) => c[0])).toEqual([
-    'marketing:unstuck_form_submit',
-    'marketing:unstuck_form_fail',
-  ]);
-  expect(vi.mocked(posthog.capture).mock.calls[1][1]).toMatchObject({
-    error_reason: 'stale_form',
-  });
-});
-
 test('editing after a failure dismisses the failure alert', async () => {
   respond(503, { error: 'x', retryable: true });
   mount();
-  fill('jordan@acme.dev', 'react', MESSAGE);
+  fill('jordan@acme.dev', MESSAGE);
   send();
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
 
@@ -244,14 +233,17 @@ test('editing after a failure dismisses the failure alert', async () => {
 test('a failed request offers the fallback address and fires fail with error_reason', async () => {
   respond(503, { error: 'x', retryable: true });
   mount();
-  fill('jordan@acme.dev', 'not_sure', MESSAGE);
+  fill('jordan@acme.dev', MESSAGE);
 
   send();
 
-  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-  const link = screen.getByRole('link', { name: UNSTUCK_FALLBACK_ADDRESS });
-  expect(link.getAttribute('href')).toBe(`mailto:${UNSTUCK_FALLBACK_ADDRESS}`);
-  expect(screen.getByRole('button', { name: 'Send to Brian' })).toBeTruthy();
+  const alert = await screen.findByRole('alert');
+  expect(alert.textContent).toBe(
+    "That didn't send. Try again, or email me at brian@hashbrown.dev.",
+  );
+  const link = alert.querySelector('a');
+  expect(link?.getAttribute('href')).toBe(`mailto:${UNSTUCK_FALLBACK_ADDRESS}`);
+  expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
   const fail = vi
     .mocked(posthog.capture)
     .mock.calls.find((c) => c[0] === 'marketing:unstuck_form_fail');
@@ -264,15 +256,13 @@ test('a failed request offers the fallback address and fires fail with error_rea
 test('the email field caps at 254 characters and rejects angle brackets like the server', () => {
   const fetchMock = respond(200);
   mount();
-  const email = screen.getByLabelText('Email') as HTMLInputElement;
+  const email = screen.getByLabelText('Your email') as HTMLInputElement;
 
-  fill('<jordan@acme.dev>', 'react', MESSAGE);
+  fill('<jordan@acme.dev>', MESSAGE);
   send();
 
   expect(email.maxLength).toBe(254);
-  expect(
-    screen.getByText('Enter a full address, like jordan@acme.dev.').id,
-  ).toBe('unstuck-email-error');
+  expect(screen.getByText(EMAIL_MALFORMED).id).toBe('unstuck-email-error');
   expect(document.activeElement).toBe(email);
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -280,22 +270,11 @@ test('the email field caps at 254 characters and rejects angle brackets like the
 test('focus moves to the success status once the message is sent', async () => {
   respond(200);
   mount();
-  fill('jordan@acme.dev', 'react', MESSAGE);
+  fill('jordan@acme.dev', MESSAGE);
 
   send();
 
   const status = await screen.findByRole('status');
   expect(status.tabIndex).toBe(-1);
   expect(document.activeElement).toBe(status);
-});
-
-test('focus moves to the refresh notice when the form is out of date', async () => {
-  respond(409, { policy_version: 'newer' });
-  mount();
-  fill('jordan@acme.dev', 'react', MESSAGE);
-
-  send();
-
-  const alert = await screen.findByRole('alert');
-  expect(document.activeElement).toBe(alert);
 });
