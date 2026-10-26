@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/anthropic",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Anthropic provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -13,7 +13,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "@ag-ui/core": "1.0.3",
-    "@hashbrownai/core": "0.8.2",
+    "@hashbrownai/core": "0.8.3",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
