@@ -173,12 +173,9 @@
   display: none;
 }
 
+/* The frame, border and scrolling live in ScrollTable. */
 .markdown table {
   border-collapse: collapse;
-  border-radius: 12px;
-  margin: 0 0 24px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px #000;
 }
 
 .markdown table > thead {
