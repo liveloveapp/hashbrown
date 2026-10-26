@@ -104,7 +104,8 @@ test('propagates downstream cancellation through the stable endpoint', async () 
       body: '{}',
       signal: cancellation.signal,
     });
-    const first = await response.body!.getReader().read();
+    if (!response.body) throw new Error('Expected the upstream stream body.');
+    const first = await response.body.getReader().read();
     cancellation.abort();
     await closed;
 

@@ -190,12 +190,14 @@ for (const provider of ['openai', 'azure'] as const) {
             }),
           ],
         );
-        expect(
-          JSON.parse(
-            history.find((item) => item.type === 'function_call')!
-              .arguments as string,
-          ),
-        ).toEqual({ city: 'Paris' });
+        const nativeFunctionCall = history.find(
+          (item) => item.type === 'function_call',
+        );
+        if (!nativeFunctionCall)
+          throw new Error('Expected the native function call.');
+        expect(JSON.parse(nativeFunctionCall.arguments as string)).toEqual({
+          city: 'Paris',
+        });
         expect(
           history.filter((item) => item.type === 'function_call_output'),
         ).toEqual([
@@ -273,12 +275,14 @@ for (const provider of ['openai', 'azure'] as const) {
             }),
           ],
         );
-        expect(
-          JSON.parse(
-            history.find((item) => item.type === 'function_call')!
-              .arguments as string,
-          ),
-        ).toEqual({ code: 'PDX' });
+        const nativeFunctionCall = history.find(
+          (item) => item.type === 'function_call',
+        );
+        if (!nativeFunctionCall)
+          throw new Error('Expected the native function call.');
+        expect(JSON.parse(nativeFunctionCall.arguments as string)).toEqual({
+          code: 'PDX',
+        });
         expect(
           history.filter((item) => item.type === 'function_call_output'),
         ).toEqual([
