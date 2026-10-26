@@ -123,7 +123,7 @@ document never scrolls sideways.
   Keyboard: the scrubber is a `role="slider"` that steps by event.
 - **Right:**
   - a monospace time readout (`2.14 s / 7.33 s`);
-  - a speed control cycling ½× · 1× · 2×, keeping the `Playback speed` name;
+  - a speed control cycling ½× · 1× · 2×, named `Playback speed <value>` (for example `Playback speed 1×`) so the current speed is announced;
   - a **Raw events** toggle (list icon, `aria-pressed`). When on, ticks show every
     frame, not just milestones.
   - a live pill. At the head it shows a red dot and **LIVE**. In replay it is a grey
