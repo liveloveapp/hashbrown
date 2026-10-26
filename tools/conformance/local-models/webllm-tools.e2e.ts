@@ -156,12 +156,36 @@ async function observe(page: Page): Promise<Observation> {
   });
 }
 
+const invalidArgumentsError =
+  'Local model returned invalid structured tool arguments';
+const failedToolPhaseError =
+  'Application tool phase refuses a failed tool result.';
+
+/** Checks the final framework view after transport disposal and engine drain. */
+async function assertTerminalState(
+  page: Page,
+  expectedError: string,
+): Promise<void> {
+  await expect(page.getByTestId('status')).toHaveText('idle');
+  await expect(page.getByTestId('error')).toHaveText(expectedError);
+}
+
+/** Captures terminal evidence independently of cleanup and assertion failures. */
+async function readTerminalState(page: Page) {
+  const [status, error] = await Promise.all([
+    page.getByTestId('status').innerText(),
+    page.getByTestId('error').innerText(),
+  ]);
+  return { status, error };
+}
+
 /** Runs only an injected LLMock engine and retains evidence after cleanup on every outcome. */
 async function workflow(
   page: Page,
   info: TestInfo,
   scenario: Scenario,
   run: () => Promise<void>,
+  expectedError = '',
 ) {
   const responses: FixtureResponse[] = [];
   const mock = new LLMock({
@@ -234,6 +258,12 @@ async function workflow(
     await mock.stop().catch((error: unknown) => {
       primary ??= error;
     });
+    try {
+      await assertTerminalState(page, expectedError);
+    } catch (error) {
+      primary ??= error;
+    }
+    const terminal = await readTerminalState(page).catch(() => undefined);
     for (const [name, value] of Object.entries({
       metadata: {
         scenario,
@@ -242,6 +272,8 @@ async function workflow(
         modelLoaded: false,
         active: observed?.active,
         disposed: observed?.disposed,
+        terminal,
+        expectedTerminal: { status: 'idle', error: expectedError },
         errors,
         forbidden,
       },
@@ -441,26 +473,32 @@ for (const scenario of [
   test(`WebLLM structured tools rejects ${scenario} without business side effects`, async ({
     page,
   }, info) => {
-    await workflow(page, info, scenario, async () => {
-      await send(page);
+    await workflow(
+      page,
+      info,
+      scenario,
+      async () => {
+        await send(page);
 
-      await expect(page.getByTestId('error')).toContainText(
-        scenario === 'error'
-          ? 'Application tool phase refuses a failed tool result'
-          : 'invalid structured tool arguments',
-      );
-      await expect(page.getByTestId('status')).toHaveText('idle');
-      await expect(page.getByTestId('operation-count')).toHaveText('0');
-      await expect(page.getByTestId('invocation-count')).toHaveText(
-        scenario === 'error' ? '1' : '0',
-      );
-      await expect(page.getByTestId('assistant')).toBeEmpty();
-      expect((await observe(page)).calls).toHaveLength(1);
-      if (scenario === 'error')
-        expect(
-          (await observe(page)).contexts.at(-1)?.completedCalls[0].result,
-        ).toEqual({ type: 'error', text: 'HB_TOOL_FAILURE' });
-    });
+        await expect(page.getByTestId('error')).toContainText(
+          scenario === 'error'
+            ? 'Application tool phase refuses a failed tool result'
+            : 'invalid structured tool arguments',
+        );
+        await expect(page.getByTestId('status')).toHaveText('idle');
+        await expect(page.getByTestId('operation-count')).toHaveText('0');
+        await expect(page.getByTestId('invocation-count')).toHaveText(
+          scenario === 'error' ? '1' : '0',
+        );
+        await expect(page.getByTestId('assistant')).toBeEmpty();
+        expect((await observe(page)).calls).toHaveLength(1);
+        if (scenario === 'error')
+          expect(
+            (await observe(page)).contexts.at(-1)?.completedCalls[0].result,
+          ).toEqual({ type: 'error', text: 'HB_TOOL_FAILURE' });
+      },
+      scenario === 'error' ? failedToolPhaseError : invalidArgumentsError,
+    );
   });
 }
 
@@ -468,40 +506,46 @@ for (const allowed of [true, false]) {
   test(`WebLLM structured tools application permission ${allowed ? 'allow' : 'deny'}`, async ({
     page,
   }, info) => {
-    await workflow(page, info, 'permission', async () => {
-      await send(page);
-      await expect(page.getByTestId('permission-pending')).toHaveText('true');
-      await expect(page.getByTestId('invocation-count')).toHaveText('1');
-      await expect(page.getByTestId('operation-count')).toHaveText('0');
+    await workflow(
+      page,
+      info,
+      'permission',
+      async () => {
+        await send(page);
+        await expect(page.getByTestId('permission-pending')).toHaveText('true');
+        await expect(page.getByTestId('invocation-count')).toHaveText('1');
+        await expect(page.getByTestId('operation-count')).toHaveText('0');
 
-      await page
-        .getByTestId(allowed ? 'permission-allow' : 'permission-deny')
-        .click();
+        await page
+          .getByTestId(allowed ? 'permission-allow' : 'permission-deny')
+          .click();
 
-      await expect(page.getByTestId('status')).toHaveText('idle');
-      await expect(page.getByTestId('operation-count')).toHaveText(
-        allowed ? '1' : '0',
-      );
-      await expect(page.getByTestId('invocation-count')).toHaveText('1');
-      if (allowed) {
-        await expect(page.getByTestId('assistant')).not.toBeEmpty();
-        await expect(page.getByTestId('error')).toBeEmpty();
-        const operations = JSON.parse(
-          await page.getByTestId('operations').innerText(),
-        ) as { token: string }[];
-        expect(
-          JSON.parse(await page.getByTestId('assistant').innerText()),
-        ).toEqual({ value: operations[0].token });
-      } else {
-        await expect(page.getByTestId('error')).toContainText(
-          'Application tool phase refuses a failed tool result',
+        await expect(page.getByTestId('status')).toHaveText('idle');
+        await expect(page.getByTestId('operation-count')).toHaveText(
+          allowed ? '1' : '0',
         );
-        expect((await observe(page)).calls).toHaveLength(1);
-        expect(
-          (await observe(page)).contexts.at(-1)?.completedCalls[0].result,
-        ).toEqual({ type: 'error', text: 'HB_PERMISSION_DENIED' });
-      }
-    });
+        await expect(page.getByTestId('invocation-count')).toHaveText('1');
+        if (allowed) {
+          await expect(page.getByTestId('assistant')).not.toBeEmpty();
+          await expect(page.getByTestId('error')).toBeEmpty();
+          const operations = JSON.parse(
+            await page.getByTestId('operations').innerText(),
+          ) as { token: string }[];
+          expect(
+            JSON.parse(await page.getByTestId('assistant').innerText()),
+          ).toEqual({ value: operations[0].token });
+        } else {
+          await expect(page.getByTestId('error')).toContainText(
+            'Application tool phase refuses a failed tool result',
+          );
+          expect((await observe(page)).calls).toHaveLength(1);
+          expect(
+            (await observe(page)).contexts.at(-1)?.completedCalls[0].result,
+          ).toEqual({ type: 'error', text: 'HB_PERMISSION_DENIED' });
+        }
+      },
+      allowed ? '' : failedToolPhaseError,
+    );
   });
 }
 
@@ -547,6 +591,7 @@ async function workerWorkflow(
   run: () => Promise<void>,
 ) {
   const { installWebLlmToolWorker } = await import('./webllm-tool-worker-shim');
+  const expectedError = mode === 'native-canary' ? invalidArgumentsError : '';
   const errors: string[] = [];
   const forbidden: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -606,11 +651,13 @@ async function workerWorkflow(
           globalThis as unknown as { __closeToolWorker?(): void }
         ).__closeToolWorker?.(),
       );
+      await assertTerminalState(page, expectedError);
       expect(errors).toEqual([]);
       expect(forbidden).toEqual([]);
     } catch (error) {
       primary ??= error;
     }
+    const terminal = await readTerminalState(page).catch(() => undefined);
     const metrics = await page
       .evaluate(
         () =>
@@ -640,6 +687,8 @@ async function workerWorkflow(
         interrupts: metrics?.interrupts,
         drained: metrics?.drained,
         closed: metrics?.closed,
+        terminal,
+        expectedTerminal: { status: 'idle', error: expectedError },
       },
       'raw-worker-requests': metrics?.requests,
       'raw-worker-responses': metrics?.chunks,
