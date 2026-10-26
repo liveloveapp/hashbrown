@@ -22,6 +22,9 @@ body {
   --wb-muted: #52525b;
   --wb-faint: #a1a1aa;
   --wb-hover: #ececee;
+  --wb-ink-hover: #27272a;
+  --wb-track: #f0f0f2;
+  --wb-tick: #8a8a93;
   --wb-ink: #0d0d0d;
   --wb-cobalt: #002fa7;
   --wb-cobalt-soft: #e8edfb;
@@ -133,7 +136,7 @@ body {
   min-height: 0;
   display: grid;
   grid-template-columns:
-    var(--wb-nav, 216px) minmax(280px, var(--wb-chat, 44fr))
+    minmax(0, var(--wb-nav, 216px)) minmax(280px, var(--wb-chat, 44fr))
     14px minmax(320px, var(--wb-inspector, 56fr));
   transition: grid-template-columns 200ms ease;
 }
@@ -183,7 +186,7 @@ body {
   white-space: nowrap;
 }
 .wb .wb-cta:hover:enabled {
-  background: #27272a;
+  background: var(--wb-ink-hover);
 }
 .wb .wb-cta .wb-icon {
   width: 16px;
@@ -423,8 +426,8 @@ body {
   border-radius: 999px;
 }
 .wb .wb-primary:hover:enabled {
-  background: #27272a;
-  border-color: #27272a;
+  background: var(--wb-ink-hover);
+  border-color: var(--wb-ink-hover);
 }
 .wb-composer {
   padding: 12px 16px;
@@ -736,8 +739,8 @@ body {
   color: #fff;
 }
 .wb .wb-transport .wb-play:hover:enabled {
-  border-color: #27272a;
-  background: #27272a;
+  border-color: var(--wb-ink-hover);
+  background: var(--wb-ink-hover);
 }
 .wb-play .wb-icon {
   width: 16px;
@@ -761,7 +764,7 @@ body {
   top: 29px;
   height: 6px;
   border-radius: 3px;
-  background: #f0f0f2;
+  background: var(--wb-track);
 }
 .wb-segments {
   position: absolute;
@@ -836,10 +839,14 @@ body {
   outline: none;
 }
 .wb-scrubber input[type='range']:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px var(--wb-cobalt-soft);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--wb-cobalt);
 }
 .wb-scrubber input[type='range']:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px var(--wb-cobalt-soft);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--wb-cobalt);
 }
 /* Milestone ticks sit above the range; only the ticks catch the pointer, so the range drags between them. */
 .wb-events {
@@ -860,8 +867,9 @@ body {
   border: 0;
   border-radius: 3px;
   background: transparent;
+  /* Hide the label text off the mark (text-indent hide); the text and aria-label stay for assistive tech. */
   color: transparent;
-  font-size: 0;
+  text-indent: 100%;
   white-space: nowrap;
   pointer-events: auto;
 }
@@ -873,7 +881,7 @@ body {
   width: 2px;
   height: 12px;
   border-radius: 1px;
-  background: var(--wb-faint);
+  background: var(--wb-tick);
 }
 .wb .wb-events button:hover:enabled::before {
   background: var(--wb-ink);
@@ -1081,6 +1089,23 @@ app-selection-workbench-conversation[hidden] {
   }
   .wb-time {
     margin-left: auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .wb .wb-events button::before {
+    background: CanvasText;
+  }
+  .wb .wb-events button:has(~ [aria-pressed='true'])::before,
+  .wb .wb-events [aria-pressed='true']::before {
+    background: Highlight;
+  }
+  .wb-segment,
+  .wb-scrubber::before {
+    background: GrayText;
+  }
+  .wb-segment[data-played] {
+    background: Highlight;
   }
 }
 
