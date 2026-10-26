@@ -2,360 +2,108 @@
 title: 'UI Selection: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Choose a shopping summary or item list from a request, with app-owned data and a manual fallback.'
+    content: 'Choose between trusted plan views with UI decision candidates, inspect confidence, and keep application data and manual control in the app.'
 ---
 
 # UI Selection
 
-Let's ask for a shopping overview, then ask to see each item. We'll give the model two choices: a summary card and an item list. Our application supplies the products, quantities and component props. The model chooses only an ID.
-
-<hb-docs-demo demo="ui-selection">
+<hb-docs-demo demo="canonical-workbench-ui-selection-react">
 </hb-docs-demo>
 
-<img src="/video/docs/ui-selection-result.png" alt="The selected shopping item list shows 2 × Apples and 1 × Bread, with buttons to choose the summary or item list manually." width="920" height="400" loading="lazy" />
+I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 
-The recording uses the checked clients with scripted decision responses, no live model, and presentation styles for readability. The selected view lives in local component state. The product data is fixed: 2 apples and 1 loaf of bread.
+`useUiDecision` runs in candidates mode with `select: 'one'`. The real SDK renders the selected candidate. A separate **Use view** action commits it to application state.
 
-## Before we start
+## Run the workbench
 
-Start with the [Quickstart](/docs/react/start/quick) application and its frontend development proxy. We need Node.js 24, a TypeSafe API key, and an exact model version available to that account. [TypeSafe](/docs/react/platform/typesafe) explains the decision adapter.
+Start the [conversation workbench](/docs/react/start/workbench) with server-only `TYPESAFE_API_KEY` and an exact `TYPESAFE_MODEL` available to your account. The current checked recording uses `jev-1.14.0`. The shared host also needs `OPENAI_API_KEY` and `OPENAI_MODEL` for its other lessons.
 
-This recipe uses @hashbrownai/react!useUiDecision:function in **candidates mode**. With `select: 'one'`, the decision picks `summary` or `items`. We set `minConfidence: 0.7`; below that threshold, we show a status and offer manual buttons. Treat confidence as a model score, rather than a calibrated probability of correctness.
+```sh
+npx nx workbench-serve www
+```
 
-Keep the checked file layout: `runtime/selection.ts` beside the `react` and `server` directories, with `react/src/UiSelection.tsx` and `server/selection-server.ts` inside them. If you copy the component into an existing app's `src` directory, update its relative shared-file import. Install the core and React packages using the Quickstart instructions.
+Open `http://127.0.0.1:4370/react.html?lesson=ui-selection`. This lesson uses the decision endpoint `/api/workbench/ui-selection`. A decision arrives whole; it is not a JSON text stream.
 
-## Share the candidate definitions
+## Follow the selected view
 
-First, create `runtime/selection.ts`. It contains our fixed products and two candidate descriptions. Both clients and the server use these descriptions in the same order, `summary` followed by `items`.
+1. Send **First prompt** to ask for an overview. Inspect the known candidate ID and confidence beside the app-owned summary.
+2. Choose **Use view** after a fresh, successful, confident decision. If confidence is below the threshold, choose **Show summary** manually instead. Either explicit action saves the summary view and advances the revision to 1.
+3. Send **Follow-up** to ask for ordered steps. A confident result can preview that candidate; a low-confidence result remains inspectable and offers manual choice. Neither result applies the view automatically.
+4. Choose **Show steps** manually. This explicit action saves the steps view and advances the revision to 2. It does not rewrite the plan's title or steps.
+5. Use the bottom timeline to compare the complete decisions, manual choice, and application state. Replay renders the same trusted views with no active handlers, requests, or writes.
 
-`createSelectionSchema(selectionOptions, 'one')` builds the server's pinned questions. It shares the selection contract without importing UI components into the server. The model chooses an ID; it has no schema for writing product names, quantities or props.
+<img src="/video/docs/canonical-workbench-ui-selection-react-result.png" alt="The React workbench shows the application-owned ordered plan view beside candidate IDs, confidence, and captured state." width="1600" height="1000" loading="lazy" />
 
-<hb-expander title="Complete runtime/selection.ts">
+## Register known candidates
 
-<hb-code-example header="runtime/selection.ts">
+Both clients and the server share these IDs, descriptions, and order:
+
+<hb-code-example header="runtime/workbench-recipes.ts">
 
 ```ts
-import { createSelectionSchema } from '@hashbrownai/core';
-
-/** An application-owned product row, never generated by the decision model. */
-export interface SelectionItem {
-  readonly name: string;
-  readonly quantity: number;
-}
-
-/** Product data shared by the two checked clients. */
-export const selectionItems: readonly SelectionItem[] = [
-  { name: 'Apples', quantity: 2 },
-  { name: 'Bread', quantity: 1 },
-];
-
-/** Model-facing candidates; preserve their descriptions and order on the server. */
-export const selectionOptions = [
+export const workbenchSelectionOptions = [
   {
     id: 'summary',
-    description: 'Show an overview with product and item totals.',
+    description:
+      'Show the plan title and a brief overview of the two-step plan.',
   },
   {
-    id: 'items',
-    description: 'Show each product name and its quantity in a list.',
+    id: 'steps',
+    description: 'Show the plan as an ordered list of its two steps.',
   },
 ] as const;
-
-/** The only view identifiers the application allows. */
-export type SelectionId = (typeof selectionOptions)[number]['id'];
-
-/** Pins the same questions that both clients ask in candidates mode. */
-export const selectionSchema = createSelectionSchema(selectionOptions, 'one');
-
-/** An explicit user request; the nonce lets an unchanged prompt be submitted again. */
-export interface SelectionRequest {
-  requestId: string;
-  prompt: string;
-}
 ```
 
 </hb-code-example>
 
-</hb-expander>
+The framework binds each candidate to a component with the fixed plan as its props. The server pins the matching selection schema. Browser-supplied questions cannot replace those candidates or turn selection into generated props.
 
-## Add the decision endpoint
-
-In your Node server project, install the existing adapter and Express. These commands are for your application's server dependencies:
-
-```sh
-npm install @hashbrownai/core @hashbrownai/typesafe express
-npm install --save-dev tsx typescript @types/express @types/node
-```
-
-Create a server-side `.env` file, add it to `.gitignore`, and supply your own values:
-
-```sh
-TYPESAFE_API_KEY=your-typesafe-api-key
-TYPESAFE_MODEL=your-exact-model-version
-```
-
-Create `server/selection-server.ts` below. Keep both credentials and model configuration on the server. The route accepts bounded JSON, pins the shared questions, maps `DecisionError` to an HTTP status, and aborts upstream work if the browser disconnects.
-
-<hb-expander title="Complete server/selection-server.ts">
-
-<hb-code-example header="server/selection-server.ts">
+<hb-code-example header="runtime/workbench-recipes.ts">
 
 ```ts
-import { DecisionError, HashbrownTypeSafe } from '@hashbrownai/typesafe';
-import express from 'express';
-import { selectionSchema } from '../runtime/selection';
+export const workbenchSelectionSchema = createSelectionSchema(
+  workbenchSelectionOptions,
+  'one',
+);
+```
 
-// Local development endpoint. A hosted application must add its own authentication,
-// authorization and request controls before exposing this credential-backed route.
-const apiKey = process.env['TYPESAFE_API_KEY'];
-const model = process.env['TYPESAFE_MODEL'];
-if (!apiKey || !model)
-  throw new Error('Set TYPESAFE_API_KEY and TYPESAFE_MODEL in .env');
+</hb-code-example>
 
-const app = express();
-app.use(express.json({ limit: '16kb' }));
+This is different from [Generative UI](/docs/react/concept/components), where the model supplies schema-constrained props for exposed components. Here it chooses between elements the application already constructed.
 
-app.post('/api/decide', async (req, res) => {
-  const controller = new AbortController();
-  res.once('close', () => {
-    if (!res.writableEnded) controller.abort();
-  });
-  res.setHeader('Cache-Control', 'no-store');
+## Use the framework API
 
-  try {
-    const result = await HashbrownTypeSafe.decide({
-      apiKey,
-      model,
-      request: req.body as unknown,
-      // The browser cannot replace our candidate IDs, descriptions or order.
-      schema: selectionSchema,
-      maxRequestChars: 16_000,
-      signal: controller.signal,
-    });
-    if (!controller.signal.aborted) res.json(result);
-  } catch (error) {
-    if (controller.signal.aborted) return;
-    if (error instanceof DecisionError) {
-      res.status(error.status).json({ error: error.code });
-    } else {
-      res.status(500).json({ error: 'Could not choose a view' });
-    }
-  }
-});
+The checked client connects the lesson to the real SDK:
 
-app.listen(3001, '127.0.0.1', () => {
-  console.log('Hashbrown decision endpoint: http://127.0.0.1:3001/api/decide');
+<hb-code-example header="react/src/SelectionWorkbench.tsx">
+
+```tsx
+const selection = useUiDecision({
+  input: request,
+  system: workbenchSelectionSystem,
+  select: 'one',
+  minConfidence: workbenchSelectionMinConfidence,
+  optionOrder: 'declared',
+  candidates,
+  transport,
+  debounceTime: 0,
 });
 ```
 
 </hb-code-example>
 
-</hb-expander>
+## Keep confidence and manual control explicit
 
-From the directory containing `runtime`, `server` and `.env`, start the endpoint:
+The threshold is 0.75. Treat confidence as a model score, not a calibrated probability of correctness. A complete response below the threshold remains inspectable, but it does not enable **Use view**. **Raw** shows the provider's choice; **Details** shows the SDK's confidence-filtered IDs. A choice can be present in Raw while no candidate renders.
 
-```sh
-npx tsx --env-file=.env server/selection-server.ts
-```
+Use the manual **Show summary** and **Show steps** controls when you want to choose directly. Manual selection works without waiting for the model. It cancels pending selection work and prevents a late result from replacing your choice. It is an explicit application action, not a model response.
 
-It listens at `http://127.0.0.1:3001/api/decide`. Stop the Quickstart chat server before starting this standalone server, because they use the same port. This example needs only the decision route. If your app also uses chat, add this handler to your existing server alongside `/api/chat`.
+Failed, invalid, cancelled, or stale decisions preserve the current view and offer manual choice or an explicit retry. A decision for an older application revision cannot be applied to the new one. Refreshing clears the in-memory conversation and view state.
 
-This is a local development endpoint. Before deploying it, supply your application's authentication, authorization and request controls. Pinning the questions limits the decision being asked; it does not identify a user or authorize access to product data.
+## Keep the server boundary
 
-## Connect the client
+The canonical server is a local development host. Add authentication, authorization, and request controls before exposing a credential-backed endpoint. Candidate validation does not prove that a user can access the data shown by a component.
 
-`/api/decide` answers decisions. `/api/chat` remains a separate feature endpoint; configuring a chat URL does not configure a decision route.
+Both the normal server and live verifier choose the server-owned TypeSafe schema for this lesson. The decision protocol stays separate from AG-UI chat routes. Keep credentials on the server and connect disconnects to cancellation.
 
-Update the Quickstart's `HashbrownProvider` in `src/main.tsx`, import `UiSelection` from `./UiSelection`, and render it inside the provider:
-
-```tsx
-<HashbrownProvider url="/api/chat" decision={{ url: '/api/decide' }}>
-  <UiSelection />
-</HashbrownProvider>
-```
-
-Keep the Vite development proxy from the Quickstart:
-
-```ts
-server: {
-  proxy: { '/api': 'http://127.0.0.1:3001' },
-}
-```
-
-Run your Vite frontend with `npm run dev` in a second terminal. The browser calls `/api/decide` on the frontend origin, and Vite forwards it to our local server.
-
-Next, create `react/src/UiSelection.tsx` below. The decision input starts as `null`, so opening the page sends no request. Editing the input also sends nothing. **Choose a view** submits a stable prompt snapshot with a new request ID, allowing us to submit the same prompt again.
-
-`picked.ui` contains the chosen React element. The app has already supplied the data for both candidates. Neither choice requires the model to generate component props.
-
-<hb-expander title="Complete react/src/UiSelection.tsx">
-
-<hb-code-example header="react/src/UiSelection.tsx">
-
-```tsx
-import { useUiDecision } from '@hashbrownai/react';
-import { useState } from 'react';
-import {
-  type SelectionId,
-  type SelectionItem,
-  selectionItems,
-  selectionOptions,
-  type SelectionRequest,
-} from '../../runtime/selection';
-
-/** Summarizes app-owned product rows and their quantities. */
-export function SummaryCard({ items }: { items: readonly SelectionItem[] }) {
-  return (
-    <section aria-label="Summary card">
-      <h2>Shopping summary</h2>
-      <p>{`${items.length} products`}</p>
-      <p>{`${items.reduce((total, item) => total + item.quantity, 0)} total items`}</p>
-    </section>
-  );
-}
-
-/** Displays app-owned names and quantities as text. */
-export function ItemList({ items }: { items: readonly SelectionItem[] }) {
-  return (
-    <section aria-label="Item list">
-      <h2>Shopping items</h2>
-      <ul>
-        {items.map((item) => (
-          <li key={item.name}>{`${item.quantity} × ${item.name}`}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/** The app supplies elements and props; the model selects only an ID. */
-export const selectionCandidates = [
-  { ...selectionOptions[0], element: <SummaryCard items={selectionItems} /> },
-  { ...selectionOptions[1], element: <ItemList items={selectionItems} /> },
-];
-
-function RequestedView({ request }: { request: SelectionRequest | null }) {
-  const picked = useUiDecision({
-    input: request === null ? null : { ...request },
-    candidates: selectionCandidates,
-    select: 'one',
-    minConfidence: 0.7,
-  });
-  const status =
-    request === null
-      ? 'Describe a view, or choose one manually.'
-      : picked.error
-        ? 'Could not choose a view. Try again or choose one manually.'
-        : picked.isLoading || picked.decision.value === null
-          ? 'Choosing a view. You can choose one manually at any time.'
-          : picked.ids.length === 0
-            ? 'No confident choice. Choose a view manually or try another request.'
-            : 'View ready. The application supplies all product data.';
-
-  return (
-    <>
-      <p role="status">{status}</p>
-      {!picked.isLoading && !picked.error && picked.ui}
-    </>
-  );
-}
-
-/** Chooses an app-owned view with an explicit, independent manual fallback. */
-export function UiSelection() {
-  const [prompt, setPrompt] = useState('Show a quick overview.');
-  const [request, setRequest] = useState<SelectionRequest | null>(null);
-  const [manual, setManual] = useState<SelectionId | null>(null);
-
-  function choose() {
-    if (!prompt.trim()) return;
-    setManual(null);
-    setRequest({ requestId: crypto.randomUUID(), prompt: prompt.trim() });
-  }
-
-  function chooseManually(id: SelectionId) {
-    setRequest(null);
-    setManual(id);
-    // Unmounting RequestedView destroys its decision runtime and aborts the request.
-  }
-
-  return (
-    <main>
-      <h1>Choose a view from a request</h1>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          choose();
-        }}
-      >
-        <label htmlFor="view-request">What would you like to see?</label>
-        <input
-          id="view-request"
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-        />
-        <button type="submit" disabled={!prompt.trim()}>
-          Choose a view
-        </button>
-      </form>
-      <nav aria-label="Manual views">
-        <button type="button" onClick={() => chooseManually('summary')}>
-          Show summary
-        </button>
-        <button type="button" onClick={() => chooseManually('items')}>
-          Show items
-        </button>
-      </nav>
-      {manual ? (
-        <>
-          <p role="status">
-            Manual view selected. Submit another request to ask the model again.
-          </p>
-          {manual === 'summary' ? (
-            <SummaryCard items={selectionItems} />
-          ) : (
-            <ItemList items={selectionItems} />
-          )}
-        </>
-      ) : (
-        // A new key immediately removes old output and gives each request its own runtime.
-        <RequestedView key={request?.requestId ?? 'idle'} request={request} />
-      )}
-    </main>
-  );
-}
-```
-
-</hb-code-example>
-
-</hb-expander>
-
-## Try both views
-
-1. Submit **“Show a quick overview.”** A confident `summary` choice displays **2 products** and **3 total items**. There are two product rows, and their quantities add up to three.
-2. Submit **“Show every product and its quantity.”** An `items` choice displays **2 × Apples** and **1 × Bread**.
-3. While a request is loading, use **Show summary** or **Show items**. The manual choice appears immediately and remains selected when the old request ends.
-4. Submit another request to leave the manual view and ask the model again. Submit a second request quickly to verify that only the latest request can supply the view.
-
-Live decisions can choose differently. The manual buttons always provide a direct way to inspect either view. This component changes only the visible presentation; it does not modify the products or persist a choice across refreshes.
-
-## Handle an uncertain or failed choice
-
-During loading, the example clears the old model-selected view and explains that we can choose manually. If the response falls below `minConfidence`, the selection is empty and the status says **No confident choice**. If the request fails, the status says **Could not choose a view**. In either case, use **Show summary**, **Show items**, or submit another request.
-
-The React component gives each submitted request a new key. That removes the previous output immediately and creates a new decision runtime. A manual choice clears the request and unmounts that runtime, which aborts its work. A late response cannot replace the manual view.
-
-A new model request also clears the previous manual selection. This gives each explicit request its own result, and keeps older responses from restoring a view we have already replaced.
-
-If the browser returns 404, check the `/api/decide` path and frontend proxy, then restart the frontend server after proxy changes. If the server fails to start, check both `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. For other decision errors, confirm the account can use the configured model and retry. Never move the API key into client configuration to fix a routing error.
-
-## When to use chat mode
-
-Candidates mode fits this example because our application owns every prop. In chat mode, @hashbrownai/react!useUiDecision:function first narrows the components available to a UI chat, then sends the message through that chat. The chat generates the answer and its props using its own prompt, tools and transport. The decision prompt and chat prompt are separate.
-
-Chat mode has a different fallback: low confidence, a failed decision, or `decision.stop()` sends the message with all components. Stopping the decision does not cancel that send. After the narrowed turn ends, errors or stops, the integration restores the full component list, unless the application has replaced it during the turn. A newer message supersedes a decision still in flight; once a message is sent, the chat owns its lifecycle.
-
-Narrowing is not an authorization boundary. A UI chat retains definitions of previously offered components so earlier messages keep rendering, and a provider that does not enforce the response schema strictly may still render a retained component. Keep access checks in your application and server handlers. Always-on UI kits and declared child components also affect the choices; use the SDK reference linked above and [Decisions](/docs/react/concept/decisions) when adding chat mode.
-
-## Next steps
-
-Read [Decisions](/docs/react/concept/decisions) for typed closed questions and selection limits. See [TypeSafe](/docs/react/platform/typesafe) for adapter options, error handling and model configuration. For UI where the model supplies validated props, continue with [Components](/docs/react/concept/components).
+Read the [framework client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/SelectionWorkbench.tsx) and [shared candidate contract](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-recipes.ts). See [TypeSafe](/docs/react/platform/typesafe) for setup and [Decisions](/docs/react/concept/decisions) for complete typed choices.

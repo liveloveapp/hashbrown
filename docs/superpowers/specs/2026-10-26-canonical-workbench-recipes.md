@@ -26,7 +26,10 @@ selection, in both Angular and React. No SDK release or new dependencies.
   one suggestion makes sibling suggestions stale because the revision changed;
   request fresh suggestions rather than applying an outdated snapshot. Repeated
   acceptance, partial/error/cancelled, stale context and already accepted IDs
-  cannot write. The follow-up includes accepted actions and excludes them.
+  cannot write. The prediction recording dismisses a proposal, explicitly requests a fresh
+  proposal for the unchanged plan, accepts it, then requests a follow-up.
+  These are three independent completion snapshots. The final snapshot includes
+  accepted actions and excludes them.
 - **UI selection** uses actual UI decision APIs in candidates mode, single select,
   with the existing TypeSafe provider and exact configured model. The app owns
   the plan and both candidate components/props: plan summary and ordered steps.
@@ -76,7 +79,9 @@ or independent fixture checks, with their source notes intact.
 
 Six new media IDs: canonical-workbench-{magic-text,predictions,ui-selection}-{react,angular}.
 Record real Hashbrown/OpenAI for text and predictions, real Hashbrown/TypeSafe
-for selection. Label fixtures and never publish them as live-model output.
+for selection. The selection recording preserves the confidence threshold and
+finishes with an explicit manual steps choice at revision 2. If the second model
+choice is low-confidence, show that result and the manual fallback honestly. Label fixtures and never publish them as live-model output.
 Use ffmpeg, 1600×1000, MP4/WebM, measured captions, posters, results and honest
 walkthroughs. Preserve original captures/reports. Disclose any filming-only
 pacing and half-speed playback; no fabricated typing or simulated provider output.

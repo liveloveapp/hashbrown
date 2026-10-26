@@ -1,3 +1,10 @@
+import {
+  workbenchPredictionsSchema,
+  workbenchPredictionsSystem,
+  workbenchSelectionOptions,
+  workbenchSelectionSystem,
+  workbenchTextSystem,
+} from '../runtime/workbench-recipes';
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { EventEncoder } from '@ag-ui/encoder';
@@ -37,7 +44,11 @@ export function pinWorkbenchInput(
   value: unknown,
   lesson: WorkbenchLessonId = 'generative-ui',
 ): RunAgentInput {
-  if (lesson === 'decisions') throw new Error('Use the decision endpoint');
+  if (
+    workbenchLessons.find((entry) => entry.id === lesson)?.protocol ===
+    'decision'
+  )
+    throw new Error('Use the decision endpoint');
   const structured =
     workbenchLessons.find((entry) => entry.id === lesson)?.format ===
     'structured';
@@ -67,29 +78,46 @@ export function pinWorkbenchInput(
       {
         id: 'workbench-system',
         role: 'system',
-        content: structured ? workbenchStructuredSystem : workbenchSystem,
+        content:
+          lesson === 'magic-text'
+            ? workbenchTextSystem
+            : lesson === 'predictions'
+              ? workbenchPredictionsSystem
+              : structured
+                ? workbenchStructuredSystem
+                : workbenchSystem,
       },
       ...messages,
     ],
-    tools: [
-      {
-        name: 'readContext',
-        description:
-          'Read the current application plan and revision without changing it.',
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: [],
-          additionalProperties: false,
-        },
-      },
-    ],
+    tools:
+      lesson === 'predictions'
+        ? []
+        : [
+            {
+              name: 'readContext',
+              description:
+                'Read the current application plan and revision without changing it.',
+              parameters: {
+                type: 'object',
+                properties: {},
+                required: [],
+                additionalProperties: false,
+              },
+            },
+          ],
     forwardedProps: {
       hashbrown: {
-        ui: !structured,
-        responseSchema: structured
-          ? s.toJsonSchema(getWorkbenchPlanSchema(lesson))
-          : responseSchema,
+        ui: !structured && lesson !== 'magic-text' && lesson !== 'predictions',
+        ...(lesson === 'magic-text'
+          ? {}
+          : {
+              responseSchema:
+                lesson === 'predictions'
+                  ? s.toJsonSchema(workbenchPredictionsSchema)
+                  : structured
+                    ? s.toJsonSchema(getWorkbenchPlanSchema(lesson))
+                    : responseSchema,
+            }),
       },
     },
   };
@@ -105,6 +133,7 @@ export interface WorkbenchServerOptions {
   readonly decide?: (
     request: Decision.Request,
     signal: AbortSignal,
+    lessonId?: WorkbenchLessonId,
   ) => Promise<Decision.Response>;
   readonly staticDirectory?: string;
   readonly source?: 'provider' | 'test-fixture';
@@ -116,65 +145,82 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '128kb' }));
   let active = 0;
-  app.post('/api/workbench/decisions', async (req, res) => {
-    const origin = req.get('origin');
-    if (origin && origin !== `http://${req.get('host')}`) {
-      res.status(403).json({ error: 'Use the local same-origin demo' });
-      return;
-    }
-    let request: Decision.Request;
-    try {
-      request = pinWorkbenchDecisionInput(req.body);
-    } catch {
-      res.status(400).json({ error: 'Invalid or oversized decision request' });
-      return;
-    }
-    if (!options.decide) {
-      res.status(503).json({
-        error:
-          'Set TYPESAFE_API_KEY and TYPESAFE_MODEL in the server environment to run Decisions.',
-      });
-      return;
-    }
-    if (active >= 2) {
-      res
-        .status(429)
-        .json({ error: 'Wait for another conversation to finish' });
-      return;
-    }
-    active++;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
-    res.once('close', () => controller.abort());
-    try {
-      const result = await options.decide(request, controller.signal);
-      if (!controller.signal.aborted)
+  app.post(
+    ['/api/workbench/decisions', '/api/workbench/ui-selection'],
+    async (req, res) => {
+      const origin = req.get('origin');
+      if (origin && origin !== `http://${req.get('host')}`) {
+        res.status(403).json({ error: 'Use the local same-origin demo' });
+        return;
+      }
+      let request: Decision.Request;
+      try {
+        request = pinWorkbenchDecisionInput(
+          req.body,
+          req.path === '/api/workbench/ui-selection'
+            ? 'ui-selection'
+            : 'decisions',
+        );
+      } catch {
         res
-          .set({
-            'Cache-Control': 'no-store',
-            'X-Workbench-Source': options.source ?? 'provider',
-          })
-          .json(result);
-    } catch {
-      if (!res.headersSent)
-        res.status(502).json({
+          .status(400)
+          .json({ error: 'Invalid or oversized decision request' });
+        return;
+      }
+      if (!options.decide) {
+        res.status(503).json({
           error:
-            'Decision failed. Check the local server and retry, or review the plan manually.',
+            'Set TYPESAFE_API_KEY and TYPESAFE_MODEL in the server environment to run Decisions.',
         });
-    } finally {
-      clearTimeout(timeout);
-      active--;
-      if (!res.writableEnded) res.end();
-    }
-  });
-  app.all('/api/workbench/decisions', (_req, res) =>
-    res.status(405).json({ error: 'Use POST' }),
+        return;
+      }
+      if (active >= 2) {
+        res
+          .status(429)
+          .json({ error: 'Wait for another conversation to finish' });
+        return;
+      }
+      active++;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60_000);
+      res.once('close', () => controller.abort());
+      try {
+        const result = await options.decide(
+          request,
+          controller.signal,
+          req.path === '/api/workbench/ui-selection'
+            ? 'ui-selection'
+            : 'decisions',
+        );
+        if (!controller.signal.aborted)
+          res
+            .set({
+              'Cache-Control': 'no-store',
+              'X-Workbench-Source': options.source ?? 'provider',
+            })
+            .json(result);
+      } catch {
+        if (!res.headersSent)
+          res.status(502).json({
+            error:
+              'Decision failed. Check the local server and retry, or review the plan manually.',
+          });
+      } finally {
+        clearTimeout(timeout);
+        active--;
+        if (!res.writableEnded) res.end();
+      }
+    },
+  );
+  app.all(
+    ['/api/workbench/decisions', '/api/workbench/ui-selection'],
+    (_req, res) => res.status(405).json({ error: 'Use POST' }),
   );
   app.post(
     [
       '/api/workbench/chat',
       ...workbenchLessons
-        .filter((lesson) => lesson.format !== 'decision')
+        .filter((lesson) => lesson.protocol === 'chat')
         .map((lesson) => lesson.endpoint),
     ],
     async (req, res) => {
@@ -254,7 +300,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
     [
       '/api/workbench/chat',
       ...workbenchLessons
-        .filter((lesson) => lesson.format !== 'decision')
+        .filter((lesson) => lesson.protocol === 'chat')
         .map((lesson) => lesson.endpoint),
     ],
     (_req, res) => res.status(405).json({ error: 'Use POST' }),
@@ -264,13 +310,20 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
 }
 
 /** Validates a bounded app snapshot and replaces all client-controlled decision questions and policy. */
-export function pinWorkbenchDecisionInput(value: unknown): Decision.Request {
+export function pinWorkbenchDecisionInput(
+  value: unknown,
+  lesson: WorkbenchLessonId = 'decisions',
+): Decision.Request {
   const raw = value as {
     state?: {
       input?: {
         requestId?: unknown;
         prompt?: unknown;
-        application?: { revision?: unknown; nextAction?: unknown };
+        application?: {
+          revision?: unknown;
+          nextAction?: unknown;
+          selectedView?: unknown;
+        };
       };
     };
   };
@@ -286,14 +339,21 @@ export function pinWorkbenchDecisionInput(value: unknown): Decision.Request {
     input.prompt.length > 2000 ||
     !Number.isSafeInteger(input.application?.revision) ||
     Number(input.application?.revision) < 0 ||
-    ![null, 'record', 'review', 'clarify'].includes(
-      input.application?.nextAction as null,
-    )
+    !(lesson === 'ui-selection'
+      ? [null, 'summary', 'steps'].includes(
+          input.application?.selectedView as null,
+        )
+      : [null, 'record', 'review', 'clarify'].includes(
+          input.application?.nextAction as null,
+        ))
   )
     throw new Error('Invalid state');
   return {
     state: {
-      system: workbenchDecisionSystem,
+      system:
+        lesson === 'ui-selection'
+          ? workbenchSelectionSystem
+          : workbenchDecisionSystem,
       input: {
         requestId: input.requestId,
         prompt: input.prompt,
@@ -303,20 +363,36 @@ export function pinWorkbenchDecisionInput(value: unknown): Decision.Request {
             title: workbenchDecisionPlan.title,
             steps: [...workbenchDecisionPlan.steps],
           },
-          nextAction: input.application?.nextAction as null | string,
+          ...(lesson === 'ui-selection'
+            ? { selectedView: input.application?.selectedView as null | string }
+            : { nextAction: input.application?.nextAction as null | string }),
         },
       },
     },
-    questions: {
-      nextAction: {
-        type: 'choice',
-        instructions: 'The next useful action',
-        options: {
-          record: 'Record the demo after the outline is complete.',
-          review: 'Review the demo after it has been recorded.',
-          clarify: 'Ask for clarification when progress is unclear.',
-        },
-      },
-    },
+    questions:
+      lesson === 'ui-selection'
+        ? {
+            pick: {
+              type: 'choice',
+              instructions: 'Which one fits the input best',
+              options: Object.fromEntries(
+                workbenchSelectionOptions.map(({ id, description }) => [
+                  id,
+                  description,
+                ]),
+              ),
+            },
+          }
+        : {
+            nextAction: {
+              type: 'choice',
+              instructions: 'The next useful action',
+              options: {
+                record: 'Record the demo after the outline is complete.',
+                review: 'Review the demo after it has been recorded.',
+                clarify: 'Ask for clarification when progress is unclear.',
+              },
+            },
+          },
   };
 }
