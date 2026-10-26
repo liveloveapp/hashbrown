@@ -26,6 +26,18 @@ Open `http://127.0.0.1:4370/react.html`. The Angular version is available at `/a
 
 This is a local development server. It uses the real OpenAI adapter, keeps the model and output limit on the server, and cancels the provider request when the browser disconnects. It does not provide production identity, durable storage, or shared admission control.
 
+## Choose one teaching focus
+
+The left navigation opens three lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+
+| Lesson | Local URL | Follow |
+| --- | --- | --- |
+| [Generative UI](/docs/react/concept/components) | `/react.html?lesson=generative-ui` | Streamed props and the trusted SummaryCard. |
+| [Tools](/docs/react/concept/functions) | `/react.html?lesson=tools` | Browser context, tool result, and continuation. |
+| [Structured output](/docs/react/concept/structured-output) | `/react.html?lesson=structured-output` | Plain typed plan data rendered by the application. |
+
+Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
+
 ## Follow one turn
 
 1. Send the first prompt. `useUiChat` starts a real request.
@@ -42,7 +54,7 @@ The bottom timeline records user prompts, requests, decoded stream events, tool 
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. Choose **Return to live** to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State views. The far-right panel follows the selection, with Details, Raw, and Console views. **New conversation** starts an independent session; use the left navigation to return to another session. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State views on light code surfaces. Select a request or tool row to inspect its captured payload. The far-right panel follows the selection, with Details, Raw, and Console views. **New conversation** starts an independent session; use the left navigation to return to another session. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

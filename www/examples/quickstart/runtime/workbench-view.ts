@@ -1,3 +1,4 @@
+import { workbenchMilestones } from './workbench-timeline';
 import {
   isWorkbenchPlan,
   type WorkbenchSnapshot,
@@ -97,6 +98,12 @@ export function playbackDelay(
 /** Framework-owned commands invoked only from live user actions. */
 export interface WorkbenchCommands {
   readonly framework: string;
+  readonly lesson?: {
+    readonly id: string;
+    readonly title: string;
+    readonly format: 'ui' | 'structured';
+    readonly inspector: string;
+  };
   readonly send: (content: string) => void;
   readonly stop: () => void;
   readonly reset: () => void;
@@ -194,7 +201,7 @@ export function mountWorkbench(
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
-    element('span', 'Conversation workbench'),
+    element('span', commands.lesson?.title ?? 'Conversation workbench'),
     element('span', commands.framework, 'wb-muted'),
   );
   const provenance = element('span', 'Awaiting source', 'wb-muted');
@@ -203,10 +210,25 @@ export function mountWorkbench(
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
+  function lessonLinks() {
+    const links = element('div', '', 'wb-lessons');
+    for (const [id, title] of [
+      ['generative-ui', 'Generative UI'],
+      ['tools', 'Tools'],
+      ['structured-output', 'Structured output'],
+    ]) {
+      const link = element('a', title);
+      link.href = `${commands.framework.toLowerCase()}.html?lesson=${id}`;
+      if (id === (commands.lesson?.id ?? 'generative-ui'))
+        link.setAttribute('aria-current', 'page');
+      links.append(link);
+    }
+    return links;
+  }
   function renderNavigation() {
     nav.replaceChildren(
       element('h2', 'Examples'),
-      element('p', 'Generative UI'),
+      lessonLinks(),
       element('h2', 'Conversations'),
     );
     for (const item of navigation?.conversations ?? [
@@ -293,7 +315,7 @@ export function mountWorkbench(
   const inspection = element('div', '', 'wb-inspection');
   inspection.id = `${instanceId}-inspection`;
   inspection.setAttribute('role', 'tabpanel');
-  let tab = 'JSON';
+  let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = ['JSON', 'Requests', 'UI', 'State'].map((name) => {
     const item = button(name, () => {
       tab = name;
@@ -315,6 +337,7 @@ export function mountWorkbench(
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
   const controls = element('div', '', 'wb-actions');
+  let rawEvents = false;
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
@@ -385,17 +408,22 @@ export function mountWorkbench(
       .events.findIndex((event) => event.turn === Number(turns.value));
     if (index >= 0) store.seek(index);
   };
-  controls.append(play, previous, next, returnLive, turns, rate, timing);
-  footer.append(
-    controls,
-    events,
-    seek,
-    element(
-      'p',
-      'Recorded session events · Playback pauses are capped at 1.2 seconds.',
-      'wb-muted',
-    ),
+  const rawToggle = button('Raw events', () => {
+    rawEvents = !rawEvents;
+    render();
+  });
+  rawToggle.setAttribute('aria-pressed', 'false');
+  controls.append(
+    play,
+    previous,
+    next,
+    returnLive,
+    turns,
+    rate,
+    rawToggle,
+    timing,
   );
+  footer.append(controls, events, seek);
   layout.append(nav, chat, inspector, detail);
   root.append(header, layout, footer);
   host.append(root);
@@ -474,7 +502,13 @@ export function mountWorkbench(
         if (!props) continue;
         const card = element('article', '', 'wb-summary');
         card.append(
-          element('span', 'SummaryCard · captured preview', 'wb-muted'),
+          element(
+            'span',
+            commands.lesson?.format === 'structured'
+              ? 'Typed plan · captured preview'
+              : 'SummaryCard · captured preview',
+            'wb-muted',
+          ),
           element('h2', props.title ?? 'Waiting for title'),
         );
         const steps = element('ol');
@@ -489,18 +523,52 @@ export function mountWorkbench(
     inspection.replaceChildren(
       element(
         'h3',
-        `${tab} · ${historical ? 'selected event' : 'latest event'}`,
+        tab === 'JSON'
+          ? 'Model output'
+          : tab === 'UI'
+            ? commands.lesson?.format === 'structured'
+              ? 'Application-rendered plan'
+              : 'Trusted component'
+            : tab === 'State'
+              ? 'Application state'
+              : 'Requests and tools',
       ),
     );
     const visibleEvents = snapshot.events.slice(
       0,
       (snapshot.cursor ?? snapshot.events.length - 1) + 1,
     );
+    const requestContext =
+      frame?.kind === 'request' || frame?.kind === 'tool'
+        ? frame
+        : ([...visibleEvents]
+            .reverse()
+            .find(
+              (event) =>
+                event.turn === (frame?.turn ?? snapshot.turn) &&
+                event.kind === 'tool',
+            ) ??
+          [...visibleEvents]
+            .reverse()
+            .find(
+              (event) =>
+                event.turn === (frame?.turn ?? snapshot.turn) &&
+                event.kind === 'request',
+            ));
     const value =
       tab === 'JSON'
         ? frame?.json || 'Waiting for model output'
         : tab === 'UI'
-          ? { component: 'SummaryCard', props: frame?.props ?? null }
+          ? commands.lesson?.format === 'structured'
+            ? {
+                renderer: 'Application-owned plan card',
+                fields: ['title', 'steps'],
+              }
+            : {
+                component: 'SummaryCard',
+                children: false,
+                inputs: { title: 'string', steps: 'streaming string[]' },
+              }
           : tab === 'State'
             ? (frame?.application ?? snapshot.application)
             : visibleEvents
@@ -513,7 +581,33 @@ export function mountWorkbench(
                   kind: event.kind,
                   payload: event.payload,
                 }));
-    inspection.append(pre(value));
+    if (tab === 'Requests') {
+      const list = element('div', '', 'wb-request-list');
+      for (const event of visibleEvents.filter(
+        (event) => event.kind === 'request' || event.kind === 'tool',
+      )) {
+        const item = button(
+          `${event.kind === 'tool' ? 'readContext' : 'Model request'} · turn ${event.turn}`,
+          () => {
+            pause();
+            store.seek(snapshot.events.indexOf(event));
+          },
+        );
+        item.disabled = busy;
+        item.setAttribute(
+          'aria-pressed',
+          String(frame?.sequence === event.sequence),
+        );
+        list.append(item);
+      }
+      inspection.append(
+        list.childElementCount
+          ? list
+          : element('p', 'Send a message to follow its requests.', 'wb-muted'),
+      );
+    } else {
+      inspection.append(pre(value));
+    }
     const drawerTabs = element('div', '', 'wb-tabs');
     drawerTabs.setAttribute('role', 'tablist');
     drawerTabs.setAttribute('aria-label', 'Context views');
@@ -567,17 +661,26 @@ export function mountWorkbench(
         element(
           'h3',
           tab === 'JSON' || tab === 'UI'
-            ? 'Resolved props'
+            ? commands.lesson?.format === 'structured'
+              ? 'Typed plan'
+              : 'Resolved props'
             : tab === 'State'
-              ? 'Application snapshot'
-              : 'Captured requests and tool results',
+              ? 'Selected moment'
+              : requestContext?.kind === 'tool'
+                ? 'Browser tool result'
+                : 'Request payload',
         ),
         pre(
           tab === 'JSON' || tab === 'UI'
             ? frame?.props
             : tab === 'State'
-              ? (frame?.application ?? snapshot.application)
-              : value,
+              ? {
+                  turn: frame?.turn ?? snapshot.turn,
+                  status: frame?.status ?? snapshot.status,
+                  event: frame ? workbenchEventLabel(frame) : 'Ready',
+                  source: frame?.source ?? 'Application',
+                }
+              : requestContext?.payload,
         ),
         element(
           'p',
@@ -598,7 +701,20 @@ export function mountWorkbench(
     }
     events.replaceChildren();
     const rows = new Map<number, HTMLElement>();
-    snapshot.events.forEach((event, index) => {
+    rawToggle.setAttribute('aria-pressed', String(rawEvents));
+    const milestones = rawEvents
+      ? snapshot.events.map((event, index) => ({
+          index,
+          turn: event.turn,
+          label: workbenchEventLabel(event),
+        }))
+      : workbenchMilestones(snapshot.events);
+    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    const activeMilestone = milestones
+      .filter((item) => item.index <= selectedIndex)
+      .at(-1)?.index;
+    milestones.forEach(({ index, label }) => {
+      const event = snapshot.events[index];
       let row = rows.get(event.turn);
       if (!row) {
         row = element('div', '', 'wb-timeline-row');
@@ -606,22 +722,18 @@ export function mountWorkbench(
         rows.set(event.turn, row);
         events.append(row);
       }
-      const item = button(workbenchEventLabel(event), () => {
+      const item = button(label, () => {
         pause();
         store.seek(index);
       });
       item.disabled = busy;
       item.setAttribute(
         'aria-label',
-        `Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
+        `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
       );
-      item.setAttribute(
-        'aria-pressed',
-        String(index === (snapshot.cursor ?? snapshot.events.length - 1)),
-      );
+      item.setAttribute('aria-pressed', String(index === activeMilestone));
       row.append(item);
     });
-    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
     previous.disabled = busy || selectedIndex <= 0;
     next.disabled = busy || selectedIndex >= snapshot.events.length - 1;
     turns.replaceChildren();

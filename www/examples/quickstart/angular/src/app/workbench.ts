@@ -1,3 +1,5 @@
+import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
+import { StructuredWorkbenchConversation } from './structured-workbench';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -44,7 +46,11 @@ export class WorkbenchSession {
   readonly chat = uiChatResource({
     system: workbenchSystem,
     components,
-    transport: createWorkbenchTransport(this.store),
+    transport: createWorkbenchTransport(
+      this.store,
+      undefined,
+      getWorkbenchLesson(window.location.search).endpoint,
+    ),
     tools: [
       createTool({
         name: 'readContext',
@@ -278,6 +284,7 @@ export class WorkbenchConversation implements AfterViewInit {
       this.session.store,
       {
         framework: 'Angular',
+        lesson: getWorkbenchLesson(window.location.search),
         send: (content) => this.session.send(content),
         stop: () => this.session.stop(),
         reset: () => this.session.reset(),
@@ -292,17 +299,27 @@ export class WorkbenchConversation implements AfterViewInit {
 /** Retains separate Angular resources and application captures for every conversation. */
 @Component({
   selector: 'app-workbench',
-  imports: [WorkbenchConversation],
+  imports: [WorkbenchConversation, StructuredWorkbenchConversation],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    <app-workbench-conversation
-      [hidden]="conversation.id !== activeId()"
-      [active]="conversation.id === activeId()"
-      [navigation]="navigation(conversation.id)"
-    />
+    @if (structured) {
+      <app-structured-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else {
+      <app-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    }
   }`,
 })
 export class Workbench {
+  protected readonly structured =
+    getWorkbenchLesson(window.location.search).format === 'structured';
   protected readonly conversations = signal([
     { id: '1', label: 'Two-step plan' },
   ]);

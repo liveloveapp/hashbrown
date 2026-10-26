@@ -2,66 +2,70 @@
 title: 'Tool Calling: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Give the model access to your application state and enable the model to take action.'
+    content: 'Read application state through a browser tool and follow its result into the next model request.'
 ---
 
-# Tool Calling
+# Tool calling
 
-<p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
-
-<hb-docs-demo demo="browser-tools">
+<hb-docs-demo demo="canonical-workbench-tools-angular">
 </hb-docs-demo>
 
-## Before we start
+Our two-step plan has an accepted version and a revision number. Before proposing a change, the model needs to read both. Let’s give it one small browser tool: `readContext`.
 
-Use the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). Read [Skillet schemas](/docs/angular/concept/schema) before adding tool arguments.
+The same conversation appears in [Generative UI](/docs/angular/concept/components). In this lesson, we’ll follow the request, the tool result, and the continuation that produces the card.
 
-The snippets below explain the API and use application functions or services that you supply. For a complete example, follow [UI Chatbot with Tools](/docs/angular/recipes/ui-chatbot). Its browser tool reads a simulated light, and a trusted component lets the user apply a proposed change.
+## Run the same conversation
 
-Tool calling (or function calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
+Use the [conversation workbench](/docs/angular/start/workbench) with the server environment from the [Quickstart](/docs/angular/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=tools`. Selecting a lesson does not send a request.
 
-- Execute a function in Angular's injection context.
-- Return data to the model from state or an Angular service.
+The recording uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
----
+## Read application state
 
-## How it Works
+`createTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
-When you define a tool using Hashbrown's @hashbrownai/angular!createTool:function function the model can choose to use the tool to follow instructions and respond to prompts.
-
-1. Provide the tool to the model using the `tools` property.
-2. When the model receives a user message, it will analyze the message and determine if it needs to call any of the provided tools.
-3. If the model decides to call a function, it will invoke the function with the required arguments.
-4. The function is executed within Angular's injection context
-5. Return the result that is sent back to the LLM.
-
----
-
-## The `createTool()` Function
-
-<hb-code-example header="createTool">
+<hb-code-example header="angular/src/app/workbench.ts">
 
 ```ts
-import { createTool } from '@hashbrownai/angular';
-
-createTool({
-  name: 'getUser',
-  description: 'Get information about the current user',
-  handler: (): Promise<User> => {
-    const authService = inject(AuthService);
-    return authService.getUser();
-  },
-});
+      createTool({
+        name: 'readContext',
+        description:
+          'Read the accepted application plan and revision without changing state.',
+        handler: async () => {
+          const result = this.store.getSnapshot().application;
+          this.store.record('tool', { name: 'readContext', result });
+          return result;
+        },
+      }),
 ```
 
 </hb-code-example>
 
-1. Use the @hashbrownai/angular!createTool:function function to define a function that the LLM can call.
-2. The `name` property is the name of the function that the LLM will call.
-3. The `description` property is a description of what the function does. This is used by the LLM to determine if it should call the function.
-4. The `handler` property is the function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise`.
+The React version uses `deps` to keep handler dependencies current; the Angular version reads the session store inside its handler. Both pass this tool in the `tools` collection supplied to `uiChatResource()`.
 
----
+## Follow the round trip
+
+1. Send the first prompt. The server streams a `readContext` call.
+2. Hashbrown runs the browser handler. Its result contains `revision: 0` and `plan: null`.
+3. Hashbrown sends that result in a continuation request. The model now has the context it needs to propose a plan.
+4. Review the card and select **Accept plan**. This explicit user action advances application state to revision `1`.
+5. Send the follow-up. The next tool result contains revision `1` and the accepted plan.
+
+Select **Requests** to see each request and tool result. Select a row to inspect its captured payload in the rightmost panel. **Raw** shows the original event; **Console** lists recent captured activity.
+
+<img src="/video/docs/canonical-workbench-tools-angular-result.png" alt="The Requests view lists model requests and readContext results from both plan turns." width="1600" height="1000" loading="lazy" />
+
+## Keep reads and writes deliberate
+
+A handler runs when the model calls it. Keep a read like `readContext` separate from a write like accepting the plan. A schema describes values; application code decides whether an action is allowed.
+
+The workbench checks the current turn, application revision, successful completion, and plan rules before accepting. A cancelled or failed response cannot be accepted. Historical playback is read-only, including when you revisit a tool result.
+
+For a remote write, enforce identity, authorization, and validation on the server. See [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
+
+## Tool options and arguments
+
+This tool needs no arguments. Add `schema` when the model must supply values, and validate application rules inside the handler. Pass the provided `AbortSignal` to any asynchronous work that supports cancellation.
 
 ### `CreateToolOptions`
 
@@ -124,81 +128,6 @@ handler: (abortSignal: AbortSignal) => Promise<Result>;
 ```
 
 </hb-code-example>
-
----
-
-## Providing the Tools
-
-Provide the `tools` when using Hashbrown's resource-based APIs.
-
-<hb-code-example header="tools">
-
-```ts
-@Component({
-  selector: 'app-chat',
-  providers: [LightsStore],
-  template: ` <!-- omitted for brevity - full code in stackblitz example --> `,
-})
-export class ChatComponent {
-  lightsStore = inject(LightsStore);
-
-  chat = chatResource({
-    // 1. Specify the tools collection using createTool() function
-    tools: [
-      //2. The getUser() function returns authenticated user information to model
-      createTool({
-        name: 'getUser',
-        description: 'Get information about the current user',
-        handler: () => {
-          const authService = inject(AuthService);
-          return authService.getUser();
-        },
-      }),
-      // 3. The getLights() function returns application state to the model
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: async () => this.lightsStore.entities(),
-      }),
-      // 4. The controlLight() function enables the model to mutate state
-      createTool({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: async (input) =>
-          this.lightsStore.updateLight(input.lightId, {
-            brightness: input.brightness,
-          }),
-      }),
-    ],
-  });
-
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
-  }
-}
-```
-
-</hb-code-example>
-
-Let's review the code above.
-
-1. First, we define the `tools` array in the `chatResource` configuration.
-2. We use the @hashbrownai/angular!createTool:function function to define each tool.
-3. The `getUser()` function returns the authenticated user information to the model.
-4. The `getLights()` function returns application state to the model.
-5. The `controlLight()` function enables the model to mutate application state.
-
----
-
-## Choose when an action runs
-
-A browser tool handler runs when the model calls it. In the example above, `controlLight` changes state directly; its schema describes arguments, not permission to change a light. Validate the requested values and enforce application rules inside the handler.
-
-When the user should review a change first, keep the tool read-only and offer an explicit Apply action in your component. The [chatbot recipe](/docs/angular/recipes/ui-chatbot) checks the current turn, light revision and successful run before enabling Apply. For a server write, enforce authentication and authorization on the server; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
 
 ---
 
@@ -295,34 +224,6 @@ tool land in `serverToolCalls`.
 
 ---
 
-## Next Steps
+## Next steps
 
-<hb-next-steps>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/components">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose Angular components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Execute LLM-generated JS in the browser (safely)</h4>
-      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workbench.ts), or return to the [workbench](/docs/angular/start/workbench). Continue with [Structured output](/docs/angular/concept/structured-output) to use the same tool with typed plan data, or [Generative UI](/docs/angular/concept/components) to focus on the trusted component.

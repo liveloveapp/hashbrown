@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest';
-import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import {
+  createWorkbenchStore,
+  workbenchStructuredProps,
+} from '../examples/quickstart/runtime/workbench';
 
 test('seeking reconstructs captured JSON and state without changing live application state', () => {
   const store = createWorkbenchStore();
@@ -134,7 +137,11 @@ test('accepts the same validated props independent of framework children and key
   store.parsed({ ui: [{ SummaryCard: { props } }] });
   store.settle('complete', 'stop');
 
-  const frameworkProps = { steps: props.steps, title: props.title, children: [] };
+  const frameworkProps = {
+    steps: props.steps,
+    title: props.title,
+    children: [],
+  };
 
   expect(store.accept(frameworkProps)).toBe(true);
 });
@@ -144,10 +151,132 @@ test('captures normalized SDK partial props and only accepts a complete SDK valu
   const value = { title: 'Plan', steps: ['First', 'Second'] };
   store.send('Plan');
 
-  store.parsed({ ui: [{ SummaryCard: { props: { complete: false, partialValue: value } } }] });
+  store.parsed({
+    ui: [{ SummaryCard: { props: { complete: false, partialValue: value } } }],
+  });
 
   expect(store.getSnapshot().frame?.props).toEqual(value);
-  store.parsed({ ui: [{ SummaryCard: { props: { complete: true, partialValue: value, value } } }] });
+  store.parsed({
+    ui: [
+      {
+        SummaryCard: { props: { complete: true, partialValue: value, value } },
+      },
+    ],
+  });
   store.settle('complete', 'stop');
   expect(store.accept(value)).toBe(true);
+});
+
+test('structured captures accept plain typed plans and reject UI wrappers', () => {
+  const plan = { title: 'Plan', steps: ['Outline', 'Record'] };
+  const store = createWorkbenchStore('structured');
+  store.send('Plan');
+  store.parsed({ ui: [{ SummaryCard: { props: plan } }] });
+  store.settle('complete', 'stop');
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.send('Plan again');
+  store.parsed(plan);
+  store.settle('complete', 'stop');
+
+  expect(store.accept(plan)).toBe(true);
+});
+
+test('structured captures reject malformed and cancelled proposals and preserve inert replay', () => {
+  const store = createWorkbenchStore('structured');
+  const plan = { title: 'Plan', steps: ['Outline', 'Record'] };
+  store.send('Plan');
+  store.parsed({ ...plan, ui: [] });
+  store.settle('complete', 'stop');
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.send('Try again');
+  store.parsed(plan);
+  store.settle('cancelled');
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.send('Once more');
+  store.parsed(plan);
+  store.settle('complete', 'stop');
+  store.seek(0);
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.live();
+
+  expect(store.accept(plan)).toBe(true);
+  expect(store.accept(plan)).toBe(false);
+});
+
+test('lesson queries resolve only allowlisted metadata and safe endpoints', async () => {
+  const { getWorkbenchLesson, workbenchLessons } =
+    await import('../examples/quickstart/runtime/workbench-lessons');
+
+  expect(getWorkbenchLesson('?lesson=tools')).toMatchObject({
+    id: 'tools',
+    format: 'ui',
+    inspector: 'Requests',
+    endpoint: '/api/workbench/tools',
+  });
+  expect(getWorkbenchLesson('?lesson=structured-output')).toMatchObject({
+    format: 'structured',
+    inspector: 'JSON',
+  });
+  expect(getWorkbenchLesson('?lesson=https://untrusted.example')).toBe(
+    workbenchLessons[0],
+  );
+  expect(getWorkbenchLesson('')).toBe(workbenchLessons[0]);
+  expect(workbenchLessons.map((lesson) => lesson.id)).toEqual([
+    'generative-ui',
+    'tools',
+    'structured-output',
+  ]);
+});
+
+test('structured proposals require a successful completed current run', () => {
+  const store = createWorkbenchStore('structured');
+  const plan = { title: 'Plan', steps: ['Outline', 'Record'] };
+  store.send('Plan');
+  store.parsed(plan);
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.settle('complete', 'length');
+
+  expect(store.accept(plan)).toBe(false);
+
+  store.send('Try again');
+  store.parsed({ title: 'Plan', steps: ['Only one'] });
+  store.settle('complete', 'stop');
+
+  expect(store.accept({ title: 'Plan', steps: ['Only one'] })).toBe(false);
+  expect(store.getSnapshot().application.revision).toBe(0);
+});
+
+test('tool-only structured assistant messages do not produce captured or renderable cards', () => {
+  const store = createWorkbenchStore('structured');
+  store.send('Plan');
+
+  expect(workbenchStructuredProps(undefined)).toBeNull();
+  expect(workbenchStructuredProps({})).toBeNull();
+  expect(
+    workbenchStructuredProps({ title: undefined, steps: undefined }),
+  ).toBeNull();
+  store.parsed({});
+
+  expect(store.getSnapshot().frame?.props).toBeNull();
+  expect(
+    store
+      .getSnapshot()
+      .frame?.messages.filter((message) => message.role === 'assistant'),
+  ).toHaveLength(0);
+  expect(workbenchStructuredProps({ title: 'Plan' })).toEqual({
+    title: 'Plan',
+  });
+  expect(workbenchStructuredProps({ steps: ['Outline'] })).toEqual({
+    steps: ['Outline'],
+  });
 });
