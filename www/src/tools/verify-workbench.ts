@@ -526,6 +526,23 @@ try {
       await expect(
         page.locator('.wb:visible .wb-inspector [data-detail]'),
       ).toBeVisible();
+      await expect(page.locator('.wb:visible')).not.toHaveClass(/\bwb-rail\b/);
+      await expect(page.locator('.wb:visible .wb-split')).toHaveAttribute(
+        'aria-valuenow',
+        '44',
+      );
+      await expect(
+        page.locator('.wb:visible .wb-nav-heading[aria-expanded=false]'),
+      ).toHaveCount(0);
+      const capturedBox = await page
+        .locator('.wb:visible .wb-inspector [data-captured]')
+        .boundingBox();
+      const detailBox = await page
+        .locator('.wb:visible .wb-inspector [data-detail]')
+        .boundingBox();
+      expect(capturedBox).not.toBeNull();
+      expect(detailBox).not.toBeNull();
+      expect(capturedBox?.y).toBe(detailBox?.y);
       await expect(
         page.getByRole('tab', { name: lesson.inspector, exact: true }),
       ).toHaveAttribute('aria-selected', 'true');
