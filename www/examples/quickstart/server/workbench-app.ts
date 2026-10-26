@@ -100,6 +100,7 @@ export interface WorkbenchServerOptions {
   readonly stream: (
     input: RunAgentInput,
     signal: AbortSignal,
+    lessonId?: WorkbenchLessonId,
   ) => AsyncIterable<AGUIEvent>;
   readonly decide?: (
     request: Decision.Request,
@@ -182,11 +183,24 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
         res.status(403).json({ error: 'Use the local same-origin demo' });
         return;
       }
+      const lesson = workbenchLessons.find(
+        (entry) => entry.endpoint === req.path,
+      );
+      if (lesson?.id === 'debugging' && req.query['demoDenied'] === '1') {
+        res
+          .status(403)
+          .set({
+            'Cache-Control': 'no-store',
+            'X-Workbench-Source': 'demo-failure',
+          })
+          .json({
+            error:
+              'Demo denial is enabled. Disable Demo denial and send again.',
+          });
+        return;
+      }
       let input: RunAgentInput;
       try {
-        const lesson = workbenchLessons.find(
-          (lesson) => lesson.endpoint === req.path,
-        );
         input = pinWorkbenchInput(req.body, lesson?.id);
       } catch {
         res
@@ -212,7 +226,11 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
           'X-Accel-Buffering': 'no',
           'X-Workbench-Source': options.source ?? 'provider',
         });
-        for await (const event of options.stream(input, controller.signal)) {
+        for await (const event of options.stream(
+          input,
+          controller.signal,
+          lesson?.id,
+        )) {
           if (controller.signal.aborted) break;
           res.write(encoder.encodeSSE(event));
         }

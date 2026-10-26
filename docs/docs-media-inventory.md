@@ -246,3 +246,30 @@ low confidence, failure, cancellation/replacement and retained conversation
 navigation. No SDK release or new dependencies.
 
 Recording presentation: the new OpenAI streaming/schema captures pace unchanged provider events at 20 ms so browser batching does not hide previews. This is disclosed in the media notes and walkthroughs. The normal demo host adds no delay; complete TypeSafe decisions are not paced as streams.
+
+## Canonical debugging and request transformation
+
+The Angular and React debugging and request-transformation guides now select
+`canonical-workbench-{debugging,request-transformation}-{angular,react}` rather
+than the earlier ATC debugging and scripted Northstar support clips. Legacy
+assets remain for old bookmarks and unrelated fixture checks.
+
+The debugging recording includes a deliberate local HTTP 403 before provider
+invocation, followed by same-conversation recovery through the actual UI-chat
+SDK and real OpenAI adapter. Its `demo-failure` source remains attached to the
+selected historical request. The switch is a demonstration, not authentication.
+Acceptance and the follow-up retain the same explicit application revision rules.
+
+The transformation recording follows the real provider callback after mapping.
+It captures public before/after options and preservation checks, adds fixed
+server-owned workspace instructions, and omits input messages, headers and
+credentials from the trace. Replay synchronizes chat, JSON, UI and state without
+provider calls or writes. Each framework gets separate MP4/WebM, poster,
+result screenshot, measured captions and an honest text walkthrough.
+
+Run `WORKBENCH_LESSONS=debugging,request-transformation npx nx workbench-demo www`
+with server-only OpenAI credentials, sequentially with other builds/recorders.
+The recorder rejects fixture provenance for successful provider turns; the local
+debug denial is disclosed separately. Presentation pacing and half-speed footage
+are disclosed. Originals, phase times and verification reports remain under the
+unique ignored `dist/docs-workbench/captures/<run-id>` directory.

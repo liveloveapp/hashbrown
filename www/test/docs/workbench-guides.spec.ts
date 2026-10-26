@@ -13,6 +13,8 @@ test.each(SDKS)(
       ['streaming', 'streaming'],
       ['schema', 'schemas'],
       ['decisions', 'decisions'],
+      ['debugging', 'debugging'],
+      ['transform-request-options', 'request-transformation'],
     ] as const;
 
     for (const [slug, lesson] of lessons) {
@@ -23,7 +25,7 @@ test.each(SDKS)(
       expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
       expect(body).toContain('two-step plan');
       expect(body).toContain(
-        `/${sdk}.html?lesson=${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : slug === 'schema' ? 'schemas' : slug}`,
+        `/${sdk}.html?lesson=${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : slug === 'schema' ? 'schemas' : slug === 'transform-request-options' ? 'request-transformation' : slug}`,
       );
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
       expect(body).toContain(
@@ -44,6 +46,8 @@ test.each(SDKS)(
       'streaming',
       'schema',
       'decisions',
+      'debugging',
+      'transform-request-options',
     ].map((slug) => readDoc(sdk, ['concept', slug])?.body ?? '');
     let checked = 0;
 
