@@ -185,11 +185,13 @@
   font: 400 0.875em/1.5 var(--font-code);
 }
 
-.article table {
-  display: block;
-  overflow-x: auto;
-  border-collapse: collapse;
+/* ScrollTable wraps each table in a frame that scrolls it sideways. */
+.article [data-scroll-table] {
   margin: var(--space-2) 0 var(--space-6);
+}
+
+.article table {
+  border-collapse: collapse;
   font-size: 15px;
 }
 
