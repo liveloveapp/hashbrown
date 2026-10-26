@@ -809,3 +809,131 @@ test('treats enum, type, and const property names as ordinary property names', (
   });
   expect(prepared.request.response_format?.schema).toBe(JSON.stringify(schema));
 });
+
+const emptyObjectSchema = {
+  type: 'object',
+  properties: {},
+  required: [],
+  additionalProperties: false,
+};
+for (const [leaf, value] of [
+  [emptyObjectSchema, []],
+  [
+    {
+      type: 'object',
+      properties: { '0': { type: 'string' } },
+      required: ['0'],
+      additionalProperties: false,
+    },
+    ['x'],
+  ],
+  [{ type: 'array', items: emptyObjectSchema }, [[]]],
+  [
+    {
+      anyOf: [
+        emptyObjectSchema,
+        { type: 'array', items: { type: 'string' }, minItems: 1 },
+      ],
+    },
+    [],
+  ],
+] as const) {
+  test(`rejects arrays in object schema positions without mixing anyOf branches ${JSON.stringify(leaf)}`, () => {
+    const schema = { ...parameters(), properties: { query: leaf } };
+    const source = input();
+    source.tools[0].parameters = schema;
+    const prepared = prepareWebLlmToolMessages(source, tool);
+    const history = input([
+      { id: 'u', role: 'user', content: 'Question' },
+      call('c', 'lookup', JSON.stringify({ query: value })),
+      result(),
+    ]);
+    history.tools[0].parameters = schema;
+    const selector = jest.fn(finalize);
+
+    const validate = () =>
+      prepared.selectedTool?.argumentSchema.validate({ query: value });
+    const replay = () => prepareWebLlmToolMessages(history, selector);
+
+    expect(validate).toThrow();
+    expect(replay).toThrow();
+    expect(selector).not.toHaveBeenCalled();
+  });
+}
+
+for (const value of [{}, ['x']]) {
+  test(`accepts a complete valid anyOf branch ${JSON.stringify(value)}`, () => {
+    const source = input([
+      { id: 'u', role: 'user', content: 'Question' },
+      call('c', 'lookup', JSON.stringify({ query: value })),
+      result(),
+    ]);
+    source.tools[0].parameters = {
+      ...parameters(),
+      properties: {
+        query: {
+          anyOf: [
+            emptyObjectSchema,
+            { type: 'array', items: { type: 'string' }, minItems: 1 },
+          ],
+        },
+      },
+    };
+
+    const prepared = prepareWebLlmToolMessages(source, tool);
+
+    expect(prepared.context.completedCalls[0].arguments['query']).toEqual(
+      value,
+    );
+    expect(
+      prepared.selectedTool?.argumentSchema.validate({ query: value }),
+    ).toEqual({ query: value });
+  });
+}
+
+for (const name of ['__proto__', 'constructor', 'prototype']) {
+  for (const wrap of [
+    (node: object) => node,
+    (node: object) => ({ type: 'array', items: node }),
+    (node: object) => ({ anyOf: [{ type: 'null' }, node] }),
+  ]) {
+    test(`rejects reserved schema property names before conversion ${name} ${JSON.stringify(wrap({}))}`, () => {
+      // JSON parsing keeps __proto__ as an own property rather than prototype syntax.
+      const reserved = JSON.parse(
+        '{"type":"object","properties":{"' +
+          name +
+          '":{"type":"string"}},"required":["' +
+          name +
+          '"],"additionalProperties":false}',
+      );
+      const source = input();
+      source.tools[0].parameters = {
+        ...parameters(),
+        properties: { query: wrap(reserved) },
+      };
+      const selector = jest.fn(finalize);
+
+      const act = () => prepareWebLlmToolMessages(source, selector);
+
+      expect(act).toThrow();
+      expect(selector).not.toHaveBeenCalled();
+    });
+  }
+}
+
+test('rejects root reserved-property schemas before an omitted __proto__ field can pass', () => {
+  const source = input([
+    { id: 'u', role: 'user', content: 'Question' },
+    call('c', 'lookup', '{}'),
+    result(),
+  ]);
+  source.tools[0].parameters = JSON.parse(
+    '{"type":"object","properties":{"__proto__":{"type":"string"}},"required":["__proto__"],"additionalProperties":false}',
+  );
+  const selector = jest.fn(finalize);
+
+  const act = () => prepareWebLlmToolMessages(source, selector);
+
+  expect(act).toThrow();
+  expect(selector).not.toHaveBeenCalled();
+});

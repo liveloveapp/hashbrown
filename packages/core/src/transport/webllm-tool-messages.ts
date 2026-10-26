@@ -48,6 +48,8 @@ export function webLlmToolObject(
 function assertSupportedArgumentSchema(
   schema: Readonly<Record<string, unknown>>,
 ): void {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema))
+    throw webLlmToolError('Tool argument schema nodes must be objects.');
   const type = schema['type'];
   if (
     Object.hasOwn(schema, 'type') &&
@@ -81,17 +83,25 @@ function assertSupportedArgumentSchema(
     throw webLlmToolError(
       'Tool argument schemas cannot use format annotations.',
     );
-  // Conversion has already validated these schema-node shapes. A properties
-  // dictionary may itself contain an ordinary property named "format".
-  const properties = schema['properties'] as
-    Record<string, Record<string, unknown>> | undefined;
-  for (const child of Object.values(properties ?? {}))
-    assertSupportedArgumentSchema(child);
-  if (schema['items'])
+  // Traverse schema nodes, not properties dictionaries as keyword containers.
+  const properties = schema['properties'];
+  if (
+    properties &&
+    typeof properties === 'object' &&
+    !Array.isArray(properties)
+  ) {
+    for (const [name, child] of Object.entries(properties)) {
+      if (['__proto__', 'constructor', 'prototype'].includes(name))
+        throw webLlmToolError(
+          'Tool argument schemas cannot use reserved property names.',
+        );
+      assertSupportedArgumentSchema(child as Record<string, unknown>);
+    }
+  }
+  if (Object.hasOwn(schema, 'items'))
     assertSupportedArgumentSchema(schema['items'] as Record<string, unknown>);
-  for (const child of (schema['anyOf'] as
-    Record<string, unknown>[] | undefined) ?? [])
-    assertSupportedArgumentSchema(child);
+  if (Array.isArray(schema['anyOf']))
+    for (const child of schema['anyOf']) assertSupportedArgumentSchema(child);
 }
 
 function declarations(input: RunAgentInput) {
@@ -111,8 +121,8 @@ function declarations(input: RunAgentInput) {
       if (inputSchema['type'] !== 'object')
         throw webLlmToolError('Tool argument schemas must be closed objects.');
       try {
-        const argumentSchema = fromJsonSchema(inputSchema);
         assertSupportedArgumentSchema(inputSchema);
+        const argumentSchema = fromJsonSchema(inputSchema);
         return Object.freeze({
           name,
           description,
