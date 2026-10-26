@@ -4,72 +4,62 @@
 .page {
   display: block;
   position: relative;
-  padding: 32px;
+  padding: var(--space-8) var(--gutter) var(--space-16);
   overflow: hidden;
 }
 
 .article {
   display: flex;
   flex-direction: column;
-  color: var(--gray-dark, #3d3c3a);
-  font:
-    400 15px/21px Fredoka,
-    sans-serif;
+  color: var(--color-ink);
+  font: 400 16px/1.7 var(--font-sans);
 }
 
 .article h1 {
-  color: var(--gray, #5e5c5a);
-  /* Longhands: with the `font` shorthand, Next's CSS minifier drops
-     font-variation-settings, and the variable font renders light. */
-  font-family: KefirVariable, sans-serif;
-  font-size: 22px;
-  line-height: 32px;
-  font-weight: 750;
-  font-variation-settings: 'wght' 750;
-  margin: 0 0 8px 0;
+  color: var(--color-ink);
+  font: 600 34px/1.1 var(--font-sans);
+  letter-spacing: -0.035em;
+  margin: 0 0 var(--space-3) 0;
 }
 
 .article h2,
 .article h3,
 .article h4 {
-  color: var(--gray, #5e5c5a);
-  margin-bottom: 8px;
-  font:
-    500 18px/24px Fredoka,
-    sans-serif;
+  color: var(--color-ink);
+  margin: var(--space-10) 0 var(--space-3);
+  font: 600 22px/1.3 var(--font-sans);
+  letter-spacing: -0.025em;
+  scroll-margin-top: var(--space-6);
 }
 
 .article h2 > code,
 .article h3 > code,
 .article h4 > code {
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 0.9em;
 }
 
 .article h3,
 .article h4 {
-  font-size: 16px;
-  line-height: 22px;
+  margin-top: var(--space-8);
+  font-size: 18px;
+  letter-spacing: -0.015em;
 }
 
 .article p {
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--space-4) 0;
   padding: 0;
-  line-height: 1.6;
 }
 
 .article p:global(.subtitle) {
-  color: var(--chocolate-brown-light);
-  margin: -8px 0 16px 0;
-  font:
-    300 18px/24px Fredoka,
-    sans-serif;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-6) 0;
+  font: 400 19px/1.5 var(--font-sans);
 }
 
 .article hr {
   border: 0;
-  border-top: 1px solid #dcdad5;
-  margin: 32px 0;
+  border-top: 1px solid var(--color-rule);
+  margin: var(--space-10) 0;
 }
 
 .article strong {
@@ -81,62 +71,56 @@
   display: flex;
   flex-direction: column;
   list-style: none;
-  margin: 0 0 8px 8px;
+  margin: 0 0 var(--space-4) 0;
   padding: 0;
 }
 
 .article ul > li,
 .article ol > li {
   position: relative;
-  padding-left: 40px;
-  font:
-    400 15px/24px Fredoka,
-    sans-serif;
+  padding-left: var(--space-8);
 }
 
 .article ul {
-  gap: 8px;
-}
-
-.article ul > li {
-  padding-left: 32px;
+  gap: var(--space-2);
 }
 
 .article ul > li::before {
   position: absolute;
-  top: 9px;
-  left: 8px;
+  top: 11px;
+  left: var(--space-3);
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--chocolate-brown);
+  background: var(--sunshine-yellow-dark);
   content: '';
 }
 
 .article ol {
-  gap: 16px;
+  gap: var(--space-3);
   counter-reset: ordered-listitem;
-  margin-top: 8px;
 }
 
 .article ol > li::after {
   position: absolute;
-  top: -1px;
+  top: 2px;
   left: 0;
-  background: var(--sunshine-yellow-light, #fbe7b6);
-  border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
-  border-radius: 8px;
-  width: 24px;
-  height: 24px;
-  display: inline-block;
-  text-align: center;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--color-highlight);
+  color: var(--color-ink);
+  font: 600 12px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
   content: counter(ordered-listitem);
   counter-increment: ordered-listitem;
 }
 
 /* Next steps are lists too, but styled by their own component. */
 .article ul:has(> [data-component='next-step']) {
-  gap: 16px;
+  gap: var(--space-4);
   margin-left: 0;
 }
 
@@ -149,30 +133,36 @@
 }
 
 .article a:not([data-symbol-link]) {
+  color: var(--color-accent);
+  font-weight: 500;
   text-decoration: underline;
-  text-decoration-color: #774625;
-  color: #774625;
-  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
 }
 
 .article a:not([data-symbol-link]):hover {
-  text-decoration-color: #fbbb52;
+  text-decoration-color: currentColor;
 }
 
 .article a:global(.cta) {
-  align-self: flex-end;
+  align-self: flex-start;
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  border-radius: 32px;
-  border: 6px solid #64afb5;
-  background: #9ecfd7;
-  color: #384849;
-  font:
-    500 18px/24px 'Fredoka',
-    sans-serif;
+  min-height: var(--control-lg);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font: 600 15px/1 var(--font-sans);
   text-decoration: none;
-  padding: 12px 24px;
+  padding: 0 var(--space-6);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.article a:global(.cta):hover {
+  background: var(--color-accent-hover);
 }
 
 .article [data-component='next-step'] a {
@@ -180,48 +170,49 @@
 }
 
 .article > pre:global(.shiki) {
-  padding: 24px;
-  border-radius: 16px;
-  border: 4px solid var(--gray-light, #a4a3a1);
-  background: var(--gray-dark, #3d3c3a) !important;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--color-code-bg) !important;
   overflow-x: auto;
-  margin: 0 0 16px;
+  margin: var(--space-2) 0 var(--space-6);
+  font: 400 13.5px/1.7 var(--font-code);
 }
 
 .article code:not(pre code) {
-  font:
-    700 14px/21px 'JetBrains Mono',
-    monospace;
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  background: var(--color-surface);
+  font: 400 0.875em/1.5 var(--font-code);
 }
 
-/* The frame, border and scrolling live in ScrollTable. */
+/* ScrollTable wraps each table in a frame that scrolls it sideways. */
+.article [data-scroll-table] {
+  margin: var(--space-2) 0 var(--space-6);
+}
+
 .article table {
   border-collapse: collapse;
+  font-size: 15px;
 }
 
 .article table > thead {
-  padding: 8px 16px;
-  color: rgba(250, 249, 240, 0.8);
-  background: #3d3c3a;
-  border-bottom: 1px solid #000;
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .article table tr {
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .article table th,
 .article table td {
-  padding: 16px;
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
   text-align: left;
+  vertical-align: top;
 }
 
 .article table th {
-  font:
-    400 16px/24px Fredoka,
-    sans-serif;
+  font: 600 14px/20px var(--font-sans);
 }
 
 .article table code {
@@ -234,12 +225,12 @@
   width: 186px;
   flex-direction: column;
   position: fixed;
-  top: 128px;
-  right: 32px;
+  top: calc(var(--header-height) + var(--space-12));
+  right: var(--gutter);
   margin: 0;
   padding: 0;
   opacity: 1;
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity 200ms var(--ease-out);
 }
 
 .toc.faded {
@@ -247,22 +238,23 @@
 }
 
 .toc a {
-  padding: 4px 0;
-  color: var(--gray, #5e5c5a);
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  color: var(--color-muted);
   text-decoration: none;
-  font:
-    400 13px/18px Fredoka,
-    sans-serif;
-  border-left: 1px solid #dcdad5;
+  font: 400 13px/20px var(--font-sans);
+  border-left: 2px solid var(--color-rule);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .toc a:hover {
-  color: rgb(47, 47, 43);
+  color: var(--color-ink);
 }
 
 .toc a.active {
-  color: rgb(47, 47, 43);
-  border-left: 1px solid var(--gray-dark, #3d3c3a);
+  color: var(--color-ink);
+  border-left-color: var(--sunshine-yellow-dark);
 }
 
 .sentinel {
@@ -272,17 +264,27 @@
   height: 1px;
 }
 
+@media screen and (min-width: 768px) {
+  .page {
+    padding: var(--space-10) var(--space-10) var(--space-16);
+  }
+}
+
 @media screen and (min-width: 1024px) {
   .page {
-    max-width: 800px;
-    padding: 32px 48px;
+    max-width: 840px;
+    padding: var(--space-12) var(--space-16) var(--space-24);
+  }
+
+  .article h1 {
+    font-size: 40px;
   }
 }
 
 @media screen and (min-width: 1281px) {
   .page {
-    padding-right: 250px;
-    max-width: 1024px;
+    padding-right: 272px;
+    max-width: 1080px;
   }
 
   .toc {
@@ -296,7 +298,7 @@
   display: block;
   width: 100%;
   height: auto;
-  margin: 8px 0 24px;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px rgba(61, 60, 58, 0.12);
+  margin: var(--space-2) 0 var(--space-6);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
 }

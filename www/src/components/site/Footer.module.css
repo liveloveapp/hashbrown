@@ -2,23 +2,23 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid rgba(61, 60, 58, 0.24);
+  border-top: 1px solid var(--color-rule);
 }
 
 .footer {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: var(--space-8);
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--space-12) var(--gutter) var(--space-8);
   width: 100%;
+  max-width: calc(var(--column-width, 100vw) + 2 * var(--gutter));
 }
 
 .links {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-  row-gap: 16px;
+  gap: var(--space-8) var(--space-4);
 }
 
 .brand {
@@ -30,18 +30,17 @@
   > .title {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     font:
-      500 24px/32px Fredoka,
-      sans-serif;
-    color: #5e5c5a;
+      600 22px/32px var(--font-sans);
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
   }
 
   > small {
     font:
-      300 11px/16px Fredoka,
-      sans-serif;
-    color: rgba(61, 60, 58, 0.64);
+      400 13px/1.5 var(--font-sans);
+    color: var(--color-muted);
 
     > a {
       display: inline-flex;
@@ -68,12 +67,12 @@
 
   > .title {
     font: 600 14px/18px var(--font-heading);
+    color: var(--color-ink);
   }
 
   > ul {
-    font:
-      400 14px/18px Fredoka,
-      sans-serif;
+    font: 400 14px/20px var(--font-sans);
+    color: var(--color-muted);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -93,7 +92,7 @@
 
   > ul {
     display: flex;
-    gap: 16px;
+    gap: var(--space-4);
 
     > li > a {
       display: block;
@@ -135,7 +134,7 @@
 
 @media screen and (min-width: 1024px) {
   .footer {
-    padding: 64px 24px 24px;
+    padding: var(--space-16) var(--gutter) var(--space-8);
   }
 
   .brand {

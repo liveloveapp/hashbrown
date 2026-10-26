@@ -56,13 +56,13 @@ test('support entries reach React and Angular runtimes while the release is the 
       packageNames: ['@hashbrownai/react'],
       minVersion: '0.8.0',
       documentationUrl: 'https://hashbrown.dev/docs/react',
-      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founder: hashbrown.dev/unstuck",
     },
     {
       packageNames: ['@hashbrownai/angular'],
       minVersion: '0.8.0',
       documentationUrl: 'https://hashbrown.dev/docs/angular',
-      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founder: hashbrown.dev/unstuck",
     },
   ]);
   expect(

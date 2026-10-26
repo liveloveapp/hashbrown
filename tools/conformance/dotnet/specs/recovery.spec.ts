@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
 import { withRoutedEndpoint } from '../harness/routed-endpoint';
-import { durableEffects, withDurableCluster } from '../harness/durable-fixture';
+import { durableEffects, withDurableCluster } from '../harness/browser-fixture';
 
 async function openRecovery(page: Page, runUrl: string, scenario = 'plain') {
   await page.goto(

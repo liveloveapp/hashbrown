@@ -61,7 +61,7 @@ test('blog index metadata matches the Angular routeMeta', () => {
 
   const og = meta.openGraph as { title?: string; images?: unknown };
 
-  expect(meta.title).toBe('Home: Hashbrown Blog');
+  expect(meta.title).toEqual({ absolute: 'Home: Hashbrown Blog' });
   expect(meta.description).toBe('Hashbrown Blog.');
   expect(og.title).toBe('Home: Hashbrown Blog');
   expect(og.images).toEqual([DEFAULT_CARD_IMAGE]);

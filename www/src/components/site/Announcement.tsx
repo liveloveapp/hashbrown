@@ -125,7 +125,6 @@ export function Announcement() {
             <path d="m6 6 12 12" />
           </svg>
         </button>
-        <div className={styles.gradient}></div>
       </div>
     </div>
   );

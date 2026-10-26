@@ -1,5 +1,54 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-magic-text-react': {
+    title: 'React workbench: Magic Text.',
+    caption:
+      'Follow streamed Markdown into a formatted explanation, inspect a source reference, then ask for a shorter reply.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. A source reference does not prove retrieval or correctness. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-predictions-react': {
+    title: 'React workbench: predictive suggestions.',
+    caption:
+      'Dismiss a context-bound proposal, request fresh suggestions, then explicitly accept an action and follow up.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. Suggestions are context-bound completions; only explicit acceptance changes application state. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-selection-react': {
+    title: 'React workbench: UI selection.',
+    caption:
+      'Compare application-owned plan views, inspect the selected candidate and confidence, and explicitly use the view.',
+    recording:
+      'Recorded in the real React workbench with TypeSafe whole UI decisions and the actual Hashbrown SDK. The model chooses only a known candidate ID; components and plan props belong to the application. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-magic-text-angular': {
+    title: 'Angular workbench: Magic Text.',
+    caption:
+      'Follow streamed Markdown into a formatted explanation, inspect a source reference, then ask for a shorter reply.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. A source reference does not prove retrieval or correctness. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-predictions-angular': {
+    title: 'Angular workbench: predictive suggestions.',
+    caption:
+      'Dismiss a context-bound proposal, request fresh suggestions, then explicitly accept an action and follow up.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. Suggestions are context-bound completions; only explicit acceptance changes application state. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-selection-angular': {
+    title: 'Angular workbench: UI selection.',
+    caption:
+      'Compare application-owned plan views, inspect the selected candidate and confidence, and explicitly use the view.',
+    recording:
+      'Recorded in the real Angular workbench with TypeSafe whole UI decisions and the actual Hashbrown SDK. The model chooses only a known candidate ID; components and plan props belong to the application. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-debugging-react': {
     title: 'React workbench: debugging.',
     caption:

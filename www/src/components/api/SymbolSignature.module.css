@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-code);
 }
 
 .param {

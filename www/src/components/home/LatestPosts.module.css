@@ -1,45 +1,50 @@
 /* Port of www/analog/src/app/components/home/LatestPosts.ts. */
 .section {
   display: block;
-  padding: 24px 0 72px;
+  padding: 0 0 var(--section-gap);
 }
 
 .section h2 {
-  margin-bottom: 32px;
-  font: 800 40px/1.08 var(--font-heading);
+  margin-bottom: var(--space-8);
+  font: 600 40px/1.08 var(--font-heading);
   letter-spacing: -0.03em;
-  color: var(--chocolate-brown);
+  color: var(--color-ink);
 }
 
 .posts {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
+  gap: var(--space-8) var(--space-10);
 }
 
 .posts a {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 18px;
-  background: #fff;
+  gap: var(--space-2);
+  padding: var(--space-6) 0 0;
+  border-top: 1px solid var(--color-rule);
   color: inherit;
   text-decoration: none;
 }
 
+.posts a h3 {
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.posts a:hover h3 {
+  color: var(--color-accent);
+}
+
 .posts small {
   font:
-    400 13px/1 'Fredoka',
-    sans-serif;
-  color: var(--chocolate-brown-light);
+    400 13px/1 var(--font-sans);
+  color: var(--color-muted);
 }
 
 .posts h3 {
-  font: 700 19px/1.25 var(--font-heading);
-  letter-spacing: -0.02em;
-  color: var(--chocolate-brown);
+  font: 600 19px/1.25 var(--font-heading);
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
 }
 
 @media screen and (min-width: 1024px) {

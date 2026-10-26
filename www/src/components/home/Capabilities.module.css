@@ -1,57 +1,59 @@
 /* Port of www/analog/src/app/components/home/Capabilities.ts. */
 .section {
   display: block;
-  padding: 24px 0 72px;
+  padding: 0 0 var(--section-gap);
 }
 
 .header {
   max-width: 640px;
-  margin-bottom: 32px;
+  margin-bottom: var(--space-8);
 }
 
 .header h2 {
-  font: 800 40px/1.08 var(--font-heading);
+  font: 600 40px/1.08 var(--font-heading);
   letter-spacing: -0.03em;
-  color: var(--chocolate-brown);
+  color: var(--color-ink);
 }
 
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
+  gap: var(--space-8) var(--space-10);
 }
 
 .grid article {
-  padding: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 18px;
-  background: #fff;
+  padding: var(--space-6) 0 0;
+  border-top: 1px solid var(--color-rule);
 }
 
 .grid h3 {
-  margin-bottom: 6px;
-  font: 700 20px/1.2 var(--font-heading);
-  letter-spacing: -0.02em;
-  color: var(--chocolate-brown);
+  margin-bottom: var(--space-2);
+  font: 600 20px/1.2 var(--font-heading);
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
 }
 
 .grid p {
-  margin-bottom: 12px;
+  margin-bottom: 0;
   font:
-    400 15px/1.5 'Fredoka',
-    sans-serif;
-  color: var(--gray);
+    400 15px/1.5 var(--font-sans);
+  color: var(--color-muted);
 }
 
 .grid a {
   display: inline-block;
-  margin-top: 12px;
+  margin-top: var(--space-4);
   font:
-    500 14px/1 'Fredoka',
-    sans-serif;
-  color: var(--chocolate-brown);
+    500 14px/1 var(--font-sans);
+  color: var(--color-accent);
   text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+}
+
+.grid a:hover {
+  text-decoration-color: currentColor;
 }
 
 @media screen and (min-width: 768px) {

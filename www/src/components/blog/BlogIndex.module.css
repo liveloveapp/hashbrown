@@ -9,8 +9,8 @@
   align-self: center;
   display: flex;
   flex-direction: column;
-  gap: 56px;
-  padding: 24px;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--gutter);
   width: 100%;
   max-width: 1024px;
 }
@@ -22,20 +22,24 @@
 }
 
 .filters > button {
-  color: rgba(61, 60, 58, 0.72);
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-md);
+  color: var(--color-muted);
+  padding: 0 var(--space-4);
   border: 1px solid transparent;
-  border-radius: 24px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
   font:
-    400 normal 14px/18px Fredoka,
-    sans-serif;
+    400 normal 14px/18px var(--font-sans);
   text-decoration-line: underline;
   text-decoration-color: transparent;
   transition: text-decoration-color 0.2s ease-in-out;
 }
 
 .filters > button.selected {
-  background: rgba(61, 60, 58, 0.04);
+  background: var(--color-highlight);
+  color: var(--color-ink);
 }
 
 .filters > button:hover {

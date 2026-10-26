@@ -1173,7 +1173,7 @@ ${' '.repeat(depth)}}`;
     };
   },
   validateImpl: (schema, definition, object, path) => {
-    if (typeof object !== 'object' || object === null)
+    if (typeof object !== 'object' || object === null || Array.isArray(object))
       throw new Error(`Expected an object at: ${path.join('.')}`);
 
     const { shape } = definition;

@@ -2,7 +2,7 @@
 .menu {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-6);
   height: 100%;
   min-height: 0;
   width: 100%;
@@ -18,17 +18,18 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .section {
   > h2,
   > summary {
-    padding: 6px 12px;
-    color: var(--gray, #5e5c5a);
-    font:
-      400 16px/18px Fredoka,
-      sans-serif;
+    display: flex;
+    align-items: center;
+    min-height: var(--control-sm);
+    padding: 0 var(--space-3);
+    color: var(--color-ink);
+    font: 600 13px/18px var(--font-sans);
   }
 
   > ul,
@@ -36,7 +37,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
+    gap: 2px;
 
     > li {
       display: flex;
@@ -45,17 +46,27 @@
 
       > a {
         display: flex;
-        color: var(--chocolate-brown, #774625);
-        padding: 6px 12px;
+        align-items: center;
+        min-height: var(--control-sm);
+        color: var(--color-muted);
+        padding: var(--space-1) var(--space-3);
         width: 100%;
-        border-radius: 8px;
-        font:
-          400 13px/18px Fredoka,
-          sans-serif;
+        border-radius: var(--radius-input);
+        text-decoration: none;
+        font: 400 14px/20px var(--font-sans);
+        transition:
+          background-color var(--duration-fast) var(--ease-out),
+          color var(--duration-fast) var(--ease-out);
 
-        &:hover,
+        &:hover {
+          background: var(--color-surface);
+          color: var(--color-ink);
+        }
+
         &.active {
-          background: var(--sunshine-yellow-light, #fde4ba);
+          background: var(--color-highlight);
+          color: var(--color-ink);
+          font-weight: 500;
         }
       }
     }
@@ -71,7 +82,7 @@ details.section {
     justify-content: space-between;
     list-style: none;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius-input);
 
     &::-webkit-details-marker {
       display: none;
@@ -79,21 +90,23 @@ details.section {
 
     &::after {
       content: '›';
-      font-size: 20px;
+      font-size: 18px;
+      color: var(--color-muted);
+      transition: transform var(--duration-fast) var(--ease-out);
     }
 
     &:hover {
-      background: var(--sunshine-yellow-light, #fde4ba);
+      background: var(--color-surface);
     }
 
     &:focus-visible {
-      outline: 2px solid var(--chocolate-brown, #774625);
+      outline: 2px solid var(--color-accent);
       outline-offset: -2px;
     }
   }
 
   &[open] > summary {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
 
     &::after {
       transform: rotate(90deg);
@@ -104,39 +117,44 @@ details.section {
 .search {
   display: flex;
   flex-direction: row;
-  padding: 8px 8px 8px 12px;
+  min-height: var(--control-md);
+  /* Less the 1px border, so the text lines up with the links below. */
+  padding: 0 var(--space-1) 0 calc(var(--space-3) - 1px);
   justify-content: space-between;
   align-items: center;
   align-self: stretch;
-  border: 2px solid var(--chocolate-brown-light, #ad907c);
-  border-radius: 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
   cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+
+  &:hover {
+    border-color: var(--gray-light);
+  }
 
   > p {
-    color: var(--chocolate-brown-light, #ad907c);
-    font:
-      500 12px/140% Fredoka,
-      sans-serif;
+    color: var(--color-muted);
+    font: 400 14px/20px var(--font-sans);
   }
 
   > div {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
 
     > span {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: var(--chocolate-brown-light, #ad907c);
+      color: var(--color-muted);
       height: 24px;
-      width: 24px;
-      border: 2px solid var(--chocolate-brown-light, #ad907c);
-      border-radius: 4px;
-      text-transform: uppercase;
-      font:
-        500 12px/140% Fredoka,
-        sans-serif;
+      min-width: 24px;
+      padding: 0 var(--space-1);
+      border: 1px solid var(--color-rule);
+      border-radius: 6px;
+      background: var(--color-bg);
+      font: 500 11px/1 var(--font-code);
     }
   }
 }
@@ -144,32 +162,36 @@ details.section {
 .dropdownContent {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
-  background: #fff;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
 }
 
 /* Scoped under .sdk so it wins over DropdownMenu's .trigger reset. */
 .sdk .sdkTrigger {
   display: flex;
-  height: 40px;
+  height: var(--control-md);
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--sky-blue, #9ecfd7);
-  border-radius: 8px;
-  background: rgba(158, 207, 215, 0.24);
+  padding: 0 calc(var(--space-3) - 1px);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+
+  &:hover {
+    border-color: var(--gray-light);
+  }
 
   > label {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    color: rgba(0, 0, 0, 0.54);
-    font:
-      500 12px/16px Fredoka,
-      sans-serif;
+    color: var(--color-ink);
+    font: 500 14px/20px var(--font-sans);
 
     > span {
       display: flex;
@@ -183,16 +205,15 @@ details.section {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  min-height: var(--control-sm);
+  padding: var(--space-1) var(--space-3);
   width: 100%;
-  border-radius: 8px;
-  color: var(--chocolate-brown, #774625);
-  font:
-    400 13px/18px Fredoka,
-    sans-serif;
+  border-radius: var(--radius-input);
+  color: var(--color-ink);
+  font: 400 14px/20px var(--font-sans);
 
   &:hover {
-    background: var(--sunshine-yellow-light, #fde4ba);
+    background: var(--color-surface);
   }
 }
 
@@ -214,17 +235,23 @@ details.section {
 
   > a {
     display: flex;
-    color: var(--chocolate-brown, #774625);
-    padding: 6px 12px;
+    align-items: center;
+    color: var(--color-muted);
+    min-height: var(--control-sm);
+    padding: var(--space-1) var(--space-3);
     width: 100%;
-    border-radius: 8px;
-    font:
-      400 13px/18px Fredoka,
-      sans-serif;
+    border-radius: var(--radius-input);
+    text-decoration: none;
+    font: 400 14px/20px var(--font-sans);
 
-    &:hover,
+    &:hover {
+      background: var(--color-surface);
+      color: var(--color-ink);
+    }
+
     &.active {
-      background: var(--sunshine-yellow-light, #fde4ba);
+      background: var(--color-highlight);
+      color: var(--color-ink);
     }
   }
 }

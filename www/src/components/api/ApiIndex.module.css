@@ -16,7 +16,7 @@
 /* Longhands: Next's minifier drops font-variation-settings next to `font`. */
 .controls > h1 {
   color: var(--gray, #5e5c5a);
-  font-family: KefirVariable, sans-serif;
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 750;
   line-height: 32px;
@@ -33,8 +33,9 @@
 
 .search > label {
   position: absolute;
-  top: 10px;
-  left: 8px;
+  top: 0;
+  bottom: 0;
+  left: var(--space-3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -43,10 +44,11 @@
 .search > input {
   background-color: transparent;
   font-size: 16px;
-  padding: 8px 0 8px 38px;
+  min-height: var(--control-md);
+  padding: 0 var(--space-4) 0 var(--space-10);
   width: 100%;
-  border: 1px solid rgba(61, 60, 58, 0.24);
-  border-radius: 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
 }
 
 .filters {
@@ -79,8 +81,7 @@
 
 .packages > h2 {
   font:
-    700 14px/18px 'JetBrains Mono',
-    monospace;
+    500 14px/18px var(--font-code);
   color: #774625;
   margin-top: 32px;
 }

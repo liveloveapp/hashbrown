@@ -4,7 +4,12 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { workbenchLessons } from './workbench-lessons';
+import { type WorkbenchLesson, workbenchLessons } from './workbench-lessons';
+import { workbenchRecipePrompts } from './workbench-recipes';
+import {
+  workbenchRecipeEventLabel,
+  workbenchRecipeInspection,
+} from './workbench-recipe-view';
 import { workbenchMilestones } from './workbench-timeline';
 import {
   isWorkbenchPlan,
@@ -105,10 +110,12 @@ export function playbackDelay(
 /** Framework-owned commands invoked only from live user actions. */
 export interface WorkbenchCommands {
   readonly framework: string;
+  /** Lets a framework render captured chat in the live mount during read-only replay. */
+  readonly managedChat?: boolean;
   readonly lesson?: {
     readonly id: string;
     readonly title: string;
-    readonly format: 'ui' | 'structured' | 'decision';
+    readonly format: WorkbenchLesson['format'];
     readonly inspector: string;
   };
   readonly setDebugDenied?: (denied: boolean) => void;
@@ -145,7 +152,10 @@ function pre(value: unknown): HTMLPreElement {
 /** Names the captured teaching moment without hiding its original payload in Raw. */
 export function workbenchEventLabel(
   event: WorkbenchSnapshot['events'][number],
+  format?: WorkbenchLesson['format'],
 ): string {
+  const recipeLabel = workbenchRecipeEventLabel(event);
+  if (recipeLabel) return recipeLabel;
   if (event.kind === 'response')
     return `HTTP ${event.payload && typeof event.payload === 'object' && 'status' in event.payload ? event.payload.status : 'response'}`;
   if (
@@ -177,9 +187,9 @@ export function workbenchEventLabel(
       TOOL_CALL_START: 'Call tool',
       TOOL_CALL_ARGS: 'Tool arguments',
       TOOL_CALL_END: 'Tool ready',
-      TEXT_MESSAGE_START: 'JSON start',
-      TEXT_MESSAGE_CONTENT: 'JSON chunk',
-      TEXT_MESSAGE_END: 'JSON end',
+      TEXT_MESSAGE_START: format === 'text' ? 'Text start' : 'JSON start',
+      TEXT_MESSAGE_CONTENT: format === 'text' ? 'Text chunk' : 'JSON chunk',
+      TEXT_MESSAGE_END: format === 'text' ? 'Text end' : 'JSON end',
       DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
@@ -199,6 +209,7 @@ export function workbenchEventLabel(
       response: 'HTTP response',
       decision: 'Decision',
       choose: 'Suggestion applied',
+      dismiss: 'Suggestion dismissed',
     }[event.kind] ?? event.kind
   );
 }
@@ -228,10 +239,17 @@ export function mountWorkbench(
   const instanceId = crypto.randomUUID();
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
+  const recipePrompts =
+    commands.lesson && Object.hasOwn(workbenchRecipePrompts, commands.lesson.id)
+      ? workbenchRecipePrompts[
+          commands.lesson.id as keyof typeof workbenchRecipePrompts
+        ]
+      : undefined;
   const prompts =
-    commands.lesson?.format === 'decision'
+    recipePrompts ??
+    (commands.lesson?.format === 'decision'
       ? workbenchDecisionPrompts
-      : workbenchPrompts;
+      : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -374,9 +392,13 @@ export function mountWorkbench(
   inspection.setAttribute('role', 'tabpanel');
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    'JSON',
+    commands.lesson?.format === 'text' ? 'Markdown' : 'JSON',
     'Requests',
-    ...(commands.lesson?.format === 'structured' ? ['Schema'] : []),
+    ...(['structured', 'predictions', 'selection'].includes(
+      commands.lesson?.format ?? '',
+    )
+      ? ['Schema']
+      : []),
     ...(commands.lesson?.id === 'request-transformation' ? ['Transform'] : []),
     'UI',
     'State',
@@ -554,8 +576,8 @@ export function mountWorkbench(
             : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy = snapshot.status === 'loading';
-    live.hidden = historical;
-    replay.hidden = !historical;
+    live.hidden = historical && !commands.managedChat;
+    replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || busy;
     send.disabled = historical || busy;
     stop.disabled = historical || !busy;
@@ -575,7 +597,7 @@ export function mountWorkbench(
     followup.disabled = historical || busy;
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
-    if (historical) {
+    if (historical && !commands.managedChat) {
       if (commands.lesson?.format === 'decision') {
         const plan = element('article', '', 'wb-summary');
         plan.setAttribute('aria-label', 'Application plan');
@@ -633,26 +655,32 @@ export function mountWorkbench(
     tabButtons.forEach((item) =>
       item.setAttribute('aria-selected', String(item.textContent === tab)),
     );
+    const recipeView = workbenchRecipeInspection(
+      snapshot,
+      commands.lesson?.format,
+      tab,
+    );
     inspection.replaceChildren(
       element(
         'h3',
-        tab === 'JSON'
-          ? commands.lesson?.format === 'decision'
-            ? 'Decision response'
-            : 'Model output'
-          : tab === 'Schema'
-            ? 'Response contract'
-            : tab === 'Transform'
-              ? 'Mapped provider request'
-              : tab === 'UI'
-                ? commands.lesson?.format === 'decision'
-                  ? 'Application-owned choice'
-                  : commands.lesson?.format === 'structured'
-                    ? 'Application-rendered plan'
-                    : 'Trusted component'
-                : tab === 'State'
-                  ? 'Application state'
-                  : 'Requests and tools',
+        recipeView?.heading ??
+          (tab === 'JSON'
+            ? commands.lesson?.format === 'decision'
+              ? 'Decision response'
+              : 'Model output'
+            : tab === 'Schema'
+              ? 'Response contract'
+              : tab === 'Transform'
+                ? 'Mapped provider request'
+                : tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? 'Application-owned choice'
+                    : commands.lesson?.format === 'structured'
+                      ? 'Application-rendered plan'
+                      : 'Trusted component'
+                  : tab === 'State'
+                    ? 'Application state'
+                    : 'Requests and tools'),
       ),
     );
     const requestContext =
@@ -700,8 +728,9 @@ export function mountWorkbench(
       store: value.store,
       maxOutputTokens: value.maxOutputTokens,
     });
-    const value =
-      tab === 'Transform'
+    const value = recipeView
+      ? recipeView.value
+      : tab === 'Transform'
         ? transform
           ? {
               before: transformFields(transform.before),
@@ -771,7 +800,7 @@ export function mountWorkbench(
             Number(event.payload.status) >= 400),
       )) {
         const item = button(
-          `${event.kind === 'response' ? workbenchEventLabel(event) : event.kind === 'tool' ? 'readContext' : commands.lesson?.format === 'decision' ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
+          `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
           () => {
             pause();
             store.seek(snapshot.events.indexOf(event));
@@ -822,7 +851,7 @@ export function mountWorkbench(
         const item = element('li');
         item.append(
           button(
-            `${event.elapsedMs} ms · ${workbenchEventLabel(event)}`,
+            `${event.elapsedMs} ms · ${workbenchEventLabel(event, commands.lesson?.format)}`,
             () => {
               pause();
               store.seek(snapshot.events.indexOf(event));
@@ -844,44 +873,49 @@ export function mountWorkbench(
       drawerBody.append(
         element(
           'h3',
-          tab === 'Transform'
-            ? 'Preserved mapped fields'
-            : tab === 'Schema'
-              ? 'Preview validation'
-              : tab === 'JSON' || tab === 'UI'
-                ? commands.lesson?.format === 'decision'
-                  ? 'Typed choice and confidence'
-                  : commands.lesson?.format === 'structured'
-                    ? 'Typed plan'
-                    : 'Resolved props'
-                : tab === 'State'
-                  ? 'Selected moment'
-                  : requestContext?.kind === 'tool'
-                    ? 'Browser tool result'
-                    : 'Request payload',
+          recipeView?.detailHeading ??
+            (tab === 'Transform'
+              ? 'Preserved mapped fields'
+              : tab === 'Schema'
+                ? 'Preview validation'
+                : tab === 'JSON' || tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? 'Typed choice and confidence'
+                    : commands.lesson?.format === 'structured'
+                      ? 'Typed plan'
+                      : 'Resolved props'
+                  : tab === 'State'
+                    ? 'Selected moment'
+                    : requestContext?.kind === 'tool'
+                      ? 'Browser tool result'
+                      : 'Request payload'),
         ),
         pre(
-          tab === 'Transform'
-            ? (transform?.preserved ?? null)
-            : tab === 'Schema'
-              ? {
-                  preview: frame?.props ?? null,
-                  passesApplicationRules: isWorkbenchPlan(frame?.props),
-                  responseStatus: frame?.status ?? snapshot.status,
-                  note: 'Preview values do not authorize applying a plan.',
-                }
-              : tab === 'JSON' || tab === 'UI'
-                ? commands.lesson?.format === 'decision'
-                  ? (frame?.decision ?? null)
-                  : frame?.props
-                : tab === 'State'
-                  ? {
-                      turn: frame?.turn ?? snapshot.turn,
-                      status: frame?.status ?? snapshot.status,
-                      event: frame ? workbenchEventLabel(frame) : 'Ready',
-                      source: frame?.source ?? 'Application',
-                    }
-                  : requestContext?.payload,
+          recipeView
+            ? recipeView.detail
+            : tab === 'Transform'
+              ? (transform?.preserved ?? null)
+              : tab === 'Schema'
+                ? {
+                    preview: frame?.props ?? null,
+                    passesApplicationRules: isWorkbenchPlan(frame?.props),
+                    responseStatus: frame?.status ?? snapshot.status,
+                    note: 'Preview values do not authorize applying a plan.',
+                  }
+                : tab === 'JSON' || tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? (frame?.decision ?? null)
+                    : frame?.props
+                  : tab === 'State'
+                    ? {
+                        turn: frame?.turn ?? snapshot.turn,
+                        status: frame?.status ?? snapshot.status,
+                        event: frame
+                          ? workbenchEventLabel(frame, commands.lesson?.format)
+                          : 'Ready',
+                        source: frame?.source ?? 'Application',
+                      }
+                    : requestContext?.payload,
         ),
         element(
           'p',
@@ -907,9 +941,9 @@ export function mountWorkbench(
       ? snapshot.events.map((event, index) => ({
           index,
           turn: event.turn,
-          label: workbenchEventLabel(event),
+          label: workbenchEventLabel(event, commands.lesson?.format),
         }))
-      : workbenchMilestones(snapshot.events);
+      : workbenchMilestones(snapshot.events, commands.lesson?.format);
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)

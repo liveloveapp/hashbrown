@@ -103,7 +103,7 @@ export function MobileMenuPanel({
                 aria-pressed={tab === value}
                 onClick={() => onTabChange(value)}
               >
-                {value}
+                {value === 'api' ? 'API' : 'Docs'}
               </button>
             ))}
           </div>
@@ -122,16 +122,16 @@ export function MobileMenuPanel({
               href={DEMO_URL}
               target="_blank"
               rel="noopener"
-              aria-label="demo (opens in a new tab)"
+              aria-label="Demo (opens in a new tab)"
               onClick={onClose}
             >
-              demo
+              Demo
             </a>
             <Link href="/blog" onClick={onClose}>
-              blog
+              Blog
             </Link>
             <SdkLink to="quick-start" sdk={sdk} onClick={onClose}>
-              quick start
+              Quick start
             </SdkLink>
           </div>
         </div>

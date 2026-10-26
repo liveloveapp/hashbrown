@@ -200,11 +200,11 @@ export function normalizeCampaignDraft(
 const CAMPAIGN_TEMPLATES: Record<CampaignStep, CampaignDraft> = {
   immediate: {
     subject: 'Engineer to engineer',
-    body: `Saw you were checking out Hashbrown and wanted to drop a quick note.\n\nI'm the founding engineer, and I'm offering short engineer-to-engineer sessions to think through your generative UI, unblock whatever's in the way, and avoid the common mistakes. No sales, just getting you going.\n\nWhat are you building?`,
+    body: `Saw you were checking out Hashbrown and wanted to drop a quick note.\n\nI'm the founder of Hashbrown, and I'm offering short engineer-to-engineer sessions to think through your generative UI, unblock whatever's in the way, and avoid the common mistakes. No sales, just getting you going.\n\nWhat are you building?`,
   },
   'day-3': {
     subject: 'Get your generative UI working',
-    body: `Even with agents writing much of our code, teams still get stuck: the first stream, the first tool call, the first component the model renders.\n\nI can work through any of it with you in a 30-minute hands-on session. Fix the bug, get your code working.\n\nNo sales. Just a founding engineer meeting with you and your team.\n\nBook a time with me:\n${FOUNDER_BOOKING_URL}`,
+    body: `Even with agents writing much of our code, teams still get stuck: the first stream, the first tool call, the first component the model renders.\n\nI can work through any of it with you in a 30-minute hands-on session. Fix the bug, get your code working.\n\nNo sales. Just me, the founder, meeting with you and your team.\n\nBook a time with me:\n${FOUNDER_BOOKING_URL}`,
   },
   'day-8': {
     subject: 'One last note from the Hashbrown founder',

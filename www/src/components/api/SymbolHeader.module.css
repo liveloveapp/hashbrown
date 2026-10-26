@@ -15,10 +15,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: var(--gray, #5e5c5a);
+  color: var(--color-ink);
   font:
-    800 20px/24px 'JetBrains Mono',
-    monospace;
+    600 24px/32px var(--font-code);
 }
 
 .header > h1:first-child {

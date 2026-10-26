@@ -37,7 +37,7 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         await using (var command = new NpgsqlCommand($"SELECT version FROM {Metadata} WHERE id=1 FOR UPDATE", connection))
         {
             schemaVersion = (int)(await command.ExecuteScalarAsync(cancellationToken))!;
-            if (schemaVersion is not (1 or 2)) throw new InvalidOperationException("Unsupported interrupt schema version.");
+            if (schemaVersion is not (1 or 2 or 3)) throw new InvalidOperationException("Unsupported interrupt schema version.");
         }
         await ExecuteAsync(connection, $"""
             CREATE TABLE IF NOT EXISTS {Batches}(
@@ -70,6 +70,11 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
                 UPDATE {Metadata} SET version=2 WHERE id=1;
                 """, cancellationToken);
         }
+        if (schemaVersion < 3)
+        {
+            // NULL retains the original unbound legacy state; migration cannot infer model authority.
+            await ExecuteAsync(connection, $"ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS compatibility_identity text; UPDATE {Metadata} SET version=3 WHERE id=1", cancellationToken);
+        }
         await ExecuteAsync(connection, $"""
             CREATE TABLE IF NOT EXISTS {Audit}(
                 id text PRIMARY KEY,batch_id text NOT NULL,scope text NOT NULL,actor text NOT NULL,recorded_at timestamptz NOT NULL,
@@ -95,6 +100,7 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         var existing = await ReadAsync(connection, $"SELECT b.* FROM {Batches} b WHERE scope=@scope AND thread_id=@thread AND state IN ('Pending','Claimed','EffectStarted') FOR UPDATE", cancellationToken, ("scope", scope), ("thread", input.ThreadId));
         if (existing is not null)
         {
+            if (existing.CompatibilityIdentity != _options.CompatibilityIdentity) throw new InvalidOperationException("The checkpoint server configuration is incompatible.");
             await transaction.CommitAsync(cancellationToken);
             return existing.Batch;
         }
@@ -106,11 +112,11 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         var effectId = Guid.NewGuid().ToString("N");
         var ids = new[] { Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") }.Order(StringComparer.Ordinal).ToArray();
         await ExecuteAsync(connection, $"""
-            INSERT INTO {Batches}(id,scope,thread_id,origin_run_id,fingerprint,operation_name,operation_version,parameters,effect_id,created_at,expires_at,state,original_request)
-            VALUES(@id,@scope,@thread,@run,@fingerprint,@name,@version,CAST(@parameters AS jsonb),@effect,@now,@expires,'Pending',@original);
+            INSERT INTO {Batches}(id,scope,thread_id,origin_run_id,fingerprint,operation_name,operation_version,parameters,effect_id,created_at,expires_at,state,original_request,compatibility_identity)
+            VALUES(@id,@scope,@thread,@run,@fingerprint,@name,@version,CAST(@parameters AS jsonb),@effect,@now,@expires,'Pending',@original,@identity);
             INSERT INTO {Ids}(interrupt_id,batch_id) SELECT unnest(@ids),@id;
             """, cancellationToken, ("id", id), ("scope", scope), ("thread", input.ThreadId), ("run", input.RunId),
-            ("original", original), ("fingerprint", InterruptValidation.Fingerprint(input)), ("name", checkpoint.Name), ("version", checkpoint.Version),
+            ("original", original), ("identity", (object?)_options.CompatibilityIdentity ?? DBNull.Value), ("fingerprint", InterruptValidation.Fingerprint(input, _options.CompatibilityIdentity)), ("name", checkpoint.Name), ("version", checkpoint.Version),
             ("parameters", checkpoint.Parameters.GetRawText()), ("effect", effectId), ("now", now), ("expires", now + _options.ApprovalTtl), ("ids", ids));
         await transaction.CommitAsync(cancellationToken);
         return new(id, Array.AsReadOnly(ids), now + _options.ApprovalTtl, checkpoint, effectId);
@@ -127,7 +133,7 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         if (record is null) return new(410);
         // clock_timestamp(), sampled after the row lock, is intentionally not transaction-start now().
         var now = await NowAsync(connection, cancellationToken);
-        var status = InterruptValidation.Validate(scope, input, record, now);
+        var status = InterruptValidation.Validate(scope, input, record, now, _options.CompatibilityIdentity);
         if (status != 200) return new(status);
         try { _ = _registry.Resolve(record.Batch.Checkpoint); }
         catch (InvalidOperationException) { return new(503); }
@@ -146,8 +152,8 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await ExecuteAsync(connection, $"SELECT id FROM {Batches} WHERE id=@id FOR UPDATE", cancellationToken, ("id", claim.BatchId));
         var now = await NowAsync(connection, cancellationToken);
-        var changed = await ExecuteAsync(connection, $"UPDATE {Batches} SET state='EffectStarted',revision=revision+1 WHERE id=@id AND claim_token=@token AND generation=@generation AND state='Claimed' AND lease_until>@now", cancellationToken,
-            ("id", claim.BatchId), ("token", claim.Token), ("generation", claim.Generation), ("now", now));
+        var changed = await ExecuteAsync(connection, $"UPDATE {Batches} SET state='EffectStarted',revision=revision+1 WHERE id=@id AND claim_token=@token AND generation=@generation AND state='Claimed' AND lease_until>@now AND compatibility_identity IS NOT DISTINCT FROM @identity", cancellationToken,
+            ("id", claim.BatchId), ("token", claim.Token), ("generation", claim.Generation), ("now", now), ("identity", (object?)_options.CompatibilityIdentity ?? DBNull.Value));
         // No caller may execute if this commit or its acknowledgement fails.
         await transaction.CommitAsync(cancellationToken);
         return changed == 1;
@@ -188,7 +194,8 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
                 reader.IsDBNull(reader.GetOrdinal("terminal_snapshot")) ? null : reader.GetString(reader.GetOrdinal("terminal_snapshot")),
                 reader.GetString(reader.GetOrdinal("generation_outcome")), reader.GetInt64(reader.GetOrdinal("revision")), reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                 reader.IsDBNull(reader.GetOrdinal("capture_token")) ? null : reader.GetString(reader.GetOrdinal("capture_token")),
-                reader.IsDBNull(reader.GetOrdinal("reconciliation_outcome")) ? null : reader.GetString(reader.GetOrdinal("reconciliation_outcome")));
+                reader.IsDBNull(reader.GetOrdinal("reconciliation_outcome")) ? null : reader.GetString(reader.GetOrdinal("reconciliation_outcome")),
+                reader.IsDBNull(reader.GetOrdinal("compatibility_identity")) ? null : reader.GetString(reader.GetOrdinal("compatibility_identity")));
         }
         await using var idsCommand = Command(connection, $"SELECT interrupt_id FROM {Ids} WHERE batch_id=@id ORDER BY interrupt_id", ("id", record.Batch.Id));
         var ids = new List<string>();
@@ -203,7 +210,7 @@ public sealed partial class PostgresInterruptStore : IInterruptStore
         foreach (var (name, value) in parameters)
         {
             var parameter = command.Parameters.AddWithValue(name, value);
-            if (value == DBNull.Value) parameter.NpgsqlDbType = name is "token" or "snapshot" ? NpgsqlTypes.NpgsqlDbType.Text : NpgsqlTypes.NpgsqlDbType.TimestampTz;
+            if (value == DBNull.Value) parameter.NpgsqlDbType = name is "token" or "snapshot" or "identity" ? NpgsqlTypes.NpgsqlDbType.Text : NpgsqlTypes.NpgsqlDbType.TimestampTz;
         }
         return command;
     }

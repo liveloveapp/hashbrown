@@ -4,6 +4,10 @@ import { BlogPostView } from '../../../components/blog/BlogPostView';
 import { renderDocsMarkdown } from '../../../components/docs-markdown';
 import { listBlogPosts, readBlogPost } from '../../../lib/content';
 import { pageMetadata } from '../../../lib/site-metadata';
+import {
+  blogPostingJsonLd,
+  serializeJsonLd,
+} from '../../../lib/structured-data';
 
 type Params = { slug: string };
 
@@ -27,6 +31,7 @@ export async function generateMetadata({
         description: post.description,
         image: post.ogImage,
         publishedTime: post.date,
+        path: `/blog/${post.slug}`,
       })
     : {};
 }
@@ -43,8 +48,16 @@ export default async function BlogPostPage({
   }
   const { body, ...summary } = post;
   return (
-    <BlogPostView post={summary}>
-      {(await renderDocsMarkdown(body, 'react')).content}
-    </BlogPostView>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(blogPostingJsonLd(summary)),
+        }}
+      />
+      <BlogPostView post={summary}>
+        {(await renderDocsMarkdown(body, 'react')).content}
+      </BlogPostView>
+    </>
   );
 }

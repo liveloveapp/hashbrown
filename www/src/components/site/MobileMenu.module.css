@@ -3,16 +3,20 @@
   display: inline-block;
 }
 
-/* Squircle (8px) replaced with border-radius. */
+/* A 44px target around a 24px icon; the negative margin keeps the icon's
+   edge on the gutter. */
 .trigger,
 .close {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: var(--control-lg);
+  height: var(--control-lg);
+  margin-right: calc((var(--control-lg) - 24px) / -2);
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
 }
 
 /* Replaces the CDK overlay's `.fullscreen-panel`. */
@@ -39,18 +43,21 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: #fff;
+  background: var(--color-bg);
 }
 
+/* Same height and gutter as the site header, so the logo holds still. */
 .header {
   display: flex;
   align-items: center;
-  padding: 16px;
+  min-height: var(--header-height);
+  padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--color-rule);
 
   > a {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
 }
 
@@ -59,30 +66,30 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
-  padding: 16px;
-  background: var(--vanilla-ivory, #faf9f0);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--gutter);
+  background: var(--color-surface);
   overflow: hidden;
 }
 
 .actions,
 .footer {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 
   > button,
   > a {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    color: rgba(0, 0, 0, 0.64);
-    background: rgba(61, 60, 58, 0.036);
-    font:
-      500 18px/140% Fredoka,
-      sans-serif;
+    gap: var(--space-1);
+    min-height: var(--control-lg);
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-pill);
+    color: var(--color-muted);
+    background: var(--color-bg);
+    font: 500 16px/1.4 var(--font-sans);
+    text-decoration: none;
 
     &.active {
       background: var(--sunshine-yellow-light, #fbd38e);

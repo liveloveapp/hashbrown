@@ -40,6 +40,18 @@ test('every shipped campaign template passes the linter and immediate carries no
   expect(FOUNDER_BOOKING_URL).toBe('https://hashbrown.dev/call');
 });
 
+test('the founder sequence says founder, never founding engineer', () => {
+  const drafts = STEPS.map((step) => renderCampaignTemplate(step));
+
+  const bodies = drafts.map((draft) => draft.body);
+
+  for (const body of bodies) expect(body).not.toContain('founding engineer');
+  expect(bodies[0]).toContain("I'm the founder of Hashbrown, and I'm offering");
+  expect(bodies[1]).toContain(
+    'No sales. Just me, the founder, meeting with you and your team.',
+  );
+});
+
 test('day-8 carries exactly the booking and threadplane links and is rejected with maxLinks 1', () => {
   const draft = renderCampaignTemplate('day-8');
 

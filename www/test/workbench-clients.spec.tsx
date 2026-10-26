@@ -684,3 +684,76 @@ test('transformation inspector isolates added instructions and keeps the actual 
   );
   shell.dispose();
 });
+
+test('keeps framework-managed captured chat mounted during historical playback with the composer disabled', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    managedChat: true,
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  const content = document.createElement('article');
+  content.textContent = 'Framework-owned captured Markdown';
+  shell.live.append(content);
+  store.send('Explain the plan');
+  store.settle('complete', 'stop');
+
+  store.seek(0);
+
+  expect(shell.live.hidden).toBe(false);
+  expect(shell.live.firstChild).toBe(content);
+  expect(host.querySelector<HTMLElement>('[data-replay]')?.hidden).toBe(true);
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(
+    true,
+  );
+  expect(host.querySelector<HTMLButtonElement>('[data-send]')?.disabled).toBe(
+    true,
+  );
+  shell.dispose();
+});
+
+test('shows Markdown and selected source details through the recipe inspector in replay', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore('text');
+  const shell = mountWorkbench(host, store, {
+    framework: 'Angular',
+    managedChat: true,
+    lesson: {
+      id: 'magic-text',
+      title: 'Magic Text',
+      format: 'text',
+      inspector: 'Markdown',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  const user = store.send('Explain');
+  store.recordRecipe({ kind: 'text', markdown: '## Our plan' }, user.id);
+  store.settle('complete', 'stop');
+  store.inspectCitation(
+    { id: '1', number: 1, url: 'https://hashbrown.dev' },
+    store.getSnapshot().frame?.messages.at(-1)?.id ?? '',
+  );
+
+  store.seek(store.getSnapshot().events.length - 1);
+
+  expect(
+    [...host.querySelectorAll('[role=tab]')].some(
+      (tab) => tab.textContent === 'Markdown',
+    ),
+  ).toBe(true);
+  expect(host.querySelector('.wb-inspector')?.textContent).toContain(
+    '## Our plan',
+  );
+  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+    'Selected reference',
+  );
+  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+    'https://hashbrown.dev',
+  );
+  shell.dispose();
+});

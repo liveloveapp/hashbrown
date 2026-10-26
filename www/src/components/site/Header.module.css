@@ -1,15 +1,24 @@
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: 16px;
+  min-height: var(--header-height);
+  padding: 0 var(--gutter);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-rule);
 }
 
+/* Full width in the docs; the home page caps it to the content column. */
 .bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  max-width: var(--column-width, none);
+  margin: 0 auto;
 }
 
 .left {
@@ -19,7 +28,7 @@
   > a {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
 }
 
@@ -29,7 +38,7 @@
   > nav > ul {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: var(--space-1);
 
     > li {
       display: flex;
@@ -39,37 +48,43 @@
       > a {
         display: flex;
         align-items: center;
-        gap: 4px;
-        color: var(--gray, #5e5c5a);
-        font:
-          500 18px/140% Fredoka,
-          sans-serif;
+        gap: var(--space-1);
+        min-height: var(--control-md);
+        padding: 0 var(--space-3);
+        border-radius: var(--radius-pill);
+        color: var(--color-muted);
+        font: 500 15px/1.4 var(--font-sans);
+        text-decoration: none;
+        transition:
+          color var(--duration-fast) var(--ease-out),
+          background-color var(--duration-fast) var(--ease-out);
 
-        &:hover,
+        &:hover {
+          color: var(--color-ink);
+          background: var(--color-surface);
+        }
+
         &.active {
-          color: var(--sunset-orange, #e88c4d);
+          color: var(--color-ink);
+          background: var(--color-highlight);
         }
       }
 
       > a.quickStart {
         display: inline-flex;
-        padding: 8px 14px;
-        border-radius: 10px;
-        background: var(--chocolate-brown);
+        align-items: center;
+        min-height: var(--control-md);
+        margin-left: var(--space-2);
+        padding: 0 var(--space-4);
+        border-radius: var(--radius-pill);
+        background: var(--color-accent);
         color: #fff !important;
-        font:
-          600 14px/1 'Fredoka',
-          sans-serif;
+        font: 600 14px/1 var(--font-sans);
         text-decoration: none;
 
         &:hover,
         &:focus-visible {
-          background: var(--chocolate-brown-light);
-        }
-
-        &:focus-visible {
-          outline: 2px solid var(--chocolate-brown-light);
-          outline-offset: 2px;
+          background: var(--color-accent-hover);
         }
       }
     }
@@ -87,22 +102,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--chocolate-brown-light, #ad907c);
-    height: 16px;
-    width: 16px;
-    border: 2px solid var(--chocolate-brown-light, #ad907c);
-    border-radius: 4px;
-    text-transform: uppercase;
-    font:
-      500 12px/140% Fredoka,
-      sans-serif;
+    color: var(--color-muted);
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+    background: var(--color-surface);
+    font: 500 11px/1 var(--font-code);
   }
 }
 
 .menu {
   display: flex;
-  margin-top: -4px;
-  margin-bottom: -4px;
 }
 
 @media print {
@@ -113,7 +125,7 @@
 
 @media screen and (min-width: 768px) {
   .header {
-    padding: 24px;
+    padding: 0 var(--gutter);
   }
 
   .right {
@@ -127,6 +139,6 @@
 
 @media screen and (min-width: 1024px) {
   .right > nav > ul {
-    gap: 24px;
+    gap: var(--space-2);
   }
 }

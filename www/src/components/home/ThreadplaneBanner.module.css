@@ -1,18 +1,13 @@
 .section {
   display: block;
-  padding: 24px 0 72px;
+  padding: 0 0 var(--section-gap);
 }
 
 .banner {
   display: block;
-  padding: 32px 24px;
-  border-radius: 24px;
-  background: radial-gradient(
-    120% 140% at 82% 18%,
-    #22385c 0%,
-    #15253e 45%,
-    #0c1626 100%
-  );
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-shot);
+  background: #15253e;
   color: #fff;
   text-decoration: none;
 }
@@ -20,29 +15,31 @@
 .big {
   max-width: 620px;
   margin: 0;
-  font: 800 28px/1.15 var(--font-heading);
+  font: 600 28px/1.15 var(--font-heading);
   letter-spacing: -0.01em;
 }
 
 .banner p {
   max-width: 560px;
-  margin: 14px 0 22px;
+  margin: var(--space-4) 0 var(--space-6);
   font: 600 17px/1.5 var(--font-heading);
   opacity: 0.88;
 }
 
 .cta {
-  display: inline-block;
-  padding: 13px 20px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-lg);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
   background: #ffaf00;
   color: #0a0a0a;
-  font: 700 16px/1 var(--font-heading);
+  font: 600 16px/1 var(--font-heading);
 }
 
 @media screen and (min-width: 1024px) {
   .banner {
-    padding: 48px 56px;
+    padding: var(--space-12);
   }
 
   .big {
