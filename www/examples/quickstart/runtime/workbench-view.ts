@@ -1,3 +1,10 @@
+import { s } from '@hashbrownai/core';
+import {
+  getWorkbenchPlanSchema,
+  workbenchDecisionPlan,
+  workbenchDecisionPrompts,
+} from './workbench';
+import { workbenchLessons } from './workbench-lessons';
 import { workbenchMilestones } from './workbench-timeline';
 import {
   isWorkbenchPlan,
@@ -101,7 +108,7 @@ export interface WorkbenchCommands {
   readonly lesson?: {
     readonly id: string;
     readonly title: string;
-    readonly format: 'ui' | 'structured';
+    readonly format: 'ui' | 'structured' | 'decision';
     readonly inspector: string;
   };
   readonly send: (content: string) => void;
@@ -142,6 +149,14 @@ export function workbenchEventLabel(
     event.kind === 'event' &&
     event.payload &&
     typeof event.payload === 'object' &&
+    'kind' in event.payload &&
+    event.payload.kind === 'hashbrown.decision'
+  )
+    return 'Decision response';
+  if (
+    event.kind === 'event' &&
+    event.payload &&
+    typeof event.payload === 'object' &&
     'type' in event.payload
   ) {
     const names: Record<string, string> = {
@@ -154,6 +169,7 @@ export function workbenchEventLabel(
       TEXT_MESSAGE_START: 'JSON start',
       TEXT_MESSAGE_CONTENT: 'JSON chunk',
       TEXT_MESSAGE_END: 'JSON end',
+      DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
   }
@@ -169,6 +185,8 @@ export function workbenchEventLabel(
       error: 'Error',
       cancel: 'Cancelled',
       source: 'Source',
+      decision: 'Decision',
+      choose: 'Suggestion applied',
     }[event.kind] ?? event.kind
   );
 }
@@ -196,6 +214,10 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
+  const prompts =
+    commands.lesson?.format === 'decision'
+      ? workbenchDecisionPrompts
+      : workbenchPrompts;
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -212,11 +234,7 @@ export function mountWorkbench(
   nav.setAttribute('aria-label', 'Examples and conversations');
   function lessonLinks() {
     const links = element('div', '', 'wb-lessons');
-    for (const [id, title] of [
-      ['generative-ui', 'Generative UI'],
-      ['tools', 'Tools'],
-      ['structured-output', 'Structured output'],
-    ]) {
+    for (const { id, title } of workbenchLessons) {
       const link = element('a', title);
       link.href = `${commands.framework.toLowerCase()}.html?lesson=${id}`;
       if (id === (commands.lesson?.id ?? 'generative-ui'))
@@ -252,7 +270,7 @@ export function mountWorkbench(
         else {
           commands.reset();
           store.clear();
-          prompt.value = workbenchPrompts[0];
+          prompt.value = prompts[0];
         }
       }),
     );
@@ -276,7 +294,7 @@ export function mountWorkbench(
   label.htmlFor = `${instanceId}-prompt`;
   const prompt = element('textarea');
   prompt.id = `${instanceId}-prompt`;
-  prompt.value = workbenchPrompts[0];
+  prompt.value = prompts[0];
   prompt.rows = 2;
   const actions = element('div', '', 'wb-actions');
   const send = element('button', 'Send', 'wb-primary');
@@ -284,11 +302,11 @@ export function mountWorkbench(
   send.dataset.send = '';
   const stop = button('Stop', commands.stop);
   const first = button('First prompt', () => {
-    prompt.value = workbenchPrompts[0];
+    prompt.value = prompts[0];
     prompt.focus();
   });
   const followup = button('Follow-up', () => {
-    prompt.value = workbenchPrompts[1];
+    prompt.value = prompts[1];
     prompt.focus();
   });
   actions.append(first, followup, send, stop);
@@ -316,7 +334,13 @@ export function mountWorkbench(
   inspection.id = `${instanceId}-inspection`;
   inspection.setAttribute('role', 'tabpanel');
   let tab = commands.lesson?.inspector ?? 'JSON';
-  const tabButtons = ['JSON', 'Requests', 'UI', 'State'].map((name) => {
+  const tabButtons = [
+    'JSON',
+    'Requests',
+    ...(commands.lesson?.format === 'structured' ? ['Schema'] : []),
+    'UI',
+    'State',
+  ].map((name) => {
     const item = button(name, () => {
       tab = name;
       render();
@@ -492,10 +516,39 @@ export function mountWorkbench(
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical) {
+      if (commands.lesson?.format === 'decision') {
+        const plan = element('article', '', 'wb-summary');
+        plan.setAttribute('aria-label', 'Application plan');
+        const steps = element('ol');
+        workbenchDecisionPlan.steps.forEach((step) =>
+          steps.append(element('li', step)),
+        );
+        plan.append(
+          element('span', 'Application-owned plan', 'wb-muted'),
+          element('h2', workbenchDecisionPlan.title),
+          steps,
+        );
+        replay.append(plan);
+      }
       const messages = frame?.messages ?? [];
       for (const message of messages) {
         if (message.role === 'user') {
           replay.append(element('p', message.content, 'wb-user'));
+          continue;
+        }
+        if (message.decision) {
+          const card = element('article', '', 'wb-summary');
+          card.setAttribute('aria-label', 'Captured decision');
+          card.append(
+            element('span', 'Closed choice · captured result', 'wb-muted'),
+            element('h2', `Next action: ${message.decision.nextAction}`),
+            element(
+              'p',
+              `Confidence: ${Math.round(message.decision.confidence * 100)}%`,
+            ),
+            element('p', 'Replay is read-only.', 'wb-muted'),
+          );
+          replay.append(card);
           continue;
         }
         const props = message.props;
@@ -524,14 +577,20 @@ export function mountWorkbench(
       element(
         'h3',
         tab === 'JSON'
-          ? 'Model output'
-          : tab === 'UI'
-            ? commands.lesson?.format === 'structured'
-              ? 'Application-rendered plan'
-              : 'Trusted component'
-            : tab === 'State'
-              ? 'Application state'
-              : 'Requests and tools',
+          ? commands.lesson?.format === 'decision'
+            ? 'Decision response'
+            : 'Model output'
+          : tab === 'Schema'
+            ? 'Response contract'
+            : tab === 'UI'
+              ? commands.lesson?.format === 'decision'
+                ? 'Application-owned choice'
+                : commands.lesson?.format === 'structured'
+                  ? 'Application-rendered plan'
+                  : 'Trusted component'
+              : tab === 'State'
+                ? 'Application state'
+                : 'Requests and tools',
       ),
     );
     const visibleEvents = snapshot.events.slice(
@@ -556,38 +615,52 @@ export function mountWorkbench(
                 event.kind === 'request',
             ));
     const value =
-      tab === 'JSON'
-        ? frame?.json || 'Waiting for model output'
-        : tab === 'UI'
-          ? commands.lesson?.format === 'structured'
-            ? {
-                renderer: 'Application-owned plan card',
-                fields: ['title', 'steps'],
-              }
-            : {
-                component: 'SummaryCard',
-                children: false,
-                inputs: { title: 'string', steps: 'streaming string[]' },
-              }
-          : tab === 'State'
-            ? (frame?.application ?? snapshot.application)
-            : visibleEvents
-                .filter(
-                  (event) => event.kind === 'request' || event.kind === 'tool',
-                )
-                .map((event) => ({
-                  sequence: event.sequence,
-                  turn: event.turn,
-                  kind: event.kind,
-                  payload: event.payload,
-                }));
+      tab === 'Schema'
+        ? s.toJsonSchema(
+            getWorkbenchPlanSchema(
+              workbenchLessons.find(
+                (lesson) => lesson.id === commands.lesson?.id,
+              )?.id ?? 'schemas',
+            ),
+          )
+        : tab === 'JSON'
+          ? frame?.json || 'Waiting for model output'
+          : tab === 'UI'
+            ? commands.lesson?.format === 'decision'
+              ? {
+                  renderer: 'Application-owned decision card',
+                  generatedProps: false,
+                }
+              : commands.lesson?.format === 'structured'
+                ? {
+                    renderer: 'Application-owned plan card',
+                    fields: ['title', 'steps'],
+                  }
+                : {
+                    component: 'SummaryCard',
+                    children: false,
+                    inputs: { title: 'string', steps: 'streaming string[]' },
+                  }
+            : tab === 'State'
+              ? (frame?.application ?? snapshot.application)
+              : visibleEvents
+                  .filter(
+                    (event) =>
+                      event.kind === 'request' || event.kind === 'tool',
+                  )
+                  .map((event) => ({
+                    sequence: event.sequence,
+                    turn: event.turn,
+                    kind: event.kind,
+                    payload: event.payload,
+                  }));
     if (tab === 'Requests') {
       const list = element('div', '', 'wb-request-list');
       for (const event of visibleEvents.filter(
         (event) => event.kind === 'request' || event.kind === 'tool',
       )) {
         const item = button(
-          `${event.kind === 'tool' ? 'readContext' : 'Model request'} · turn ${event.turn}`,
+          `${event.kind === 'tool' ? 'readContext' : commands.lesson?.format === 'decision' ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
           () => {
             pause();
             store.seek(snapshot.events.indexOf(event));
@@ -660,27 +733,40 @@ export function mountWorkbench(
       drawerBody.append(
         element(
           'h3',
-          tab === 'JSON' || tab === 'UI'
-            ? commands.lesson?.format === 'structured'
-              ? 'Typed plan'
-              : 'Resolved props'
-            : tab === 'State'
-              ? 'Selected moment'
-              : requestContext?.kind === 'tool'
-                ? 'Browser tool result'
-                : 'Request payload',
+          tab === 'Schema'
+            ? 'Preview validation'
+            : tab === 'JSON' || tab === 'UI'
+              ? commands.lesson?.format === 'decision'
+                ? 'Typed choice and confidence'
+                : commands.lesson?.format === 'structured'
+                  ? 'Typed plan'
+                  : 'Resolved props'
+              : tab === 'State'
+                ? 'Selected moment'
+                : requestContext?.kind === 'tool'
+                  ? 'Browser tool result'
+                  : 'Request payload',
         ),
         pre(
-          tab === 'JSON' || tab === 'UI'
-            ? frame?.props
-            : tab === 'State'
-              ? {
-                  turn: frame?.turn ?? snapshot.turn,
-                  status: frame?.status ?? snapshot.status,
-                  event: frame ? workbenchEventLabel(frame) : 'Ready',
-                  source: frame?.source ?? 'Application',
-                }
-              : requestContext?.payload,
+          tab === 'Schema'
+            ? {
+                preview: frame?.props ?? null,
+                passesApplicationRules: isWorkbenchPlan(frame?.props),
+                responseStatus: frame?.status ?? snapshot.status,
+                note: 'Preview values do not authorize applying a plan.',
+              }
+            : tab === 'JSON' || tab === 'UI'
+              ? commands.lesson?.format === 'decision'
+                ? (frame?.decision ?? null)
+                : frame?.props
+              : tab === 'State'
+                ? {
+                    turn: frame?.turn ?? snapshot.turn,
+                    status: frame?.status ?? snapshot.status,
+                    event: frame ? workbenchEventLabel(frame) : 'Ready',
+                    source: frame?.source ?? 'Application',
+                  }
+                : requestContext?.payload,
         ),
         element(
           'p',

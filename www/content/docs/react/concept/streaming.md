@@ -2,70 +2,79 @@
 title: 'Streaming: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Show resolved item values as they arrive while keeping application changes explicit.'
+    content: 'Follow raw JSON into a typed plan preview while keeping acceptance explicit.'
 ---
 
 # Streaming
 
-We do not need to wait for the whole shopping list before showing its first item. Let's stream item values into a draft while keeping **Apply list** disabled until the run finishes.
-
-<hb-docs-demo demo="streaming-data">
+<hb-docs-demo demo="canonical-workbench-streaming-react">
 </hb-docs-demo>
 
-## Before we start
+We do not need to wait for the whole two-step plan before showing useful feedback. Let’s stream the title, then show steps as their values resolve. We’ll keep **Accept plan** disabled until the response finishes successfully.
 
-Use the checked shopping-list component from [Structured output](/docs/react/concept/structured-output). It includes the schema, endpoint setup links, loading and error states, and the explicit Apply action. No second component is needed for this page.
+I use the same conversation in [Structured output](/docs/react/concept/structured-output). Here, we’ll slow down and follow the boundary between raw text, parsed values, and application state.
 
-If you are following the Fundamentals section in order, complete the [Quickstart](/docs/react/start/quick), then read [Skillet schemas](/docs/react/concept/schema) and Structured output before returning here.
+## Run the workbench
 
-To explore parsing without an endpoint or model key, start with the [JSON Parser](/docs/react/recipes/json-parser) recipe. It streams a finite local weather response into a preview.
+Start the [conversation workbench](/docs/react/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=streaming`. Keep the server environment and provider configuration from the [Quickstart](/docs/react/start/quick). Selecting a lesson does not start a request.
 
 ## Choose what can appear early
 
-The schema marks the array as streaming while each item stays an ordinary object:
+The streaming lesson uses this shared response schema:
+
+<hb-code-example header="runtime/workbench.ts">
 
 ```ts
-items: s.streaming.array(
-  'The requested shopping items',
-  s.object('A complete shopping item', {
-    name: s.string('The product name'),
-    quantity: s.integer('How many to add'),
-  }),
+export const workbenchStreamingPlanSchema = s.object(
+  'A two-step plan proposal',
+  {
+    title: s.streaming.string('A concise plan title'),
+    steps: s.streaming.array(
+      'Exactly two concise steps',
+      s.string('A clear action'),
+    ),
+  },
 );
 ```
 
-The array can expose an item once its required name and quantity resolve. We do not mark the item object or its fields as streaming because the interface needs both values together. The object can resolve before its closing brace arrives; that preview does not prove the JSON document is complete.
+</hb-code-example>
+
+The title uses `s.streaming.string`, so the interface can display it before its closing quote arrives. The steps use `s.streaming.array` around ordinary strings. Each step can appear once its string value resolves; it does not need to wait for the entire array.
+
+`useStructuredChat()` parses the incoming response with this schema. Our component renders typed content as it changes. We do not call `JSON.parse()` on each network chunk.
 
 ## Follow one response
 
-| Response stage                            | Draft list                            | Apply list                             |
-| ----------------------------------------- | ------------------------------------- | -------------------------------------- |
-| Waiting for the endpoint                  | No new items                          | Disabled                               |
-| First item fields resolved                | Two apples                            | Disabled                               |
-| Second item fields resolved               | Two apples and one loaf of bread      | Still disabled while the run is active |
-| Run finished and application rules passed | Completed draft                       | Available for explicit review          |
-| Request failed or was cancelled           | Any visible draft remains uncommitted | Disabled                               |
+Keep **JSON** selected. The center feed shows the plan preview; the rightmost **Details** view shows values resolved by the SDK.
 
-The recording uses delayed scripted events so we can see each stage. Real providers produce chunks at different speeds and may return several items together. Do not depend on a particular chunk size or pause between items.
+| Moment | Preview | Application state |
+| --- | --- | --- |
+| Waiting for output | No new plan | Unchanged. |
+| Title string is arriving | Partial title | Accept plan remains disabled. |
+| Step strings resolve | Resolved steps appear | Still unchanged during generation. |
+| Successful completion and validation | Reviewable two-step plan | Accept plan becomes available. |
+| Explicit acceptance | The same plan | Revision advances from 0 to 1. |
 
-## Render the current draft
+Provider chunk sizes and timing vary. Several values may arrive together. The recording uses real React SDK requests and OpenAI output, with unchanged provider events paced at 20 ms for filming and footage slowed to half speed for readability. It does not script provider output; the normal host adds no event delay.
 
-`useStructuredChat()` updates the latest assistant content as parsing progresses. The component renders the current `items` collection with its framework's normal list rendering. It does not wait for a JSON string and call `JSON.parse()` after every network chunk.
+<img src="/video/docs/canonical-workbench-streaming-react-result.png" alt="The canonical plan preview appears beside streamed JSON and resolved values in the inspector." width="1600" height="1000" loading="lazy" />
 
-There are two different questions here: **Can this item be displayed?** and **Can this result update application state?** Streaming controls the first. Successful completion, application validation, and the user's Apply action control the second.
+## Follow the second turn
 
-## Choose a different streaming boundary
+Accept the first plan, choose **Follow-up**, and send “Make the second step shorter.” The browser tool reads the accepted plan before the model proposes a revision. The first step stays the same; the second becomes shorter.
 
-Use `s.streaming.string` when the interface can display a string as it grows. Use `s.streaming.object` when the interface can handle fields becoming available separately. Leave an object unmarked when its required field values should appear together, as each shopping item does here. The [JSON Parser](/docs/react/recipes/json-parser) recipe shows those values resolving before the closing brace and validates the full document when its local source ends.
+Use the bottom timeline to revisit **Streaming JSON**, **Parsed output**, and **Plan accepted**. The chat, JSON, and state follow the same captured moment. **Raw events** reveals every frame. Replay does not call the model, execute a tool, or accept a plan.
 
-A streaming marker does not authorize an action, validate application-specific rules, or guarantee that the run will succeed. Keep buttons that change application state tied to a completed, reviewed result.
+## Keep previews separate from writes
 
-## Handle cancellation and failure
+A resolved field is useful feedback, but it does not prove that the document is complete or that the run will succeed. The application checks a nonempty title, exactly two bounded steps, the current turn and revision, and successful completion before accepting.
 
-Select **Cancel** while the draft is arriving. The example invalidates Apply immediately and stops the client run. It keeps the previously applied list. Stopping a client request does not undo work a server or tool has already performed; forward cancellation to server operations where appropriate.
+Stop invalidates acceptance immediately. A failed, cancelled, truncated, or stale response cannot replace the accepted plan. Stopping a client request does not undo work a server or tool has already performed.
 
-For a request or parse error, inspect [Debugging](/docs/react/concept/debugging) and generate a fresh draft. Do not treat a partial result left on screen as a successful replacement.
+## Pick a streaming boundary deliberately
 
-## Next steps
+Use streaming strings for text that is useful while it grows. Use streaming arrays for collections that can appear progressively. Use streaming objects when the interface can handle fields becoming available separately. An ordinary object can resolve once its required field values are present, even before its closing brace; that is still a preview of the full document.
 
-Continue with [Natural language forms](/docs/react/recipes/natural-language-to-structured-data) to connect a generated draft to review and application validation. Return to [Skillet schemas](/docs/react/concept/schema) for supported schema constructs, or use [Exposing components](/docs/react/concept/components) when the model should choose which of your components to render.
+For a finite local source without a provider, use the [JSON Parser](/docs/react/recipes/json-parser) recipe. For a form, continue with [Natural language forms](/docs/react/recipes/natural-language-to-structured-data).
+
+Read the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/StructuredWorkbench.tsx), or return to [Skillet schemas](/docs/react/concept/schema) and [Exposing components](/docs/react/concept/components).

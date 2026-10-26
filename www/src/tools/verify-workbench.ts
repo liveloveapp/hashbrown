@@ -1,3 +1,7 @@
+import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import { type Decision } from '@hashbrownai/core';
+import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
+import { verifyDecisionWorkbench } from './verify-decision-workbench';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
@@ -9,7 +13,21 @@ import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-le
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
+const eventDelayMs = process.env['WORKBENCH_RECORD'] === '1' ? 20 : 0;
+async function* pacedProvider(
+  events: AsyncIterable<AGUIEvent>,
+  signal: AbortSignal,
+) {
+  for await (const event of events) {
+    if (eventDelayMs)
+      await new Promise((resolve) => setTimeout(resolve, eventDelayMs));
+    if (signal.aborted) return;
+    yield event;
+  }
+}
 const requests: RunAgentInput[] = [];
+const decisionRequests: Decision.Request[] = [];
+let decisionOutcome: 'success' | 'low' | 'error' | 'delay' = 'success';
 const work = resolve(
   process.env['WORKBENCH_OUTPUT'] ?? 'dist/docs-workbench/verification',
 );
@@ -96,21 +114,74 @@ if (live && (!apiKey || !model))
     'Live verification requires OPENAI_API_KEY and OPENAI_MODEL.',
   );
 const app = createWorkbenchApp({
+  decide: async (request, signal) => {
+    decisionRequests.push(structuredClone(request));
+    if (live) {
+      const key = process.env['TYPESAFE_API_KEY'],
+        model = process.env['TYPESAFE_MODEL'];
+      if (!key || !model)
+        throw new Error(
+          'Live decisions require TYPESAFE_API_KEY and TYPESAFE_MODEL',
+        );
+      return HashbrownTypeSafe.decide({
+        apiKey: key,
+        model,
+        request,
+        schema: workbenchDecisionSchema,
+        signal,
+        maxRequestChars: 16000,
+      });
+    }
+    const mode = decisionOutcome;
+    if (mode === 'delay')
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    if (mode === 'error') throw new Error('Intentional decision failure');
+    const input = (request.state as { input: { prompt: string } }).input;
+    const choice = input.prompt.toLowerCase().includes('recorded')
+      ? 'review'
+      : 'record';
+    const confidence = mode === 'low' ? 0.4 : 0.97;
+    return {
+      kind: 'hashbrown.decision',
+      version: 1,
+      value: { nextAction: choice },
+      meta: {
+        nextAction: {
+          confidence,
+          probabilities:
+            choice === 'record'
+              ? {
+                  record: confidence,
+                  review: (1 - confidence) / 2,
+                  clarify: (1 - confidence) / 2,
+                }
+              : {
+                  record: (1 - confidence) / 2,
+                  review: confidence,
+                  clarify: (1 - confidence) / 2,
+                },
+        },
+      },
+    };
+  },
   staticDirectory: resolve('dist/docs-workbench/browser'),
   source: live ? 'provider' : 'test-fixture',
   stream: (input, signal) => {
     requests.push(structuredClone(input));
     return live
-      ? HashbrownOpenAI.stream.text({
-          apiKey: apiKey as string,
-          model: model as string,
-          input,
-          signal,
-          transformRequestOptions: (value) => ({
-            ...value,
-            max_output_tokens: 2048,
+      ? pacedProvider(
+          HashbrownOpenAI.stream.text({
+            apiKey: apiKey as string,
+            model: model as string,
+            input,
+            signal,
+            transformRequestOptions: (value) => ({
+              ...value,
+              max_output_tokens: 2048,
+            }),
           }),
-        })
+          signal,
+        )
       : fixture(input, signal);
   },
 });
@@ -137,6 +208,23 @@ const report: unknown[] = [];
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (lesson.format === 'decision') {
+        report.push(
+          await verifyDecisionWorkbench({
+            browser,
+            framework,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests: decisionRequests,
+            outcome: (value) => {
+              decisionOutcome = value;
+            },
+          }),
+        );
+        continue;
+      }
       console.log(
         `Verifying ${framework}/${lesson.id} (${live ? 'provider' : 'test-fixture'})`,
       );
@@ -160,6 +248,15 @@ try {
         if (message.type() === 'error')
           console.log(`${framework} console: ${message.text()}`);
       });
+      const previewTitles: string[] = [];
+      if (lesson.id === 'streaming') {
+        await page.exposeFunction(
+          '__captureStreamingPreview',
+          (title: string) => {
+            if (!previewTitles.includes(title)) previewTitles.push(title);
+          },
+        );
+      }
       const start = requests.length;
       await page.goto(
         `http://127.0.0.1:${address.port}/${framework}.html?lesson=${lesson.id}`,
@@ -189,6 +286,34 @@ try {
         }
       };
       await expect(send).toBeVisible();
+      if (lesson.id === 'streaming') {
+        await page.evaluate(() => {
+          const record = (
+            window as unknown as {
+              __captureStreamingPreview: (title: string) => void;
+            }
+          ).__captureStreamingPreview;
+          new MutationObserver(() => {
+            const cards = document.querySelectorAll(
+              'article[aria-label="Summary card"]',
+            );
+            const card = cards[cards.length - 1];
+            const title = card?.querySelector('h2')?.textContent;
+            if (
+              title &&
+              title !== 'Building your plan…' &&
+              card?.querySelector<HTMLButtonElement>('button')?.disabled
+            )
+              record(title);
+          }).observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+            attributes: true,
+          });
+        });
+      }
+
       await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
       await expect(page.locator('.wb:visible .wb-detail')).toBeVisible();
       await expect(
@@ -207,10 +332,21 @@ try {
         exact: true,
       });
       if (!live) await expect(accept).toBeDisabled();
+      if (lesson.id === 'streaming' && !live)
+        await expect(card.locator('h2')).not.toHaveText('Building your plan…');
       await expect(accept).toBeEnabled({ timeout: 60_000 });
       await expect(page.locator('.wb:visible [data-source]')).toHaveText(
         live ? 'Live model' : 'Test fixture',
       );
+      if (lesson.id === 'streaming') {
+        const title = await card.locator('h2').innerText();
+        expect(
+          previewTitles.some(
+            (partial) =>
+              partial.length < title.length && title.startsWith(partial),
+          ),
+        ).toBe(true);
+      }
       const firstSteps = await card.locator('li').allTextContents();
       expect(firstSteps).toHaveLength(2);
       mark('firstComplete');
@@ -229,7 +365,12 @@ try {
         await page.waitForTimeout(900);
       await page
         .getByRole('tab', {
-          name: lesson.id === 'tools' ? 'Requests' : 'JSON',
+          name:
+            lesson.id === 'schemas'
+              ? 'Schema'
+              : lesson.id === 'tools'
+                ? 'Requests'
+                : 'JSON',
           exact: true,
         })
         .click();
@@ -349,7 +490,12 @@ try {
       }
       await page
         .getByRole('tab', {
-          name: lesson.id === 'tools' ? 'Requests' : 'JSON',
+          name:
+            lesson.id === 'schemas'
+              ? 'Schema'
+              : lesson.id === 'tools'
+                ? 'Requests'
+                : 'JSON',
           exact: true,
         })
         .click();
@@ -409,6 +555,8 @@ try {
         framework,
         lesson: lesson.id,
         phases,
+        eventDelayMs,
+        ...(lesson.id === 'streaming' ? { previewTitles } : {}),
         source: live ? 'provider' : 'test-fixture',
         requests: captured.length,
         passed: true,

@@ -66,6 +66,7 @@ await bundle({
   target: 'node22',
   alias: {
     '@hashbrownai/core': resolve('packages/core/src/index.ts'),
+    '@hashbrownai/typesafe': resolve('packages/typesafe/src/index.ts'),
     '@hashbrownai/openai': resolve('packages/openai/src/index.ts'),
     '#development-install': resolve(
       'packages/core/src/growth/development-install.default.ts',

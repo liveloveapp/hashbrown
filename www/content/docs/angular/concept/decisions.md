@@ -2,255 +2,125 @@
 title: 'Decisions: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Ask a decision model closed questions about your app state and get typed answers with confidence.'
+    content: 'Choose the next action for an app-owned plan with typed options, confidence, and explicit review.'
 ---
 
 # Decisions
 
-<p class="subtitle">Ask a decision model closed questions about your app state and get typed answers with confidence.</p>
-
-<hb-docs-demo demo="decisions">
+<hb-docs-demo demo="canonical-workbench-decisions-angular">
 </hb-docs-demo>
 
-- A decision picks from options you define: an enumeration, a yes or no, or a number on a short scale.
-- The answer is typed from a Skillet schema and comes with the model's confidence.
-- Decisions do not stream and do not write text. They are fast and cheap, which makes them good at routing.
-- Decisions run on a server route that holds your API key. The first adapter is [TypeSafe](/docs/angular/platform/typesafe).
+Our application already owns a two-step plan: outline the trusted UI demo, then record it. The outline is complete. What should we do next?
 
----
+Let’s ask a closed question. The allowed answers are `record`, `review`, and `clarify`. The model returns a typed choice and confidence. It does not generate the plan, write component props, or stream text.
 
-## Decide or Generate
+## Run the workbench
 
-Use a decision when the answer is one of a known set of options. Use generation when the answer is open ended.
+Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=decisions`. Keep the server environment and provider configuration from the [Quickstart](/docs/angular/start/quick). Selecting a lesson does not start a request.
 
-| Task                                    | Use        |
-| --------------------------------------- | ---------- |
-| Route a question to the right panel     | Decision   |
-| Pick which card to show for a query     | Decision   |
-| Classify, triage or tag input           | Decision   |
-| Write an answer, summary or explanation | Generation |
-| Fill in the props of a component        | Generation |
+Set `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` in the server environment as well. The recording pins `jev-1.14.0`; see [TypeSafe models](https://docs.typesafe.ai/models.md) for supported versions. Credentials stay on the server. Without those settings, the decision endpoint reports that it is unavailable; the generation lessons still work with OpenAI.
 
-A good pattern combines them: decide first, and generate only when the decision is not sure.
+## Ask one useful question
 
----
+The root is an `s.object`, and `nextAction` is an enumeration with descriptions for its allowed values:
 
-## The `decisionResource()` Function
-
-The @hashbrownai/angular!decisionResource:function resource asks the questions in a schema about an input and returns a typed value.
-
-<hb-code-example header="route a question">
+<hb-code-example header="runtime/workbench.ts">
 
 ```ts
-import { Component, computed, input } from '@angular/core';
-import { s } from '@hashbrownai/core';
-import { decisionResource } from '@hashbrownai/angular';
+export const workbenchDecisionSchema = s.object(
+  'Choose the next action for this plan',
+  {
+    nextAction: s.enumeration('The next useful action', {
+      record: 'Record the demo after the outline is complete.',
+      review: 'Review the demo after it has been recorded.',
+      clarify: 'Ask for clarification when progress is unclear.',
+    }),
+  },
+);
+```
 
-const routeSchema = s.object('Where to send the question', {
-  intent: s.enumeration('What the user wants to do', {
-    filter: 'Narrow the list of flights on the map',
-    chat: 'Ask a question that needs a written answer',
-    other: 'Anything else',
-  }),
-  clear: s.boolean('The user wants to clear the current filter'),
-});
+</hb-code-example>
 
-@Component({
-  selector: 'app-search',
-  template: `
-    @if (route.value()?.intent === 'filter') {
-      <app-filter-panel />
-    } @else {
-      <app-chat />
-    }
-  `,
-})
-export class SearchComponent {
-  readonly query = input('');
+`decisionResource()` receives the current prompt and application snapshot. Each explicit send gets a fresh request identifier and SDK runtime. Selecting the lesson or editing the prompt alone does not make a request.
 
-  readonly route = decisionResource({
-    schema: routeSchema,
-    input: computed(() => (this.query() === '' ? null : this.query())),
-    system: 'You route questions in a flight-tracking app.',
-    debounce: 150,
+<hb-expander title="Checked Angular decision setup">
+
+<hb-code-example header="angular/src/app/decision-workbench.ts">
+
+```ts
+  private readonly resource = decisionResource({
+    schema: workbenchDecisionSchema,
+    system: workbenchDecisionSystem,
+    input: computed(() => {
+      const request = this.request();
+      return {
+        ...request,
+        application: {
+          ...request.application,
+          plan: request.application.plan
+            ? {
+                title: request.application.plan.title,
+                steps: [...request.application.plan.steps],
+              }
+            : null,
+        },
+      };
+    }),
+    debounce: 0,
+    retries: 0,
+    transport: (request, signal) =>
+      createWorkbenchDecisionTransport(this.store(), this.request().requestId)(
+        request,
+        signal,
+      ),
   });
-}
 ```
 
 </hb-code-example>
 
-1. The schema describes the questions. Each property is one question.
-2. The `input` is the state to decide about. A `null` value keeps the resource idle.
-3. `system` is sent with the input as context for the decision model.
-4. `debounce` waits for the input to settle before sending a request.
+</hb-expander>
 
-The resource requires `provideHashbrown`. Changing `system` aborts the request and resets `value` and `meta` to `null` before the new decision arrives.
+Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/decision-workbench.ts) for request lifetime, captured results, cancellation, and the application-owned result card.
 
-<hb-code-example header="configure the decision endpoint">
+## Follow the two requests
 
-```ts
-import { provideHashbrown } from '@hashbrownai/angular';
+1. Send “The outline is complete. What should I do next?” The decision returns `record` with confidence.
+2. Inspect **JSON** and **Details**. This is one complete response, not a stream of generated text.
+3. Select **State**, then **Use suggestion**. The explicit action saves `nextAction: record` and advances the revision to `1`.
+4. Send “The demo is recorded. What should I do next?” The new input includes the current application snapshot, and the decision returns `review`.
 
-export const appConfig: ApplicationConfig = {
-  providers: [provideHashbrown({ decision: { url: '/api/decide' } })],
-};
-```
+Decisions evaluate the input snapshot supplied for each request. They do not automatically load a chat history. The workbench keeps both requests in one feed so we can inspect what changed.
 
-</hb-code-example>
+<img src="/video/docs/canonical-workbench-decisions-angular-result.png" alt="The app-owned plan appears beside a complete typed next-action decision, its confidence, and captured application state." width="1600" height="1000" loading="lazy" />
 
-The endpoint defaults to `/api/decide`. The provider `middleware` applies to decision requests, and `decision.transport` replaces the HTTP transport entirely. Every resource also accepts its own `transport`.
+## Treat confidence as application policy
 
----
+The workbench enables **Use suggestion** at confidence `0.75` or higher, after a fresh successful response. That threshold is our policy. Confidence is model metadata, not a calibrated probability that the choice is correct. Evaluate the policy against representative inputs from your own feature.
 
-## Decidable Schemas
+Below the threshold, the interface asks us to review the plan manually. Errors and cancellation also preserve application state and offer retry or manual review. A response from an older request cannot authorize a new turn, and an already used suggestion cannot be applied again.
 
-The root of the schema must be `s.object`. Each property can be:
+Use the timeline to inspect **Decision** and **Suggestion applied** separately. Replay shows captured choices, confidence, and state. It cannot make another decision or apply a suggestion.
 
-| Skillet type                             | Question type | Notes                                             |
-| ---------------------------------------- | ------------- | ------------------------------------------------- |
-| `s.enumeration`                          | Choice        | Up to 255 options                                 |
-| `s.boolean`                              | Yes or no     | Meta holds a `probability`                        |
-| `s.integer` with `minimum` and `maximum` | Score         | Inclusive bounds, 2 to 10 levels                  |
-| `s.number` with bounds and `multipleOf`  | Score         | Inclusive bounds, 2 to 10 levels                  |
-| `s.object`                               | Nested        | Properties are flattened into dotted question ids |
+## Choose a decision or generation
 
-Property names cannot contain `.`. Anything else, such as strings, arrays or `anyOf`, is a TypeScript error. Number bounds are checked when the resource is created.
+| Need | API |
+| --- | --- |
+| Pick one of known next actions | Decision. |
+| Return free-form plan text and steps | [Structured output](/docs/angular/concept/structured-output). |
+| Select trusted components and supply props | [Generative UI](/docs/angular/concept/components). |
 
-```ts
-const triage = s.object('Triage', {
-  urgency: s.integer('How urgent is this', { minimum: 1, maximum: 5 }),
-  weight: s.number('How much it matters', {
-    minimum: 0,
-    maximum: 1,
-    multipleOf: 0.25,
-  }),
-  customer: s.object('Customer', {
-    tier: s.enumeration('Account tier', ['free', 'pro', 'enterprise']),
-  }),
-});
-```
+A decision can choose a route without performing the routed action. Keep writes and authorization in application or server code.
 
-### Describing options
+## Decidable schemas and metadata
 
-Pass a record to `s.enumeration` to describe each option. Decision models use the descriptions to tell the options apart.
+The root must be `s.object`. Enumerations become choice questions, booleans become yes/no questions, and bounded numeric scales become score questions. Nested objects flatten into dotted question IDs; property names cannot contain `.`. Strings, arrays, and `anyOf` are not decision questions.
 
-```ts
-s.enumeration('Kind of aircraft', {
-  jet: 'Jets and airliners',
-  rotor: 'Helicopters',
-  other: 'Anything else',
-});
-```
+Choice metadata includes `confidence` and `probabilities` per option. Boolean metadata includes `probability`. Score metadata includes the most likely level, a probability-weighted `score`, and probabilities per level. The SDK mirrors metadata to the shape of the typed value.
 
-In ordinary structured output the same schema emits a plain `enum`, and the descriptions are appended to the description text as a list. The record form is safe to use anywhere.
+Keep inputs short and relevant. Compute counts and other exact facts in code. Give options distinct descriptions and include a clarification or other path when the input does not establish a useful choice. Test option ordering against real inputs; `optionOrder: 'shuffled'` is available for policies that allow it. The workbench server deliberately pins its question options and order.
 
----
+## Keep the questions on the server
 
-## Reading the Result
+The local endpoint fixes the plan, question schema, and system policy before calling `HashbrownTypeSafe.decide`. It bounds input, forwards cancellation, and keeps credentials server-side. Browser-supplied questions cannot replace the allowed options.
 
-```ts
-const route = decisionResource({ schema: routeSchema, input: query });
-
-route.value(); // { intent: 'filter' | 'chat' | 'other'; clear: boolean } | null
-route.meta(); // { intent: { confidence, probabilities }, clear: { probability } } | null
-route.isLoading();
-route.error();
-route.reload();
-route.stop();
-```
-
-`meta` mirrors the shape of `value`. An enumeration has `confidence` and `probabilities` per option. A number's `value` is its most probable level, and `meta` adds the probability-weighted `score` on the same scale (it can fall between two levels). A boolean has a `probability`.
-
----
-
-## Confidence Routing
-
-A decision is most useful when you act on it only if it is sure. Compare `confidence` to a threshold you choose, and fall back to generation or to a default when it is lower.
-
-```ts
-const MIN_CONFIDENCE = 0.7;
-
-readonly route = decisionResource({ schema: routeSchema, input: this.query });
-
-readonly mode = computed(() => {
-  const value = this.route.value();
-  const meta = this.route.meta();
-
-  if (value && meta && meta.intent.confidence >= MIN_CONFIDENCE) {
-    // Sure enough to act on the decision.
-    return value.intent === 'filter' ? 'filter' : 'chat';
-  }
-
-  // Unsure, or still deciding: let the model generate instead.
-  return 'chat';
-});
-```
-
-Start with a threshold around 0.7 and tune it against real inputs. A higher threshold generates more, and a lower one decides more.
-
----
-
-## Working with Model Limits
-
-Decision models are strong at classification and weak at some things. Plan around the limits.
-
-- **Bucket numbers in code.** Models are poor at counting and arithmetic. Do not ask "how many flights are on the map". Compute the number, turn it into a bucket such as `'none'`, `'few'` or `'many'` in code, and pass the bucket.
-- **Never pass hex codes or dates.** Opaque encodings such as `a1b2c3` and raw timestamps are unreliable. Pass a plain label (`'a Boeing 737'`) or a derived fact (`'departed 2 hours ago'`).
-- **Keep the input short.** Long, irrelevant context hurts accuracy. Pass only what the question needs.
-- **Avoid double negatives.** Write "The user wants to clear the filter", not "The user does not want to keep the filter".
-- **Options are biased toward the first one listed.** Use `optionOrder: 'shuffled'` to vary the order on every request and spread the bias.
-- **Include an `other` option.** Without a way out, the model has to pick a wrong option. An `other` option gives uncertain inputs somewhere to go, and you can route it to generation.
-
-```ts
-const route = decisionResource({
-  schema: routeSchema,
-  input: query,
-  optionOrder: 'shuffled',
-});
-```
-
----
-
-## Pinning Questions on the Server
-
-By default the client sends the questions. To stop clients from asking anything they like, pass the same `schema` to `HashbrownTypeSafe.decide` on the server. The server compiles its own questions and ignores the ones in the request. See [TypeSafe](/docs/angular/platform/typesafe).
-
-To make decisions inside an agent tool or node, or to send them to an AG-UI agent server, see [Decisions in Agents](/docs/angular/recipes/decisions-in-agents).
-
----
-
-## Errors
-
-Failures appear in `error`: a transport error, a response that does not match the schema, or a schema the model cannot answer. A decision never returns a partial value. Retryable transport errors are retried up to `retries` times.
-
----
-
-## Demo result
-
-<img src="/video/docs/decisions-result.png" width="1440" height="810" loading="lazy" alt="The ATC map shows the aircraft selected by an arrivals request." />
-
-The ATC example routes an arrivals request and narrows the available UI. The recording uses scripted model responses and fixture traffic.
-
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="recipes/ui-selection">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Choose UI with a decision</h4>
-      <p>Pick components for an input, or narrow a chat, with uiDecisionResource.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="platform/typesafe">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Serve decisions with TypeSafe</h4>
-      <p>Add the server route that answers decision requests.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+The [TypeSafe provider guide](/docs/angular/platform/typesafe) explains endpoint configuration and adapter errors. To decide inside an agent node or tool, continue with [Decisions in Agents](/docs/angular/recipes/decisions-in-agents). For component selection, use [UI selection](/docs/angular/recipes/ui-selection). The [`decisionResource()` API](/api/angular/decisionResource) describes debounce, retries, stop, reload, and transport options.
