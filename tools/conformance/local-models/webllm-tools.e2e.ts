@@ -6,7 +6,6 @@ import {
 } from '@copilotkit/aimock';
 import { expect, type Page, test, type TestInfo } from '@playwright/test';
 import { installLocalModelShim } from './shim';
-import { installWebLlmToolObserver } from './webllm-tool-observer';
 
 type Request = {
   messages: { role: string; content: string }[];
@@ -209,8 +208,7 @@ async function workflow(
   let primary: unknown;
   let observed: Observation | undefined;
   try {
-    await installLocalModelShim(page, mock.url);
-    await installWebLlmToolObserver(page);
+    await installLocalModelShim(page, mock.url, { observeWebLlm: true });
     await page.goto(
       '/?localModel=webllm-tools&' +
         (scenario === 'ui'
@@ -397,9 +395,37 @@ for (const scenario of [
       if (!final) throw new Error('Missing final engine request.');
       const replay = envelopes(final);
       expect(replay).toHaveLength(operations.length * 2);
+      const canonicalCalls = (
+        observed.canonical.at(-1)?.messages ?? []
+      ).flatMap((message) => {
+        if (!message || typeof message !== 'object') return [];
+        const assistant = message as {
+          role?: string;
+          toolCalls?: {
+            id: string;
+            type: string;
+            function: { name: string; arguments: string };
+          }[];
+        };
+        return assistant.role === 'assistant'
+          ? (assistant.toolCalls ?? [])
+          : [];
+      });
+      expect(canonicalCalls).toHaveLength(operations.length);
       for (let index = 0; index < operations.length; index++) {
         const call = replay[index * 2];
         const result = replay[index * 2 + 1];
+        const expectedArguments =
+          index === 0 ? { record: 'alpha' } : { token: operations[0].token };
+        expect(call.arguments).toEqual(expectedArguments);
+        expect(canonicalCalls[index]).toEqual({
+          id: call.callId,
+          type: 'function',
+          function: {
+            name: operations[index].name,
+            arguments: JSON.stringify(expectedArguments),
+          },
+        });
         expect(call).toMatchObject({
           type: 'hashbrown.tool_call',
           protocol: 1,
@@ -415,7 +441,7 @@ for (const scenario of [
         expect(observed.contexts.at(-1)?.completedCalls[index]).toEqual({
           callId: call.callId,
           name: call.name,
-          arguments: call.arguments,
+          arguments: expectedArguments,
           result: { type: 'success', text: result.text },
         });
         expect(JSON.parse(result.text ?? '')).toMatchObject(
