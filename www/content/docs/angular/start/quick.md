@@ -2,57 +2,57 @@
 title: 'Angular Quickstart: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Build your first generated UI with a trusted welcome card.'
+    content: 'Generate a two-step plan in an ordinary app using one trusted component and a streaming endpoint.'
 ---
 
 # Angular Quickstart
 
-Let's build a welcome card. We'll write the component, tell the model which props it accepts, and ask Hashbrown to render it.
+Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
 
-<hb-docs-demo demo="welcome-card">
+<hb-docs-demo demo="canonical-workbench-first-plan-angular">
 </hb-docs-demo>
 
-<img src="/video/docs/welcome-card-result.png" alt="The completed WelcomeCard with a welcome title and a one-sentence message." width="920" height="304" loading="lazy" />
+The recording uses the same `PlanCard` and registration as this example, inside the [conversation workbench](/docs/angular/start/workbench). The model knows that component as `SummaryCard`. The inspector and timeline are workbench features; our app needs only the component, @hashbrownai/angular!uiChatResource:function, and an endpoint.
 
-The model supplies the text. Our Angular component supplies the markup and behavior.
+<img src="/video/docs/canonical-workbench-first-plan-angular-result.png" alt="The Angular first-plan lesson renders a trusted card with a title and two steps, without applying it to application state." width="1600" height="1000" loading="lazy" />
 
 ## Before we start
 
-This example assumes an Angular 22 app using standalone components, Node.js 24, and an OpenAI API key. You'll also need the name of a model your account can use with structured output.
+This example assumes an existing Angular 22 app using standalone components, Node.js 24, and an OpenAI API key. Choose a model your account can use with structured output.
 
-We'll run two processes: your frontend development server and a small Express server. The browser calls `/api/chat` on the frontend's origin; a development proxy forwards that request to Express on port 3001. Keep the API key on the server.
+We'll run the frontend and a small Express server. The browser calls `/api/chat` on its own origin; a development proxy forwards the request to Express on port 3001. Keep the key and model on the server.
 
 <a id="install"></a>
 
 ## Install Hashbrown
 
-In your existing frontend project, install the client packages:
+In the frontend project:
 
 ```sh
 npm install @hashbrownai/core @hashbrownai/angular
 ```
 
-Next, create a sibling directory for the server. Keep it outside the frontend's source directory:
+Create a sibling directory for the server, outside the frontend source:
 
 ```sh
 cd ..
-mkdir welcome-server
-cd welcome-server
+mkdir plan-server
+cd plan-server
 npm init -y
 npm install @hashbrownai/core @hashbrownai/openai openai express @ag-ui/core @ag-ui/encoder
 npm install --save-dev tsx typescript @types/express @types/node
 ```
 
-Create a `.env` file in `welcome-server`. Replace both values with your own settings, and add `.env` to `.gitignore`:
+Create `.env` in `plan-server` and add it to `.gitignore`:
 
 ```sh
 OPENAI_API_KEY=your-api-key
 OPENAI_MODEL=your-model-name
 ```
 
-## Create the server endpoint
+## Create the endpoint
 
-Create `server.ts` in `welcome-server`:
+Create `server.ts` in `plan-server`:
 
 <hb-code-example header="server.ts">
 
@@ -105,53 +105,55 @@ app.listen(3001, '127.0.0.1', () => {
 
 </hb-code-example>
 
-The adapter turns the model's response into AG-UI events. `EventEncoder` writes those events as a server-sent event stream that Hashbrown can read. If the browser disconnects, we cancel the provider request.
+The adapter maps the request to OpenAI and returns AG-UI events. `EventEncoder` writes them as a server-sent event stream. A disconnected browser cancels the provider request.
 
-Run the endpoint in one terminal:
+Start the endpoint:
 
 ```sh
 npx tsx --env-file=.env server.ts
 ```
 
-This server listens on your machine's loopback address for local development. Before publishing an endpoint, add request validation, authentication, authorization, and usage limits. See [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
+This endpoint is for local development. It forwards the client's feature configuration. The workbench pins its public lesson policy on the server. We'll cover that distinction in [System instructions](/docs/angular/concept/system-instructions). Before publishing an endpoint, add request validation, authentication, authorization, and usage limits; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
 
-## Write the welcome card
+## Write the plan card
 
-Back in the frontend project, create the component:
+Back in the frontend project, create `src/app/plan-card.ts`:
 
-<hb-code-example header="src/app/welcome-card.ts">
+<hb-code-example header="src/app/plan-card.ts">
 
 ```ts
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-/** A developer-owned card whose text can be supplied by the model. */
+/** Presents validated streaming plan fields, with an optional application-owned footer. */
 @Component({
-  selector: 'app-welcome-card',
+  selector: 'app-plan-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <article aria-label="Welcome card">
-      <h2>{{ title() }}</h2>
-      <p>{{ message() }}</p>
-    </article>
-  `,
+  template: `<article class="wb-summary" aria-label="Summary card">
+    <span class="wb-muted">SummaryCard · trusted component</span>
+    <h2>{{ title() || 'Building your plan…' }}</h2>
+    <ol>
+      @for (step of steps(); track $index) {
+        <li>{{ step }}</li>
+      }
+    </ol>
+    <ng-content />
+  </article>`,
 })
-export class WelcomeCard {
+export class PlanCard {
   readonly title = input.required<string>();
-  readonly message = input.required<string>();
+  readonly steps = input.required<string[]>();
 }
 ```
 
 </hb-code-example>
 
-We have two strings: `title` and `message`. The component renders them as ordinary text, using the same framework bindings as the rest of our app.
+The card receives a title and an ordered list of steps. Those bindings render ordinary text. Its optional presentation label and footer belong to the application. Later lessons use the footer for an acceptance action; the first-plan example supplies no footer.
 
 ## Expose the component
 
-The @hashbrownai/angular!uiChatResource:function function creates the UI conversation.
+Create `src/app/first-plan-app.ts`:
 
-Replace your root component with the following example:
-
-<hb-code-example header="src/app/app.ts">
+<hb-code-example header="src/app/first-plan-app.ts">
 
 ```ts
 import { ChangeDetectionStrategy, Component } from '@angular/core';
@@ -161,59 +163,58 @@ import {
   RenderMessageComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { WelcomeCard } from './welcome-card';
+import { PlanCard } from './plan-card';
 
-const components = [
-  exposeComponent(WelcomeCard, {
-    name: 'WelcomeCard',
-    description: 'Welcome a developer with a title and a short message.',
+/** The only UI the model may render: validated title and streaming steps. */
+export const firstPlanComponents = [
+  exposeComponent(PlanCard, {
+    name: 'SummaryCard',
+    description: 'Show a concise two-step plan as a preview.',
     input: {
-      title: s.string('A short welcome title'),
-      message: s.string('A one-sentence welcome message'),
+      title: s.string('A concise plan title'),
+      steps: s.streaming.array(
+        'The ordered plan steps',
+        s.string('A concise action'),
+      ),
     },
     children: false,
   }),
 ];
 
-/** Generates a welcome card from the components we expose. */
+/** Generates a plan using the application-owned component and schema. */
 @Component({
   selector: 'app-root',
   imports: [RenderMessageComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <main>
-      <h1>Your first generated UI</h1>
-      <button type="button" [disabled]="chat.isLoading()" (click)="generate()">
-        Generate a welcome card
-      </button>
-      @if (chat.isLoading()) {
-        <p role="status">Creating your card...</p>
-      }
-      @if (chat.error()) {
-        <p role="alert">
-          We could not create the card. Check your server, then try again.
-        </p>
-      } @else {
-        @for (message of chat.value(); track $index) {
-          @if (message.role === 'assistant') {
-            <hb-render-message [message]="message" />
-          }
+  template: `<main>
+    <h1>Your first generated plan</h1>
+    <button type="button" [disabled]="chat.isLoading()" (click)="generate()">
+      Generate a plan
+    </button>
+    @if (chat.isLoading()) {
+      <p role="status">Creating your plan…</p>
+    }
+    @if (chat.error()) {
+      <p role="alert">Check your server, then try again.</p>
+    } @else {
+      @for (message of chat.value(); track $index) {
+        @if (message.role === 'assistant') {
+          <hb-render-message [message]="message" />
         }
       }
-    </main>
-  `,
+    }
+  </main>`,
 })
-export class App {
+export class FirstPlanApp {
   protected readonly chat = uiChatResource({
-    system: 'Welcome developers to Hashbrown. Render one WelcomeCard.',
-    components,
+    system:
+      'Help a developer create a small two-step plan for a trusted UI demo. Render exactly one SummaryCard with a short title and exactly two concise steps: outline the demo, then record it. Do not call tools. Rendering is a preview and does not change application state.',
+    components: firstPlanComponents,
   });
-
   protected generate(): void {
     this.chat.sendMessage({
       role: 'user',
-      content:
-        'Welcome a developer to Hashbrown. Render a WelcomeCard with a short title and a one-sentence message.',
+      content: 'Create a two-step plan for a trusted UI demo.',
     });
   }
 }
@@ -223,16 +224,30 @@ export class App {
 
 Let's break this down:
 
-1. `exposeComponent()` gives the model a name, a description, and a schema for the card's inputs.
-2. `s.string()` describes the text the component accepts. Hashbrown validates the generated values before passing them to the component.
-3. `uiChatResource()` creates the conversation with that component available.
-4. `hb-render-message` renders the assistant's component output.
+1. `exposeComponent()` registers our `PlanCard` with the model-facing name `SummaryCard`.
+2. The schema allows a title and streaming steps. It does not expose the footer or arbitrary children.
+3. @hashbrownai/angular!uiChatResource:function creates the conversation. Sending a user message starts the request.
+4. `hb-render-message` renders our component from the generated props.
 
-**You own the component.** The model can select from the components you expose and supply their validated props. It does not write a new Angular component or arbitrary markup. Keep authorization for application actions in your own code; a prop schema does not grant permission to perform an action.
+The model supplies values for the contract we exposed. Our component supplies the markup. Rendering the card does not save the plan, record a video, or run either step.
 
-## Connect the application
+## Connect the frontend
 
-Update the application configuration. If your app already has other providers, keep them in the array.
+Use @hashbrownai/angular!provideHashbrown:function to connect the app to its endpoint.
+
+Copy the following entry code into `src/main.ts`. The checked example keeps it in `src/first-plan-main.ts` so it can run beside the older examples.
+
+<hb-code-example header="src/first-plan-main.ts">
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser';
+import { FirstPlanApp } from './app/first-plan-app';
+import { appConfig } from './app/app.config';
+
+bootstrapApplication(FirstPlanApp, appConfig).catch(console.error);
+```
+
+</hb-code-example>
 
 <hb-code-example header="src/app/app.config.ts">
 
@@ -253,21 +268,9 @@ export const appConfig: ApplicationConfig = {
 
 </hb-code-example>
 
-The application entry point bootstraps our root component:
+Keep `<app-root></app-root>` in `src/index.html`. The provider points the resource at `/api/chat`.
 
-<hb-code-example header="src/main.ts">
-
-```ts
-import { bootstrapApplication } from '@angular/platform-browser';
-import { App } from './app/app';
-import { appConfig } from './app/app.config';
-
-bootstrapApplication(App, appConfig).catch(console.error);
-```
-
-</hb-code-example>
-
-The Angular CLI starter already includes `<app-root></app-root>` in `src/index.html`. Add `proxy.conf.json` at the root of the frontend project:
+Configure the development proxy:
 
 <hb-code-example header="proxy.conf.json">
 
@@ -282,31 +285,29 @@ The Angular CLI starter already includes `<app-root></app-root>` in `src/index.h
 
 </hb-code-example>
 
-Start Angular in a second terminal:
+Start the frontend in a second terminal:
 
 ```sh
 npx ng serve --proxy-config proxy.conf.json
 ```
 
-## Generate a card
+## Generate the plan
 
-Open the frontend URL shown in your terminal and select **Generate a welcome card**. You'll see a loading message, followed by a card with a title and a short welcome message. The exact wording can vary between requests.
+Open the frontend URL and choose **Generate a plan**. Watch the title and steps appear as the response arrives. The model's wording can vary.
 
-The recording uses the same component and interaction, with a stylesheet for presentation and a scripted model response so the result is repeatable. Your local server uses the model you configured.
+To inspect the same interaction, open `http://127.0.0.1:4370/angular.html?lesson=first-plan` after starting the [workbench](/docs/angular/start/workbench). Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.
 
 <a id="debugging"></a>
 
 ## If the card does not appear
 
-- **The request returns 404:** check that the frontend proxy is loaded and the path is `/api/chat`. Restart the frontend server after changing its proxy configuration.
-- **The server cannot start:** confirm that `.env` is in `welcome-server` and both environment variables are set.
-- **The request fails:** check the server terminal and the browser Network panel. Confirm your key can use the configured model. Keep credentials out of browser code.
-- **A response arrives without a card:** check the component name, the schema, and the renderer in your root component. Text chat and UI chat render different kinds of output.
+- **The request returns 404:** check `/api/chat` and restart the frontend after changing its proxy.
+- **The server cannot start:** check that `.env` is in `plan-server` and both values are set.
+- **The provider rejects the request:** check the server terminal and confirm your key can use the configured model.
+- **A response arrives without a card:** compare the exposed `SummaryCard` name, prop schema, and UI renderer. A text-chat response uses a different renderer.
 
-After fixing the cause, select the button again. For more help, see [Debugging](/docs/angular/concept/debugging).
+After fixing the cause, send again. Continue with [Debugging](/docs/angular/concept/debugging) when you need to inspect the request.
 
-## Next, expose another component
+## Keep the conversation going
 
-Try adding a second component with different props. Keep its description specific so the model can choose when to use it.
-
-Continue with [Exposing components](/docs/angular/concept/components). When you're ready, learn about [streaming props](/docs/angular/concept/streaming) and [browser-side tools](/docs/angular/concept/functions).
+Next, follow a second request in [Messages and turns](/docs/angular/concept/ai-basics). Then use [Exposing components](/docs/angular/concept/components) to add an explicit **Accept plan** action and [Tool calling](/docs/angular/concept/functions) to read application state.

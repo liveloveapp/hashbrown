@@ -28,10 +28,13 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens eleven lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The left navigation opens fourteen lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
 
 | Lesson                                                                  | Local URL                                   | Follow                                                                     |
 | ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| [First plan](/docs/react/start/quick) | `/react.html?lesson=first-plan` | One tool-free request and a trusted preview; no application write. |
+| [Messages and turns](/docs/react/concept/ai-basics) | `/react.html?lesson=conversation` | Retained messages, stable thread identity and fresh run identity. |
+| [System instructions](/docs/react/concept/system-instructions) | `/react.html?lesson=system-instructions` | Browser declaration and public effective policy at provider mapping. |
 | [Generative UI](/docs/react/concept/components)                         | `/react.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
 | [Tools](/docs/react/concept/functions)                                  | `/react.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
 | [Structured output](/docs/react/concept/structured-output)              | `/react.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
@@ -47,6 +50,8 @@ The left navigation opens eleven lessons. All use the same two-step plan and kee
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
 
 The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+
+The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
 
 ## Follow a Generative UI turn
 

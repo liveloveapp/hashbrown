@@ -1,0 +1,13 @@
+ANGULAR · first-plan
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+One request streams props into our trusted SummaryCard. No tools or application writes.
+
+Preview only.
+
+Replay follows captured values without another request.
+
+Back live. Preview only.
+
+The source is OpenAI through the real Hashbrown SDK. No browser tools are registered and application state stays at revision 0. The UI chat renders the exposed SummaryCard as a preview with no acceptance action. Refresh clears local sessions.

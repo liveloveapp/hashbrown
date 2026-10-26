@@ -50,6 +50,14 @@ export function workbenchMilestones(
       payload.name === 'workbench.request-transformation'
     )
       return [{ index, turn: event.turn, label: 'Request transformed' }];
+    if (
+      event.kind === 'event' &&
+      payload &&
+      typeof payload === 'object' &&
+      'name' in payload &&
+      payload.name === 'workbench.system-instructions'
+    )
+      return [{ index, turn: event.turn, label: 'Policy observed' }];
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
       label = format === 'text' ? 'Streaming text' : 'Streaming JSON';
