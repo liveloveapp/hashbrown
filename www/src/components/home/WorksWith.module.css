@@ -4,14 +4,13 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 16px 32px;
-  padding: 22px 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  gap: var(--space-4) var(--space-8);
+  padding: var(--space-6) var(--gutter);
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
   background: rgba(255, 255, 255, 0.55);
   font:
-    500 15px/1 'Fredoka',
-    sans-serif;
+    500 15px/1 var(--font-sans);
   color: var(--gray);
 }
 

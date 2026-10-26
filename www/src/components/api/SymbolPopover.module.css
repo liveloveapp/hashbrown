@@ -20,7 +20,7 @@
   overflow: hidden;
   background: #fff;
   border: 2px solid var(--sky-blue, #9ecfd7);
-  border-radius: 16px;
+  border-radius: var(--radius-shot);
 }
 
 .content {

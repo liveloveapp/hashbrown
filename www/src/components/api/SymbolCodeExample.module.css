@@ -7,20 +7,19 @@
 .example {
   display: flex;
   flex-direction: column;
-  background: var(--gray, #5e5c5a);
+  background: #2b2622;
   overflow: hidden;
-  border: 4px solid var(--gray-light, #a4a3a1);
-  border-radius: 16px;
+  border: 0;
+  border-radius: var(--radius-shot);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  padding: 14px 24px 12px 24px;
-  color: var(--vanilla-ivory, #faf9f0);
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-code-fg);
   font:
-    400 13px/18px 'JetBrains Mono',
-    sans-serif;
+    400 13px/18px var(--font-code);
 }
 
 .header > span {
@@ -35,17 +34,10 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 3px;
-  margin-bottom: -12px;
-  border-radius: 1px;
-  background: linear-gradient(
-    to right,
-    #fbbb52 0%,
-    var(--sunset-orange) 25%,
-    var(--indian-red-light) 50%,
-    var(--sky-blue-dark) 75%,
-    var(--olive-green-light) 100%
-  );
+  height: 2px;
+  margin-bottom: calc(var(--space-3) * -1);
+  border-radius: 2px;
+  background: var(--sunshine-yellow);
   background-clip: border-box;
 }
 
@@ -56,9 +48,9 @@
 }
 
 .content {
-  background: var(--gray-dark, #3d3c3a);
+  background: var(--color-code-bg);
   padding: 16px;
   overflow-x: scroll;
   margin: 0 4px 4px 4px;
-  border-radius: 16px;
+  border-radius: var(--radius-shot);
 }

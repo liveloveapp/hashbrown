@@ -30,18 +30,22 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 12px;
-      color: var(--chocolate-brown, #774625);
+      min-height: var(--control-sm);
+      padding: var(--space-1) var(--space-3);
+      color: var(--color-muted);
       width: 100%;
-      border-radius: 8px;
+      border-radius: var(--radius-input);
       cursor: pointer;
-      font:
-        400 13px/18px Fredoka,
-        sans-serif;
+      text-decoration: none;
+      font: 400 14px/20px var(--font-sans);
       justify-content: flex-start;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        color var(--duration-fast) var(--ease-out);
 
       &:hover {
-        background: var(--sunshine-yellow-light, #fde4ba);
+        background: var(--color-surface);
+        color: var(--color-ink);
       }
     }
 
