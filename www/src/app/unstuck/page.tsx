@@ -16,6 +16,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Get unstuck: Hashbrown',
   description: 'Stuck building with Hashbrown? Tell me where.',
   image: DEFAULT_CARD_IMAGE,
+  path: '/unstuck',
 });
 
 /**

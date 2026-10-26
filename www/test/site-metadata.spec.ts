@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { pageMetadata } from '../src/lib/site-metadata';
+import { pageMetadata, SITE_TITLE_TEMPLATE } from '../src/lib/site-metadata';
 
 test('sets the title and Open Graph fields from one source', () => {
   const metadata = pageMetadata({
@@ -7,7 +7,7 @@ test('sets the title and Open Graph fields from one source', () => {
     description: 'Hashbrown Docs.',
   });
 
-  expect(metadata.title).toBe('Home: Hashbrown Docs');
+  expect(metadata.title).toEqual({ absolute: 'Home: Hashbrown Docs' });
   expect(metadata.description).toBe('Hashbrown Docs.');
   expect(metadata.openGraph).toMatchObject({
     title: 'Home: Hashbrown Docs',
@@ -29,4 +29,40 @@ test('uses a custom image and published time when given', () => {
     publishedTime: '2026-09-23',
     type: 'article',
   });
+});
+
+test('sets a canonical URL from the page path', () => {
+  const metadata = pageMetadata({
+    title: 'Post',
+    path: '/blog/2026-10-22-hashbrown-v-0-8-0',
+  });
+
+  expect(metadata.alternates).toEqual({
+    canonical: '/blog/2026-10-22-hashbrown-v-0-8-0',
+  });
+});
+
+test('omits the canonical URL when no path is given', () => {
+  const metadata = pageMetadata({ title: 'Home: Hashbrown Docs' });
+
+  expect(metadata).not.toHaveProperty('alternates');
+});
+
+test('leaves unbranded titles to the site title template', () => {
+  const metadata = pageMetadata({ title: 'Hashbrown v0.8 adds decisions' });
+
+  expect(metadata.title).toBe('Hashbrown v0.8 adds decisions');
+  expect(SITE_TITLE_TEMPLATE.replace('%s', 'Post')).toBe('Post: Hashbrown');
+});
+
+test.each([
+  'Tool Calling: Hashbrown React Docs',
+  'Home: Hashbrown Blog',
+  'Privacy: Hashbrown',
+  'Hashbrown: AI chat and agents for React and Angular',
+])('keeps the already-branded title %s out of the template', (title) => {
+  const metadata = pageMetadata({ title });
+
+  expect(metadata.title).toEqual({ absolute: title });
+  expect(metadata.openGraph).toMatchObject({ title });
 });
