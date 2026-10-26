@@ -32,9 +32,6 @@ const baseApproval: ApproveContactFromFormInput = {
   companyDomain: ' Example.COM ',
   source: 'website',
   sourceForm: 'unstuck',
-  noticeText: 'Send me the guide and a short follow-up. Unsubscribe anytime.',
-  noticeVersion: 'unstuck-v1',
-  policyVersion: 'growth-v1',
   eventKey: 'form:submission-1:accepted',
   occurredAt,
   keyring,
@@ -200,6 +197,41 @@ test('approveContactFromForm serializes on the email lock and sets outreach_appr
   expect(
     markers.filter((marker) => marker === 'insert-form-outreach-approved'),
   ).toHaveLength(1);
+});
+
+test('approveContactFromForm stores no notice text, notice version or policy version', async () => {
+  const harness = executorWith(approvalHandlers({}));
+
+  await approveContactFromForm(harness.executor, {
+    ...baseApproval,
+    submittedFacts: {
+      form_kind: 'unstuck',
+      submission_id: 'submission-1',
+      message: 'My chat component re-renders on every streamed token.',
+    },
+  });
+
+  const submission = harness.calls.find(
+    ({ marker }) => marker === 'insert-activity',
+  );
+  const approved = harness.calls.find(
+    ({ marker }) => marker === 'insert-form-outreach-approved',
+  );
+  const stored = [submission?.params[4], approved?.params[3]].map((data) =>
+    JSON.parse(String(data)),
+  );
+  expect(stored).toHaveLength(2);
+  for (const data of stored) {
+    for (const key of [
+      'notice_text',
+      'notice_version',
+      'policy_version',
+      'framework',
+    ]) {
+      expect(data).not.toHaveProperty(key);
+    }
+  }
+  expect(stored[0]).toMatchObject({ source_form: 'unstuck' });
 });
 
 test('approveContactFromForm refuses when a stored key version is not in the keyring', async () => {

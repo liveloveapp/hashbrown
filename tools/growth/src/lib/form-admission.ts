@@ -92,12 +92,8 @@ export async function prepareFormAdmission(
   const request = canonicalJson({
     email,
     form: {
-      framework: input.form.framework,
       message: input.form.message.trim(),
     },
-    noticeText: input.noticeText,
-    noticeVersion: input.noticeVersion,
-    policyVersion: input.policyVersion,
     honeypot: input.honeypot?.trim() || null,
   });
   const requestDigest = digest(

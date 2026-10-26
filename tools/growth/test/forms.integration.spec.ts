@@ -17,7 +17,6 @@ import {
   materializeCampaignEnrollment,
   readNotificationSubmission,
 } from '../src/lib/jobs.ts';
-import type { UnstuckFramework } from '../src/lib/models.ts';
 import { stopContact } from '../src/lib/stops.ts';
 import { deleteCreatedContacts, runCleanup } from './job-fixtures.ts';
 
@@ -29,10 +28,6 @@ const createdEmails = new Set<string>();
 const createdContactIds = new Set<string>();
 let recordedCampaignConfiguration = false;
 
-const NOTICE_TEXT =
-  'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.';
-const NOTICE_VERSION = 'unstuck-notice-v1.integration';
-const POLICY_VERSION = 'unstuck_v1.2026-10-22';
 const MESSAGE = 'My streaming chat component never finishes rendering.';
 
 beforeAll(async () => {
@@ -83,20 +78,13 @@ function submission(
   occurredAt: Date,
   overrides: {
     submissionId?: string;
-    framework?: UnstuckFramework;
     message?: string;
   } = {},
 ): AcceptFormSubmissionInput {
   return {
     submissionId: overrides.submissionId ?? randomUUID(),
     email,
-    form: {
-      framework: overrides.framework ?? 'react',
-      message: overrides.message ?? MESSAGE,
-    },
-    noticeText: NOTICE_TEXT,
-    noticeVersion: NOTICE_VERSION,
-    policyVersion: POLICY_VERSION,
+    form: { message: overrides.message ?? MESSAGE },
     occurredAt,
     keyring,
   };
@@ -166,11 +154,9 @@ async function deleteCampaignConfiguration(): Promise<void> {
   );
 }
 
-test('accepts an unstuck submission: one contact, consent record with notice text and version, fulfill and notify jobs', async () => {
+test('accepts an unstuck submission: one contact, a submission record with no notice or framework, fulfill and notify jobs', async () => {
   const email = newEmail('accept');
-  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'), {
-    framework: 'angular',
-  });
+  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'));
 
   const result = await accept(input);
 
@@ -193,16 +179,20 @@ test('accepts an unstuck submission: one contact, consent record with notice tex
     approval_granted: true,
     form_kind: 'unstuck',
     submission_id: input.submissionId,
-    framework: 'angular',
     message: MESSAGE,
-    notice_text: NOTICE_TEXT,
-    notice_version: NOTICE_VERSION,
-    policy_version: POLICY_VERSION,
     source: 'website',
     source_form: 'unstuck',
     email_classification: 'work',
   });
   expect(consent?.data).not.toHaveProperty('paper');
+  for (const key of [
+    'notice_text',
+    'notice_version',
+    'policy_version',
+    'framework',
+  ]) {
+    expect(consent?.data).not.toHaveProperty(key);
+  }
   const approval = await activityData(
     `form:${input.submissionId}:accepted:outreach-approved`,
   );
@@ -455,11 +445,9 @@ test('enrollment picks up an accepted unstuck approval with reason unstuck_form'
   });
 });
 
-test('readNotificationSubmission reads framework and message from the accepted submission', async () => {
+test('readNotificationSubmission reads the message from the accepted submission', async () => {
   const email = newEmail('notify');
-  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'), {
-    framework: 'both',
-  });
+  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'));
   await accept(input);
   const notify = (await formJobs(input.submissionId)).find(
     ({ kind }) => kind === 'notify',
@@ -473,7 +461,7 @@ test('readNotificationSubmission reads framework and message from the accepted s
     jobId: randomUUID(),
   });
 
-  expect(read).toEqual({ framework: 'both', message: MESSAGE });
+  expect(read).toEqual({ framework: null, message: MESSAGE });
   expect(missing).toBeNull();
 });
 

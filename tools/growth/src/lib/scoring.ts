@@ -291,8 +291,6 @@ function isVerifiedWorkApproval(
     kind === 'form.outreach_approved' &&
     data['email_classification'] === 'work' &&
     data['verification'] === 'server_verified' &&
-    typeof data['policy_version'] === 'string' &&
-    data['policy_version'].length > 0 &&
     typeof data['source'] === 'string' &&
     data['source'].length > 0 &&
     typeof data['source_form'] === 'string' &&

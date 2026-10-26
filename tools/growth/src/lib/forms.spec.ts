@@ -12,7 +12,6 @@ import {
   type AcceptFormSubmissionInput,
 } from './forms.ts';
 import { FormSubmissionConflictError } from './form-admission.ts';
-import { UNSTUCK_FRAMEWORKS } from './models.ts';
 
 const keyring: EmailHmacKeyring = {
   active: {
@@ -84,13 +83,8 @@ const baseInput: AcceptFormSubmissionInput = {
   submissionId: '20000000-0000-4000-8000-000000000002',
   email: ' Person@Gmail.com ',
   form: {
-    framework: 'angular',
     message: '  My chat component re-renders on every streamed token.  ',
   },
-  noticeText:
-    'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.',
-  noticeVersion: 'unstuck-notice-v1',
-  policyVersion: 'unstuck_v1.2026-10-22',
   occurredAt,
   keyring,
 };
@@ -100,14 +94,6 @@ function enqueueQuery(
 ) {
   return queries.find(({ sql }) => sql.includes('growth:enqueue-form-jobs'));
 }
-
-test('lists the four framework choices', () => {
-  const frameworks = UNSTUCK_FRAMEWORKS;
-
-  const values = [...frameworks];
-
-  expect(values).toEqual(['react', 'angular', 'both', 'not_sure']);
-});
 
 test('accepts an unstuck submission and enqueues fulfill and notify in one transaction', async () => {
   const harness = createHarness();
@@ -121,9 +107,6 @@ test('accepts an unstuck submission and enqueues fulfill and notify in one trans
     email: baseInput.email,
     source: 'website',
     sourceForm: 'unstuck',
-    noticeText: baseInput.noticeText,
-    noticeVersion: baseInput.noticeVersion,
-    policyVersion: baseInput.policyVersion,
     eventKey: `form:${baseInput.submissionId}:accepted`,
     occurredAt,
     keyring,
@@ -131,7 +114,6 @@ test('accepts an unstuck submission and enqueues fulfill and notify in one trans
     submittedFacts: {
       form_kind: 'unstuck',
       submission_id: baseInput.submissionId,
-      framework: 'angular',
       message: 'My chat component re-renders on every streamed token.',
     },
   });
@@ -189,7 +171,7 @@ const blockedInputs: [string, AcceptFormSubmissionInput][] = [
     {
       ...baseInput,
       email: 'test@example.com',
-      form: { framework: 'react', message: 'qRsTuVwXyZaBcDeFgHiJ' },
+      form: { message: 'qRsTuVwXyZaBcDeFgHiJ' },
     },
   ],
 ];
@@ -275,30 +257,19 @@ const invalidInputs: [string, AcceptFormSubmissionInput, RegExp][] = [
     'a message shorter than 20 characters after trimming',
     {
       ...baseInput,
-      form: { framework: 'react', message: `  ${'x'.repeat(19)}  ` },
+      form: { message: `  ${'x'.repeat(19)}  ` },
     },
     /message/u,
   ],
   [
     'a message longer than 1000 characters',
-    { ...baseInput, form: { framework: 'react', message: 'x'.repeat(1_001) } },
+    { ...baseInput, form: { message: 'x'.repeat(1_001) } },
     /message/u,
-  ],
-  [
-    'an unknown framework',
-    {
-      ...baseInput,
-      form: {
-        framework: 'vue' as never,
-        message: 'Where do I start with streaming?',
-      },
-    },
-    /framework/u,
   ],
 ];
 
 for (const [label, input, error] of invalidInputs) {
-  test(`message outside 20..1000 characters and an unknown framework are rejected before the transaction: ${label}`, async () => {
+  test(`message outside 20..1000 characters is rejected before the transaction: ${label}`, async () => {
     const harness = createHarness();
 
     const accepted = acceptFormSubmission(harness.executor, input, {
@@ -356,14 +327,14 @@ test('accepts messages of exactly 20 and 1000 characters', async () => {
 
   const shortResult = await acceptFormSubmission(
     short.executor,
-    { ...baseInput, form: { framework: 'both', message: 'x'.repeat(20) } },
+    { ...baseInput, form: { message: 'x'.repeat(20) } },
     { approveContact: short.approveContact },
   );
   const longResult = await acceptFormSubmission(
     long.executor,
     {
       ...baseInput,
-      form: { framework: 'not_sure', message: 'y'.repeat(1_000) },
+      form: { message: 'y'.repeat(1_000) },
     },
     { approveContact: long.approveContact },
   );
