@@ -422,8 +422,9 @@ export function mountWorkbench(
   rawFrameToggle.className = 'wb-raw';
   rawFrameToggle.setAttribute('aria-label', 'Show captured frame');
   rawFrameToggle.setAttribute('aria-pressed', 'false');
+  const capturedSub = element('span', '', 'wb-section-sub');
   const capturedHeader = element('header', '', 'wb-section-head');
-  capturedHeader.append(capturedHeading, rawFrameToggle);
+  capturedHeader.append(capturedHeading, capturedSub, rawFrameToggle);
   const inspection = element('div', '', 'wb-inspection');
   captured.append(capturedHeader, inspection);
   const detail = element('section', '', 'wb-section');
@@ -837,6 +838,11 @@ export function mountWorkbench(
                       payload: event.payload,
                     }));
     rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
+    capturedSub.textContent = rawFrame
+      ? 'captured frame'
+      : (frame?.status ?? snapshot.status) === 'loading'
+        ? 'streaming'
+        : 'captured';
     inspection.replaceChildren();
     if (rawFrame) {
       inspection.append(
@@ -880,7 +886,8 @@ export function mountWorkbench(
     } else {
       inspection.append(pre(value));
     }
-    detail.replaceChildren(
+    const detailHeader = element('header', '', 'wb-section-head');
+    detailHeader.append(
       element(
         'h3',
         recipeView?.detailHeading ??
@@ -900,6 +907,16 @@ export function mountWorkbench(
                     ? 'Browser tool result'
                     : 'Request payload'),
       ),
+      element(
+        'span',
+        frame
+          ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          : 'Waiting for captured data.',
+        'wb-section-sub',
+      ),
+    );
+    detail.replaceChildren(
+      detailHeader,
       pre(
         recipeView
           ? recipeView.detail
@@ -926,13 +943,6 @@ export function mountWorkbench(
                       source: frame?.source ?? 'Application',
                     }
                   : requestContext?.payload,
-      ),
-      element(
-        'p',
-        frame
-          ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
-          : 'Waiting for captured data.',
-        'wb-muted',
       ),
     );
     if ((frame?.status ?? snapshot.status) === 'error') {

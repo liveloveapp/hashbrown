@@ -213,7 +213,15 @@ test('pairs captured and interpreted content under one selection strip', () => {
     (tab) => tab.textContent,
   );
   const raw = host.querySelector<HTMLButtonElement>('button.wb-raw');
+  const capturedSub = () =>
+    host.querySelector('[data-captured] .wb-section-sub')?.textContent;
+  const before = capturedSub();
+  const capturedPre = host.querySelector('.wb-inspection pre')?.textContent;
 
+  raw?.click();
+  const rawSub = capturedSub();
+  const rawPressed = raw?.getAttribute('aria-pressed');
+  const rawBody = host.querySelector('.wb-inspection')?.textContent;
   raw?.click();
 
   expect(host.querySelector('.wb-detail')).toBeNull();
@@ -226,11 +234,45 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(tabs).not.toContain('Details');
   expect(tabs).not.toContain('Raw');
   expect(tabs).not.toContain('Console');
-  expect(raw?.getAttribute('aria-pressed')).toBe('true');
+  expect(
+    host.querySelector('.wb-selection .wb-chip:not(.wb-chip-active)')
+      ?.textContent,
+  ).toBe(host.querySelector('[data-source]')?.textContent);
+  expect(host.querySelector('[data-detail] .wb-section-sub')?.textContent).toBe(
+    'Captured from SDK parsed output.',
+  );
+  expect(host.querySelectorAll('[data-detail] pre')).toHaveLength(1);
+  expect(host.querySelectorAll('[data-detail] p')).toHaveLength(0);
+  expect(before).toBe('captured');
+  expect(rawPressed).toBe('true');
+  expect(rawSub).toBe('captured frame');
+  expect(rawBody).toContain(`${frame?.kind} · ${frame?.source}`);
+  expect(raw?.getAttribute('aria-pressed')).toBe('false');
   expect(host.querySelector('button.wb-raw')).toBe(raw);
-  expect(host.querySelector('.wb-inspection')?.textContent).toContain(
+  expect(host.querySelector('.wb-inspection')?.textContent).not.toContain(
     `${frame?.kind} · ${frame?.source}`,
   );
+  expect(host.querySelector('.wb-inspection pre')?.textContent).toBe(
+    capturedPre,
+  );
+  shell.dispose();
+});
+
+test('labels the captured section as streaming while the turn is loading', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+
+  store.send('Create a plan');
+
+  expect(
+    host.querySelector('[data-captured] .wb-section-sub')?.textContent,
+  ).toBe('streaming');
   shell.dispose();
 });
 
@@ -504,8 +546,9 @@ test('shows the shared plan contract separately from the parsed preview in the S
   expect(
     inspection?.querySelector('[role=tab][aria-selected=true]')?.textContent,
   ).toBe('Schema');
-  expect(inspection?.textContent).toContain('"type": "object"');
-  expect(inspection?.textContent).toContain('"steps"');
+  const captured = inspection?.querySelector('.wb-inspection');
+  expect(captured?.textContent).toContain('"type": "object"');
+  expect(captured?.textContent).toContain('"steps"');
   expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'Preview validation',
   );
@@ -684,7 +727,7 @@ test('transformation inspector isolates added instructions and keeps the actual 
   });
   store.settle('complete', 'stop');
 
-  const inspection = host.querySelector('.wb-inspector') ?? host;
+  const inspection = host.querySelector('.wb-inspector .wb-inspection') ?? host;
   expect(inspection.textContent).toContain('Public workspace policy');
   expect(inspection.textContent).not.toContain('Original instructions');
   host.querySelector<HTMLButtonElement>('button.wb-raw')?.click();
@@ -755,9 +798,9 @@ test('shows Markdown and selected source details through the recipe inspector in
       (tab) => tab.textContent === 'Markdown',
     ),
   ).toBe(true);
-  expect(host.querySelector('.wb-inspector')?.textContent).toContain(
-    '## Our plan',
-  );
+  expect(
+    host.querySelector('.wb-inspector .wb-inspection')?.textContent,
+  ).toContain('## Our plan');
   expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'Selected reference',
   );
