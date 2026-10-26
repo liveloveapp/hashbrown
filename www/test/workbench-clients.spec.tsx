@@ -369,3 +369,103 @@ test('uses the current Angular resource messages while it is healthy', () => {
   expect(result).toBe(messages);
   expect(read).toHaveBeenCalledOnce();
 });
+
+test('keeps every inspector panel visible and exposes raw timeline frames on demand', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.send('Plan');
+  for (let index = 0; index < 20; index++)
+    store.record('event', { type: 'TEXT_MESSAGE_CONTENT', delta: 'x' });
+  store.settle('cancelled');
+  const timeline = host.querySelector('.wb-events');
+  const toggle = [...host.querySelectorAll('button')].find(
+    (button) => button.textContent === 'Raw events',
+  );
+
+  expect(host.querySelector<HTMLElement>('.wb-inspector')?.hidden).toBe(false);
+  expect(host.querySelector<HTMLElement>('.wb-detail')?.hidden).toBe(false);
+  expect(timeline?.querySelectorAll('button')).toHaveLength(3);
+  toggle?.click();
+
+  expect(toggle).toBeDefined();
+  expect(timeline?.querySelectorAll('button')).toHaveLength(22);
+  expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+  (timeline?.querySelectorAll('button')[5] as HTMLButtonElement).click();
+  expect(store.getSnapshot().cursor).toBe(5);
+  shell.dispose();
+});
+
+test('keeps the latest browser tool result legible in the live Requests context', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'tools',
+      title: 'Tools',
+      format: 'ui',
+      inspector: 'Requests',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.send('Plan');
+  store.record('tool', {
+    name: 'readContext',
+    result: { revision: 1, plan: null },
+  });
+  store.record('request', {
+    requestId: 'continuation-id',
+    input: { messages: [] },
+  });
+  store.settle('complete', 'stop');
+
+  const context = host.querySelector('.wb-detail');
+
+  expect(context?.textContent).toContain('"revision": 1');
+  expect(context?.textContent).not.toContain('continuation-id');
+  shell.dispose();
+});
+
+test('does not label an earlier turn tool result as the current request context', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'tools',
+      title: 'Tools',
+      format: 'ui',
+      inspector: 'Requests',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.send('Plan');
+  store.record('request', { requestId: 'first-request' });
+  store.record('tool', {
+    name: 'readContext',
+    result: { previousTurnOnly: true },
+  });
+  store.settle('complete', 'stop');
+  store.send('Shorter');
+  expect(host.querySelector('.wb-detail')?.textContent).not.toContain(
+    'first-request',
+  );
+  store.record('request', { requestId: 'second-turn' });
+  store.record('event', { type: 'RUN_STARTED' });
+
+  const context = host.querySelector('.wb-detail');
+
+  expect(context?.textContent).toContain('second-turn');
+  expect(context?.textContent).not.toContain('previousTurnOnly');
+  shell.dispose();
+});

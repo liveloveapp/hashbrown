@@ -3,7 +3,16 @@ import { RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { EventEncoder } from '@ag-ui/encoder';
 import { s } from '@hashbrownai/core';
 import express, { type Express } from 'express';
-import { workbenchSystem } from '../runtime/workbench';
+import {
+  workbenchPlanSchema,
+  workbenchStructuredSystem,
+  workbenchSystem,
+} from '../runtime/workbench';
+
+import {
+  type WorkbenchLessonId,
+  workbenchLessons,
+} from '../runtime/workbench-lessons';
 
 const responseSchema = s.toJsonSchema(
   s.object('A trusted plan interface', {
@@ -22,7 +31,10 @@ const responseSchema = s.toJsonSchema(
 );
 
 /** Validates bounded history and fixes the canonical example's provider instructions and schema. */
-export function pinWorkbenchInput(value: unknown): RunAgentInput {
+export function pinWorkbenchInput(
+  value: unknown,
+  lesson: WorkbenchLessonId = 'generative-ui',
+): RunAgentInput {
   if (JSON.stringify(value).length > 128_000)
     throw new Error('Conversation too large');
   const input = RunAgentInputSchema.parse(value);
@@ -46,7 +58,14 @@ export function pinWorkbenchInput(value: unknown): RunAgentInput {
   return {
     ...input,
     messages: [
-      { id: 'workbench-system', role: 'system', content: workbenchSystem },
+      {
+        id: 'workbench-system',
+        role: 'system',
+        content:
+          lesson === 'structured-output'
+            ? workbenchStructuredSystem
+            : workbenchSystem,
+      },
       ...messages,
     ],
     tools: [
@@ -62,7 +81,15 @@ export function pinWorkbenchInput(value: unknown): RunAgentInput {
         },
       },
     ],
-    forwardedProps: { hashbrown: { ui: true, responseSchema } },
+    forwardedProps: {
+      hashbrown: {
+        ui: lesson !== 'structured-output',
+        responseSchema:
+          lesson === 'structured-output'
+            ? s.toJsonSchema(workbenchPlanSchema)
+            : responseSchema,
+      },
+    },
   };
 }
 
@@ -82,60 +109,73 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '128kb' }));
   let active = 0;
-  app.post('/api/workbench/chat', async (req, res) => {
-    const origin = req.get('origin');
-    if (origin && origin !== `http://${req.get('host')}`) {
-      res.status(403).json({ error: 'Use the local same-origin demo' });
-      return;
-    }
-    let input: RunAgentInput;
-    try {
-      input = pinWorkbenchInput(req.body);
-    } catch {
-      res
-        .status(400)
-        .json({ error: 'Invalid or oversized workbench conversation' });
-      return;
-    }
-    if (active >= 2) {
-      res
-        .status(429)
-        .json({ error: 'Wait for another conversation to finish' });
-      return;
-    }
-    active++;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
-    res.once('close', () => controller.abort());
-    const encoder = new EventEncoder();
-    try {
-      res.writeHead(200, {
-        'Content-Type': encoder.getContentType(),
-        'Cache-Control': 'no-store, no-transform',
-        'X-Accel-Buffering': 'no',
-        'X-Workbench-Source': options.source ?? 'provider',
-      });
-      for await (const event of options.stream(input, controller.signal)) {
-        if (controller.signal.aborted) break;
-        res.write(encoder.encodeSSE(event));
+  app.post(
+    [
+      '/api/workbench/chat',
+      ...workbenchLessons.map((lesson) => lesson.endpoint),
+    ],
+    async (req, res) => {
+      const origin = req.get('origin');
+      if (origin && origin !== `http://${req.get('host')}`) {
+        res.status(403).json({ error: 'Use the local same-origin demo' });
+        return;
       }
-    } catch {
-      if (!controller.signal.aborted)
-        res.write(
-          encoder.encodeSSE({
-            type: EventType.RUN_ERROR,
-            message:
-              'The demo request failed. Check the local server and retry.',
-          }),
+      let input: RunAgentInput;
+      try {
+        const lesson = workbenchLessons.find(
+          (lesson) => lesson.endpoint === req.path,
         );
-    } finally {
-      clearTimeout(timeout);
-      active--;
-      res.end();
-    }
-  });
-  app.all('/api/workbench/chat', (_req, res) =>
-    res.status(405).json({ error: 'Use POST' }),
+        input = pinWorkbenchInput(req.body, lesson?.id);
+      } catch {
+        res
+          .status(400)
+          .json({ error: 'Invalid or oversized workbench conversation' });
+        return;
+      }
+      if (active >= 2) {
+        res
+          .status(429)
+          .json({ error: 'Wait for another conversation to finish' });
+        return;
+      }
+      active++;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60_000);
+      res.once('close', () => controller.abort());
+      const encoder = new EventEncoder();
+      try {
+        res.writeHead(200, {
+          'Content-Type': encoder.getContentType(),
+          'Cache-Control': 'no-store, no-transform',
+          'X-Accel-Buffering': 'no',
+          'X-Workbench-Source': options.source ?? 'provider',
+        });
+        for await (const event of options.stream(input, controller.signal)) {
+          if (controller.signal.aborted) break;
+          res.write(encoder.encodeSSE(event));
+        }
+      } catch {
+        if (!controller.signal.aborted)
+          res.write(
+            encoder.encodeSSE({
+              type: EventType.RUN_ERROR,
+              message:
+                'The demo request failed. Check the local server and retry.',
+            }),
+          );
+      } finally {
+        clearTimeout(timeout);
+        active--;
+        res.end();
+      }
+    },
+  );
+  app.all(
+    [
+      '/api/workbench/chat',
+      ...workbenchLessons.map((lesson) => lesson.endpoint),
+    ],
+    (_req, res) => res.status(405).json({ error: 'Use POST' }),
   );
   if (options.staticDirectory) app.use(express.static(options.staticDirectory));
   return app;

@@ -110,3 +110,83 @@ test('streams encoded events, labels provenance and rejects cross-origin runs wi
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('pins a plain structured plan separately from the UI schema', () => {
+  const input = {
+    threadId: 't',
+    runId: 'r',
+    messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+    context: [],
+    tools: [],
+    state: {},
+    forwardedProps: {
+      hashbrown: { ui: true, responseSchema: { arbitrary: true } },
+    },
+  };
+
+  const pinned = pinWorkbenchInput(input, 'structured-output');
+
+  expect(pinned.messages[0].content).not.toContain('SummaryCard');
+  expect(pinned.messages[0].content).toContain('readContext');
+  expect(JSON.stringify(pinned.forwardedProps)).not.toContain('SummaryCard');
+  expect(pinned.forwardedProps).toMatchObject({
+    hashbrown: {
+      ui: false,
+      responseSchema: { properties: { title: {}, steps: {} } },
+    },
+  });
+});
+
+test('routes each allowlisted lesson to its server schema and rejects unknown endpoints', async () => {
+  const schemas: string[] = [];
+  const server = createServer(
+    createWorkbenchApp({
+      stream: async function* (input) {
+        schemas.push(JSON.stringify(input.forwardedProps));
+        yield {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const base = `http://127.0.0.1:${address.port}/api/workbench/`;
+  const body = JSON.stringify({
+    threadId: 't',
+    runId: 'r',
+    messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+    context: [],
+    tools: [],
+    state: {},
+  });
+
+  try {
+    for (const lesson of ['generative-ui', 'tools', 'structured-output']) {
+      const response = await fetch(base + lesson, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      expect(response.status).toBe(200);
+      await response.text();
+    }
+    const unknown = await fetch(base + 'arbitrary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    expect(unknown.status).toBe(404);
+    expect(schemas).toHaveLength(3);
+    expect(schemas[0]).toContain('SummaryCard');
+    expect(schemas[1]).toBe(schemas[0]);
+    expect(schemas[2]).not.toContain('SummaryCard');
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
