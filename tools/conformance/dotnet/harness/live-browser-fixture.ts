@@ -12,6 +12,7 @@ export interface LiveFailureAnnotation {
 export interface LiveNativeWire {
   readonly method: string;
   readonly path: string;
+  /** Zero is the internal pending marker before HTTP response headers arrive. */
   readonly status: number;
   readonly authentication: string;
   readonly maxOutputTokens: number;
@@ -143,7 +144,8 @@ function nativeStats(value: unknown): LiveNativeStats {
     )
       throw new Error('LIVE_STATS_INVALID');
     const status = counter(row['status']);
-    if (status < 100 || status > 599) throw new Error('LIVE_STATS_INVALID');
+    if ((status !== 0 && status < 100) || status > 599)
+      throw new Error('LIVE_STATS_INVALID');
     return Object.freeze({
       method: 'POST',
       path: row['path'] as string,
