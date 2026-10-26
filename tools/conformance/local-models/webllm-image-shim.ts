@@ -14,6 +14,7 @@ export interface ImageContractMetrics {
     images: { mime: string; bytes: number; width: number; height: number }[];
   }[];
   started: number;
+  decodeWaits: number;
   interrupts: number;
   drained: number;
 }
@@ -21,7 +22,7 @@ export interface ImageContractMetrics {
 /** Installs a model-free worker engine; image bytes cross only the worker request boundary. */
 export async function installWebLlmImageShim(
   page: Page,
-  mode: 'complete' | 'stream' | 'setup' = 'complete',
+  mode: 'complete' | 'stream' | 'setup' | 'setup-slow-decode' = 'complete',
 ): Promise<void> {
   const source = `(${imageWorker.toString()})()`;
   await page.addInitScript(
@@ -39,19 +40,26 @@ export async function installWebLlmImageShim(
       const runtime = globalThis as unknown as {
         __hashbrownWebLlm: WebLlmEngine<WebLlmImageContent>;
         __imageContractMetrics: ImageContractMetrics;
-        __imageWorkerMode: 'complete' | 'stream' | 'setup';
+        __imageWorkerMode:
+          'complete' | 'stream' | 'setup' | 'setup-slow-decode';
         __releaseImageWorker(): void;
+        __releaseImageDecode(): void;
         __disposeImageWorker(): void;
       };
       const metrics: ImageContractMetrics = {
         requests: [],
         started: 0,
+        decodeWaits: 0,
         interrupts: 0,
         drained: 0,
       };
       runtime.__imageContractMetrics = metrics;
       runtime.__imageWorkerMode = mode;
       worker.onmessage = (event: MessageEvent<WorkerReply>) => {
+        if (event.data.event === 'decode-wait') {
+          metrics.decodeWaits++;
+          return;
+        }
         const owned = pending.get(event.data.id);
         pending.delete(event.data.id);
         if (event.data.error) owned?.reject(new Error(event.data.error));
@@ -95,6 +103,8 @@ export async function installWebLlmImageShim(
       };
       runtime.__releaseImageWorker = () =>
         worker.postMessage({ kind: 'release' });
+      runtime.__releaseImageDecode = () =>
+        worker.postMessage({ kind: 'decode' });
       runtime.__disposeImageWorker = () => worker.terminate();
     },
     { source, mode },
@@ -104,6 +114,7 @@ export async function installWebLlmImageShim(
 interface WorkerReply {
   id: number;
   error?: string;
+  event?: 'decode-wait';
   metadata?: ImageContractMetrics['requests'][number];
   result?: IteratorResult<WebLlmChunk>;
 }
@@ -112,9 +123,11 @@ interface WorkerReply {
 function imageWorker(): void {
   let mode = 'complete';
   let interrupted = false;
+  let released = false;
   let step = 0;
   let waiting: number | undefined;
   let held: WorkerReply | undefined;
+  let resumeDecode: (() => void) | undefined;
   const reply = (value: WorkerReply) => globalThis.postMessage(value);
   const done = (id: number) =>
     reply({ id, result: { done: true, value: undefined } });
@@ -134,13 +147,17 @@ function imageWorker(): void {
           done(waiting);
           waiting = undefined;
         }
+      } else if (message.kind === 'decode') {
+        resumeDecode?.();
       } else if (message.kind === 'release') {
+        released = true;
         if (held) {
           reply(held);
           held = undefined;
         }
       } else if (message.kind === 'create') {
         mode = message.mode;
+        released = false;
         interrupted = false;
         step = 0;
         const images: ImageContractMetrics['requests'][number]['images'] = [];
@@ -169,6 +186,14 @@ function imageWorker(): void {
             const bytes = Uint8Array.from(binary, (character) =>
               character.charCodeAt(0),
             );
+            if (mode === 'setup-slow-decode') {
+              const wait = new Promise<void>((resolve) => {
+                resumeDecode = resolve;
+              });
+              reply({ id: 0, event: 'decode-wait' });
+              await wait;
+              resumeDecode = undefined;
+            }
             const bitmap = await createImageBitmap(
               new Blob([bytes], { type: match[1] }),
             );
@@ -196,7 +221,7 @@ function imageWorker(): void {
             totalBytes: images.reduce((sum, image) => sum + image.bytes, 0),
           },
         };
-        if (mode === 'setup') held = ready;
+        if (mode.startsWith('setup') && !released) held = ready;
         else reply(ready);
       } else if (message.kind === 'next') {
         if (interrupted || (step > 0 && mode === 'complete')) done(message.id);

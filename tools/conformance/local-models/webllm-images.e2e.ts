@@ -4,7 +4,12 @@ import {
   installWebLlmImageShim,
 } from './webllm-image-shim';
 
-for (const mode of ['complete', 'stream', 'setup'] as const) {
+for (const mode of [
+  'complete',
+  'stream',
+  'setup',
+  'setup-slow-decode',
+] as const) {
   test(`deterministic image worker ${mode} preserves framework streaming and ownership`, async ({
     page,
   }, testInfo) => {
@@ -48,9 +53,23 @@ for (const mode of ['complete', 'stream', 'setup'] as const) {
               ),
             )
             .toBe(1);
+        if (mode === 'setup-slow-decode') {
+          await expect
+            .poll(() =>
+              page.evaluate(
+                () =>
+                  (
+                    globalThis as unknown as {
+                      __imageContractMetrics: ImageContractMetrics;
+                    }
+                  ).__imageContractMetrics.decodeWaits,
+              ),
+            )
+            .toBe(1);
+        }
         await page.getByTestId('stop').click();
         await expect(page.getByTestId('status')).toHaveText('idle');
-        if (mode === 'setup') {
+        if (mode.startsWith('setup')) {
           await expect
             .poll(() =>
               page.evaluate(
@@ -82,6 +101,13 @@ for (const mode of ['complete', 'stream', 'setup'] as const) {
               globalThis as unknown as { __releaseImageWorker(): void }
             ).__releaseImageWorker(),
           );
+          if (mode === 'setup-slow-decode') {
+            await page.evaluate(() =>
+              (
+                globalThis as unknown as { __releaseImageDecode(): void }
+              ).__releaseImageDecode(),
+            );
+          }
         }
         await expect
           .poll(() =>
@@ -129,7 +155,9 @@ for (const mode of ['complete', 'stream', 'setup'] as const) {
       expect(metrics.requests[0].images).toEqual([
         expect.objectContaining({ mime: 'image/png', width: 64, height: 64 }),
       ]);
-      expect(metrics.requests[1].imageCount).toBe(mode === 'setup' ? 3 : 2);
+      expect(metrics.requests[1].imageCount).toBe(
+        mode.startsWith('setup') ? 3 : 2,
+      );
       expect(metrics.drained).toBe(2);
       expect(metrics.interrupts).toBe(mode === 'complete' ? 0 : 1);
       expect(JSON.stringify(metrics)).not.toContain('data:');
