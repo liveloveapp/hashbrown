@@ -1,0 +1,81 @@
+using Azure.Core;
+using Azure.Identity;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Extensions.Configuration;
+
+var failures = new List<string>();
+foreach (var api in new[] { "responses", "chat-completions" })
+{
+    foreach (var provider in new[] { "openai", "azure" })
+    foreach (var explicitMode in new string?[] { null, "api-key" })
+    {
+        var values = Configuration(api, provider);
+        values["ApiKey"] = "fixture-only-key";
+        values["AzureAuthentication"] = explicitMode;
+        values["ModelEndpoint"] = "http://127.0.0.1:1/";
+
+        using var client = ProviderFactory.Create(Build(values), new ProviderClientComposition(_ => throw new Exception("API-key mode constructed an identity.")));
+
+        Check(client is not null, $"{api}/{provider} key mode failed dry construction.");
+    }
+    foreach (var mode in new[] { "azure-cli", "managed-identity" })
+    {
+        var values = Configuration(api);
+        values["AzureAuthentication"] = mode;
+
+        try { using var client = ProviderFactory.Create(Build(values)); }
+        catch (InvalidOperationException) { failures.Add($"{api}/{mode} keyless identity construction rejected."); }
+    }
+    foreach (var changes in new Dictionary<string, string?>[]
+    {
+        new() { ["ModelApi"] = "unknown", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["Provider"] = "unknown", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["Model"] = "", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["ModelEndpoint"] = "relative/path", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["ModelEndpoint"] = "ftp://fixture.example/", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["AzureAuthentication"] = "" },
+        new() { ["AzureAuthentication"] = "default" },
+        new() { ["AzureAuthentication"] = "AZURE-CLI" },
+        new() { ["Provider"] = "openai", ["AzureAuthentication"] = "azure-cli" },
+        new() { ["Provider"] = "openai", ["AzureAuthentication"] = "managed-identity" },
+        new() { ["ManagedIdentityClientId"] = "user-client" },
+        new() { ["AzureAuthentication"] = "azure-cli", ["ManagedIdentityClientId"] = "user-client" },
+        new() { ["AzureAuthentication"] = "managed-identity", ["ManagedIdentityClientId"] = "" },
+        new() { ["AzureAuthentication"] = "managed-identity", ["ManagedIdentityClientId"] = " " },
+        new() { ["AzureAuthentication"] = "azure-cli", ["ModelEndpoint"] = "http://127.0.0.1:1/" },
+        new() { ["AzureAuthentication"] = "managed-identity", ["ModelEndpoint"] = "http://127.0.0.1:1/" },
+        new() { ["ModelEndpoint"] = "https://user:password@fixture.example/" },
+        new() { ["ModelEndpoint"] = "https://fixture.example/?query=value" },
+        new() { ["ModelEndpoint"] = "https://fixture.example/#fragment" },
+        new() { ["ApiKey"] = "" },
+        new() { ["ApiKey"] = " " },
+    })
+    {
+        var values = Configuration(api);
+        values["ApiKey"] = "fixture-only-key";
+        foreach (var change in changes) values[change.Key] = change.Value;
+        var rejected = false;
+
+        var constructions = 0;
+        var composition = new ProviderClientComposition(_ => { constructions++; throw new Exception("Invalid configuration constructed a credential."); });
+        try { using var client = ProviderFactory.Create(Build(values), composition); }
+        catch (InvalidOperationException) { rejected = true; }
+        catch (ArgumentException) { rejected = true; }
+
+        Check(constructions == 0, "Rejected configuration constructed an identity.");
+        Check(rejected, $"{api} accepted invalid configuration: {string.Join(',', changes.Keys)}.");
+    }
+}
+Check(new ProviderAuthentication("azure-cli", null).CreateCredential() is AzureCliCredential, "CLI must use AzureCliCredential.");
+Check(new ProviderAuthentication("managed-identity", null).CreateCredential() is ManagedIdentityCredential, "System MI must use ManagedIdentityCredential.");
+Check(new ProviderAuthentication("managed-identity", "00000000-0000-0000-0000-000000000001").CreateCredential() is ManagedIdentityCredential, "User MI must use ManagedIdentityCredential.");
+if (failures.Count != 0) throw new Exception(string.Join(Environment.NewLine, failures));
+Console.WriteLine("Native authentication configuration passed.");
+
+void Check(bool condition, string message) { if (!condition) failures.Add(message); }
+Dictionary<string, string?> Configuration(string api, string provider = "azure") => new()
+{
+    ["Provider"] = provider, ["ModelApi"] = api,
+    ["ModelEndpoint"] = "https://fixture.example/", ["Model"] = "deployment"
+};
+IConfiguration Build(Dictionary<string, string?> values) => new ConfigurationBuilder().AddInMemoryCollection(values).Build();

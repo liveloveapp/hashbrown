@@ -110,7 +110,29 @@ if (source is not null)
 }
 var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
-IChatClient client = new InterruptWorkflowClient(new HashbrownRequestClient(ProviderFactory.Create(builder.Configuration)),
+using var liveState = builder.Configuration["FixtureLive"] == "true"
+    ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "") : null;
+using var liveHttp = liveState is null ? null : new HttpClient(new FixtureLiveHttpHandler(liveState,
+    builder.Configuration["Model"]!, builder.Configuration["ModelApi"] ?? "responses"));
+IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configuration)
+    : new FixtureLiveModelClient(ProviderFactory.Create(builder.Configuration,
+        new ProviderClientComposition(authentication => authentication.CreateCredential(), liveHttp!)), liveState);
+if (liveState is not null)
+{
+    app.MapGet("/__test/live-stats", () => Results.Json(liveState.Snapshot()));
+    app.MapPost("/__test/live-release", () => { liveState.Release(); return Results.Ok(); });
+    if (liveState.Group == "preflight")
+        app.MapPost("/__test/live-preflight", async (HttpContext context) =>
+        {
+            try
+            {
+                await foreach (var update in native.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "Reply with OK.")], cancellationToken: context.RequestAborted)) { }
+                return Results.Ok(liveState.Snapshot());
+            }
+            catch { return Results.Json(new { code = "LIVE_PROVIDER_FAILED" }, statusCode: 502); }
+        });
+}
+IChatClient client = new InterruptWorkflowClient(new HashbrownRequestClient(native),
     pending, registry, input => builder.Configuration["Workflow"]?.StartsWith("confirm", StringComparison.Ordinal) == true ||
         builder.Configuration["Workflow"] == "after-tool" && input.Messages.Any(message => message.Role == "tool")
         ? tools.Checkpoint(builder.Configuration["CheckpointCode"] ?? "PDX") : null, Scope, () => HashbrownEndpointConfiguration.GetClaim(accessor.HttpContext));

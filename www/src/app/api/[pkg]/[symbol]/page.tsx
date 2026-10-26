@@ -35,6 +35,7 @@ export async function generateMetadata({
     title: `@hashbrownai/${pkg}.${symbol}: Hashbrown API`,
     description: 'Hashbrown API documentation.',
     image: DEFAULT_CARD_IMAGE,
+    path: `/api/${pkg}/${symbol}`,
   });
 }
 

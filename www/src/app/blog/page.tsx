@@ -8,6 +8,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Home: Hashbrown Blog',
   description: 'Hashbrown Blog.',
   image: DEFAULT_CARD_IMAGE,
+  path: '/blog',
 });
 
 /** Blog index, newest first. Post bodies stay on the server. */
