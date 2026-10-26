@@ -49,7 +49,9 @@ The checked Angular client uses `structuredChatResource()` with the plan schema,
 ```ts
   readonly chat = structuredChatResource({
     system: workbenchStructuredSystem,
-    schema: workbenchPlanSchema,
+    schema: getWorkbenchPlanSchema(
+      getWorkbenchLesson(window.location.search).id,
+    ),
     transport: createWorkbenchTransport(
       this.store,
       undefined,

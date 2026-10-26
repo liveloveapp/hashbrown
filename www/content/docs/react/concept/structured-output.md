@@ -49,7 +49,9 @@ The checked React client uses `useStructuredChat()` with the plan schema, the sa
 ```ts
   const chat = useStructuredChat({
     system: workbenchStructuredSystem,
-    schema: workbenchPlanSchema,
+    schema: getWorkbenchPlanSchema(
+      getWorkbenchLesson(window.location.search).id,
+    ),
     tools: [readContext],
     transport,
   });

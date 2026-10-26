@@ -233,6 +233,9 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'generative-ui',
     'tools',
     'structured-output',
+    'streaming',
+    'schemas',
+    'decisions',
   ]);
 });
 
@@ -279,4 +282,39 @@ test('tool-only structured assistant messages do not produce captured or rendera
   expect(workbenchStructuredProps({ steps: ['Outline'] })).toEqual({
     steps: ['Outline'],
   });
+});
+
+test('decision suggestions require a current complete response and explicit use', () => {
+  const store = createWorkbenchStore('decision');
+  const message = store.send('The outline is complete. What should I do next?');
+
+  store.recordDecision({ nextAction: 'record', confidence: 0.9 }, message.id);
+  expect(store.applyDecision()).toBe(false);
+  store.settle('complete', 'stop');
+
+  expect(store.getSnapshot().application.nextAction).toBe(null);
+  expect(store.applyDecision()).toBe(true);
+  expect(store.getSnapshot().application.nextAction).toBe('record');
+  expect(store.applyDecision()).toBe(false);
+});
+
+test('decision confidence, cancellation and request identity prevent application writes', () => {
+  for (const confidence of [0.5, NaN, 2]) {
+    const store = createWorkbenchStore('decision');
+    const message = store.send('Next?');
+
+    store.recordDecision({ nextAction: 'record', confidence }, message.id);
+    store.settle('complete', 'stop');
+
+    expect(store.applyDecision()).toBe(false);
+  }
+  const store = createWorkbenchStore('decision');
+  const first = store.send('Next?');
+  store.settle('cancelled');
+  store.send('Next again?');
+
+  store.recordDecision({ nextAction: 'record', confidence: 0.9 }, first.id);
+  store.settle('complete', 'stop');
+
+  expect(store.applyDecision()).toBe(false);
 });

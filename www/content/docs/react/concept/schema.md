@@ -2,55 +2,67 @@
 title: 'Skillet schemas: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Describe typed model responses and choose which values can stream.'
+    content: 'Describe the canonical plan contract and keep schema types separate from application rules.'
 ---
 
 # Skillet schemas
 
-A schema describes the data our application expects. We can use one for a model response, a tool argument, or the props of a trusted component. Skillet gives us a TypeScript API for those shapes and controls which values can appear while a response streams.
-
-The recording shows a typed flight filter in ATC. Below, we will start with a smaller shopping-list schema that we can use in the next guide.
-
-<hb-docs-demo demo="schemas">
+<hb-docs-demo demo="canonical-workbench-schemas-react">
 </hb-docs-demo>
 
-## Before we start
+A schema describes the data our application expects. Let’s use the same two-step plan: a title and an array of steps. We can use this contract for typed model output and inspect it beside the values Hashbrown resolves.
 
-Complete the [Quickstart](/docs/react/start/quick) so your application can reach its endpoint. Skillet is exported as `s` from `@hashbrownai/core`.
+Skillet is exported as `s` from `@hashbrownai/core`. Its TypeScript API describes response shapes, tool arguments, and trusted component props, including which values can appear while output streams.
 
-## Describe one useful response
+## Run the workbench
+
+Start the [conversation workbench](/docs/react/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=schemas`. Keep the server environment and provider configuration from the [Quickstart](/docs/react/start/quick). Selecting a lesson does not start a request.
+
+## Describe the plan
+
+Both frameworks and the server use this shared schema:
+
+<hb-code-example header="runtime/workbench.ts">
 
 ```ts
-import { s } from '@hashbrownai/core';
-
-const shoppingListSchema = s.object('A shopping list draft', {
-  items: s.streaming.array(
-    'The requested shopping items',
-    s.object('A complete shopping item', {
-      name: s.string('The product name'),
-      quantity: s.integer('How many to add'),
-    }),
+export const workbenchPlanSchema = s.object('A two-step plan proposal', {
+  title: s.string('A concise plan title'),
+  steps: s.streaming.array(
+    'Exactly two concise steps',
+    s.string('A clear action'),
   ),
 });
-
-type ShoppingList = s.Infer<typeof shoppingListSchema>;
 ```
 
-The root object contains an `items` array. Each item has a string name and integer quantity. The descriptions explain what those values mean to the model. `s.Infer<typeof shoppingListSchema>` derives the TypeScript response type from the same schema.
+</hb-code-example>
 
-The streaming array can reveal an item once its required name and quantity resolve. An ordinary object keeps those values together, but it can resolve before its closing brace arrives. Treat it as a preview until the response finishes and application validation passes. Continue with [Structured output](/docs/react/concept/structured-output) for the complete checked example and [Streaming](/docs/react/concept/streaming) for other streaming boundaries.
+The descriptions tell the model what the fields mean. `s.Infer<typeof workbenchPlanSchema>` derives the TypeScript response type from this same schema.
+
+The array is streaming, while its step strings are ordinary strings. Resolved items can appear before the response ends. The [Streaming](/docs/react/concept/streaming) lesson also marks the title as a streaming string, so we can compare the boundaries.
+
+## Inspect the contract and the preview
+
+The **Schema** view shows the response contract selected for this lesson. **Details** keeps the parsed preview, application-rule check, and response status separate. A preview can match the plan rules while the response is still in progress; **Accept plan** remains disabled.
+
+Send the first prompt, review the completed plan, and accept it. Then send the follow-up. The response uses the same contract while the data changes. A schema describes fields; it does not grant permission to change application state.
+
+<img src="/video/docs/canonical-workbench-schemas-react-result.png" alt="The Schema view shows the shared title and steps contract beside the parsed plan and its validation status." width="1600" height="1000" loading="lazy" />
+
+## Keep the complete example close
+
+The [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/StructuredWorkbench.tsx) selects the lesson schema and passes it to `useStructuredChat()`. [Structured output](/docs/react/concept/structured-output) explains the full request and explicit acceptance flow.
 
 ## Choose the fields your interface needs
 
 | Value                  | Skillet example                                   |
 | ---------------------- | ------------------------------------------------- |
-| Text                   | `s.string('The product name')`                    |
-| Whole number           | `s.integer('The item quantity')`                  |
+| Text                   | `s.string('The plan title')`                    |
+| Whole number           | `s.integer('The retry count')`                  |
 | Number with fractions  | `s.number('The measured weight')`                 |
 | True or false          | `s.boolean('Whether the item is checked')`        |
 | One fixed value        | `s.literal('Draft')`                              |
 | One of several strings | `s.enumeration('Priority', ['low', 'high'])`      |
-| Named fields           | `s.object('An item', { name: s.string('Name') })` |
+| Named fields           | `s.object('A plan', { name: s.string('Name') })` |
 | Repeated values        | `s.array('Tags', s.string('One tag'))`            |
 
 An object describes the fields in its shape. If the interface supports different response kinds, give each kind an explicit literal tag:
@@ -73,14 +85,14 @@ Your interface can branch on `type`. This is useful when the model should ask fo
 ## Add constraints deliberately
 
 ```ts
-const quantity = s.integer('The item quantity', { minimum: 1, maximum: 20 });
+const quantity = s.integer('The retry count', { minimum: 1, maximum: 20 });
 const tags = s.array('Tags', s.string('One tag'), { minItems: 1, maxItems: 5 });
 const username = s.string('A handle', { pattern: '^@[a-z0-9_]+$' });
 ```
 
 Numeric constraints include bounds and `multipleOf`. Arrays support `minItems` and `maxItems`. Strings support `pattern` and supported `format` hints. A string's `format` is forwarded to the provider but is not validated by Hashbrown on the client; validate it in your application when required.
 
-Keep application checks close to the action they protect. The shopping-list guide separately validates quantities, trimmed names and item count before Apply. That makes the difference between the model's response contract and the application's accepted values visible. A schema does not establish ownership, permission, inventory availability, or successful completion of a run.
+Keep application checks close to the action they protect. The workbench separately validates a nonempty title of at most 120 characters and exactly two nonempty steps of at most 200 characters before Accept plan. That makes the difference between the model's response contract and the application's accepted values visible. A schema does not establish ownership, permission, inventory availability, or successful completion of a run.
 
 ## Use another schema library
 
@@ -90,4 +102,4 @@ Use `s.InferSchemaInput<T>` and `s.InferSchemaOutput<T>` when a reusable type mu
 
 ## Next steps
 
-Use [Structured output](/docs/react/concept/structured-output) to generate and review a shopping-list draft with this schema. Use [Exposing components](/docs/react/concept/components) to validate generated component props, or [Tool calling](/docs/react/concept/functions) to describe arguments for an application function.
+Use [Structured output](/docs/react/concept/structured-output) to generate and review the two-step plan with this schema. Use [Exposing components](/docs/react/concept/components) to validate generated component props, or [Tool calling](/docs/react/concept/functions) to describe arguments for an application function.

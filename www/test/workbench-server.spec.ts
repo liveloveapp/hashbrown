@@ -190,3 +190,77 @@ test('routes each allowlisted lesson to its server schema and rejects unknown en
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('decision lesson cannot be forwarded through the streaming chat input boundary', () => {
+  expect(() => pinWorkbenchInput({}, 'decisions')).toThrow();
+});
+
+test('decision endpoint returns whole fixture responses and keeps credentials optional', async () => {
+  let decisions = 0;
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* () {
+        yield { type: EventType.RUN_ERROR, message: 'Must not call chat' };
+      },
+      decide: async (request) => {
+        decisions++;
+        expect(request.questions).toHaveProperty('nextAction');
+        return {
+          kind: 'hashbrown.decision',
+          version: 1,
+          value: { nextAction: 'record' },
+          meta: {
+            nextAction: {
+              confidence: 0.9,
+              probabilities: { record: 0.9, review: 0.05, clarify: 0.05 },
+            },
+          },
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const url = `http://127.0.0.1:${address.port}/api/workbench/decisions`;
+  const body = JSON.stringify({
+    state: {
+      input: {
+        requestId: 'r',
+        prompt: 'The outline is complete. What should I do next?',
+        application: { revision: 0, nextAction: null },
+      },
+    },
+    questions: {},
+  });
+
+  try {
+    const denied = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://unrelated.example',
+      },
+      body,
+    });
+    expect(denied.status).toBe(403);
+    expect(decisions).toBe(0);
+    const result = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.headers.get('X-Workbench-Source')).toBe('test-fixture');
+    expect(await result.json()).toMatchObject({
+      kind: 'hashbrown.decision',
+      value: { nextAction: 'record' },
+    });
+    expect(decisions).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});

@@ -8,6 +8,7 @@ import {
   playbackDelay,
   readWorkbenchMessages,
   stopWorkbench,
+  workbenchEventLabel,
 } from '../examples/quickstart/runtime/workbench-view';
 
 test('binds assistant cards to the preceding user turn without changing earlier origins', () => {
@@ -467,5 +468,85 @@ test('does not label an earlier turn tool result as the current request context'
 
   expect(context?.textContent).toContain('second-turn');
   expect(context?.textContent).not.toContain('previousTurnOnly');
+  shell.dispose();
+});
+
+test('shows the shared plan contract separately from the parsed preview in the Schema view', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore('structured');
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'schemas',
+      title: 'Schemas',
+      format: 'structured',
+      inspector: 'Schema',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+
+  const inspection = host.querySelector('.wb-inspector');
+
+  expect(
+    inspection?.querySelector('[role=tab][aria-selected=true]')?.textContent,
+  ).toBe('Schema');
+  expect(inspection?.textContent).toContain('"type": "object"');
+  expect(inspection?.textContent).toContain('"steps"');
+  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+    'Preview validation',
+  );
+  shell.dispose();
+});
+
+test('labels a whole decision response without implying streamed generation', () => {
+  const store = createWorkbenchStore('decision');
+  store.send('The outline is complete');
+  store.record('event', {
+    kind: 'hashbrown.decision',
+    version: 1,
+    value: { nextAction: 'record' },
+    meta: { nextAction: { confidence: 0.9 } },
+  });
+
+  const event = store.getSnapshot().events.at(-1);
+
+  expect(event && workbenchEventLabel(event)).toBe('Decision response');
+});
+
+test('replays a captured choice and the app-owned plan without live application controls', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore('decision');
+  const message = store.send('The outline is complete');
+  store.recordDecision({ nextAction: 'record', confidence: 0.95 }, message.id);
+  store.settle('complete', 'stop');
+  const chosenIndex = store.getSnapshot().events.length - 1;
+  store.applyDecision();
+  store.seek(chosenIndex);
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'decisions',
+      title: 'Decisions',
+      format: 'decision',
+      inspector: 'JSON',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+
+  const replay = host.querySelector('[data-replay]');
+
+  expect(
+    replay?.querySelector('[aria-label="Application plan"]'),
+  ).not.toBeNull();
+  expect(replay?.textContent).toContain('record');
+  expect(replay?.textContent).toContain('95%');
+  expect(replay?.querySelector('button')).toBeNull();
+  expect(store.getSnapshot().frame?.application.nextAction).toBeNull();
+  store.live();
+  expect(store.getSnapshot().application.nextAction).toBe('record');
   shell.dispose();
 });

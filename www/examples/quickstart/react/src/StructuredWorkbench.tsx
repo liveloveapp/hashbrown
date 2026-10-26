@@ -3,7 +3,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   createWorkbenchStore,
-  workbenchPlanSchema,
+  getWorkbenchPlanSchema,
   workbenchStructuredProps,
   workbenchStructuredSystem,
 } from '../../runtime/workbench';
@@ -51,7 +51,9 @@ export function StructuredWorkbenchConversation({
   });
   const chat = useStructuredChat({
     system: workbenchStructuredSystem,
-    schema: workbenchPlanSchema,
+    schema: getWorkbenchPlanSchema(
+      getWorkbenchLesson(window.location.search).id,
+    ),
     tools: [readContext],
     transport,
   });

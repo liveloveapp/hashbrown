@@ -28,13 +28,16 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens three lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The left navigation opens six lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
 
 | Lesson | Local URL | Follow |
 | --- | --- | --- |
 | [Generative UI](/docs/angular/concept/components) | `/angular.html?lesson=generative-ui` | Streamed props and the trusted SummaryCard. |
 | [Tools](/docs/angular/concept/functions) | `/angular.html?lesson=tools` | Browser context, tool result, and continuation. |
 | [Structured output](/docs/angular/concept/structured-output) | `/angular.html?lesson=structured-output` | Plain typed plan data rendered by the application. |
+| [Streaming](/docs/angular/concept/streaming) | `/angular.html?lesson=streaming` | Partial title text and resolved steps. |
+| [Schemas](/docs/angular/concept/schema) | `/angular.html?lesson=schemas` | The exact response contract and application validation. |
+| [Decisions](/docs/angular/concept/decisions) | `/angular.html?lesson=decisions` | Complete typed choices, confidence and explicit application. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
 
@@ -63,6 +66,8 @@ The inspector has JSON, Requests, UI, and State views on light code surfaces. Se
 - [Capturing transport](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-transport.ts): request and event capture without changing the SDK stream.
 - [Server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts): bounded input and server-owned instructions, tools, and response schema.
 
-Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTTP events. The test report identifies this as `test-fixture`; it is not a live model run. Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
+Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTTP events. The test report identifies this as `test-fixture`; it is not a live model run. The Decisions lesson additionally needs server-only `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. It uses a fixed application-owned plan and complete decision responses, while the generation lessons use OpenAI and streaming.
+
+Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
 
 Continue with [Exposing components](/docs/angular/concept/components), [Tool calling](/docs/angular/concept/functions), or [Streaming](/docs/angular/concept/streaming) to focus on one part of the conversation.
