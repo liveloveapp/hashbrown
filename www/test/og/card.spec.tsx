@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest';
-import { renderCard } from '../../src/lib/og/card';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { Card, renderCard } from '../../src/lib/og/card';
+import { repoRoot } from '../../src/lib/repo-root';
 
 async function pngSize(response: Response) {
   const view = new DataView(await response.arrayBuffer());
@@ -29,4 +32,34 @@ test('renders the GitHub card at 1280x640 with the install pill', async () => {
   const response = await renderCard(card);
 
   expect(await pngSize(response)).toEqual({ width: 1280, height: 640 });
+});
+
+function imageSources(node: unknown): string[] {
+  if (!node || typeof node !== 'object') return [];
+  if (Array.isArray(node)) return node.flatMap(imageSources);
+  const element = node as { type?: unknown; props?: Record<string, unknown> };
+  const own =
+    element.type === 'img' && typeof element.props?.src === 'string'
+      ? [element.props.src]
+      : [];
+  return [...own, ...imageSources(element.props?.children)];
+}
+
+test('the card shows the wordmark and the LiveLoveApp mark, not the mascot', () => {
+  const card = { title: 'Structured Output', subtitle: ['React docs'] };
+  const decode = (src: string) =>
+    Buffer.from(src.split(',')[1], 'base64').toString('utf8');
+  const wordmark = readFileSync(
+    join(repoRoot(), 'www/public/image/logo/word-mark.svg'),
+    'utf8',
+  );
+  const mascot = readFileSync(
+    join(repoRoot(), 'www/public/image/logo/brand-mark.svg'),
+    'utf8',
+  );
+
+  const svgs = imageSources(Card(card)).map(decode);
+
+  expect(svgs).toContain(wordmark);
+  expect(svgs).not.toContain(mascot);
 });
