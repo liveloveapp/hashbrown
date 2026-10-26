@@ -1,3 +1,19 @@
+## 0.8.2 (2026-10-25)
+
+### 🩹 Fixes
+
+- **core, react, angular:** add explicit `structuredHistory: 'preserve-diagnostics'` restoration and immutable `recovery.diagnostics` for cold structured/UI history. Canonical assistant text remains intact for later model requests and is exposed as escaped plain-text diagnostics instead of typed/component output. Strict restoration remains the default; diagnostics establish no cancellation ownership or tool/resume authority ([#751](https://github.com/liveloveapp/hashbrown/pull/751)).
+- **.NET recipes:** add independently committed, bounded PostgreSQL cleanup and an optional hosted scheduler. Preserve `EffectStarted` and `FailedAfterEffect` metadata until explicit reconciliation while snapshots and audits expire independently. Add production guidance and browser coverage for cold recovery, explicit resume and malicious historical text ([#751](https://github.com/liveloveapp/hashbrown/pull/751)).
+
+### 🧪 Experimental additions
+
+- **core:** add opt-in application-controlled Chrome `toolPhase` selection with immutable current-turn results, exactly-one selected tool-call validation, and direct schema finalization without tools. Requires `schemaFinalization: 'after-tool-planning'`, a response schema and supported browser/model capabilities; existing model-led behavior remains the default ([#749](https://github.com/liveloveapp/hashbrown/pull/749)).
+
+### 📖 Documentation and examples
+
+- Fix C#/XML syntax highlighting and document diagnostic recovery from SDK 0.8.2. Add bounded timeout evidence without changing assertions or retries; the historical recovery timeout did not reproduce ([#751](https://github.com/liveloveapp/hashbrown/pull/751)).
+- Complete parser/chatbot learning paths and recorded examples, fix announcement-margin clicks, and add the optional b4.run ATC backend with disconnect cancellation ([#750](https://github.com/liveloveapp/hashbrown/pull/750), [#752](https://github.com/liveloveapp/hashbrown/pull/752), [#731](https://github.com/liveloveapp/hashbrown/pull/731), [#755](https://github.com/liveloveapp/hashbrown/pull/755)).
+
 ## 0.8.1 (2026-10-24)
 
 ### 🩹 Fixes

@@ -235,7 +235,7 @@ A version-1 envelope separates `effectState`, `generationOutcome`, `transcriptAv
 
 Native requests retain cancellation text but strip private runtime provenance. The default `structuredHistory: 'strict'` rejects assistant history that fails the configured structured/UI schema after a cold reload. Plain chat retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.
 
-**Unreleased source SDK feature:** `structuredHistory: 'preserve-diagnostics'` and `recovery.diagnostics` below require matching core and framework SDKs built from the current source; they are not in published 0.8.1. Keep the strict default on 0.8.1. To deliberately retain unstructured historical assistant text in a structured/UI application, opt in on restore:
+**Diagnostic recovery requires SDK 0.8.2 or later:** `structuredHistory: 'preserve-diagnostics'` and `recovery.diagnostics` below require matching core and framework SDK versions. They are unavailable in 0.8.1; keep the strict default there. To deliberately retain unstructured historical assistant text in a structured/UI application, opt in on restore:
 
 ```ts
 chat.restoreConversation(snapshot, {
@@ -246,7 +246,7 @@ chat.restoreConversation(snapshot, {
 
 This policy keeps exact canonical text for subsequent model requests and exposes it through `recovery.diagnostics`, while excluding it from typed responses and component rendering. Render each diagnostic's `content` visibly as escaped plain text, separately from normal assistant output. It does not identify a cancellation marker or grant generation, tool or resume authority. Tool-bearing/encrypted history and every other validation remain strict. Do not delete history, infer ownership from its wording, fabricate provenance, or hide diagnostics. A pending server checkpoint still needs an explicit decision.
 
-With source SDKs and that opt-in policy, render diagnostics alongside your normal history:
+With SDK 0.8.2 or later and that opt-in policy, render diagnostics alongside your normal history:
 
 ```angular-html
 @for (
