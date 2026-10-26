@@ -585,10 +585,6 @@ export const ɵselectAttemptOwnedPendingToolCalls = select(
  * Thread
  */
 export const selectThreadState = (state: State) => state.thread;
-export const selectThreadIdState = select(
-  selectThreadState,
-  fromThread.selectThreadId,
-);
 
 /**
  * Config
@@ -749,10 +745,6 @@ export const selectShouldGenerateMessage = select(
 
     return lastMessage.role === 'user' || lastMessage.role === 'tool';
   },
-);
-
-export const selectApiTools = select(selectTools, (tools) =>
-  Chat.helpers.toApiToolsFromInternal(tools),
 );
 
 export const selectUnifiedError = select(

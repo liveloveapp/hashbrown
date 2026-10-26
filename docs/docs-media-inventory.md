@@ -44,7 +44,7 @@ The runtime recording submits visible prewritten scripts to real QuickJS through
 
 The first recording demonstrates generating, reviewing and explicitly applying a typed shopping list. The second shows complete array items arriving while Apply remains disabled until successful completion and application validation. Result screenshots show draft and applied values separately. Both have MP4/WebM, poster, VTT and a text walkthrough.
 
-`concept/schema`, `concept/structured-output`, `concept/streaming`, and the natural-language recipe now form one sequence. The schema page retains the ATC filter recording as a second use case and introduces the smaller checked list used by subsequent pages. The earlier ATC streaming asset remains available, but the Streaming guide now uses its own list interaction.
+`concept/schema`, `concept/structured-output`, `concept/streaming`, and the natural-language recipe now form one sequence. The schema page retains the ATC filter recording as a second use case and introduces the smaller checked list used by subsequent pages. The Streaming guide uses its own list interaction (`streaming-data`), which replaces the retired ATC streaming recording.
 
 ## Assisted interface recordings
 

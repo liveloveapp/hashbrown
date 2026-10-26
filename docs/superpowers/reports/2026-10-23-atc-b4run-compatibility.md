@@ -1,7 +1,7 @@
 # ATC b4.run compatibility investigation
 
-Date: 2026-10-23. Design: `../specs/2026-10-23-atc-b4run-backend-design.md`.
-Plan: `../plans/2026-10-23-atc-b4run-backend.md`.
+Date: 2026-10-23. Historical [design](https://github.com/liveloveapp/hashbrown/blob/2fbfb31f3ab7e7f5fdaa916c1bc29dd050eed335/docs/superpowers/specs/2026-10-23-atc-b4run-backend-design.md)
+and [implementation plan](https://github.com/liveloveapp/hashbrown/blob/2fbfb31f3ab7e7f5fdaa916c1bc29dd050eed335/docs/superpowers/plans/2026-10-23-atc-b4run-backend.md).
 
 ## Decision
 

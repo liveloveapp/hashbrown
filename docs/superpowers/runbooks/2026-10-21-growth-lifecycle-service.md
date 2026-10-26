@@ -460,8 +460,6 @@ tick's result and the alerts after each one before the next.
 
 ## Enable log
 
-PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
-
 - **2026-10-22, Stage A (readiness, read-only):**
   - Root receiving: `inbox-setup` reports `ready`, and the public MX for `hashbrown.dev` resolves to the Resend receiving host.
   - Inbox recovery answered 200 with nothing received. The mailbox row is enabled, has no recovery in progress, and was healthy 35 s earlier; there are no open recoveries.
