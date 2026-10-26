@@ -1,583 +1,468 @@
 ---
-title: 'Building a Chatbot with Generative UI and Tool Calling: Hashbrown React Docs'
+title: 'Build a Light Chatbot: Hashbrown React Docs'
 meta:
   - name: description
-    content: "This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown's useUiChat React hook. Our assistant will:"
+    content: 'Build a small generative UI conversation with a browser read tool, trusted components, and an explicit Apply action for simulated local state.'
 ---
 
-# Building a Chatbot with Generative UI and Tool Calling
+# Build a conversation about one light
 
-This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown's `useUiChat` React hook. Our assistant will:
+Let's ask a chatbot to dim a Desk light. The light starts at 80%. The assistant reads its current value and proposes 40%. Our component shows an **Apply brightness** button. Only clicking that button changes the light.
 
-- Let users control and view smart home lights and scenes via natural language
-- Enable the LLM to call tools for fetching and controlling devices
-- Let the LLM generate interactive UI using React components (with real-time streaming)
+<hb-docs-demo demo="ui-chatbot-react">
+</hb-docs-demo>
 
-We will expose only the components and actions we trust, so the assistant can only act within safe boundaries defined by your app.
+The recording runs the checked React component below. A deterministic transport fixture supplies the assistant events; no real device or live model is used in the recording. The browser tool handler, tool-result continuation, Hashbrown rendering, and local Apply action are real. Running the Quickstart endpoint yourself calls your configured provider.
 
----
+<img src="/video/docs/ui-chatbot-react-result.png" alt="The applied light proposal and a follow-up reading both show the simulated Desk light at 40%, revision 1." width="980" height="602" loading="lazy" />
 
-## Before you start
+## Before we start
 
-**Prerequisites:**
+Start with the [React Quickstart](/docs/react/start/quick), including its `/api/chat` endpoint and development proxy. Keep the existing `@hashbrownai/core` and `@hashbrownai/react` packages. This task needs no additional package. Your provider must support structured output and tool calling; keep its API key on the server.
 
-- Familiarity with React and modern component syntax (function components, hooks)
-- React 18 or higher
-- A working Hashbrown setup ([Hashbrown Quick Start](/docs/react/start/quick))
-- Install dependencies:
+The complete sources below use this folder layout. The `runtime` directory sits beside the frontend directory, not inside `src`. This keeps the checked relative imports working:
 
-<hb-code-example header="terminal">
+```text
+light-example/
+  runtime/
+    light-chatbot.ts
+  react/
+    src/
+      LightChatbot.tsx
+```
 
-```sh
-npm install @hashbrownai/react @hashbrownai/core @hashbrownai/openai react-markdown
+Copy `LightChatbot.tsx` into `react/src/`. In the Quickstart's `src/main.tsx`, replace the `App` import with:
+
+```tsx
+import { LightChatbot as App } from './LightChatbot';
+```
+
+Keep the existing `createRoot` call and `<HashbrownProvider url="/api/chat">` around `<App />`.
+
+If your frontend keeps all TypeScript under `src`, move `runtime/light-chatbot.ts` there and adjust the client's shared import. The server stays where the Quickstart put it. Start both processes with the Quickstart's existing commands. The component starts idle; it sends nothing until you select **Send**. The recording adds presentation styles around this same component.
+
+## Try the conversation
+
+1. Send **Set the desk light to 40%.** The state display still reads 80% while the proposal streams.
+2. Wait for **Reply complete**. Review the proposal, then select **Apply brightness**. The application now displays 40%, revision 1. The card reads Applied and cannot run again.
+3. Send **What is the desk light set to now?** The browser tool reads revision 1. The assistant renders a read-only `LightReading` showing 40%.
+
+The state display above the conversation comes directly from the application. The assistant's reading is a report based on the tool response. Neither a reading nor a proposal changes the light automatically.
+
+## Read state through a browser tool
+
+`readLights` returns a snapshot with a revision and one known light:
+
+```json
+{
+  "revision": 0,
+  "lights": [{ "id": "desk", "name": "Desk light", "brightness": 80 }]
+}
+```
+
+The handler reads current application state each time the assistant calls it. Hashbrown sends that result in the next request so the assistant can choose a component using the returned data. After Apply, the next call returns revision 1 with brightness 40. The tool has no write operation.
+
+The [`useUiChat`](/api/react/useUiChat) configuration supplies this tool and two trusted components. `LightProposal` offers an action; `LightReading` displays a value. Both accept only `lightId` and `brightness` from the model. `children: false` keeps this example to two small leaf components.
+
+## Keep permission in the application
+
+Skillet validates the prop shapes with `s.string()` and `s.number()`. A numeric schema description does not enforce an integer or a range. `canApplyLightProposal` checks the known light ID, integer brightness from 0 through 100, and the current application conditions when the user clicks.
+
+A proposal can apply only when its captured turn and light revision still match, the card is unused, and the current run has settled without error, cancellation, or interruption. The runtime must report `lastRunFinishReason` as `stop`. A tool-call finish, token-limit finish, absent finish reason, or failed response leaves Apply disabled.
+
+`LightChatbot` owns the light state and passes it through React context. Each assistant message receives its application-owned origin through a second context. `LightProposal` captures that origin with a `useState` initializer, so later renders cannot turn an old card into a new proposal.
+
+The state updater checks the current light revision again when Apply runs. Successfully applied card IDs live alongside the lights, so two cards cannot both consume the same revision, even when their props match.
+
+Every explicit Send gets a new application turn, including a retry of the same text. Stable message IDs preserve earlier user messages and assistant cards. A newer request immediately invalidates old proposals, including while it is waiting. Applying one proposal increments the revision and invalidates other cards that read the earlier state.
+
+## Stop and retry
+
+Select **Stop** during a request to cancel it. The application marks that turn cancelled before stopping the runtime, so a partial card or late response cannot enable Apply. The light retains its last applied value. To retry after a stop, error, or incomplete reply, enter the message again and select **Send**.
+
+Try an unknown light or an out-of-range proposal while testing your own endpoint. Even if generated props reach a card, the application action rejects them. For a real device integration, put the corresponding authorization, concurrency check, and write validation at the server or device boundary as well; this example changes only browser memory and resets on reload.
+
+## Complete source
+
+The shared file holds the state rules. The client registers the tool, renders the conversation, and owns the explicit action. Copy both files.
+
+<hb-expander title="Complete runtime/light-chatbot.ts">
+<hb-code-example header="runtime/light-chatbot.ts">
+
+```ts
+import type { FinishReason } from '@hashbrownai/core';
+
+/** A simulated, application-owned light. */
+export interface Light {
+  readonly id: string;
+  readonly name: string;
+  readonly brightness: number;
+}
+/** A revisioned snapshot of the simulated lights. */
+export interface LightState {
+  readonly revision: number;
+  readonly lights: readonly Light[];
+}
+/** Model-proposed display values, never authorization. */
+export interface LightProposalProps {
+  readonly lightId: string;
+  readonly brightness: number;
+}
+/** Application context captured once when a proposal mounts. */
+export interface ProposalOrigin {
+  readonly turn: number;
+  readonly revision: number;
+}
+/** Current application and runtime conditions for a user-operated Apply. */
+export interface LightAuthorization {
+  readonly turn: number;
+  readonly cancelled: boolean;
+  readonly settled: boolean;
+  readonly error: boolean;
+  readonly interrupted: boolean;
+  readonly finishReason: FinishReason | undefined;
+}
+/** Creates a fresh simulated Desk light at 80 percent. */
+export function initialLightState(): LightState {
+  return {
+    revision: 0,
+    lights: [{ id: 'desk', name: 'Desk light', brightness: 80 }],
+  };
+}
+/** Returns an independent snapshot without changing application state. */
+export function readLights(state: LightState): LightState {
+  return {
+    revision: state.revision,
+    lights: state.lights.map((light) => ({ ...light })),
+  };
+}
+/** Checks the current run and validates proposal values at the action boundary. */
+export function canApplyLightProposal(
+  state: LightState,
+  origin: ProposalOrigin,
+  proposal: LightProposalProps,
+  authorization: LightAuthorization,
+  used: boolean,
+): boolean {
+  return (
+    !used &&
+    !authorization.cancelled &&
+    authorization.settled &&
+    !authorization.error &&
+    !authorization.interrupted &&
+    authorization.finishReason === 'stop' &&
+    origin.turn === authorization.turn &&
+    origin.revision === state.revision &&
+    state.lights.some((light) => light.id === proposal.lightId) &&
+    Number.isInteger(proposal.brightness) &&
+    proposal.brightness >= 0 &&
+    proposal.brightness <= 100
+  );
+}
+/** Applies once to the current revision, or returns the unchanged state. */
+export function applyLightProposal(
+  state: LightState,
+  origin: ProposalOrigin,
+  proposal: LightProposalProps,
+  authorization: LightAuthorization,
+  used: boolean,
+): LightState {
+  if (!canApplyLightProposal(state, origin, proposal, authorization, used))
+    return state;
+  return {
+    revision: state.revision + 1,
+    lights: state.lights.map((light) =>
+      light.id === proposal.lightId
+        ? { ...light, brightness: proposal.brightness }
+        : light,
+    ),
+  };
+}
+/** Binds assistant history to the application origin of its preceding user message. */
+export function lightMessageOrigins(
+  messages: readonly { readonly id?: string; readonly role: string }[],
+  requests: Readonly<Record<string, ProposalOrigin>>,
+): Readonly<Partial<Record<string, ProposalOrigin>>> {
+  let origin: ProposalOrigin | undefined;
+  const result: Record<string, ProposalOrigin> = {};
+  for (const message of messages) {
+    if (message.role === 'user')
+      origin = message.id ? requests[message.id] : undefined;
+    if (message.role === 'assistant' && message.id && origin)
+      result[message.id] = origin;
+  }
+  return result;
+}
+
+/** Instructions shared by the checked clients; the read tool never changes a light. */
+export const lightChatSystem = `You help with one simulated Desk light. Always call readLights before answering each user message. For a brightness change, render one LightProposal with the known light id and requested brightness; the user must apply it. For a question about current brightness, render one read-only LightReading with the id and brightness returned by readLights. Never claim that a proposal has already changed a light.`;
+
+/** Explains runtime outcomes without treating partial UI as permission to act. */
+export function lightChatStatus(authorization: LightAuthorization): string {
+  if (authorization.turn === 0) return 'Ready.';
+  if (authorization.cancelled) return 'Stopped. Send a message to try again.';
+  if (authorization.error)
+    return 'The request failed. Send a message to try again.';
+  if (!authorization.settled) return 'Waiting for a reply…';
+  if (authorization.finishReason !== 'stop' || authorization.interrupted)
+    return 'Reply incomplete. Send a message to try again.';
+  return 'Reply complete. Review any proposal before applying.';
+}
 ```
 
 </hb-code-example>
+</hb-expander>
 
-We'll use `gpt-4.1` as our model and the OpenAI Hashbrown adapter, but you can use any supported provider.
+<hb-expander title="Complete react/src/LightChatbot.tsx">
+<hb-code-example header="react/src/LightChatbot.tsx">
 
----
+```tsx
+import { s } from '@hashbrownai/core';
+import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
+import { createContext, useContext, useId, useState } from 'react';
+import {
+  applyLightProposal,
+  canApplyLightProposal,
+  initialLightState,
+  type LightAuthorization,
+  lightChatStatus,
+  lightChatSystem,
+  lightMessageOrigins,
+  type LightProposalProps,
+  type LightState,
+  type ProposalOrigin,
+  readLights,
+} from '../../runtime/light-chatbot';
 
-## 1. Set Up Smart Home Service
-
-First, define basic types and a minimal SmartHome context in your app for lights and scenes.
-
-<hb-code-example header="smart-home.tsx">
-
-```ts
-import React, { createContext, useContext, useState, useCallback } from 'react';
-
-export interface Light {
-  id: string;
-  name: string;
-  brightness: number;
+interface Session {
+  readonly lights: LightState;
+  readonly authorization: LightAuthorization;
+  readonly applied: readonly string[];
+  readonly apply: (
+    origin: ProposalOrigin,
+    props: LightProposalProps,
+    id: string,
+  ) => void;
+}
+const SessionContext = createContext<Session | null>(null);
+const OriginContext = createContext<ProposalOrigin>({ turn: -1, revision: -1 });
+function useSession() {
+  const session = useContext(SessionContext);
+  if (!session) throw new Error('Light components require LightChatbot.');
+  return session;
 }
 
-export interface Scene {
-  id: string;
-  name: string;
-  lights: { lightId: string; brightness: number }[];
-}
-
-const defaultLights: Light[] = [
-  { id: 'living', name: 'Living Room', brightness: 80 },
-  { id: 'bedroom', name: 'Bedroom', brightness: 40 },
-  { id: 'kitchen', name: 'Kitchen', brightness: 100 },
-];
-
-const defaultScenes: Scene[] = [
-  {
-    id: 'relax',
-    name: 'Relax Mode',
-    lights: [
-      { lightId: 'living', brightness: 30 },
-      { lightId: 'bedroom', brightness: 10 },
-    ],
-  },
-  {
-    id: 'party',
-    name: 'Party Mode',
-    lights: [
-      { lightId: 'living', brightness: 100 },
-      { lightId: 'kitchen', brightness: 100 },
-    ],
-  },
-];
-
-const SmartHomeContext = createContext<{
-  lights: Light[];
-  scenes: Scene[];
-  setLightBrightness: (lightId: string, brightness: number) => void;
-  applyScene: (sceneId: string) => void;
-} | undefined>(undefined);
-
-export const SmartHomeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [lights, setLights] = useState<Light[]>(defaultLights);
-  const [scenes] = useState<Scene[]>(defaultScenes);
-
-  const setLightBrightness = useCallback((lightId: string, brightness: number) => {
-    setLights((lights) =>
-      lights.map((l) => (l.id === lightId ? { ...l, brightness } : l))
-    );
-  }, []);
-
-  const applyScene = useCallback((sceneId: string) => {
-    const scene = scenes.find((s) => s.id === sceneId);
-    if (scene) {
-      setLights((lights) =>
-        lights.map((l) => {
-          const match = scene.lights.find((li) => li.lightId === l.id);
-          return match ? { ...l, brightness: match.brightness } : l;
-        })
-      );
-    }
-  }, [scenes]);
+/** Displays a proposal; only the user's click can change local application state. */
+export function LightProposal(props: LightProposalProps) {
+  const session = useSession();
+  const currentOrigin = useContext(OriginContext);
+  const [origin] = useState(() => currentOrigin);
+  const id = useId();
+  const used = session.applied.includes(id);
+  const allowed = canApplyLightProposal(
+    session.lights,
+    origin,
+    props,
+    session.authorization,
+    used,
+  );
 
   return (
-    <SmartHomeContext.Provider value={{ lights, scenes, setLightBrightness, applyScene }}>
-      {children}
-    </SmartHomeContext.Provider>
+    <article aria-label="Light proposal">
+      <h2>Proposed brightness</h2>
+      <p>
+        {props.lightId}: {props.brightness}%
+      </p>
+      <button
+        type="button"
+        disabled={!allowed}
+        onClick={() => session.apply(origin, props, id)}
+      >
+        Apply brightness
+      </button>
+      <p data-testid="proposal-status">
+        {used
+          ? 'Applied.'
+          : allowed
+            ? 'Ready to apply.'
+            : 'Unavailable for this run.'}
+      </p>
+    </article>
   );
-};
+}
 
-export const useSmartHome = () => {
-  const ctx = useContext(SmartHomeContext);
-  if (!ctx) throw new Error('useSmartHome must be used within SmartHomeProvider');
-  return ctx;
-};
-```
-
-</hb-code-example>
-
-We are going to expose this context to a large-language model, letting it call these methods to read the state of the smart home, control lights, and apply scenes.
-
----
-
-## 2. Define Smart Home Tools
-
-Tools are how we expose app services to the model. A tool is simply an async function that can access your app's state and perform actions. We are going to use tools to let LLMs fetch device data and perform control actions.
-
-Let's start with a simple tool that lets the LLM get the list of lights and scenes:
-
-<hb-code-example header="tools.ts">
-
-```ts
-import { useTool } from '@hashbrownai/react';
-import { useSmartHome } from './smart-home';
-
-export const useGetLightsTool = () => {
-  const { lights } = useSmartHome();
-
-  return useTool({
-    name: 'getLights',
-    description: 'Get all lights and their current state',
-    deps: [lights],
-    handler: () => {
-      return lights;
-    },
-  });
-};
-
-export const useGetScenesTool = () => {
-  const { scenes } = useSmartHome();
-
-  return useTool({
-    name: 'getScenes',
-    description: 'Get all available scenes',
-    deps: [scenes],
-    handler: () => {
-      return scenes;
-    },
-  });
-};
-```
-
-</hb-code-example>
-
-Let's break down `useTool`:
-
-1.  `name` - A `camelCase` or `snake_case` string that serves as the _name_ of the tool.
-2.  `description` - A clear, natural-language description of what purpose the tool serves. The LLM will use this description to determine when the tool should be called.
-3.  `handler` - An async function that can access your app's state and perform actions. All of the returned data will be in the context, and you pay for context both in terms of _token cost_ and _compute_. Be intentional with the data you return from tool calls.
-4.  `deps` - React dependency array for the hook.
-
-Tools can accept arguments, which the LLM will generate as part of its tool call. In Hashbrown, tool call arguments are defined using Skillet (or a Standard JSON Schema object with the `~standard` spec, which Hashbrown normalizes to Skillet) for the schema:
-
-<hb-code-example header="tools.ts">
-
-```ts
-import { s } from '@hashbrownai/core';
-import { useTool } from '@hashbrownai/react';
-import { useSmartHome } from './smart-home';
-
-export const useControlLightTool = () => {
-  const { setLightBrightness } = useSmartHome();
-
-  return useTool({
-    name: 'controlLight',
-    description: 'Set the brightness of a light',
-    schema: s.object('Control light input', {
-      lightId: s.string('The id of the light'),
-      brightness: s.number('The new brightness (0-100)'),
-    }),
-    deps: [setLightBrightness],
-    handler: ({ lightId, brightness }) => {
-      setLightBrightness(lightId, brightness);
-      return { success: true };
-    },
-  });
-};
-
-export const useControlSceneTool = () => {
-  const { applyScene } = useSmartHome();
-
-  return useTool({
-    name: 'controlScene',
-    description: 'Apply a scene (adjust all lights in the scene)',
-    schema: s.object('Control scene input', {
-      sceneId: s.string('The id of the scene'),
-    }),
-    deps: [applyScene],
-    handler: ({ sceneId }) => {
-      applyScene(sceneId);
-      return { success: true };
-    },
-  });
-};
-```
-
-</hb-code-example>
-
-**How Skillet helps:** Skillet schemas (`s.object`, `s.string`, etc.) define arguments/outputs for tool calling, and make the expected contract transparent to the LLM (and typesafe for you). Skillet is Hashbrown's secret sauce for generative, safe, and streamable UI. Each part of the schema requires a description, encouraging you to be explicit and clear with the LLM about the data structure you are asking it to generate.
-
----
-
-## 3. Create React UI Components
-
-With tools, the LLM will be able to call the services we've exposed to it. Now, let's give it a set of React components to render the results. We will expose only **the components we want the LLM to use**. The LLM cannot render anything other than the components you expose.
-
-### 3.1. Markdown Renderer
-
-Again, the LLM can only generate UIs using the components you provide it. Because of this constraint, first we need to give the LLM some way to render basic text responses to the user. Let's create a Markdown component that wraps `react-markdown`:
-
-<hb-code-example header="Markdown.tsx">
-
-```tsx
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-
-export const Markdown: React.FC<{ content: string }> = ({ content }) => (
-  <ReactMarkdown>{content}</ReactMarkdown>
-);
-```
-
-</hb-code-example>
-
-### 3.2. Card Component
-
-Next, let's make a Card component that it can use to show cards with child content:
-
-<hb-code-example header="Card.tsx">
-
-```tsx
-import React from 'react';
-
-export const Card: React.FC<{ title: string; children?: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <div className="card">
-    <h3>{title}</h3>
-    {children}
-  </div>
-);
-```
-
-</hb-code-example>
-
-### 3.3. Light List Item
-
-A way to show a single light (often as a child of a card):
-
-<hb-code-example header="LightListItem.tsx">
-
-```tsx
-import React, { useMemo } from 'react';
-import { useSmartHome } from './smart-home';
-
-export const LightListItem: React.FC<{ lightId: string }> = ({ lightId }) => {
-  const { lights } = useSmartHome();
-  const light = useMemo(() => {
-    return lights.find((l) => l.id === lightId);
-  }, [lights, lightId]);
-
-  return light ? (
-    <div className="light-item">
-      💡 {light.name} — {light.brightness}%
-    </div>
-  ) : (
-    <div>Unknown light: {lightId}</div>
+/** Displays a tool-informed reading without offering an action. */
+export function LightReading({ lightId, brightness }: LightProposalProps) {
+  const { lights } = useSession();
+  const light = lights.lights.find((item) => item.id === lightId);
+  const valid =
+    light &&
+    Number.isInteger(brightness) &&
+    brightness >= 0 &&
+    brightness <= 100;
+  return (
+    <article aria-label="Light reading">
+      <h2>Reported brightness</h2>
+      <p data-testid="light-reading">
+        {valid ? `${light.name}: ${brightness}%` : 'Invalid light reading.'}
+      </p>
+    </article>
   );
+}
+const propsSchema = {
+  lightId: s.string('The light id returned by readLights'),
+  brightness: s.number('Integer brightness from 0 to 100'),
 };
-```
+const components = [
+  exposeComponent(LightProposal, {
+    name: 'LightProposal',
+    description:
+      'Propose a brightness change for the user to review and apply.',
+    props: propsSchema,
+    children: false,
+  }),
+  exposeComponent(LightReading, {
+    name: 'LightReading',
+    description:
+      'Show the current brightness returned by readLights. Read-only.',
+    props: propsSchema,
+    children: false,
+  }),
+];
 
-</hb-code-example>
-
-### 3.4. Scene List Item
-
-And finally a way to show a scene:
-
-<hb-code-example header="SceneListItem.tsx">
-
-```tsx
-import React, { useMemo } from 'react';
-import { useSmartHome } from './smart-home';
-
-export const SceneListItem: React.FC<{ sceneId: string }> = ({ sceneId }) => {
-  const { scenes, applyScene } = useSmartHome();
-  const scene = useMemo(() => {
-    return scenes.find((s) => s.id === sceneId);
-  }, [scenes, sceneId]);
-
-  return scene ? (
-    <div className="scene-item">
-      <span>{scene.name}</span>
-      <button onClick={() => applyScene(scene.id)}>Apply</button>
-    </div>
-  ) : (
-    <div>Unknown scene: {sceneId}</div>
-  );
-};
-```
-
-</hb-code-example>
-
-You can style and extend these as you like. We will use Skillet to let the LLM generate values for our component props.
-
----
-
-## 4. Expose Components to the Model
-
-### Why only exposed components?
-
-The LLM can only generate UI **using React components you explicitly expose via Hashbrown**. This is critical for safety and predictability.
-
-Let's use `exposeComponent` and Skillet schemas to share each component one-by-one, starting with Markdown.
-
-### 4.1. Expose Markdown Component
-
-<hb-code-example header="exposed-components.ts">
-
-```ts
-import { exposeComponent } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-import { Markdown } from './Markdown';
-
-export const exposedMarkdownComponent = exposeComponent(Markdown, {
-  name: 'Markdown',
-  description:
-    'Formatted text in the chat. Use it for explanations, confirmations and simple answers. Never use it to list lights or scenes; use Card with LightListItem or SceneListItem for those.',
-  props: {
-    content: s.streaming.string('Markdown body to display to the user'),
-  },
-});
-```
-
-</hb-code-example>
-
-Let's break this down:
-
-1. The first argument to `exposeComponent` is the React component.
-2. The next argument we provide is a `TitleCase` unique name for the component.
-3. Like tools, `description` is a natural language description of the component. The LLM will use it to determine when to render the component, so say when to use it, when not to, and how it differs from similar components.
-4. The LLM can generate data for your component's props by specifying schema for each prop. Here we are leveraging Skillet's `streaming` keyword to bind a streaming string to the prop, letting the component show realtime Markdown as it is getting generated.
-
-Only after exposing the markdown component can the assistant send plain conversational answers.
-
-### 4.2. Expose Card, Light, and Scene Components
-
-You can now do the same for the rest:
-
-<hb-code-example header="exposed-components.ts (cont.)">
-
-```ts
-import { Card } from './Card';
-import { LightListItem } from './LightListItem';
-import { SceneListItem } from './SceneListItem';
-
-export const exposedCardComponent = exposeComponent(Card, {
-  name: 'Card',
-  description:
-    'A titled group of LightListItem or SceneListItem entries. Use it whenever you show one or more lights or scenes, even a single one. For a single sentence of text, use Markdown instead.',
-  props: {
-    title: s.streaming.string(
-      'Title to display in the card header, such as "Bedroom Lights"',
-    ),
-  },
-  children: 'any',
-});
-
-export const exposedLightListItemComponent = exposeComponent(LightListItem, {
-  name: 'LightListItem',
-  description:
-    'One light and its current state. Use it inside a Card, once per light. For a scene, use SceneListItem instead.',
-  props: {
-    lightId: s.string('The id of the light from the getLights tool'),
-  },
-});
-
-export const exposedSceneListItemComponent = exposeComponent(SceneListItem, {
-  name: 'SceneListItem',
-  description:
-    'One scene the user can apply. Use it inside a Card, once per scene. For a single light, use LightListItem instead.',
-  props: {
-    sceneId: s.string('The id of the scene from the getScenes tool'),
-  },
-});
-```
-
-</hb-code-example>
-
-**How Skillet helps with components:**
-The prop schemas tell the LLM exactly what props are needed and whether they stream. The descriptions tell it when to pick each component, and the prop descriptions say where each value comes from.
-
----
-
-## 5. Create the Chat Hook
-
-Now we tie it together, using `useUiChat` and passing the tools and exposed components (using Skillet!) in its options.
-
-<hb-code-example header="Chatbot.tsx">
-
-```tsx
-import React, { useState } from 'react';
-import { useUiChat } from '@hashbrownai/react';
-import {
-  useGetLightsTool,
-  useGetScenesTool,
-  useControlLightTool,
-  useControlSceneTool,
-} from './tools';
-import {
-  exposedMarkdownComponent,
-  exposedCardComponent,
-  exposedLightListItemComponent,
-  exposedSceneListItemComponent,
-} from './exposed-components';
-
-export const Chatbot: React.FC = () => {
-  const [input, setInput] = useState('');
-  const getLights = useGetLightsTool();
-  const getScenes = useGetScenesTool();
-  const controlLight = useControlLightTool();
-  const controlScene = useControlSceneTool();
-
-  const { messages, sendMessage } = useUiChat({
-    debugName: 'smart-home-chatbot',
-    system: `
-      You are a smart home assistant chatbot. You can answer questions about and control lights and scenes.
-
-      # Capabilities
-      - Call functions to get all lights, get scenes, set a light's brightness, and apply scenes.
-
-      # Rules
-      - Answer simple questions with a single Markdown component.
-      - To show lights or scenes, even just one, render one Card per room or
-        group, with a LightListItem or SceneListItem for each entry inside it.
-      - Put a short Markdown summary after the cards only when there is more to say.
-    `,
-    components: [
-      exposedMarkdownComponent,
-      exposedCardComponent,
-      exposedLightListItemComponent,
-      exposedSceneListItemComponent,
-    ],
-    tools: [getLights, getScenes, controlLight, controlScene],
+/** A tool-assisted conversation with explicit, revision-checked local changes. */
+export function LightChatbot() {
+  const [prompt, setPrompt] = useState('Set the desk light to 40%.');
+  const [state, setState] = useState(() => ({
+    lights: initialLightState(),
+    applied: [] as readonly string[],
+  }));
+  const [request, setRequest] = useState({
+    turn: 0,
+    cancelled: false,
+    origins: {} as Readonly<Record<string, ProposalOrigin>>,
   });
-
-  const handleSend = () => {
-    if (input.trim()) {
-      sendMessage({ role: 'user', content: input });
-      setInput('');
-    }
+  const read = useTool({
+    name: 'readLights',
+    description:
+      'Read the current simulated lights and their revision. Does not change any light.',
+    handler: async () => readLights(state.lights),
+    deps: [state.lights],
+  });
+  const chat = useUiChat({
+    system: lightChatSystem,
+    components,
+    tools: [read],
+  });
+  const authorization: LightAuthorization = {
+    turn: request.turn,
+    cancelled: request.cancelled,
+    settled: !chat.isLoading,
+    error: !!chat.error,
+    interrupted: !!chat.pendingInterrupts,
+    finishReason: chat.lastRunFinishReason,
+  };
+  const origins = lightMessageOrigins(chat.messages, request.origins);
+  const session: Session = {
+    ...state,
+    authorization,
+    apply: (origin, props, id) =>
+      setState((current) => {
+        const lights = applyLightProposal(
+          current.lights,
+          origin,
+          props,
+          authorization,
+          current.applied.includes(id),
+        );
+        return lights === current.lights
+          ? current
+          : { lights, applied: [...current.applied, id] };
+      }),
   };
 
+  function send() {
+    if (!prompt.trim()) return;
+    if (chat.isLoading) chat.stop();
+    const turn = request.turn + 1;
+    const id = `light-turn-${turn}`;
+    setRequest({
+      turn,
+      cancelled: false,
+      origins: {
+        ...request.origins,
+        [id]: { turn, revision: state.lights.revision },
+      },
+    });
+    chat.sendMessage({ id, role: 'user', content: prompt.trim() });
+    setPrompt('');
+  }
+
   return (
-    <div>
-      <div className="chat-messages">
-        {messages.map((message, idx) => (
-          <div key={idx} className={`chat-message ${message.role}`}>
-            {message.role === 'user'
-              ? message.content
-              : message.role === 'assistant'
-                ? message.ui
-                : null}
-          </div>
-        ))}
-      </div>
-      <div className="chat-input">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Say something..."
-        />
-        <button onClick={handleSend}>Send</button>
-      </div>
-    </div>
+    <SessionContext.Provider value={session}>
+      <main>
+        <h1>A conversation about one light</h1>
+        <p>
+          Simulated Desk light:{' '}
+          <strong data-testid="light-brightness">
+            {state.lights.lights[0].brightness}%
+          </strong>{' '}
+          · revision{' '}
+          <span data-testid="light-revision">{state.lights.revision}</span>
+        </p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            send();
+          }}
+        >
+          <label htmlFor="light-message">Your message</label>
+          <textarea
+            id="light-message"
+            value={prompt}
+            onChange={(event) => setPrompt(event.currentTarget.value)}
+          />
+          <button type="submit" disabled={!prompt.trim()}>
+            Send
+          </button>
+          <button
+            type="button"
+            disabled={!chat.isLoading}
+            onClick={() => {
+              setRequest((current) => ({ ...current, cancelled: true }));
+              chat.stop();
+            }}
+          >
+            Stop
+          </button>
+        </form>
+        <p role="status" data-testid="chat-status">
+          {lightChatStatus(authorization)}
+        </p>
+        <ol aria-label="Conversation">
+          {chat.messages.map((message, index) => (
+            <li key={'id' in message ? message.id : `error-${index}`}>
+              {message.role === 'user' ? (
+                <p>You: {String(message.content)}</p>
+              ) : message.role === 'assistant' ? (
+                <OriginContext.Provider
+                  value={origins[message.id] ?? { turn: -1, revision: -1 }}
+                >
+                  {message.ui}
+                </OriginContext.Provider>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </main>
+    </SessionContext.Provider>
   );
-};
+}
 ```
 
 </hb-code-example>
+</hb-expander>
 
-Let's break this down:
+## Next steps
 
-1. We can loop over `messages` to render each message, switching on `message.role` to determine if the message came from the user, the assistant, or an error message.
-2. When creating `useUiChat`, we provide:
-
-- `debugName` - Lets you debug and introspect the resource using the Redux Devtools browser extension.
-- `system` - We use a plain-string system instruction with a clear role, capabilities, and layout rules. Guidance about a single component lives in that component's description instead.
-- `components` - The list of components we want the LLM to use when generating responses.
-- `tools` - The list of tools we want to expose to the LLM in this chat. This could be dynamic if you want to change the list of tools at runtime.
-
----
-
-## 6. Skillet in Action
-
-Both tool calling (e.g., `controlLight`) and component exposure use Skillet schema. This means the LLM, via Hashbrown, knows
-exactly what arguments and props it needs, resulting in less guesswork and more reliable, safe AI-driven UI.
-
-- For **tools**, Skillet documents input arguments, enforced at runtime and LLM level.
-- For **UI**, Skillet schemas describe props and children, so the LLM knows what it can render.
-- Streaming markdown is easy by using `s.streaming.string()` in the exposed markdown component.
-
----
-
-## 7. Run and Interact
-
-Wrap your app with `<HashbrownProvider url="/run">` as per quick start, and try chatting:
-
-<hb-code-example header="main.tsx">
-
-```tsx
-import React from 'react';
-import { HashbrownProvider } from '@hashbrownai/react';
-import { SmartHomeProvider } from './smart-home';
-import { Chatbot } from './Chatbot';
-
-export const App = () => (
-  <HashbrownProvider url="/run">
-    <SmartHomeProvider>
-      <Chatbot />
-    </SmartHomeProvider>
-  </HashbrownProvider>
-);
-```
-
-</hb-code-example>
-
-_Example user: "Show all scenes"_
-Assistant could reply with a markdown intro and a card containing a list of `<SceneListItem />`s. Hitting "Apply" on a scene list item will apply the scene in your backend.
-
-Try controlling lights by ID or requesting lists for more sophisticated flows. The assistant cannot display anything except the components you expose, so you can safely continue adding components and functionality.
-
----
-
-## Recap: What Did We Cook Up?
-
-- **useUiChat** gives you full-featured, streaming LLM chat, generative UI, and tool calling
-- **Skillet schemas** make the contract clear (arguments, props) for both tools and UI
-- Only **exposed components and tools** are available to the assistant, so you are always in control
-- The model is your sous-chef: it does the prep and the plating, but only in your kitchen!
-
-Ready to extend? Hashbrown's approach makes it trivial to add richer tools, more components, or stricter rules via your schemas and system instructions.
-
----
-
-## Next Steps
-
-- [Go deeper with Skillet schemas](/docs/react/concept/schema)
-- [Advanced system instructions and prompt engineering](/docs/react/guide/prompt-engineering)
-- [Explore streaming responses](/docs/react/concept/streaming)
-- [Read the atc example, a chat that answers with live flight cards](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc)
+Use [tools](/docs/react/concept/functions) to expose other small application reads. Keep actions explicit, validate their values at the boundary that owns the state, and use [Skillet](/docs/react/concept/schema) to describe the components your assistant can render.

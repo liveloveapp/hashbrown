@@ -7,6 +7,8 @@ import {
 import { structuredChatResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
 import { InterruptControls } from './interrupt-controls';
+import { createRecoveryControls } from './recovery-controls';
+import { rememberThread, selectedThread } from '../recovery';
 
 const answerSchema = s.object('Runtime smoke answer', {
   answer: s.streaming.string('Answer text'),
@@ -43,13 +45,49 @@ function errorText(error: unknown): string {
         [value]="prompt()"
         (input)="onPromptInput($event)"
       />
-      <button data-testid="send" type="button" (click)="send()">Send</button>
+      <button
+        data-testid="send"
+        type="button"
+        [disabled]="recovery.disabled()"
+        (click)="send()"
+      >
+        Send
+      </button>
       <button data-testid="stop" type="button" (click)="stop()">Stop</button>
       <runtime-interrupt-controls
+        [disabled]="recovery.disabled()"
         [batch]="chat.pendingInterrupts()"
         [isResuming]="chat.isResuming()"
         [resume]="chat.resume"
       />
+      @if (recovery.enabled) {
+        <button
+          data-testid="refresh-recovery"
+          [disabled]="recovery.fetching() || chat.isLoading()"
+          (click)="recovery.refresh()"
+        >
+          Refresh recovery
+        </button>
+      }
+      <button data-testid="new-thread" (click)="recovery.newThread()">
+        New thread
+      </button>
+      <div data-testid="recovery-status">{{ recovery.status() }}</div>
+      <div data-testid="recovery-fetching">{{ recovery.fetching() }}</div>
+      <div data-testid="recovery-required">{{ chat.recovery().required }}</div>
+      <div data-testid="recovery-thread">{{ threadId() }}</div>
+      @for (
+        diagnostic of chat.recovery().diagnostics ?? [];
+        track diagnostic.messageId
+      ) {
+        <pre
+          data-testid="recovery-diagnostic"
+          [attr.data-message-id]="diagnostic.messageId"
+          [attr.data-thread-id]="diagnostic.threadId"
+          [attr.data-kind]="diagnostic.kind"
+          [textContent]="diagnostic.content"
+        ></pre>
+      }
       <div
         data-testid="status"
         [textContent]="chat.isLoading() ? 'loading' : 'idle'"
@@ -73,13 +111,20 @@ function errorText(error: unknown): string {
 })
 export class StructuredSmoke {
   protected readonly prompt = signal('');
+  protected readonly threadId = signal(selectedThread());
   protected readonly submitted = signal('');
   protected readonly toErrorText = errorText;
   protected readonly chat = structuredChatResource({
     system: 'Runtime smoke system prompt.',
+    threadId: this.threadId,
     schema: answerSchema,
     retries: readRetries(),
   });
+  protected readonly recovery = createRecoveryControls(
+    this.chat,
+    this.threadId,
+    (value) => this.threadId.set(value),
+  );
   protected readonly answer = computed(
     () => this.chat.lastAssistantMessage()?.content?.answer ?? '',
   );
@@ -92,6 +137,7 @@ export class StructuredSmoke {
   }
 
   protected send(): void {
+    rememberThread(this.threadId());
     const content = this.prompt();
     this.submitted.set(content);
     this.chat.sendMessage({ role: 'user', content });

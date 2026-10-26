@@ -1,6 +1,6 @@
 import { s } from '@hashbrownai/core';
 
-/** Streams complete shopping-list items while withholding unfinished objects. */
+/** Streams shopping-list items once their required field values resolve. */
 export const shoppingListSchema = s.object('A shopping list draft', {
   items: s.streaming.array(
     'The requested shopping items',

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   type Chat,
+  type ConversationSnapshot,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -74,6 +75,11 @@ function setup(
   TestBed.tick();
   return {
     control,
+    configuration: () => resource.getRecoveryConfiguration(),
+    restore: (snapshot: ConversationSnapshot) =>
+      resource.restoreConversation(snapshot, {
+        expectedRevision: resource.recovery().revision,
+      }),
     scheduling: () => ɵgetRuntimeSchedulingState(resource)(),
     batch: () => resource.pendingInterrupts(),
     resuming: () => resource.isResuming(),
@@ -516,5 +522,30 @@ test.each(families)(
     );
     expect(control.requests[1].input.resume).toBeUndefined();
     TestBed.resetTestingModule();
+  },
+);
+
+test.each(families)(
+  '$name completion consumes its current input on restoration',
+  async (family) => {
+    const h = setup(family);
+    await h.wait(() => expect(h.batch()).toBeDefined());
+    const input = h.control.requests[0].input;
+    expect(h.configuration().system).toBe('test');
+    h.change('B');
+
+    h.restore({
+      threadId: 'restored',
+      messages: input.messages,
+      configuredSystemMessageId: input.messages[0].id,
+    });
+    await h.flush();
+
+    expect(h.batch()).toBeUndefined();
+    expect(h.control.requests).toHaveLength(1);
+    h.change('C');
+    await h.wait(() => expect(h.control.requests).toHaveLength(2));
+    expect(h.control.requests[1].input.threadId).toBe('restored');
+    h.cleanup();
   },
 );

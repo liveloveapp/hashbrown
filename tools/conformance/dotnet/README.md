@@ -34,7 +34,7 @@ random `durable_` schema. The database identity needs schema/table creation and
 cleanup permissions. These tests do not silently skip when PostgreSQL is missing.
 The service password in CI is a fixture-only credential.
 
-The browser matrix uses ports 4431 (Angular) and 4432 (React). The native model
+The browser matrix defaults to ports 4431 (Angular) and 4432 (React); override them with `RUNTIME_SMOKE_ANGULAR_PORT` / `RUNTIME_SMOKE_REACT_PORT`. When using different origins, supply the matching comma-separated `FixtureOrigins` to the fixture workers. The native model
 fixture, capture proxy, and .NET server use dynamic loopback ports. Reports and
 traces are under `test-results/conformance/dotnet` and
 `playwright-report/conformance/dotnet`. Failed fixtures preserve bounded process
@@ -77,12 +77,12 @@ commits before invocation, so a crash can produce zero effects or an unknown
 outcome after execution. Neither outcome is automatically replayed. Stable
 `effectId` supports application-specific downstream idempotency; it does not
 provide exactly-once external effects by itself. Stranded markers are retained,
-can occupy capacity, and need application-specific manual reconciliation. No
-operator reconciliation API or retry queue is supplied. PostgreSQL must retain
+can occupy capacity, and need authorized terminal reconciliation. The opt-in
+operator API records bounded external evidence and never supplies a retry queue. PostgreSQL must retain
 acknowledged commits; backup rollback, unsafe failover, or administrative edits
 can invalidate the guarantee.
 
-The 108-case browser matrix includes all original 100 cases plus live-browser
+The browser matrix preserves all original 108 cases, including live-browser
 restart and competing-instance confirmation scenarios across React/Angular and
 OpenAI/Azure. Durable HTTP coverage additionally exercises process death,
 preparation lease takeover, stale workers, committed-marker and completed-effect
@@ -90,13 +90,66 @@ crash windows, malformed input, expiry, and database/registry failures. Effect
 observations are stored in PostgreSQL, rather than inferred from process-local
 counters.
 
-A browser waiting to answer keeps its pending ownership while its backend
-restarts or routing changes. Browser reload still loses that ownership. After a
-resume is acknowledged by `RUN_STARTED`, stream failure/cancellation uses the
-existing conversation recovery/new-thread flow; server lease recovery does not
-rehydrate an acknowledged browser batch. The exact three server snippets in both
-framework recipes are compared and compiled in all memory/PostgreSQL and
-confirmation/no-confirmation combinations by `check-docs`, without a database.
+Recovery adds actual reload/restart, fresh local approval ownership, exact resumed
+native configuration/system IDs, acknowledged pre-effect failure and lease refresh,
+two-tab claim competition, authenticated scope isolation, delayed lookup guards,
+completed/unavailable answers, historical browser-tool inertness, trusted structured
+history and protected operator reconciliation across all four framework/provider
+combinations. Native model calls and durable effects are asserted independently.
+Deterministic server barriers cover claim/dispatch/capture windows; no guessed
+sleep establishes dispatch or owner quiescence. The default native host does not
+acknowledge a run before blocked pure preparation produces its first update. Its
+unacknowledged pre-effect restart/lease path remains covered. The acknowledged
+pre-effect crash test opts into a fixture-only, visible "Preparing server action."
+ChatResponseUpdate on accepted resumes, once per request, before invoking the real
+workflow. Native hosting emits its own actual lifecycle and text events; no SSE or
+RUN_STARTED is synthesized. The prelude performs no model/effect work and never runs
+on initial pending requests, so original fingerprint authority is unchanged.
+
+`POST /threads/{threadId}/recovery` requires the configured ordinary-user policy and
+a server-owned authenticated scope resolver. It consumes the direct public
+`getRecoveryConfiguration()` value and returns a no-store versioned envelope.
+Browser fixtures opt in with `recoveryUrl`, keep only the thread selector in their
+endpoint/scenario-scoped URL, and explicitly refresh. A revision CAS and synchronous
+selector/request-generation guards retire stale responses. Restoration receives the
+server snapshot directly; it never replays SSE, tools, approvals, or a model run.
+Busy/unknown/ambiguous/unrestorable states disable sends and decisions separately
+from the assistant transcript. Unknown envelope versions/dispositions fail closed.
+
+`GET /checkpoints`, `GET /checkpoints/{batchId}`, and
+`POST /checkpoints/{batchId}/reconcile` require a separate operator policy,
+server-owned permitted scopes and authenticated actor. Reconciliation accepts only
+EffectStarted/FailedAfterEffect with expected state/generation/revision, bounded
+reason/evidence and external-quiescence acknowledgement. It records a terminal
+observation and immutable audit without re-executing or reopening work. CAS cannot
+revoke execution permission already issued: independently establish owner quiescence
+and downstream evidence before claiming non-performance; Unresolved is legitimate.
+Fixture authentication exercises ASP.NET authentication and policies with fixed test
+credentials. Never publish those credentials or copy Testing into an application.
+
+Recovery persists checkpoint-associated original native serialization and bounded
+canonical final history only, not general chat sessions. Defaults: original/query
+256 KiB, terminal history 1 MiB, 2,048 messages, ten-minute snapshot retention from
+checkpoint creation, independent ordinary terminal metadata retention and thirty-day
+audit retention from each audit's recorded time. Stored history/state can be private;
+apply database access controls and deliberate retention. Purging private bytes never
+reopens a consumed ID or silently evicts unresolved dispatch markers. Schema1-to2
+migration keeps legacy rows safe but cannot fabricate their missing history; future
+versions fail closed.
+
+Final capture supports canonical text and server-tool history with strictly
+equivalent redundant upstream diagnostics. Meaningful unknown raw/reasoning/
+annotation/continuation extras, incomplete rounds and replacement snapshots during
+an open fold yield unavailable terminal history. Disconnect, byte limits or storage
+failure can also lose the final answer independently of effect completion. There is
+no general AG-UI event replay/parity guarantee. CompletedAnswerUnavailable displays
+status without inventing assistant text or repeating the effect.
+
+The exact four C# blocks in both framework recipes are compared and compiled in all
+eight memory/PostgreSQL × confirmation/no-confirmation × optional recovery mapping
+combinations by `check-docs`, using the actual Integration source and locked packages
+without a database. Checked insertion targets reject drift instead of compiling an
+unintended combination.
 
 ## Tested dependency baseline
 
@@ -113,7 +166,7 @@ confirmation/no-confirmation combinations by `check-docs`, without a database.
 | PostgreSQL executable reference             | 18                      |
 
 The selected model wire is Chat Completions. Responses-backed .NET clients,
-Entra authentication, older .NET runtimes, browser reload recovery, reasoning,
+Entra authentication, older .NET runtimes, reasoning,
 activities, shared chat-session state, and provider finish-reason metadata are not included in
 this initial compatibility guarantee. Hashbrown's existing Node providers keep
 their own behavior and tests.

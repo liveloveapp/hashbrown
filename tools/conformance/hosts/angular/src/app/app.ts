@@ -1,6 +1,8 @@
+import { LocalUiWorkflow } from './local-ui-workflow';
 import { LocalMedia } from './local-media';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { LocalWorkflow } from './local-workflow';
+import { LocalSchemaWorkflow } from './local-schema-workflow';
 import { CompletionSmoke } from './completion-smoke';
 import { DecisionSmoke } from './decision-smoke';
 import { PlainSmoke } from './plain-smoke';
@@ -31,6 +33,8 @@ function readScenario(): Scenario {
   imports: [
     PlainSmoke,
     LocalWorkflow,
+    LocalSchemaWorkflow,
+    LocalUiWorkflow,
     LocalMedia,
     StructuredSmoke,
     UiSmoke,
@@ -42,6 +46,10 @@ function readScenario(): Scenario {
     <main data-testid="fixture-ready">
       @if (localMedia === 'image' || localMedia === 'audio') {
         <runtime-local-media />
+      } @else if (localUiWorkflow) {
+        <runtime-local-ui-workflow />
+      } @else if (localSchemaWorkflow) {
+        <runtime-local-schema-workflow />
       } @else if (localWorkflow) {
         <runtime-local-workflow />
       } @else if (scenario === 'plain' || scenario === 'tool') {
@@ -59,7 +67,14 @@ function readScenario(): Scenario {
   `,
 })
 export class App {
+  protected readonly localUiWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localUiWorkflow') ===
+    'true';
   protected readonly scenario = readScenario();
+  protected readonly localSchemaWorkflow =
+    new URL(globalThis.location.href).searchParams.get(
+      'localSchemaWorkflow',
+    ) === 'true';
   protected readonly localMedia = new URL(
     globalThis.location.href,
   ).searchParams.get('localMedia');

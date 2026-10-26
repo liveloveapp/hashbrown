@@ -1,3 +1,8 @@
+import {
+  type ChromeToolPhase,
+  type ChromeToolsTurnContext,
+  selectChromeToolPhase,
+} from './chrome-tool-phase';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   chromeToolError,
@@ -21,7 +26,7 @@ type NativeConstructor = new (init: object) => NativeValue;
 export interface ChromeToolsSession {
   promptStreaming(
     input: readonly object[],
-    options: { signal: AbortSignal },
+    options: { signal: AbortSignal; responseConstraint?: object },
   ): ReadableStream<unknown> | Promise<ReadableStream<unknown>>;
   destroy(): void | Promise<void>;
 }
@@ -41,6 +46,10 @@ export interface ChromeToolsSessionOptions {
 }
 /** Configuration for the experimental Chrome typed-tools transport. @alpha */
 export interface ExperimentalChromeToolsTransportOptions {
+  /** Select one tool or direct schema finalization from immutable current-turn history. Requires schemaFinalization and a response schema. */
+  toolPhase?: (context: ChromeToolsTurnContext) => ChromeToolPhase;
+  /** Finalize structured or component UI answers after unconstrained tool planning. Adds one terminal inference pass; individual schemas remain model-dependent. */
+  schemaFinalization?: 'after-tool-planning';
   /** Text language negotiated for both input and output. Defaults to English. */
   outputLanguage?: SupportedOutputLanguage;
   /** Bounds an entire session, including creation and inference; 1–1200000ms. */
@@ -77,8 +86,9 @@ export interface ChromeToolsCapabilities {
   adapter: {
     supported: boolean;
     reason: string | null;
-    structuredOutput: false;
-    ui: false;
+    structuredOutput: boolean;
+    schemaFinalization: 'after-tool-planning' | null;
+    ui: boolean;
     media: false;
   };
   inference: 'unknown';
@@ -112,9 +122,13 @@ function nativeOptions(
 }
 /** Checks exact modalities/declarations without downloading or running inference. @alpha */
 export async function detectChromeToolsCapabilities(
-  options: Pick<ExperimentalChromeToolsTransportOptions, 'outputLanguage'> = {},
+  options: Pick<
+    ExperimentalChromeToolsTransportOptions,
+    'outputLanguage' | 'schemaFinalization'
+  > = {},
   tools: ChromeToolsSessionOptions['tools'] = [],
 ): Promise<ChromeToolsCapabilities> {
+  validateSchemaFinalization(options.schemaFinalization);
   const host = runtime();
   const nativeModel = host.LanguageModel;
   const ownedTools = prepareChromeToolDeclarations(
@@ -179,12 +193,17 @@ export async function detectChromeToolsCapabilities(
       reason: supported
         ? null
         : 'Native typed tools interfaces or exact model options are unsupported.',
-      structuredOutput: false,
-      ui: false,
+      structuredOutput: options.schemaFinalization === 'after-tool-planning',
+      schemaFinalization: options.schemaFinalization ?? null,
+      ui: options.schemaFinalization === 'after-tool-planning',
       media: false,
     },
     inference: 'unknown',
   };
+}
+function validateSchemaFinalization(policy: unknown): void {
+  if (policy !== undefined && policy !== 'after-tool-planning')
+    throw chromeToolError('Unsupported native schema finalization policy.');
 }
 function abortError() {
   return new TransportError('Native tools run aborted or timed out.', {
@@ -239,6 +258,15 @@ function nativeMessages(messages: ChromeToolMessage[]): object[] {
 export function experimental_chrome_tools(
   options: ExperimentalChromeToolsTransportOptions = {},
 ): TransportFactory {
+  validateSchemaFinalization(options.schemaFinalization);
+  if (
+    options.toolPhase !== undefined &&
+    (typeof options.toolPhase !== 'function' ||
+      options.schemaFinalization !== 'after-tool-planning')
+  )
+    throw chromeToolError(
+      'Tool phases require a selector and after-tool-planning schema finalization.',
+    );
   const timeout = options.timeoutMs ?? 180000;
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 1200000)
     throw chromeToolError(
@@ -247,7 +275,42 @@ export function experimental_chrome_tools(
   return (): Transport => ({
     name: 'ExperimentalChromeToolsTransport',
     async send(request) {
-      const prepared = prepareChromeToolMessages(request.input);
+      const prepared = prepareChromeToolMessages(
+        request.input,
+        options.schemaFinalization === 'after-tool-planning',
+      );
+      if (request.signal.aborted) throw abortError();
+      if (options.toolPhase && prepared.responseSchema === undefined)
+        throw chromeToolError('Tool phases require a response schema.');
+      const phase = options.toolPhase
+        ? selectChromeToolPhase(request.input, prepared, options.toolPhase)
+        : undefined;
+      // Chrome requires declarations for typed historical calls even when
+      // response-constrained finalization forbids every new executable call.
+      const historicalNames = new Set(
+        prepared.messages.flatMap((message) =>
+          typeof message.content === 'string'
+            ? []
+            : message.content.flatMap((part) =>
+                part.type === 'tool-call'
+                  ? [(part.value as ChromeToolValue).name]
+                  : [],
+              ),
+        ),
+      );
+      const active =
+        phase === undefined
+          ? prepared
+          : {
+              ...prepared,
+              tools: Object.freeze(
+                prepared.tools.filter((tool) =>
+                  phase.type === 'tool'
+                    ? tool.name === phase.name
+                    : historicalNames.has(tool.name),
+                ),
+              ),
+            };
       const controller = new AbortController();
       const signal = AbortSignal.any([request.signal, controller.signal]);
       const timer = setTimeout(() => controller.abort(), timeout);
@@ -266,7 +329,7 @@ export function experimental_chrome_tools(
       };
       try {
         const capabilities = await raceTransportOperationWithAbort(
-          () => detectChromeToolsCapabilities(options, prepared.tools),
+          () => detectChromeToolsCapabilities(options, active.tools),
           signal,
           abortError,
         );
@@ -341,34 +404,86 @@ export function experimental_chrome_tools(
           eventStream: true,
           destroy,
           start: async (streamSignal) => {
-            const pending = Promise.resolve(
-              ownedSession.promptStreaming(
-                nativeMessages(
-                  prepared.messages.filter(
-                    (message) => message.role !== 'system',
-                  ),
-                ),
-                { signal: streamSignal },
-              ),
-            ).then(async (value) => {
-              if (streamSignal.aborted)
-                void value.cancel().catch(() => undefined);
-              return value;
-            });
-            const stream = await raceTransportOperationWithAbort(
-              () => pending,
-              streamSignal,
-              abortError,
+            const prompt = async (
+              input: readonly object[],
+              responseConstraint?: object,
+            ) => {
+              const pending = Promise.resolve(
+                ownedSession.promptStreaming(input, {
+                  signal: streamSignal,
+                  ...(responseConstraint === undefined
+                    ? {}
+                    : { responseConstraint }),
+                }),
+              ).then((value) => {
+                if (streamSignal.aborted)
+                  void value.cancel().catch(() => undefined);
+                return value;
+              });
+              const stream = await raceTransportOperationWithAbort(
+                () => pending,
+                streamSignal,
+                abortError,
+              );
+              if (streamSignal.aborted) {
+                void stream.cancel().catch(() => undefined);
+                throw abortError();
+              }
+              return stream;
+            };
+            const schema = prepared.responseSchema;
+            const planning =
+              phase?.type === 'tool' ||
+              (phase === undefined &&
+                schema !== undefined &&
+                prepared.tools.length > 0);
+            const history = nativeMessages(
+              prepared.messages.filter((message) => message.role !== 'system'),
             );
-            if (streamSignal.aborted) {
-              void stream.cancel().catch(() => undefined);
-              throw abortError();
-            }
+            const phaseInput =
+              phase === undefined
+                ? history
+                : [
+                    ...history,
+                    {
+                      role: 'user',
+                      content:
+                        phase.type === 'tool'
+                          ? 'The application selected the next tool phase for this turn. Call ' +
+                            JSON.stringify(phase.name) +
+                            ' exactly once using the existing conversation and tool results. Do not call other tools or provide a final answer.'
+                          : 'The application has completed the tool phase for this turn. Do not call tools. Return only the final answer using the supplied response schema and the existing conversation and tool results.',
+                    },
+                  ];
+            const stream = await prompt(
+              phaseInput,
+              planning ? undefined : schema,
+            );
             return adaptNativeStream(
               stream,
-              prepared,
+              active,
               request.input.runId,
               streamSignal,
+              phase?.type === 'tool'
+                ? 'tool-phase'
+                : schema === undefined
+                  ? 'normal'
+                  : planning
+                    ? 'planning'
+                    : 'finalization',
+              planning && phase === undefined
+                ? () =>
+                    prompt(
+                      [
+                        {
+                          role: 'user',
+                          content:
+                            'Return the final answer using the supplied response schema and the existing conversation and tool results, without calling tools. Return only the final answer.',
+                        },
+                      ],
+                      schema,
+                    )
+                : undefined,
             );
           },
         });
@@ -390,8 +505,10 @@ function adaptNativeStream(
   prepared: ReturnType<typeof prepareChromeToolMessages>,
   runId: string,
   signal: AbortSignal,
+  mode: 'normal' | 'planning' | 'finalization' | 'tool-phase' = 'normal',
+  finalize?: () => Promise<ReadableStream<unknown>>,
 ): ReadableStream<AGUIEvent> {
-  const reader = stream.getReader();
+  let reader = stream.getReader();
   let outputBytes = 0;
   let closed = false;
   const close = async () => {
@@ -446,77 +563,100 @@ function adaptNativeStream(
         throw chromeToolError('Native turn exceeds output bounds.');
     };
     try {
-      while (true) {
-        const { done, value } = await raceTransportOperationWithAbort(
-          () => reader.read(),
-          signal,
-          abortError,
-        );
-        if (done) break;
-        if (typeof value === 'string') {
-          outputBytes += new TextEncoder().encode(value).length;
+      for (;;) {
+        while (true) {
+          const { done, value } = await raceTransportOperationWithAbort(
+            () => reader.read(),
+            signal,
+            abortError,
+          );
+          if (done) break;
+          if (typeof value === 'string') {
+            outputBytes += new TextEncoder().encode(value).length;
+            checkBounds();
+            if (mode !== 'planning' && mode !== 'tool-phase') {
+              if (calls.length === 0) yield* textEvents(value);
+              else sequence.push({ text: value });
+            }
+            continue;
+          }
+          if (mode === 'finalization')
+            throw chromeToolError(
+              'Schema finalization accepts only native text chunks.',
+            );
+          if (!value || typeof value !== 'object')
+            throw chromeToolError('Malformed native stream chunk.');
+          const chunk = value as Record<string, unknown>;
+          if (
+            chunk['type'] !== 'tool-call' ||
+            !chunk['value'] ||
+            typeof chunk['value'] !== 'object'
+          )
+            throw chromeToolError('Unsupported native stream chunk.');
+          const original = chunk['value'] as Record<string, unknown>;
+          if (
+            typeof original['name'] !== 'string' ||
+            !prepared.tools.some((tool) => tool.name === original['name'])
+          )
+            throw chromeToolError('Unknown native tool name.');
+          for (const key of ['callID', 'callId']) {
+            if (key in original && typeof original[key] !== 'string')
+              throw chromeToolError('Invalid native call identifier.');
+          }
+          const call = {
+            ...('callID' in original ? { callID: original['callID'] } : {}),
+            ...('callId' in original ? { callId: original['callId'] } : {}),
+            name: original['name'],
+            arguments: chromeToolObject(original['arguments']),
+          };
+          outputBytes += new TextEncoder().encode(JSON.stringify(call)).length;
+          sequence.push({ call: calls.length });
+          calls.push(call);
           checkBounds();
-          if (calls.length === 0) yield* textEvents(value);
-          else sequence.push({ text: value });
+          yield* endText();
+        }
+        yield* endText();
+        const validated = validateChromeToolCalls(
+          calls,
+          prepared.tools.map((tool) => tool.name),
+          prepared.historyIds,
+        );
+        if (mode === 'tool-phase' && validated.length !== 1)
+          throw chromeToolError(
+            'Selected tool phase requires exactly one tool call.',
+          );
+        if (mode === 'planning' && validated.length === 0 && finalize) {
+          await close();
+          const finalStream = await finalize();
+          reader = finalStream.getReader();
+          closed = false;
+          mode = 'finalization';
+          outputBytes = 0;
+          chunks = 0;
           continue;
         }
-        if (!value || typeof value !== 'object')
-          throw chromeToolError('Malformed native stream chunk.');
-        const chunk = value as Record<string, unknown>;
-        if (
-          chunk['type'] !== 'tool-call' ||
-          !chunk['value'] ||
-          typeof chunk['value'] !== 'object'
-        )
-          throw chromeToolError('Unsupported native stream chunk.');
-        const original = chunk['value'] as Record<string, unknown>;
-        if (
-          typeof original['name'] !== 'string' ||
-          !prepared.tools.some((tool) => tool.name === original['name'])
-        )
-          throw chromeToolError('Unknown native tool name.');
-        for (const key of ['callID', 'callId']) {
-          if (key in original && typeof original[key] !== 'string')
-            throw chromeToolError('Invalid native call identifier.');
+        for (const part of sequence) {
+          if (signal.aborted) throw abortError();
+          if ('text' in part) yield* textEvents(part.text);
+          else {
+            yield* endText();
+            const call = validated[part.call];
+            yield {
+              type: EventType.TOOL_CALL_START,
+              toolCallId: call.callId,
+              toolCallName: call.name,
+            };
+            yield {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: call.callId,
+              delta: JSON.stringify(call.arguments),
+            };
+            yield { type: EventType.TOOL_CALL_END, toolCallId: call.callId };
+          }
         }
-        const call = {
-          ...('callID' in original ? { callID: original['callID'] } : {}),
-          ...('callId' in original ? { callId: original['callId'] } : {}),
-          name: original['name'],
-          arguments: chromeToolObject(original['arguments']),
-        };
-        outputBytes += new TextEncoder().encode(JSON.stringify(call)).length;
-        sequence.push({ call: calls.length });
-        calls.push(call);
-        checkBounds();
         yield* endText();
+        break;
       }
-      yield* endText();
-      const validated = validateChromeToolCalls(
-        calls,
-        prepared.tools.map((tool) => tool.name),
-        prepared.historyIds,
-      );
-      for (const part of sequence) {
-        if (signal.aborted) throw abortError();
-        if ('text' in part) yield* textEvents(part.text);
-        else {
-          yield* endText();
-          const call = validated[part.call];
-          yield {
-            type: EventType.TOOL_CALL_START,
-            toolCallId: call.callId,
-            toolCallName: call.name,
-          };
-          yield {
-            type: EventType.TOOL_CALL_ARGS,
-            toolCallId: call.callId,
-            delta: JSON.stringify(call.arguments),
-          };
-          yield { type: EventType.TOOL_CALL_END, toolCallId: call.callId };
-        }
-      }
-      yield* endText();
     } finally {
       await close();
     }

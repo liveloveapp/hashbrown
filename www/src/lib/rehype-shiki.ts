@@ -11,7 +11,9 @@ import shikiHashbrown from './shiki-hashbrown';
 const LANGS = [
   'typescript',
   'tsx',
+  'csharp',
   'html',
+  'xml',
   'json',
   'shellscript',
   'markdown',
@@ -19,6 +21,8 @@ const LANGS = [
 
 const ALIASES: Record<string, string> = {
   ts: 'typescript',
+  cs: 'csharp',
+  'c#': 'csharp',
   sh: 'shellscript',
   bash: 'shellscript',
   txt: 'text',

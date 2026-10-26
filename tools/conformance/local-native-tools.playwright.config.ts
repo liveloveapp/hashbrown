@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 import conformance from './conformance.playwright.config';
+import { localChromeLaunch } from './harness/local-chrome-launch';
 
 if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
   throw new Error(
@@ -8,8 +9,22 @@ if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
   );
 }
 const live = process.env['LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE'] === '1';
+const chrome = localChromeLaunch({
+  tools: true,
+  modelVersion: process.env['LOCAL_LLM_CHROME_MODEL_VERSION'],
+});
+
 export default defineConfig({
   ...conformance,
+  metadata: {
+    ...conformance.metadata,
+    localChromeExperiment: {
+      applicable: live,
+      requestedModelVersion: chrome.modelVersion,
+      toolInterfaces: true,
+      note: 'Requested browser configuration; not verified loaded model identity or inference quality.',
+    },
+  },
   testDir: resolve(__dirname, 'local-models'),
   testMatch: 'native-tool-workflows.e2e.ts',
   workers: 1,
@@ -45,17 +60,7 @@ export default defineConfig({
       ? {
           channel: 'chrome',
           headless: false,
-          launchOptions: {
-            args: [
-              '--disable-features=',
-              '--enable-features=AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4',
-            ],
-            ignoreDefaultArgs: [
-              '--disable-component-update',
-              '--disable-background-networking',
-              '--disable-field-trial-config',
-            ],
-          },
+          launchOptions: chrome.launchOptions,
         }
       : {}),
   },

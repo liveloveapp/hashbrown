@@ -1,3 +1,4 @@
+import { ɵwithoutCancelledTurnProvenance } from '../models/cancelled-turn';
 import type { Message, RunAgentInput, Tool } from '@ag-ui/core';
 import type { ResumeEntry } from '../models/interrupt';
 import { Chat } from '../models';
@@ -79,13 +80,16 @@ function createHashbrownExtension(
 }
 
 /**
- * Removes activity messages from outgoing history. AG-UI activities are
- * rendering material for the client and are never forwarded to the agent.
- * Returns the same array when there is nothing to remove.
+ * Removes client activity records and reserved cancellation provenance from
+ * outgoing history while retaining factual cancellation text. Returns the same
+ * array when no message needs to change.
  */
-function withoutActivities(
+function prepareOutgoingMessages(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
+  const clean = messages.map(ɵwithoutCancelledTurnProvenance);
+  if (clean.some((message, index) => message !== messages[index]))
+    messages = clean;
   return messages.some((message) => message.role === 'activity')
     ? messages.filter((message) => message.role !== 'activity')
     : messages;
@@ -93,7 +97,7 @@ function withoutActivities(
 
 /**
  * Creates an AG-UI run input from an already-owned canonical checkpoint.
- * Activity messages are stripped, as AG-UI requires.
+ * Activity messages and private cancellation provenance are stripped.
  *
  * @internal
  */
@@ -112,7 +116,7 @@ export function createCanonicalRunAgentInput({
   return {
     threadId,
     runId,
-    messages: withoutActivities(messages) as Message[],
+    messages: prepareOutgoingMessages(messages) as Message[],
     tools: tools.map(mapTool),
     context: [],
     state,

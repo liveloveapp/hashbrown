@@ -64,5 +64,5 @@
 - [x] Independent spec review followed by code-quality review; fix valid feedback with regression tests.
 - [x] Run build/test/lint for every affected package/host/docs; core full tests with `--runInBand`, API report, deterministic browser contracts, existing standard conformance. Run each browser Nx target separately and GPU suites sequentially.
 - [x] Commit verified changes, create and attach [PR #737](https://github.com/liveloveapp/hashbrown/pull/737), and rebase onto current main.
-- [ ] Monitor final exact-head CI and reviews, fix valid feedback, and merge on green without bypass.
-- [ ] Verify merged commit/tree equals reviewed head, exact-head required checks passed and merged commit is on origin/main; report actual limitations and any decision required.
+- [x] Monitor final exact-head CI and reviews, fix valid feedback, and merge on green without bypass.
+- [x] Verify merged commit/tree equals reviewed head, exact-head required checks passed and merged commit is on origin/main; report actual limitations and any decision required.

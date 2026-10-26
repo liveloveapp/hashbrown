@@ -3,7 +3,7 @@ using AGUI.Abstractions;
 namespace Hashbrown.Conformance.Integration;
 
 /// <summary>Bounded process-local development store implementing the same fenced claim contract as PostgreSQL.</summary>
-public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationRegistry registry, InterruptStoreOptions? options = null) : IInterruptStore
+public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOperationRegistry registry, InterruptStoreOptions? options = null) : IInterruptStore
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, InterruptRecord> _pending = new(StringComparer.Ordinal);
@@ -14,17 +14,37 @@ public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationR
     {
         cancellationToken.ThrowIfCancellationRequested();
         _ = registry.Resolve(checkpoint);
+        var original = RecoverySerialization.Original(input, _options);
         lock (_gate)
         {
             var now = clock.GetUtcNow();
-            foreach (var key in _pending.Where(pair => Removable(pair.Value, now)).Select(pair => pair.Key).ToArray()) _pending.Remove(key);
+            foreach (var key in _pending.Where(pair => Removable(pair.Value, now)).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray()) _pending.Remove(key);
+            foreach (var key in _pending.Where(pair => pair.Value.CreatedAt + _options.SnapshotRetention <= now && (pair.Value.OriginalRequest is not null || pair.Value.TerminalSnapshot is not null)).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray())
+                _pending[key] = _pending[key] with { OriginalRequest = null, TerminalSnapshot = null, Revision = _pending[key].Revision + 1 };
+            foreach (var key in _audit.Where(pair => pair.Value.Audit.RecordedAt + _options.AuditRetention <= now).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray()) _audit.Remove(key);
             var existing = _pending.Values.FirstOrDefault(record => record.Scope == scope && record.ThreadId == input.ThreadId && record.State is "Pending" or "Claimed" or "EffectStarted");
             if (existing is not null) return ValueTask.FromResult(existing.Batch);
             if (_pending.Count >= _options.Capacity) throw new InvalidOperationException("Pending confirmation capacity reached.");
             var id = Guid.NewGuid().ToString("N");
             var batch = new PendingInterrupt(id, Array.AsReadOnly(new[] { Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") }), now + _options.ApprovalTtl, checkpoint, Guid.NewGuid().ToString("N"));
-            _pending.Add(id, new(batch, scope, input.ThreadId, input.RunId, InterruptValidation.Fingerprint(input)));
+            _pending.Add(id, new(batch, scope, input.ThreadId, input.RunId, InterruptValidation.Fingerprint(input), OriginalRequest: original, CreatedAt: now));
             return ValueTask.FromResult(batch);
+        }
+    }
+
+    /// <inheritdoc />
+    public ValueTask<CheckpointRecoveryResult> RecoverAsync(string scope, string threadId, ConversationRecoveryConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var record = _pending.Values.Where(record => record.Scope == scope && record.ThreadId == threadId)
+                .OrderByDescending(record => record.State is "Pending" or "Claimed" or "EffectStarted" or "FailedAfterEffect")
+                .ThenByDescending(record => record.CreatedAt).FirstOrDefault();
+            if (record is null) return ValueTask.FromResult(new CheckpointRecoveryResult(404));
+            try { _ = registry.Resolve(record.Batch.Checkpoint); }
+            catch (InvalidOperationException) { return ValueTask.FromResult(new CheckpointRecoveryResult(503)); }
+            return ValueTask.FromResult(RecoverySerialization.Recover(record, configuration, clock.GetUtcNow(), _options));
         }
     }
 
@@ -44,7 +64,7 @@ public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationR
             catch (InvalidOperationException) { return ValueTask.FromResult(new InterruptClaimResult(503)); }
             var declined = InterruptValidation.Declined(input);
             var claim = new InterruptClaim(record.Batch.Id, Guid.NewGuid().ToString("N"), record.Generation + 1, record.Batch.Checkpoint, record.Batch.EffectId, declined);
-            _pending[record.Batch.Id] = record with { State = declined ? "Declined" : "Claimed", Token = claim.Token, Generation = claim.Generation, LeaseUntil = now + _options.PreparationLease, CompletedAt = declined ? now : null };
+            _pending[record.Batch.Id] = record with { State = declined ? "Declined" : "Claimed", Token = claim.Token, Generation = claim.Generation, LeaseUntil = now + _options.PreparationLease, CompletedAt = declined ? now : null, Revision = record.Revision + 1, CaptureToken = null, GenerationOutcome = "NotStarted", TerminalSnapshot = null };
             return ValueTask.FromResult(new InterruptClaimResult(200, claim));
         }
     }
@@ -56,7 +76,7 @@ public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationR
         lock (_gate)
         {
             if (!Current(claim, out var record) || record!.State != "Claimed" || record.LeaseUntil <= clock.GetUtcNow()) return ValueTask.FromResult(false);
-            _pending[claim.BatchId] = record with { State = "EffectStarted" };
+            _pending[claim.BatchId] = record with { State = "EffectStarted", Revision = record.Revision + 1 };
             return ValueTask.FromResult(true);
         }
     }
@@ -72,7 +92,7 @@ public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationR
             if (record.State == "Claimed" && record.LeaseUntil <= clock.GetUtcNow()) return ValueTask.CompletedTask;
             var released = finish == InterruptFinish.Cancelled && record.State == "Claimed";
             var state = released ? "Pending" : finish == InterruptFinish.Completed ? "Completed" : record.State == "EffectStarted" ? "FailedAfterEffect" : "FailedBeforeEffect";
-            _pending[claim.BatchId] = record with { State = state, Token = released ? null : record.Token, LeaseUntil = null, CompletedAt = released ? null : clock.GetUtcNow() };
+            _pending[claim.BatchId] = record with { State = state, Token = released ? null : record.Token, LeaseUntil = null, CompletedAt = released ? null : clock.GetUtcNow(), Revision = record.Revision + 1 };
         }
         return ValueTask.CompletedTask;
     }
@@ -82,7 +102,7 @@ public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationR
     {
         "Pending" => record.Batch.ExpiresAt <= now,
         "Claimed" => record.Batch.ExpiresAt <= now && record.LeaseUntil <= now,
-        "EffectStarted" => false,
+        "EffectStarted" or "FailedAfterEffect" => false,
         _ => record.CompletedAt + _options.TerminalRetention <= now
     };
 }

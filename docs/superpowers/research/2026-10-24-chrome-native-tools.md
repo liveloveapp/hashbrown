@@ -1,6 +1,6 @@
 # Chrome native tools: v4 verification
 
-Status: authorized v4 download completed; eight raw native compatibility canaries passed. The separate adapter has passed core tests and independent reviews; 18 aimock framework contracts and standard conformance passed. [PR #737](https://github.com/liveloveapp/hashbrown/pull/737) tracks CI, review and release verification. Live semantic failures remain recorded below.
+Status: authorized v4 download completed; eight raw native compatibility canaries passed. The separate adapter has passed core tests and independent reviews; 18 aimock framework contracts and standard conformance passed. [PR #737](https://github.com/liveloveapp/hashbrown/pull/737) merged at `d7d59dddd05e8b7b33c3efc0af5a1fe328fc8fa6` after exact-head green CI; reviewed/squash trees and origin/main were verified. The [cancellation marker follow-up](2026-10-24-cancelled-turn-markers.md) records the subsequently approved policy and real v4 Stop results. Live semantic failures remain recorded below.
 
 ## Environment and isolation
 
@@ -101,7 +101,11 @@ receipt normalization or expected-failure rule was introduced. The initial
 report/traces were retained at `/tmp/hashbrown-native-framework-first-eight-evidence`
 and `/tmp/hashbrown-native-framework-first-eight.log` before rerunning.
 
-## Prepared upstream report (not posted)
+## Upstream report
+
+Posted October 25, 2026: [Chromium issue #577500782](https://issues.chromium.org/issues/577500782).
+The text below preserves the original prepared report; the submitted version
+includes a reduced native JavaScript example and the same measured findings.
 
 **Suggested title:** Chrome 155 experimental v4 tool calls emit an empty `callID`.
 
@@ -218,3 +222,13 @@ All local model targets remain opt-in, uncached, outside standard discovery
 and prohibited in CI. No package dependency was added. Release CI and merge
 verification must be checked against the final PR head rather than inferred
 from these local results.
+
+## Release completed
+
+PR #737 merged after green exact-head CI run 40117166309. Reviewed head
+`cb2d8a4bbd357ff4f2e965f8c056a8696c7eef07` and squash merge
+`d7d59dddd05e8b7b33c3efc0af5a1fe328fc8fa6` share tree
+`6ee20c23bd52be0380e0966bace00375de4c0612`; the merge was verified on
+origin/main. Integration retained main's recorded trip-brief documentation
+and added the native-tools disclosure separately; combined site build/lint and
+830 tests passed. The earlier counts above describe their recorded snapshots.

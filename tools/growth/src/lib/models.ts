@@ -14,8 +14,7 @@ export type GrowthDeliveryStatus =
   | 'unknown';
 
 /** The kinds of work the growth job queue runs. */
-export type GrowthJobKind =
-  'fulfill' | 'notify' | 'send_step' | 'digest' | 'reply_reconcile';
+export type GrowthJobKind = 'fulfill' | 'notify' | 'send_step' | 'digest';
 
 /** The framework choices on the Get unstuck form. */
 export const UNSTUCK_FRAMEWORKS = [
@@ -95,7 +94,6 @@ export interface GrowthJob {
   payload: Record<string, unknown>;
   providerEmailId: string | null;
   rfcMessageId: string | null;
-  gmailSeedMessageId: string | null;
   deliveryStatus: GrowthDeliveryStatus;
   lastErrorCode: string | null;
   createdAt: Date;

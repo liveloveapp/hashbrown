@@ -26,6 +26,7 @@ const canonicalUser = (content: string) =>
 
 function createRootState() {
   return {
+    recovery: rootReducers.recovery(undefined, initAction),
     interrupts: rootReducers.interrupts(undefined, initAction),
     agentState: rootReducers.agentState(undefined, initAction),
     agUiMessages: rootReducers.agUiMessages(undefined, initAction),
@@ -52,6 +53,7 @@ function reduceRoot(
   action: { type: string },
 ) {
   return {
+    recovery: rootReducers.recovery(state.recovery, action),
     interrupts: rootReducers.interrupts(state.interrupts, action),
     agentState: rootReducers.agentState(state.agentState, action),
     agUiMessages: rootReducers.agUiMessages(state.agUiMessages, action),
@@ -620,4 +622,50 @@ test('clears the last run usage and finish reason when the next run starts, on a
     expect(next.lastRunUsage).toBeUndefined();
     expect(next.lastRunFinishReason).toBeUndefined();
   }
+});
+
+test('loading stays true while a browser-tool turn is reserved before its handlers start', () => {
+  const store = createStore({ reducers: rootReducers, effects: [] });
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'browser-turn' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'browser-turn',
+      toolTurnId: 'reserved-tools',
+      toolCalls: [],
+    }),
+  );
+  store.dispatch(apiActions.generateMessageSuccess({ toolCalls: [] }));
+
+  const betweenRounds = store.read(selectIsLoading);
+  store.dispatch(
+    internalActions.logicalGenerationSettled({ generationId: 'browser-turn' }),
+  );
+  const completed = store.read(selectIsLoading);
+
+  expect(betweenRounds).toBe(true);
+  expect(completed).toBe(false);
+});
+
+test('a logical turn waiting for an interrupt is not reported as loading', () => {
+  const state = createRootState();
+  const waiting = {
+    ...state,
+    generationOwnership: {
+      ...state.generationOwnership,
+      generationId: 'waiting',
+    },
+    interrupts: {
+      ...state.interrupts,
+      pending: {
+        id: 'batch',
+        interrupts: [{ id: 'approval', reason: 'approval' }],
+      },
+    },
+  };
+
+  const loading = selectIsLoading(waiting);
+
+  expect(loading).toBe(false);
 });

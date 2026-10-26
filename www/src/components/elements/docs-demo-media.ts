@@ -1,5 +1,53 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'ui-chatbot-react': {
+    title: 'Read, propose, then apply.',
+    caption:
+      'Read a simulated light through a browser tool, review a trusted component, and apply the change before asking a follow-up.',
+    recording:
+      'Recorded through the checked React client with scripted HTTP AG-UI events. The browser tool, continuation, component renderer and local state are real. No live model or real device. Presentation styles added. No narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
+  'ui-chatbot-angular': {
+    title: 'Read, propose, then apply.',
+    caption:
+      'Read a simulated light through a browser tool, review a trusted component, and apply the change before asking a follow-up.',
+    recording:
+      'Recorded through the checked Angular client with scripted HTTP AG-UI events. The browser tool, continuation, component renderer and local state are real. No live model or real device. Presentation styles added. No narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
+  'json-parser-react': {
+    title: 'Read useful JSON before the stream ends.',
+    caption:
+      'Watch a forecast grow and alerts appear as their required fields resolve. Validate the finished document before treating it as complete.',
+    recording:
+      'Recorded through the checked React parser component with a finite local JSON stream. No model, weather service or API key is used. Presentation styles added. No narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
+  'json-parser-angular': {
+    title: 'Read useful JSON before the stream ends.',
+    caption:
+      'Watch a forecast grow and alerts appear as their required fields resolve. Validate the finished document before treating it as complete.',
+    recording:
+      'Recorded through the checked Angular parser component with a finite local JSON stream. No model, weather service or API key is used. Presentation styles added. No narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
+  'threadplane-react': {
+    title: 'Compose a React chat with Threadplane.',
+    caption:
+      'Send a product question and follow up through the installed Threadplane controls and Hashbrown runtime.',
+    recording:
+      'Recorded in the installed React consumer using the pinned Threadplane source packages and actual Hashbrown adapter. Provider-native responses are scripted locally. Presentation styles added. No live model call or narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
+  'threadplane-angular': {
+    title: 'Connect Angular chat to your endpoint.',
+    caption:
+      'Send a product question and follow up through Threadplane’s installed Angular chat and AG-UI adapter.',
+    recording:
+      'Recorded in the installed Angular consumer using published Threadplane packages and the actual Hashbrown adapter. Provider-native responses are scripted locally. Presentation styles added. No live model call or narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
   'request-transformation': {
     title: 'Add the context your server owns.',
     caption:

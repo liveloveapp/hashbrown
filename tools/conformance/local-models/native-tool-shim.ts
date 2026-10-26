@@ -5,9 +5,10 @@ export async function installNativeToolShim(
   page: Page,
   url: string,
   validIds = false,
+  holdFinalAfter?: string,
 ): Promise<void> {
   await page.addInitScript(
-    ({ url, validIds }) => {
+    ({ url, validIds, holdFinalAfter }) => {
       type Init = {
         callID: string;
         name: string;
@@ -74,14 +75,16 @@ export async function installNativeToolShim(
           lifecycle.push('created');
           const owned = new AbortController();
           let destroyed = false;
+          let history = [...options.initialPrompts];
           return {
             promptStreaming(
               prompts: Prompt[],
-              options2: { signal: AbortSignal },
+              options2: { signal: AbortSignal; responseConstraint?: object },
             ) {
               if (prompts.some((prompt) => prompt.role === 'system'))
                 throw new TypeError('System prompts belong in initialPrompts');
-              const all = [...options.initialPrompts, ...prompts];
+              const all = [...history, ...prompts];
+              history = all;
               const messages: object[] = [];
               canonical.push(
                 all.map((p) => ({
@@ -163,6 +166,17 @@ export async function installNativeToolShim(
                 model: 'native-tools-fixture',
                 stream: true,
                 messages,
+                ...(options2.responseConstraint
+                  ? {
+                      response_format: {
+                        type: 'json_schema',
+                        json_schema: {
+                          name: 'native_final_answer',
+                          schema: options2.responseConstraint,
+                        },
+                      },
+                    }
+                  : {}),
                 tools: options.tools.map((tool) => ({
                   type: 'function',
                   function: {
@@ -195,6 +209,7 @@ export async function installNativeToolShim(
                     { id: string; name: string; arguments: string }
                   >();
                   let buffer = '';
+                  let text = '';
                   while (true) {
                     const next = await reader.read();
                     if (next.done) break;
@@ -219,7 +234,30 @@ export async function installNativeToolShim(
                         }[];
                       };
                       for (const choice of chunk.choices) {
-                        if (choice.delta.content) yield choice.delta.content;
+                        if (choice.delta.content) {
+                          text += choice.delta.content;
+                          yield choice.delta.content;
+                          if (
+                            options2.responseConstraint &&
+                            holdFinalAfter &&
+                            text.includes(holdFinalAfter)
+                          ) {
+                            await new Promise<void>((resolve) => {
+                              const release = () => {
+                                signal.removeEventListener('abort', release);
+                                resolve();
+                              };
+                              Object.assign(globalThis, {
+                                __nativeToolReleaseFinal: release,
+                              });
+                              signal.addEventListener('abort', release, {
+                                once: true,
+                              });
+                              if (signal.aborted) release();
+                            });
+                            holdFinalAfter = undefined;
+                          }
+                        }
                         for (const call of choice.delta.tool_calls ?? []) {
                           const previous = calls.get(call.index) ?? {
                             id: '',
@@ -237,15 +275,26 @@ export async function installNativeToolShim(
                       }
                     }
                   }
-                  for (const call of calls.values())
+                  const parts: Part[] = text
+                    ? [{ type: 'text', value: text }]
+                    : [];
+                  for (const call of calls.values()) {
+                    const value = new LanguageModelToolCall({
+                      callID: validIds ? call.id : '',
+                      name: call.name,
+                      arguments: JSON.parse(call.arguments),
+                    });
+                    parts.push({ type: 'tool-call', value });
                     yield {
                       type: 'tool-call',
-                      value: new LanguageModelToolCall({
-                        callID: validIds ? call.id : '',
-                        name: call.name,
-                        arguments: JSON.parse(call.arguments),
-                      }),
+                      value,
                     };
+                  }
+                  if (!signal.aborted)
+                    history = [
+                      ...history,
+                      { role: 'assistant', content: parts },
+                    ];
                 } finally {
                   await reader?.cancel().catch(() => undefined);
                   reader?.releaseLock();
@@ -291,7 +340,7 @@ export async function installNativeToolShim(
         __nativeToolActive: () => active,
       });
     },
-    { url, validIds },
+    { url, validIds, holdFinalAfter },
   );
 }
 
@@ -357,7 +406,11 @@ export async function installNativeToolObserver(page: Page): Promise<void> {
       return {
         promptStreaming(input, promptOptions) {
           active.add(sessionId);
-          recordSession({ phase: 'prompt', input: serialize(input) });
+          recordSession({
+            phase: 'prompt',
+            input: serialize(input),
+            options: serialize(promptOptions),
+          });
           const reader = session
             .promptStreaming(input, promptOptions)
             .getReader();

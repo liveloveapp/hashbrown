@@ -111,12 +111,27 @@ export function prepareChromeToolDeclarations(
   return Object.freeze(tools.map((tool) => Object.freeze(tool)));
 }
 /** Translates authoritative canonical history without mutating it. @internal */
-export function prepareChromeToolMessages(input: RunAgentInput) {
+export function prepareChromeToolMessages(
+  input: RunAgentInput,
+  schemaFinalization = false,
+) {
   const extension = readHashbrownExtension(input);
-  if (extension?.responseSchema !== undefined || extension?.ui)
+  if (
+    !schemaFinalization &&
+    (extension?.responseSchema !== undefined || extension?.ui)
+  )
     throw chromeToolError(
       'Native tools do not support structured output or UI composition.',
     );
+  const responseSchema =
+    extension?.responseSchema === undefined
+      ? undefined
+      : chromeToolObject(extension.responseSchema);
+  if (
+    extension?.ui &&
+    (responseSchema as { type?: unknown } | undefined)?.type !== 'object'
+  )
+    throw chromeToolError('Native UI requires an object response schema.');
   const tools = prepareChromeToolDeclarations(input.tools);
   const calls = new Map<string, string>();
   const results = new Set<string>();
@@ -193,5 +208,5 @@ export function prepareChromeToolMessages(input: RunAgentInput) {
   }
   if (results.size !== calls.size)
     throw chromeToolError('Unresolved history tool calls.');
-  return { messages, tools, historyIds: [...calls.keys()] };
+  return { messages, tools, historyIds: [...calls.keys()], responseSchema };
 }

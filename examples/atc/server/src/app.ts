@@ -15,11 +15,12 @@ import { createRunHandler, type RunHandlerOptions } from './run-handler';
  */
 export function createApp(options: {
   run: RunHandlerOptions;
+  chatHandler?: NodeHandler;
   statics?: readonly { path: string; dir: string }[];
 }): Express {
   const app = express();
   const routes: [string, NodeHandler][] = [
-    ['/api/run', createRunHandler(options.run)],
+    ['/api/run', options.chatHandler ?? createRunHandler(options.run)],
     ['/api/filter', createFilterHandler(options.run)],
     ['/api/decide', createDecideHandler(process.env)],
     ['/api/aircraft', createAircraftHandler()],

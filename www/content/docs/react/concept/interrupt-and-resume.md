@@ -108,3 +108,13 @@ Changing to a different `threadId` retires local batch ownership and late callba
 Pending batches exist only within the live runtime. Page reloads and runtime recreation do not restore them. Saving the batch ID and form answers is not sufficient to restore the canonical checkpoint. Reusing an old thread ID does not recover its interrupt workflow.
 
 For shared checkpoint behavior, see [Shared Agent State](/docs/react/concept/shared-agent-state) and [Message History](/docs/react/concept/message-history).
+
+## Restore server-owned history
+
+`recovery` exposes a local `{ revision, required }` value (a signal in Angular). Capture its revision before an asynchronous authenticated lookup. `getRecoveryConfiguration()` synchronously returns owned current system text, native tool declarations and forwarded properties/schema without scheduling a run. Pass a compatible server-owned `ConversationSnapshot` to `restoreConversation(snapshot, { expectedRevision })` while idle. Invalid/stale data leaves the runtime unchanged; successful restoration clears obsolete errors and creates fresh local interrupt ownership without network or tool execution. Historical browser tools remain history on restoration and subsequent sends.
+
+Snapshots contain a stable thread ID, canonical native messages, optional shared state and complete interrupts, and configured-system provenance when applicable. Preserve the server's `configuredSystemMessageId` so the original trusted system overlay is adopted exactly once. Snapshots cannot install handlers, change schemas or replace trusted instructions. A saved local batch token is never authority.
+
+Keep the server's operational disposition separate from this runtime API: installing available history does not authorize another send or decision while the effect is busy or unknown. Invalidate lookup guards on thread changes and disposal, reject unknown envelope versions/statuses, and offer explicit refresh or a deliberate new thread. See the [authenticated .NET recovery recipe](/docs/react/platform/dotnet) for retained-history limits, UI guards and protected operator reconciliation.
+
+Native requests retain cancellation text but strip private runtime provenance. After a cold reload, structured/UI recovery cannot prove that this text is a runtime cancellation marker and rejects it if it does not match the configured response schema. Keep recovery blocked or deliberately start a new thread; do not remove messages, infer ownership from their text, or fabricate provenance. Plain-chat recovery retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.

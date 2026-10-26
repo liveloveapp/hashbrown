@@ -84,8 +84,36 @@ The suite checks structured output and nested UI across both frameworks and
 attaches JSON load/first-token/total timings, schema sizes and process RSS.
 Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
 more than once and does not measure unique GPU allocations. Tests use bounded,
-application-owned generation settings. WebLLM remains text-only in this adapter, and native typed tools remain
-unsupported. Chrome media input has a separate explicit opt-in described below.
+application-owned generation settings. WebLLM remains text-only in this adapter and rejects tools. Chrome native typed
+tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
+
+### Selecting a local Chrome model experiment
+
+`LOCAL_LLM_CHROME_MODEL_VERSION` accepts `default`, `v4`, or `v4_4b` for
+native Chrome text/capability, media, and tool/schema/UI targets. Omission keeps
+the original defaults: browser default for text/media, v4 for typed tools.
+Explicit `default` omits the foundational-model override while retaining tool
+interfaces when that target requests them. Unknown and empty values fail early.
+This is a browser experiment, not an SDK model-selection option.
+
+The tested v4 profile identifies `gemma4-2b-it`. The installed Chrome 155 manifest
+has a separate Gemma `v4_4b` route and a default Nano v3 route. Neither the word
+v4 nor an accepted flag establishes Gemini Nano 4B. Inspect the actual downloaded
+manifest and `chrome://on-device-internals` before naming a model. Missing
+experimental manifest keys can fall back to the browser default.
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_CHROME_MODEL_VERSION=v4_4b \
+  LOCAL_LLM_PROFILE=/absolute/path/separate-4b-test-profile \
+  npx nx local-native-tool-capability-smoke conformance
+```
+
+That command checks interfaces/availability only and does not download or infer.
+Normal download gates still apply; live workflow suites refuse downloads.
+Playwright metadata records the requested configuration and whether it applies
+to native execution; deterministic contracts and WebLLM do not qualify it.
+See the [current qualification report](../../docs/superpowers/research/2026-10-25-local-model-qualification.md)
+for model availability, release status, and current Ollama/WebLLM limitations.
 
 ### Chrome media input
 
@@ -302,6 +330,124 @@ not native multi-call identity correlation. See the
 for component versions and measurements. These raw probes do not run framework
 handlers or establish generative-UI/schema-plus-tools support.
 
+### Native tools with schema finalization
+
+`experimental_chrome_tools({ schemaFinalization: 'after-tool-planning' })`
+composes the existing structured chat schema with framework-owned native tools.
+Planning is unconstrained and its prose is private to the native session. Valid
+calls return to normal Hashbrown handlers; dependent calls can request more
+rounds. A call-free planning turn triggers one same-session constrained final
+prompt. Only final text reaches Skillet. Media composition remains unsupported,
+and the default native-tools factory still rejects schemas. The same opt-in also
+supports the component UI workflow below.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-schema-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-schema-workflow-smoke conformance
+```
+
+These cache-free targets inherit the native tools CI refusal and run one browser
+at a time. The live target uses the already downloaded v4 profile and refuses
+downloads. The actual React/Angular fixtures use `useStructuredChat` and
+`structuredChatResource`, real lookup/dependent handlers and hidden random
+tokens. Contracts cover phase constraints, exact schema consumption, rejected
+final tools/malformed output and Stop/recovery. The shim retains within-session
+history and forwards the constraint for inspection without enforcing or repairing
+model output. The native observer records actual prompt options and chunks.
+Reports are separate under `test-results/conformance/native-schema`.
+
+Capability reporting distinguishes the opt-in adapter policy from unverified
+inference. A passing exact-token sample does not prove arbitrary schema grammar
+support or model reliability. Never remove fences or weaken exact assertions to
+make a live result pass. Keep quality failures separate from lifecycle defects.
+
+### Native tools followed by component UI
+
+Use the same finalization policy with `useUiChat` or `uiChatResource` and your
+existing exposed components. Tools gather data first; the terminal response uses
+the exact generated component schema and streams through the existing parser and
+renderer. Components are not executable tools. UI requires an object response
+schema; default transport rejection and media restrictions remain.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-workflow-smoke conformance
+```
+
+These uncached targets inherit CI refusal and single-worker execution. The
+fixtures use real framework UI APIs and application-owned lookup/dependent
+tools. Contracts inspect phase constraints, exact tool data in actual DOM,
+canonical replay, malformed UI and cancellation/recovery. The shim can hold a
+terminal response mid-prop to verify fallback rendering before completion; it
+does not enforce or repair the model's schema. Evidence and reports are retained
+under `test-results/conformance/native-ui`.
+
+Each scenario offers a bounded catalog: lookup + status, dependent lookup/follow
++ status, lookup + status/panel for nesting, or status alone without tools. Tests
+assert the actual native tool declarations and exact terminal component schema,
+as well as exact handler operations and output. The fixture query
+`uiWorkflow=broad` retains the original broader catalog for research; qualification
+uses the scenario-specific `uiWorkflow` values.
+Two fixed production samples with these bounded declarations passed 2/8 then
+4/8; only the no-tools cases passed in both. Passing deterministic contracts
+does not establish native tool-driven UI reliability. Retain all model failures
+and keep the native quality gate separate from CI.
+
+Adapter capability `ui` follows the opt-in policy; inference remains unknown.
+Measure the exact component kit separately from a simple structured response.
+Bounded child composition does not establish unrestricted recursive-schema
+support. See the [dated research](../../docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
+for current measurements and limitations.
+
+### Application-controlled native UI phases
+
+Use `toolPhase(context)` with the existing schema-finalization opt-in to select
+exactly one tool or direct finalization from immutable current-turn results. Tool
+phases reject missing, repeated and out-of-phase calls before execution. The
+final phase permits zero executable calls. Chrome requires historical native
+declarations for typed replay, so finalization retains only names referenced by
+validated history, including previous turns; unused declarations are omitted.
+The final stream rejects every non-text chunk regardless of retained names.
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 npx nx local-native-ui-phase-contract-e2e conformance
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance
+```
+
+These targets opt into `LOCAL_LLM_APPLICATION_TOOL_PHASES=1`, are uncached, inherit
+the CI refusal and run one browser at a time. They retain separate reports under
+`test-results/conformance/native-ui-phases`. The model-led targets above remain
+separate. Contracts cover real React/Angular rendering, exact active/retained
+declarations, direct terminal schemas, raw output, replay, Stop/recovery and
+adversarial zero/repeated/out-of-phase calls. Private phase instructions append
+to the same native prompt after unchanged history and never enter canonical
+history. Native qualification includes both framework workflows and a subsequent
+user turn reusing typed history.
+
+The [phase research](../../docs/superpowers/research/2026-10-25-chrome-tool-phases.md)
+records the rejected zero-declaration replay and the separate exact-value failure
+in the compatibility alternative. A passing capability/replay probe is not proof
+of correct component output. Keep exact assertions and all native failures.
+Two predetermined phase samples each passed 8/10, with the same single-component
+cases passing in both (16/16). The full native command includes the still-failing
+nested canaries; they remain strict failures with raw evidence. One sample failed
+inside Chrome before tool execution; another rendered the wrong panel heading.
+Nested UI is not qualified by the passing deterministic contracts.
+The approved scope is the measured single-component lookup/dependent/no-tools/
+replay workflows. To run those cases explicitly, use:
+
+```sh
+NODE_ENV=production LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/tmp/hashbrown-native-tools-model-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance -- --grep-invert='native UI nested'
+```
+
+The unfiltered command above retains both nested research cases and currently
+returns failures for them. No assertion is weakened and no test is marked skipped
+or expected-to-fail. Qualification does not imply arbitrary prompt reliability.
+
 ### Native tools through actual framework handlers
 
 ```sh
@@ -346,6 +492,24 @@ occurred before tests; these results come from completed sequential or standalon
 runs. Existing warnings remain visible in logs. The installed-model workflow
 receipt-copy failures described above remain visible and keep that live quality
 suite from being green.
+
+### Explicit cancellation history follow-up
+
+Shared core now preserves a stopped or superseded user request with a factual
+runtime cancellation record before later model input. It keeps committed tool
+results and existing rollback behavior; the record is hidden from ordinary,
+structured, UI and streaming assistant projections. Exact metadata-free agent
+snapshot echoes preserve locally owned marker identity.
+
+The updated standard browser cancellation assertions passed in both frameworks
+(full suite 72/72), as did all 18 native aimock workflows and the final focused
+Stop contracts. Real v4 Stop/fresh-lookup cases now passed 2/2 with the exact
+original request, marker, new lookup and hidden token: both history and source
+boundary evidence flags were true, sessions balanced 3/3 and active readers
+returned to zero. This focused result does not regrade the historical ten-case
+quality suite above or imply constrained final text. Evidence and the approved
+policy are recorded in `docs/superpowers/research/2026-10-24-cancelled-turn-markers.md`.
+Local installed-model and native aimock targets remain outside CI.
 
 ## Model and schema measurements
 
@@ -396,3 +560,37 @@ npx nx local-webllm-smoke conformance
 ```
 
 This provides a collection entry point; Windows execution remains unverified.
+
+## .NET cold recovery and maintenance
+
+The .NET provider matrix uses genuine OpenAI and Azure clients with aimock at
+only the model boundary. `npx nx provider-e2e dotnet-conformance` builds the two
+browser hosts, compiles the exact eight recipe combinations and tests both
+frameworks/providers. Cold structured/UI cases exercise the source SDK's
+explicit historical-diagnostics restore policy. This opt-in is unreleased;
+0.8.1 consumers retain strict restoration. Tests preserve exact native history
+and require a new explicit approval after reload. Diagnostics are escaped text,
+not proof of cancellation ownership or permission to execute work.
+
+`npx nx test dotnet-conformance` includes real PostgreSQL retention tests. Set
+`DOTNET_TEST_POSTGRES` to an isolated test database or allow the fixtures to own
+a disposable PostgreSQL 18 container. The tests create unique schemas and
+remove only their own resources. Maintenance commits independently of admission,
+uses bounded row-locked batches and preserves unresolved post-effect metadata.
+
+To collect timing evidence for the original worker-restart case, set
+`DOTNET_RECOVERY_TIMINGS=1` and run:
+
+```sh
+npx nx provider-e2e dotnet-conformance \
+  --grep='reload after worker death' --repeat-each=5
+```
+
+Failed cases attach a `recovery-timeline` automatically. It contains one Node
+monotonic clock domain, opaque fixture span IDs, fixed phase/component fields
+and numeric HTTP statuses. Each case caps collection at 256 events and 32 spans
+and reports dropped counts. It adds no transcript, URL, exception text or
+credential capture. Compare route upstream headers, first bytes and browser
+response boundaries; `/health` proves process liveness, not provider readiness.
+Keep the original five-second assertion and zero retries when investigating.
+A repeat pass alone does not establish the cause of an earlier failure.

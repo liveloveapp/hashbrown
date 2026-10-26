@@ -14,6 +14,12 @@ meta:
 
 ---
 
+## Before we start
+
+Keep the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). We will extend its trusted-component setup. Read [Skillet schemas](/docs/angular/concept/schema) for the values each component accepts.
+
+The snippets below focus on the component API. `MarkdownComponent` represents a component in your application that accepts a string `data` input; its implementation is omitted here. For complete checked examples, use [UI Chatbot with Tools](/docs/angular/recipes/ui-chatbot) or [Magic Text](/docs/angular/recipes/magic-text), which renders streamed Markdown.
+
 ## The `exposeComponent()` Function
 
 The @hashbrownai/angular!exposeComponent:function function exposes Angular components to the LLM that can be generated.
@@ -364,7 +370,6 @@ Prefer rules over sample answers. A rule in a description lives next to the comp
 <img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
 
 The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
-
 
 ## Next Steps
 

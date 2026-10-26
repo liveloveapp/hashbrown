@@ -65,21 +65,17 @@ export function handlerErrorBackoffMs(attempts: number): number {
  */
 export const TICK_JOB_START_BUDGET_MS = 40_000;
 
-/** App jobs and admitted historical replies that still require settlement. */
+/**
+ * The job kinds a tick leases. Every one reads `GROWTH_PUBLIC_ACTION_ORIGIN`:
+ * `fulfill` and `send_step` build the unsubscribe link, `notify` and `digest`
+ * the founder links. While the origin is invalid nothing is leased.
+ */
 export const LEASED_KINDS = [
   'fulfill',
   'notify',
   'send_step',
-  'reply_reconcile',
   'digest',
 ] as const;
-
-/**
- * The only job kind that never reads `GROWTH_PUBLIC_ACTION_ORIGIN`. `fulfill`
- * and `send_step` build the unsubscribe link; `notify` and `digest` build the
- * founder links. While the origin is invalid only this kind is leased.
- */
-export const ORIGIN_FREE_KINDS = ['reply_reconcile'] as const;
 
 /** What one tick may do; the switches come from the lifecycle environment. */
 export interface LifecycleDispatcherInput {
@@ -251,6 +247,11 @@ async function submissionAuthorizationRecorded(
   return result.rows.length > 0;
 }
 
+/** Logs, by kind only, a job skipped because its lease was lost. */
+function logLeaseLost(job: GrowthJob): void {
+  console.warn('[lifecycle-job-lease-lost]', { kind: job.kind });
+}
+
 interface LeaseHeartbeat {
   stop: () => Promise<void>;
 }
@@ -275,8 +276,10 @@ function startLeaseHeartbeat(
           leaseToken,
           now: dependencies.now(),
         });
+        // The lease is gone: a stop or deletion cancelled the job, or the
+        // lease expired.
         if (!stopped && renewed === null) {
-          throw new Error('Lifecycle job lease renewal failed');
+          throw new JobLeaseConflictError(job.id);
         }
       })()
         .catch((error: unknown) => {
@@ -401,21 +404,24 @@ async function prepareTick(
  * materialization (then rescoring each enrolled contact), the Pacific-weekday
  * install digest enqueue, then a lease of up to `batchSize` due jobs that are
  * dispatched one at a time. If `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare
- * HTTPS origin the tick raises `action_origin_invalid` and leases only
- * {@link ORIGIN_FREE_KINDS}; before leasing, a completed send with no
+ * HTTPS origin the tick raises `action_origin_invalid` and leases nothing;
+ * before leasing, a completed send with no
  * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
- * while the tick runs; a failed renewal aborts the loop. A
+ * while the tick runs; a renewal that finds the lease gone (a stop or
+ * deletion cancelled the job, or the lease expired) stops that job's
+ * heartbeat and skips the job (logged as `[lifecycle-job-lease-lost]`),
+ * aborting its handler if it is running, while any other renewal error
+ * aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
  * (it is no longer ours); any other handler error defers the job
  * `min(60 × 2^(attempts − 1), 3600)` s with `handler_error` and the tick
  * carries on, and the job's 5th failure quarantines it
- * (`handler_error_exhausted`), except that a `reply_reconcile` job is never
- * exhausted (a failed-exhausted reply job is never revived by
- * `reconcileBoundMessage`, so its contact would never stop and later steps
- * would send; it keeps deferring at the capped backoff), and that a job whose lease already holds a
- * submission authorization stays leased (fail closed: the next lease fails
- * it as `worker_interrupted_after_authorization`); a `recovery_paused` job is deferred 60 s with
+ * (`handler_error_exhausted`). A job whose lease already holds a submission
+ * authorization is neither quarantined nor deferred, whatever the error: it
+ * stays leased (fail closed: the next lease fails it as
+ * `worker_interrupted_after_authorization`); a `recovery_paused` job
+ * (the Resend reply mailbox is unhealthy) is deferred 60 s with
  * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
  * since the tick began, no further job starts: each remaining leased job is
  * deferred to now with `tick_budget_exhausted` (and not counted as
@@ -426,7 +432,7 @@ async function prepareTick(
  * @param input - The batch size, switches and abort signal.
  * @param dependencies - The tick's collaborators.
  * @throws When the batch size or enrollment start is invalid, the tick is
- *   aborted, a lease renewal fails, or releasing a failed job fails.
+ *   aborted, a lease renewal errors, or releasing a failed job fails.
  */
 export async function dispatchLifecycleJobs(
   input: LifecycleDispatcherInput,
@@ -448,8 +454,8 @@ export async function dispatchLifecycleJobs(
       dependencies,
     );
     // A bad origin must not fail the tick: reconciliation, projection and
-    // enrollment above already ran, and only jobs that never read the
-    // origin are leased below.
+    // enrollment above already ran. Every leased kind reads the origin, so
+    // nothing is leased below.
     let originValid = true;
     try {
       dependencies.assertActionOrigin();
@@ -487,9 +493,11 @@ export async function dispatchLifecycleJobs(
         name: error instanceof Error ? error.name : 'Error',
       });
     }
-    if (budgetSpent(dependencies.now())) return withAlerts(0, 0);
+    if (!originValid || budgetSpent(dependencies.now())) {
+      return withAlerts(0, 0);
+    }
     const jobs = await dependencies.leaseDueJobs(executor, {
-      kinds: originValid ? [...LEASED_KINDS] : [...ORIGIN_FREE_KINDS],
+      kinds: [...LEASED_KINDS],
       now: dependencies.now(),
       batchSize,
       leaseDurationMs: LEASE_DURATION_MS,
@@ -505,10 +513,15 @@ export async function dispatchLifecycleJobs(
     };
     const signal = AbortSignal.any([input.signal, leaseFailure.signal]);
     const heartbeats = new Map<string, LeaseHeartbeat>();
+    // A lost lease concerns only its own job: that job is skipped (or its
+    // running handler aborted) and the rest of the batch carries on.
+    const leaseLost = new Map<string, AbortController>();
     for (const job of jobs) {
       if (!job.leaseToken) {
         throw new Error('Lifecycle leased job is missing its lease token');
       }
+      const lost = new AbortController();
+      leaseLost.set(job.id, lost);
       heartbeats.set(
         job.id,
         startLeaseHeartbeat(
@@ -516,7 +529,10 @@ export async function dispatchLifecycleJobs(
           job,
           job.leaseToken,
           dependencies,
-          failLease,
+          (error) => {
+            if (error instanceof JobLeaseConflictError) lost.abort(error);
+            else failLease(error);
+          },
         ),
       );
     }
@@ -525,6 +541,11 @@ export async function dispatchLifecycleJobs(
     try {
       for (const job of jobs) {
         signal.throwIfAborted();
+        const lost = (leaseLost.get(job.id) as AbortController).signal;
+        if (lost.aborted) {
+          logLeaseLost(job);
+          continue;
+        }
         const leaseToken = job.leaseToken as string;
         const startAt = dependencies.now();
         if (budgetExhausted || budgetSpent(startAt)) {
@@ -551,8 +572,7 @@ export async function dispatchLifecycleJobs(
         try {
           const result = await dependencies.dispatchLeasedJob(executor, job, {
             appHandlers: dependencies.appHandlers,
-            signal,
-            now: dependencies.now,
+            signal: AbortSignal.any([signal, lost]),
           });
           // Release a paused job before honouring an abort, so it is not
           // left leased until the lease expires.
@@ -571,8 +591,22 @@ export async function dispatchLifecycleJobs(
           dispatched += 1;
         } catch (error) {
           signal.throwIfAborted();
+          if (lost.aborted) {
+            logLeaseLost(job);
+            continue;
+          }
           if (error instanceof JobLeaseConflictError) continue;
+          // A job whose lease already authorized a submission may have
+          // reached the provider. Never quarantine or return it to pending:
+          // leave it leased so the lease expires and the next lease fails it
+          // as `worker_interrupted_after_authorization` for manual review.
+          const leftLeasedAfterAuthorization = async (): Promise<boolean> =>
+            dependencies.hasSubmissionAuthorization(executor, {
+              jobId: job.id,
+              leaseToken,
+            });
           if (error instanceof DeterministicLifecycleJobError) {
+            if (await leftLeasedAfterAuthorization()) continue;
             await dependencies.quarantineJob(executor, {
               errorCode: 'deterministic_job_poison',
               jobId: job.id,
@@ -592,25 +626,10 @@ export async function dispatchLifecycleJobs(
             kind: job.kind,
             name: error instanceof Error ? error.name : 'Error',
           });
-          // A job whose lease already authorized a submission may have
-          // reached the provider. Never return it to pending, which would
-          // authorize and send again: leave it leased so the lease expires
-          // and the next lease fails it as `worker_interrupted_after_authorization`
-          // for manual review.
-          if (
-            await dependencies.hasSubmissionAuthorization(executor, {
-              jobId: job.id,
-              leaseToken,
-            })
-          ) {
-            continue;
-          }
+          if (await leftLeasedAfterAuthorization()) continue;
           const now = dependencies.now();
           try {
-            if (
-              job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS &&
-              job.kind !== 'reply_reconcile'
-            ) {
+            if (job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS) {
               await dependencies.quarantineJob(executor, {
                 errorCode: 'handler_error_exhausted',
                 jobId: job.id,

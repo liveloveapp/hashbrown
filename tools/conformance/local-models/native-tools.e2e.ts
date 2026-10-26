@@ -28,13 +28,15 @@ test('native experimental typed tool interfaces are recognized without inference
     modelCreationAllowed: false,
     downloadAllowed: false,
     flag: 'chrome://flags/#prompt-api-tool-use',
-    featureFlags:
-      'AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4',
+    featureFlags: testInfo.project.use.launchOptions?.args,
     source:
       'https://github.com/chromium/chromium/blob/0e66b94549a8bd85f03fbdf189b752d6e7b63c32/chrome/browser/about_flags.cc#L4774',
   };
 
   try {
+    expect(report['featureFlags']).toEqual(
+      testInfo.project.use.launchOptions?.args,
+    );
     await page.goto('/?runUrl=http://127.0.0.1/unused&localModel=chrome');
     const probe = await page.evaluate(async () => {
       interface ToolValue {

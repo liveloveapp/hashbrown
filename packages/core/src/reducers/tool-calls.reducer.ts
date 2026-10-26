@@ -489,31 +489,35 @@ export const reducer = createReducer(
       committedLocalProvenance: localProvenance,
     };
   }),
-  on(devActions.setMessages, (state, action): ToolCallsState => {
-    const committed = toEntityState(
-      action.payload.localProjection?.toolCalls ??
-        projectAgUiMessages(
+  on(
+    devActions.setMessages,
+    devActions.restoreConversation,
+    (state, action): ToolCallsState => {
+      const committed = toEntityState(
+        action.payload.localProjection?.toolCalls ??
+          projectAgUiMessages(
+            action.payload.canonicalMessages,
+            action.payload.toolsByName ?? {},
+          ).toolCalls,
+      );
+      return {
+        ...committed,
+        committed,
+        draft: empty,
+        attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
+        canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+        committedCanonicalIds: ɵindexAgUiCanonicalIds(
           action.payload.canonicalMessages,
-          action.payload.toolsByName ?? {},
-        ).toolCalls,
-    );
-    return {
-      ...committed,
-      committed,
-      draft: empty,
-      attemptActive: false,
-      activeToolCallId: undefined,
-      activeToolCallName: undefined,
-      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
-      committedCanonicalIds: ɵindexAgUiCanonicalIds(
-        action.payload.canonicalMessages,
-      ),
-      localProvenance: createLocalProvenance(action.payload.localProjection),
-      committedLocalProvenance: createLocalProvenance(
-        action.payload.localProjection,
-      ),
-    };
-  }),
+        ),
+        localProvenance: createLocalProvenance(action.payload.localProjection),
+        committedLocalProvenance: createLocalProvenance(
+          action.payload.localProjection,
+        ),
+      };
+    },
+  ),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
     const preparedProjection = readPreparedProjection(action);
     const expected = new Map(

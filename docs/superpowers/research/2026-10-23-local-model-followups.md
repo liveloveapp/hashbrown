@@ -1,5 +1,10 @@
 # Local model capability follow-ups
 
+Current status: native tools, schema finalization and application-controlled
+component UI phases have since merged. This document preserves the October 23
+snapshot; see [October 25 qualification](2026-10-25-local-model-qualification.md)
+for current release, model and upstream follow-ups.
+
 Status: PR #733 merged after green CI at `9b4ef137062e0fc9cc397fb0654b73d443384dd4`.
 The evidence below is the retained October 23 snapshot. On October 24 the user
 authorized v4, the download completed, and eight native typed success/error/history
