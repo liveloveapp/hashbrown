@@ -79,3 +79,128 @@ test('case deadline aborts and drains its owned callback before throwing a blank
 
   expect(events).toEqual(['aborted', 'drained']);
 });
+
+test('native completion barrier ignores old idle UI and dispatched wire until the fresh native iterator completes', async () => {
+  const { waitForLiveNativeCompletion } =
+    await import('../harness/live-browser-fixture');
+  const wire = {
+    method: 'POST',
+    path: '/v1/responses',
+    status: 200,
+    authentication: 'bearer',
+    maxOutputTokens: 384,
+    store: false,
+  };
+  const old = {
+    calls: 1,
+    httpCalls: 1,
+    cancelledCalls: 1,
+    inputTokens: 0,
+    outputTokens: 0,
+    stage: 'completed',
+    wire: [wire],
+  };
+  const streaming = {
+    ...old,
+    calls: 2,
+    httpCalls: 2,
+    stage: 'streaming',
+    wire: [wire, wire],
+  };
+  const completed = {
+    ...streaming,
+    stage: 'completed',
+    inputTokens: 10,
+    outputTokens: 3,
+  };
+  let streamingRead!: () => void;
+  let heldRead!: () => void;
+  let release!: () => void;
+  const observedStreaming = new Promise<void>((done) => {
+    streamingRead = done;
+  });
+  const held = new Promise<void>((done) => {
+    heldRead = done;
+  });
+  const gate = new Promise<void>((done) => {
+    release = done;
+  });
+  let reads = 0;
+  const fixture = {
+    stats: async () => {
+      if (reads++ === 0) return old;
+      if (reads === 2) {
+        streamingRead();
+        return streaming;
+      }
+      heldRead();
+      await gate;
+      return completed;
+    },
+  };
+  const completion = waitForLiveNativeCompletion(fixture, 2);
+
+  try {
+    expect(
+      await Promise.race([
+        completion.then(() => 'completed'),
+        observedStreaming.then(() => 'streaming'),
+      ]),
+    ).toBe('streaming');
+    expect(
+      await Promise.race([
+        completion.then(() => 'completed'),
+        held.then(() => 'held'),
+      ]),
+    ).toBe('held');
+    release();
+    const actual = await completion;
+
+    expect(actual).toMatchObject({
+      calls: 2,
+      httpCalls: 2,
+      stage: 'completed',
+      outputTokens: 3,
+    });
+  } finally {
+    release();
+    await completion;
+  }
+});
+
+test('native completion assertion passes its deadline to the actual metadata request', async () => {
+  const { waitForLiveNativeCompletion } =
+    await import('../harness/live-browser-fixture');
+  let observed: AbortSignal | undefined;
+  const stats = {
+    calls: 1,
+    httpCalls: 1,
+    cancelledCalls: 0,
+    inputTokens: 1,
+    outputTokens: 1,
+    stage: 'completed',
+    wire: [
+      {
+        method: 'POST',
+        path: '/v1/responses',
+        status: 200,
+        authentication: 'bearer',
+        maxOutputTokens: 384,
+        store: false,
+      },
+    ],
+  };
+
+  await waitForLiveNativeCompletion(
+    {
+      stats: async (signal?: AbortSignal) => {
+        observed = signal;
+        return stats;
+      },
+    },
+    1,
+  );
+
+  expect(observed).toBeInstanceOf(AbortSignal);
+  expect(observed?.aborted).toBe(false);
+});

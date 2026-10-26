@@ -5,6 +5,7 @@ import {
   type LiveBrowserFixture,
   withLiveBrowserFixture,
   withSafeLiveCase,
+  waitForLiveNativeCompletion,
 } from '../harness/live-browser-fixture';
 
 type Group = (typeof LIVE_BUDGET_MANIFEST.groups)[number]['name'];
@@ -55,8 +56,12 @@ async function open(
 }
 
 /** Checks real native wire records after completion without retaining native bodies or values. */
-async function expectWire(fixture: LiveBrowserFixture, calls: number) {
-  const stats = await fixture.stats();
+async function expectWire(
+  page: Page,
+  fixture: LiveBrowserFixture,
+  calls: number,
+) {
+  const stats = await waitForLiveNativeCompletion(fixture, calls);
 
   expect(stats.calls).toBe(calls);
   expect(stats.httpCalls).toBe(calls);
@@ -70,6 +75,9 @@ async function expectWire(fixture: LiveBrowserFixture, calls: number) {
     expect(request.maxOutputTokens).toBeLessThanOrEqual(384);
     expect(request.store).toBe(false);
   }
+  const driver = createAppDriver(page);
+  await driver.expectIdle();
+  await expect(driver.error()).toBeEmpty();
 }
 
 /** Reads fixed fixture effect counters without adding provider dispatch. */
@@ -100,7 +108,7 @@ test('streaming-plain', async ({ page }, info) => {
     await fixture.release();
     await driver.expectIdle();
     await expect(driver.error()).toBeEmpty();
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
   });
 });
 
@@ -117,7 +125,7 @@ test('structured-schema', async ({ page }, info) => {
     await expect(driver.structuredCount()).toHaveText('2');
     await driver.expectIdle();
     await expect(driver.error()).toBeEmpty();
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
   });
 });
 
@@ -135,7 +143,7 @@ test('trusted-ui-action', async ({ page }, info) => {
     await expect(driver.error()).toBeEmpty();
     await page.getByTestId('status-action').click();
     await expect(page.getByTestId('status-action-count')).toHaveText('1');
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
   });
 });
 
@@ -153,7 +161,7 @@ test('browser-tool', async ({ page }, info) => {
     await expect(driver.assistant()).not.toBeEmpty();
     await expect(driver.error()).toBeEmpty();
     expect(await effects(fixture)).toMatchObject({ server: 0, protected: 0 });
-    await expectWire(fixture, 2);
+    await expectWire(page, fixture, 2);
   });
 });
 
@@ -171,7 +179,7 @@ test('server-tool', async ({ page }, info) => {
     await expect(driver.toolCount()).toHaveText('0');
     await expect(driver.error()).toBeEmpty();
     expect(await effects(fixture)).toMatchObject({ server: 1, protected: 0 });
-    await expectWire(fixture, 2);
+    await expectWire(page, fixture, 2);
   });
 });
 
@@ -219,7 +227,7 @@ test('approval-resume-decline', async ({ page }, info) => {
       protected: 1,
       protectedCode: 'PDX',
     });
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
 
     await page.reload();
     await page.getByTestId('refresh-recovery').click();
@@ -227,7 +235,7 @@ test('approval-resume-decline', async ({ page }, info) => {
     await expect(page.getByTestId('recovery-status')).toHaveText('Completed');
     await expect(page.getByTestId('interrupt-count')).toHaveText('0');
     expect(await effects(fixture)).toMatchObject({ protected: 1 });
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
     await page.getByTestId('new-thread').click();
     await driver.send(
       'This separate action must be declined before any model call.',
@@ -237,7 +245,7 @@ test('approval-resume-decline', async ({ page }, info) => {
     await driver.expectIdle();
     await expect(page.getByTestId('interrupt-count')).toHaveText('0');
     expect(await effects(fixture)).toMatchObject({ protected: 1 });
-    await expectWire(fixture, 1);
+    await expectWire(page, fixture, 1);
   });
 });
 
@@ -258,14 +266,21 @@ test('cancellation-recovery', async ({ page }, info) => {
     await expect
       .poll(async () => (await fixture.stats()).cancelledCalls)
       .toBe(1);
+    const oldThread = await page.getByTestId('recovery-thread').textContent();
     await page.getByTestId('new-thread').click();
-    await driver.send(
-      'Reply with one short friendly sentence about a quiet forest.',
+    await expect(page.getByTestId('recovery-thread')).not.toHaveText(
+      oldThread ?? '',
     );
-    await driver.expectIdle();
+    await expect(page.getByTestId('recovery-thread')).not.toBeEmpty();
+    await expect(driver.assistant()).toBeEmpty();
+    const recoveryPrompt =
+      'Reply with one short friendly sentence about a quiet forest.';
+    await driver.send(recoveryPrompt);
+    await expect(driver.userMessage()).toHaveText(recoveryPrompt);
+    await expectWire(page, fixture, 2);
     await expect(driver.assistant()).not.toBeEmpty();
+    await driver.expectIdle();
     await expect(driver.error()).toBeEmpty();
     expect(await effects(fixture)).toMatchObject({ server: 0, protected: 0 });
-    await expectWire(fixture, 2);
   });
 });

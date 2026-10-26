@@ -1,3 +1,4 @@
+import { setTimeout as pollDelay } from 'node:timers/promises';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 import { LIVE_PROJECTS } from './live-configuration';
 
@@ -31,7 +32,7 @@ export interface LiveNativeStats {
 /** Node-owned fixture capability; no provider credentials enter the browser worker. */
 export interface LiveBrowserFixture {
   readonly url: string;
-  readonly stats: () => Promise<LiveNativeStats>;
+  readonly stats: (requestSignal?: AbortSignal) => Promise<LiveNativeStats>;
   readonly release: () => Promise<void>;
 }
 
@@ -163,6 +164,46 @@ function nativeStats(value: unknown): LiveNativeStats {
   });
 }
 
+/** Waits within the existing assertion bound for the exact fresh native invocation to finish enumeration. */
+export async function waitForLiveNativeCompletion(
+  fixture: Pick<LiveBrowserFixture, 'stats'>,
+  calls: number,
+): Promise<LiveNativeStats> {
+  const signal = AbortSignal.timeout(10_000);
+  while (!signal.aborted) {
+    let stats: LiveNativeStats;
+    try {
+      stats = await fixture.stats(signal);
+    } catch {
+      throw new Error(
+        signal.aborted
+          ? 'LIVE_NATIVE_COMPLETION_TIMEOUT'
+          : 'LIVE_NATIVE_COMPLETION_FAILED',
+      );
+    }
+    if (signal.aborted) throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
+    if (
+      stats.stage === 'completed' &&
+      stats.calls === calls &&
+      stats.httpCalls === calls &&
+      stats.wire.length === calls
+    )
+      return stats;
+    if (
+      stats.stage === 'failed' ||
+      stats.calls > calls ||
+      (stats.stage === 'cancelled' && stats.calls >= calls)
+    )
+      throw new Error('LIVE_NATIVE_COMPLETION_FAILED');
+    try {
+      await pollDelay(20, undefined, { signal });
+    } catch {
+      throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
+    }
+  }
+  throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
+}
+
 /** Starts and drains one fixed project/group through the runner's credential-owning coordinator. */
 export async function withLiveBrowserFixture<T>(
   project: string,
@@ -199,9 +240,13 @@ export async function withLiveBrowserFixture<T>(
     const url = loopbackOrigin(selected.url);
     const fixture = Object.freeze({
       url,
-      stats: async () => {
+      stats: async (requestSignal?: AbortSignal) => {
         const response = await fetch(`${url}/__test/live-stats`, {
-          signal: AbortSignal.any([signal, AbortSignal.timeout(5_000)]),
+          signal: AbortSignal.any([
+            signal,
+            AbortSignal.timeout(5_000),
+            ...(requestSignal ? [requestSignal] : []),
+          ]),
         });
         if (!response.ok) throw new Error('LIVE_STATS_FAILED');
         return nativeStats(await response.json());
