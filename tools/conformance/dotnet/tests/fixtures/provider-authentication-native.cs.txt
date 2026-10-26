@@ -1,0 +1,174 @@
+using Azure;
+using Azure.Core;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using System.Text.Json;
+
+foreach (var api in new[] { "responses", "chat-completions" })
+foreach (var mode in new[] { "azure-cli", "managed-identity" })
+{
+    Console.WriteLine($"request {api}/{mode}");
+    var credential = new ProbeCredential(api == "chat-completions");
+    var handler = new LogicalHttpsHandler();
+    using var http = new HttpClient(handler);
+    ProviderAuthentication? selected = null;
+    var values = Configuration(api, mode);
+    if (mode == "managed-identity") values["ManagedIdentityClientId"] = "trusted-user-client";
+    using var client = ProviderFactory.Create(Build(values), new ProviderClientComposition(auth => { selected = auth; return credential; }, http));
+
+    var first = await client.GetResponseAsync("synthetic fixture");
+    var options = new ChatOptions
+    {
+        ResponseFormat = ChatResponseFormat.ForJsonSchema(JsonSerializer.SerializeToElement(new
+        {
+            type = "object", additionalProperties = false, required = new[] { "answer" },
+            properties = new { answer = new { type = "string" } }
+        }), "fixture_schema"),
+        Tools = [AIFunctionFactory.Create((string city) => city, "fixture_weather")]
+    };
+    var second = await client.GetResponseAsync(new[]
+    {
+        new ChatMessage(ChatRole.User, "synthetic fixture"),
+        new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call_native", "fixture_weather", new Dictionary<string, object?> { ["city"] = "Paris" })]),
+        new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call_native", "Sunny")])
+    }, options);
+
+    Check(first.Text == "ok" && second.Text == "ok", "Actual native response was not consumed.");
+    Check(selected?.Mode == mode && selected.ManagedIdentityClientId == values.GetValueOrDefault("ManagedIdentityClientId"), "Trusted selector changed.");
+    Check(credential.Calls == 2, "Same client must reacquire the fake credential on request two.");
+    Check(handler.Requests.Count == 2, "Native retries must remain disabled.");
+    Check(handler.Requests[0].Bearer == "Bearer fake-token-1" && handler.Requests[1].Bearer == "Bearer fake-token-2", "Same client failed A/B renewal.");
+    var scope = api == "responses" ? "https://ai.azure.com/.default" : "https://cognitiveservices.azure.com/.default";
+    Check(credential.Scopes.All(scopes => scopes.SequenceEqual(new[] { scope })), "Native scope changed.");
+    Check(handler.Requests[1].Body.Contains("fixture_schema") && handler.Requests[1].Body.Contains("fixture_weather") &&
+        handler.Requests[1].Body.Contains("call_native") && handler.Requests[1].Body.Contains("Sunny"), "Native schema or paired tool continuation was lost.");
+    foreach (var request in handler.Requests)
+    {
+        Check(!request.ApiKey, "Identity request leaked api-key authentication.");
+        Check(request.Uri.Scheme == "https", "Native policy did not observe logical HTTPS.");
+        Check(request.Uri.AbsolutePath == (api == "responses" ? "/openai/v1/responses" : "/openai/deployments/deployment/chat/completions"), "Native path changed.");
+        using var body = JsonDocument.Parse(request.Body);
+        if (api == "responses") Check(body.RootElement.GetProperty("store").GetBoolean() == false, "Responses lost stateless behavior.");
+    }
+}
+foreach (var api in new[] { "responses", "chat-completions" })
+foreach (var cancel in new[] { false, true })
+{
+    Console.WriteLine($"failure {api}/cancel={cancel}");
+    var credential = new ProbeCredential(false) { Fail = !cancel, WaitForCancellation = cancel };
+    var handler = new LogicalHttpsHandler();
+    using var http = new HttpClient(handler);
+    var values = Configuration(api, "azure-cli");
+    values["ApiKey"] = "must-never-fall-back";
+    using var client = ProviderFactory.Create(Build(values), new ProviderClientComposition(_ => credential, http));
+    using var cancellation = new CancellationTokenSource();
+    var failed = false;
+
+    var canceller = cancel ? Task.Run(async () =>
+    {
+        await credential.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        cancellation.Cancel();
+    }) : Task.CompletedTask;
+    var pending = client.GetResponseAsync("synthetic fixture", cancellationToken: cancellation.Token);
+    await canceller;
+    if (cancel && api == "chat-completions")
+    {
+        Check(!credential.RequestTokenCanBeCanceled && !pending.IsCompleted, "Legacy shared-cache cancellation behavior changed; review this bounded probe.");
+        credential.Release.TrySetResult();
+    }
+    try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+    catch (TimeoutException) { throw new Exception($"Native cancellation did not finish: {api}/cancel={cancel}."); }
+    catch (OperationCanceledException) when (cancel) { failed = true; }
+    catch (InvalidOperationException) when (!cancel) { failed = true; }
+
+    Check(failed && credential.Calls == 1, "Selected credential failure was not propagated.");
+    Check(handler.Requests.Count == 0, "Failure/cancellation performed upstream HTTP or key fallback.");
+}
+foreach (var api in new[] { "responses", "chat-completions" })
+{
+    var values = Configuration(api, "azure-cli");
+    values["ApiKey"] = "must-never-fall-back";
+    var handler = new LogicalHttpsHandler();
+    using var http = new HttpClient(handler);
+    var rejected = false;
+
+    try { using var client = ProviderFactory.Create(Build(values), new ProviderClientComposition(_ => null!, http)); }
+    catch (InvalidOperationException) { rejected = true; }
+
+    Check(rejected && handler.Requests.Count == 0, "Null token credential must fail closed before key fallback.");
+}
+foreach (var cancelledCredential in new[] { false, true })
+{
+    var credential = new ProbeCredential(false) { FailWithCancellation = cancelledCredential };
+    var handler = new LogicalHttpsHandler();
+    using var http = new HttpClient(handler);
+    using var client = ProviderFactory.Create(Build(Configuration("chat-completions", "managed-identity")), new ProviderClientComposition(_ => credential, http));
+    using var cancellation = new CancellationTokenSource();
+    if (!cancelledCredential) cancellation.Cancel();
+    var rejected = false;
+
+    try { await client.GetResponseAsync("synthetic fixture", cancellationToken: cancellation.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
+    catch (OperationCanceledException) { rejected = true; }
+
+    Check(rejected && handler.Requests.Count == 0, "Canceled identity operation dispatched HTTP.");
+    // The native legacy shared token cache invokes the credential even for a pre-canceled caller.
+    Check(credential.Calls == 1, "Legacy cache acquisition behavior changed; review cancellation evidence.");
+}
+Console.WriteLine("Native authentication requests passed.");
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+static Dictionary<string, string?> Configuration(string api, string mode) => new()
+{
+    ["Provider"] = "azure", ["ModelApi"] = api, ["AzureAuthentication"] = mode,
+    ["ModelEndpoint"] = "https://fixture.example/", ["Model"] = "deployment"
+};
+static IConfiguration Build(Dictionary<string, string?> values) => new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+sealed class ProbeCredential(bool firstExpired) : TokenCredential
+{
+    public int Calls { get; private set; }
+    public bool Fail { get; init; }
+    public bool WaitForCancellation { get; init; }
+    public bool FailWithCancellation { get; init; }
+    public bool RequestTokenCanBeCanceled { get; private set; }
+    public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public List<string[]> Scopes { get; } = [];
+    public override AccessToken GetToken(TokenRequestContext context, CancellationToken cancellationToken) => GetTokenAsync(context, cancellationToken).AsTask().GetAwaiter().GetResult();
+    public override async ValueTask<AccessToken> GetTokenAsync(TokenRequestContext context, CancellationToken cancellationToken)
+    {
+        Calls++;
+        Scopes.Add(context.Scopes);
+        RequestTokenCanBeCanceled = cancellationToken.CanBeCanceled;
+        Started.TrySetResult();
+        if (WaitForCancellation)
+        {
+            if (cancellationToken.CanBeCanceled) await Release.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+            else await Release.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        if (FailWithCancellation) throw new OperationCanceledException(new CancellationToken(true));
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Fail) throw new InvalidOperationException("Synthetic credential failure.");
+        return new AccessToken("fake-token-" + Calls, firstExpired && Calls == 1 ? DateTimeOffset.UtcNow.AddMinutes(-1) : DateTimeOffset.UtcNow.AddHours(1));
+    }
+}
+sealed record CapturedRequest(Uri Uri, string? Bearer, bool ApiKey, string Body);
+sealed class LogicalHttpsHandler : HttpMessageHandler
+{
+    public List<CapturedRequest> Requests { get; } = [];
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Requests.Add(new(request.RequestUri!, request.Headers.Authorization?.ToString(), request.Headers.Contains("api-key"), await request.Content!.ReadAsStringAsync(cancellationToken)));
+        var loopback = Environment.GetEnvironmentVariable("AUTH_PROBE_LOOPBACK") ?? throw new Exception("Missing loopback fixture.");
+        using var forwarded = new HttpRequestMessage(request.Method, new Uri(new Uri(loopback), request.RequestUri!.PathAndQuery))
+        {
+            Content = new ByteArrayContent(await request.Content!.ReadAsByteArrayAsync(cancellationToken))
+        };
+        foreach (var header in request.Headers) forwarded.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        foreach (var header in request.Content.Headers) forwarded.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        using var inner = new HttpClient();
+        return await inner.SendAsync(forwarded, cancellationToken);
+    }
+}
