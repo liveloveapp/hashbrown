@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 import conformance from './conformance.playwright.config';
+import { localChromeLaunch } from './harness/local-chrome-launch';
 
 if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
   throw new Error(
@@ -10,8 +11,22 @@ if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
 const native = process.env['LOCAL_LLM_MEDIA_NATIVE'] === '1';
 const mode = native ? 'native' : 'shim';
 
+const chrome = localChromeLaunch({
+  tools: false,
+  modelVersion: process.env['LOCAL_LLM_CHROME_MODEL_VERSION'],
+});
+
 export default defineConfig({
   ...conformance,
+  metadata: {
+    ...conformance.metadata,
+    localChromeExperiment: {
+      applicable: native,
+      requestedModelVersion: chrome.modelVersion,
+      toolInterfaces: false,
+      note: 'Requested browser configuration; not verified loaded model identity or inference quality.',
+    },
+  },
   testDir: resolve(__dirname, 'local-models'),
   testMatch: 'media.e2e.ts',
   outputDir: resolve(
@@ -38,14 +53,7 @@ export default defineConfig({
       ? {
           channel: 'chrome',
           headless: false,
-          launchOptions: {
-            args: ['--disable-features='],
-            ignoreDefaultArgs: [
-              '--disable-component-update',
-              '--disable-background-networking',
-              '--disable-field-trial-config',
-            ],
-          },
+          launchOptions: chrome.launchOptions,
         }
       : {}),
   },
