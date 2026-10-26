@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
+import type { StableModelRouter } from './stable-model-router';
 import type { createEventGate } from '../../harness/event-gate';
 import {
   recoveryRequestRecorder,
@@ -43,6 +44,7 @@ export async function withDotnetFixture<T>(
   workflow = '',
   streamControl?: ModelStreamControl,
   environment: Readonly<Record<string, string>> = {},
+  modelRouter?: StableModelRouter,
 ): Promise<T> {
   const workerTrace = traceRecoveryRequest('worker');
   const beginModelTrace = recoveryRequestRecorder('model');
@@ -109,9 +111,15 @@ export async function withDotnetFixture<T>(
           const data = frame.toString('utf8').match(/^data:\s*(\{.*\})/m)?.[1];
           if (data) {
             const payload = JSON.parse(data) as {
+              type?: string;
+              delta?: string;
               choices?: Array<{ delta?: { content?: string } }>;
             };
-            characters += payload.choices?.[0]?.delta?.content?.length ?? 0;
+            characters +=
+              payload.type === 'response.output_text.delta' &&
+              typeof payload.delta === 'string'
+                ? payload.delta.length
+                : (payload.choices?.[0]?.delta?.content?.length ?? 0);
           }
           if (!paused && characters >= streamControl.pauseAfter) {
             paused = true;
@@ -132,6 +140,8 @@ export async function withDotnetFixture<T>(
   proxy.listen(0, '127.0.0.1');
   await once(proxy, 'listening');
   const modelUrl = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
+  const route = modelRouter?.register(modelUrl);
+  const endpoint = route?.endpoint ?? modelUrl;
   const child = spawn(
     process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
     [resolve('dist/tools/conformance/dotnet/Hashbrown.Conformance.dll')],
@@ -140,12 +150,12 @@ export async function withDotnetFixture<T>(
         ...process.env,
         ASPNETCORE_URLS: 'http://127.0.0.1:0',
         Provider: provider,
-        ModelEndpoint: provider === 'openai' ? `${modelUrl}/v1` : modelUrl,
+        ModelEndpoint: provider === 'openai' ? `${endpoint}/v1` : endpoint,
         Model:
           provider === 'openai'
             ? 'fixture-openai-model'
             : 'fixture-azure-deployment',
-        ApiKey: 'fixture-only',
+        ApiKey: route?.apiKey ?? 'fixture-only',
         Workflow: workflow,
         ...environment,
       },
@@ -224,6 +234,7 @@ export async function withDotnetFixture<T>(
       await exited;
       clearTimeout(force);
     }
+    route?.dispose();
     proxy.closeAllConnections();
     await new Promise<void>((resolveClose) =>
       proxy.close(() => resolveClose()),

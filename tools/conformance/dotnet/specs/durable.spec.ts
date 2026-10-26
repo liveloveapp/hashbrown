@@ -6,7 +6,7 @@ import {
   durableEffects,
   waitForStage,
   withDurableCluster,
-} from '../harness/durable-fixture';
+} from '../harness/browser-fixture';
 
 test('a live browser resumes its durable batch on another instance after restart', async ({
   page,

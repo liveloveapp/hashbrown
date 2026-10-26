@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
-import { withDotnetFixture } from '../harness/http-fixture';
+import { projectModelApi, withDotnetFixture } from '../harness/browser-fixture';
+import {
+  expectNativeSchema,
+  expectNativeToolPairs,
+} from '../harness/native-wire';
 import { createEventGate } from '../../harness/event-gate';
 
 test('renders partial text before the native model finishes', async ({
@@ -91,12 +95,11 @@ for (const scenario of ['structured', 'ui'] as const) {
       else await expect(driver.statusCard()).toHaveText('Ready: 2');
       await driver.expectIdle();
       await expect(driver.error()).toBeEmpty();
-      expect(fixture.requests[0].body.response_format).toMatchObject({
-        json_schema: {
-          schema: inputs[0].forwardedProps?.hashbrown?.responseSchema,
-          strict: true,
-        },
-      });
+      expectNativeSchema(
+        fixture.requests[0],
+        projectModelApi(),
+        inputs[0].forwardedProps?.hashbrown?.responseSchema,
+      );
     });
   });
 }
@@ -478,20 +481,24 @@ test('does not replay an earlier server effect across browser tool and confirmat
         await (await fetch(`${fixture.url}/__test/counters`)).json(),
       ).toMatchObject({ server: 1, protected: 1 });
       expect(fixture.requests).toHaveLength(3);
-      const finalHistory = fixture.requests[2].body.messages as Array<{
-        role: string;
-        tool_call_id?: string;
-      }>;
-      expect(
-        finalHistory.filter(
-          (message) => message.tool_call_id === 'historical-server',
-        ),
-      ).toHaveLength(1);
-      expect(
-        finalHistory.filter(
-          (message) => message.tool_call_id === 'historical-browser',
-        ),
-      ).toHaveLength(1);
+      expectNativeToolPairs(fixture.requests[2], projectModelApi(), [
+        {
+          id: 'historical-server',
+          name: 'lookupAirport',
+          arguments: '{"code":"PDX"}',
+          output: JSON.stringify(
+            { code: 'PDX', name: 'Portland International Airport' },
+            null,
+            2,
+          ),
+        },
+        {
+          id: 'historical-browser',
+          name: 'getWeather',
+          arguments: '{"city":"Paris"}',
+          output: '{"city":"Paris","temperatureC":21,"condition":"sunny"}',
+        },
+      ]);
     },
     'after-tool',
   );
