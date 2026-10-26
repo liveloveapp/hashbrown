@@ -2,68 +2,64 @@
 title: 'System instructions: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Give the assistant a clear task, useful context, and a response style.'
+    content: 'Separate user requests, browser configuration, and server-owned policy at the actual provider boundary.'
 ---
 
 # System instructions
 
-System instructions describe what we want the assistant to do throughout a conversation. In our onboarding example, we ask it to be friendly and keep each reply to one sentence.
+System instructions describe the assistant's task across a conversation. The user message asks for the work we want in the current turn. Let's inspect both while we explain our two-step plan.
 
-<hb-docs-demo demo="conversation">
+<hb-docs-demo demo="canonical-workbench-system-instructions-angular">
 </hb-docs-demo>
 
-## Before we start
+Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The recording follows the real Angular text-chat API and OpenAI adapter.
 
-Use the working text-chat example from [Messages and turns](/docs/angular/concept/ai-basics). It already has a server endpoint, provider configuration, and a place to send a message.
+## Inspect the instruction that reaches the provider
+
+Start the [workbench](/docs/angular/start/workbench), then open `http://127.0.0.1:4370/angular.html?lesson=system-instructions`.
+
+1. Send **First prompt** to ask for the application plan.
+2. In **Instructions**, compare the browser declaration with the effective public policy.
+3. Send **Follow-up** to ask for the first step. Inspect the policy captured for this new request.
+4. Step back through the timeline. The selected request, text, policy evidence, and state update together. Replay does not call the provider.
+
+The browser deliberately declares a different task:
+
+<hb-code-example header="runtime/workbench-onboarding.ts">
+
+```ts
+export const workbenchBrowserInstructions =
+  'Explain a plan for planting a garden. Its steps are buy seeds and water them.';
+```
+
+</hb-code-example>
+
+The endpoint replaces browser-supplied system and developer messages with this application policy:
+
+<hb-code-example header="runtime/workbench-onboarding.ts">
+
+```ts
+export const workbenchInstructionsSystem =
+  'Explain the fixed application-owned plan in concise plain text. The plan is "Show how a model renders trusted UI". Its two steps are "Outline the trusted UI demo." and "Record the demo." Use this plan as the application context on every turn. Do not call tools or claim that application state changed.';
+```
+
+</hb-code-example>
+
+The inspector's **effective** value is captured from the actual mapped provider input inside the adapter callback. It includes only this known public policy, with its origin labelled. It is not a promise inferred from the browser configuration.
+
+<img src="/video/docs/canonical-workbench-system-instructions-angular-result.png" alt="The Angular Instructions inspector compares a browser declaration with the public server policy observed at the OpenAI adapter mapping." width="1600" height="1000" loading="lazy" />
 
 ## Start with a specific task
 
-The `system` option in `chatResource()` supplies our instructions:
+Our policy gives the assistant a task, the plan data it needs, and a response style. The current user message asks which part to explain.
 
-```ts
-system: 'You are a friendly onboarding assistant. Keep each reply to one sentence.'
-```
+Keep that guidance close to the feature. Start with the smallest instruction that describes the expected behavior, then try a normal request, an unclear request, and an out-of-scope request. Change one thing at a time when the result needs work.
 
-Let's break this down:
+For local configuration, `chatResource()` accepts a `system` option, as in [Messages and turns](/docs/angular/concept/ai-basics). Browser configuration is visible and can be changed. Put policy your application depends on in the endpoint.
 
-1. **Friendly onboarding assistant** describes its role and tone.
-2. **Keep each reply to one sentence** describes the response we want.
-3. The user message supplies the request for the current turn.
+## Pin policy in your own endpoint
 
-Try changing the instruction to ask for a formal greeting. Start a fresh conversation and compare the result. Change one thing at a time so you can see which instruction affected the response.
-
-## Add context the task needs
-
-A more specific feature may need a few rules and an example:
-
-```ts
-system: `
-  Help a developer finish their first Hashbrown app.
-  Explain one next step at a time.
-  Ask which framework they use if they have not said.
-  Use the component names available in this application.
-
-  Example:
-  User: I have connected the endpoint. What next?
-  Assistant: Create a WelcomeCard with a title and message.
-`
-```
-
-Keep instructions close to the feature they support. A long list of unrelated rules makes the prompt harder to maintain and the result harder to evaluate.
-
-## Keep user input in user messages
-
-Send a user's request through `sendMessage()` with `role: 'user'`, as we do in the conversation example. Avoid building the system instruction by concatenating arbitrary user text into it.
-
-If the task needs application context, describe what that context means and include only what the model needs. Clear labels and delimiters help separate instructions from data, but they do not make untrusted input safe to act on.
-
-## Decide what the server owns
-
-The Quickstart keeps the provider key and model selection on the server. Its client supplies the feature's system instructions.
-
-That is useful for local development and for instructions you are comfortable showing to users. Browser code and requests can be inspected and changed. If your application requires a particular instruction, enforce that choice in the endpoint.
-
-Create `pin-system-prompt.ts` beside the Quickstart's `server.ts`:
+Use the text conversation from [Messages and turns](/docs/angular/concept/ai-basics) with the Quickstart endpoint. Create `pin-system-prompt.ts` beside `server.ts`:
 
 <hb-code-example header="pin-system-prompt.ts">
 
@@ -89,31 +85,27 @@ export function pinSystemPrompt(
 
 </hb-code-example>
 
-Import it into `server.ts`:
+Import the helper into `server.ts`:
 
 ```ts
 import { pinSystemPrompt } from './pin-system-prompt';
 ```
 
-Then replace the adapter's `input` value with your server-owned instruction:
+Define your server-owned policy there, then replace the adapter's `input` value:
 
 ```ts
 input: pinSystemPrompt(
   req.body as RunAgentInput,
-  'You are a friendly onboarding assistant. Keep each reply to one sentence.',
+  'Explain our two-step plan: outline the trusted UI demo, then record it. Keep replies concise.',
 ),
 ```
 
-The helper removes client-supplied system and developer messages and prepends our instruction. It preserves the user conversation, tools, and forwarded properties. For a UI feature, those forwarded properties include the response schema; keep them intact.
+The helper creates a new request with our policy and preserves the rest of the run. It removes browser-supplied system and developer messages, keeping the user conversation, identifiers, tools, and forwarded properties intact. The workbench endpoint additionally validates its bounded lesson contract before calling the adapter.
 
-## Instructions do not grant permission
+## Keep instructions and permissions separate
 
-A prompt can ask the model to follow a rule. Your application must still enforce who may read data or perform an action. Keep secrets out of prompts, validate incoming requests, and authorize tool handlers and server operations independently of the model's response.
+Send user text as a user message. Avoid building trusted policy by concatenating arbitrary user input into it. Include only the application context the task needs.
 
-Continue with [Securing a public endpoint](/docs/angular/recipes/public-endpoint) before deploying the local example.
+A prompt describes behavior. Your application still owns authorization for reading data and performing actions. Enforce those permissions in tool handlers and server operations; a model response does not grant them.
 
-## Check the behavior
-
-Try a small set of representative requests: a normal request, a vague request, and a request outside the feature's scope. Inspect the output and adjust the instruction when the result is unclear. A single successful response does not establish how every future request will behave.
-
-Use [Debugging](/docs/angular/concept/debugging) to inspect the request and response. Then continue with [Message history](/docs/angular/concept/message-history) to decide which earlier messages the next request should include.
+This lesson explains a plan without changing it. Continue with [Tool calling](/docs/angular/concept/functions) to read current application state, or [Request transformation](/docs/angular/concept/transform-request-options) to inspect provider options after mapping.

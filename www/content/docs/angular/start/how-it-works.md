@@ -2,48 +2,44 @@
 title: 'How Hashbrown works: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Follow a welcome card from the browser through your endpoint, provider, and trusted component.'
+    content: 'Follow the two-step plan through the browser, endpoint, provider, streaming parser, and trusted component.'
 ---
 
 # How Hashbrown works
 
-Let's follow the welcome card from the [Quickstart](/docs/angular/start/quick). We ask for a card, the model supplies its text, and our application renders the component we wrote.
+Let's follow the two-step plan from the [Quickstart](/docs/angular/start/quick). We send one user message, the provider streams a response, and Hashbrown renders our trusted `SummaryCard`.
 
-<hb-docs-demo demo="welcome-card">
+<hb-docs-demo demo="canonical-workbench-first-plan-angular">
 </hb-docs-demo>
 
-The recording uses the Quickstart component with a scripted model response. Running the Quickstart locally sends the request to your configured provider.
+The recording uses the real Angular client and OpenAI adapter. The workbench adds inspection and replay around the same component used by the standalone Quickstart.
 
-## Follow one request
+## Follow the request
 
-1. **The browser sends the conversation.** In `src/app/app.ts`, the button calls `sendMessage()` on `uiChatResource()`. Hashbrown sends the current transcript and response schema to `/api/chat`, configured by `provideHashbrown()` in `src/app/app.config.ts`. The request includes an opaque `threadId` for the conversation and a `runId` for this run.
-2. **Our endpoint calls the provider.** In `welcome-server/server.ts`, Express receives the request. During development, the frontend proxy forwards the same-origin `/api/chat` request to Express on port 3001. `HashbrownOpenAI.stream.text()` calls OpenAI using the key and model configured on the server.
-3. **The adapter streams AG-UI events.** The adapter converts the provider response into AG-UI events. `EventEncoder` writes them as a server-sent event stream. Hashbrown reads run lifecycle events and content deltas as they arrive.
-4. **Hashbrown parses and validates the output.** The browser uses the Skillet schema created from our exposed components. `WelcomeCard` accepts `title` and `message` strings, with no children. Generated values must satisfy that schema; partial JSON is processed as it streams.
-5. **Our component renders the card.** `<hb-render-message>` creates our Angular `WelcomeCard` from `src/app/welcome-card.ts` with the validated inputs. The component supplies the markup and behavior. The model supplies the two strings.
+1. **We send a user message.** The button calls `sendMessage()` on `uiChatResource()`. Hashbrown creates a run with the conversation history and the response schema built from our exposed component.
+2. **The browser calls our endpoint.** The Quickstart uses `/api/chat`, with a local development proxy forwarding it to Express. The workbench uses its dedicated `/api/workbench/first-plan` route. The API key and model stay on the server.
+3. **The adapter calls the provider.** `HashbrownOpenAI.stream.text()` maps the run to the provider request. The adapter converts the response into AG-UI lifecycle and content events; `EventEncoder` sends those events back over a server-sent event stream.
+4. **Hashbrown parses the streamed values.** The schema describes a title and an array of steps. Streaming fields become available as the response arrives, so we can render a preview before the entire response is complete.
+5. **Our component renders.** `hb-render-message` resolves `SummaryCard` to the application component we exposed. Its props come from the generated response. Its markup and behavior come from our code.
 
-We send component names, descriptions, and schemas to guide the model. Our component implementation stays in the application; the model does not generate or execute a replacement component.
+Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/angular.html?lesson=first-plan`. Step through the bottom timeline and compare **Requests**, **JSON**, and **UI**. They describe the same run at the selected moment.
 
-The schema is also why an unsupported component name or a number in place of `title` can fail to produce a card. See [Debugging](/docs/angular/concept/debugging) to inspect those failures.
+## What goes to the model?
 
-## Where browser tools run
+The request includes the conversation and the generated output contract: component names, descriptions, and prop schemas. Our component implementation stays in the application.
 
-The welcome card has no tools. When we add a [browser-side tool](/docs/angular/concept/functions), the model can request it by name with generated arguments. Hashbrown validates those arguments and calls the handler in our browser application. The result joins the conversation so the model can continue.
+The model can select an exposed component and supply its values. It does not provide a new Angular component or arbitrary markup for Hashbrown to execute. Use [Debugging](/docs/angular/concept/debugging) when a component name or generated value does not match the contract.
 
-A handler can read local application state or call our server. Keep credentials and privileged operations on the server, and authorize each operation there. A tool's name, description, and argument schema describe how to call it; they do not establish the user's permission to perform the action.
+## What changed in our application?
 
-## Where shared state goes
+In this first lesson, nothing was saved. The card is a generated preview. The **State** view remains unchanged while the title and steps stream into the UI.
 
-[Shared agent state](/docs/angular/concept/shared-agent-state) is a separate JSON-compatible value sent in the AG-UI run input. An agent can return state snapshots and deltas for the client to apply. Calling `setState()` replaces that shared value; it does not send a message or start a run.
+In [Exposing components](/docs/angular/concept/components), we'll add an explicit **Accept plan** action. In [Tool calling](/docs/angular/concept/functions), we'll expose a handler that reads the current application plan. A tool call can add a result and another provider request within the same user turn; the first-plan lesson has no tools.
 
-The direct provider adapters do not automatically put shared state into the model's prompt. If the model needs a selected account or other application fact, explicitly supply it in message or tool content, or use an agent endpoint that reads the state field.
+## A conversation is more than one request
 
-## What our application owns
+AG-UI identifies the conversation with a `threadId` and each run with a `runId`. A follow-up can retain the earlier messages while starting a new run. These identifiers do not load a saved conversation or write it to a database.
 
-The browser owns the exposed components and local tool handlers. The endpoint owns provider credentials and must enforce authentication, authorization, request validation, and usage limits. Treat the browser's transcript, schemas, tools, and state as client-supplied input when securing that endpoint. See [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
+The workbench timeline captures observations for inspection. Replaying them does not call the provider or repeat an application action. Saving and restoring a conversation is a separate application concern covered in [Message history](/docs/angular/concept/message-history).
 
-Conversation storage also belongs to our application. Hashbrown sends the current transcript with each request; a `threadId` identifies a conversation but does not load its history. A page refresh recreates the browser runtime. Saving an ID alone restores neither messages nor a pending interrupt workflow.
-
-Continue with [Message history](/docs/angular/concept/message-history) for storage and [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) for workflows that pause for user input.
-
-For the data contract itself, continue with [Skillet schemas](/docs/angular/concept/schema) and [Structured output](/docs/angular/concept/structured-output). The checked shopping-list example follows a typed response from generation through review and application validation.
+Next, follow two requests in [Messages and turns](/docs/angular/concept/ai-basics).

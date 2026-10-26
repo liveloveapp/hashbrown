@@ -62,16 +62,21 @@ Use **Raw events** to inspect every captured chunk. Markdown streaming is labele
 
 ## Use the framework API
 
-The checked client connects the lesson to the real SDK:
+The shared text client also hosts the plain-text onboarding lessons. Magic Text uses `workbenchTextSystem` and `readContext`; its renderer handles the streamed Markdown:
 
 <hb-code-example header="react/src/MagicTextWorkbench.tsx">
 
 ```tsx
-const chat = useChat({
-  system: workbenchTextSystem,
-  tools: [readContext],
-  transport,
-});
+  const chat = useChat({
+    system:
+      lesson.id === 'system-instructions'
+        ? workbenchBrowserInstructions
+        : plain
+          ? workbenchConversationSystem
+          : workbenchTextSystem,
+    tools: plain ? [] : [readContext],
+    transport,
+  });
 ```
 
 </hb-code-example>
