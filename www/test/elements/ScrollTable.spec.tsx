@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import {
   scrollEdges,
   ScrollTable,
@@ -64,4 +64,25 @@ test('marks the edges that have more to scroll as the user scrolls', async () =>
 
   expect(frame.hasAttribute('data-overflow-start')).toBe(true);
   expect(frame.hasAttribute('data-overflow-end')).toBe(true);
+});
+
+test('re-measures when the table itself resizes, such as after fonts load', async () => {
+  cleanup();
+  const observed: Element[] = [];
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(target: Element) {
+        observed.push(target);
+      }
+      disconnect() {
+        return undefined;
+      }
+    },
+  );
+
+  const { container } = render(<ScrollTable>{rows}</ScrollTable>);
+
+  expect(observed).toContain(container.querySelector('table'));
+  vi.unstubAllGlobals();
 });

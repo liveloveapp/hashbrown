@@ -61,6 +61,10 @@ export function ScrollTable(props: ComponentPropsWithoutRef<'table'>) {
     const resizeObserver =
       'ResizeObserver' in window ? new ResizeObserver(update) : undefined;
     resizeObserver?.observe(el);
+    // The table can widen without the scroller resizing, as when fonts load.
+    if (el.firstElementChild) {
+      resizeObserver?.observe(el.firstElementChild);
+    }
     el.addEventListener('scroll', update, { passive: true });
     // Let layout settle before the first measurement.
     const frame = requestAnimationFrame(update);
