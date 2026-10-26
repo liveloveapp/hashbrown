@@ -13,10 +13,14 @@ export function workbenchMilestones(
 ): readonly WorkbenchMilestone[] {
   const firstChunks = new Set<number>();
   const lastParsed = new Map<number, number>();
+  const lastError = new Map<number, number>();
   events.forEach((event, index) => {
     if (event.kind === 'parsed') lastParsed.set(event.turn, index);
+    if (event.kind === 'error') lastError.set(event.turn, index);
   });
   return events.flatMap((event, index) => {
+    if (event.kind === 'error' && lastError.get(event.turn) !== index)
+      return [];
     const payload = event.payload;
     const chunk =
       event.kind === 'event' &&
@@ -25,6 +29,22 @@ export function workbenchMilestones(
       'type' in payload &&
       payload.type === 'TEXT_MESSAGE_CONTENT';
     let label: string | undefined;
+    if (
+      event.kind === 'response' &&
+      payload &&
+      typeof payload === 'object' &&
+      'status' in payload &&
+      Number(payload.status) >= 400
+    )
+      return [{ index, turn: event.turn, label: `HTTP ${payload.status}` }];
+    if (
+      event.kind === 'event' &&
+      payload &&
+      typeof payload === 'object' &&
+      'name' in payload &&
+      payload.name === 'workbench.request-transformation'
+    )
+      return [{ index, turn: event.turn, label: 'Request transformed' }];
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
       label = 'Streaming JSON';

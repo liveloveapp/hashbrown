@@ -264,3 +264,51 @@ test('decision endpoint returns whole fixture responses and keeps credentials op
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('debug denial returns real HTTP403 before provider invocation and is limited to the debugging route', async () => {
+  const calls: unknown[] = [];
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* (_input, _signal, lesson) {
+        calls.push(lesson);
+        yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No port');
+  const root = `http://127.0.0.1:${address.port}/api/workbench`;
+  const init = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+      tools: [],
+      context: [],
+      state: {},
+    }),
+  };
+
+  try {
+    const denied = await fetch(`${root}/debugging?demoDenied=1`, init);
+    expect(denied.status).toBe(403);
+    expect(denied.headers.get('X-Workbench-Source')).toBe('demo-failure');
+    expect(await denied.json()).toEqual({
+      error: 'Demo denial is enabled. Disable Demo denial and send again.',
+    });
+    expect(calls).toEqual([]);
+    const accepted = await fetch(`${root}/debugging`, init);
+    await accepted.text();
+    const other = await fetch(`${root}/generative-ui?demoDenied=1`, init);
+    await other.text();
+    expect(accepted.status).toBe(200);
+    expect(other.status).toBe(200);
+    expect(calls).toEqual(['debugging', 'generative-ui']);
+  } finally {
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});

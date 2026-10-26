@@ -413,7 +413,7 @@ body {
 }
 .wb-events {
   flex-direction: column;
-  max-height: 88px;
+  max-height: 124px;
   overflow: auto;
 }
 .wb-timeline-row {
@@ -479,4 +479,19 @@ app-decision-workbench-conversation[hidden] {
     flex-wrap: wrap;
     margin: 0;
   }
+}
+
+.wb-debug-controls {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--wb-line);
+  background: #fafafa;
+}
+.wb-debug-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.wb-debug-controls p {
+  margin-top: 4px;
 }

@@ -127,7 +127,7 @@ test.each(SDKS)(
     );
     expect(quick).toContain('<hb-docs-demo demo="welcome-card">');
     expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
-      '<hb-docs-demo demo="debugging">',
+      `<hb-docs-demo demo="canonical-workbench-debugging-${sdk}">`,
     );
   },
 );

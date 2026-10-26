@@ -72,6 +72,7 @@ The checked client passes the catalog, tool, system instruction, and capturing t
       this.store,
       undefined,
       getWorkbenchLesson(window.location.search).endpoint,
+      { getDebugDenied: () => this.debugDenied() },
     ),
     tools: [
       createTool({
