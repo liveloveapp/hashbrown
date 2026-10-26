@@ -65,3 +65,33 @@ test('keeps tool results, acceptance and failed turns visible without hiding raw
   ]);
   expect(milestones.at(-1)?.turn).toBe(2);
 });
+
+test('keeps failed HTTP responses as milestones while successful status frames remain raw', () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  store.record('response', { status: 200 });
+  store.record('response', { status: 403 });
+  store.settle('error');
+
+  const labels = workbenchMilestones(store.getSnapshot().events).map(
+    (item) => item.label,
+  );
+
+  expect(labels).toEqual(['Prompt', 'HTTP 403', 'Error']);
+});
+
+test('keeps one failure milestone while retaining the detailed error frames', () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  store.record('error', { message: 'Request failed' });
+  store.settle('error');
+  const events = store.getSnapshot().events;
+
+  const failures = workbenchMilestones(events).filter(
+    (item) => item.label === 'Error',
+  );
+
+  expect(events.filter((event) => event.kind === 'error')).toHaveLength(2);
+  expect(failures).toHaveLength(1);
+  expect(failures[0].index).toBe(events.length - 1);
+});

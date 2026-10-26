@@ -28,16 +28,18 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens six lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The left navigation opens eight lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
 
-| Lesson | Local URL | Follow |
-| --- | --- | --- |
-| [Generative UI](/docs/react/concept/components) | `/react.html?lesson=generative-ui` | Streamed props and the trusted SummaryCard. |
-| [Tools](/docs/react/concept/functions) | `/react.html?lesson=tools` | Browser context, tool result, and continuation. |
-| [Structured output](/docs/react/concept/structured-output) | `/react.html?lesson=structured-output` | Plain typed plan data rendered by the application. |
-| [Streaming](/docs/react/concept/streaming) | `/react.html?lesson=streaming` | Partial title text and resolved steps. |
-| [Schemas](/docs/react/concept/schema) | `/react.html?lesson=schemas` | The exact response contract and application validation. |
-| [Decisions](/docs/react/concept/decisions) | `/react.html?lesson=decisions` | Complete typed choices, confidence and explicit application. |
+| Lesson                                                                  | Local URL                                   | Follow                                                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| [Generative UI](/docs/react/concept/components)                         | `/react.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
+| [Tools](/docs/react/concept/functions)                                  | `/react.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
+| [Structured output](/docs/react/concept/structured-output)              | `/react.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
+| [Streaming](/docs/react/concept/streaming)                              | `/react.html?lesson=streaming`              | Partial title text and resolved steps.                                     |
+| [Schemas](/docs/react/concept/schema)                                   | `/react.html?lesson=schemas`                | The exact response contract and application validation.                    |
+| [Decisions](/docs/react/concept/decisions)                              | `/react.html?lesson=decisions`              | Complete typed choices, confidence and explicit application.               |
+| [Debugging](/docs/react/concept/debugging)                              | `/react.html?lesson=debugging`              | Local HTTP denial, same-conversation recovery, and captured evidence.      |
+| [Request transformation](/docs/react/concept/transform-request-options) | `/react.html?lesson=request-transformation` | Actual server callback, added instructions, and preserved provider fields. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
 
