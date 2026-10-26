@@ -11,7 +11,7 @@ type PlannedContent = readonly (ImagePart | { type: 'text'; text: string })[];
 
 /** Validated image input plan; no resources have been acquired. @internal */
 export interface WebLlmImagePlan {
-  readonly contents: ReadonlyMap<Message, PlannedContent>;
+  readonly contents: readonly PlannedContent[];
   readonly options: WebLlmImageMediaOptions;
   readonly maxBytes: number;
   readonly maxPixels: number;
@@ -20,7 +20,7 @@ export interface WebLlmImagePlan {
 
 /** Fully serialized content and application resource ownership. @internal */
 export interface PreparedWebLlmImages {
-  readonly contents: ReadonlyMap<Message, WebLlmImageContent>;
+  readonly contents: readonly WebLlmImageContent[];
   dispose(): Promise<void>;
 }
 
@@ -45,7 +45,7 @@ export function preflightWebLlmImages(
     20 * 1024 * 1024,
     'maxTotalBytes',
   );
-  const contents = new Map<Message, PlannedContent>();
+  const contents: PlannedContent[] = [];
   let imageCount = 0;
   for (const message of messages) {
     if (message.role === 'activity' || message.role === 'reasoning') continue;
@@ -73,7 +73,7 @@ export function preflightWebLlmImages(
         throw unsupported('WebLLM supports only image and text user parts.');
       }
     }
-    contents.set(message, parts);
+    contents.push(parts);
   }
   return { contents, options, maxBytes, maxPixels, maxTotalBytes };
 }
@@ -84,7 +84,7 @@ export async function prepareWebLlmImages(
   signal: AbortSignal,
 ): Promise<PreparedWebLlmImages> {
   const cleanups: (() => Promise<void>)[] = [];
-  const contents = new Map<Message, WebLlmImageContent>();
+  const contents: WebLlmImageContent[] = [];
   let closed = false;
   let disposal: Promise<void> | undefined;
   let totalBytes = 0;
@@ -101,7 +101,7 @@ export async function prepareWebLlmImages(
   const dispose = () => {
     disposal ??= (async () => {
       closed = true;
-      contents.clear();
+      contents.length = 0;
       const pending = cleanups.splice(0).reverse();
       await Promise.allSettled(pending.map((cleanup) => cleanup()));
     })();
@@ -109,7 +109,7 @@ export async function prepareWebLlmImages(
   };
   try {
     checkAbort(signal);
-    for (const [message, parts] of plan.contents) {
+    for (const parts of plan.contents) {
       const output: ImageContentPart[] = [];
       const trailingText: string[] = [];
       for (const part of parts) {
@@ -193,11 +193,11 @@ export async function prepareWebLlmImages(
         });
       }
       checkAbort(signal);
-      if (!output.length) contents.set(message, trailingText.join(''));
+      if (!output.length) contents.push(trailingText.join(''));
       else {
         if (trailingText.length)
           output.push({ type: 'text', text: trailingText.join('') });
-        contents.set(message, output);
+        contents.push(output);
       }
     }
     checkAbort(signal);

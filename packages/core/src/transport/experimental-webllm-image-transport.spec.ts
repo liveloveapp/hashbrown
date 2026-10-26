@@ -764,3 +764,69 @@ test('retains image history and schema preflight snapshots through asynchronous 
     });
   });
 });
+
+test('counts repeated message references as separate resolved image occurrences for total bytes', async () => {
+  await decoded(async () => {
+    const injected = engine();
+    const repeated = user([image()]);
+    const dispose = jest.fn();
+    const resolve = jest.fn(() => ({
+      blob: new Blob(['1234'], { type: 'image/png' }),
+      dispose,
+    }));
+
+    const response = await experimental_webllm({
+      engine: injected,
+      media: { images: {}, maxTotalBytes: 6, resolve },
+    })().send(request([repeated, repeated]));
+
+    await expect(collect(response.events)).rejects.toMatchObject({
+      code: 'INVALID_MEDIA',
+    });
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(dispose).toHaveBeenCalledTimes(2);
+    expect(injected.chat.completions.create).not.toHaveBeenCalled();
+  });
+});
+
+test('preserves independently resolved bytes for repeated message references in occurrence order', async () => {
+  await decoded(async () => {
+    const injected = engine();
+    const repeated = user([image()]);
+    let calls = 0;
+    const dispose = jest.fn();
+    const resolve = jest.fn(() => ({
+      blob: new Blob([++calls === 1 ? 'one' : 'two'], { type: 'image/png' }),
+      dispose,
+    }));
+
+    const response = await experimental_webllm({
+      engine: injected,
+      media: { images: {}, resolve },
+    })().send(request([repeated, repeated]));
+    await collect(response.events);
+
+    expect(injected.chat.completions.create.mock.calls[0][0].messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: 'data:image/png;base64,b25l' },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: 'data:image/png;base64,dHdv' },
+          },
+        ],
+      },
+    ]);
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(dispose).toHaveBeenCalledTimes(2);
+  });
+});

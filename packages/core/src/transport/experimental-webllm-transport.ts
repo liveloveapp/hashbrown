@@ -1,4 +1,4 @@
-import type { ImagePart, Message } from '@ag-ui/core';
+import type { ImagePart } from '@ag-ui/core';
 import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import { createLocalTextEventStream } from './local-text-event-stream';
 import type { TransportFactory, TransportRequest } from './transport';
@@ -153,7 +153,7 @@ export function experimental_webllm(
       let textInput = options.media
         ? undefined
         : toWebLlmRequest(request, options.model);
-      const imageMessages = new Map<WebLlmUserMessage, Message>();
+      const imageMessages = new Map<WebLlmUserMessage, number>();
       let input: WebLlmRequest<WebLlmImageContent> | undefined =
         textInput ??
         toWebLlmRequest(request, options.model, !!imagePlan, imageMessages);
@@ -237,8 +237,8 @@ export function experimental_webllm(
               messages: input.messages.map((message) => {
                 if (message.role !== 'user') return message;
                 const source = imageMessages.get(message);
-                return source
-                  ? { ...message, content: contents.get(source) ?? '' }
+                return source !== undefined
+                  ? { ...message, content: contents[source] ?? '' }
                   : message;
               }),
             };
@@ -311,13 +311,13 @@ function toWebLlmRequest(
   request: TransportRequest,
   model: string | undefined,
   allowImages: boolean,
-  imageMessages?: Map<WebLlmUserMessage, Message>,
+  imageMessages?: Map<WebLlmUserMessage, number>,
 ): WebLlmRequest<WebLlmImageContent>;
 function toWebLlmRequest(
   request: TransportRequest,
   model?: string,
   allowImages = false,
-  imageMessages?: Map<WebLlmUserMessage, Message>,
+  imageMessages?: Map<WebLlmUserMessage, number>,
 ): WebLlmRequest<WebLlmImageContent> {
   if (!request.input)
     throw new TransportError('Missing AG-UI run input', { retryable: false });
@@ -339,7 +339,7 @@ function toWebLlmRequest(
       ) {
         const snapshot: WebLlmUserMessage = { role: 'user', content: '' };
         messages.push(snapshot);
-        imageMessages?.set(snapshot, message);
+        imageMessages?.set(snapshot, imageMessages.size);
         continue;
       }
       throw unsupported();
