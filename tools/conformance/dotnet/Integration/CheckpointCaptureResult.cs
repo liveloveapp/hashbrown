@@ -20,6 +20,7 @@ internal sealed class CheckpointCaptureResult(IResult inner, IInterruptStore sto
     {
         var handle = await store.StartCaptureAsync(claim, context.RequestAborted);
         if (handle is null) { context.Response.StatusCode = 409; return; }
+        using var evidence = ResponsesRecoveryEvidence.Begin(handle.MaximumBytes, handle.MaximumMessages);
         var original = context.Features.Get<IHttpResponseBodyFeature>()!;
         var observer = new CheckpointSseObserver(handle, async (outcome, snapshot) =>
         {

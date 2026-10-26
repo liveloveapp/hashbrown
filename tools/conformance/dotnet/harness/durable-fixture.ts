@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createStableModelRouter } from './stable-model-router';
 import { type DotnetFixture, withDotnetFixture } from './http-fixture';
 
 const execute = promisify(execFile);
@@ -38,6 +39,8 @@ async function postgres() {
         'exec',
         name,
         'pg_isready',
+        '--host',
+        '127.0.0.1',
         '-U',
         'postgres',
       ]).then(
@@ -65,13 +68,20 @@ async function postgres() {
 export async function withDurableCluster<T>(
   provider: 'openai' | 'azure',
   use: (cluster: DurableFixtureCluster) => Promise<T>,
+  environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
   const database = await postgres();
+  const router = await createStableModelRouter().catch(async (error) => {
+    await database.dispose();
+    throw error;
+  });
   const schema = `durable_${crypto.randomUUID().replaceAll('-', '')}`;
   const cleanup: Array<() => void> = [];
   const running: Array<Promise<unknown>> = [];
   const workers: DotnetFixture[] = [];
-  const start = async (environment: Readonly<Record<string, string>> = {}) => {
+  const start = async (
+    workerEnvironment: Readonly<Record<string, string>> = {},
+  ) => {
     let ready!: (fixture: DotnetFixture) => void;
     let fail!: (error: unknown) => void;
     const started = new Promise<DotnetFixture>((resolve, reject) => {
@@ -90,9 +100,11 @@ export async function withDurableCluster<T>(
       undefined,
       {
         ...environment,
+        ...workerEnvironment,
         InterruptConnectionString: `${database.connectionString};Search Path=${schema}`,
         InterruptSchema: schema,
       },
+      router,
     );
     running.push(task);
     void task.catch(fail);
@@ -141,6 +153,11 @@ export async function withDurableCluster<T>(
     const lifecycles = await Promise.allSettled(running);
     for (const result of lifecycles)
       if (result.status === 'rejected') cleanupErrors.push(result.reason);
+    try {
+      await router.dispose();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
     try {
       await database.dispose();
     } catch (error) {

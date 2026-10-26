@@ -42,12 +42,12 @@ export function Header({
             <ul>
               <li>
                 <SdkLink to="docs" sdk={sdk} activeClassName={active}>
-                  docs
+                  Docs
                 </SdkLink>
               </li>
               <li>
                 <NavLink href="/api" activeClassName={active}>
-                  api
+                  API
                 </NavLink>
               </li>
               <li>
@@ -55,14 +55,14 @@ export function Header({
                   href={DEMO_URL}
                   target="_blank"
                   rel="noopener"
-                  aria-label="demo (opens in a new tab)"
+                  aria-label="Demo (opens in a new tab)"
                 >
-                  demo
+                  Demo
                 </a>
               </li>
               <li>
                 <NavLink href="/blog" activeClassName={active}>
-                  blog
+                  Blog
                 </NavLink>
               </li>
               <li>

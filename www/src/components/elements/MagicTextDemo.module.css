@@ -5,9 +5,9 @@
   gap: 16px;
   width: 100%;
   padding: 16px;
-  background: #ffffff;
-  border: 2px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-shot);
   box-sizing: border-box;
   color: inherit;
 }
@@ -16,9 +16,8 @@
   height: 180px;
   overflow: hidden;
   padding: 16px;
-  background: linear-gradient(180deg, #fbfbff 0%, #ffffff 80%);
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-input);
   display: flex;
   align-items: center;
   font-size: 15px;

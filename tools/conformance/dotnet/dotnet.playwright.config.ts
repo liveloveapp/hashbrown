@@ -28,14 +28,16 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: (['react', 'angular'] as const).flatMap((framework) =>
-    (['openai', 'azure'] as const).map((provider) => ({
-      name: `${framework}-${provider}`,
-      metadata: { provider, framework },
-      use: {
-        baseURL: `http://127.0.0.1:${framework === 'react' ? reactPort : angularPort}`,
-      },
-    })),
+  projects: (['chat-completions', 'responses'] as const).flatMap((modelApi) =>
+    (['react', 'angular'] as const).flatMap((framework) =>
+      (['openai', 'azure'] as const).map((provider) => ({
+        name: `${framework}-${provider}${modelApi === 'responses' ? '-responses' : ''}`,
+        metadata: { provider, framework, modelApi },
+        use: {
+          baseURL: `http://127.0.0.1:${framework === 'react' ? reactPort : angularPort}`,
+        },
+      })),
+    ),
   ),
   webServer: [
     {

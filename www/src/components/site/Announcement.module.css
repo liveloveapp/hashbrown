@@ -7,11 +7,11 @@
   width: 100%;
   max-width: 100vw;
   position: fixed;
-  bottom: 32px;
+  bottom: var(--space-8);
   z-index: 1000;
   opacity: 1;
-  transition: opacity 800ms ease-in-out;
-  padding: 0 16px;
+  transition: opacity 300ms var(--ease-out);
+  padding: 0 var(--gutter);
   pointer-events: none;
 }
 
@@ -21,72 +21,57 @@
   }
 }
 
-/* The squircle ("0 0 8 8") clipped the alert, which hid its shadow; the
-   rounded inset clip keeps that look without the SVG path. */
+/* A flat pill: ink text on white with a hairline, the "New" in hashbrown yellow. */
 .alert {
   pointer-events: auto;
-  display: inline-grid;
-  grid-template-areas: 'announcement close' 'gradient gradient';
-  grid-template-columns: 1fr 32px;
-  grid-template-rows: 1fr 8px;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
-  border-radius: 8px 8px 1px 1px;
-  clip-path: inset(0 round 8px);
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.12);
-  width: auto;
-  transition: background-color 300ms ease-in-out;
+  gap: var(--space-1);
+  min-height: var(--control-lg);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .alert:hover {
-  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--gray-light);
 }
 
 .alert a {
-  grid-area: announcement;
-  padding: 11px 24px 12px 24px;
-  color: rgba(0, 0, 0, 0.64);
-  text-align: center;
-  font:
-    400 13px/140% 'Fredoka',
-    sans-serif;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  color: var(--color-muted);
+  text-decoration: none;
+  font: 400 14px/1.4 var(--font-sans);
 }
 
 .alert a strong {
-  font-weight: 700;
+  margin-right: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-highlight);
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
 .close {
-  grid-area: close;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 24px;
-  padding-right: 8px;
+  height: 32px;
+  border-radius: var(--radius-pill);
   background: none;
   border: none;
-  opacity: 0.56;
-  transition: opacity 0.2s ease-in-out;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .close:hover {
-  opacity: 1;
-}
-
-.gradient {
-  grid-area: gradient;
-  width: 100%;
-  height: 8px;
-  background: linear-gradient(
-    to right,
-    #fbbb52 0%,
-    var(--sunset-orange) 25%,
-    var(--indian-red-light) 50%,
-    var(--sky-blue-dark) 75%,
-    var(--olive-green-light) 100%
-  );
-  background-clip: border-box;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }

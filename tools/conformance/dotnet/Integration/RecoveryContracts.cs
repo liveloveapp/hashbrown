@@ -57,6 +57,7 @@ internal static class RecoverySerialization
 
     internal static CheckpointRecoveryResult Recover(InterruptRecord record, ConversationRecoveryConfiguration configuration, DateTimeOffset now, InterruptStoreOptions options)
     {
+        if (record.CompatibilityIdentity != options.CompatibilityIdentity) return new(409);
         if (record.CreatedAt + options.SnapshotRetention <= now) record = record with { OriginalRequest = null, TerminalSnapshot = null };
         var disposition = record.State switch
         {

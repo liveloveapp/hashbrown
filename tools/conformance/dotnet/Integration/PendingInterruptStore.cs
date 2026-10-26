@@ -23,11 +23,15 @@ public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOp
                 _pending[key] = _pending[key] with { OriginalRequest = null, TerminalSnapshot = null, Revision = _pending[key].Revision + 1 };
             foreach (var key in _audit.Where(pair => pair.Value.Audit.RecordedAt + _options.AuditRetention <= now).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray()) _audit.Remove(key);
             var existing = _pending.Values.FirstOrDefault(record => record.Scope == scope && record.ThreadId == input.ThreadId && record.State is "Pending" or "Claimed" or "EffectStarted");
-            if (existing is not null) return ValueTask.FromResult(existing.Batch);
+            if (existing is not null)
+            {
+                if (existing.CompatibilityIdentity != _options.CompatibilityIdentity) throw new InvalidOperationException("The checkpoint server configuration is incompatible.");
+                return ValueTask.FromResult(existing.Batch);
+            }
             if (_pending.Count >= _options.Capacity) throw new InvalidOperationException("Pending confirmation capacity reached.");
             var id = Guid.NewGuid().ToString("N");
             var batch = new PendingInterrupt(id, Array.AsReadOnly(new[] { Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") }), now + _options.ApprovalTtl, checkpoint, Guid.NewGuid().ToString("N"));
-            _pending.Add(id, new(batch, scope, input.ThreadId, input.RunId, InterruptValidation.Fingerprint(input), OriginalRequest: original, CreatedAt: now));
+            _pending.Add(id, new(batch, scope, input.ThreadId, input.RunId, InterruptValidation.Fingerprint(input, _options.CompatibilityIdentity), OriginalRequest: original, CreatedAt: now, CompatibilityIdentity: _options.CompatibilityIdentity));
             return ValueTask.FromResult(batch);
         }
     }
@@ -58,7 +62,7 @@ public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOp
             var record = _pending.Values.FirstOrDefault(candidate => input.Resume.Any(entry => candidate.Batch.Ids.Contains(entry.InterruptId, StringComparer.Ordinal)));
             if (record is null) return ValueTask.FromResult(new InterruptClaimResult(410));
             var now = clock.GetUtcNow();
-            var status = InterruptValidation.Validate(scope, input, record, now);
+            var status = InterruptValidation.Validate(scope, input, record, now, _options.CompatibilityIdentity);
             if (status != 200) return ValueTask.FromResult(new InterruptClaimResult(status));
             try { _ = registry.Resolve(record.Batch.Checkpoint); }
             catch (InvalidOperationException) { return ValueTask.FromResult(new InterruptClaimResult(503)); }
@@ -97,7 +101,7 @@ public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOp
         return ValueTask.CompletedTask;
     }
 
-    private bool Current(InterruptClaim claim, out InterruptRecord? record) => _pending.TryGetValue(claim.BatchId, out record) && record.Token == claim.Token && record.Generation == claim.Generation;
+    private bool Current(InterruptClaim claim, out InterruptRecord? record) => _pending.TryGetValue(claim.BatchId, out record) && record.Token == claim.Token && record.Generation == claim.Generation && record.CompatibilityIdentity == _options.CompatibilityIdentity;
     private bool Removable(InterruptRecord record, DateTimeOffset now) => record.State switch
     {
         "Pending" => record.Batch.ExpiresAt <= now,
