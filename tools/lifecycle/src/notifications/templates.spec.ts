@@ -20,7 +20,6 @@ function input(overrides: Record<string, unknown> = {}) {
     scoreVersion: 'growth-score-policy:v1',
     scoreReasons: [{ code: 'milestone.started', points: 15 }],
     submission: {
-      framework: 'react',
       messagePresent: true,
       messageLength: 40,
       message: 'My stream stops after\u0000 the first\rtool call.',
@@ -43,7 +42,7 @@ test('internal notification embeds the bounded message, three draft previews and
   expect(summary).not.toContain('\u0000');
   expect(summary).toContain('Draft 3 — Three');
   expect(summary).toContain(stopUrl());
-  expect(summary).toContain('Framework: react');
+  expect(summary).not.toContain('Framework:');
   expect(summary.match(/https?:\/\//gu)).toHaveLength(1);
 });
 
@@ -53,7 +52,6 @@ test('internal notification bounds the quoted message at 1000 characters', () =>
   const summary = renderInternalNotificationSummary(
     input({
       submission: {
-        framework: 'angular',
         messagePresent: true,
         messageLength: 1_000,
         message: long,

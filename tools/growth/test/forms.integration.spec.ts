@@ -461,7 +461,7 @@ test('readNotificationSubmission reads the message from the accepted submission'
     jobId: randomUUID(),
   });
 
-  expect(read).toEqual({ framework: null, message: MESSAGE });
+  expect(read).toEqual({ message: MESSAGE });
   expect(missing).toBeNull();
 });
 
