@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { loadCardFonts, svgDataUri } from './assets';
-import { CARD_COLORS, cardSize, titleSize } from './tokens';
+import { CARD_COLORS, CARD_STRIPE_HEIGHT, cardSize, titleSize } from './tokens';
 
 /** What a card says. */
 export interface CardContent {
@@ -15,9 +15,9 @@ export interface CardContent {
 }
 
 /**
- * The one card layout, in LiveLoveApp's house style: hashbrown's logo top
- * left, "by" and the LiveLoveApp mark top right, the title and subtitle bottom
- * left, on white.
+ * The one card layout, in LiveLoveApp's house style with hashbrown's colours:
+ * the hashbrown wordmark top left, "by" and the LiveLoveApp mark top right,
+ * the title and subtitle bottom left, on white, over the footer's stripe.
  */
 export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
   const { width, height } = cardSize(size);
@@ -27,6 +27,7 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
       style={{
         width,
         height,
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -36,6 +37,13 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
         fontFamily: 'Hanken Grotesk',
       }}
     >
+      <img
+        src={svgDataUri('stripe')}
+        width={width}
+        height={CARD_STRIPE_HEIGHT}
+        style={{ position: 'absolute', left: 0, bottom: 0, objectFit: 'cover' }}
+        alt=""
+      />
       <div
         style={{
           display: 'flex',
@@ -43,20 +51,12 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img
-            src={svgDataUri('hashbrown-mark')}
-            width={68}
-            height={64}
-            alt=""
-          />
-          <img
-            src={svgDataUri('hashbrown-wordmark')}
-            width={268}
-            height={40}
-            alt=""
-          />
-        </div>
+        <img
+          src={svgDataUri('hashbrown-wordmark')}
+          width={321}
+          height={48}
+          alt=""
+        />
         <div
           style={{
             display: 'flex',
@@ -111,9 +111,8 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
                 display: 'flex',
                 fontFamily: 'JetBrains Mono',
                 fontSize: 24,
-                padding: '10px 24px',
-                background: CARD_COLORS.surface,
-                border: `1px solid ${CARD_COLORS.rule}`,
+                padding: '12px 24px',
+                background: CARD_COLORS.highlight,
                 borderRadius: 999,
               }}
             >
