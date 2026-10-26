@@ -830,3 +830,18 @@ test('preserves independently resolved bytes for repeated message references in 
     expect(dispose).toHaveBeenCalledTimes(2);
   });
 });
+
+test('generates on the engine captured and owned by send when application options later change', async () => {
+  const original = engine();
+  const later = engine();
+  const options = { engine: original };
+  const response = await experimental_webllm(options)().send(
+    request([user('original')]),
+  );
+  options.engine = later;
+
+  await collect(response.events);
+
+  expect(original.chat.completions.create).toHaveBeenCalledTimes(1);
+  expect(later.chat.completions.create).not.toHaveBeenCalled();
+});

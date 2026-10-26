@@ -160,6 +160,8 @@ export function experimental_webllm(
       let prepared: PreparedWebLlmImages | undefined;
       if (request.signal.aborted) throw aborted();
       const { engine } = options;
+      const imageEngine = options.media ? options.engine : undefined;
+      const textEngine = options.media ? undefined : options.engine;
       if (activeEngines.has(engine)) {
         throw new TransportError('The local engine is already generating', {
           code: 'MODEL_BUSY',
@@ -248,10 +250,10 @@ export function experimental_webllm(
           pending = Promise.resolve()
             .then(() => {
               if (cancelled || !input) throw aborted();
-              if (options.media)
-                return options.engine.chat.completions.create(input);
-              if (!textInput) throw aborted();
-              return options.engine.chat.completions.create(textInput);
+              if (imageEngine)
+                return imageEngine.chat.completions.create(input);
+              if (!textEngine || !textInput) throw aborted();
+              return textEngine.chat.completions.create(textInput);
             })
             .then((stream) => stream[Symbol.asyncIterator]());
           let iterator: AsyncIterator<WebLlmChunk>;
