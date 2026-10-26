@@ -137,3 +137,79 @@ test('retains only method and authentication presence from native audit evidence
   });
   expect(JSON.parse(writes[1])).toEqual({});
 });
+
+test('diagnostics persist only manifest project group and fixed outcome metadata', () => {
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+
+  diagnostics.record({
+    project: 'angular-azure-cli',
+    group: 'browser-tool',
+    outcome: 'passed',
+  });
+  diagnostics.record({
+    project: 'secret-project',
+    group: 'secret-group',
+    outcome: 'secret-outcome',
+  });
+
+  expect(lines.map((line) => JSON.parse(line))).toEqual([
+    { project: 'angular-azure-cli', group: 'browser-tool', outcome: 'passed' },
+    {},
+  ]);
+});
+
+test('diagnostics preserve numeric native cap and dispatch evidence while dropping boolean and body material', () => {
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+
+  diagnostics.record({
+    httpCalls: 2,
+    maxOutputTokens: 384,
+    serverEffects: 1,
+    effects: 1,
+    body: 'CANARY',
+    store: false,
+  });
+
+  expect(JSON.parse(lines[0])).toEqual({
+    httpCalls: 2,
+    maxOutputTokens: 384,
+    serverEffects: 1,
+    effects: 1,
+  });
+});
+
+test('diagnostics identify only the three fixed native preflights', () => {
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+
+  diagnostics.record({ preflight: 'azure-cli-chat', api: 'chat-completions' });
+  diagnostics.record({ preflight: 'secret-audience' });
+
+  expect(lines.map((line) => JSON.parse(line))).toEqual([
+    { preflight: 'azure-cli-chat', api: 'chat-completions' },
+    {},
+  ]);
+});
+
+test('diagnostic drops and persistence failures make qualification unhealthy', () => {
+  const failed = createLiveDiagnostics({
+    write: () => {
+      throw new Error('CANARY');
+    },
+  });
+
+  expect(failed.record({ stage: 'completed' })).toBe(false);
+  expect(() => failed.assertHealthy()).toThrow('LIVE_DIAGNOSTICS_FAILED');
+  const dropped = createLiveDiagnostics({ write: () => undefined });
+  for (let index = 0; index < 120_000; index++)
+    dropped.record({ stage: 'completed' });
+  expect(() => dropped.assertHealthy()).toThrow('LIVE_DIAGNOSTICS_FAILED');
+});

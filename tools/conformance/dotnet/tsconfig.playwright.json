@@ -1,10 +1,14 @@
 {
   "extends": "./tsconfig.spec.json",
-  "compilerOptions": { "types": ["node"] },
+  "compilerOptions": {
+    "types": ["node"]
+  },
   "include": [
     "dotnet.playwright.config.ts",
     "harness/**/*.ts",
-    "specs/**/*.ts"
+    "specs/**/*.ts",
+    "live.playwright.config.ts",
+    "live-specs/**/*.ts"
   ],
   "exclude": ["tests/**/*.ts"]
 }

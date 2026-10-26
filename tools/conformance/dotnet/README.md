@@ -183,6 +183,7 @@ unintended combination.
 | Microsoft.Extensions.AI.OpenAI              | 10.10.1                 |
 | OpenAI                                      | 2.14.0                  |
 | Azure.AI.OpenAI                             | 2.1.0                   |
+| Azure.Core                                  | 1.63.0                  |
 | Npgsql                                      | 10.0.3                  |
 | PostgreSQL executable reference             | 18                      |
 
@@ -192,4 +193,61 @@ Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdent
 
 **Stop and drain all older workers before migrating to schema 3.** Overlapping mixed-version rolling operation is unsupported. Older binaries cannot start afterward; already-running older workers can still read new rows without identity checks, write legacy rows or use previously issued claims. Bound fingerprints fence their old admission validator from new rows, but cannot retrofit a running process. Identity-bound stores reject unbound legacy recovery/resume with 409; protected inspection/reconciliation remains available. Plan pending approvals and unknown effects before upgrading rather than backfilling browser-selected identities or replaying work.
 
-Entra authentication, live cloud-account qualification, older .NET runtimes, native MAF approval, provider-hosted tools, reasoning/continuation recovery, activities, shared chat-session persistence and provider finish-reason metadata remain outside this compatibility guarantee. Deterministic aimock coverage is not live OpenAI/Azure service qualification. Hashbrown's existing Node providers keep their own behavior and tests.
+The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 42 groups succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. Older .NET runtimes, native MAF approval, provider-hosted tools, reasoning/continuation recovery, activities, shared chat-session persistence and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
+
+## Opt-in published-client live qualification
+
+The live runner is separate from deterministic CI. List the six projects and 42
+scenario groups without credentials, builds, native processes, or model calls:
+
+```sh
+npx nx live-provider-e2e dotnet-conformance --list
+```
+
+Build the current native fixture, then explicitly opt in to real model traffic.
+The authorized env file supplies `OPENAI_API_KEY`, `AZURE_API_KEY`,
+`AZURE_ENDPOINT`, and optional `AZURE_MODEL=gpt-4.1-mini`. Azure CLI mode uses the
+existing CLI account and receives no API key. The runner never logs in, provisions
+resources, changes roles, or selects an account.
+
+```sh
+npx nx build dotnet-conformance
+HASHBROWN_LIVE_OPT_IN=1 npx nx live-provider-e2e dotnet-conformance --credentials /absolute/path/to/authorized.env
+```
+
+The runner prepares a fresh standalone consumer using the published React,
+Angular, and core packages pinned to 0.8.2. To reuse an already prepared consumer,
+pass `--consumer-metadata /absolute/path/to/consumer-metadata.json`; every source,
+template, bundle, installed package, and resolved module origin is revalidated
+without rewriting the trusted baseline. Provider credentials are excluded from
+consumer builds, Playwright workers, Chromium, browser URLs, and bundles.
+
+The fixed matrix uses React/Angular with OpenAI Responses key, Azure Responses key,
+and Azure Responses CLI authentication. Its seven groups cover native streaming,
+structured schema, trusted UI/action, browser and server tools, approval recovery
+and decline, and real native iterator cancellation followed by a fresh thread.
+Three native preflights also check OpenAI Responses, Azure Responses, and Azure CLI
+Chat Completions with its separate cognitive-services audience. Managed identity
+on an actual Azure host remains an explicitly deferred qualification.
+
+One worker, zero retries, fixed per-group ceilings, a 384-token native wire cap,
+60-second scenario deadlines, and a 15-minute run deadline bound execution. Owned
+native process groups are terminated on abort. Cancellation evidence concerns the
+actual native iterator and HTTP lifetime; it does not establish when a provider
+stops compute or billing. Legacy Azure shared credential refresh retains the
+native cancellation limitation documented in the identity tests.
+
+The runner persists only projected metadata through one 2 MiB run-level JSONL
+sink in its fresh `hashbrown-live-run-*` temporary directory. Raw child output and
+errors are discarded. Playwright traces, screenshots, video, and page snapshots
+are disabled; test failures are replaced before Playwright's artifact recorder
+runs. The deterministic tests include an actual forced Playwright failure with
+secret canaries in assertion/error/cause, DOM, and split child output, then inspect
+all output artifacts. Unknown runner/Playwright overrides are rejected, and
+missing prerequisites fail qualification without a passing skip or automatic retry.
+Success requires 42 distinct passed outcomes matched to valid native wire/effect
+evidence and all three successful preflights. Missing, skipped, duplicate, failed,
+or unpersisted evidence fails the run. The final result reports `plannedCases`,
+`actualPassedCases`, `successfulPreflights`, `reportDirectory`,
+`verifiedMetadataPath`, and `provenancePath`; the planned count alone never
+establishes successful qualification.

@@ -127,8 +127,8 @@ export function validateRegistryPackage(name, version, pkg, pin, installed) {
     throw Error(`Registry integrity mismatch: ${name}`);
 }
 
-/** Connects exact locked registry installs and real module origins to built artifact hashes. */
-export async function verifyConsumer(root, repository) {
+/** Inspects exact registry installs, module origins and hashes; persist:false preserves the trusted baseline. */
+export async function verifyConsumer(root, repository, options = {}) {
   validateIsolation(root, repository);
   const read = async (file) =>
     JSON.parse(await fs.readFile(path.join(root, file), 'utf8'));
@@ -214,9 +214,10 @@ export async function verifyConsumer(root, repository) {
         .digest('hex'),
     },
   };
-  await fs.writeFile(
-    report.metadataPath,
-    JSON.stringify(report, null, 2) + '\n',
-  );
+  if (options.persist !== false)
+    await fs.writeFile(
+      report.metadataPath,
+      JSON.stringify(report, null, 2) + '\n',
+    );
   return report;
 }

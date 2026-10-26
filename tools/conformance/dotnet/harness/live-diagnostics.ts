@@ -1,9 +1,16 @@
+import { LIVE_PROJECTS } from './live-configuration';
+import { LIVE_BUDGET_MANIFEST } from './live-budget';
+
 /** Persistence accepts only projected metadata, never arbitrary logs, exceptions or bodies. */
 export interface LiveDiagnosticSink {
   readonly write: (sanitizedJsonLine: string) => void;
 }
 
 const enums: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  project: LIVE_PROJECTS.map((entry) => entry.name),
+  group: LIVE_BUDGET_MANIFEST.groups.map((entry) => entry.name),
+  outcome: ['passed', 'failed'],
+  preflight: LIVE_BUDGET_MANIFEST.preflights,
   provider: ['openai', 'azure'],
   api: ['responses', 'chat-completions'],
   auth: ['api-key', 'azure-cli'],
@@ -34,6 +41,9 @@ const numbers = [
   'inputTokens',
   'outputTokens',
   'calls',
+  'httpCalls',
+  'maxOutputTokens',
+  'serverEffects',
   'effects',
   'reservedCalls',
   'dispatchedCalls',
@@ -46,6 +56,7 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
     bytes: 0,
     dropped: 0,
   });
+  let failed = false;
   return Object.freeze({
     record: (input: Readonly<Record<string, unknown>>) => {
       const safe: Record<string, unknown> = Object.fromEntries(
@@ -74,12 +85,22 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
       const bytes = Buffer.byteLength(line);
       if (state.bytes + bytes > 2 * 1024 * 1024) {
         state = Object.freeze({ ...state, dropped: state.dropped + 1 });
-        return;
+        return false;
       }
       state = Object.freeze({ ...state, bytes: state.bytes + bytes });
-      sink.write(line);
+      try {
+        sink.write(line);
+        return true;
+      } catch {
+        failed = true;
+        return false;
+      }
     },
     snapshot: () => state,
+    assertHealthy: () => {
+      if (failed || state.dropped > 0)
+        throw new Error('LIVE_DIAGNOSTICS_FAILED');
+    },
   });
 }
 
