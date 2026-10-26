@@ -84,8 +84,54 @@ The suite checks structured output and nested UI across both frameworks and
 attaches JSON load/first-token/total timings, schema sizes and process RSS.
 Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
 more than once and does not measure unique GPU allocations. Tests use bounded,
-application-owned generation settings. WebLLM remains text-only in this adapter and rejects tools. Chrome native typed
+application-owned generation settings. The default WebLLM contract remains string-only; image input requires the separate explicit opt-in below. Tools remain unsupported. Chrome native typed
 tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
+
+### Deterministic WebLLM image contracts
+
+```sh
+NX_DAEMON=false NX_NO_CLOUD=true NODE_ENV=production \
+  LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_IMAGES=1 \
+  RUNTIME_SMOKE_ANGULAR_PORT=4451 RUNTIME_SMOKE_REACT_PORT=4452 \
+  npx nx local-webllm-image-contract-e2e conformance
+```
+
+This separate target refuses CI and requires both explicit local flags. It runs
+Angular and React with a generated 64×64 PNG, application-owned resolver, real
+browser decoding, and a deterministic worker shim. It checks image history,
+canonical data URL serialization, streaming, cancellation during worker setup
+and iteration, draining, and resolver disposal. Worker diagnostics contain only
+image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
+model, or native inference session, and does not validate model vision quality.
+The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
+
+Applications opt in with `experimental_webllm({ engine, media: { images: {},
+resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
+unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
+Every image source is resolved by the application into `{ blob, dispose? }`,
+including inline data, URLs and file handles. Hashbrown never fetches a source
+or forwards its original URL/file value to WebLLM. It validates PNG/JPEG/WebP
+bytes and decoding, then creates a canonical data URL. Temporary validation
+bitmaps close immediately; application resources dispose after generation or
+drain, with late acquisitions cleaned after cancellation.
+
+Only user arrays containing images first and optional trailing text are
+supported. Adjacent trailing text joins exactly, image order is preserved, and
+text before an image or interleaving is rejected. Text-only arrays normalize to
+a string in image mode; empty arrays, other media and tool histories are
+rejected before resource acquisition. Defaults are 10 MiB per image, 16 million
+decoded pixels per image, eight images and 20 MiB encoded image history per run.
+`media.images.maxBytes`, `maxPixels`, `maxImages` and `media.maxTotalBytes` accept
+positive safe integers. Pixel checks occur after decoding and do not bound a
+decoder's transient allocations. There is no automatic resize or transcoding.
+
+The application owns engine/model loading and unloading. Image opt-in asserts
+that its selected model supports images; it does not discover or prove that
+capability. Structural consumer checks against published WebLLM 0.2.85/0.2.86
+declarations pass with upstream declaration-body checking skipped; full checks
+require upstream development declarations absent from the standalone archives.
+Neither those checks nor these mocked worker contracts qualify a real VLM.
+Selecting/downloading and testing a real vision model is a separate decision.
 
 ### Selecting a local Chrome model experiment
 
@@ -385,15 +431,16 @@ does not enforce or repair the model's schema. Evidence and reports are retained
 under `test-results/conformance/native-ui`.
 
 Each scenario offers a bounded catalog: lookup + status, dependent lookup/follow
-+ status, lookup + status/panel for nesting, or status alone without tools. Tests
-assert the actual native tool declarations and exact terminal component schema,
-as well as exact handler operations and output. The fixture query
-`uiWorkflow=broad` retains the original broader catalog for research; qualification
-uses the scenario-specific `uiWorkflow` values.
-Two fixed production samples with these bounded declarations passed 2/8 then
-4/8; only the no-tools cases passed in both. Passing deterministic contracts
-does not establish native tool-driven UI reliability. Retain all model failures
-and keep the native quality gate separate from CI.
+
+- status, lookup + status/panel for nesting, or status alone without tools. Tests
+  assert the actual native tool declarations and exact terminal component schema,
+  as well as exact handler operations and output. The fixture query
+  `uiWorkflow=broad` retains the original broader catalog for research; qualification
+  uses the scenario-specific `uiWorkflow` values.
+  Two fixed production samples with these bounded declarations passed 2/8 then
+  4/8; only the no-tools cases passed in both. Passing deterministic contracts
+  does not establish native tool-driven UI reliability. Retain all model failures
+  and keep the native quality gate separate from CI.
 
 Adapter capability `ui` follows the opt-in policy; inference remains unknown.
 Measure the exact component kit separately from a simple structured response.

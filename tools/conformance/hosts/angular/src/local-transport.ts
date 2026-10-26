@@ -7,6 +7,7 @@ import {
   experimental_webllm,
   type TransportFactory,
   type WebLlmEngine,
+  type WebLlmImageContent,
 } from '@hashbrownai/core';
 
 /** Selects a phase solely from the current canonical user turn and completed results. */
@@ -131,6 +132,53 @@ export function readLocalTransport(): TransportFactory | undefined {
       },
     });
   }
+  if (name === 'webllm' && parameters.get('localMedia') === 'image') {
+    const engine = (
+      globalThis as unknown as {
+        __hashbrownWebLlm?: WebLlmEngine<WebLlmImageContent>;
+      }
+    ).__hashbrownWebLlm;
+    if (!engine)
+      throw new Error(
+        'The application must prepare an image-capable WebLLM engine first.',
+      );
+    const runtime = globalThis as unknown as MediaFixtureRuntime;
+    runtime.__hashbrownLocalMedia = {
+      resolved: 0,
+      released: 0,
+      created: 0,
+      destroyed: 0,
+    };
+    return experimental_webllm({
+      engine,
+      media: {
+        images: {},
+        resolve(part, { signal }) {
+          signal.throwIfAborted();
+          if (part.source.type !== 'data')
+            throw new Error(
+              'This fixture resolves generated inline images only.',
+            );
+          const bytes = Uint8Array.from(atob(part.source.value), (character) =>
+            character.charCodeAt(0),
+          );
+          runtime.__hashbrownLocalMedia = {
+            ...runtime.__hashbrownLocalMedia,
+            resolved: runtime.__hashbrownLocalMedia.resolved + 1,
+          };
+          return {
+            blob: new Blob([bytes], { type: part.source.mimeType }),
+            dispose() {
+              runtime.__hashbrownLocalMedia = {
+                ...runtime.__hashbrownLocalMedia,
+                released: runtime.__hashbrownLocalMedia.released + 1,
+              };
+            },
+          };
+        },
+      },
+    });
+  }
   if (name === 'webllm') {
     const engine = (
       globalThis as unknown as { __hashbrownWebLlm?: WebLlmEngine }
@@ -184,18 +232,20 @@ export function createLocalMediaContent(): Chat.UserMessageInput['content'] {
   if (!drawing) throw new Error('Canvas 2D context unavailable');
   drawing.fillStyle = '#ff0000';
   drawing.fillRect(0, 0, 64, 64);
-  return [
-    {
-      type: 'text',
-      text: 'What is the dominant color in this image? Reply with one color word only.',
+  const text = {
+    type: 'text' as const,
+    text: 'What is the dominant color in this image? Reply with one color word only.',
+  };
+  const image = {
+    type: 'image' as const,
+    source: {
+      type: 'data' as const,
+      value: canvas.toDataURL('image/png').split(',')[1],
+      mimeType: 'image/png',
     },
-    {
-      type: 'image',
-      source: {
-        type: 'data',
-        value: canvas.toDataURL('image/png').split(',')[1],
-        mimeType: 'image/png',
-      },
-    },
-  ];
+  };
+  return new URL(globalThis.location.href).searchParams.get('localModel') ===
+    'webllm'
+    ? [image, text]
+    : [text, image];
 }
