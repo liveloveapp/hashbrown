@@ -13,6 +13,12 @@ export { AgentRunError } from './agent-run-error';
 export {
   experimental_webllm,
   type ExperimentalWebLlmTransportOptions,
+  type ExperimentalWebLlmImageTransportOptions,
+  type WebLlmImageContent,
+  type WebLlmImageResource,
+  type WebLlmImageResolver,
+  type WebLlmImagePolicy,
+  type WebLlmImageMediaOptions,
   type WebLlmEngine,
   type WebLlmRequest,
   type WebLlmChunk,
