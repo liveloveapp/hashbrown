@@ -87,6 +87,42 @@ more than once and does not measure unique GPU allocations. Tests use bounded,
 application-owned generation settings. The default WebLLM contract remains string-only; image input requires the separate explicit opt-in below. Tools remain unsupported. Chrome native typed
 tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
 
+### Deterministic WebLLM structured tool contracts
+
+The separate `experimental_webllm_tools` adapter accepts an application-owned
+text engine, a synchronous application phase callback, and a required final
+response schema (`useStructuredChat` / `useUiChat` and Angular equivalents).
+The default WebLLM adapter retains its existing text/image behavior and rejects
+tools. The tool adapter requests one closed argument object using `json_object`,
+validates the complete response before framework dispatch, and projects actual
+canonical tool results into labeled conversation data for finalization. It does
+not use native WebLLM tool calling. Permission decisions remain in application
+handlers.
+
+```bash
+LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS=1 \
+  RUNTIME_SMOKE_ANGULAR_PORT=4451 RUNTIME_SMOKE_REACT_PORT=4452 \
+  NX_DAEMON=false NX_NO_CLOUD=true \
+  npx nx local-webllm-tool-contract-e2e conformance
+```
+
+This target refuses CI and requires both explicit local flags. It builds both
+production hosts and runs model-free contracts with the existing aimock
+`LLMock` and local model shim. Handler-generated tokens and receipts drive final
+answers. Controlled isolated workers test structured clone, clean-stop/done
+ordering, Stop recovery, a native-call canary, and text/tool engine overlap.
+The suite checks structured answers, one trusted UI leaf, dependent tools,
+no-tool finalization, follow-up turn reset and replay, handler errors,
+application permission allow/deny, and malformed arguments without dispatch.
+No inference runtime, model download, native browser AI session, personal
+profile, audio, or hardware qualification is involved.
+
+List output and the durable JSON report at
+`test-results/conformance/webllm-tools/contracts-report.json` retain separate
+metadata, raw requests/schemas, raw responses, and canonical replay attachments
+for success and failure, after cleanup. These are transport/framework contracts;
+they provide no evidence about real-model schema compliance or inference quality.
+
 ### Deterministic WebLLM image contracts
 
 ```sh

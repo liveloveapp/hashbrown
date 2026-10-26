@@ -369,6 +369,19 @@
         }
       }
     },
+    "local-webllm-tool-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-webllm-tools.playwright.config.ts"
+      }
+    },
     "local-webllm-image-contract-e2e": {
       "executor": "nx:run-commands",
       "cache": false,
