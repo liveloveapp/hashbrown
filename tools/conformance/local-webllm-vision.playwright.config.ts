@@ -11,7 +11,18 @@ export default defineConfig({
   testMatch: 'webllm-vision.e2e.ts',
   timeout: 1_800_000,
   outputDir: resolve(__dirname, '../../test-results/conformance/webllm-vision'),
-  reporter: [['list']],
+  reporter: [
+    ['list'],
+    [
+      'json',
+      {
+        outputFile: resolve(
+          __dirname,
+          '../../test-results/conformance/webllm-vision/report.json',
+        ),
+      },
+    ],
+  ],
   use: { ...conformance.use, channel: 'chrome', headless: false },
   metadata: {
     scope:
