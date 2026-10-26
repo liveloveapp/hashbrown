@@ -46,10 +46,10 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   background: var(--color-code-bg);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--color-code-rule);
   font:
     400 12px/1 var(--font-sans);
-  color: #e3e3e3;
+  color: var(--color-code-fg);
 }
 
 .dots {
@@ -61,7 +61,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--color-code-control);
 }
 
 .file {
@@ -127,7 +127,7 @@
 
 .streaming {
   font-size: 12px;
-  color: var(--chocolate-brown-light);
+  color: var(--color-muted);
 }
 
 .caret {

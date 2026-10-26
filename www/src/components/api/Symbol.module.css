@@ -14,7 +14,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid var(--color-code-rule);
 }
 
 .article {
@@ -30,7 +30,7 @@
 .article h2 {
   font:
     500 18px/24px var(--font-sans);
-  color: var(--gray, #5e5c5a);
+  color: var(--color-muted);
   margin: 32px 0 0;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .symbol > * + * {
-  border-top: 1px solid var(--gray, #5e5c5a);
+  border-top: 1px solid var(--color-rule);
   padding-top: 16px;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .methodSymbol {
-  color: var(--vanilla-ivory, #faf9f0);
+  color: var(--color-code-fg);
 }
 
 @media screen and (min-width: 1024px) {

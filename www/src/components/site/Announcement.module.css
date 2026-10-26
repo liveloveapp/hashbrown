@@ -36,7 +36,7 @@
 }
 
 .alert:hover {
-  border-color: var(--gray-light);
+  border-color: var(--color-rule-strong);
 }
 
 .alert a {

@@ -78,7 +78,7 @@
         padding: 0 var(--space-4);
         border-radius: var(--radius-pill);
         background: var(--color-accent);
-        color: #fff !important;
+        color: var(--color-on-accent) !important;
         font: 600 14px/1 var(--font-sans);
         text-decoration: none;
 

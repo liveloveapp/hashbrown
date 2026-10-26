@@ -51,7 +51,7 @@
       transition: text-decoration-color 0.2s ease-in-out;
 
       &:hover {
-        text-decoration-color: rgba(61, 60, 58, 0.64);
+        text-decoration-color: var(--color-muted);
       }
     }
   }
