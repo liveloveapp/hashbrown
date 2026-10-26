@@ -12,29 +12,29 @@
 
 Files: existing `packages/core/src/transport/experimental-webllm-transport.ts`, new private `webllm-run.ts` and focused specs under the same directory.
 
-- [ ] Run baseline existing WebLLM text/image and local ownership unit tests; record results.
-- [ ] Write failing strict-completion cases: valid stop+done, missing/length/other finish, multiple choices, post-stop text, stop carrying final text, stop followed by gated done, Unicode chunks. Keep legacy default behavior assertions.
-- [ ] Extract raw run ownership/streaming/drain from existing text adapter into private helper, keyed by original engine; no public signature/behavior change. Preserve image async preparation and cleanup callbacks.
-- [ ] Use helper in existing text/image transports. Strict completion is internal and opt-in, not a public flag.
-- [ ] Verify synchronous engine error, late create/next, external abort/dispose/return/throw, setup cancellation, captured engine and all existing text/image tests. Verify stop+gated done retains lock.
-- [ ] Build/test/lint core as appropriate; commit coherent helper/refactor after tests pass. Independent spec then quality review before new transport work.
+- [x] Run baseline existing WebLLM text/image and local ownership unit tests; record results.
+- [x] Write failing strict-completion cases: valid stop+done, missing/length/other finish, multiple choices, post-stop text, stop carrying final text, stop followed by gated done, Unicode chunks. Keep legacy default behavior assertions.
+- [x] Extract raw run ownership/streaming/drain from existing text adapter into private helper, keyed by original engine; no public signature/behavior change. Preserve image async preparation and cleanup callbacks.
+- [x] Use helper in existing text/image transports. Strict completion is internal and opt-in, not a public flag.
+- [x] Verify synchronous engine error, late create/next, external abort/dispose/return/throw, setup cancellation, captured engine and all existing text/image tests. Verify stop+gated done retains lock.
+- [x] Build/test/lint core as appropriate; commit coherent helper/refactor after tests pass. Independent spec then quality review before new transport work.
 
 ## Task 2: Public phase types and strict canonical request preparation
 
-Files: new `experimental-webllm-tools-transport.ts` (types/factory entry), new private `webllm-tool-messages.ts`, transport barrel and specs.
+Files: new `experimental-webllm-tools-transport.ts` (public types here; factory implementation in Task 3), new private `webllm-tool-messages.ts`, transport barrel and specs; minimal proven ObjectType.validate fix in `schema/base.ts` with `schema/validation.spec.ts` regressions.
 
-- [ ] Add failing public type controls for required selector, text engine assignability, no Chrome/internal-type leakage and rejection of media options. Confirm expected RED.
-- [ ] Add failing history/declaration tests for owned/frozen selector context, exact escaped content, call/result/error IDs and text, dependent/current-turn ordering with interleaved activity/reasoning records (no filtered-index mismatch), mixed assistant text/calls, prior completed turns, duplicates/orphans/unresolved/cross-turn results, unsupported roles/media, malformed JSON/declarations and all schema subset limitations.
-- [ ] Implement additive public alpha types with TSDoc; no production WebLLM imports or new dependencies. Defaults of experimental_webllm remain unchanged.
-- [ ] Implement synchronous whole-request snapshots, Skillet conversion/validation, immutable phase selection and explicit JSON history envelopes. Unsupported inputs fail before engine acquisition. Test selector/input/schema/model/engine mutation after send.
-- [ ] Verify selected request has no native tools, uses only selected argument schema/instructions, retains system/developer text and final response schema separately.
-- [ ] Run focused RED/GREEN and core compile/API report; commit. Independent spec then quality review.
+- [x] Add failing public type controls for required selector, text engine assignability, no Chrome/internal-type leakage and rejection of media options. Confirm expected RED.
+- [x] Add failing history/declaration tests for owned/frozen selector context, exact escaped content, call/result/error IDs and text, dependent/current-turn ordering with interleaved activity/reasoning records (no filtered-index mismatch), mixed assistant text/calls, prior completed turns, duplicates/orphans/unresolved/cross-turn results, unsupported roles/media, malformed JSON/declarations and all schema subset limitations. Explicitly reject tool argument format annotations recursively without rejecting a normal property named format; existing runtime formats are annotations, not asserted by StringType.validate. Guard explicit enum/type intersections recursively so conversion cannot weaken a declared type, with valid homogeneous/omitted-type enum controls. Reject reserved argument property names before conversion. Fix shared ObjectType.validate to reject arrays at every nesting/anyOf position, with failing direct/nested/array-item/branch-discrimination tests, instead of duplicating recursive schema interpretation.
+- [x] Implement additive public alpha types with TSDoc; no production WebLLM imports or new dependencies. Defaults of experimental_webllm remain unchanged.
+- [x] Implement synchronous whole-request snapshots, Skillet conversion/validation, immutable phase selection and explicit JSON history envelopes. Unsupported inputs fail before engine acquisition. Test selector/input/schema ownership during preparation; factory engine/model/callback mutation after send is verified in Task 3.
+- [x] Verify selected request has no native tools, uses only selected argument schema/instructions, retains system/developer text and final response schema separately.
+- [x] Run focused RED/GREEN and core compile/API report; commit. Independent spec then quality review.
 
 ## Task 3: Canonical tool event boundary and finalization
 
 Files: new tool transport implementation/spec; private byte-buffer utility only if needed; raw helper integration.
 
-- [ ] Write failing lifecycle tests for one valid selected call: matching RUN_STARTED, canonical tool START/completeARGS/END/RUN_FINISHED, no assistant argument text and no result synthesis.
+- [ ] Verify factory snapshots engine/model/selector before callbacks and preserves owned lifecycle IDs under after-send mutation. Write failing lifecycle tests for one valid selected call: matching RUN_STARTED, canonical tool START/completeARGS/END/RUN_FINISHED, no assistant argument text and no result synthesis.
 - [ ] Add strict failure tests: invalid JSON, fences/prose/multiple values, nonobject, schema mismatch/missing/extra fields and numeric constraints, UTF-8 overflow including whitespace/split Unicode, truncation/missing stop/poststop text, malformed engine chunks, duplicate generated ID, abort at each boundary, generator return/throw/dispose and delegate failure. Assert zero tool events for generation/validation failures before emission. Check abort before START/ARGS/END/RUN_FINISHED; assert zero handler dispatch for pre-END partial sequences, and normal cancellable handler semantics after a validated END (no rollback promise).
 - [ ] Implement bounded raw collection then JSON parse + schema validation + new ID and selected-name binding, only after successful stop+iterator done. Reuse createLocalTextEventStream event-stream lifecycle and shared original engine lock.
 - [ ] Implement finalization through original response schema/UI and projected complete history, with zero tool events. Preserve text/UI streaming and errors.
