@@ -22,6 +22,38 @@ export interface WorkbenchLesson {
     'Markdown' | 'JSON' | 'Requests' | 'UI' | 'State' | 'Schema' | 'Transform';
   readonly endpoint: string;
 }
+/** The sidebar sections; conversations are listed above the lesson groups. */
+export type WorkbenchSidebarSection =
+  'conversations' | 'concepts' | 'production' | 'recipes';
+/** The lesson groups shown in the sidebar, in display order. */
+export const workbenchLessonGroups: readonly {
+  readonly id: Exclude<WorkbenchSidebarSection, 'conversations'>;
+  readonly title: string;
+  readonly lessons: readonly WorkbenchLessonId[];
+}[] = [
+  {
+    id: 'concepts',
+    title: 'Concepts',
+    lessons: [
+      'generative-ui',
+      'tools',
+      'structured-output',
+      'streaming',
+      'schemas',
+      'decisions',
+    ],
+  },
+  {
+    id: 'production',
+    title: 'Production',
+    lessons: ['debugging', 'request-transformation'],
+  },
+  {
+    id: 'recipes',
+    title: 'Recipes',
+    lessons: ['magic-text', 'predictions', 'ui-selection'],
+  },
+];
 /** The allowlisted lesson catalog; browser input cannot select arbitrary endpoints. */
 export const workbenchLessons: readonly WorkbenchLesson[] = [
   {
