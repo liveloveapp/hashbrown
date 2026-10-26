@@ -1,5 +1,31 @@
 # Documentation examples
 
+## Canonical conversation workbench
+
+The checked React `Workbench.tsx` and Angular `workbench.ts` are the shared documentation demo. Both use real Hashbrown UI chat, the `readContext` browser tool, a trusted streaming `SummaryCard`, and explicit revision-checked plan acceptance. The LLA shell is shared; SDK rendering stays framework-owned.
+
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment, then run:
+
+```sh
+npx nx workbench-serve www
+```
+
+Open `http://127.0.0.1:4370/react.html` or `/angular.html`. The loopback server pins the system instruction, tool catalog, native UI response schema and output limit. It keeps credentials server-side. This development host is separate from the public website and does not expose an unrestricted hosted model endpoint.
+
+The bottom timeline captures actual requests, decoded AG-UI events, tool results, SDK-resolved props, completion and application snapshots. Playback reads those immutable frames; it never calls a tool, contacts the server or accepts a plan. Conversation sessions retain their own SDK history and application state in memory. Hiding a session cancels active generation and pauses playback. Refresh clears sessions.
+
+```sh
+npx nx workbench-build www
+npx nx workbench-e2e www
+WORKBENCH_LIVE=1 npx nx workbench-e2e www
+```
+
+The default browser check runs both real SDKs against explicitly labelled deterministic HTTP fixtures. Live mode requires the server credentials and model and uses the actual OpenAI adapter. The workbench displays `Test fixture` or `Live model` from the response header; reports and screenshots go to ignored `dist/docs-workbench/verification`. `WORKBENCH_RECORD=1` also captures browser video. A fixture recording must retain its fixture label.
+
+`workbench-build` strictly compiles both framework sources, builds browser assets and bundles the Node server and verifier. The normal docs route-report target also runs the deterministic workbench checks. It never needs provider credentials in CI. Run recording/build targets sequentially because the checked examples share `dist/docs-quickstart/compiled`.
+
+The earlier guide-specific examples below remain useful focused tutorials. New recordings should use this workbench so prompts, requests, partial JSON, components and application changes share one teaching surface.
+
 These are the complete files used in the React and Angular Quickstarts, conversation and workflow guides, Public endpoint, Threads, and JS Runtime. Guide tests compare published code blocks with checked files. `npx nx typecheck www` checks React/server types and Angular strict templates against the built packages.
 
 `server/server.ts` is the Quickstart's local development endpoint. Provider credentials stay in its `.env` file, and frontend configuration demonstrates a same-origin proxy. The authenticated server pattern is composed separately through `createThreadApp` in `server/thread-app.ts` and the real OpenAI adapter `createProductionThreadApp` in `server/thread-server.ts`.
