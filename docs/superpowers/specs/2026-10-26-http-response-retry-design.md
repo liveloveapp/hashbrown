@@ -1,6 +1,6 @@
 # Opt-in HTTP response retry design
 
-Status: proposed for approval; no implementation changes yet.
+Status: approved for implementation by the user on October 26, 2026.
 
 ## Problem and scope
 
