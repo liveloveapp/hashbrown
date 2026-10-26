@@ -42,46 +42,52 @@ try {
     'Integration',
   ])
     cpSync(join(source, name), join(directory, name), { recursive: true });
-  for (const durable of [false, true]) {
-    for (const confirmation of [false, true]) {
-      for (const recovery of [false, true]) {
-        let program = react[0];
-        if (durable)
-          program = replaceExactlyOnce(
-            program,
-            'IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry);',
-            react[2],
+  for (const api of ['responses', 'chat-completions']) {
+    for (const durable of [false, true]) {
+      for (const confirmation of [false, true]) {
+        for (const recovery of [false, true]) {
+          let program = replaceExactlyOnce(
+            react[0],
+            'builder.Configuration["ModelApi"] ??= "responses";',
+            `builder.Configuration["ModelApi"] = "${api}";`,
           );
-        if (confirmation) {
-          program = replaceExactlyOnce(
-            program,
-            'HashbrownEndpointConfiguration.Map(',
-            `${react[1]}\n\nHashbrownEndpointConfiguration.Map(`,
+          if (durable)
+            program = replaceExactlyOnce(
+              program,
+              'IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry, checkpointOptions);',
+              react[2],
+            );
+          if (confirmation) {
+            program = replaceExactlyOnce(
+              program,
+              'HashbrownEndpointConfiguration.Map(',
+              `${react[1]}\n\nHashbrownEndpointConfiguration.Map(`,
+            );
+            program = replaceExactlyOnce(
+              program,
+              'app, "/run", agent, pending, Scope,',
+              'app, "/run", confirmedAgent, pending, Scope,',
+            );
+          }
+          if (recovery)
+            program = replaceExactlyOnce(
+              program,
+              'await app.RunAsync();',
+              `${react[3]}\n\nawait app.RunAsync();`,
+            );
+          console.log(
+            `Compiling ${api} ${durable ? 'PostgreSQL' : 'memory'} recipe, confirmation=${confirmation}, recovery=${recovery}`,
           );
-          program = replaceExactlyOnce(
-            program,
-            'app, "/run", agent, pending, Scope,',
-            'app, "/run", confirmedAgent, pending, Scope,',
-          );
+          writeFileSync(join(directory, 'Program.cs'), program);
+          execFileSync('dotnet', ['restore', '--locked-mode'], {
+            cwd: directory,
+            stdio: 'inherit',
+          });
+          execFileSync('dotnet', ['build', '--no-restore'], {
+            cwd: directory,
+            stdio: 'inherit',
+          });
         }
-        if (recovery)
-          program = replaceExactlyOnce(
-            program,
-            'await app.RunAsync();',
-            `${react[3]}\n\nawait app.RunAsync();`,
-          );
-        console.log(
-          `Compiling ${durable ? 'PostgreSQL' : 'memory'} recipe, confirmation=${confirmation}, recovery=${recovery}`,
-        );
-        writeFileSync(join(directory, 'Program.cs'), program);
-        execFileSync('dotnet', ['restore', '--locked-mode'], {
-          cwd: directory,
-          stdio: 'inherit',
-        });
-        execFileSync('dotnet', ['build', '--no-restore'], {
-          cwd: directory,
-          stdio: 'inherit',
-        });
       }
     }
   }

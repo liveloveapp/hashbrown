@@ -66,7 +66,7 @@ public static class FixtureRecoveryControls
         {
             await using var command = source.CreateCommand($"""
                 ALTER TABLE "{schema}".interrupt_batches DROP COLUMN original_request, DROP COLUMN terminal_snapshot, DROP COLUMN generation_outcome,
-                    DROP COLUMN revision,DROP COLUMN capture_token,DROP COLUMN observed_at,DROP COLUMN reconciliation_outcome;
+                    DROP COLUMN revision,DROP COLUMN capture_token,DROP COLUMN observed_at,DROP COLUMN reconciliation_outcome,DROP COLUMN compatibility_identity;
                 DROP TABLE "{schema}".interrupt_reconciliation_audit;
                 UPDATE "{schema}".interrupt_metadata SET version=1;
                 """);
