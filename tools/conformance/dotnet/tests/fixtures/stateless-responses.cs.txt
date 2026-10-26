@@ -1,0 +1,63 @@
+#pragma warning disable OPENAI001 // Tests the pinned experimental native Responses options.
+using System.Runtime.CompilerServices;
+using System.ClientModel.Primitives;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Extensions.AI;
+using OpenAI.Responses;
+
+var probe = new ProbeClient();
+using var client = new StatelessResponsesClient(probe);
+var raw = new CreateResponseOptions { StoredOutputEnabled = true, PreviousResponseId = "resp-owned", BackgroundModeEnabled = true };
+var options = new ChatOptions
+{
+    ConversationId = "conv-owned",
+    ContinuationToken = ResponseContinuationToken.FromBytes(new byte[] { 1, 2, 3 }),
+    AllowBackgroundResponses = true,
+    Temperature = 0.25f,
+    RawRepresentationFactory = _ => raw
+};
+var messages = new[] { new ChatMessage(ChatRole.User, "owned history") };
+await client.GetResponseAsync(messages, options);
+await foreach (var _ in client.GetStreamingResponseAsync(messages, options)) { }
+if (probe.Seen.Count != 2) throw new Exception("Both request modes must reach the client.");
+foreach (var configured in probe.Seen)
+{
+    if (ReferenceEquals(configured, options)) throw new Exception("Caller options were reused.");
+    if (configured.ConversationId is not null) throw new Exception("Provider conversation survived.");
+    if (configured.ContinuationToken is not null) throw new Exception("Provider continuation token survived.");
+    if (configured.AllowBackgroundResponses != false) throw new Exception("Background responses remain enabled.");
+    if (configured.Temperature != 0.25f) throw new Exception("Unrelated options were lost.");
+    var native = (CreateResponseOptions)configured.RawRepresentationFactory!(probe)!;
+    if (native.StoredOutputEnabled != false || native.PreviousResponseId is not null || native.ConversationOptions is not null)
+        throw new Exception("Native request is not stateless.");
+    if (ReferenceEquals(native, configured.RawRepresentationFactory(probe))) throw new Exception("Native request options were reused.");
+}
+if (options.ConversationId != "conv-owned" || options.ContinuationToken is null || options.AllowBackgroundResponses != true ||
+    !ReferenceEquals(options.RawRepresentationFactory!(probe), raw) || raw.StoredOutputEnabled != true || raw.PreviousResponseId != "resp-owned")
+    throw new Exception("Caller options were mutated.");
+Console.WriteLine("Stateless streaming and nonstreaming options passed.");
+
+sealed class ProbeClient : IChatClient
+{
+    public List<ChatOptions> Seen { get; } = [];
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Inspect(messages, options);
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Inspect(messages, options);
+        await Task.CompletedTask;
+        var native = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString("""{"type":"response.completed","sequence_number":1,"response":{"id":"resp_options","object":"response","created_at":1720000000,"model":"model","status":"completed","output":[]}}"""))!;
+        yield return new ChatResponseUpdate(ChatRole.Assistant, "ok") { RawRepresentation = native, ResponseId = "resp_options" };
+    }
+    private void Inspect(IEnumerable<ChatMessage> messages, ChatOptions? options)
+    {
+        if (messages.Single().Text != "owned history") throw new Exception("Application history was lost.");
+        Seen.Add(options ?? throw new Exception("Missing request options."));
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
