@@ -52,6 +52,19 @@ afterAll(async () => {
          )`,
         [[...createdJobIds]],
       ),
+    // Internal notifications reserve a provider attempt keyed by their job.
+    () =>
+      executor.execute(
+        'delete from growth_provider_attempts where idempotency_key = any($1::text[])',
+        [
+          [...createdJobIds].map((id) =>
+            providerIdempotencyKey(
+              'test',
+              `internal:lifecycle-integration:${id}`,
+            ),
+          ),
+        ],
+      ),
     () =>
       executor.execute('delete from growth_jobs where id = any($1::uuid[])', [
         [...createdJobIds],
