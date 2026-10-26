@@ -12,7 +12,7 @@ npx nx workbench-serve www
 
 Open `http://127.0.0.1:4370/react.html` or `/angular.html`. The loopback server pins the system instruction, tool catalog, native UI response schema and output limit. It keeps credentials server-side. This development host is separate from the public website and does not expose an unrestricted hosted model endpoint.
 
-The bottom timeline captures actual requests, decoded AG-UI events, tool results, SDK-resolved props, completion and application snapshots. Playback reads those immutable frames; it never calls a tool, contacts the server or accepts a plan. Conversation sessions retain their own SDK history and application state in memory. Hiding a session cancels active generation and pauses playback. Refresh clears sessions.
+The bottom player captures actual requests, decoded AG-UI events, tool results, SDK-resolved props, completion and application snapshots. Playback reads those immutable frames; it never calls a tool, contacts the server or accepts a plan. Conversation sessions retain their own SDK history and application state in memory. Hiding a session cancels active generation and pauses playback. Refresh clears sessions.
 
 ```sh
 npx nx workbench-build www
@@ -193,7 +193,7 @@ The workbench now has eleven allowlisted lessons in both framework hosts:
 - `?lesson=predictions`: fresh context snapshots, catalogue proposals, explicit acceptance/dismissal.
 - `?lesson=ui-selection`: whole candidate decisions, app-owned views and manual control.
 
-All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
+The sidebar collapses, the chat and inspector resize, and the inspector pairs each captured frame with what the SDK or app made of it. The player shows compact milestones; Raw events puts every frame on the scrubber. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
 
 Run `npx nx workbench-demo www` with server-only `OPENAI_API_KEY` and `OPENAI_MODEL` to verify and record the selected paths, encode MP4/WebM with ffmpeg, and publish local media, posters, result screenshots, measured captions and transcripts. It refuses to publish fixture footage. `WORKBENCH_LESSONS=generative-ui,tools,structured-output` optionally selects a subset and rejects unknown values. Run sequentially with other compilation/recording targets. Footage uses half-speed timing for readable streaming; reports include captured phase times and provider provenance. Each recording run preserves its original captures and report under a unique `dist/docs-workbench/captures/<run-id>` directory. The Generative UI recording also refreshes the workbench overview media.
 

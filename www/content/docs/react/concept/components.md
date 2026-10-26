@@ -52,7 +52,7 @@ const components = [
 
 ## Watch the props arrive
 
-The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The rightmost **Details** view follows that selection.
+The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The interpreted side of the inspector follows that selection.
 
 A partial value is useful feedback. It is still a preview. The workbench enables **Accept plan** only after a fresh, successfully completed response passes its two-step plan rules. Rendering the card does not update the accepted plan.
 
@@ -83,7 +83,7 @@ Assistant messages expose `message.ui`, which React renders inside the conversat
 
 Send the first prompt and select **Accept plan**. In **State**, the application revision advances from `0` to `1`. Then choose **Follow-up** and send “Make the second step shorter.” The tool reads the accepted plan before the model proposes its revision.
 
-Use the bottom timeline to revisit the first streamed JSON, parsed output, or acceptance. The chat, inspector, and state follow the same captured moment. **Raw events** reveals every frame; playback makes no provider requests and cannot accept a plan.
+Use the bottom player to revisit the first streamed JSON, parsed output, or acceptance. The chat, inspector, and state follow the same captured moment. **Raw events** puts every frame on the scrubber; playback makes no provider requests and cannot accept a plan.
 
 ## Grow the component catalog
 

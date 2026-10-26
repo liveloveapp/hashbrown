@@ -45,7 +45,7 @@ The title uses `s.streaming.string`, so the interface can display it before its 
 
 ## Follow one response
 
-Keep **JSON** selected. The center feed shows the plan preview; the rightmost **Details** view shows values resolved by the SDK.
+Keep **JSON** selected. The center feed shows the plan preview; the right half of the inspector shows the values the SDK resolved from it.
 
 | Moment | Preview | Application state |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ Provider chunk sizes and timing vary. Several values may arrive together. The re
 
 Accept the first plan, choose **Follow-up**, and send “Make the second step shorter.” The browser tool reads the accepted plan before the model proposes a revision. The first step stays the same; the second becomes shorter.
 
-Use the bottom timeline to revisit **Streaming JSON**, **Parsed output**, and **Plan accepted**. The chat, JSON, and state follow the same captured moment. **Raw events** reveals every frame. Replay does not call the model, execute a tool, or accept a plan.
+Use the bottom player to revisit **Streaming JSON**, **Parsed output**, and **Plan accepted**. The chat, JSON, and state follow the same captured moment. **Raw events** puts every frame on the scrubber. Replay does not call the model, execute a tool, or accept a plan.
 
 ## Keep previews separate from writes
 
