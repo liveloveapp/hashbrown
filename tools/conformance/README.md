@@ -740,3 +740,49 @@ credential capture. Compare route upstream headers, first bytes and browser
 response boundaries; `/health` proves process liveness, not provider readiness.
 Keep the original five-second assertion and zero retries when investigating.
 A repeat pass alone does not establish the cause of an earlier failure.
+
+### Real WebLLM structured tools canary
+
+`local-webllm-tools-live` is a separate noncached live target with exactly six
+fixed cases: Angular and React each run lookup → schema, dependent lookup →
+schema, and lookup → one trusted `status` component with title from the handler
+and count 7. This is text-only structured argument generation with an
+application-selected tool phase, not native WebLLM tool calling. The harness
+makes no qualification claim before a real run.
+
+Execution and even discovery refuse CI and require all three explicit opt-ins:
+`LOCAL_LLM_E2E=1`, `LOCAL_LLM_WEBLLM_TOOLS_LIVE=1`, and `LOCAL_LLM_DOWNLOAD=1`.
+Set an absolute `WEBLLM_MODULE_PATH` to an application-provided browser bundle
+and explicitly select `WEBLLM_MODEL`; neither has a default. Model selection and
+any required download remain an application decision. The dedicated persistent
+profile is `hashbrown-webllm-vision-profile` beneath the system temporary
+directory, sharing the existing vision model cache, and the production hosts
+use ports 4451/4452. Personal/native browser profiles are never selected.
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS_LIVE=1 LOCAL_LLM_DOWNLOAD=1 \
+  WEBLLM_MODULE_PATH=/absolute/application/webllm/lib/index.js \
+  WEBLLM_MODEL=explicit-application-model \
+  npx nx local-webllm-tools-live conformance
+```
+
+Append `--list` for six-case discovery without opening a profile, reading the
+bundle, importing WebLLM, downloading, or loading a model. Generation uses
+application-owned `max_tokens=256` (override `WEBLLM_MAX_TOKENS` with an integer
+from 1 through 2048), temperature 0, seed 1, and zero retries or repair passes.
+Each fixed case owns one worker load/unload and requires stop plus iterator
+drain before accepting exact raw JSON and canonical call/result replay.
+
+The list and JSON reporters write a durable report at
+`test-results/conformance/webllm-tools-live/report.json`. File attachments are
+retained on success and failure: full engine requests, schemas, raw response
+text/chunks, canonical replay, handler operations, framework output, and
+separate metadata. Cleanup interrupts and awaits pending requests before
+unloading, terminates/revokes the worker, independently captures terminal
+status/error, and preserves the primary failure. Metadata records the actual
+bundle SHA256, selected model, browser/GPU/machine details, catalog URLs,
+estimated VRAM, and load/first-token/total timings. Catalog URLs are not
+immutable model artifact identities, estimated VRAM is not measured GPU
+allocation, and optional browser process RSS may double-count shared pages.
+No image data is retained by this text-only target. Broad/nested UI, media,
+other model choices, and other hardware require separate qualification.

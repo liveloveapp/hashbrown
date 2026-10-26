@@ -26,7 +26,8 @@
     "local-native-ui-phases.playwright.config.ts",
     "local-webllm-images.playwright.config.ts",
     "local-webllm-vision.playwright.config.ts",
-    "local-webllm-tools.playwright.config.ts"
+    "local-webllm-tools.playwright.config.ts",
+    "local-webllm-tools-live.playwright.config.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }
