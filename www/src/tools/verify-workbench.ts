@@ -523,7 +523,9 @@ try {
       }
 
       await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
-      await expect(page.locator('.wb:visible .wb-detail')).toBeVisible();
+      await expect(
+        page.locator('.wb:visible .wb-inspector [data-detail]'),
+      ).toBeVisible();
       await expect(
         page.getByRole('tab', { name: lesson.inspector, exact: true }),
       ).toHaveAttribute('aria-selected', 'true');
@@ -551,7 +553,7 @@ try {
           page.locator('.wb:visible .wb-inspector .wb-inspection'),
         ).toContainText('403');
         await expect(
-          page.locator('.wb:visible .wb-detail .wb-inspection'),
+          page.locator('.wb:visible .wb-inspector [data-detail]'),
         ).toContainText('Demo denial is enabled');
         expect(requests).toHaveLength(start);
         expect(browserRequests).toBe(1);

@@ -186,7 +186,7 @@ test('seeks with explicit event controls and stops scheduled playback on dispose
   vi.useRealTimers();
 });
 
-test('offers scoped Details Raw and Console views with concise captured request data', () => {
+test('pairs captured and interpreted content under one selection strip', () => {
   const host = document.createElement('div');
   const store = createWorkbenchStore();
   const shell = mountWorkbench(host, store, {
@@ -207,18 +207,30 @@ test('offers scoped Details Raw and Console views with concise captured request 
     ],
   });
   store.settle('complete', 'stop');
-  const detail = host.querySelector('aside');
-  const tabs = [...(detail?.querySelectorAll('button[role=tab]') ?? [])];
+  const frame = store.getSnapshot().frame;
+  const selection = host.querySelector('.wb-selection');
+  const tabs = [...host.querySelectorAll('[role=tab]')].map(
+    (tab) => tab.textContent,
+  );
+  const raw = host.querySelector<HTMLButtonElement>('button.wb-raw');
 
-  expect(tabs.map((tab) => tab.textContent)).toEqual([
-    'Details',
-    'Raw',
-    'Console',
-  ]);
-  expect(detail?.textContent).toContain('Trusted plan');
-  expect(detail?.textContent).toContain('Turn 1');
-  (tabs[2] as HTMLButtonElement | undefined)?.click();
-  expect(detail?.textContent).toContain('Request');
+  raw?.click();
+
+  expect(host.querySelector('.wb-detail')).toBeNull();
+  expect(host.querySelector('aside')).toBeNull();
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'Trusted plan',
+  );
+  expect(selection?.textContent).toContain('Turn 1');
+  expect(selection?.textContent).toMatch(/event \d+\/\d+/);
+  expect(tabs).not.toContain('Details');
+  expect(tabs).not.toContain('Raw');
+  expect(tabs).not.toContain('Console');
+  expect(raw?.getAttribute('aria-pressed')).toBe('true');
+  expect(host.querySelector('button.wb-raw')).toBe(raw);
+  expect(host.querySelector('.wb-inspection')?.textContent).toContain(
+    `${frame?.kind} · ${frame?.source}`,
+  );
   shell.dispose();
 });
 
@@ -332,9 +344,7 @@ test('retained conversation navigation selects sessions without clearing their c
     .find((button) => button.textContent?.trim() === 'Conversation 2')
     ?.click();
   [...host.querySelectorAll('button')]
-    .find(
-      (button) => button.getAttribute('aria-label') === 'New conversation',
-    )
+    .find((button) => button.getAttribute('aria-label') === 'New conversation')
     ?.click();
 
   expect(select).toHaveBeenCalledWith('two');
@@ -392,7 +402,7 @@ test('keeps every inspector panel visible and exposes raw timeline frames on dem
   );
 
   expect(host.querySelector<HTMLElement>('.wb-inspector')?.hidden).toBe(false);
-  expect(host.querySelector<HTMLElement>('.wb-detail')?.hidden).toBe(false);
+  expect(host.querySelector<HTMLElement>('[data-detail]')?.hidden).toBe(false);
   expect(timeline?.querySelectorAll('button')).toHaveLength(3);
   toggle?.click();
 
@@ -430,7 +440,7 @@ test('keeps the latest browser tool result legible in the live Requests context'
   });
   store.settle('complete', 'stop');
 
-  const context = host.querySelector('.wb-detail');
+  const context = host.querySelector('[data-detail]');
 
   expect(context?.textContent).toContain('"revision": 1');
   expect(context?.textContent).not.toContain('continuation-id');
@@ -460,13 +470,13 @@ test('does not label an earlier turn tool result as the current request context'
   });
   store.settle('complete', 'stop');
   store.send('Shorter');
-  expect(host.querySelector('.wb-detail')?.textContent).not.toContain(
+  expect(host.querySelector('[data-detail]')?.textContent).not.toContain(
     'first-request',
   );
   store.record('request', { requestId: 'second-turn' });
   store.record('event', { type: 'RUN_STARTED' });
 
-  const context = host.querySelector('.wb-detail');
+  const context = host.querySelector('[data-detail]');
 
   expect(context?.textContent).toContain('second-turn');
   expect(context?.textContent).not.toContain('previousTurnOnly');
@@ -496,7 +506,7 @@ test('shows the shared plan contract separately from the parsed preview in the S
   ).toBe('Schema');
   expect(inspection?.textContent).toContain('"type": "object"');
   expect(inspection?.textContent).toContain('"steps"');
-  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'Preview validation',
   );
   shell.dispose();
@@ -630,7 +640,7 @@ test('historical provenance and HTTP evidence follow the selected failed turn', 
   expect(host.querySelector('.wb-request-list')?.textContent).toContain(
     'HTTP 403',
   );
-  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'demo-context-denied',
   );
   shell.dispose();
@@ -677,11 +687,8 @@ test('transformation inspector isolates added instructions and keeps the actual 
   const inspection = host.querySelector('.wb-inspector') ?? host;
   expect(inspection.textContent).toContain('Public workspace policy');
   expect(inspection.textContent).not.toContain('Original instructions');
-  const raw = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Raw',
-  );
-  raw?.click();
-  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+  host.querySelector<HTMLButtonElement>('button.wb-raw')?.click();
+  expect(host.querySelector('.wb-inspection')?.textContent).toContain(
     'Original instructions',
   );
   shell.dispose();
@@ -751,10 +758,10 @@ test('shows Markdown and selected source details through the recipe inspector in
   expect(host.querySelector('.wb-inspector')?.textContent).toContain(
     '## Our plan',
   );
-  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'Selected reference',
   );
-  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'https://hashbrown.dev',
   );
   shell.dispose();

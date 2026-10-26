@@ -407,9 +407,28 @@ export function mountWorkbench(
   const tabs = element('div', '', 'wb-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
+  const selection = element('div', '', 'wb-selection');
+  const pair = element('div', '', 'wb-pair');
+  pair.id = `${instanceId}-inspection`;
+  pair.setAttribute('role', 'tabpanel');
+  const captured = element('section', '', 'wb-section');
+  captured.dataset.captured = '';
+  const capturedHeading = element('h3');
+  let rawFrame = false;
+  const rawFrameToggle = button('{ }', () => {
+    rawFrame = !rawFrame;
+    render();
+  });
+  rawFrameToggle.className = 'wb-raw';
+  rawFrameToggle.setAttribute('aria-label', 'Show captured frame');
+  rawFrameToggle.setAttribute('aria-pressed', 'false');
+  const capturedHeader = element('header', '', 'wb-section-head');
+  capturedHeader.append(capturedHeading, rawFrameToggle);
   const inspection = element('div', '', 'wb-inspection');
-  inspection.id = `${instanceId}-inspection`;
-  inspection.setAttribute('role', 'tabpanel');
+  captured.append(capturedHeader, inspection);
+  const detail = element('section', '', 'wb-section');
+  detail.dataset.detail = '';
+  pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
     commands.lesson?.format === 'text' ? 'Markdown' : 'JSON',
@@ -428,18 +447,16 @@ export function mountWorkbench(
       render();
     });
     item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', inspection.id);
+    item.setAttribute('aria-controls', pair.id);
     return item;
   });
   tabs.append(...tabButtons);
   inspector.append(
     element('h2', 'Inspector', 'wb-panel-head'),
     tabs,
-    inspection,
+    selection,
+    pair,
   );
-  const detail = element('aside', '', 'wb-panel wb-detail');
-  detail.setAttribute('aria-label', 'Event details and console');
-  let drawer = 'Details';
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
   const controls = element('div', '', 'wb-actions');
@@ -531,7 +548,7 @@ export function mountWorkbench(
   );
   footer.append(controls, events, seek);
   const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
-  layout.append(nav, chat, split.element, inspector, detail);
+  layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
@@ -681,28 +698,39 @@ export function mountWorkbench(
       commands.lesson?.format,
       tab,
     );
-    inspection.replaceChildren(
+    capturedHeading.textContent =
+      recipeView?.heading ??
+      (tab === 'JSON'
+        ? commands.lesson?.format === 'decision'
+          ? 'Decision response'
+          : 'Model output'
+        : tab === 'Schema'
+          ? 'Response contract'
+          : tab === 'Transform'
+            ? 'Mapped provider request'
+            : tab === 'UI'
+              ? commands.lesson?.format === 'decision'
+                ? 'Application-owned choice'
+                : commands.lesson?.format === 'structured'
+                  ? 'Application-rendered plan'
+                  : 'Trusted component'
+              : tab === 'State'
+                ? 'Application state'
+                : 'Requests and tools');
+    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    selection.replaceChildren(
       element(
-        'h3',
-        recipeView?.heading ??
-          (tab === 'JSON'
-            ? commands.lesson?.format === 'decision'
-              ? 'Decision response'
-              : 'Model output'
-            : tab === 'Schema'
-              ? 'Response contract'
-              : tab === 'Transform'
-                ? 'Mapped provider request'
-                : tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? 'Application-owned choice'
-                    : commands.lesson?.format === 'structured'
-                      ? 'Application-rendered plan'
-                      : 'Trusted component'
-                  : tab === 'State'
-                    ? 'Application state'
-                    : 'Requests and tools'),
+        'span',
+        frame ? workbenchEventLabel(frame, commands.lesson?.format) : 'Live',
+        'wb-chip wb-chip-active',
       ),
+      element(
+        'span',
+        frame
+          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}`
+          : `Turn ${snapshot.turn} · live`,
+      ),
+      element('span', provenance.textContent, 'wb-chip'),
     );
     const requestContext =
       frame?.kind === 'request' ||
@@ -808,7 +836,17 @@ export function mountWorkbench(
                       kind: event.kind,
                       payload: event.payload,
                     }));
-    if (tab === 'Requests') {
+    rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
+    inspection.replaceChildren();
+    if (rawFrame) {
+      inspection.append(
+        element(
+          'h3',
+          frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
+        ),
+        pre(tab === 'Transform' && transform ? transform : frame?.payload),
+      );
+    } else if (tab === 'Requests') {
       const list = element('div', '', 'wb-request-list');
       for (const event of visibleEvents.filter(
         (event) =>
@@ -842,111 +880,61 @@ export function mountWorkbench(
     } else {
       inspection.append(pre(value));
     }
-    const drawerTabs = element('div', '', 'wb-tabs');
-    drawerTabs.setAttribute('role', 'tablist');
-    drawerTabs.setAttribute('aria-label', 'Context views');
-    const drawerBody = element('div', '', 'wb-inspection');
-    drawerBody.setAttribute('role', 'tabpanel');
-    ['Details', 'Raw', 'Console'].forEach((name) => {
-      const item = button(name, () => {
-        drawer = name;
-        render();
-      });
-      item.setAttribute('role', 'tab');
-      item.setAttribute('aria-selected', String(drawer === name));
-      drawerTabs.append(item);
-    });
     detail.replaceChildren(
-      element('h2', 'Context', 'wb-panel-head'),
+      element(
+        'h3',
+        recipeView?.detailHeading ??
+          (tab === 'Transform'
+            ? 'Preserved mapped fields'
+            : tab === 'Schema'
+              ? 'Preview validation'
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? 'Typed choice and confidence'
+                  : commands.lesson?.format === 'structured'
+                    ? 'Typed plan'
+                    : 'Resolved props'
+                : tab === 'State'
+                  ? 'Selected moment'
+                  : requestContext?.kind === 'tool'
+                    ? 'Browser tool result'
+                    : 'Request payload'),
+      ),
+      pre(
+        recipeView
+          ? recipeView.detail
+          : tab === 'Transform'
+            ? (transform?.preserved ?? null)
+            : tab === 'Schema'
+              ? {
+                  preview: frame?.props ?? null,
+                  passesApplicationRules: isWorkbenchPlan(frame?.props),
+                  responseStatus: frame?.status ?? snapshot.status,
+                  note: 'Preview values do not authorize applying a plan.',
+                }
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? (frame?.decision ?? null)
+                  : frame?.props
+                : tab === 'State'
+                  ? {
+                      turn: frame?.turn ?? snapshot.turn,
+                      status: frame?.status ?? snapshot.status,
+                      event: frame
+                        ? workbenchEventLabel(frame, commands.lesson?.format)
+                        : 'Ready',
+                      source: frame?.source ?? 'Application',
+                    }
+                  : requestContext?.payload,
+      ),
       element(
         'p',
-        `Turn ${frame?.turn ?? snapshot.turn} · ${historical ? 'selected event' : 'live'} · ${tab}`,
-        'wb-scope',
+        frame
+          ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          : 'Waiting for captured data.',
+        'wb-muted',
       ),
-      drawerTabs,
-      drawerBody,
     );
-    if (drawer === 'Console') {
-      const logs = element('ol', '', 'wb-logs');
-      visibleEvents.slice(-20).forEach((event) => {
-        const item = element('li');
-        item.append(
-          button(
-            `${event.elapsedMs} ms · ${workbenchEventLabel(event, commands.lesson?.format)}`,
-            () => {
-              pause();
-              store.seek(snapshot.events.indexOf(event));
-            },
-          ),
-        );
-        logs.append(item);
-      });
-      drawerBody.append(logs);
-    } else if (drawer === 'Raw') {
-      drawerBody.append(
-        element(
-          'h3',
-          frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
-        ),
-        pre(tab === 'Transform' && transform ? transform : frame?.payload),
-      );
-    } else {
-      drawerBody.append(
-        element(
-          'h3',
-          recipeView?.detailHeading ??
-            (tab === 'Transform'
-              ? 'Preserved mapped fields'
-              : tab === 'Schema'
-                ? 'Preview validation'
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? 'Typed choice and confidence'
-                    : commands.lesson?.format === 'structured'
-                      ? 'Typed plan'
-                      : 'Resolved props'
-                  : tab === 'State'
-                    ? 'Selected moment'
-                    : requestContext?.kind === 'tool'
-                      ? 'Browser tool result'
-                      : 'Request payload'),
-        ),
-        pre(
-          recipeView
-            ? recipeView.detail
-            : tab === 'Transform'
-              ? (transform?.preserved ?? null)
-              : tab === 'Schema'
-                ? {
-                    preview: frame?.props ?? null,
-                    passesApplicationRules: isWorkbenchPlan(frame?.props),
-                    responseStatus: frame?.status ?? snapshot.status,
-                    note: 'Preview values do not authorize applying a plan.',
-                  }
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? (frame?.decision ?? null)
-                    : frame?.props
-                  : tab === 'State'
-                    ? {
-                        turn: frame?.turn ?? snapshot.turn,
-                        status: frame?.status ?? snapshot.status,
-                        event: frame
-                          ? workbenchEventLabel(frame, commands.lesson?.format)
-                          : 'Ready',
-                        source: frame?.source ?? 'Application',
-                      }
-                    : requestContext?.payload,
-        ),
-        element(
-          'p',
-          frame
-            ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
-            : 'Waiting for captured data.',
-          'wb-muted',
-        ),
-      );
-    }
     if ((frame?.status ?? snapshot.status) === 'error') {
       const issue = element(
         'p',
@@ -965,7 +953,6 @@ export function mountWorkbench(
           label: workbenchEventLabel(event, commands.lesson?.format),
         }))
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
-    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
       .at(-1)?.index;
