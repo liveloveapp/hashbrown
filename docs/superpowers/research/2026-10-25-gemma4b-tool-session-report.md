@@ -97,5 +97,5 @@ availability check to report that, without disconnecting the model service.
 For comparison, the installed v4 `gemma4-2b-it` model completes a native tool
 round trip on the same device using the existing single-call ID workaround.
 The E4B failure occurs earlier than issue 577500782: no session or call ID is
-returned. Text inference and exact leaf/nested component UI also work with E4B
-through Hashbrown in Angular and React.
+returned. On Stable 155, text inference and exact leaf/nested component UI also work
+with E4B through Hashbrown in Angular and React.
