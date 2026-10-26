@@ -97,6 +97,9 @@ test('email validates on blur with the new copy', () => {
   expect(email.getAttribute('aria-describedby')).toBe('unstuck-email-error');
 
   fireEvent.change(email, { target: { value: 'jordan@acme' } });
+
+  expect(screen.queryByText(EMAIL_EMPTY)).toBeNull();
+
   fireEvent.blur(email);
 
   expect(screen.getByText(EMAIL_MALFORMED).id).toBe('unstuck-email-error');
@@ -277,4 +280,16 @@ test('focus moves to the success status once the message is sent', async () => {
   const status = await screen.findByRole('status');
   expect(status.tabIndex).toBe(-1);
   expect(document.activeElement).toBe(status);
+});
+
+test('focus moves to the failure alert once a request fails', async () => {
+  respond(503, { error: 'x', retryable: true });
+  mount();
+  fill('jordan@acme.dev', MESSAGE);
+
+  send();
+
+  const alert = await screen.findByRole('alert');
+  expect(alert.tabIndex).toBe(-1);
+  expect(document.activeElement).toBe(alert);
 });

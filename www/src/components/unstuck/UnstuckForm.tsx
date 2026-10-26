@@ -227,7 +227,12 @@ export function UnstuckForm({ fallbackAddress }: { fallbackAddress: string }) {
         </p>
       </div>
       {form.status === 'failed' ? (
-        <div className={styles.status} role="alert">
+        <div
+          className={styles.status}
+          role="alert"
+          tabIndex={-1}
+          ref={focusOnMount}
+        >
           <strong>That didn&apos;t send.</strong> Try again, or email me at{' '}
           <a href={`mailto:${fallbackAddress}`}>{fallbackAddress}</a>.
         </div>
