@@ -1,4 +1,5 @@
 import { test as base, expect } from '@playwright/test';
+import { captureWebLlmVisionTeardown } from '../harness/webllm-vision-teardown';
 import { requireWebLlmVisionSmoke } from '../harness/webllm-vision-mode';
 import {
   installWebLlmWorker,
@@ -160,42 +161,72 @@ test('real application-selected VLM distinguishes counterbalanced generated squa
     });
     succeeded = true;
   } finally {
-    let cleanupError: unknown;
     try {
-      await page
-        .getByTestId('stop')
-        .click({ timeout: 1000 })
-        .catch(() => undefined);
-      await page.evaluate(() =>
-        (globalThis as unknown as VisionState).__localWebLlmDispose?.(),
-      );
-    } catch (error) {
-      cleanupError = error instanceof Error ? error.message : String(error);
-    }
-    const cleanup = await page
-      .evaluate(
-        () => (globalThis as unknown as VisionState).__localWebLlmMetrics,
-      )
-      .catch(() => undefined);
-    await testInfo.attach('vision-cleanup.json', {
-      body: JSON.stringify({
-        model: selection.model,
-        bundleSha256: runtime.bundleSha256,
-        cleanup,
-        cleanupError,
-        fallbackRequests,
-        errors,
-      }),
-      contentType: 'application/json',
-    });
-    await runtime.stop();
-    if (succeeded) {
-      expect(cleanupError).toBeUndefined();
-      expect(cleanup).toMatchObject({
-        activeRequests: 0,
-        unloaded: true,
-        workerTerminated: true,
+      const terminal = await captureWebLlmVisionTeardown({
+        dispose: async () => {
+          await page
+            .getByTestId('stop')
+            .click({ timeout: 1000 })
+            .catch(() => undefined);
+          await page.evaluate(() =>
+            (globalThis as unknown as VisionState).__localWebLlmDispose?.(),
+          );
+        },
+        read: () =>
+          page.evaluate(() => {
+            const state = globalThis as unknown as VisionState;
+            return {
+              metrics: state.__localWebLlmMetrics,
+              evidence: state.__localWebLlmVisionEvidence,
+              media: state.__hashbrownLocalMedia,
+              rendered: {
+                answer:
+                  document.querySelector('[data-testid="structured-answer"]')
+                    ?.textContent ?? null,
+                count:
+                  document.querySelector('[data-testid="structured-count"]')
+                    ?.textContent ?? null,
+              },
+            };
+          }),
+        attach: async (result) => {
+          await testInfo.attach('vision-response-evidence.json', {
+            body: JSON.stringify({
+              model: selection.model,
+              bundleSha256: runtime.bundleSha256,
+              expectedColors: colors,
+              evidence: result.snapshot?.evidence,
+              rendered: result.snapshot?.rendered,
+              evidenceError: result.evidenceError,
+            }),
+            contentType: 'application/json',
+          });
+        },
       });
+      await testInfo.attach('vision-cleanup.json', {
+        body: JSON.stringify({
+          model: selection.model,
+          bundleSha256: runtime.bundleSha256,
+          cleanup: terminal.snapshot?.metrics,
+          media: terminal.snapshot?.media,
+          cleanupError: terminal.cleanupError,
+          evidenceError: terminal.evidenceError,
+          fallbackRequests,
+          errors,
+        }),
+        contentType: 'application/json',
+      });
+      if (succeeded) {
+        expect(terminal.cleanupError).toBeUndefined();
+        expect(terminal.evidenceError).toBeUndefined();
+        expect(terminal.snapshot?.metrics).toMatchObject({
+          activeRequests: 0,
+          unloaded: true,
+          workerTerminated: true,
+        });
+      }
+    } finally {
+      await runtime.stop();
     }
   }
 });
