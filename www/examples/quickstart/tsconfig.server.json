@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@hashbrownai/core": ["packages/core/src/index.ts"],
+      "@hashbrownai/openai": ["packages/openai/src/index.ts"],
+      "#development-install": [
+        "packages/core/src/growth/development-install.default.ts"
+      ]
+    }
+  }
+}

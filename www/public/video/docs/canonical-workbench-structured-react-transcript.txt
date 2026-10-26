@@ -1,0 +1,15 @@
+REACT · structured-output
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. There is no narration.
+
+Real model output streams through Hashbrown into the plan preview.
+
+Review the completed plan. Accept plan updates application state to revision 1.
+
+The follow-up reads the accepted plan and proposes a shorter second step.
+
+Replay follows captured chat, JSON, UI and state. It makes no new requests.
+
+Return to live to continue the conversation. The accepted plan stays at revision 1.
+
+The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. The structured-chat API returns plain typed data; the application renders the card. Accept plan is an explicit application action. Refresh clears local sessions.

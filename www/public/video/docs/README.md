@@ -1,13 +1,12 @@
 # Documentation demo media
 
-The original six recordings show the real ATC example using scripted model responses and fixture traffic. They have no narration or soundtrack. The recordings identify the scripted data in their footer; the documentation figure and text walkthrough repeat it.
+The five ATC recordings below use scripted model responses and fixture traffic. They have no narration or soundtrack. The recordings identify the scripted data in their footer; the documentation figure and text walkthrough repeat it. The original ATC streaming recording was replaced by the shopping-list recording documented below.
 
 Each topic has an H.264 MP4, VP9 WebM, PNG poster, WebVTT descriptions, and plain-text walkthrough. Generative UI and decisions also have result screenshots. The same behavior recordings are shared by the React and Angular guides.
 
 | Recording     | Documentation page |
 | ------------- | ------------------ |
 | generative-ui | concept/components |
-| streaming     | concept/streaming  |
 | browser-tools | concept/functions  |
 | schemas       | concept/schema     |
 | decisions     | concept/decisions  |

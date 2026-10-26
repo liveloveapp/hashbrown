@@ -84,8 +84,104 @@ The suite checks structured output and nested UI across both frameworks and
 attaches JSON load/first-token/total timings, schema sizes and process RSS.
 Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
 more than once and does not measure unique GPU allocations. Tests use bounded,
-application-owned generation settings. WebLLM remains text-only in this adapter and rejects tools. Chrome native typed
+application-owned generation settings. The default WebLLM contract remains string-only; image input requires the separate explicit opt-in below. Tools remain unsupported. Chrome native typed
 tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
+
+### Deterministic WebLLM image contracts
+
+```sh
+NX_DAEMON=false NX_NO_CLOUD=true NODE_ENV=production \
+  LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_IMAGES=1 \
+  RUNTIME_SMOKE_ANGULAR_PORT=4451 RUNTIME_SMOKE_REACT_PORT=4452 \
+  npx nx local-webllm-image-contract-e2e conformance
+```
+
+This separate target refuses CI and requires both explicit local flags. It runs
+Angular and React with a generated 64×64 PNG, application-owned resolver, real
+browser decoding, and a deterministic worker shim. It checks image history,
+canonical data URL serialization, streaming, cancellation during worker setup
+and iteration, an early release during controlled slow decoding, draining,
+and resolver disposal. Worker diagnostics contain only
+image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
+model, or native inference session, and does not validate model vision quality.
+The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
+
+This image API requires this feature branch's source changes or a future SDK release; published
+version 0.8.2 does not include it. Applications opt in with
+`experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
+unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
+Every image source is resolved by the application into `{ blob, dispose? }`,
+including inline data, URLs and file handles. Hashbrown never fetches a source
+or forwards its original URL/file value to WebLLM. It validates PNG/JPEG/WebP
+bytes and decoding, then creates a canonical data URL. Temporary validation
+bitmaps close immediately; application resources dispose after generation or
+drain, with late acquisitions cleaned after cancellation.
+
+Only user arrays containing images first and optional trailing text are
+supported. Adjacent trailing text joins exactly, image order is preserved, and
+text before an image or interleaving is rejected. Text-only arrays normalize to
+a string in image mode; empty arrays, other media and tool histories are
+rejected before resource acquisition. Defaults are 10 MiB per image, 16 million
+decoded pixels per image, eight images and 20 MiB encoded image history per run.
+`media.images.maxBytes`, `maxPixels`, `maxImages` and `media.maxTotalBytes` accept
+positive safe integers. Pixel checks occur after decoding and do not bound a
+decoder's transient allocations. There is no automatic resize or transcoding.
+
+The application owns engine/model loading and unloading. Image opt-in asserts
+that its selected model supports images; it does not discover or prove that
+capability. Structural consumer checks against published WebLLM 0.2.85/0.2.86
+declarations pass with upstream declaration-body checking skipped; full checks
+require upstream development declarations absent from the standalone archives.
+Neither those checks nor these mocked worker contracts qualify a real VLM.
+Selecting/downloading and testing a real vision model is a separate decision.
+
+### Real WebLLM vision canary
+
+`local-webllm-vision-smoke` is a separate live target. WebLLM 0.2.86 with
+`Phi-3.5-vision-instruct-q4f16_1-MLC` passed the fixed generated-image
+recognition/structured-output cases in both frameworks on the tested M1 Max;
+see the [qualification report](../../docs/superpowers/research/2026-10-25-webllm-vision-qualification.md).
+It refuses CI and requires all of `LOCAL_LLM_E2E=1`,
+`LOCAL_LLM_WEBLLM_VISION=1`, `LOCAL_LLM_DOWNLOAD=1`, an absolute
+`WEBLLM_MODULE_PATH`, and an explicit `WEBLLM_MODEL`. There is no default vision
+model and no inference HTTP fallback.
+
+After selecting and approving a compatible application-owned model and bundle:
+
+```sh
+NX_DAEMON=false NX_NO_CLOUD=true NODE_ENV=production \
+  LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_VISION=1 LOCAL_LLM_DOWNLOAD=1 \
+  WEBLLM_MODULE_PATH="$APP_WEBLLM_BUNDLE" WEBLLM_MODEL="$APP_VISION_MODEL" \
+  npx nx local-webllm-vision-smoke conformance
+```
+
+Appending `--list` discovers the tests without running their bodies, opening the
+profile, importing the supplied runtime bundle, or loading/downloading a model.
+The live target uses installed Chrome and its own persistent
+`hashbrown-webllm-vision-profile` beneath the system temporary directory; it does
+not use `LOCAL_LLM_PROFILE`, the native test profile, or a personal profile.
+Its model cache persists there. Both framework projects run sequentially.
+
+Each project loads one application-owned worker engine, then uses fresh chat
+threads for a red image and a blue image without navigating or reloading the
+model between them. Angular uses red then blue; React uses blue then red. Each
+96×64 generated image contains two foreground squares on white. The identical
+prompt asks for the latest image's lowercase square color and square count,
+without naming the target color or count. A structured schema constrains
+`answer` and `count`; exact parsed red/blue and count assertions, raw response
+JSON, schema, finish status, reader drain, single-image history, resolver cleanup,
+and forbidden fallback checks must all pass. The fixture unloads the engine and
+terminates its worker at the end, after active generation has drained.
+
+The durable JSON report is `test-results/conformance/webllm-vision/report.json`.
+Separate response-evidence and cleanup attachments are retained after cleanup
+even on failure. Reports contain bundle SHA-256, selected catalog artifact URLs and estimated
+VRAM, browser/GPU metadata, loading/first-token/total times, generated dimensions,
+image MIME/count/byte totals, schema and response evidence, memory-method caveat,
+and cleanup/fallback counts. They do not serialize image data URLs or encoded
+image bytes. Catalog URLs alone do not identify immutable weight revisions;
+real results retain that limitation. This same-device canary does not establish
+broad image understanding, vision-conditioned component UI or cross-hardware reliability.
 
 ### Selecting a local Chrome model experiment
 
@@ -114,6 +210,19 @@ Playwright metadata records the requested configuration and whether it applies
 to native execution; deterministic contracts and WebLLM do not qualify it.
 See the [current qualification report](../../docs/superpowers/research/2026-10-25-local-model-qualification.md)
 for model availability, release status, and current Ollama/WebLLM limitations.
+
+### Gemma E4B qualification boundary
+
+Chrome 155's `v4_4b` download identifies `gemma-4-E4B-it`, not Gemini Nano 4B.
+The local native smoke now checks structured output plus exact leaf and nested
+component UI through the text transport. E4B passed those six framework cases
+(two structured and four UI), with no tools or HTTP fallback.
+
+Typed-tool session creation fails before inference on Stable 155.0.8059.85 and
+Canary 158.0.8122.0 on the tested M1 Max, even though exact availability returns
+available. E4B native tools and tool-plus-UI are therefore unqualified. The v4
+2B native tool control still passes. See the [E4B evidence](../../docs/superpowers/research/2026-10-25-gemma4b-qualification.md)
+and retained strict canaries; no model quality assertion is weakened.
 
 ### Chrome media input
 
@@ -385,15 +494,16 @@ does not enforce or repair the model's schema. Evidence and reports are retained
 under `test-results/conformance/native-ui`.
 
 Each scenario offers a bounded catalog: lookup + status, dependent lookup/follow
-+ status, lookup + status/panel for nesting, or status alone without tools. Tests
-assert the actual native tool declarations and exact terminal component schema,
-as well as exact handler operations and output. The fixture query
-`uiWorkflow=broad` retains the original broader catalog for research; qualification
-uses the scenario-specific `uiWorkflow` values.
-Two fixed production samples with these bounded declarations passed 2/8 then
-4/8; only the no-tools cases passed in both. Passing deterministic contracts
-does not establish native tool-driven UI reliability. Retain all model failures
-and keep the native quality gate separate from CI.
+
+- status, lookup + status/panel for nesting, or status alone without tools. Tests
+  assert the actual native tool declarations and exact terminal component schema,
+  as well as exact handler operations and output. The fixture query
+  `uiWorkflow=broad` retains the original broader catalog for research; qualification
+  uses the scenario-specific `uiWorkflow` values.
+  Two fixed production samples with these bounded declarations passed 2/8 then
+  4/8; only the no-tools cases passed in both. Passing deterministic contracts
+  does not establish native tool-driven UI reliability. Retain all model failures
+  and keep the native quality gate separate from CI.
 
 Adapter capability `ui` follows the opt-in policy; inference remains unknown.
 Measure the exact component kit separately from a simple structured response.
@@ -567,8 +677,8 @@ The .NET provider matrix uses genuine OpenAI and Azure clients with aimock at
 only the model boundary. `npx nx provider-e2e dotnet-conformance` builds the two
 browser hosts, compiles the exact eight recipe combinations and tests both
 frameworks/providers. Cold structured/UI cases exercise the source SDK's
-explicit historical-diagnostics restore policy. This opt-in is unreleased;
-0.8.1 consumers retain strict restoration. Tests preserve exact native history
+explicit historical-diagnostics restore policy, available in SDK 0.8.2 or
+later. Version 0.8.1 consumers retain strict restoration. Tests preserve exact native history
 and require a new explicit approval after reload. Diagnostics are escaped text,
 not proof of cancellation ownership or permission to execute work.
 

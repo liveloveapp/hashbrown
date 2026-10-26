@@ -1,0 +1,267 @@
+import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  Injectable,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { createTool, structuredChatResource } from '@hashbrownai/angular';
+import {
+  createWorkbenchStore,
+  getWorkbenchPlanSchema,
+  workbenchStructuredProps,
+  workbenchStructuredSystem,
+} from '../../../runtime/workbench';
+import { createWorkbenchTransport } from '../../../runtime/workbench-transport';
+import {
+  canAcceptSummary,
+  messageOrigins,
+  mountWorkbench,
+  type ProposalOrigin,
+  readWorkbenchMessages,
+  stopWorkbench,
+  type SummaryProps,
+  type WorkbenchNavigation,
+} from '../../../runtime/workbench-view';
+
+/** Owns the Angular runtime and the capture session shared with trusted cards. */
+@Injectable()
+export class StructuredWorkbenchSession {
+  readonly store = createWorkbenchStore('structured');
+  readonly snapshot = signal(this.store.getSnapshot());
+  readonly users = signal<Readonly<Record<string, ProposalOrigin>>>({});
+  readonly chat = structuredChatResource({
+    system: workbenchStructuredSystem,
+    schema: getWorkbenchPlanSchema(
+      getWorkbenchLesson(window.location.search).id,
+    ),
+    transport: createWorkbenchTransport(
+      this.store,
+      undefined,
+      getWorkbenchLesson(window.location.search).endpoint,
+    ),
+    tools: [
+      createTool({
+        name: 'readContext',
+        description:
+          'Read the accepted application plan and revision without changing state.',
+        handler: async () => {
+          const result = this.store.getSnapshot().application;
+          this.store.record('tool', { name: 'readContext', result });
+          return result;
+        },
+      }),
+    ],
+  });
+  private readonly history = signal<ReturnType<typeof this.chat.value>>([]);
+  readonly messages = computed(() =>
+    readWorkbenchMessages(this.chat.error(), this.chat.value, this.history()),
+  );
+  readonly origins = computed(() =>
+    messageOrigins(this.messages(), this.users()),
+  );
+  private recorded = '';
+  constructor() {
+    const unsubscribe = this.store.subscribe(() =>
+      this.snapshot.set(this.store.getSnapshot()),
+    );
+    inject(DestroyRef).onDestroy(() => {
+      unsubscribe();
+      this.stop();
+    });
+    effect(() => {
+      if (!this.chat.error()) this.history.set(this.chat.value());
+    });
+    effect(() => {
+      const snapshot = this.snapshot();
+      if (snapshot.status !== 'loading') return;
+      if (this.chat.error()) {
+        this.store.settle('error');
+        return;
+      }
+      const message = this.chat.lastAssistantMessage();
+      if (!message || this.origins()[message.id]?.turn !== snapshot.turn)
+        return;
+      const serialized = JSON.stringify(message.content);
+      if (serialized && serialized !== this.recorded) {
+        this.recorded = serialized;
+        this.store.parsed(message.content);
+      }
+      if (!this.chat.isLoading() && this.chat.lastRunFinishReason())
+        this.store.settle(
+          this.chat.lastRunFinishReason() === 'stop' &&
+            !this.chat.pendingInterrupts()
+            ? 'complete'
+            : 'error',
+          this.chat.lastRunFinishReason(),
+        );
+    });
+  }
+  /** Captures the user origin before handing the message to Hashbrown. */
+  send(content: string): void {
+    const message = this.store.send(content);
+    const snapshot = this.store.getSnapshot();
+    this.users.update((users) => ({
+      ...users,
+      [message.id]: {
+        turn: snapshot.turn,
+        revision: snapshot.application.revision,
+      },
+    }));
+    this.recorded = '';
+    this.history.set([...this.messages(), message]);
+    this.chat.sendMessage(message);
+  }
+  /** Invalidates acceptance before aborting the runtime. */
+  stop(): void {
+    stopWorkbench(this.store, {
+      isLoading: this.chat.isLoading(),
+      isResuming: this.chat.isResuming(),
+      stop: () => this.chat.stop(),
+    });
+  }
+  /** Clears framework history; the shell clears the capture and application state. */
+  reset(): void {
+    this.stop();
+    this.chat.setMessages([]);
+    this.history.set([]);
+    this.users.set({});
+    this.recorded = '';
+  }
+}
+
+/** Renders streaming plan props and requires explicit, current-turn acceptance. */
+@Component({
+  selector: 'app-structured-workbench-summary',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<article class="wb-summary" aria-label="Summary card">
+    <span class="wb-muted">Typed plan · application component</span>
+    <h2>{{ title() || 'Building your plan…' }}</h2>
+    <ol>
+      @for (step of steps(); track $index) {
+        <li>{{ step }}</li>
+      }
+    </ol>
+    <button
+      type="button"
+      class="wb-primary"
+      [disabled]="!allowed()"
+      (click)="accept()"
+    >
+      {{ used() ? 'Plan accepted' : 'Accept plan' }}
+    </button>
+    <p class="wb-muted">
+      {{
+        used()
+          ? 'Saved to application state.'
+          : allowed()
+            ? 'Ready for your review.'
+            : 'Preview · unavailable for this run.'
+      }}
+    </p>
+  </article>`,
+})
+export class StructuredPlanCard {
+  readonly title = input.required<string>();
+  readonly steps = input.required<readonly string[]>();
+  private readonly session = inject(StructuredWorkbenchSession);
+  readonly origin = input.required<ProposalOrigin>();
+  protected readonly used = signal(false);
+  protected readonly allowed = computed(() =>
+    canAcceptSummary(
+      this.session.snapshot(),
+      this.origin(),
+      { title: this.title(), steps: this.steps() },
+      this.used(),
+    ),
+  );
+  protected accept(): void {
+    const proposal: SummaryProps = { title: this.title(), steps: this.steps() };
+    if (
+      canAcceptSummary(
+        this.session.store.getSnapshot(),
+        this.origin(),
+        proposal,
+        this.used(),
+      ) &&
+      this.session.store.accept(proposal)
+    )
+      this.used.set(true);
+  }
+}
+/** Renders typed plan data from Angular's real structured chat resource. */
+@Component({
+  selector: 'app-structured-workbench-conversation',
+  imports: [StructuredPlanCard],
+  providers: [StructuredWorkbenchSession],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<div #shell></div>
+    <div #live>
+      @for (
+        message of session.messages();
+        track message.role === 'error' ? 'error-' + $index : message.id
+      ) {
+        @if (message.role === 'user') {
+          <p class="wb-user">{{ message.content }}</p>
+        } @else if (message.role === 'assistant') {
+          @if (planProps(message.content); as plan) {
+            <app-structured-workbench-summary
+              [title]="plan.title ?? ''"
+              [steps]="plan.steps ?? []"
+              [origin]="session.origins()[message.id] ?? unknownOrigin"
+            />
+          }
+        } @else if (message.role === 'error') {
+          <p role="alert">The request failed. Send a message to try again.</p>
+        }
+      }
+    </div>`,
+})
+export class StructuredWorkbenchConversation implements AfterViewInit {
+  protected readonly planProps = workbenchStructuredProps;
+  readonly active = input.required<boolean>();
+  readonly navigation = input.required<WorkbenchNavigation>();
+  private readonly mounted = signal<ReturnType<typeof mountWorkbench> | null>(
+    null,
+  );
+  constructor() {
+    effect(() => {
+      const mounted = this.mounted();
+      if (!mounted) return;
+      mounted.navigation(this.navigation());
+      if (!this.active()) {
+        this.session.stop();
+        mounted.pause();
+      }
+    });
+  }
+  protected readonly session = inject(StructuredWorkbenchSession);
+  protected readonly unknownOrigin: ProposalOrigin = { turn: -1, revision: -1 };
+  private readonly shell = viewChild.required<ElementRef<HTMLElement>>('shell');
+  private readonly live = viewChild.required<ElementRef<HTMLElement>>('live');
+  private readonly destroyRef = inject(DestroyRef);
+  ngAfterViewInit(): void {
+    const mounted = mountWorkbench(
+      this.shell().nativeElement,
+      this.session.store,
+      {
+        framework: 'Angular',
+        lesson: getWorkbenchLesson(window.location.search),
+        send: (content) => this.session.send(content),
+        stop: () => this.session.stop(),
+        reset: () => this.session.reset(),
+      },
+    );
+    mounted.live.append(this.live().nativeElement);
+    this.mounted.set(mounted);
+    this.destroyRef.onDestroy(() => mounted.dispose());
+  }
+}

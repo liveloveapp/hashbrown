@@ -122,7 +122,9 @@ test.each(SDKS)(
     );
 
     expect(counts).toEqual([1, 1, 1]);
-    expect(structured).toContain('<hb-docs-demo demo="structured-form">');
+    expect(structured).toContain(
+      `<hb-docs-demo demo="canonical-workbench-structured-${sdk}">`,
+    );
     expect(quick).toContain('<hb-docs-demo demo="welcome-card">');
     expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
       '<hb-docs-demo demo="debugging">',
@@ -134,7 +136,20 @@ test.each(SDKS)(
   'opens matching %s guides with the recorded demos before their first section',
   (sdk) => {
     const pages = demos.map(([demo, slug]) => ({
-      demo,
+      demo:
+        slug === 'components'
+          ? `canonical-workbench-ui-${sdk}`
+          : slug === 'functions'
+            ? `canonical-workbench-tools-${sdk}`
+            : slug === 'structured-output'
+              ? `canonical-workbench-structured-${sdk}`
+              : slug === 'streaming'
+                ? `canonical-workbench-streaming-${sdk}`
+                : slug === 'schema'
+                  ? `canonical-workbench-schemas-${sdk}`
+                  : slug === 'decisions'
+                    ? `canonical-workbench-decisions-${sdk}`
+                    : demo,
       body: readDoc(sdk, ['concept', slug])?.body ?? '',
     }));
 

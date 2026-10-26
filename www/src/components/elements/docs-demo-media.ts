@@ -1,5 +1,117 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-streaming-react': {
+    title: 'React workbench: streaming.',
+    caption:
+      'Follow raw JSON into a streaming title and resolved plan steps, then accept and revise the plan.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-schemas-react': {
+    title: 'React workbench: schemas.',
+    caption:
+      'Inspect the shared plan contract, preview validation and explicit acceptance across two turns.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-decisions-react': {
+    title: 'React workbench: decisions.',
+    caption:
+      'Inspect a complete next-action choice and confidence, use the suggestion explicitly, then request the next choice.',
+    recording:
+      'Recorded in the real React workbench with TypeSafe decision requests and the actual Hashbrown SDK. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-streaming-angular': {
+    title: 'Angular workbench: streaming.',
+    caption:
+      'Follow raw JSON into a streaming title and resolved plan steps, then accept and revise the plan.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-schemas-angular': {
+    title: 'Angular workbench: schemas.',
+    caption:
+      'Inspect the shared plan contract, preview validation and explicit acceptance across two turns.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-decisions-angular': {
+    title: 'Angular workbench: decisions.',
+    caption:
+      'Inspect a complete next-action choice and confidence, use the suggestion explicitly, then request the next choice.',
+    recording:
+      'Recorded in the real Angular workbench with TypeSafe decision requests and the actual Hashbrown SDK. Footage slowed to half speed for readability. Replay reads captured frames and does not make requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-react': {
+    title: 'React workbench: generative UI.',
+    caption:
+      'Watch streamed JSON resolve into a trusted SummaryCard, then accept and revise the plan.',
+    recording:
+      'Recorded in the real React workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-tools-react': {
+    title: 'React workbench: tools.',
+    caption:
+      'Follow readContext from browser tool to continuation, then read the accepted plan in the second turn.',
+    recording:
+      'Recorded in the real React workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-structured-react': {
+    title: 'React workbench: structured.',
+    caption:
+      'Watch a plain typed plan stream into an application-rendered card, then accept and revise it.',
+    recording:
+      'Recorded in the real React workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-angular': {
+    title: 'Angular workbench: generative UI.',
+    caption:
+      'Watch streamed JSON resolve into a trusted SummaryCard, then accept and revise the plan.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-tools-angular': {
+    title: 'Angular workbench: tools.',
+    caption:
+      'Follow readContext from browser tool to continuation, then read the accepted plan in the second turn.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-structured-angular': {
+    title: 'Angular workbench: structured.',
+    caption:
+      'Watch a plain typed plan stream into an application-rendered card, then accept and revise it.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI requests, browser tools, Hashbrown streaming, and application state. Footage slowed to half speed for readability. Replay reads captured frames. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-react': {
+    title: 'Follow one React conversation from request to replay.',
+    caption:
+      'Watch JSON resolve into a trusted SummaryCard, accept a plan, and inspect a follow-up in the same conversation.',
+    recording:
+      'Recorded in the checked React workbench with real OpenAI requests, the browser readContext tool, Hashbrown streaming and component rendering. Footage slowed to half speed for readability. Playback reads captured data. No scripted provider output or narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-angular': {
+    title: 'Follow one Angular conversation from request to replay.',
+    caption:
+      'Watch JSON resolve into a trusted SummaryCard, accept a plan, and inspect a follow-up in the same conversation.',
+    recording:
+      'Recorded in the checked Angular workbench with real OpenAI requests, the browser readContext tool, Hashbrown streaming and component rendering. Footage slowed to half speed for readability. Playback reads captured data. No scripted provider output or narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'ui-chatbot-react': {
     title: 'Read, propose, then apply.',
     caption:
@@ -193,10 +305,6 @@ export const DOCS_DEMOS = {
     title: 'Your components. Generated UI.',
     caption:
       'Expose trusted components and let the model choose what to render.',
-  },
-  streaming: {
-    title: 'Render as the response arrives.',
-    caption: 'Watch a streamed response render into the application’s own UI.',
   },
   'browser-tools': {
     title: 'Give the model useful tools.',

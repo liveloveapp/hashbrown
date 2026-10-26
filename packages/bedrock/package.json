@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/bedrock",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Amazon Bedrock provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -13,7 +13,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "@ag-ui/core": "1.0.3",
-    "@hashbrownai/core": "0.8.1",
+    "@hashbrownai/core": "0.8.2",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {

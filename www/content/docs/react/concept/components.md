@@ -2,403 +2,95 @@
 title: 'Generative UI with React Components: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Expose trusted , tested , and compliant components to the model.'
+    content: 'Expose a trusted plan component and follow its props as the model streams.'
 ---
 
-# Generative UI with React Components
+# Generative UI with React components
 
-<p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
-
-<hb-docs-demo demo="generative-ui">
+<hb-docs-demo demo="canonical-workbench-ui-react">
 </hb-docs-demo>
 
----
+Let’s build a two-step plan. We will give the model one component, `SummaryCard`, and describe the props it accepts. As the response arrives, Hashbrown parses the JSON and renders our component.
 
-## Before we start
+I use the same plan in [Tools](/docs/react/concept/functions) and [Structured output](/docs/react/concept/structured-output). Here, we’ll focus on how a model selects a component and supplies its props.
 
-Keep the endpoint and provider configuration from the [Quickstart](/docs/react/start/quick). We will extend its trusted-component setup. Read [Skillet schemas](/docs/react/concept/schema) for the values each component accepts.
+## Run the same conversation
 
-The snippets below focus on the component API. `Markdown` represents a component in your application that accepts a string `data` prop; its implementation is omitted here. For complete checked examples, use [UI Chatbot with Tools](/docs/react/recipes/ui-chatbot) or [Magic Text](/docs/react/recipes/magic-text), which renders streamed Markdown.
+Use the [conversation workbench](/docs/react/start/workbench) with the server environment from the [Quickstart](/docs/react/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=generative-ui`. Selecting a lesson does not send a request.
 
-## The `exposeComponent()` Function
+The recording uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
-The @hashbrownai/react!exposeComponent:function function exposes React components to the LLM that can be generated.
-Let's first look at how this function works.
+## Expose one trusted component
 
-<hb-code-example header="expose component">
+`SummaryCard` is ordinary application code: a title, an ordered list, and an **Accept plan** button. We expose that existing component with a stable name, a description, and a schema. The model chooses from this catalog; it does not write executable component code.
 
-```ts
-import { exposeComponent } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-import { Markdown } from './Markdown';
+The following excerpt is from the checked workbench client. Open the complete client for the component implementation, application state, and acceptance guard.
 
-exposeComponent(Markdown, {
-  name: 'Markdown',
-  description: 'Show markdown to the user',
-  props: {
-    data: s.string('The markdown content'),
-  },
-});
-```
-
-</hb-code-example>
-
-Let's break down the example above:
-
-1. `Markdown` is the React component that we want to expose.
-2. `description` is a human-readable description of the component that will be used by the model to understand what the component does.
-3. `name` is the stable component reference for the model.
-4. `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
-5. The `s.string()` function is used to define the type of the prop.
-
-We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
-
-- The `data` prop is expected to be a `string` type.
-- The schema specified is a `string()`.
-- If the schema does not match the React component's prop type, you'll see an error in both your editor and when you attempt to build the application.
-
-You can also show component props with Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType). Hashbrown normalizes these to Skillet (draft-07) for streaming and validation. Unsupported keywords throw at runtime.
-
----
-
-## Streaming with Skillet
-
-Streaming generative user interfaces is baked into the core of Hashbrown.
-Hashbrown ships with an LLM-optimized schema language called Skillet.
-
-Skillet supports streaming for:
-
-- arrays
-- objects
-- strings
-
-Let's update the previous example to support **streaming** of the markdown string into the `Markdown` component.
-
-<hb-code-example header="enable streaming">
+<hb-code-example header="react/src/Workbench.tsx">
 
 ```ts
-exposeComponent(Markdown, {
-  name: 'Markdown',
-  description: 'Show markdown to the user',
-  props: {
-    data: s.streaming.string('The markdown content'),
-  },
-});
+const components = [
+  exposeComponent(SummaryCard, {
+    name: 'SummaryCard',
+    description:
+      'Propose a concise plan for the user to review and explicitly accept.',
+    props: {
+      title: s.string('A concise plan title'),
+      steps: s.streaming.array(
+        'The ordered plan steps',
+        s.string('A clear, concise action'),
+      ),
+    },
+    children: false,
+  }),
+];
 ```
 
 </hb-code-example>
 
-The `s.streaming.string()` function is used to define the type of the prop, indicating that it can be a string that will be streamed in chunks.
+[`exposeComponent()`](/api/react/exposeComponent) connects the schema to the component’s props. A mismatched type is a build error. `children: false` disallows nested components; larger catalogs can allow children explicitly.
 
-<hb-next-steps>
-  <hb-next-step link="concept/streaming">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Streaming Docs</h4>
-      <p>Learn more about streaming with Skillet</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+## Watch the props arrive
 
----
+The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The rightmost **Details** view follows that selection.
 
-## Children
+A partial value is useful feedback. It is still a preview. The workbench enables **Accept plan** only after a fresh, successfully completed response passes its two-step plan rules. Rendering the card does not update the accepted plan.
 
-When exposing components, you can also define the `children` that the component can accept.
+<img src="/video/docs/canonical-workbench-ui-react-result.png" alt="The canonical plan appears in the chat beside its captured JSON and resolved component props." width="1600" height="1000" loading="lazy" />
 
-<hb-code-example header="children">
+## Start and render the conversation
+
+The checked client passes the catalog, tool, system instruction, and capturing transport to `useUiChat()`:
+
+<hb-code-example header="react/src/Workbench.tsx">
 
 ```ts
-exposeComponent(LightList, {
-  name: 'LightList',
-  description: 'Show a list of lights to the user',
-  props: {
-    title: s.string('The name of the list'),
-  },
-  children: 'any',
-});
-```
-
-</hb-code-example>
-
-In the example above, we're allowing `any` children to be rendered within the `LightList` component using the `children` prop.
-
-However, if we wanted to explicitly limit the children that the model can generate, we can provide an array of exposed components.
-
-<hb-code-example header="children">
-
-```ts
-exposeComponent(LightList, {
-  name: 'LightList',
-  description: 'Show a list of lights to the user',
-  props: {
-    title: s.string('The name of the list'),
-  },
-  children: [
-    exposeComponent(Light, {
-      name: 'Light',
-      description: 'Show a light to the user',
-      props: {
-        lightId: s.string('The id of the light'),
-      },
-    }),
-  ],
-}),
-```
-
-</hb-code-example>
-
-In the example above, the `LightList` children is limited to the `Light` component.
-
----
-
-## The `useUiChat()` Hook
-
-<hb-code-example header="expose components to the model">
-
-```ts
-import { useUiChat, exposeComponent } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-import { Markdown } from './Markdown';
-
-// 1. Create the UI chat hook
-const chat = useUiChat({
-  system: 'You are a helpful assistant.',
-  // 2. Specify the collection of exposed components
-  components: [
-    // 3. Expose the Markdown component to the model
-    exposeComponent(Markdown, {
-      name: 'Markdown',
-      description: 'Show markdown to the user',
-      props: {
-        data: s.streaming.string('The markdown content'),
-      },
-    }),
-  ],
-});
-```
-
-</hb-code-example>
-
-1. The @hashbrownai/react!useUiChat:function hook is used to create a UI chat instance.
-2. The `components` option defines the collection of exposed components that the model can choose to render in the application.
-3. The @hashbrownai/react!exposeComponent:function function creates an exposed component.
-
----
-
-### `UiChatOptions`
-
-| Option         | Type                                  | Required | Description                                   |
-| -------------- | ------------------------------------- | -------- | --------------------------------------------- |
-| `components`   | `UiKitInput<ExposedComponent<any>>[]` | Yes      | The components or kits for the UI chat hook   |
-| `system`       | `string`                              | Yes      | The system prompt to use for the UI chat hook |
-| `messages`     | `Chat.Message<UiChatSchema, Tools>[]` | No       | The initial messages for the UI chat hook     |
-| `tools`        | `Tools[]`                             | No       | The tools to use for the UI chat hook         |
-| `debugName`    | `string`                              | No       | The debug name for the UI chat hook           |
-| `debounceTime` | `number`                              | No       | The debounce time for the UI chat hook        |
-
----
-
-### API Reference
-
-<hb-next-steps>
-  <hb-next-step link="/api/react/useUiChat">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>useUiChat() API</h4>
-      <p>See the full hook</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/react/UiChatOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>UiChatOptions API</h4>
-      <p>See the options</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-## Render User Interface
-
-Assistant messages produced by `useUiChat()` include a `ui` property containing rendered React elements.
-
-<hb-code-example header="render">
-
-```tsx
-<div className="assistant">{message.ui}</div>
-```
-
-</hb-code-example>
-
----
-
-## Render Last Assistant Message
-
-If you only want to render the last assistant message, `useUiChat()` provides a `lastAssistantMessage` value.
-
-<hb-code-example header="render last message">
-
-```tsx
-function UI() {
   const chat = useUiChat({
-    system: 'You are a helpful assistant.',
-    components: [
-      exposeComponent(Markdown, {
-        name: 'Markdown',
-        description: 'Show markdown to the user',
-        props: { data: s.string('The markdown content') },
-      }),
-    ],
+    system: workbenchSystem,
+    components,
+    tools: [readContext],
+    transport,
   });
-
-  const message = chat.lastAssistantMessage;
-
-  return message ? <div className="assistant">{message.ui}</div> : null;
-}
 ```
 
 </hb-code-example>
 
-1. We render the last assistant message using the `lastAssistantMessage` value.
-2. The `ui` property contains the rendered React elements generated by the model.
-3. The @hashbrownai/react!useUiChat:function hook creates a new chat instance with the exposed components.
+Assistant messages expose `message.ui`, which React renders inside the conversation. Keep the complete message history for follow-up turns.
 
----
+[Read the checked client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workbench.tsx). The workbench shell records requests and parsed output; React owns the live component renderer.
 
-## Render All Messages with Components
+## Follow the second turn
 
-If you are building a chat-like experience, you likely want to iterate over all `messages` and render the generated text _and_ components.
+Send the first prompt and select **Accept plan**. In **State**, the application revision advances from `0` to `1`. Then choose **Follow-up** and send “Make the second step shorter.” The tool reads the accepted plan before the model proposes its revision.
 
-<hb-code-example header="render all messages">
+Use the bottom timeline to revisit the first streamed JSON, parsed output, or acceptance. The chat, inspector, and state follow the same captured moment. **Raw events** reveals every frame; playback makes no provider requests and cannot accept a plan.
 
-```tsx
-function Messages({ chat }: { chat: ReturnType<typeof useUiChat> }) {
-  return (
-    <>
-      {chat.messages.map((message, idx) => {
-        switch (message.role) {
-          case 'user':
-            return (
-              <div className="chat-message user" key={idx}>
-                <p>{message.content}</p>
-              </div>
-            );
-          case 'assistant':
-            return (
-              <div className="chat-message assistant" key={idx}>
-                {message.ui}
-              </div>
-            );
-          default:
-            return null;
-        }
-      })}
-    </>
-  );
-}
-```
+## Grow the component catalog
 
-</hb-code-example>
+Use descriptions that explain when a component is useful and what its props mean. Keep names stable. If the layout accepts children, use `children: 'any'` for any exposed child, or provide an explicit collection of exposed components. Those children still come from your trusted catalog.
 
-1. We iterate over the messages in the chat using `Array.prototype.map`.
-2. The `switch` statement is used to determine the role of the message (either `user` or `assistant`).
-3. For user messages, we display the text content.
-4. For assistant messages, we render the UI elements using the `ui` property.
-5. The `ui` property contains the React elements that match the components defined via `exposeComponent()`.
-6. These elements are derived from the model's response using the schema built from your exposed components.
+Skillet also accepts its supported Standard JSON Schema inputs. Read [Skillet schemas](/docs/react/concept/schema) before substituting another schema library; unsupported constructs are rejected.
 
----
+## Next steps
 
-## Guide the Model
-
-The model picks components from their descriptions and fills in props from their schemas. Put guidance where it travels with the component, so it stays correct when you add, remove or compose components:
-
-1. **Component descriptions** say when to use the component, when not to, and how it differs from similar components.
-2. **Prop descriptions and schema constraints** carry value conventions: units, formats, ranges and allowed values. Anything the schema can enforce, such as a fixed set of values, belongs in the schema.
-3. **A short system prompt** holds layout and composition rules, such as which component comes first or how many results to show.
-
-<hb-code-example header="guide the model">
-
-```ts
-useUiChat({
-  // 3. Layout and composition rules in a plain string
-  system: `
-    You are a smart home assistant.
-
-    - Show one LightCard for each light the user asks about.
-    - Add at most one Markdown summary, after the cards, only when there is
-      more to say.
-  `,
-  components: [
-    exposeComponent(LightCard, {
-      name: 'LightCard',
-      // 1. When to use it, when not to, and how it differs
-      description:
-        'One light and its current state. Use it once per light the user asks about. For general explanations, use Markdown instead.',
-      props: {
-        lightId: s.string(
-          'The light ID from the getLights tool, such as "light-1"',
-        ),
-        // 2. Value conventions in prop descriptions and the schema
-        brightness: s.number('Brightness from 0 (off) to 100 (full)'),
-        scene: s.enumeration('The active scene', {
-          day: 'Bright, cool light',
-          evening: 'Warm, dimmed light',
-          night: 'Minimal light for moving around',
-        }),
-      },
-    }),
-    exposeComponent(Markdown, {
-      name: 'Markdown',
-      description:
-        'A short markdown message for explanations and summaries. Never use it to show the state of a light; use LightCard for that.',
-      props: {
-        data: s.string('The markdown content, one or two short paragraphs'),
-      },
-    }),
-  ],
-});
-```
-
-</hb-code-example>
-
-Prefer rules over sample answers. A rule in a description lives next to the component it describes, so it changes when the component does and leaves with it when the component is removed. A hand-written sample answer silently drifts when a prop or component changes.
-
----
-
-## Demo result
-
-<img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
-
-The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Execute LLM-generated JS in the browser (safely)</h4>
-      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Continue with [Tools](/docs/react/concept/functions) to inspect `readContext`, or [Structured output](/docs/react/concept/structured-output) to return the same plan as typed data. See [Streaming](/docs/react/concept/streaming) for string, array, and object streaming, and the [`useUiChat()` API](/api/react/useUiChat) for the complete options.

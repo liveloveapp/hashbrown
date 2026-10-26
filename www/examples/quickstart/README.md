@@ -1,5 +1,31 @@
 # Documentation examples
 
+## Canonical conversation workbench
+
+The checked React `Workbench.tsx` and Angular `workbench.ts` are the shared documentation demo. Both use real Hashbrown UI chat, the `readContext` browser tool, a trusted streaming `SummaryCard`, and explicit revision-checked plan acceptance. The LLA shell is shared; SDK rendering stays framework-owned.
+
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment, then run:
+
+```sh
+npx nx workbench-serve www
+```
+
+Open `http://127.0.0.1:4370/react.html` or `/angular.html`. The loopback server pins the system instruction, tool catalog, native UI response schema and output limit. It keeps credentials server-side. This development host is separate from the public website and does not expose an unrestricted hosted model endpoint.
+
+The bottom timeline captures actual requests, decoded AG-UI events, tool results, SDK-resolved props, completion and application snapshots. Playback reads those immutable frames; it never calls a tool, contacts the server or accepts a plan. Conversation sessions retain their own SDK history and application state in memory. Hiding a session cancels active generation and pauses playback. Refresh clears sessions.
+
+```sh
+npx nx workbench-build www
+npx nx workbench-e2e www
+WORKBENCH_LIVE=1 npx nx workbench-e2e www
+```
+
+The default browser check runs both real SDKs against explicitly labelled deterministic HTTP fixtures. Live mode requires the server credentials and model and uses the actual OpenAI adapter. The workbench displays `Test fixture` or `Live model` from the response header; reports and screenshots go to ignored `dist/docs-workbench/verification`. `WORKBENCH_RECORD=1` also captures browser video. A fixture recording must retain its fixture label.
+
+`workbench-build` strictly compiles both framework sources, builds browser assets and bundles the Node server and verifier. The normal docs route-report target also runs the deterministic workbench checks. It never needs provider credentials in CI. Run recording/build targets sequentially because the checked examples share `dist/docs-quickstart/compiled`.
+
+The earlier guide-specific examples below remain useful focused tutorials. New recordings should use this workbench so prompts, requests, partial JSON, components and application changes share one teaching surface.
+
 These are the complete files used in the React and Angular Quickstarts, conversation and workflow guides, Public endpoint, Threads, and JS Runtime. Guide tests compare published code blocks with checked files. `npx nx typecheck www` checks React/server types and Angular strict templates against the built packages.
 
 `server/server.ts` is the Quickstart's local development endpoint. Provider credentials stay in its `.env` file, and frontend configuration demonstrates a same-origin proxy. The authenticated server pattern is composed separately through `createThreadApp` in `server/thread-app.ts` and the real OpenAI adapter `createProductionThreadApp` in `server/thread-server.ts`.
@@ -150,3 +176,46 @@ overlapping late delivery, keyboard operation, unmount, and mobile layout.
 Unique ignored `dist/docs-ui-chatbot` directories preserve browser builds,
 requests, raw captures, masters, measured phases, and verification reports.
 Run sequentially with other recorders that share compiled output.
+
+## Canonical concept lessons
+
+The workbench now has six allowlisted lessons in both framework hosts:
+
+- `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
+- `?lesson=tools`: the same conversation, initially focused on requests and readContext.
+- `?lesson=structured-output`: real structured-chat, plain title/steps data, application-owned rendering.
+- `?lesson=streaming`: partial title text and resolved step values.
+- `?lesson=schemas`: exact response contract and preview validation.
+- `?lesson=decisions`: complete typed next-action choices and confidence.
+
+All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
+
+Run `npx nx workbench-demo www` with server-only `OPENAI_API_KEY` and `OPENAI_MODEL` to verify and record the selected paths, encode MP4/WebM with ffmpeg, and publish local media, posters, result screenshots, measured captions and transcripts. It refuses to publish fixture footage. `WORKBENCH_LESSONS=generative-ui,tools,structured-output` optionally selects a subset and rejects unknown values. Run sequentially with other compilation/recording targets. Footage uses half-speed timing for readable streaming; reports include captured phase times and provider provenance. Each recording run preserves its original captures and report under a unique `dist/docs-workbench/captures/<run-id>` directory. The Generative UI recording also refreshes the workbench overview media.
+
+
+## Streaming, schemas and decisions in the workbench
+
+`?lesson=streaming` selects the shared schema with a streaming title and array.
+`?lesson=schemas` opens the exact selected contract in Schema, with preview
+validation kept separate from completion and explicit acceptance.
+`?lesson=decisions` mounts actual `useDecision` / `decisionResource` clients.
+The application supplies a fixed plan; TypeSafe selects record/review/clarify.
+A completed fresh choice at confidence >=0.75 can be explicitly used. Low
+confidence, errors and cancellation preserve state and offer manual review.
+Decision responses arrive as whole JSON, not generated streaming text.
+
+The decision route additionally needs server-only `TYPESAFE_API_KEY` and
+`TYPESAFE_MODEL` (the recordings pin `jev-1.14.0`). Missing decision credentials
+return 503 without preventing the OpenAI lessons from running. The server fixes
+the plan, system policy, schema and question options, bounds prompts/revisions,
+and propagates cancellation.
+
+Use `WORKBENCH_LESSONS=streaming,schemas,decisions npx nx workbench-demo www` to
+record this batch with both providers configured. The recorder verifies partial
+visible title text, completed-only acceptance, exact plan revision semantics,
+typed decisions/confidence, explicit selection and inert synchronized replay.
+Decision media require TypeSafe provider provenance and have separate captions
+that never describe decisions as streaming. Existing recordings are preserved
+unless selected. Each capture/report lives in a unique ignored run directory.
+
+Recording presentation: the new OpenAI streaming/schema captures pace unchanged provider events at 20 ms so browser batching does not hide previews. This is disclosed in the media notes and walkthroughs. The normal demo host adds no delay; complete TypeSafe decisions are not paced as streams.
