@@ -1,4 +1,6 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { afterAll, beforeAll, expect, test } from 'vitest';
 
@@ -533,4 +535,91 @@ test('the eleventh submission for one email in a UTC day throws FormRateLimitErr
 
   await expect(rejected).rejects.toBeInstanceOf(FormRateLimitError);
   await expect(rejected).rejects.toMatchObject({ retryAfterSec: 75_600 });
+});
+
+test('migration 0011 strips old form keys, leaves other approvals alone and is idempotent', async () => {
+  const contactId = randomUUID();
+  createdContactIds.add(contactId);
+  await executor.execute(
+    `insert into growth_contacts (
+       id, email_normalized, email_lookup_hmac, email_hmac_key_version, source
+     ) values ($1, $2, $3, 1, 'forms-integration')`,
+    [contactId, `${contactId}@example.com`, `forms-integration:${contactId}`],
+  );
+  const insertActivity = (kind: string, data: Record<string, unknown>) =>
+    executor.execute(
+      `insert into growth_activity (event_key, contact_id, kind, occurred_at, data)
+       values ($1, $2, $3, now(), $4::jsonb)`,
+      [
+        `forms-integration:${randomUUID()}`,
+        contactId,
+        kind,
+        JSON.stringify(data),
+      ],
+    );
+  await insertActivity('contact.form_submission', {
+    notice_text: 'We will email you about Hashbrown.',
+    notice_version: 'notice_v1',
+    policy_version: 'unstuck_v1.2026-10-22',
+    framework: 'react',
+    message: MESSAGE,
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  await insertActivity('form.outreach_approved', {
+    policy_version: 'unstuck_v1.2026-10-22',
+    verification: 'server_verified',
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  await insertActivity('install_runtime.outreach_approved', {
+    policy_version: 'growth-v1',
+  });
+  const migration = await readFile(
+    join(defaultMigrationsDirectory(), '0011_growth_strip_form_agreement.sql'),
+    'utf8',
+  );
+  const statements = migration
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.replace(/--.*$/gmu, '').trim() !== '');
+  // The executor reports no row count, so count the updated rows with RETURNING.
+  const run = async () => {
+    let updated = 0;
+    for (const statement of statements) {
+      const counted = await executor.execute<{ updated: number }>(
+        `with changed as (${statement} returning id)
+         select count(*)::int as updated from changed`,
+      );
+      updated += counted.rows[0]?.updated ?? 0;
+    }
+    return updated;
+  };
+
+  const first = await run();
+  const second = await run();
+
+  const rows = await executor.execute<{
+    kind: string;
+    data: Record<string, unknown>;
+  }>('select kind, data from growth_activity where contact_id = $1', [
+    contactId,
+  ]);
+  const dataOf = (kind: string) =>
+    rows.rows.find((row) => row.kind === kind)?.data;
+  expect(first).toBeGreaterThanOrEqual(2);
+  expect(second).toBe(0);
+  expect(dataOf('contact.form_submission')).toEqual({
+    message: MESSAGE,
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  expect(dataOf('form.outreach_approved')).toEqual({
+    verification: 'server_verified',
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  expect(dataOf('install_runtime.outreach_approved')).toEqual({
+    policy_version: 'growth-v1',
+  });
 });
