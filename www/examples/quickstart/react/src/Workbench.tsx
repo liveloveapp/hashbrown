@@ -1,3 +1,6 @@
+import { PlanCard } from './PlanCard';
+import { firstPlanComponents } from './FirstPlanApp';
+import { workbenchFirstPlanSystem } from '../../runtime/workbench-onboarding';
 import { MagicTextWorkbenchConversation } from './MagicTextWorkbench';
 import { PredictionsWorkbenchConversation } from './PredictionsWorkbench';
 import { SelectionWorkbenchConversation } from './SelectionWorkbench';
@@ -52,18 +55,15 @@ export function SummaryCard(props: {
   const [used, setUsed] = useState(false);
   const allowed = canAcceptSummary(snapshot, origin, props, used);
   return (
-    <article className="wb-summary" aria-label="Summary card">
-      <span className="wb-muted">
-        {props.format === 'structured'
+    <PlanCard
+      title={props.title}
+      steps={props.steps}
+      label={
+        props.format === 'structured'
           ? 'Typed plan · application component'
-          : 'SummaryCard · trusted component'}
-      </span>
-      <h2>{props.title || 'Building your plan…'}</h2>
-      <ol>
-        {(props.steps ?? []).map((step, index) => (
-          <li key={index}>{step}</li>
-        ))}
-      </ol>
+          : undefined
+      }
+    >
       <button
         type="button"
         className="wb-primary"
@@ -85,7 +85,7 @@ export function SummaryCard(props: {
             ? 'Ready for your review.'
             : 'Preview · unavailable for this run.'}
       </p>
-    </article>
+    </PlanCard>
   );
 }
 const components = [
@@ -140,9 +140,10 @@ function WorkbenchConversation({
     deps: [store],
   });
   const chat = useUiChat({
-    system: workbenchSystem,
-    components,
-    tools: [readContext],
+    system:
+      lesson.id === 'first-plan' ? workbenchFirstPlanSystem : workbenchSystem,
+    components: lesson.id === 'first-plan' ? firstPlanComponents : components,
+    tools: lesson.id === 'first-plan' ? [] : [readContext],
     transport,
   });
   const origins = messageOrigins(chat.messages, users);

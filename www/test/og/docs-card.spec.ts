@@ -22,7 +22,7 @@ test('a docs card shows the heading, description and SDK', () => {
   expect(content).toEqual({
     title: 'React Quickstart',
     subtitle: [
-      'Build your first generated UI with a trusted welcome card.',
+      'Generate a two-step plan in an ordinary app using one trusted component and a streaming endpoint.',
       'React docs · hashbrown.dev',
     ],
   });

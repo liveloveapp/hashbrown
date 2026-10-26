@@ -166,7 +166,7 @@ export function workbenchRecipeEventLabel(
 ): string | undefined {
   if (event.kind === 'dismiss') return 'Suggestion dismissed';
   if (event.kind === 'parsed') {
-    if (event.recipe?.kind === 'text') return 'Parsed Markdown';
+    if (event.recipe?.kind === 'text') return 'Parsed text';
     if (event.recipe?.kind === 'predictions') return 'Suggestions ready';
     if (event.recipe?.kind === 'selection') return 'Selection result';
   }

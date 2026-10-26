@@ -2,36 +2,38 @@
 title: 'Introduction: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Build generative user interfaces with your own React components.'
+    content: 'Build a two-step plan with a trusted component, streaming values, and application-owned behavior.'
 ---
 
 # Introduction
 
-Hashbrown is an open source framework for building generative user interfaces in React. You give the model a set of components, describe the props they accept, and render its response using those components.
+Let's build a small plan together. We ask for a title and two steps. Hashbrown streams those values into a component we wrote.
 
-Let's start with something small: a `WelcomeCard` with a title and a message.
-
-<hb-docs-demo demo="welcome-card">
+<hb-docs-demo demo="canonical-workbench-first-plan-react">
 </hb-docs-demo>
 
-## Your components, with model-generated props
+Hashbrown is an open source framework for building generative UI in React. You expose the components your application supports, describe their props with a schema, and let the model choose from that contract.
 
-You write the markup, styles, and behavior. The model chooses among the components you expose and supplies values that match their schemas. Hashbrown validates those values and renders the result in your app.
+In this example, the model supplies a two-step plan. Our `SummaryCard` supplies the markup. Rendering the card creates a preview; it does not save the plan or perform its steps.
 
-That gives us a useful boundary: the model can compose the UI we make available, while the application owns what those components can do.
+## Start with one component
 
-## What runs where?
+The [Quickstart](/docs/react/start/quick) builds this same card in an ordinary React app. We'll connect an endpoint, expose the component, and make our first request. There are no tools or application writes in that first lesson.
 
-The React application owns rendering, chat state, and browser-side tools. Your server keeps provider credentials and selects the model. Hashbrown connects the two through a streaming endpoint.
+The recording adds the [conversation workbench](/docs/react/start/workbench) around that component. Its inspector and bottom timeline let us follow the request, streamed values, and rendered UI together. You can build your own interface around the same Hashbrown APIs.
 
-You can use Hashbrown for text conversations, structured data, and decisions as well. Start with [Choosing an API](/docs/react/start/overview) when you already know the kind of output you need.
+<img src="/video/docs/canonical-workbench-first-plan-react-result.png" alt="The React first-plan workbench shows a completed two-step plan beside its captured request and component values." width="1600" height="1000" loading="lazy" />
 
-Follow [How Hashbrown works](/docs/react/start/how-it-works) for the browser-to-model request path and the boundaries your app owns.
+## Keep the same example as we learn
 
-## Build your first card
+We'll keep the plan as we introduce each capability:
 
-The [Quickstart](/docs/react/start/quick) walks through the complete example: a server endpoint, a trusted component, and a button that generates the card.
+- [Messages and turns](/docs/react/concept/ai-basics) follows a second request in the same conversation.
+- [System instructions](/docs/react/concept/system-instructions) separates the current user request from the policy our server owns.
+- [Exposing components](/docs/react/concept/components) adds an explicit **Accept plan** action.
+- [Tool calling](/docs/react/concept/functions) lets the model read the plan's current application state.
+- [Structured output](/docs/react/concept/structured-output) returns typed plan data for our own renderer.
 
-Once that works, continue with [Messages and turns](/docs/react/concept/ai-basics) to see how a conversation is represented, or [Exposing components](/docs/react/concept/components) to build a richer UI.
+Each lesson focuses on one change. We can inspect what the model returned, what Hashbrown rendered, and what our application actually changed.
 
-For a larger example, explore the [ATC application](/docs/react/start/sample). It combines generative UI, browser-side tools, streaming, and decisions in a working application.
+Continue with the [Quickstart](/docs/react/start/quick), or read [How Hashbrown works](/docs/react/start/how-it-works) to follow the request from the browser to the provider and back.
