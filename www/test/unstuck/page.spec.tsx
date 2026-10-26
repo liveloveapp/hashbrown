@@ -47,7 +47,7 @@ test('switch off renders only the fallback line, no fields and no second email l
 
 test('the page is dynamic, titled and described in Brian’s voice', () => {
   expect(dynamic).toBe('force-dynamic');
-  expect(String(metadata.title)).toBe('Get unstuck: Hashbrown');
+  expect(metadata.title).toEqual({ absolute: 'Get unstuck: Hashbrown' });
   expect(metadata.description).toBe(
     'Stuck building with Hashbrown? Tell me where.',
   );

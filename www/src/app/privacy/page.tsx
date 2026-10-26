@@ -14,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
   description:
     'Contact Hashbrown with privacy questions or requests concerning your information.',
   image: DEFAULT_CARD_IMAGE,
+  path: '/privacy',
 });
 
 /**

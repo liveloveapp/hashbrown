@@ -8,6 +8,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Home: Hashbrown API',
   description: 'Hashbrown API documentation.',
   image: DEFAULT_CARD_IMAGE,
+  path: '/api',
 });
 
 /** `/api`: search and filter every symbol in the API report. */
