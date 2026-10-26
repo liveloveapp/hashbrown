@@ -3,10 +3,7 @@
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--vanilla-ivory, #faf9f0);
-  background-image: url('/image/texture/fabric.png');
-  background-repeat: repeat;
-  background-attachment: fixed;
+  background: var(--color-bg);
 }
 
 .page {
