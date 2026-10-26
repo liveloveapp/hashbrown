@@ -176,7 +176,9 @@ cannot later replace a completed follow-up checkpoint. See the
 [0.15.5 hosted validation report](../../docs/superpowers/reports/2026-10-26-atc-b4run-0155-validation.md)
 for the deployment, shared-admission, callback-race, load, browser and cancellation
 evidence. Bounded concurrency checks pass; production enablement still requires
-review of cancellation/conflict UX, hosted failure recovery and sustained load.
+hosted failure recovery and sustained load. The
+[core HTTP retry follow-up](../../docs/superpowers/reports/2026-10-26-atc-http-conflict-recovery.md)
+records automatic conflict recovery after cancellation and the remaining gates.
 
 Run the opt-in store and runtime tests against a **disposable test database**:
 
