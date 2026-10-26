@@ -5,6 +5,7 @@ import type { WorkbenchStore } from './workbench';
 export function createWorkbenchTransport(
   store: WorkbenchStore,
   delegate?: Transport,
+  endpoint = '/api/workbench/chat',
 ): Transport {
   return {
     name: 'WorkbenchCaptureTransport',
@@ -23,7 +24,7 @@ export function createWorkbenchTransport(
       const transport =
         delegate ??
         createHttpTransport({
-          baseUrl: '/api/workbench/chat',
+          baseUrl: endpoint,
           fetchImpl: async (...args) => {
             const response = await fetch(...args);
             if (current())

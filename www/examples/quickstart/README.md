@@ -176,3 +176,15 @@ overlapping late delivery, keyboard operation, unmount, and mobile layout.
 Unique ignored `dist/docs-ui-chatbot` directories preserve browser builds,
 requests, raw captures, masters, measured phases, and verification reports.
 Run sequentially with other recorders that share compiled output.
+
+## Canonical concept lessons
+
+The workbench now has three allowlisted lessons in both framework hosts:
+
+- `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
+- `?lesson=tools`: the same conversation, initially focused on requests and readContext.
+- `?lesson=structured-output`: real structured-chat, plain title/steps data, application-owned rendering.
+
+All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
+
+Run `npx nx workbench-demo www` with server-only `OPENAI_API_KEY` and `OPENAI_MODEL` to verify and record all six paths, encode MP4/WebM with ffmpeg, and publish local media, posters, result screenshots, measured captions and transcripts. It refuses to publish fixture footage. `WORKBENCH_LESSONS=generative-ui,tools,structured-output` optionally selects a subset and rejects unknown values. Run sequentially with other compilation/recording targets. Footage uses half-speed timing for readable streaming; reports include captured phase times and provider provenance. Each recording run preserves its original captures and report under a unique `dist/docs-workbench/captures/<run-id>` directory. The Generative UI recording also refreshes the workbench overview media.

@@ -1,3 +1,5 @@
+import { s } from '@hashbrownai/core';
+
 /** A validated, application-owned plan, independent of rendered proposals. */
 export interface WorkbenchPlan {
   readonly title: string;
@@ -75,7 +77,38 @@ export interface WorkbenchStore {
 
 /** SDK instructions are fixed by the server as well as shown in the checked clients. */
 export const workbenchSystem =
-  'You help a developer create a small two-step plan. Before every answer call readContext exactly once to read the current application revision and accepted plan. Render exactly one SummaryCard with a short title and exactly two concise steps. The first request should create a plan with outline and record steps. A follow-up requesting a shorter second step should revise that step while retaining the first. Rendering does not apply a plan; only the user accepts it. Do not claim application state changed.';
+  'You help a developer create a small two-step plan. Before every answer call readContext exactly once to read the current application revision and accepted plan. Render exactly one SummaryCard with a short title and exactly two concise steps. The first request should create a plan with outline and record steps. A follow-up requesting a shorter second step should revise that step while retaining the first step verbatim. Rendering does not apply a plan; only the user accepts it. Do not claim application state changed.';
+
+/** Plain typed plan shared by the real structured clients and server. */
+export const workbenchPlanSchema = s.object('A two-step plan proposal', {
+  title: s.string('A concise plan title'),
+  steps: s.streaming.array(
+    'Exactly two concise steps',
+    s.string('A clear action'),
+  ),
+});
+/** Fixed instructions for plain structured output and explicit application review. */
+export const workbenchStructuredSystem =
+  'You help a developer create a small two-step plan. Before every answer call readContext exactly once to read the current application revision and accepted plan. Return a plain typed plan with a short title and exactly two concise steps. The first request should create a plan with outline and record steps. A follow-up requesting a shorter second step should revise that step while retaining the first step verbatim. Returning data does not apply a plan; only the user accepts it. Do not claim application state changed.';
+/** Extracts only plain structured plan fields, never a generated component tree. */
+export function workbenchStructuredProps(
+  value: unknown,
+): WorkbenchFrame['props'] {
+  const props = object(value);
+  if (
+    !props ||
+    Object.keys(props).some((key) => key !== 'title' && key !== 'steps')
+  )
+    return null;
+  const result = {
+    ...(typeof props['title'] === 'string' ? { title: props['title'] } : {}),
+    ...(Array.isArray(props['steps']) &&
+    props['steps'].every((step) => typeof step === 'string')
+      ? { steps: [...props['steps']] as string[] }
+      : {}),
+  };
+  return Object.keys(result).length > 0 ? result : null;
+}
 
 function object(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -130,7 +163,9 @@ export function isWorkbenchPlan(input: unknown): input is WorkbenchPlan {
 }
 
 /** Creates an isolated capture. Seeking changes only the selected frame, never live state. */
-export function createWorkbenchStore(): WorkbenchStore {
+export function createWorkbenchStore(
+  format: 'ui' | 'structured' = 'ui',
+): WorkbenchStore {
   let application: WorkbenchApplication = freeze({ revision: 0, plan: null });
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
@@ -252,13 +287,18 @@ export function createWorkbenchStore(): WorkbenchStore {
     record,
     parsed(value) {
       if (status !== 'loading') return;
-      const next = workbenchProps(value);
+      const next =
+        format === 'structured'
+          ? workbenchStructuredProps(value)
+          : workbenchProps(value);
       const ui = object(value)?.['ui'];
       const field = Array.isArray(ui)
         ? object(object(object(ui[0])?.['SummaryCard'])?.['props'])
         : undefined;
       const ready =
-        !!field && (!('complete' in field) || field['complete'] === true);
+        format === 'structured'
+          ? isWorkbenchPlan(next)
+          : !!field && (!('complete' in field) || field['complete'] === true);
       if (
         JSON.stringify(next) === JSON.stringify(props) &&
         propsReady === ready
