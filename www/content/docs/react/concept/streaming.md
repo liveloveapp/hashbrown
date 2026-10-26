@@ -45,7 +45,7 @@ The title uses `s.streaming.string`, so the interface can display it before its 
 
 ## Follow one response
 
-Keep **JSON** selected. The center feed shows the plan preview; the side of the inspector that shows what the SDK made of it lists the SDK's resolved values.
+Keep **JSON** selected. The center feed shows the plan preview, and the inspector's **Typed plan** section lists the SDK's resolved values.
 
 | Moment | Preview | Application state |
 | --- | --- | --- |
