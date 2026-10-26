@@ -8,9 +8,15 @@
     "build": {
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/.next"],
-      "options": { "command": "next build", "cwd": "www" },
+      "options": {
+        "command": "next build",
+        "cwd": "www"
+      },
       "dependsOn": [
-        { "projects": ["openai"], "target": "build" },
+        {
+          "projects": ["openai"],
+          "target": "build"
+        },
         "collect-docs",
         "generate-llms"
       ]
@@ -18,16 +24,24 @@
     "serve": {
       "executor": "nx:run-commands",
       "continuous": true,
-      "options": { "command": "next dev", "cwd": "www" },
+      "options": {
+        "command": "next dev",
+        "cwd": "www"
+      },
       "dependsOn": [
-        { "projects": ["openai"], "target": "build" },
+        {
+          "projects": ["openai"],
+          "target": "build"
+        },
         "collect-docs",
         "generate-llms"
       ]
     },
     "test": {
       "executor": "nx:run-commands",
-      "options": { "command": "vitest run --config www/vitest.config.mts" },
+      "options": {
+        "command": "vitest run --config www/vitest.config.mts"
+      },
       "dependsOn": ["collect-docs", "generate-llms"]
     },
     "lint": {
@@ -38,14 +52,21 @@
     },
     "e2e": {
       "executor": "nx:run-commands",
-      "options": { "command": "tsx www/src/tools/route-report.ts" },
-      "dependsOn": ["build"]
+      "options": {
+        "command": "tsx www/src/tools/route-report.ts"
+      },
+      "dependsOn": ["build", "workbench-e2e"]
     },
     "collect-docs": {
       "executor": "nx:run-commands",
-      "options": { "command": "tsx www/src/tools/extract-docs-content.ts" },
+      "options": {
+        "command": "tsx www/src/tools/extract-docs-content.ts"
+      },
       "dependsOn": [
-        { "projects": ["angular", "core", "react"], "target": "build" }
+        {
+          "projects": ["angular", "core", "react"],
+          "target": "build"
+        }
       ]
     },
     "generate-llms": {
@@ -56,7 +77,9 @@
     },
     "review-docs": {
       "executor": "nx:run-commands",
-      "options": { "command": "tsx www/src/tools/review-docs.ts" },
+      "options": {
+        "command": "tsx www/src/tools/review-docs.ts"
+      },
       "dependsOn": [
         {
           "projects": [
@@ -74,7 +97,9 @@
     },
     "translate-docs": {
       "executor": "nx:run-commands",
-      "options": { "command": "tsx www/src/tools/translate-docs.ts" },
+      "options": {
+        "command": "tsx www/src/tools/translate-docs.ts"
+      },
       "dependsOn": [
         {
           "projects": [
@@ -210,9 +235,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-ui-chatbot-demo": {
       "executor": "nx:run-commands",
@@ -236,9 +259,38 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
+    },
+    "workbench-build": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{workspaceRoot}/dist/docs-workbench/browser",
+        "{workspaceRoot}/dist/docs-workbench/node"
+      ],
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/build-workbench.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["typecheck"]
+    },
+    "workbench-serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "node --env-file-if-exists=.env dist/docs-workbench/node/workbench-server.mjs"
+      },
+      "dependsOn": ["workbench-build"]
+    },
+    "workbench-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node dist/docs-workbench/node/verify-workbench.mjs"
+      },
+      "dependsOn": ["workbench-build"]
     }
   }
 }
