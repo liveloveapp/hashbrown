@@ -82,7 +82,7 @@ The server reads these variables, from `.env` or the environment:
 
 | Variable                  | Default      | Notes                                                                                                                                                 |
 | ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATC_CHAT_BACKEND`       | `openai`     | Select `openai` or `b4run`; unknown or empty values fail startup. |
+| `ATC_CHAT_BACKEND`        | `openai`     | Select `openai` or `b4run`; unknown or empty values fail startup.                                                                                     |
 | `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                                                                 |
 | `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI model the Responses API serves.                                                                                                            |
 | `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                                                                    |
@@ -129,6 +129,14 @@ The runtime guard rejects an SDK that drops `agent({ maxOutputTokens })`.
 Release and registry-validation evidence is recorded in the
 [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
 
+Both apps use the shared chat transport factory and core's opt-in HTTP response
+retry policy. It waits up to a 60-second retry budget for B4's pre-execution
+`run_in_flight` conflict, honoring `Retry-After` and replaying the exact request.
+Cancellation or reload stops waiting. Other errors, or an exhausted budget,
+retain the existing manual Retry UI. Filters and decisions keep their separate
+transports. See the [core transport API](../../packages/core/README.md#opt-in-http-response-retries)
+for response-classification safety and the separate generation retry budget.
+
 ### Optional hosted build
 
 The regular `npx nx build atc` keeps the direct OpenAI function and requires no
@@ -146,11 +154,11 @@ published. The build never deploys or releases anything.
 
 Set these variables on that deployment:
 
-| Variable | Purpose |
-| --- | --- |
-| `ATC_CHAT_BACKEND=b4run` | Must match the packaged backend. |
-| `ATC_B4RUN_COOKIE_SECRET` | A stable signing secret of at least 32 bytes, shared by every instance. |
-| `ATC_B4RUN_DATABASE_URL` | Shared Postgres storage for checkpoints, threads, and pending browser calls, using the `atc` table prefix. |
+| Variable                  | Purpose                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ATC_CHAT_BACKEND=b4run`  | Must match the packaged backend.                                                                           |
+| `ATC_B4RUN_COOKIE_SECRET` | A stable signing secret of at least 32 bytes, shared by every instance.                                    |
+| `ATC_B4RUN_DATABASE_URL`  | Shared Postgres storage for checkpoints, threads, and pending browser calls, using the `atc` table prefix. |
 
 The adapter maps the dedicated ATC state database into the generated runtime
 without changing the process's general `DATABASE_URL`. Hosted startup never
