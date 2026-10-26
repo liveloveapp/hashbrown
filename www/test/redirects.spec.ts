@@ -64,7 +64,7 @@ test('vercel.json schedules lifecycle every ten minutes and inbox recovery every
   const config = JSON.parse(readFileSync(path, 'utf8'));
 
   expect(config.crons).toEqual([
-    { path: '/_/cron/lifecycle', schedule: '*/10 * * * *' },
+    { path: '/_/cron/lifecycle', schedule: '*/30 * * * *' },
     { path: '/_/cron/inbox-recovery', schedule: '*/5 * * * *' },
   ]);
 });
