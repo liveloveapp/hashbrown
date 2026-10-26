@@ -11,9 +11,8 @@ test('privacy explains support form information, email and contact choices', () 
   const text = privacy;
 
   expect(text).toContain('[Get unstuck form](/unstuck)');
-  expect(text).toContain(
-    'your email address, your framework, and your question',
-  );
+  expect(text).toContain('your email address and your question');
+  expect(text).not.toMatch(/framework|agreement/i);
   expect(text).toContain('three emails');
   expect(text).toContain('unsubscribe link');
   expect(text).toContain('mailto:brian@hashbrown.dev');

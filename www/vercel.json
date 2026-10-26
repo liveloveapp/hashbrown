@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/_/cron/lifecycle",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/_/cron/inbox-recovery",

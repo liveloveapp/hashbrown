@@ -7,15 +7,12 @@ import {
   normalizeRecipientEmail,
   parseEmailHmacKeyring,
   type SqlExecutor,
-  UNSTUCK_FRAMEWORKS,
 } from '@hashbrownai-internal/growth';
 import { z } from 'zod';
 
 import {
   jsonResponse,
   trustedFormClientIp,
-  UNSTUCK_FORM_DISCLOSURE,
-  UNSTUCK_FORM_POLICY_VERSION,
   unstuckFormEnabled,
 } from '../../../../lib/growth/form-route';
 import { nudgeLifecycle } from '../../../../lib/growth/lifecycle-client';
@@ -26,10 +23,8 @@ const MAX_BODY_BYTES = 8_192;
 // `.trim()` then `.min/.max` count UTF-16 code units, exactly as the growth
 // library's `acceptFormSubmission` does.
 const unstuckSchema = z.strictObject({
-  policy_version: z.string(),
   submission_id: z.uuidv4(),
   email: z.string().max(254),
-  framework: z.enum(UNSTUCK_FRAMEWORKS),
   // Postgres jsonb rejects NUL, which would otherwise loop on a retryable 503.
   message: z
     .string()
@@ -38,6 +33,9 @@ const unstuckSchema = z.strictObject({
     .max(1_000)
     .refine((message) => !message.includes('\u0000')),
   website_url: z.string().max(200).optional(),
+  // Tolerated and ignored, for pages opened before 2026-10-25.
+  policy_version: z.string().max(100).optional(),
+  framework: z.string().max(100).optional(),
 });
 
 /** Replaceable collaborators of the Get unstuck route, for tests. */
@@ -95,11 +93,11 @@ function isJson(request: Request): boolean {
 
 /**
  * Builds the `POST /_/forms/unstuck` handler. With the switch off it answers
- * 503 before reading the body. Otherwise it validates the body (400, or 409
- * for a missing or stale `policy_version`), accepts the submission in one
- * transaction, closes the database, and only then nudges the lifecycle
- * service; a nudge failure never reaches the visitor. A rate limit answers
- * 429 with `Retry-After`; a permanent identity conflict (a reused
+ * 503 before reading the body. Otherwise it validates the body (400; the
+ * legacy `policy_version` and `framework` keys are tolerated and ignored),
+ * accepts the submission in one transaction, closes the database, and only
+ * then nudges the lifecycle service; a nudge failure never reaches the
+ * visitor. A rate limit answers 429 with `Retry-After`; a permanent identity conflict (a reused
  * `submission_id` with a changed body, or jobs owned by another contact)
  * answers 422 without `retryable`; faults answer a retryable 503 and log
  * `[unstuck-form-failed]` with the stage and the error's name only. Responses
@@ -136,21 +134,6 @@ export function createUnstuckRoute(
         return badRequest();
       }
 
-      if (
-        (parsed as Record<string, unknown>)['policy_version'] !==
-        UNSTUCK_FORM_POLICY_VERSION
-      ) {
-        return jsonResponse(
-          {
-            error: 'This form changed. Please retry.',
-            policy_version: UNSTUCK_FORM_POLICY_VERSION,
-            retryable: true,
-          },
-          409,
-          { 'Retry-After': '0' },
-        );
-      }
-
       const result = unstuckSchema.safeParse(parsed);
       if (!result.success) return badRequest();
       const form = result.data;
@@ -183,10 +166,7 @@ export function createUnstuckRoute(
           ...(trustedClientIp ? { trustedClientIp } : {}),
           submissionId: form.submission_id,
           email,
-          form: { framework: form.framework, message: form.message },
-          noticeText: UNSTUCK_FORM_DISCLOSURE,
-          noticeVersion: `${UNSTUCK_FORM_POLICY_VERSION}.unstuck`,
-          policyVersion: UNSTUCK_FORM_POLICY_VERSION,
+          form: { message: form.message },
           occurredAt: deps.now(),
           keyring,
         });

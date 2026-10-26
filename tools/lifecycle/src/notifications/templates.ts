@@ -163,7 +163,6 @@ const InternalNotificationInputSchema = z
       .max(10),
     submission: z
       .object({
-        framework: z.string().min(1).max(40),
         messagePresent: z.boolean(),
         messageLength: z.number().int().min(0).max(100_000),
         message: z.string().max(100_000).optional(),
@@ -268,7 +267,6 @@ export function renderInternalNotificationSummary(candidate: unknown): string {
     'Review only',
     'This summary does not authorize or schedule any recipient email beyond the sequence the submitter approved.',
     '',
-    `Framework: ${input.submission.framework}`,
     `Message: ${
       input.submission.messagePresent
         ? `${input.submission.messageLength} characters`

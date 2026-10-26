@@ -242,3 +242,23 @@ test('dead Gmail schema migration drops the seed column and index and narrows jo
     "ALTER TABLE growth_jobs DROP CONSTRAINT growth_jobs_kind_check, ADD CONSTRAINT growth_jobs_kind_check CHECK (kind IN ('fulfill', 'notify', 'send_step', 'digest'))",
   ]);
 });
+
+test('form agreement migration strips notice, policy and framework keys from form activity only', async () => {
+  const sql = await read('0011_growth_strip_form_agreement.sql');
+
+  const statements = sql
+    .split(';')
+    .map((statement) =>
+      statement.replace(/--.*$/gmu, '').replace(/\s+/gu, ' ').trim(),
+    )
+    .filter(Boolean);
+
+  expect(statements).toHaveLength(2);
+  expect(statements[0]).toContain("kind = 'contact.form_submission'");
+  expect(statements[0]).toContain("'notice_text'");
+  expect(statements[0]).toContain("'notice_version'");
+  expect(statements[0]).toContain("'policy_version'");
+  expect(statements[0]).toContain("'framework'");
+  expect(statements[1]).toContain("kind = 'form.outreach_approved'");
+  expect(statements[1]).toContain("'policy_version'");
+});

@@ -13,12 +13,8 @@ const input: AcceptFormSubmissionInput = {
   submissionId: '20000000-0000-4000-8000-000000000002',
   email: 'person@gmail.com',
   form: {
-    framework: 'react',
     message: 'My streaming component never finishes rendering.',
   },
-  noticeText: 'Brian may follow up by email. Unsubscribe anytime.',
-  noticeVersion: 'unstuck-notice-v1',
-  policyVersion: 'unstuck_v1.2026-10-22',
   keyring: {
     active: { version: 1, secret: 'a-long-admission-secret-for-tests-only' },
   },
@@ -150,7 +146,7 @@ test('blocks a placeholder email with a gibberish message', async () => {
   const admission = await prepareFormAdmission(h.tx, {
     ...input,
     email: 'test@example.com',
-    form: { framework: 'react', message: 'qRsTuVwXyZaBcDeFgHiJ' },
+    form: { message: 'qRsTuVwXyZaBcDeFgHiJ' },
   });
 
   expect(admission.assessment).toMatchObject({

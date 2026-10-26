@@ -7,10 +7,6 @@ import {
 import { expect, test, vi } from 'vitest';
 
 import { createUnstuckRoute } from '../../src/app/%5F/forms/unstuck/handler';
-import {
-  UNSTUCK_FORM_DISCLOSURE,
-  UNSTUCK_FORM_POLICY_VERSION,
-} from '../../src/lib/growth/form-route';
 import { nudgeLifecycle } from '../../src/lib/growth/lifecycle-client';
 
 const URL_ = 'https://hashbrown.dev/_/forms/unstuck';
@@ -21,10 +17,8 @@ const MESSAGE = 'I cannot get streaming tool calls to render.';
 
 function validBody(overrides: Record<string, unknown> = {}) {
   return {
-    policy_version: UNSTUCK_FORM_POLICY_VERSION,
     submission_id: SUBMISSION_ID,
     email: EMAIL,
-    framework: 'react',
     message: MESSAGE,
     ...overrides,
   };
@@ -108,10 +102,7 @@ test('commits, closes the database, then nudges, and answers 200', async () => {
   expect(input).toMatchObject({
     submissionId: SUBMISSION_ID,
     email: 'jordan@acme.dev',
-    form: { framework: 'react', message: MESSAGE },
-    noticeText: UNSTUCK_FORM_DISCLOSURE,
-    noticeVersion: `${UNSTUCK_FORM_POLICY_VERSION}.unstuck`,
-    policyVersion: UNSTUCK_FORM_POLICY_VERSION,
+    form: { message: MESSAGE },
     occurredAt: NOW,
     trustedClientIp: '203.0.113.7',
   });
@@ -141,23 +132,31 @@ test('nudge failure still answers 200', async () => {
   expect(nudge).toHaveBeenCalledTimes(1);
 });
 
-test('missing or stale policy version answers 409 with the current version and Retry-After 0', async () => {
+test('a body from a page opened before the deploy still answers 200 and drops the legacy keys', async () => {
   const { route, accept } = harness();
-  const stale = validBody({ policy_version: 'unstuck_v0' });
-  const missing: Record<string, unknown> = validBody();
-  delete missing['policy_version'];
+  const body = validBody({
+    message: `  ${MESSAGE}  `,
+    policy_version: 'unstuck_v1.2026-10-22',
+    framework: 'react',
+  });
 
-  const staleResponse = await route.POST(post(stale));
-  const missingResponse = await route.POST(post(missing));
+  const response = await route.POST(post(body));
 
-  for (const response of [staleResponse, missingResponse]) {
-    expect(response.status).toBe(409);
-    expect(response.headers.get('retry-after')).toBe('0');
-    expect(await response.json()).toMatchObject({
-      policy_version: UNSTUCK_FORM_POLICY_VERSION,
-      retryable: true,
-    });
-  }
+  expect(response.status).toBe(200);
+  expect(accept).toHaveBeenCalledTimes(1);
+  const input = accept.mock.calls[0][1];
+  expect(input).not.toHaveProperty('noticeText');
+  expect(input).not.toHaveProperty('noticeVersion');
+  expect(input).not.toHaveProperty('policyVersion');
+  expect(input.form).toEqual({ message: MESSAGE });
+});
+
+test('an unknown extra key still answers 400', async () => {
+  const { route, accept } = harness();
+
+  const response = await route.POST(post(validBody({ colour: 'blue' })));
+
+  expect(response.status).toBe(400);
   expect(accept).not.toHaveBeenCalled();
 });
 
@@ -186,15 +185,13 @@ test('non-JSON, oversized, wrong content type and schema failures answer 400 wit
   expect(accept).not.toHaveBeenCalled();
 });
 
-test('a short message, a bad framework and a bad email each answer 400', async () => {
+test('a short message and a bad email each answer 400', async () => {
   const { route, accept } = harness();
 
   const short = await route.POST(post(validBody({ message: 'too short' })));
-  const framework = await route.POST(post(validBody({ framework: 'vue' })));
   const email = await route.POST(post(validBody({ email: 'not an email' })));
 
   expect(short.status).toBe(400);
-  expect(framework.status).toBe(400);
   expect(email.status).toBe(400);
   expect(await email.json()).toEqual({ error: 'Valid email required' });
   expect(accept).not.toHaveBeenCalled();

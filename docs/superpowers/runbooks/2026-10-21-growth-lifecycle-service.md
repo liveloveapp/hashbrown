@@ -87,8 +87,8 @@ same switch and does nothing unless it is exactly `true`.
 ## Get unstuck form
 
 Path: `/unstuck` (dynamic page) posts to `POST /_/forms/unstuck` on www. One
-transaction writes the contact, the consent record
-(`form:<id>:accepted`, carrying the disclosure text and its version) and, for
+transaction writes the contact, the submission record
+(`form:<id>:accepted`, carrying only the email and the message) and, for
 an unsuppressed address, `form:<id>:accepted:outreach-approved`, then enqueues
 `fulfill` (acknowledgement, at most one per contact per UTC day under
 `form:contact:<contact_id>:fulfill:<yyyy-mm-dd>`, carrying that day's first
@@ -115,8 +115,7 @@ exhausted window. A limiter fault fails open. The honeypot field and an abuse
 score of 80 or more answer a silent 200 with no jobs and charge only the IP
 budget, so spam cannot spend a real visitor's address budget. Setup, accept
 and close failures log `[unstuck-form-failed]` with the stage and the error
-name only. A stale `policy_version`
-answers 409 with the current version. Reusing a `submission_id` with the same
+name only. Reusing a `submission_id` with the same
 body returns the original result; with a changed body (or a `submission_id` owned by another contact) it
 answers 422 `{ error: 'This submission changed. Please send it again.' }`
 without `retryable`.
@@ -178,8 +177,8 @@ The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
 
 ## Scheduling the tick
 
-`www/vercel.json` schedules `GET /_/cron/lifecycle` every ten minutes
-(`*/10 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
+`www/vercel.json` schedules `GET /_/cron/lifecycle` every 30 minutes
+(`*/30 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
 route answers 503 until `LIFECYCLE_CRON_ENABLED` is `true`, so the schedule is
 harmless while the switch is off.
 
@@ -413,8 +412,8 @@ where id = '<job id>'
   and last_error_code = 'handler_error_exhausted';
 ```
 
-Until PR 6's form route writes `framework`, the founder notification shows
-"Framework: not given".
+The founder notification carries the email and the message only; the form no
+longer asks for a framework.
 
 ## Announcements
 
@@ -431,6 +430,12 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
+- Migration 0011 (`0011_growth_strip_form_agreement.sql`): after the www and
+  `hashbrown-lifecycle` production deploys from the Get unstuck polish merge are
+  live, apply it to production by hand with `npx nx migrate-growth growth`. Run
+  it as a read-write transaction, and log the before and after row counts of
+  the stored keys it strips (`notice_text`, `notice_version`, `policy_version`,
+  `framework`) in the enable log.
 - Add `VERCEL_PROJECT_ID_LIFECYCLE` for CI. The `lifecycle` entry in
   `DEPLOY_TARGETS` is optional and is skipped while it is unset.
 

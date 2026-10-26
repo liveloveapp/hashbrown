@@ -12,7 +12,6 @@ import {
   prepareFormAdmission,
   recordFormAdmission,
 } from './form-admission.ts';
-import { UNSTUCK_FRAMEWORKS, type UnstuckFramework } from './models.ts';
 import { isPersonalEmailDomain } from './observability/install-digest.ts';
 
 const UUID_V4 =
@@ -25,7 +24,6 @@ export const UNSTUCK_MESSAGE_MAX_LENGTH = 1_000;
 
 /** The fields of a Get unstuck submission. */
 export interface UnstuckSubmission {
-  framework: UnstuckFramework;
   /** "Where are you stuck?"; trimmed, then 20 to 1,000 characters. */
   message: string;
 }
@@ -39,10 +37,6 @@ export interface AcceptFormSubmissionInput {
   submissionId: string;
   email: string;
   form: UnstuckSubmission;
-  /** The disclosure shown beside the button, stored verbatim as consent. */
-  noticeText: string;
-  noticeVersion: string;
-  policyVersion: string;
   occurredAt: Date;
   keyring: EmailHmacKeyring;
   /** The `website_url` honeypot; any non-blank value blocks the submission. */
@@ -86,11 +80,6 @@ function uuid(field: string, value: string): string {
 }
 
 function unstuckSubmission(form: UnstuckSubmission): UnstuckSubmission {
-  if (!(UNSTUCK_FRAMEWORKS as readonly unknown[]).includes(form.framework)) {
-    throw new Error(
-      `framework must be one of: ${UNSTUCK_FRAMEWORKS.join(', ')}`,
-    );
-  }
   const message = typeof form.message === 'string' ? form.message.trim() : '';
   if (
     message.length < UNSTUCK_MESSAGE_MIN_LENGTH ||
@@ -100,7 +89,7 @@ function unstuckSubmission(form: UnstuckSubmission): UnstuckSubmission {
       `message must be ${UNSTUCK_MESSAGE_MIN_LENGTH} to ${UNSTUCK_MESSAGE_MAX_LENGTH} characters`,
     );
   }
-  return { framework: form.framework, message };
+  return { message };
 }
 
 /**
@@ -143,7 +132,7 @@ async function deliveryBlocked(
 /**
  * Accepts a Get unstuck submission in one transaction: admits it (replay,
  * abuse score and hourly and daily budgets; see `prepareFormAdmission`),
- * records the `contact.form_submission` consent record as
+ * records the `contact.form_submission` activity as
  * `form:<id>:accepted` with the server's work or personal email
  * classification, approves outreach when no hard stop applies, and enqueues
  * `notify` per submission (`form:<id>:notify`) and `fulfill` once per contact
@@ -155,7 +144,7 @@ async function deliveryBlocked(
  * returns `deliverySuppressed`. Retrying a submission id returns the original
  * result.
  *
- * @throws When the submission id, framework or message is invalid (before any
+ * @throws When the submission id or message is invalid (before any
  * transaction opens), when a retried submission id carries a different
  * request, or when its jobs belong to another contact.
  * @throws {FormRateLimitError} When an hourly or daily budget is exhausted.
@@ -172,7 +161,6 @@ export async function acceptFormSubmission(
   const facts: FormSubmittedFacts = {
     form_kind: 'unstuck',
     submission_id: submissionId,
-    framework: form.framework,
     message: form.message,
   };
   const normalized: AcceptFormSubmissionInput = {
@@ -194,9 +182,6 @@ export async function acceptFormSubmission(
       email: normalized.email,
       source: 'website',
       sourceForm: 'unstuck',
-      noticeText: normalized.noticeText,
-      noticeVersion: normalized.noticeVersion,
-      policyVersion: normalized.policyVersion,
       eventKey: `form:${submissionId}:accepted`,
       occurredAt: normalized.occurredAt,
       keyring: normalized.keyring,
