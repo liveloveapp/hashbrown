@@ -265,7 +265,7 @@ function limit(
   fallback: number,
   name: string,
 ): number {
-  const result = value ?? fallback;
+  const result = value === undefined ? fallback : value;
   if (!Number.isSafeInteger(result) || result <= 0)
     throw invalid(`${name} must be a positive safe integer.`);
   return result;

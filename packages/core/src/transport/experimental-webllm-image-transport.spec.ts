@@ -258,6 +258,7 @@ for (const bound of [
   'maxTotalBytes',
 ] as const) {
   for (const value of [
+    null as unknown as number,
     0,
     -1,
     1.5,
