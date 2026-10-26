@@ -225,16 +225,30 @@ export function createLocalMediaContent(): Chat.UserMessageInput['content'] {
   }
   if (modality !== 'image')
     throw new Error('Select the image or audio media fixture explicitly.');
+  const parameters = new URL(globalThis.location.href).searchParams;
+  const vision =
+    parameters.get('localModel') === 'webllm' &&
+    parameters.get('localVision') === '1';
+  const color = parameters.get('visionColor');
+  if (vision && color !== 'red' && color !== 'blue')
+    throw new Error('Select a generated vision fixture color explicitly.');
   const canvas = document.createElement('canvas');
-  canvas.width = 64;
+  canvas.width = vision ? 96 : 64;
   canvas.height = 64;
   const drawing = canvas.getContext('2d');
   if (!drawing) throw new Error('Canvas 2D context unavailable');
-  drawing.fillStyle = '#ff0000';
-  drawing.fillRect(0, 0, 64, 64);
+  drawing.fillStyle = vision ? '#ffffff' : '#ff0000';
+  drawing.fillRect(0, 0, canvas.width, canvas.height);
+  if (vision) {
+    drawing.fillStyle = color === 'red' ? '#ff0000' : '#0000ff';
+    drawing.fillRect(12, 20, 24, 24);
+    drawing.fillRect(60, 20, 24, 24);
+  }
   const text = {
     type: 'text' as const,
-    text: 'What is the dominant color in this image? Reply with one color word only.',
+    text: vision
+      ? 'Identify the foreground square color in lowercase and count the foreground squares in the latest image. Return JSON with answer and count.'
+      : 'What is the dominant color in this image? Reply with one color word only.',
   };
   const image = {
     type: 'image' as const,

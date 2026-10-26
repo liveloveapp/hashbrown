@@ -106,7 +106,7 @@ image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
 model, or native inference session, and does not validate model vision quality.
 The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
 
-This image API requires main source or the next package release; published
+This image API requires this feature branch's source changes or a future SDK release; published
 version 0.8.1 does not include it. Applications opt in with
 `experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
 unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
@@ -134,6 +134,50 @@ declarations pass with upstream declaration-body checking skipped; full checks
 require upstream development declarations absent from the standalone archives.
 Neither those checks nor these mocked worker contracts qualify a real VLM.
 Selecting/downloading and testing a real vision model is a separate decision.
+
+### Prepared real WebLLM vision canary
+
+`local-webllm-vision-smoke` is a separate live target, prepared for a later
+explicit model/download decision. It has not been run to qualify a VLM.
+It refuses CI and requires all of `LOCAL_LLM_E2E=1`,
+`LOCAL_LLM_WEBLLM_VISION=1`, `LOCAL_LLM_DOWNLOAD=1`, an absolute
+`WEBLLM_MODULE_PATH`, and an explicit `WEBLLM_MODEL`. There is no default vision
+model and no inference HTTP fallback.
+
+After selecting and approving a compatible application-owned model and bundle:
+
+```sh
+NX_DAEMON=false NX_NO_CLOUD=true NODE_ENV=production \
+  LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_VISION=1 LOCAL_LLM_DOWNLOAD=1 \
+  WEBLLM_MODULE_PATH="$APP_WEBLLM_BUNDLE" WEBLLM_MODEL="$APP_VISION_MODEL" \
+  npx nx local-webllm-vision-smoke conformance
+```
+
+Appending `--list` discovers the tests without running their bodies, opening the
+profile, importing the supplied runtime bundle, or loading/downloading a model.
+The live target uses installed Chrome and its own persistent
+`hashbrown-webllm-vision-profile` beneath the system temporary directory; it does
+not use `LOCAL_LLM_PROFILE`, the native test profile, or a personal profile.
+Its model cache persists there. Both framework projects run sequentially.
+
+Each project loads one application-owned worker engine, then uses fresh chat
+threads for a red image and a blue image without navigating or reloading the
+model between them. Angular uses red then blue; React uses blue then red. Each
+96×64 generated image contains two foreground squares on white. The identical
+prompt asks for the latest image's lowercase square color and square count,
+without naming the target color or count. A structured schema constrains
+`answer` and `count`; exact parsed red/blue and count assertions, raw response
+JSON, schema, finish status, reader drain, single-image history, resolver cleanup,
+and forbidden fallback checks must all pass. The fixture unloads the engine and
+terminates its worker at the end, after active generation has drained.
+
+Reports contain bundle SHA-256, selected catalog artifact URLs and estimated
+VRAM, browser/GPU metadata, loading/first-token/total times, generated dimensions,
+image MIME/count/byte totals, schema and response evidence, memory-method caveat,
+and cleanup/fallback counts. They do not serialize image data URLs or encoded
+image bytes. Catalog URLs alone do not identify immutable weight revisions;
+real results must retain that limitation. A successful same-device canary would
+not establish broad image understanding or cross-hardware reliability.
 
 ### Selecting a local Chrome model experiment
 

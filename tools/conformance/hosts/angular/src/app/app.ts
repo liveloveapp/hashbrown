@@ -1,5 +1,6 @@
 import { LocalUiWorkflow } from './local-ui-workflow';
 import { LocalMedia } from './local-media';
+import { LocalVision } from './local-vision';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { LocalWorkflow } from './local-workflow';
 import { LocalSchemaWorkflow } from './local-schema-workflow';
@@ -36,6 +37,7 @@ function readScenario(): Scenario {
     LocalSchemaWorkflow,
     LocalUiWorkflow,
     LocalMedia,
+    LocalVision,
     StructuredSmoke,
     UiSmoke,
     CompletionSmoke,
@@ -44,7 +46,9 @@ function readScenario(): Scenario {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main data-testid="fixture-ready">
-      @if (localMedia === 'image' || localMedia === 'audio') {
+      @if (localVision) {
+        <runtime-local-vision />
+      } @else if (localMedia === 'image' || localMedia === 'audio') {
         <runtime-local-media />
       } @else if (localUiWorkflow) {
         <runtime-local-ui-workflow />
@@ -67,6 +71,14 @@ function readScenario(): Scenario {
   `,
 })
 export class App {
+  protected readonly localVision = (() => {
+    const parameters = new URL(globalThis.location.href).searchParams;
+    return (
+      parameters.get('localModel') === 'webllm' &&
+      parameters.get('localMedia') === 'image' &&
+      parameters.get('localVision') === '1'
+    );
+  })();
   protected readonly localUiWorkflow =
     new URL(globalThis.location.href).searchParams.get('localUiWorkflow') ===
     'true';

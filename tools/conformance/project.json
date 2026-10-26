@@ -381,6 +381,19 @@
       "options": {
         "command": "playwright test --config tools/conformance/local-webllm-images.playwright.config.ts"
       }
+    },
+    "local-webllm-vision-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-webllm-vision.playwright.config.ts"
+      }
     }
   },
   "implicitDependencies": [
