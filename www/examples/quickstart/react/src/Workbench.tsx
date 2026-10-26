@@ -1,3 +1,6 @@
+import { MagicTextWorkbenchConversation } from './MagicTextWorkbench';
+import { PredictionsWorkbenchConversation } from './PredictionsWorkbench';
+import { SelectionWorkbenchConversation } from './SelectionWorkbench';
 import { DecisionWorkbenchConversation } from './DecisionWorkbench';
 import { getWorkbenchLesson } from '../../runtime/workbench-lessons';
 import { StructuredWorkbenchConversation } from './StructuredWorkbench';
@@ -287,11 +290,17 @@ function WorkbenchConversation({
 /** Retains independent SDK conversations and their captured application histories. */
 export function Workbench() {
   const Conversation =
-    getWorkbenchLesson(window.location.search).format === 'decision'
-      ? DecisionWorkbenchConversation
-      : getWorkbenchLesson(window.location.search).format === 'structured'
-        ? StructuredWorkbenchConversation
-        : WorkbenchConversation;
+    getWorkbenchLesson(window.location.search).format === 'text'
+      ? MagicTextWorkbenchConversation
+      : getWorkbenchLesson(window.location.search).format === 'predictions'
+        ? PredictionsWorkbenchConversation
+        : getWorkbenchLesson(window.location.search).format === 'selection'
+          ? SelectionWorkbenchConversation
+          : getWorkbenchLesson(window.location.search).format === 'decision'
+            ? DecisionWorkbenchConversation
+            : getWorkbenchLesson(window.location.search).format === 'structured'
+              ? StructuredWorkbenchConversation
+              : WorkbenchConversation;
   const [conversations, setConversations] = useState([
     { id: '1', label: 'Two-step plan' },
   ]);
