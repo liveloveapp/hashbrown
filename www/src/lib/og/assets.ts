@@ -11,13 +11,13 @@ export interface CardFont {
   style: 'normal';
 }
 
-/** The logos a card can show. */
-export type CardLogo = 'hashbrown-mark' | 'hashbrown-wordmark' | 'lla-mark';
+/** The graphics a card can show: the two logos and the footer's stripe. */
+export type CardGraphic = 'hashbrown-wordmark' | 'lla-mark' | 'stripe';
 
-const LOGO_FILES: Record<CardLogo, string> = {
-  'hashbrown-mark': 'www/public/image/logo/brand-mark.svg',
+const GRAPHIC_FILES: Record<CardGraphic, string> = {
   'hashbrown-wordmark': 'www/public/image/logo/word-mark.svg',
   'lla-mark': 'www/src/lib/og/lla-mark.svg',
+  stripe: 'www/public/image/footer/stripe.svg',
 };
 
 async function readFont(file: string): Promise<ArrayBuffer> {
@@ -46,11 +46,11 @@ export async function loadCardFonts(): Promise<CardFont[]> {
 }
 
 /**
- * A logo as a base64 SVG data URI, which Satori renders in an `<img>`.
+ * A graphic as a base64 SVG data URI, which Satori renders in an `<img>`.
  *
- * @param logo - Which logo to embed.
+ * @param graphic - Which graphic to embed.
  */
-export function svgDataUri(logo: CardLogo): string {
-  const svg = readFileSync(join(repoRoot(), LOGO_FILES[logo]));
+export function svgDataUri(graphic: CardGraphic): string {
+  const svg = readFileSync(join(repoRoot(), GRAPHIC_FILES[graphic]));
   return `data:image/svg+xml;base64,${svg.toString('base64')}`;
 }
