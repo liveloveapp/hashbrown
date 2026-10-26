@@ -1,8 +1,7 @@
-import type {
-  ExperimentalWebLlmToolsTransportOptions,
-  WebLlmToolPhase,
-  WebLlmToolsTurnContext,
-} from './index';
+import { experimental_webllm_tools } from './index';
+import type { TransportFactory } from './transport';
+
+import type { WebLlmToolPhase, WebLlmToolsTurnContext } from './index';
 import type {
   ExperimentalWebLlmImageTransportOptions,
   WebLlmEngine,
@@ -13,7 +12,12 @@ function checkContracts(
   engine: WebLlmEngine,
   media: ExperimentalWebLlmImageTransportOptions['media'],
 ) {
-  const accept = (options: ExperimentalWebLlmToolsTransportOptions) => options;
+  const accept = experimental_webllm_tools;
+  const factory: TransportFactory = accept({
+    engine,
+    toolPhase: () => ({ type: 'finalize' }),
+  });
+  void factory;
   const selector = (context: WebLlmToolsTurnContext): WebLlmToolPhase =>
     context.completedCalls.length
       ? { type: 'finalize' }

@@ -78,9 +78,10 @@ export type {
   ChromeToolPhaseResult,
 } from './chrome-tool-phase';
 
-export type {
-  ExperimentalWebLlmToolsTransportOptions,
-  WebLlmToolPhase,
-  WebLlmToolPhaseResult,
-  WebLlmToolsTurnContext,
+export {
+  experimental_webllm_tools,
+  type ExperimentalWebLlmToolsTransportOptions,
+  type WebLlmToolPhase,
+  type WebLlmToolPhaseResult,
+  type WebLlmToolsTurnContext,
 } from './experimental-webllm-tools-transport';
