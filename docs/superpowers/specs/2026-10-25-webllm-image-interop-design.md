@@ -1,6 +1,6 @@
 # Dependency-free WebLLM image input proposal
 
-Status: proposed bounded follow-up; no implementation, model loading, browser/GPU use, or dependency changes performed. Builds on current injected structural engine ownership. Scope: PNG/JPEG/WebP user images only, explicit opt-in; text output, schemas and trusted UI retain their existing execution path. Native tools and audio/video remain unsupported.
+Status: implemented as a bounded opt-in adapter and deterministic browser/worker contract suite; no WebLLM runtime/model loading, native inference, or dependency changes performed. Builds on current injected structural engine ownership. Scope: PNG/JPEG/WebP user images only, explicit opt-in; text output, schemas and trusted UI retain their existing execution path. Native tools and audio/video remain unsupported.
 
 ## Recommended API and compatibility
 
@@ -59,3 +59,13 @@ Real VLM qualification is a later material choice: user-authorized Gemma v4_4b C
 - Audio: excluded even though [.86 protocol](https://github.com/mlc-ai/web-llm/blob/v0.2.86/src/openai_api_protocols/chat_completion.ts#L395) has capability-gated audio. Image opt-in grants no audio support.
 - Native tools: remain rejected. Their system/schema restrictions and terminal parsed calls require separate protocol work.
 - API type assignability: resolve by compile evidence before implementation lands; keep legacy overload and generic defaults rather than widen existing consumers by assumption.
+
+## Implementation review record
+
+The public type slice passed independent spec and quality reviews. Core implementation passed spec review after explicit-null policy rejection, and quality re-review after replacing identity-keyed history maps with occurrence-indexed plans. Every historical occurrence resolves and counts independently, even when callers reuse the same message object. Default text and image protocol snapshots are captured by send before asynchronous acquisition; later caller mutations cannot change instructions, schema, tools or content already preflighted.
+
+Core and both framework hosts retain application ownership of the injected engine. The new local image target runs only deterministic worker shims with generated media; a real VLM remains unqualified and requires a separate explicit model/download decision. See the implementation plan and `tools/conformance/README.md` for commands and evidence limits.
+
+The new image API is implemented in source for a subsequent package release; published npm version 0.8.1 does not contain it. Mock contracts establish transport behavior only, and real VLM qualification remains pending.
+
+Final independent core quality review approved the captured engine fix (b4e17adf), and conformance quality re-review approved the per-create worker release latch (9242638e). Core and both framework contract implementations have completed spec and quality review; actual WebLLM VLM qualification remains pending.

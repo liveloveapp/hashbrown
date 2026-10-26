@@ -100,13 +100,15 @@ This separate target refuses CI and requires both explicit local flags. It runs
 Angular and React with a generated 64×64 PNG, application-owned resolver, real
 browser decoding, and a deterministic worker shim. It checks image history,
 canonical data URL serialization, streaming, cancellation during worker setup
-and iteration, draining, and resolver disposal. Worker diagnostics contain only
+and iteration, an early release during controlled slow decoding, draining,
+and resolver disposal. Worker diagnostics contain only
 image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
 model, or native inference session, and does not validate model vision quality.
 The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
 
-Applications opt in with `experimental_webllm({ engine, media: { images: {},
-resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
+This image API requires main source or the next package release; published
+version 0.8.1 does not include it. Applications opt in with
+`experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
 unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
 Every image source is resolved by the application into `{ blob, dispose? }`,
 including inline data, URLs and file handles. Hashbrown never fetches a source
