@@ -12,6 +12,67 @@ import type {
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
+/** Retains exact text-only engine inputs separately from descriptive metrics. */
+export function captureWebLlmToolsRequest(
+  request: WebLlmRequest<WebLlmImageContent>,
+  maxTokens: number,
+) {
+  if (request.messages.some((message) => typeof message.content !== 'string'))
+    throw new Error('Tools live evidence requires text-only messages.');
+  return {
+    request: structuredClone({
+      ...request,
+      max_tokens: maxTokens,
+      temperature: 0,
+      seed: 1,
+    }),
+    responseText: '',
+    chunks: [] as WebLlmChunk[],
+  };
+}
+
+/** Interrupts and awaits pending requests before unload, releasing worker resources on every outcome. */
+export function disposeWebLlmWorker(options: {
+  readonly ready: Promise<{
+    interruptGenerate(): void;
+    unload(): Promise<void>;
+  }>;
+  readonly pending: ReadonlySet<Promise<void>>;
+  readonly drain: boolean;
+  readonly timeoutMs: number;
+  readonly unloaded: () => void;
+  readonly terminate: () => void;
+  readonly revoke: () => void;
+}): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const unload = options.ready.then((engine) => {
+    const drained =
+      options.drain && options.pending.size
+        ? Promise.resolve().then(() => {
+            engine.interruptGenerate();
+            return Promise.allSettled([...options.pending]);
+          })
+        : Promise.resolve();
+    return drained.then(() => engine.unload()).then(options.unloaded);
+  });
+  return Promise.race([
+    unload,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('WebLLM unload timed out')),
+        options.timeoutMs,
+      );
+    }),
+  ]).finally(() => {
+    clearTimeout(timer);
+    try {
+      options.terminate();
+    } finally {
+      options.revoke();
+    }
+  });
+}
+
 /** Summarizes image transport inputs without retaining image URLs, bytes or prompt text. */
 export function summarizeWebLlmImages(
   request: WebLlmRequest<WebLlmImageContent>,
@@ -118,7 +179,7 @@ export async function installWebLlmWorker(
   page: Page,
   moduleUrl: string,
   model: string,
-  options: { readonly images?: boolean } = {},
+  options: { readonly images?: boolean; readonly toolsEvidence?: boolean } = {},
 ): Promise<void> {
   const maxTokens = Number(process.env['WEBLLM_MAX_TOKENS'] ?? 256);
   if (!Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 2048)
@@ -132,7 +193,17 @@ export async function installWebLlmWorker(
     ramBytes: totalmem(),
   };
   await page.addInitScript(
-    ({ moduleUrl, model, machine, maxTokens, images, summarizeSource }) => {
+    ({
+      moduleUrl,
+      model,
+      machine,
+      maxTokens,
+      images,
+      toolsEvidence,
+      summarizeSource,
+      captureSource,
+      disposeSource,
+    }) => {
       type Engine = {
         chat: {
           completions: {
@@ -151,6 +222,12 @@ export async function installWebLlmWorker(
       const summarize = new Function(
         'return (' + summarizeSource + ')',
       )() as typeof summarizeWebLlmImages;
+      const captureTools = new Function(
+        'return (' + captureSource + ')',
+      )() as typeof captureWebLlmToolsRequest;
+      const disposeWorker = new Function(
+        'return (' + disposeSource + ')',
+      )() as typeof disposeWebLlmWorker;
       const pendingRequests = new Set<Promise<void>>();
       type Runtime = {
         CreateWebWorkerMLCEngine(
@@ -172,6 +249,7 @@ export async function installWebLlmWorker(
         requests: [],
         maxTokens,
         imagesEnabled: images,
+        toolsEvidenceEnabled: toolsEvidence,
         loadedEngines: 0,
         activeRequests: 0,
         environment: {
@@ -186,6 +264,9 @@ export async function installWebLlmWorker(
           schema?: string;
           responseText: string;
         }[];
+        __localWebLlmToolsEvidence: ReturnType<
+          typeof captureWebLlmToolsRequest
+        >[];
         __localWebLlmReady: boolean;
         __localWebLlmMaxTokens?: number;
         __localWebLlmMetrics: typeof metrics;
@@ -193,6 +274,7 @@ export async function installWebLlmWorker(
       };
       browser.__localWebLlmMetrics = metrics;
       browser.__localWebLlmVisionEvidence = [];
+      browser.__localWebLlmToolsEvidence = [];
       const gpu = (
         navigator as unknown as {
           gpu?: {
@@ -239,6 +321,8 @@ export async function installWebLlmWorker(
           (record) => record.model_id === model,
         );
         metrics['catalogVramEstimateMB'] = record?.vram_required_MB;
+        metrics['catalogCaveat'] =
+          'Catalog URLs do not establish immutable artifact identity; estimated VRAM is not measured GPU allocation.';
         metrics['modelSourceUrl'] = record?.model;
         metrics['modelLibraryUrl'] = record?.model_lib;
         const engine = await runtime.CreateWebWorkerMLCEngine(worker, model, {
@@ -273,6 +357,13 @@ export async function installWebLlmWorker(
                 ...(images ? summarize(request) : {}),
                 maxTokens: browser.__localWebLlmMaxTokens ?? maxTokens,
               };
+              const evidence = toolsEvidence
+                ? captureTools(
+                    request,
+                    browser.__localWebLlmMaxTokens ?? maxTokens,
+                  )
+                : undefined;
+              if (evidence) browser.__localWebLlmToolsEvidence.push(evidence);
               pendingRequests.add(pending);
               metrics['activeRequests'] = pendingRequests.size;
               (metrics['requests'] as unknown[]).push(measurement);
@@ -285,6 +376,7 @@ export async function installWebLlmWorker(
                   temperature: 0,
                   seed: 1,
                 })) {
+                  if (evidence) evidence.chunks.push(structuredClone(chunk));
                   const content = chunk.choices[0]?.delta.content;
                   if (content) {
                     measurement['firstTokenMs'] ??= performance.now() - started;
@@ -304,7 +396,8 @@ export async function installWebLlmWorker(
                     schema: request.response_format?.schema,
                     responseText: text,
                   });
-                else measurement['text'] = text;
+                else if (!toolsEvidence) measurement['text'] = text;
+                if (evidence) evidence.responseText = text;
                 pendingRequests.delete(pending);
                 metrics['activeRequests'] = pendingRequests.size;
                 settled();
@@ -319,30 +412,23 @@ export async function installWebLlmWorker(
       let disposal: Promise<void> | undefined;
       browser.__localWebLlmDispose = () =>
         (disposal ??= (async () => {
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          try {
-            await Promise.race([
-              ready.then(async (engine) => {
-                if (images && pendingRequests.size) {
-                  engine.interruptGenerate();
-                  await Promise.allSettled([...pendingRequests]);
-                }
-                await engine.unload();
-                metrics['unloaded'] = true;
-              }),
-              new Promise<never>((_, reject) => {
-                timer = setTimeout(
-                  () => reject(new Error('WebLLM unload timed out')),
-                  images ? 30_000 : 5000,
-                );
-              }),
-            ]);
-          } finally {
-            clearTimeout(timer);
-            worker.terminate();
-            metrics['workerTerminated'] = true;
-            URL.revokeObjectURL(workerUrl);
-          }
+          await disposeWorker({
+            ready,
+            pending: pendingRequests,
+            drain: images || toolsEvidence,
+            timeoutMs: images || toolsEvidence ? 30_000 : 5000,
+            unloaded: () => {
+              metrics['unloaded'] = true;
+            },
+            terminate: () => {
+              worker.terminate();
+              metrics['workerTerminated'] = true;
+            },
+            revoke: () => {
+              URL.revokeObjectURL(workerUrl);
+              metrics['workerUrlRevoked'] = true;
+            },
+          });
         })());
     },
     {
@@ -351,6 +437,9 @@ export async function installWebLlmWorker(
       machine,
       maxTokens,
       images: !!options.images,
+      toolsEvidence: !!options.toolsEvidence,
+      captureSource: captureWebLlmToolsRequest.toString(),
+      disposeSource: disposeWebLlmWorker.toString(),
       summarizeSource: summarizeWebLlmImages.toString(),
     },
   );
