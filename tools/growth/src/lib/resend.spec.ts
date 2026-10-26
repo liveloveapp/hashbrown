@@ -23,7 +23,7 @@ import {
 import {
   ProviderMessageIdBindingError,
   replySubjectSha256,
-} from './replies.ts';
+} from './provider-message-ids.ts';
 import { executorWith } from './testing/fake-executor.ts';
 import {
   createUnsubscribeActionUrl,
@@ -126,7 +126,6 @@ function job(overrides: Partial<GrowthJob> = {}): GrowthJob {
     payload: { campaign_version: 'v1', step: 2 },
     providerEmailId: null,
     rfcMessageId: null,
-    gmailSeedMessageId: null,
     deliveryStatus: 'not_submitted',
     lastErrorCode: null,
     createdAt: now,

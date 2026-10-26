@@ -1,351 +1,328 @@
 ---
-title: 'Structured Output: Hashbrown Angular Docs'
+title: 'Structured output: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Specify the JSON schema of the model response.'
+    content: 'Generate typed data, review the result, and apply it explicitly.'
 ---
 
-# Structured Output
+# Structured output
 
-<p class="subtitle">Specify the JSON schema of the model response.</p>
+Let's turn **“Add 2 apples and 1 loaf of bread”** into a shopping list. The model returns JSON with item names and quantities. Our application displays a draft, checks its rules, and waits for us to apply it.
 
-- Structured output can replace forms with natural language input via text or audio.
-- Users can navigate via chat.
-- Provide structured predictive actions given application state and user events.
-- Allow the user to customer the entire application user interface.
+<hb-docs-demo demo="structured-form">
+</hb-docs-demo>
 
----
+## Before we start
 
-## Demo
+Use the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). Read [Skillet schemas](/docs/angular/concept/schema) for the response shape. This example uses `structuredChatResource()` to request data that our own interface renders.
 
-<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
+Keep `runtime/shopping-list.ts` beside the `react` and `angular` example directories. If you copy the files into your app, update the shared file import to match your layout.
 
----
+## Describe the response
 
-## The `structuredChatResource()` Function
+Our response has one `items` array. Each item has a string `name` and integer `quantity`. Hashbrown parses the model's response with this schema and exposes typed assistant content.
 
-<hb-code-example header="get a structured response">
+We use `s.streaming.array` around ordinary `s.object` items. That lets items appear once their required field values resolve, before the whole list finishes. [Streaming](/docs/angular/concept/streaming) explains where to place the streaming markers.
+
+The shared file also checks our application's rules: 1–10 items, names with 1–80 characters after trimming, and quantities from 1–20. A value can match the schema and still fail these rules. For example, zero is an integer, but it is not a useful quantity in this list.
+
+<hb-expander title="Complete runtime/shopping-list.ts">
+
+<hb-code-example header="runtime/shopping-list.ts">
 
 ```ts
-@Component({})
-export class App {
-  // 1. Create the resource with the specified `schema`
-  chat = structuredChatResource({
-    system: `Collect the user's first and last name.`,
-    schema: s.object('The user', {
-      firstName: s.string('First name'),
-      lastName: s.string('Last name'),
+import { s } from '@hashbrownai/core';
+
+/** Streams shopping-list items once their required field values resolve. */
+export const shoppingListSchema = s.object('A shopping list draft', {
+  items: s.streaming.array(
+    'The requested shopping items',
+    s.object('A complete shopping item', {
+      name: s.string('The product name'),
+      quantity: s.integer('How many to add'),
     }),
+  ),
+});
+
+/** A shopping list after parsing; application rules still require validation. */
+export type ShoppingList = s.Infer<typeof shoppingListSchema>;
+
+/** Runtime state needed to authorize applying one explicitly requested draft. */
+export interface ShoppingListRun {
+  readonly requestId: string | undefined;
+  readonly cancelled: boolean;
+  readonly messages: readonly {
+    readonly id?: string;
+    readonly role: string;
+    readonly content?: unknown;
+  }[];
+  readonly isSending: boolean;
+  readonly isReceiving: boolean;
+  readonly isGenerating: boolean;
+  readonly isLoading: boolean;
+  readonly error?: unknown;
+  readonly finishReason?: string;
+}
+
+/** Returns a trimmed, independent copy when all application rules pass. */
+export function validateShoppingList(input: unknown): ShoppingList | undefined {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    !('items' in input) ||
+    !Array.isArray(input.items)
+  )
+    return undefined;
+  if (input.items.length < 1 || input.items.length > 10) return undefined;
+  const items: ShoppingList['items'] = [];
+  for (const item of input.items) {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof item.name !== 'string' ||
+      !Number.isInteger(item.quantity)
+    )
+      return undefined;
+    const name = item.name.trim();
+    if (
+      name.length < 1 ||
+      name.length > 80 ||
+      item.quantity < 1 ||
+      item.quantity > 20
+    )
+      return undefined;
+    items.push({ name, quantity: item.quantity });
+  }
+  return { items };
+}
+
+/** Revalidates a fresh answer only after its runtime settles without failure. */
+export function getApplicableShoppingList(
+  run: ShoppingListRun,
+): ShoppingList | undefined {
+  // isSending covers the debounce window before aggregate isLoading becomes true.
+  if (
+    !run.requestId ||
+    run.cancelled ||
+    run.error ||
+    run.isSending ||
+    run.isReceiving ||
+    run.isGenerating ||
+    run.isLoading ||
+    (run.finishReason !== undefined && run.finishReason !== 'stop')
+  )
+    return undefined;
+  const reversedMessages = [...run.messages].reverse();
+  const userIndex = reversedMessages.findIndex(
+    (message) => message.role === 'user',
+  );
+  if (userIndex < 0 || reversedMessages[userIndex].id !== run.requestId)
+    return undefined;
+  const answer = reversedMessages
+    .slice(0, userIndex)
+    .find((message) => message.role === 'assistant');
+  return validateShoppingList(answer?.content);
+}
+```
+
+</hb-code-example>
+
+</hb-expander>
+
+## Generate a draft
+
+Create the component below, then connect it to your configured application. Import the standalone `StructuredList` component into your root component and render `<app-structured-list />`. Keep `provideHashbrown()` in your application configuration.
+
+Enter the request and select **Generate draft**. The event handler sends one user message. Editing the input alone does not start a request, and rendering the component does not send one.
+
+The example starts a fresh model conversation for each draft. We want each request to describe a replacement list; previous drafts are not additional instructions. Use a continuing structured chat when your feature needs follow-up turns.
+
+<hb-expander title="Complete angular/src/app/structured-list.ts">
+
+<hb-code-example header="angular/src/app/structured-list.ts">
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from '@angular/core';
+import { structuredChatResource } from '@hashbrownai/angular';
+import {
+  getApplicableShoppingList,
+  type ShoppingList,
+  shoppingListSchema,
+} from '../../../runtime/shopping-list';
+
+/** Generates a reviewable draft and applies a validated copy to local state. */
+@Component({
+  selector: 'app-structured-list',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <main>
+      <h1>Turn a request into a shopping list</h1>
+      <label for="shopping-request">Shopping request</label>
+      <textarea
+        id="shopping-request"
+        [value]="prompt()"
+        (input)="prompt.set($any($event.target).value)"
+      ></textarea>
+      <nav aria-label="Draft actions">
+        <button
+          type="button"
+          [disabled]="!prompt().trim() || busy()"
+          (click)="generate()"
+        >
+          Generate draft
+        </button>
+        <button
+          type="button"
+          [disabled]="!busy() || request()?.cancelled"
+          (click)="cancel()"
+        >
+          Cancel
+        </button>
+        <button type="button" [disabled]="!candidate()" (click)="apply()">
+          Apply list
+        </button>
+      </nav>
+      <p role="status">{{ status() }}</p>
+      <p>
+        List rules: 1–10 items, names of 1–80 characters, quantities from 1–20.
+      </p>
+      <h2>Draft list</h2>
+      <ul data-testid="draft-list">
+        @for (item of draft()?.items ?? []; track $index) {
+          <li>{{ item.quantity }} × {{ item.name }}</li>
+        }
+      </ul>
+      <h2>Applied list</h2>
+      <ul data-testid="applied-list">
+        @for (item of applied()?.items ?? []; track $index) {
+          <li>{{ item.quantity }} × {{ item.name }}</li>
+        }
+      </ul>
+      <p>
+        The applied list is saved only in this component. Refreshing clears it.
+      </p>
+    </main>
+  `,
+})
+export class StructuredList {
+  protected readonly prompt = signal('Add 2 apples and 1 loaf of bread.');
+  protected readonly request = signal<
+    { id: string; cancelled: boolean } | undefined
+  >(undefined);
+  protected readonly applied = signal<ShoppingList | undefined>(undefined);
+  private readonly chat = structuredChatResource({
+    schema: shoppingListSchema,
+    system:
+      'Turn the request into a shopping list. Use 1–10 items, names of 1–80 characters, and integer quantities from 1–20.',
+  });
+  protected readonly busy = computed(
+    () => this.chat.isSending() || this.chat.isLoading(),
+  );
+  protected readonly draft = computed(
+    () => this.chat.lastAssistantMessage()?.content,
+  );
+  protected readonly candidate = computed(() =>
+    getApplicableShoppingList(this.run()),
+  );
+  protected readonly status = computed(() => {
+    if (this.request()?.cancelled)
+      return 'Generation cancelled. Generate another draft to continue.';
+    if (this.chat.error())
+      return 'Could not generate a valid draft. Try generating again.';
+    if (this.busy())
+      return 'Generating draft. Complete items appear as they arrive.';
+    if (
+      this.chat.lastRunFinishReason() &&
+      this.chat.lastRunFinishReason() !== 'stop'
+    )
+      return 'Generation ended before a complete draft. Generate another draft.';
+    if (this.candidate())
+      return 'Draft ready. Review the items, then apply the list.';
+    if (this.request())
+      return 'Draft does not meet the list rules. Generate another draft.';
+    return 'Describe your list, then generate a draft.';
   });
 
-  constructor() {
-    // 1. Send a user message
-    this.chat.sendMessage({ role: 'user', content: 'My name is Brian Love' });
+  protected generate(): void {
+    const next = { id: crypto.randomUUID(), cancelled: false };
+    this.request.set(next);
+    // This component generates independent lists, so each request replaces its history.
+    this.chat.setMessages([
+      { id: next.id, role: 'user', content: this.prompt() },
+    ]);
+  }
 
-    // 3. Log out the structure response
-    effect(() => {
-      const value = this.chat.value();
-      console.log({
-        firstName: value.content.firstName,
-        lastName: value.content.lastName,
-      });
-    });
+  protected cancel(): void {
+    const request = this.request();
+    if (!request) return;
+    this.request.set({ ...request, cancelled: true });
+    this.chat.stop();
+  }
+
+  protected apply(): void {
+    // Revalidate at the event boundary, after any synchronous Generate or Cancel.
+    const list = getApplicableShoppingList(this.run());
+    if (list) this.applied.set(list);
+  }
+
+  private run() {
+    return {
+      requestId: this.request()?.id,
+      cancelled: this.request()?.cancelled ?? false,
+      messages: this.chat.error() ? [] : this.chat.value(),
+      isSending: this.chat.isSending(),
+      isReceiving: this.chat.isReceiving(),
+      isGenerating: this.chat.isGenerating(),
+      isLoading: this.chat.isLoading(),
+      error: this.chat.error(),
+      finishReason: this.chat.lastRunFinishReason(),
+    };
   }
 }
 ```
 
 </hb-code-example>
 
-1. The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource that can parse user input and return structured data.
-2. The `schema` option defines the expected structure of the response using Skillet (or a Standard JSON Schema object that Hashbrown normalizes to Skillet).
-3. The resource `value()` contains the structured output, which can be used directly in your application.
+</hb-expander>
 
-Here is the expected `content` value:
+## Read the typed content
 
-```json
-{
-  "firstName": "Brian",
-  "lastName": "Love"
-}
-```
+The latest assistant message carries the parsed response in `content`. Before a response is available, there may be no assistant message. During generation, the list can grow as item names and quantities resolve, even before an item’s closing brace arrives. These values are a preview of the response.
 
----
+Keep the **Draft list** separate from the **Applied list**. Showing generated data is useful feedback; it does not mean the run has finished or the user has accepted it.
 
-### Schema Inputs
+<img src="/video/docs/structured-form-result.png" alt="The draft contains two apples and one loaf of bread. After explicit review and Apply list, the same items appear in the separate applied list." width="920" height="564" loading="lazy" />
 
-The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType), or raw JSON Schema objects. Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
+## Apply a completed result
 
----
+**Apply list** becomes available only for a new, completed draft that passes our validation. The handler checks again before copying its items into application state. Starting another generation or selecting **Cancel** makes the draft ineligible immediately, including while the request is waiting to send.
 
-### Provider Enforcement
+A failed request keeps the previously applied list. A cancelled request cannot be applied, even if it already displayed items. A replacement request without a new assistant answer cannot reuse the previous draft.
 
-The `schema` option is the only client-side structured output control. Hashbrown includes its JSON Schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`, then incrementally parses and validates the text events returned by the AG-UI endpoint.
+This example updates local component state. It does not buy anything, write to a server, or save across a refresh. Validate and authorize any real server write separately.
 
-The server adapter decides how to request structured output from its provider. It may use native schema enforcement, JSON mode, or provider-specific request options. Hashbrown does not synthesize an `output` tool; developers may use that name for a normal tool.
+## Keep the endpoint schema intact
 
----
+Hashbrown sends the response schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`. The [provider adapter](/docs/angular/start/platforms) uses it to request the appropriate output from its model, while the client parses the streamed text events.
 
-### `StructuredChatResourceOptions`
+If you customize the endpoint, preserve the response schema for this feature. The [secured text-only endpoint example](/docs/angular/recipes/public-endpoint) deliberately removes browser-supplied schemas as part of its different policy; adapt that policy explicitly for structured data or UI. Hashbrown does not add an `output` tool to request structured output.
 
-| Option      | Type                                  | Required | Description                                               |
-| ----------- | ------------------------------------- | -------- | --------------------------------------------------------- |
-| `system`    | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured chat resource |
-| `schema`    | `s.SchemaOutput`                      | Yes      | The schema to use for the structured chat resource        |
-| `tools`     | `Tools[]`                             | No       | The tools to use for the structured chat resource         |
-| `messages`  | `Chat.Message<Output, Tools>[]`       | No       | The initial messages for the structured chat resource     |
-| `debugName` | `string`                              | No       | The debug name for the structured chat resource           |
-| `debounce`  | `number`                              | No       | The debounce time for the structured chat resource        |
-| `retries`   | `number`                              | No       | The number of retries for the structured chat resource    |
-| `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured chat resource       |
-| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation |
+## When the draft is not usable
 
----
+| What we see                          | What to do                                                                                                                  |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| A request error                      | Check the endpoint, credentials and provider response in [Debugging](/docs/angular/concept/debugging), then generate again. |
+| A list outside the application rules | Make the request more specific, then generate another draft.                                                                |
+| A cancelled run                      | Generate a fresh draft before applying.                                                                                     |
+| No assistant answer                  | Inspect the endpoint events; a finished run alone does not supply a list.                                                   |
 
-### API Reference
+Skillet also accepts its supported Standard JSON Schema inputs. See [schema inputs and constraints](/docs/angular/concept/schema) before substituting another schema library.
 
-<hb-next-steps>
-  <hb-next-step link="/api/angular/structuredChatResource">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>structuredChatResource() API</h4>
-      <p>See the resource documentation</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/angular/StructuredChatResourceOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>StructuredChatResourceOptions API</h4>
-      <p>See all of the options</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+## Next steps
 
----
-
-## The `structuredCompletionResource()` Function
-
-The @hashbrownai/angular!structuredCompletionResource:function function builds on top of the @hashbrownai/angular!structuredChatResource:function function by providing an additional `input` option.
-
-<hb-code-example header="get a structured response from a bound input">
-
-```ts
-predictedLights = structuredCompletionResource({
-  debugName: 'Predict Lights',
-  system: `
-    You are an assistant that helps the user configure a lighting scene.
-    The user will choose a name for the scene, and you will predict the
-    lights that should be added to the scene based on the name. The input
-    will be the scene name and the list of lights that are available.
-
-    # Rules
-    - Only suggest lights from the provided "availableLights" input list.
-    - Pick a brightness level for each light that is appropriate for the scene.
-  `,
-  input: computed(() => {
-    if (!this.sceneNameSignal()) return null;
-
-    return {
-      input: this.sceneNameSignal(),
-      availableLights: untracked(() => {
-        return this.lights().map((light) => ({
-          id: light.id,
-          name: light.name,
-        }));
-      }),
-    };
-  }),
-  schema: s.array(
-    'The lights to add to the scene',
-    s.object('A join between a light and a scene', {
-      lightId: s.string('the ID of the light to add'),
-      brightness: s.number('the brightness of the light from 0 to 100'),
-    }),
-  ),
-});
-```
-
-</hb-code-example>
-
-Let's review the code above.
-
-1. The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts lights based on the scene name.
-2. The `input` option is set to a signal that contains the scene name and additional untracked context. This signal updates each time the scene name signal changes, and reads the list of light names and sends them along.
-3. The `schema` defines the expected structure of the response, which includes an array of lights with their IDs and brightness levels.
-
-When the user types a scene name, the LLM will predict which lights should be added to the scene and return a structured JSON object that can be used directly in your application.
-
----
-
-### `StructuredCompletionResourceOptions`
-
-| Option      | Type                                  | Required | Description                                                     |
-| ----------- | ------------------------------------- | -------- | --------------------------------------------------------------- |
-| `input`     | `Signal<null \| undefined \| Input>`  | Yes      | The input to the structured completion resource                 |
-| `schema`    | `s.SchemaOutput`                      | Yes      | The schema to use for the structured completion resource        |
-| `system`    | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured completion resource |
-| `tools`     | `Chat.AnyTool[]`                      | No       | The tools to use for the structured completion resource         |
-| `debugName` | `string`                              | No       | The debug name for the structured completion resource           |
-| `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured completion resource       |
-| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
-
----
-
-### API Reference
-
-<hb-next-steps>
-  <hb-next-step link="/api/angular/structuredCompletionResource">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>structuredCompletionResource() API</h4>
-      <p>See the full resource</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/angular/StructuredCompletionResourceOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>StructuredCompletionResourceOptions API</h4>
-      <p>See the options</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-## Global Predictions
-
-In this example, we'll assume you are using a global state container (like NgRx).
-We'll send each action to the LLM and ask it to predict the next possible action a user should consider.
-
-<hb-code-example header="predictions.ts">
-
-```ts
-lastAction = this.store.selectSignal(selectLastUserAction);
-
-predictions = structuredCompletionResource({
-  // 1. The resource is re-computed with the last user action
-  input: this.lastAction,
-
-  // 2. The system instructions provide the guidelines and rules
-  system: `
-    You are an AI smart home assistant tasked with predicting the next possible user action in a 
-    smart home configuration app. Your suggestions will be displayed as floating cards in the 
-    bottom right of the screen.
-
-    Important Guidelines:
-    - The user already owns all necessary hardware. Do not suggest purchasing hardware.
-    - Every prediction must include a concise 'reasonForSuggestion' that explains the suggestion 
-      in one sentence.
-    - Each prediction must be fully detailed with all required fields based on its type.
-
-    Additional Rules:
-    - Always check the current lights and scenes states to avoid suggesting duplicates.
-    - If a new light has just been added, consider suggesting complementary lights or adding it 
-      to an existing scene.
-    - You do not always need to make a prediction. Returning an empty array is also a valid 
-      response.
-    - You may make multiple predictions. Just add multiple predictions to the array.
-  `,
-
-  // 3. Provide tools to retrieve the current app state
-  tools: [
-    createTool({
-      name: 'getLights',
-      description: 'Get all lights in the smart home',
-      handler: () => this.smartHomeService.loadLights(),
-    }),
-    createTool({
-      name: 'getScenes',
-      description: 'Get all scenes in the smart home',
-      handler: () => this.smartHomeService.loadScenes(),
-    }),
-  ],
-
-  // 4. Specify the structured output schema
-  schema: s.object('The result', {
-    predictions: s.streaming.array(
-      'The predictions',
-      s.anyOf([
-        s.object('Suggests adding a light to the system', {
-          type: s.literal('Add Light'),
-          name: s.string('The suggested name of the light'),
-          brightness: s.integer('A number between 0-100'),
-        }),
-        s.object('Suggest adding a scene to the system', {
-          type: s.literal('Add Scene'),
-          name: s.string('The suggested name of the scene'),
-          lights: s.array(
-            'The lights in the scene',
-            s.object('A light in the scene', {
-              lightId: s.string('The ID of the light'),
-              brightness: s.integer('A number between 0-100'),
-            }),
-          ),
-        }),
-        s.object('Suggest scheduling a scene to the system', {
-          type: s.literal('Schedule Scene'),
-          sceneId: s.string('The ID of the scene'),
-          datetime: s.string('The datetime of the scene'),
-        }),
-        s.object('Suggest adding a light to a scene', {
-          type: s.literal('Add Light to Scene'),
-          lightId: s.string('The ID of the light'),
-          sceneId: s.string('The ID of the scene'),
-          brightness: s.integer('A number between 0-100'),
-        }),
-        s.object('Suggest removing a light from a scene', {
-          type: s.literal('Remove Light from Scene'),
-          lightId: s.string('The ID of the light'),
-          sceneId: s.string('The ID of the scene'),
-        }),
-      ]),
-    ),
-  }),
-});
-```
-
-</hb-code-example>
-
-Let's review the code above:
-
-1. The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts the next possible user action based on the last action.
-2. The `input` option is set to a signal that contains the last user action, allowing the resource to reactively update when the last action changes.
-3. The `system` option provides context to the LLM, instructing it to predict the next possible user action in the app.
-4. The `tools` option defines two tools that the LLM can use to get the current state of lights and scenes in the smart home.
-5. The `schema` defines the expected structure of the response, which includes an array of predictions with their types and details.
-
-When the user performs an action, the LLM will predict the next possible actions and return a structured JSON object.
-From there, you can wire up a toast notification to be displayed when the LLM provides a prediction.
-When the user accepts the predictive action, dispatch the action and update the state of the app accordingly.
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/components">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose Angular components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Execute LLM-generated JS in the browser (safely)</h4>
-      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Continue with [Streaming](/docs/angular/concept/streaming) to see why resolved item values appear progressively. Then use [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect review and validation to your application's form. For model-selected components, continue with [Exposing components](/docs/angular/concept/components).

@@ -89,8 +89,9 @@ Keep browser tools and component selection in Hashbrown. No server tools,
 subagents, history restoration, or UI backend selector are part of this example.
 Retain schema narrowing across the full browser-tool turn in both frameworks.
 The backend browser checks in `e2e/src/backends.spec.ts` use a native Node fixture
-and the real `/api/run` path. Use compatible locally built packages until the
-upstream fixes are released; do not change dependency pins without approval.
+and the real `/api/run` path. Use the coherent published b4.run 0.15.4 package
+set for validation; do not rely on a local source overlay. Dependency-pin
+updates still require approval.
 
 Cleanup is an operator command (`npx nx prune-agent-state atc-server --offline`)
 that requires every agent instance to be stopped. Do not run it against user

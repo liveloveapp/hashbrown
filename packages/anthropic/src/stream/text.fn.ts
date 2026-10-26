@@ -36,7 +36,11 @@ async function* textEvents(
   }
 
   try {
-    const baseOptions = createAnthropicRequestOptions(input, model);
+    const baseOptions = createAnthropicRequestOptions(
+      input,
+      model,
+      options.builtInTools,
+    );
     const requestOptions = transformRequestOptions
       ? await transformRequestOptions(baseOptions)
       : baseOptions;
@@ -59,6 +63,8 @@ async function* textEvents(
         events: providerStream,
         messageId,
         signal,
+        inputMessages: input.messages,
+        requestOptions,
       }),
       signal,
     );

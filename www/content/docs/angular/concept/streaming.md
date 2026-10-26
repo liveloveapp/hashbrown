@@ -2,108 +2,70 @@
 title: 'Streaming: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Drop-in streaming support for eagerly parsing JSON'
+    content: 'Show resolved item values as they arrive while keeping application changes explicit.'
 ---
+
 # Streaming
 
-<p class="subtitle">Drop-in streaming support for eagerly parsing JSON</p>
+We do not need to wait for the whole shopping list before showing its first item. Let's stream item values into a draft while keeping **Apply list** disabled until the run finishes.
 
-- First, we built an LLM-optimized schema language called Skillet
-- Skillet has both streaming and partial parsing built into the core
-- We make it easy - simply add the `streaming` keyword to your schema
+<hb-docs-demo demo="streaming-data">
+</hb-docs-demo>
 
----
+## Before we start
 
-## What is Skillet?
+Use the checked shopping-list component from [Structured output](/docs/angular/concept/structured-output). It includes the schema, endpoint setup links, loading and error states, and the explicit Apply action. No second component is needed for this page.
 
-Skillet is a Zod-like schema language that is LLM-optimized.
+If you are following the Fundamentals section in order, complete the [Quickstart](/docs/angular/start/quick), then read [Skillet schemas](/docs/angular/concept/schema) and Structured output before returning here.
 
-- Skillet is strongly typed
-- Skillet purposefully limits the schema to that which is supported by LLMs
-- Skillet optimizes the schema for processing by an LLM
-- Skillet tightly integrates streaming
+To explore parsing without an endpoint or model key, start with the [JSON Parser](/docs/angular/recipes/json-parser) recipe. It streams a finite local weather response into a preview.
 
-[Read our docs on the Skillet schema language](/docs/angular/concept/schema)
+## Choose what can appear early
 
----
-
-## Demo
-
-<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
-
----
-
-## Streaming Responses
-
-Let's look at a structured completion resource:
-
-<hb-code-example header="scene-form-dialog.component.ts">
+The schema marks the array as streaming while each item stays an ordinary object:
 
 ```ts
-predictedLights = structuredCompletionResource({
-  input: this.sceneNameSignal,
-  system: computed(
-    () => `
-    Predict the lights that will be added to the scene based on the name. For example,
-    if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-    be in the bedroom at a lower brightness.
-
-    Here's the list of lights:
-    ${this.lights()
-      .map((light) => `${light.id}: ${light.name}`)
-      .join('\n')}
-  `,
-  ),
-  debugName: 'Predict Lights',
-  schema: s.object('Your response', {
-    lights: s.streaming.array(
-      'The lights to add to the scene',
-      s.object('A join between a light and a scene', {
-        lightId: s.string('the ID of the light to add'),
-        brightness: s.number('the brightness of the light from 0 to 100'),
-      }),
-    ),
+items: s.streaming.array(
+  'The requested shopping items',
+  s.object('A complete shopping item', {
+    name: s.string('The product name'),
+    quantity: s.integer('How many to add'),
   }),
-});
+);
 ```
 
-</hb-code-example>
+The array can expose an item once its required name and quantity resolve. We do not mark the item object or its fields as streaming because the interface needs both values together. The object can resolve before its closing brace arrives; that preview does not prove the JSON document is complete.
 
-- In this example, let's focus on the `schema` specified.
-- The `s.streaming.array` is a Skillet schema that indicates that the response will be a streaming array.
-- The `s.object` inside the array indicates that each item in the array will be an object with the specified properties.
-- Note that the `streaming` keyword is _not_ specified for each light object in the array. This is because our Angular application requires both the `lightId` and the `brightness` properties.
+## Follow one response
 
-Skillet will eagerly parse the chunks streamed to the resource `value()` signal.
-Combining this with Angular's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.
+| Response stage                            | Draft list                            | Apply list                             |
+| ----------------------------------------- | ------------------------------------- | -------------------------------------- |
+| Waiting for the endpoint                  | No new items                          | Disabled                               |
+| First item fields resolved                | Two apples                            | Disabled                               |
+| Second item fields resolved               | Two apples and one loaf of bread      | Still disabled while the run is active |
+| Run finished and application rules passed | Completed draft                       | Available for explicit review          |
+| Request failed or was cancelled           | Any visible draft remains uncommitted | Disabled                               |
 
----
+The recording uses delayed scripted events so we can see each stage. Real providers produce chunks at different speeds and may return several items together. Do not depend on a particular chunk size or pause between items.
 
-## Implementing Streaming Responses
+## Render the current draft
 
-<hb-code-example header="streaming">
+`structuredChatResource()` updates the latest assistant content as parsing progresses. The component renders the current `items` collection with its framework's normal list rendering. It does not wait for a JSON string and call `JSON.parse()` after every network chunk.
 
-```ts
-@Component({
-  template: `
-    @for (
-      prediction of predictedLights.value()?.lights ?? [];
-      track prediction.lightId
-    ) {
-      <app-scene-light-recommendation
-        [lightId]="prediction.lightId"
-        [brightness]="prediction.brightness"
-      />
-    }
-  `,
-})
-export class App {}
-```
+There are two different questions here: **Can this item be displayed?** and **Can this result update application state?** Streaming controls the first. Successful completion, application validation, and the user's Apply action control the second.
 
-</hb-code-example>
+## Choose a different streaming boundary
 
-1. In this example, we previously created the `predictedLights` resource.
-2. We then iterate over `predictedLights.value()?.lights` to render a `app-scene-light-recommendation` for each predicted light.
-3. As the LLM streams in new lights, the `value()` signal updates, and the UI re-renders to show the new lights.
+Use `s.streaming.string` when the interface can display a string as it grows. Use `s.streaming.object` when the interface can handle fields becoming available separately. Leave an object unmarked when its required field values should appear together, as each shopping item does here. The [JSON Parser](/docs/angular/recipes/json-parser) recipe shows those values resolving before the closing brace and validates the full document when its local source ends.
 
-There's no magic here - as the LLM streams the response, the `value()` signal is updated, and Angular takes care of the rest.
+A streaming marker does not authorize an action, validate application-specific rules, or guarantee that the run will succeed. Keep buttons that change application state tied to a completed, reviewed result.
+
+## Handle cancellation and failure
+
+Select **Cancel** while the draft is arriving. The example invalidates Apply immediately and stops the client run. It keeps the previously applied list. Stopping a client request does not undo work a server or tool has already performed; forward cancellation to server operations where appropriate.
+
+For a request or parse error, inspect [Debugging](/docs/angular/concept/debugging) and generate a fresh draft. Do not treat a partial result left on screen as a successful replacement.
+
+## Next steps
+
+Continue with [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect a generated draft to review and application validation. Return to [Skillet schemas](/docs/angular/concept/schema) for supported schema constructs, or use [Exposing components](/docs/angular/concept/components) when the model should choose which of your components to render.

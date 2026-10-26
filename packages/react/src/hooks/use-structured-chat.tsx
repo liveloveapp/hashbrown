@@ -1,13 +1,17 @@
 import {
   Chat,
   type ChatRuntime,
+  type ConversationRecoveryConfiguration,
+  type ConversationRecoveryState,
+  type ConversationRestoreOptions,
+  type ConversationSnapshot,
   createChatRuntime,
   type FinishReason,
   type JsonValue,
-  type TokenUsage,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type TokenUsage,
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
@@ -115,6 +119,22 @@ export interface UseStructuredChatResult<
 
   /** Submit a complete response batch to resume the interrupted interaction. */
   resume(options: ResumeOptions): void;
+
+  /** The local recovery revision and whether an explicit restore is required. */
+  readonly recovery: ConversationRecoveryState;
+
+  /** Read owned trusted request configuration for an authenticated recovery lookup. */
+  getRecoveryConfiguration(): ConversationRecoveryConfiguration;
+
+  /**
+   * Atomically restore idle conversation history without scheduling work.
+   * @param snapshot - The canonical history and optional shared state and interrupts.
+   * @param options - The local revision captured before the recovery lookup.
+   */
+  restoreConversation(
+    snapshot: ConversationSnapshot<State>,
+    options: ConversationRestoreOptions,
+  ): void;
 
   /**
    * Replaces the shared agent state without starting a generation.
@@ -357,6 +377,7 @@ export function useStructuredChat<
   ]);
 
   const internalMessages = useHashbrownSignal(runtimeRef.current.messages);
+  const recovery = useHashbrownSignal(getRuntime().recovery);
   const pendingInterrupts = useHashbrownSignal(getRuntime().pendingInterrupts);
   const isResuming = useHashbrownSignal(getRuntime().isResuming);
   const state = useHashbrownSignal(runtimeRef.current.state);
@@ -431,6 +452,9 @@ export function useStructuredChat<
     pendingInterrupts,
     isResuming,
     resume: getRuntime().resume,
+    recovery,
+    restoreConversation: getRuntime().restoreConversation,
+    getRecoveryConfiguration: getRuntime().getRecoveryConfiguration,
     state,
     setState,
     messages: internalMessages,

@@ -15,6 +15,7 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
       Object.assign(
         () => ({
           threadEpoch: 0,
+          restorationEpoch: 0,
           successfulResumes: 0,
           recoveryRequired: false,
           isResuming: false,
@@ -474,6 +475,9 @@ function createRuntimeStub({
   return {
     state,
     messages: messagesSignal,
+    recovery: createSignal({ revision: 0, required: false }),
+    restoreConversation: vi.fn(),
+    getRecoveryConfiguration: vi.fn(),
     pendingInterrupts: createSignal(undefined),
     isResuming: createSignal(false),
     resume: vi.fn(),

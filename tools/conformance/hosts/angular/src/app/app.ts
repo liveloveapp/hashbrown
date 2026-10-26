@@ -1,4 +1,8 @@
+import { LocalUiWorkflow } from './local-ui-workflow';
+import { LocalMedia } from './local-media';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { LocalWorkflow } from './local-workflow';
+import { LocalSchemaWorkflow } from './local-schema-workflow';
 import { CompletionSmoke } from './completion-smoke';
 import { DecisionSmoke } from './decision-smoke';
 import { PlainSmoke } from './plain-smoke';
@@ -28,6 +32,10 @@ function readScenario(): Scenario {
   standalone: true,
   imports: [
     PlainSmoke,
+    LocalWorkflow,
+    LocalSchemaWorkflow,
+    LocalUiWorkflow,
+    LocalMedia,
     StructuredSmoke,
     UiSmoke,
     CompletionSmoke,
@@ -36,7 +44,15 @@ function readScenario(): Scenario {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main data-testid="fixture-ready">
-      @if (scenario === 'plain' || scenario === 'tool') {
+      @if (localMedia === 'image' || localMedia === 'audio') {
+        <runtime-local-media />
+      } @else if (localUiWorkflow) {
+        <runtime-local-ui-workflow />
+      } @else if (localSchemaWorkflow) {
+        <runtime-local-schema-workflow />
+      } @else if (localWorkflow) {
+        <runtime-local-workflow />
+      } @else if (scenario === 'plain' || scenario === 'tool') {
         <runtime-plain-smoke />
       } @else if (scenario === 'structured') {
         <runtime-structured-smoke />
@@ -51,5 +67,18 @@ function readScenario(): Scenario {
   `,
 })
 export class App {
+  protected readonly localUiWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localUiWorkflow') ===
+    'true';
   protected readonly scenario = readScenario();
+  protected readonly localSchemaWorkflow =
+    new URL(globalThis.location.href).searchParams.get(
+      'localSchemaWorkflow',
+    ) === 'true';
+  protected readonly localMedia = new URL(
+    globalThis.location.href,
+  ).searchParams.get('localMedia');
+  protected readonly localWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localWorkflow') ===
+    'true';
 }

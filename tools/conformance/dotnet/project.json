@@ -1,0 +1,90 @@
+{
+  "name": "dotnet-conformance",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/dotnet",
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/.github/workflows/pr-main.yml",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/www/content/docs/react/platform/dotnet.md",
+      "{workspaceRoot}/www/content/docs/angular/platform/dotnet.md"
+    ]
+  },
+  "implicitDependencies": [
+    "core",
+    "react",
+    "angular",
+    "testing",
+    "conformance",
+    "runtime-smoke-react",
+    "runtime-smoke-angular"
+  ],
+  "targets": {
+    "restore-lock": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "tools/conformance/dotnet",
+        "command": "dotnet restore --use-lock-file"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/tools/conformance/dotnet"],
+      "options": {
+        "cwd": "tools/conformance/dotnet",
+        "parallel": false,
+        "commands": [
+          "dotnet restore --locked-mode",
+          "dotnet build --no-restore -c Release -o ../../../dist/tools/conformance/dotnet",
+          "tsc --noEmit -p tsconfig.spec.json",
+          "tsc --noEmit -p tsconfig.playwright.json"
+        ]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "cache": false,
+      "dependsOn": ["build"],
+      "options": {
+        "jestConfig": "tools/conformance/dotnet/jest.config.ts",
+        "runInBand": true
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/conformance/dotnet",
+        "command": "dotnet format --verify-no-changes --no-restore",
+        "forwardAllArgs": false
+      },
+      "dependsOn": ["build"]
+    },
+    "provider-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        "build",
+        "check-docs",
+        {
+          "projects": ["runtime-smoke-react", "runtime-smoke-angular"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/dotnet/dotnet.playwright.config.ts"
+      }
+    },
+    "check-docs": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": ["default", "^default"],
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node tools/conformance/dotnet/verify-recipe.mjs"
+      }
+    }
+  }
+}

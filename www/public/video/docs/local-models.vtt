@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Preview of the completed interaction.
+
+00:00:02.000 --> 00:00:02.772
+The complete interaction follows.
+
+00:00:02.772 --> 00:00:03.848
+Prepare the already available browser model. No download is started.
+
+00:00:03.848 --> 00:00:06.186
+Generate a typed trip brief using native Chrome inference.
+
+00:00:06.186 --> 00:00:11.700
+The completed, validated result contains Lisbon and three days.

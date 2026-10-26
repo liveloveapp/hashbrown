@@ -12,6 +12,17 @@ import {
   type RawEvent,
 } from './anthropic-events.test-utils';
 
+/** Keeps the legacy lifecycle assertions focused while native metadata is checked separately. */
+function withoutHistoryFooter(
+  events: readonly AGUIEvent[],
+): readonly AGUIEvent[] {
+  return events.filter(
+    (event) =>
+      event.type !== EventType.CUSTOM ||
+      event.name !== 'hashbrown.provider-history',
+  );
+}
+
 interface Deferred<T> {
   readonly promise: Promise<T>;
   readonly reject: (reason?: unknown) => void;
@@ -135,7 +146,7 @@ test('maps one text block to one AG-UI text lifecycle', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -158,7 +169,7 @@ test('emits no text lifecycle for an empty text block without deltas', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
 });
 
 test('emits nonempty initial text before later text deltas', async () => {
@@ -173,7 +184,7 @@ test('emits nonempty initial text before later text deltas', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -214,7 +225,7 @@ test('shares one AG-UI text lifecycle across multiple text blocks', async () => 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -249,7 +260,7 @@ test('maps streamed tool arguments to an AG-UI tool lifecycle', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -280,7 +291,7 @@ test('emits initial tool input as fallback when no deltas arrive', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -306,7 +317,7 @@ test('emits an empty initial tool input as fallback', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -339,7 +350,7 @@ test('uses streamed tool deltas instead of initial input without duplication', a
     .join('');
 
   expect(argumentsValue).toBe('{"query":"streamed"}');
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -378,7 +389,7 @@ test('maps interleaved text and multiple tools by content index', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -454,7 +465,7 @@ test('allows multiple message_delta events when no content block is open', async
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
 });
 
 test('rejects an event before message_start', async () => {
@@ -665,7 +676,7 @@ test('returns quietly without requesting source events when already aborted', as
     result.push(event);
   }
 
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
   expect(source.state).toEqual({
     nextCalls: 0,
     returnCalls: 1,
@@ -691,7 +702,7 @@ test('aborts after text start without emitting initial content or an end event',
   controller.abort();
   const second = await iterator.next();
 
-  expect(first).toEqual({
+  expect(first).toMatchObject({
     done: false,
     value: {
       type: EventType.TEXT_MESSAGE_START,
@@ -727,7 +738,7 @@ test('aborts after tool arguments without emitting later tool or text ends', asy
   controller.abort();
   const end = await iterator.next();
 
-  expect(start.value).toEqual({
+  expect(start.value).toMatchObject({
     type: EventType.TOOL_CALL_START,
     toolCallId: 'tool-1',
     toolCallName: 'search',
@@ -811,7 +822,7 @@ test('cancels a permanently pending source read and awaits iterator closure', as
   const result = await withFailureTimeout(act);
 
   expect(settledBeforeRelease).toBe(false);
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
   expect(state).toEqual({ returnCalls: 1, returnCompleted: true });
 });
 
@@ -847,7 +858,7 @@ test('returns quietly when the pending source rejects from its abort listener', 
   controller.abort();
   const result = await withFailureTimeout(act);
 
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
   expect(state).toEqual({ returnCalls: 1, returnCompleted: true });
 });
 
@@ -1088,7 +1099,7 @@ test('treats an empty input JSON delta as authoritative', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -1111,7 +1122,7 @@ test('allows content blocks after message_delta', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',

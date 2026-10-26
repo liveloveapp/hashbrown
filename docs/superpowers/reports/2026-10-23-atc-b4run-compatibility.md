@@ -569,18 +569,29 @@ publication, tag rewrite, CI bypass, or release-run cancellation was used.
 ### Clean 0.15.4 registry validation: 2026-10-25
 
 Hashbrown's four existing CLI/core/SDK/Postgres dependency pins and lockfile now
-use 0.15.4. A clean `npm ci --ignore-scripts` installed the registry packages.
-All 11 b4.run lock entries resolve to exact 0.15.4 registry tarballs with
-integrity hashes; no package entries were added or removed, no unrelated
-versions changed, and the installed direct packages are not source symlinks.
+use 0.15.4. The initial clean registry validation passed, then PR conflicts were
+resolved by integrating main `7639ecd41a48ed3d73e26690475e5f477572fb31`.
+The resolution preserves main's Angular 22.2.3, AG-UI 1.0.3, and other dependency
+updates, including its locked OpenAI transitive version 7.42.0. Only the four
+b4.run pins differ from the incoming manifest. Lock changes relative to main
+are confined to b4.run entries, including removal of redundant older SDK copies.
+Independent review found no incidental dependency drift or selector/recovery
+integration issue.
+
+A final isolated `npm ci --ignore-scripts` installed 2,142 packages after the
+resolution. All 11 retained b4.run lock entries resolve to exact 0.15.4 registry
+tarballs with integrity hashes; the installed direct packages are not source
+symlinks. Every check below was repeated against this merged state.
 
 | Check | Result |
 | --- | --- |
-| Core build, tests, lint | Passed: 1,515 tests, 76 suites, 14 snapshots |
+| Core build, tests, lint | Passed: 1,881 tests, 89 suites, 14 snapshots |
 | ATC server build, tests, lint | Passed: 162 tests; the default run skips one Postgres-only test, exercised in the dedicated suite |
-| Lifecycle build, tests, lint, check | Passed: 98 tests; final Vercel adapter verified in isolation |
+| Lifecycle build, tests, lint, check | Passed: 111 tests; final Vercel adapter verified in isolation |
 | Real Postgres store/runtime suite | Passed: eight tests against disposable Postgres 17 |
+| Shared and frontend unit tests/lint | Passed: 750 shared, 85 Angular, 83 React tests; all three lints pass |
 | Angular/React browser matrix, direct OpenAI and b4.run | Passed: all 86 cases |
+| Browser test host unit tests, lint, typecheck | Passed: 38 unit tests; TypeScript checks pass independently of Playwright |
 | Default ATC build | Passed uncached; direct Hashbrown OpenAI function verified in isolation |
 | Optional b4.run ATC build | Passed uncached; packaged agent startup verified in isolation |
 | Generated Vercel artifact with shared Postgres | Passed across two isolated copies: continuation, ownership, schema/cap, duplicate-result handling, and bypass denial |
@@ -590,9 +601,10 @@ resumed model receives the exact browser result and the final assistant output
 reaches the client. These are released-package results, superseding the earlier
 local-source-only evidence and 0.15.2 output-cap startup failure.
 
-Warnings remain visible: the root install reports the same 67 audit advisories
-(3 low, 45 moderate, 19 high) as the previous clean 0.15.2 install, along with
-existing deprecation/color warnings. The optional build reports that its staging
+Warnings remain visible: the final root install reports 49 audit advisories
+(3 low, 27 moderate, 19 high), along with existing deprecation/color warnings.
+Before integrating main's dependency updates, the first 0.15.4 install reported
+the same 67 advisories as the preceding clean 0.15.2 install. The optional build reports that its staging
 app does not declare runtime deployment dependencies; the final wrapper packages
 those dependencies and passes isolated startup plus the real Postgres artifact
 test. The build also reports that root Vercel configuration reconciliation is off.

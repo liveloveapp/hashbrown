@@ -66,6 +66,20 @@ const nextConfig: NextConfig = {
         destination: `/docs/${sdk}/migrations/v0-6`,
         statusCode: 301 as const,
       })),
+      // The retired Remote MCP recipe now points to the tool-calling guide.
+      ...['react', 'angular'].flatMap((sdk) =>
+        ['', '.md'].map((extension) => ({
+          source: `/docs/${sdk}/recipes/remote-mcp${extension}`,
+          destination: `/docs/${sdk}/concept/functions`,
+          statusCode: 301 as const,
+        })),
+      ),
+      // Preserve bookmarks to the retired CopilotKit learning page.
+      ...['', '.md'].map((extension) => ({
+        source: `/docs/react/recipes/copilotkit${extension}`,
+        destination: '/docs/react/recipes/threadplane',
+        statusCode: 301 as const,
+      })),
       // The /samples pages were retired; the example app's docs page
       // describes atc now.
       ...['/samples', '/samples/:path*'].map((source) => ({

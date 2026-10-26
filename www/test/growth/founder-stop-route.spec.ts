@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
-import { createFounderStopRoute } from '../../src/app/%5F/growth/stop/route';
+import { createFounderStopRoute } from '../../src/app/%5F/growth/stop/handler';
 import { mintToken, tamperToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
 
 const ORIGIN = 'https://hashbrown.dev/_/growth/stop';

@@ -3,10 +3,8 @@ import {
   generateMetadata,
   generateStaticParams as pageParams,
 } from '../../src/app/docs/[sdk]/[...slug]/page';
-import {
-  docsCardContent,
-  generateStaticParams,
-} from '../../src/app/og/docs/[sdk]/[...slug]/route';
+import { docsCardContent } from '../../src/app/og/docs/[sdk]/[...slug]/content';
+import { generateStaticParams } from '../../src/app/og/docs/[sdk]/[...slug]/route';
 
 test('every docs page has a card', () => {
   const pages = pageParams();
@@ -22,9 +20,9 @@ test('a docs card shows the heading, description and SDK', () => {
   const content = docsCardContent(params);
 
   expect(content).toEqual({
-    title: 'React Quick Start',
+    title: 'React Quickstart',
     subtitle: [
-      'Take your first steps with Hashbrown.',
+      'Build your first generated UI with a trusted welcome card.',
       'React docs · hashbrown.dev',
     ],
   });

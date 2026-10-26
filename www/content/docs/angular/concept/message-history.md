@@ -1,208 +1,71 @@
 ---
-title: 'Message History: Hashbrown Angular Docs'
+title: 'Message history: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Persist, restore, and mutate Hashbrown chat message history in Angular.'
+    content: 'Keep context between turns and decide what survives refresh, navigation, and a new chat instance.'
 ---
 
-# Message History
+# Message history
 
-<p class="subtitle">Persist, restore, and prune the messages your chat sends to the model.</p>
+The next request needs the earlier exchange if we want the assistant to remember what we already told it. Hashbrown keeps that context in the current chat instance. Your application decides whether it should survive beyond that instance.
 
-Hashbrown keeps chat state in a `messages` array. Each turn appends user, assistant, tool, and error messages to that array, and each request sends the current history so the model has conversational context.
+<hb-docs-demo demo="persistence">
+</hb-docs-demo>
 
-Use message history when you want to:
+## Decide what should survive
 
-1. Restore a chat after a page refresh
-2. Persist conversations to local storage or your backend
-3. Remove or summarize older turns before the next request
-4. Let users delete or retry part of a conversation
+| Event | What happens |
+| --- | --- |
+| Another message in the same instance | Hashbrown includes its current transcript in the next request |
+| A refresh or a new chat instance | Your application must load and supply the saved messages |
+| A conversation switch | Load the selected transcript and create or reset the corresponding chat instance |
+| A change to `threadId` | The identity changes; it does not load a conversation or automatically replace the visible history |
+| A paused interrupt followed by runtime recreation | Saved text and the old thread ID do not restore the paused workflow |
 
----
+The recording shows the [Save text conversations](/docs/angular/recipes/browser-history) example. It saves a completed exchange, refreshes, switches between Personal and Work, and sends a follow-up with the restored transcript.
 
-## Public History and AG-UI Checkpoints
+## Restore a simple text conversation
 
-`chat.value()` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. User and assistant messages expose their stable canonical `id` in the public view. Metadata and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
+Pass the loaded messages when creating the chat. That array is the initial history; changing the array later does not reset an active instance.
 
-The public view continues to use Hashbrown's existing message shapes: user and assistant messages remain familiar, reasoning is correlated with assistant messages, and tool results settle their corresponding tool calls. Canonical system and developer messages are not added to `chat.value()`. Activity messages are: each one appears in `chat.value()` as a `role: 'activity'` message, in the position where it arrived. See [Activities](/docs/angular/concept/activities). The internal canonical history is not exposed as a separate public API.
+The complete [browser-storage recipe](/docs/angular/recipes/browser-history) validates its versioned data, recreates the chat when selecting another conversation, and reports storage failures. It deliberately saves only completed user and assistant text. Use it as a small text example, rather than an export format for every Hashbrown feature.
 
-Shared state is synchronized independently from message history. See [Shared Agent State](/docs/angular/concept/shared-agent-state) when your application and agent need to exchange structured state snapshots and deltas.
+For asynchronous storage, finish loading before mounting the new chat, or use `setMessages()` deliberately after the load. Prevent an older load from replacing a newer selection. Avoid saving the empty initial view over a conversation that is still loading.
 
----
+## Replace history deliberately
 
-## Initialize with Stored Messages
-
-Pass `messages` when you create the resource. Hashbrown uses this array as the initial chat history.
-
-<hb-code-example header="support-chat.component.ts">
+Use a new array with `setMessages()` when your interface clears, restores, or edits a conversation. For example, inside an existing chat component:
 
 ```ts
-import { Component, effect } from '@angular/core';
-import { type Chat } from '@hashbrownai/core';
-import { chatResource } from '@hashbrownai/angular';
-
-const STORAGE_KEY = 'support-chat-messages';
-
-function loadMessages(): Chat.Message<string, Chat.AnyTool>[] {
-  if (typeof window === 'undefined') return [];
-
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (!stored) return [];
-
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return [];
-  }
-}
-
-@Component({
-  selector: 'app-support-chat',
-  standalone: true,
-  template: `
-    @for (message of chat.value(); track $index) {
-      <p>{{ message.content }}</p>
-    }
-  `,
-})
-export class SupportChatComponent {
-  chat = chatResource({
-    system: 'You are a helpful support assistant.',
-    messages: loadMessages(),
-  });
-
-  constructor() {
-    effect(() => {
-      if (typeof window === 'undefined') return;
-
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(this.chat.value()),
-      );
-    });
-  }
-}
+chat.setMessages([]);
 ```
 
-</hb-code-example>
+Changing history does not undo an earlier action. If a tool submitted an order, deleting its message does not cancel that order. Authorize and track application actions independently of the transcript.
 
-Keep the stored value as plain JSON. Do not store functions, component references, `Promise` values, or provider-specific request objects in message history.
+Wait for a run to settle before editing or saving its history. For a long conversation, preserve complete logical exchanges when pruning or summarizing; a tool result without its original call is not a useful standalone turn.
 
----
+## Separate configuration from conversation data
 
-## Replace History with `setMessages`
+Use `system` for the feature's behavior and constraints. Use messages for user requests, assistant responses, and the facts established during the conversation.
 
-Use `setMessages` when your app needs to replace the current history. Always pass a new array instead of mutating `chat.value()` in place.
+Updating `system`, tools, transport options, or `threadId` affects future requests. It does not append a message or send a new request by itself. Use `sendMessage()` when you want another turn.
 
-<hb-code-example header="support-chat.component.ts">
+## Public history and canonical checkpoints
 
-```ts
-keepRecentMessages() {
-  this.chat.setMessages(this.chat.value().slice(-8));
-}
+`chat.value()` is the public view of the conversation. The runtime can also retain canonical AG-UI messages and provider metadata that do not have the same public representation. When an agent supplies a checkpoint, that complete internal history can be used for later requests in the live runtime.
 
-clearHistory() {
-  this.chat.setMessages([]);
-}
+Saving the public view as JSON does not export that full checkpoint. The text recipe intentionally projects just `role` and string `content`. It does not preserve reasoning replay data, tool effects, activities, or shared state. Use an agent and persistence layer designed for the state your workflow actually needs.
 
-removeLastAssistantMessage() {
-  const messages = this.chat.value();
-  const index = messages.findLastIndex(
-    (message) => message.role === 'assistant',
-  );
+Activities are display-only progress and are not sent back as model conversation. Shared state is synchronized separately from message history. See [Activities](/docs/angular/concept/activities) and [Shared agent state](/docs/angular/concept/shared-agent-state).
 
-  if (index === -1) return;
+## Thread identity and storage
 
-  this.chat.setMessages(messages.filter((_, i) => i !== index));
-}
-```
+`threadId` is an opaque identity sent with the AG-UI run. Hashbrown does not load or save a transcript just because you supply one. The current client transcript is sent on every run; it is not a message delta.
 
-</hb-code-example>
+Your application owns storage, authorization, retention, and which conversation to restore. A server-side agent may maintain additional state, but that is an endpoint contract your application must implement. See [Threads](/docs/angular/recipes/threads) for application-owned storage.
 
-This is useful for "clear chat", "delete message", "retry from here", and "trim old turns" controls.
+Pending interrupt batches belong to the live runtime. Refreshing the page or creating another instance does not restore that ownership from saved text. Reusing the old thread ID is not a recovery strategy. See [Interrupt and resume](/docs/angular/concept/interrupt-and-resume).
 
----
+## Next steps
 
-## Order of Operations
-
-Hashbrown creates one chat instance for the resource and keeps its message history until you intentionally replace it. The `messages` option seeds the initial history only; changing the value you passed to `messages` later does not reset an active chat.
-
-Reactive options such as `system`, `apiUrl`, `threadId`, tools, and transport are applied to future requests. Updating those options does not append a message, clear history, or resend the conversation by itself.
-
-Use `sendMessage` to add a new turn, `setMessages` to replace history, and `reload` to remove the last assistant message before retrying. For completion resources, `input` is different from chat history: changing `input` synchronizes the backing single user message for the next completion.
-
-Put durable behavior and constraints in `system`. Put conversational facts, prior turns, summaries, and user-visible conversation state in message history.
-
----
-
-## Summarize Older Turns
-
-For long chats, keep recent messages verbatim and replace older turns with a summary. This preserves context while reducing payload size.
-
-<hb-code-example header="support-chat.component.ts">
-
-```ts
-async compactHistory() {
-  const messages = this.chat.value();
-  const recentMessages = messages.slice(-8);
-  const olderMessages = messages.slice(0, -8);
-
-  if (olderMessages.length === 0) return;
-
-  const summary = await summarizeMessages(olderMessages);
-
-  this.chat.setMessages([
-    {
-      role: 'user',
-      content: `Previous conversation summary:\n${summary}`,
-    },
-    ...recentMessages,
-  ]);
-}
-```
-
-</hb-code-example>
-
-Put durable application rules in `system`. Use summarized messages for conversational facts, user preferences, and prior decisions.
-
----
-
-## Client History vs. Threads
-
-Client-managed history sends the message array with each request. It is simple and works well for local storage, short conversations, and user-controlled editing.
-
-Use [Threads](/docs/angular/recipes/threads) when you want the server to own persistence, rehydrate by `threadId`, and send only new message deltas after a conversation is established.
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="recipes/threads">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Threads</h4>
-      <p>Persist chats on the server and send only message deltas.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/system-instructions">
-    <div>
-      <hb-functions />
-    </div>
-    <div>
-      <h4>System Instructions</h4>
-      <p>Keep durable behavior and constraints outside message history.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/shared-agent-state">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Shared Agent State</h4>
-      <p>Synchronize structured application state with an AG-UI agent.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Build the [browser-storage example](/docs/angular/recipes/browser-history), then use [Threads](/docs/angular/recipes/threads) when your app needs server-managed storage. Keep [Debugging](/docs/angular/concept/debugging) nearby when the restored request does not contain the context you expected.

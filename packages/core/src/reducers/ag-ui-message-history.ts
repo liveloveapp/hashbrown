@@ -1,11 +1,14 @@
+import { readHistoryDiagnostic } from '../models/history-diagnostics';
+import { ɵisCancelledTurnMarker } from '../models/cancelled-turn';
 import {
   type AGUIEvent,
   EventType,
   type Message,
   type SystemMessage,
   type ToolMessage,
+  type UserMessage,
 } from '@ag-ui/core';
-import { MessageSchema } from '@ag-ui/core/schemas';
+import { MessageSchema, UserMessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import {
   completeRunningStep,
@@ -62,7 +65,7 @@ export function lowerViewMessagesToAgUi(
         {
           id: message.id ?? options.createId(),
           role: 'user',
-          content: serializeContent(message.content),
+          content: lowerUserContent(message.content),
         },
       ];
     }
@@ -233,12 +236,13 @@ export function ɵreadAgUiMessageSnapshot(
   );
 }
 
-/** Owns canonical history and rejects duplicate global message and tool-call IDs. @internal */
+/** Owns canonical history; only a tool result may share its own call ID. @internal */
 export function ɵownValidatedAgUiMessages(
   messages: readonly Message[],
 ): readonly Readonly<Message>[] {
   const owned = ownAgUiMessages(messages);
   const ids = new Set<string>();
+  const messageIds = new Set<string>();
   const toolCalls = new Set<string>();
   const toolResults: readonly Extract<Message, { role: 'tool' }>[] =
     owned.filter(
@@ -247,9 +251,17 @@ export function ɵownValidatedAgUiMessages(
     );
   for (const [index, message] of owned.entries()) {
     validateAgUiMessage(message, index);
-    if (ids.has(message.id)) {
+    const correlatedToolResult =
+      message.role === 'tool' &&
+      message.id === message.toolCallId &&
+      toolCalls.has(message.toolCallId);
+    if (
+      messageIds.has(message.id) ||
+      (ids.has(message.id) && !correlatedToolResult)
+    ) {
       throw new Error(`AG-UI message ID ${message.id} is duplicated`);
     }
+    messageIds.add(message.id);
     ids.add(message.id);
     if (message.role !== 'assistant') continue;
     for (const [toolIndex, toolCall] of (message.toolCalls ?? []).entries()) {
@@ -450,6 +462,10 @@ export function ɵindexAgUiCanonicalMessageSources(
   > = [];
 
   for (const message of messages) {
+    if (ɵisCancelledTurnMarker(message)) {
+      pendingReasoning = [];
+      continue;
+    }
     if (message.role === 'reasoning') {
       pendingReasoning = [...pendingReasoning, message];
       continue;
@@ -522,7 +538,10 @@ export function ɵappendAgUiCanonicalIds(
   const messageIds = new Set(index.messageIds);
   const toolCallIds = new Set(index.toolCallIds);
   for (const message of appended) {
-    if (toolCallIds.has(message.id)) {
+    if (
+      toolCallIds.has(message.id) &&
+      !(message.role === 'tool' && message.toolCallId === message.id)
+    ) {
       throw new Error(
         `AG-UI message ID ${message.id} conflicts with a tool call ID`,
       );
@@ -568,6 +587,13 @@ export function projectAgUiMessages(
   > = [];
 
   for (const message of messages) {
+    if (
+      ɵisCancelledTurnMarker(message) ||
+      readHistoryDiagnostic(message, responseSchema)
+    ) {
+      pendingReasoning = [];
+      continue;
+    }
     if (message.role === 'reasoning') {
       pendingReasoning = [...pendingReasoning, message];
       continue;
@@ -681,6 +707,13 @@ export function ɵreconcileAgUiMessageProjection(
   > = [];
 
   for (const source of messages) {
+    if (
+      ɵisCancelledTurnMarker(source) ||
+      readHistoryDiagnostic(source, responseSchema)
+    ) {
+      pendingReasoning = [];
+      continue;
+    }
     if (source.role === 'reasoning') {
       pendingReasoning.push(source);
       continue;
@@ -940,6 +973,21 @@ function mergeMetadata(
   return structuredClone({
     ...ɵmergeStepMetadata(first, second ?? {}, 'message', toolCallId),
   });
+}
+
+/**
+ * Preserves nonempty canonical content-part arrays while retaining JSON text
+ * semantics for ordinary application inputs. Empty and invalid part-shaped
+ * arrays remain legacy JSON inputs. The enclosing message ownership boundary
+ * clones and freezes the validated parts before they leave the lowerer.
+ */
+function lowerUserContent(value: unknown): UserMessage['content'] {
+  if (Array.isArray(value) && value.length > 0) {
+    const parsed = UserMessageSchema.shape.content.safeParse(value);
+    if (parsed.success) return parsed.data;
+  }
+
+  return serializeContent(value);
 }
 
 function serializeContent(value: unknown): string {

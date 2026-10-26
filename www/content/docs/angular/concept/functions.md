@@ -4,20 +4,24 @@ meta:
   - name: description
     content: 'Give the model access to your application state and enable the model to take action.'
 ---
+
 # Tool Calling
 
 <p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
+
+<hb-docs-demo demo="browser-tools">
+</hb-docs-demo>
+
+## Before we start
+
+Use the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). Read [Skillet schemas](/docs/angular/concept/schema) before adding tool arguments.
+
+The snippets below explain the API and use application functions or services that you supply. For a complete example, follow [UI Chatbot with Tools](/docs/angular/recipes/ui-chatbot). Its browser tool reads a simulated light, and a trusted component lets the user apply a proposed change.
 
 Tool calling (or function calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
 
 - Execute a function in Angular's injection context.
 - Return data to the model from state or an Angular service.
-
----
-
-## Demo
-
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown tool calling"></iframe></div>
 
 ---
 
@@ -61,12 +65,12 @@ createTool({
 
 ### `CreateToolOptions`
 
-| Option        | Type                        | Required | Description                                     |
-| ------------- | --------------------------- | -------- | ----------------------------------------------- |
-| `name`        | `string`                    | Yes      | The name of the function that the LLM will call |
-| `description` | `string`                    | Yes      | Description of what the function does           |
-| `schema`      | `s.SchemaInput`             | No       | Schema defining the function arguments          |
-| `handler`     | `Function`                  | Yes      | The function to execute when called             |
+| Option        | Type            | Required | Description                                     |
+| ------------- | --------------- | -------- | ----------------------------------------------- |
+| `name`        | `string`        | Yes      | The name of the function that the LLM will call |
+| `description` | `string`        | Yes      | Description of what the function does           |
+| `schema`      | `s.SchemaInput` | No       | Schema defining the function arguments          |
+| `handler`     | `Function`      | Yes      | The function to execute when called             |
 
 ---
 
@@ -105,10 +109,8 @@ Standard JSON Schema inputs are normalized to Skillet (draft-07) before streamin
 <hb-code-example header="handler">
 
 ```ts
-handler: (
-  input: s.InferSchemaInput<Schema>,
-  abortSignal: AbortSignal
-) => Promise<Result>;
+handler: (input: s.InferSchemaInput<Schema>, abortSignal: AbortSignal) =>
+  Promise<Result>;
 ```
 
 </hb-code-example>
@@ -189,6 +191,14 @@ Let's review the code above.
 3. The `getUser()` function returns the authenticated user information to the model.
 4. The `getLights()` function returns application state to the model.
 5. The `controlLight()` function enables the model to mutate application state.
+
+---
+
+## Choose when an action runs
+
+A browser tool handler runs when the model calls it. In the example above, `controlLight` changes state directly; its schema describes arguments, not permission to change a light. Validate the requested values and enforce application rules inside the handler.
+
+When the user should review a change first, keep the tool read-only and offer an explicit Apply action in your component. The [chatbot recipe](/docs/angular/recipes/ui-chatbot) checks the current turn, light revision and successful run before enabling Apply. For a server write, enforce authentication and authorization on the server; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
 
 ---
 

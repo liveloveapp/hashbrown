@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { retireHistoryDiagnostics } from '../models/history-diagnostics';
+import { ɵcreateCancelledTurnMarker } from '../models/cancelled-turn';
 import type { Message } from '@ag-ui/core';
+import { assertInterruptsNotExpired } from '../transport/interrupt-validation';
 import { Chat } from '../models';
 import { isProviderToolCall } from '../models/tool-step';
-import { apiActions, internalActions } from '../actions';
+import { apiActions, devActions, internalActions } from '../actions';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
 import * as fromAgentState from './agent-state.reducer';
@@ -16,6 +19,7 @@ import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
 import * as fromInterrupts from './interrupts.reducer';
 import * as fromThread from './thread.reducer';
+import * as fromRecovery from './recovery.reducer';
 import {
   ɵownValidatedAgUiMessages,
   ɵreconcileAgUiMessageProjection,
@@ -24,6 +28,7 @@ import {
 const toolTurnSettledType = internalActions.toolTurnSettled.type;
 
 export const reducers = {
+  recovery: fromRecovery.reducer,
   interrupts: fromInterrupts.reducer,
   agentState: fromAgentState.reducer,
   agUiMessages: fromAgUiMessages.reducer,
@@ -125,6 +130,20 @@ export function ɵprepareRootAction(
   state: State,
   action: { readonly type: string; readonly payload?: unknown },
 ) {
+  if (action.type === devActions.restoreConversation.type) {
+    const restore = action as ReturnType<typeof devActions.restoreConversation>;
+    if (restore.payload.expectedRevision !== state.recovery.revision)
+      throw new Error('Stale recovery revision.');
+    if (
+      selectIsLoading(state) ||
+      selectIsResuming(state) ||
+      state.generationOwnership.generationId ||
+      state.generationOwnership.toolTurn
+    )
+      throw new Error('Cannot restore a conversation while work is active.');
+    if (restore.payload.batch)
+      assertInterruptsNotExpired(restore.payload.batch.interrupts, Date.now());
+  }
   if (action.type === internalActions.interruptsPublished.type) {
     const terminal = action as ReturnType<
       typeof internalActions.interruptsPublished
@@ -135,6 +154,45 @@ export function ɵprepareRootAction(
       state.generationOwnership.attemptId !== terminal.payload.attemptId
     )
       return { type: '@hashbrown/noop' };
+  }
+  if (action.type === internalActions.generationCancelled.type) {
+    const cancellation = action as ReturnType<
+      typeof internalActions.generationCancelled
+    >;
+    const { generationId, markerId, reason, beforeMessageId } =
+      cancellation.payload;
+    const history = state.agUiMessages.committed;
+    const insertionIndex =
+      beforeMessageId === undefined
+        ? history.length
+        : history.findIndex((message) => message.id === beforeMessageId);
+    if (
+      state.generationOwnership.generationId !== generationId ||
+      state.generationOwnership.cancellationMarkerId !== undefined ||
+      history.some((message) => message.id === markerId) ||
+      insertionIndex < 0
+    ) {
+      return { type: '@hashbrown/noop' };
+    }
+    const marker = ɵcreateCancelledTurnMarker(markerId, generationId, reason);
+    const canonicalHistory = Object.freeze([
+      ...history.slice(0, insertionIndex),
+      marker,
+      ...history.slice(insertionIndex),
+    ]);
+    const projection = ɵreconcileAgUiMessageProjection(
+      state.messages.preparedProjection?.canonicalMessages === history
+        ? state.messages.preparedProjection
+        : undefined,
+      canonicalHistory,
+      state.tools.entities,
+      state.config.responseSchema,
+    );
+    return {
+      ...action,
+      ɵcanonicalMessages: canonicalHistory,
+      ɵagUiMessageProjection: projection,
+    };
   }
   if (action.type === toolTurnSettledType) {
     const settlement = action as ReturnType<
@@ -264,6 +322,36 @@ export function ɵprepareRootAction(
       };
     } catch {
       return { type: '@hashbrown/noop' };
+    }
+  }
+  if (action.type === devActions.updateOptions.type) {
+    const update = action as ReturnType<typeof devActions.updateOptions>;
+    const threadChanged =
+      Object.hasOwn(update.payload, 'threadId') &&
+      update.payload.threadId !== state.thread.threadId;
+    if (update.payload.responseSchema || threadChanged) {
+      const config = fromConfig.reducer(state.config, update);
+      if (threadChanged) {
+        retireHistoryDiagnostics(state.agUiMessages.committed);
+        retireHistoryDiagnostics(state.agUiMessages.draft);
+      }
+      return {
+        ...action,
+        ɵagUiMessageProjection: ɵreconcileAgUiMessageProjection(
+          undefined,
+          state.agUiMessages.attemptActive
+            ? state.agUiMessages.draft
+            : state.agUiMessages.committed,
+          state.tools.entities,
+          config.responseSchema,
+        ),
+        ɵcommittedProjection: ɵreconcileAgUiMessageProjection(
+          undefined,
+          state.agUiMessages.committed,
+          state.tools.entities,
+          config.responseSchema,
+        ),
+      };
     }
   }
   if (action.type !== apiActions.generateMessageEvent.type) {
@@ -708,3 +796,7 @@ export const selectPendingInterrupts = (state: State) =>
 /** Selects the whole resumed interaction phase. */
 export const selectIsResuming = (state: State) =>
   state.interrupts.generationId !== undefined;
+
+/** Selects the silent startup barrier installed by restoration. @internal */
+export const ɵselectRestorationBarrier = (state: State) =>
+  state.recovery.restored;

@@ -4,6 +4,7 @@ import {
   type SqlExecutor,
   type SqlTransaction,
 } from './database.ts';
+import { isStopRequest } from './reply-intent.ts';
 import { stopContact } from './stops.ts';
 
 /** Stable mailbox ledger identity, retained across the root-domain cutover. */
@@ -261,7 +262,7 @@ export async function processInboxReceipt(
     const complete = async (
       status: 'ignored' | 'stopped',
       contactId: string | null = null,
-      errorCode: 'contact_deleted' | null = null,
+      errorCode: 'contact_deleted' | 'reply_without_stop' | null = null,
     ): Promise<typeof status> => {
       await tx.execute(
         `/* growth:inbox-complete */ update growth_reply_receipts
@@ -322,6 +323,10 @@ export async function processInboxReceipt(
       );
       return 'pending';
     }
+    // Only a reply that asks to leave stops the sequence; any other reply is
+    // forwarded to Brian and the contact keeps their remaining steps.
+    if (!isStopRequest(email))
+      return complete('ignored', contactId, 'reply_without_stop');
     const eventKey = `resend:reply:${id}:stop`;
     await dependencies.stopContact(nestedExecutor(tx), {
       contactId,

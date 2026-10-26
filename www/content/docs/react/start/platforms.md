@@ -2,53 +2,46 @@
 title: 'Platforms: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown uses the adapter pattern for supporting multiple platforms.'
+    content: 'Connect Hashbrown to a provider, a decision service, or a browser-local model.'
 ---
 
 # Platforms
 
-Hashbrown uses the adapter pattern for supporting multiple platforms.
+Your components and client APIs stay in your application. Choose where the model runs, then connect that runtime to Hashbrown. Let's separate streaming chat, decisions, and browser-local inference so each setup has a clear starting point.
 
-## Official Adapters
+## Stream through a server adapter
 
-| Platform                                           | Adapter Package          |
-| -------------------------------------------------- | ------------------------ |
-| [OpenAI](/docs/react/platform/openai)              | `@hashbrownai/openai`    |
-| [Microsoft Azure](/docs/react/platform/azure)      | `@hashbrownai/azure`     |
-| [Anthropic Claude](/docs/react/platform/anthropic) | `@hashbrownai/anthropic` |
-| [Amazon Bedrock](/docs/react/platform/bedrock)     | `@hashbrownai/bedrock`   |
-| [Google Gemini](/docs/react/platform/google)       | `@hashbrownai/google`    |
-| [Ollama](/docs/react/platform/ollama)              | `@hashbrownai/ollama`    |
-| [TypeSafe](/docs/react/platform/typesafe)          | `@hashbrownai/typesafe`  |
+These adapters translate provider responses into the AG-UI events your Hashbrown client consumes. They map text, tool calls and structured-output requests. The selected model or deployment must support the features you request; an adapter does not add a missing model capability.
 
-## Custom Adapters
+| Provider setup                                 | Hashbrown package        |
+| ---------------------------------------------- | ------------------------ |
+| [OpenAI](/docs/react/platform/openai)          | `@hashbrownai/openai`    |
+| [Azure OpenAI](/docs/react/platform/azure)     | `@hashbrownai/azure`     |
+| [Anthropic](/docs/react/platform/anthropic)    | `@hashbrownai/anthropic` |
+| [Amazon Bedrock](/docs/react/platform/bedrock) | `@hashbrownai/bedrock`   |
+| [Google Gemini](/docs/react/platform/google)   | `@hashbrownai/google`    |
+| [Ollama](/docs/react/platform/ollama)          | `@hashbrownai/ollama`    |
 
-Can't find your preferred AI provider? [Create a custom adapter](/docs/react/platform/custom) for any LLM that supports streaming chat completions.
+Each setup guide includes its provider SDK dependency and server configuration. Keep credentials on the server, select the model there, and return the adapter's stream from your endpoint. Start with the [Quickstart](/docs/react/start/quick) for the browser-to-endpoint wiring.
 
-## Platform Capabilities
+The OpenAI and Azure adapters use the Responses API. An OpenAI-compatible Chat Completions endpoint alone is not enough for those adapters. Ollama uses its own adapter and server; it is a separate setup from a model running inside the browser.
 
-| Platform         | Text | Streaming | Tools | Structured Output |
-| ---------------- | ---- | --------- | ----- | ----------------- |
-| OpenAI           | ✅   | ✅        | ✅    | ✅                |
-| Microsoft Azure  | ✅   | ✅        | ✅    | ✅                |
-| Anthropic Claude | ✅   | ✅        | ✅    | ✅                |
-| Amazon Bedrock   | ✅   | ✅        | ✅    | ✅                |
-| Google Gemini    | ✅   | ✅        | ✅    | ✅                |
-| Ollama           | ✅   | ✅        | ✅    | ✅                |
-| TypeSafe         | ❌   | ❌        | ❌    | ❌                |
+Structured-output support and accepted schema constructs depend on the provider and model. Verify your schema and tool flow against the deployment you will use. [Request customization](/docs/react/concept/transform-request-options) shows how to adjust the provider request on the server.
 
-## Platform Limitations
+## Answer decisions with TypeSafe
 
-| Platform         | Limitations                                      |
-| ---------------- | ------------------------------------------------ |
-| OpenAI           | None                                             |
-| Microsoft Azure  | None                                             |
-| Anthropic Claude | Requires `@anthropic-ai/sdk` peer dependency     |
-| Amazon Bedrock   | Native structured output support varies by model |
-| Google Gemini    | Native structured output support varies by model |
-| Ollama           | Limited model support                            |
-| TypeSafe         | Decisions only: no text, streaming or tools      |
+Use [`@hashbrownai/typesafe`](/docs/react/platform/typesafe) when the task is to choose among known options. Its server adapter validates a decision request, calls TypeSafe, and returns a JSON decision response. It uses global `fetch` and needs no separate provider SDK.
 
-## Where is X platform?
+TypeSafe is a decision service, so it does not replace the streaming chat endpoint. An agent can use a decision to select a workflow, then generate a response with another provider. Follow [Decisions in Agents](/docs/react/recipes/decisions-in-agents) for that boundary and a recorded example.
 
-Need a platform that is not listed here? [Open an issue on GitHub](https://github.com/liveloveapp/hashbrown/issues/new) and tell us what you are building. If your team wants a finished, headful agent UI with enterprise support, take a look at [threadplane](https://threadplane.ai/?utm_source=hashbrown&utm_medium=docs).
+## Run a model in the browser
+
+[Local Models](/docs/react/recipes/local-models) covers Chrome and Edge transports and an application-owned WebLLM engine. These use browser-side inference instead of the server adapters above. Availability, preparation, downloads and fallback behavior belong in the application flow; the checked recipe begins with an explicit preparation action.
+
+The local-model recording uses real Chrome inference. The guide distinguishes that verified path from the other runtime options.
+
+## Use another server
+
+For ASP.NET Core, use the [tested .NET AG-UI integration](/docs/react/platform/dotnet). For another provider or agent runtime, [create a custom adapter](/docs/react/platform/custom) that produces the AG-UI events your client needs. Start from the event contract and verify tool continuation and structured output as part of that integration.
+
+If you need a complete chat interface, [Threadplane](/docs/react/recipes/threadplane) supplies the presentation layer around the runtime. It is a separate choice from the provider that answers requests.

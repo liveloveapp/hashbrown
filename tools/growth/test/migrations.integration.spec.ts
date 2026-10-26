@@ -33,6 +33,8 @@ test('migrations apply twice against Postgres and the second run applies nothing
     '0006_growth_provider_attempts.sql',
     '0007_growth_inbox_recovery.sql',
     '0008_growth_health_alerts.sql',
+    '0009_growth_unbound_message_index.sql',
+    '0010_growth_drop_gmail_schema.sql',
   ]);
 
   const tables = await executor.execute<{ table_name: string }>(`
@@ -101,6 +103,8 @@ test('migrations apply twice against Postgres and the second run applies nothing
     { name: '0006_growth_provider_attempts.sql', checksum_length: 64 },
     { name: '0007_growth_inbox_recovery.sql', checksum_length: 64 },
     { name: '0008_growth_health_alerts.sql', checksum_length: 64 },
+    { name: '0009_growth_unbound_message_index.sql', checksum_length: 64 },
+    { name: '0010_growth_drop_gmail_schema.sql', checksum_length: 64 },
   ]);
 });
 
@@ -129,6 +133,54 @@ test('migration 0005 applies after 0004 and the ledger records its checksum', as
   expect(tiers.rows.map(({ definition }) => definition).join(' ')).toContain(
     'very_high',
   );
+});
+
+test('migration 0009 adds a partial index that serves the unbound Message-ID count', async () => {
+  const directory = defaultMigrationsDirectory();
+
+  await applyMigrations({ directory, executor });
+
+  const index = await executor.execute<{ definition: string }>(
+    `select indexdef as definition from pg_indexes
+     where schemaname = 'public' and tablename = 'growth_jobs'
+       and indexname = 'growth_jobs_unbound_provider_message'`,
+  );
+  const definition = (index.rows[0]?.definition ?? '').replace(/\s+/gu, ' ');
+  expect(definition).toContain(
+    'ON public.growth_jobs USING btree (updated_at)',
+  );
+  expect(definition).toContain(
+    "kind = ANY (ARRAY['fulfill'::text, 'send_step'::text])",
+  );
+  expect(definition).toContain("status = 'completed'::text");
+  expect(definition).toContain('provider_email_id IS NOT NULL');
+  expect(definition).toContain('rfc_message_id IS NULL');
+});
+
+test('migration 0010 drops the Gmail seed column and index and the reply_reconcile kind', async () => {
+  const directory = defaultMigrationsDirectory();
+
+  await applyMigrations({ directory, executor });
+
+  const column = await executor.execute<{ column_name: string }>(
+    `select column_name from information_schema.columns
+     where table_schema = 'public' and table_name = 'growth_jobs'
+       and column_name = 'gmail_seed_message_id'`,
+  );
+  const index = await executor.execute<{ indexname: string }>(
+    `select indexname from pg_indexes
+     where schemaname = 'public' and indexname = 'growth_jobs_gmail_seed'`,
+  );
+  const kinds = await executor.execute<{ definition: string }>(
+    `select pg_get_constraintdef(oid) as definition from pg_constraint
+     where conrelid = 'public.growth_jobs'::regclass
+       and conname = 'growth_jobs_kind_check'`,
+  );
+  expect(column.rows).toEqual([]);
+  expect(index.rows).toEqual([]);
+  const definition = kinds.rows[0]?.definition ?? '';
+  expect(definition).toContain("'send_step'::text");
+  expect(definition).not.toContain('reply_reconcile');
 });
 
 test('observability views compute against the test store', async () => {

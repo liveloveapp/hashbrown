@@ -44,7 +44,7 @@ function stripBag<T extends Record<string, unknown> | undefined>(bag: T): T {
  * @param event - The event about to be sent, or `null` if already dropped.
  * @returns The event with URL properties reduced to origin and path.
  */
-export const stripUrlQuery: BeforeSendFn = (
+export const stripUrlQuery = ((
   event: CaptureResult | null,
 ): CaptureResult | null => {
   if (!event) return event;
@@ -53,7 +53,7 @@ export const stripUrlQuery: BeforeSendFn = (
     properties: stripBag(event.properties),
     ...(event.$set_once ? { $set_once: stripBag(event.$set_once) } : {}),
   };
-};
+}) satisfies BeforeSendFn;
 
 /**
  * Every option is stated, including ones that match a posthog-js default.

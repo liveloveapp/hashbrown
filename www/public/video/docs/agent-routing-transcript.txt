@@ -1,0 +1,9 @@
+agent-routing
+
+Recorded through the checked React component after both React and Angular passed the same browser checks. Checked Express agent/router with scripted classifier envelopes and errors; presentation styles added; no live model or narration. Final replies come from the checked application handlers. Client state clears on refresh.
+
+The first two seconds preview the final result. The complete interaction follows.
+
+Run an order question, inspect the public example delivery reply, then ask about returns and inspect the fixed returns policy. The server pins the decision schema and runs read-only application handlers.
+
+The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

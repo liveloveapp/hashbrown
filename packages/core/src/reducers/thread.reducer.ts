@@ -12,6 +12,9 @@ export const initialThreadState: ThreadState = {
 
 export const reducer = createReducer(
   initialThreadState,
+  on(devActions.restoreConversation, (_state, action) => ({
+    threadId: action.payload.threadId,
+  })),
   on(devActions.init, (state, action) => {
     return {
       ...state,

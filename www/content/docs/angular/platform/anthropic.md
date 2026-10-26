@@ -21,15 +21,16 @@ The model is server configuration and is not read from the client run input.
 
 ### API Reference
 
-| Name                      | Type                                    | Description                                                                                                |
-| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `apiKey`                  | `string`                                | Anthropic API key.                                                                                         |
-| `baseURL`                 | `string`                                | _(Optional)_ Anthropic-compatible API base URL.                                                            |
-| `model`                   | `string`                                | Server-selected Anthropic model.                                                                           |
-| `input`                   | `AnthropicHashbrownRunAgentInput`       | AG-UI run input, including messages and tools.                                                             |
-| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Anthropic request when the HTTP client disconnects.                               |
-| `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Messages API request.                                          |
+| Name                      | Type                                    | Description                                                                                                    |
+| ------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                | Anthropic API key.                                                                                             |
+| `baseURL`                 | `string`                                | _(Optional)_ Anthropic-compatible API base URL.                                                                |
+| `model`                   | `string`                                | Server-selected Anthropic model.                                                                               |
+| `input`                   | `AnthropicHashbrownRunAgentInput`       | AG-UI run input, including messages and tools.                                                                 |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Anthropic request when the HTTP client disconnects.                                   |
+| `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities).     |
+| `builtInTools`            | `AnthropicBuiltInTools`                 | _(Optional)_ Enables server-side web search, fetch, and code execution. See [Built-in Tools](#built-in-tools). |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Messages API request.                                              |
 
 The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Claude thinking, signatures, and redacted thinking become AG-UI reasoning records that can be sent back on continuation. Provider metadata and unsupported native events are preserved as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
@@ -247,6 +248,68 @@ const stream = HashbrownAnthropic.stream.text({
   }),
 });
 ```
+
+## Built-in Tools
+
+Enable Anthropic's server tools with `builtInTools`:
+
+```ts
+const stream = HashbrownAnthropic.stream.text({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: process.env.ANTHROPIC_MODEL!,
+  input,
+  builtInTools: {
+    webSearch: true,
+    webFetch: true,
+    codeExecution: true,
+  },
+});
+```
+
+Choose a model that supports the selected Anthropic tool versions. `true` enables
+`web_search_20250305`, `web_fetch_20250910`, or `code_execution_20250825` respectively.
+Fetch citations are enabled for `webFetch: true`. To select another SDK-supported
+version or configure limits, pass Anthropic's configuration without its fixed tool
+name:
+
+```ts
+builtInTools: {
+  webSearch: { type: 'web_search_20250305', max_uses: 3 },
+  webFetch: {
+    type: 'web_fetch_20250910',
+    citations: { enabled: true },
+  },
+}
+```
+
+Object configurations pass through unchanged, including an explicit choice to
+disable fetch citations. Tools added through `transformRequestOptions` also produce
+provider steps when their native calls belong to these supported tool families.
+
+Search, fetch, and code execution appear in `serverToolCalls` with labels, timing,
+sources, and a settled outcome. A native server call starts as soon as its invocation
+arrives and settles when its result arrives. Provider failures retain readable errors.
+These calls run at Anthropic and never invoke a same-named client tool.
+
+Answer citations reference the sources exposed on tool calls or the assistant
+message. Render citations as visible source links alongside the answer. File sources
+retain their native file ids so your application can retrieve output files. Hashbrown
+supplies the state; your application renders it.
+
+### Native Conversation History
+
+The adapter preserves ordered native content, including interleaved thinking,
+signatures, encrypted search/code output, server results, and container information.
+Hashbrown folds a `hashbrown.provider-history` CUSTOM footer into canonical message
+metadata so this content survives persistence and subsequent requests. The footer
+adds no display message and does not delay tool results.
+
+Keep canonical history and its metadata when saving or forwarding a conversation.
+The next request replays complete native history once, preserving ordinary app-tool
+results in their original positions. Older histories without a native envelope retain
+the existing reasoning fallback; native server continuations that cannot be safely
+reconstructed fail with an explicit error. Provider calls are never converted into
+ordinary app-function calls.
 
 ## Sending Activities
 

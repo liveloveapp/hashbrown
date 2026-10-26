@@ -302,6 +302,9 @@ function createRuntimeStub({
   return {
     state,
     messages: createSignal(messages),
+    recovery: createSignal({ revision: 0, required: false }),
+    restoreConversation: vi.fn(),
+    getRecoveryConfiguration: vi.fn(),
     pendingInterrupts: createSignal(undefined),
     isResuming: createSignal(false),
     resume: vi.fn(),

@@ -4,7 +4,7 @@ import { Chat } from '../models';
 import { isProviderToolCall } from '../models/tool-step';
 import { s } from '../schema';
 import { createStore } from '../utils/micro-ngrx';
-import { reducers, ɵprepareRootAction } from './index';
+import { reducers, selectViewMessages, ɵprepareRootAction } from './index';
 import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
 
 test('includes a developer tool named output in pending tool calls', () => {
@@ -1682,3 +1682,163 @@ test('a frame-only RESULT seed keeps an unreadable provider step a provider step
   expect(isProviderToolCall({ metadata: { 'b4.step': draftStep } })).toBe(true);
   expect(isProviderToolCall({ metadata: { 'b4.step': rootStep } })).toBe(true);
 });
+
+test('prepared root projection preserves provider argument completion through metadata and native footer updates', () => {
+  const store = createRootStore();
+  const marker = {
+    bedrock: { responseId: 'response' },
+    'b4.step': {
+      v: 1,
+      kind: 'provider',
+      provider: 'bedrock',
+      status: 'running',
+    },
+  };
+  const readCall = () =>
+    store
+      .read(selectViewMessages)
+      .find((message) => message.role === 'assistant')?.serverToolCalls?.[0];
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'provider',
+      toolCallName: 'nova_grounding',
+      parentMessageId: 'assistant',
+      metadata: marker,
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'provider', delta: '{}' },
+  ]);
+  const streaming = readCall();
+
+  dispatchEvents(store, [
+    { type: EventType.TOOL_CALL_END, toolCallId: 'provider', metadata: marker },
+  ]);
+  const ended = readCall();
+  dispatchEvents(store, [
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        toolCallId: 'provider',
+        v: 1,
+        kind: 'provider',
+        provider: 'bedrock',
+        status: 'running',
+        label: 'Searching',
+      },
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'bedrock',
+        ownerMessageId: 'assistant',
+        responseId: 'response',
+        complete: true,
+        payload: { opaque: 'native' },
+      },
+    },
+  ]);
+  const decorated = readCall();
+
+  expect(streaming?.status).toBe('inProgress');
+  expect(ended?.status).toBe('executing');
+  expect(decorated?.status).toBe('executing');
+  expect(decorated?.result).toBeUndefined();
+  expect(
+    store.read((state) => state.agUiMessages.protocolError),
+  ).toBeUndefined();
+  expect(
+    store.read(
+      (state) =>
+        state.agUiMessages.draft[0]?.metadata?.['hashbrown.provider-history'],
+    ),
+  ).toMatchObject({ complete: true, ownerMessageId: 'assistant' });
+  expect(
+    store.read(
+      (state) => state.toolCalls.entities['provider']?.argumentsComplete,
+    ),
+  ).toBe(true);
+  expect(
+    store.read((state) =>
+      state.agUiMessages.draft.some((message) => message.role === 'tool'),
+    ),
+  ).toBe(false);
+});
+
+for (const provider of [false, true]) {
+  for (const reset of ['start', 'snapshot'] as const) {
+    test(`prepared ${reset} clears local ${provider ? 'provider' : 'application'} argument completion without discarding local resolved arguments`, () => {
+      const metadata = provider
+        ? {
+            'b4.step': {
+              v: 1,
+              kind: 'provider',
+              provider: 'bedrock',
+              status: 'running',
+            },
+          }
+        : undefined;
+      const canonicalMessages = [
+        {
+          id: 'assistant',
+          role: 'assistant' as const,
+          content: '',
+          toolCalls: [
+            {
+              id: 'call',
+              type: 'function' as const,
+              function: { name: 'lookup', arguments: '{}' },
+              ...(metadata ? { metadata } : {}),
+            },
+          ],
+        },
+      ];
+      const store = createStore({
+        reducers,
+        effects: [],
+        prepareAction: ɵprepareRootAction,
+      });
+      store.dispatch(
+        devActions.init({
+          system: '',
+          canonicalMessages,
+          localProjection: {
+            messages: [],
+            toolCalls: [
+              {
+                id: 'call',
+                name: 'lookup',
+                arguments: '{}',
+                argumentsResolved: {},
+                argumentsComplete: true,
+                status: 'pending',
+                ...(metadata ? { metadata } : {}),
+              },
+            ],
+          },
+        }),
+      );
+      store.dispatch(internalActions.generationAttemptStarted());
+      store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+
+      dispatchEvents(store, [
+        reset === 'start'
+          ? {
+              type: EventType.TOOL_CALL_START,
+              toolCallId: 'call',
+              toolCallName: 'lookup',
+              parentMessageId: 'assistant',
+            }
+          : { type: EventType.MESSAGES_SNAPSHOT, messages: canonicalMessages },
+      ]);
+      const call = store.read((state) => state.toolCalls.entities['call']);
+
+      expect(call?.argumentsComplete).toBeUndefined();
+      expect(call?.status).toBe('pending');
+      expect(call?.result).toBeUndefined();
+      if (reset === 'start') expect(call?.argumentsResolved).toEqual({});
+    });
+  }
+}

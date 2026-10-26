@@ -2,6 +2,7 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
 import { useState } from 'react';
 
 interface InterruptControlsProps {
+  readonly disabled?: boolean;
   readonly batch: PendingInterruptBatch | undefined;
   readonly isResuming: boolean;
   readonly resume: (options: ResumeOptions) => void;
@@ -9,13 +10,14 @@ interface InterruptControlsProps {
 
 /** Displays a batch and submits a complete fixture response through the public API. */
 export function InterruptControls({
+  disabled = false,
   batch,
   isResuming,
   resume,
 }: InterruptControlsProps) {
   const [error, setError] = useState('');
 
-  function submit() {
+  function submit(decision: 'approve' | 'decline' | 'cancel' = 'approve') {
     if (!batch) return;
     setError('');
     try {
@@ -23,8 +25,10 @@ export function InterruptControls({
         batchId: batch.id,
         entries: batch.interrupts.map(({ id }) => ({
           interruptId: id,
-          status: 'resolved',
-          payload: { approved: true },
+          status: decision === 'cancel' ? 'cancelled' : 'resolved',
+          ...(decision === 'cancel'
+            ? {}
+            : { payload: { approved: decision === 'approve' } }),
         })),
       });
     } catch (cause) {
@@ -47,10 +51,26 @@ export function InterruptControls({
       <button
         data-testid="resume"
         type="button"
-        disabled={!batch || isResuming}
-        onClick={submit}
+        disabled={disabled || !batch || isResuming}
+        onClick={() => submit()}
       >
         Resume
+      </button>
+      <button
+        data-testid="decline"
+        type="button"
+        disabled={disabled || !batch || isResuming}
+        onClick={() => submit('decline')}
+      >
+        Decline
+      </button>
+      <button
+        data-testid="cancel"
+        type="button"
+        disabled={disabled || !batch || isResuming}
+        onClick={() => submit('cancel')}
+      >
+        Cancel
       </button>
       <div data-testid="resume-error">{error}</div>
     </section>

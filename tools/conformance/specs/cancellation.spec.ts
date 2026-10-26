@@ -70,6 +70,7 @@ test('cancels a partial response and recovers on an explicit send', async ({
   await expect.poll(() => attempted.length).toBe(1);
   expect(captured).toHaveLength(1);
   await expect(driver.assistant()).not.toContainText('late');
+  await expect(driver.assistant()).not.toContainText('[Hashbrown runtime:');
   await hygiene.assertClean();
 
   await driver.send('Recover');
@@ -92,5 +93,28 @@ test('cancels a partial response and recovers on an explicit send', async ({
   }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
+  const original = firstInput.messages.find(
+    (message) => message.role === 'user',
+  );
+  const originalIndex = secondInput.messages.findIndex(
+    (message) => message.id === original?.id,
+  );
+  const recoveryIndex = secondInput.messages.findIndex(
+    (message) => message.role === 'user' && message.content === 'Recover',
+  );
+  const between = secondInput.messages.slice(originalIndex + 1, recoveryIndex);
+  expect(originalIndex).toBeGreaterThanOrEqual(0);
+  expect(secondInput.messages[originalIndex]).toEqual(original);
+  expect(between).toHaveLength(1);
+  expect(between[0]).toMatchObject({ role: 'assistant' });
+  expect(between[0]?.content).toMatch(
+    /^\[Hashbrown runtime:.*cancelled.*Do not continue/,
+  );
+  expect(
+    secondInput.messages.some((message) => message.id === 'cancelled-answer'),
+  ).toBe(false);
+  expect(JSON.stringify(secondInput.messages)).not.toContain(
+    'hashbrown.runtimeCancellation',
+  );
   await hygiene.assertClean();
 });

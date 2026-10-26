@@ -6,7 +6,10 @@ import {
 } from '@hashbrownai/core';
 import { type GenerateContentResponse, GoogleGenAI } from '@google/genai';
 import { mapGoogleEvents } from './google-events';
-import { createGoogleRequestOptions } from './google-request';
+import {
+  createGoogleRequestOptions,
+  validateGoogleRequestOptions,
+} from './google-request';
 import type { GoogleTextStreamOptions } from './types';
 
 const GOOGLE_BASE_URL_ENV = 'HASHBROWN_GOOGLE_API_BASE_URL';
@@ -33,13 +36,18 @@ async function* textEvents(
   }
 
   try {
-    const baseRequest = createGoogleRequestOptions(input, model, signal);
+    const baseRequest = createGoogleRequestOptions(input, model, signal, {
+      builtInTools: options.builtInTools,
+      vertexai: options.vertexai,
+    });
     const request = transformRequestOptions
       ? await transformRequestOptions(baseRequest)
       : baseRequest;
     if (signal?.aborted) {
       return;
     }
+
+    validateGoogleRequestOptions(request, options.vertexai === true);
 
     const baseUrl = process.env[GOOGLE_BASE_URL_ENV];
     const ai = options.vertexai
@@ -60,6 +68,9 @@ async function* textEvents(
         events: providerStream,
         messageId,
         signal,
+        inputMessages: input.messages,
+        requestOptions: request,
+        vertexai: options.vertexai,
       }),
       signal,
     );

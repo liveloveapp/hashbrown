@@ -23,6 +23,7 @@
       "@hashbrownai/core": ["../packages/core/src/index.ts"],
       "@hashbrownai-internal/growth": ["../tools/growth/src/index.ts"],
       "@hashbrownai/react": ["../packages/react/src/index.ts"],
+      "@hashbrownai/typesafe": ["../packages/typesafe/src/index.ts"],
       "#development-install": [
         "../packages/core/src/growth/development-install.default.ts"
       ]

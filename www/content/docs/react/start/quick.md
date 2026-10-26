@@ -1,373 +1,290 @@
 ---
-title: 'React Quick Start: Hashbrown React Docs'
+title: 'React Quickstart: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Take your first steps with Hashbrown.'
+    content: 'Build your first generated UI with a trusted welcome card.'
 ---
 
-# React Quick Start
+# React Quickstart
 
-<p class="subtitle">Take your first steps with Hashbrown.</p>
+Let's build a welcome card. We'll write the component, tell the model which props it accepts, and ask Hashbrown to render it.
 
----
+<hb-docs-demo demo="welcome-card">
+</hb-docs-demo>
 
-## Install
+<img src="/video/docs/welcome-card-result.png" alt="The completed WelcomeCard with a welcome title and a one-sentence message." width="920" height="304" loading="lazy" />
 
-<hb-code-example header="terminal">
+The model supplies the text. Our React component supplies the markup and behavior.
+
+## Before we start
+
+This example assumes a React 18 or 19 app using Vite and TypeScript, Node.js 24, and an OpenAI API key. You'll also need the name of a model your account can use with structured output.
+
+We'll run two processes: your frontend development server and a small Express server. The browser calls `/api/chat` on the frontend's origin; a development proxy forwards that request to Express on port 3001. Keep the API key on the server.
+
+<a id="install"></a>
+
+## Install Hashbrown
+
+In your existing frontend project, install the client packages:
 
 ```sh
-npm install @hashbrownai/{core,react,openai} --save
+npm install @hashbrownai/core @hashbrownai/react
 ```
 
-</hb-code-example>
+Next, create a sibling directory for the server. Keep it outside the frontend's source directory:
 
----
+```sh
+cd ..
+mkdir welcome-server
+cd welcome-server
+npm init -y
+npm install @hashbrownai/core @hashbrownai/openai openai express @ag-ui/core @ag-ui/encoder
+npm install --save-dev tsx typescript @types/express @types/node
+```
 
-## Provider
+Create a `.env` file in `welcome-server`. Replace both values with your own settings, and add `.env` to `.gitignore`:
 
-<hb-code-example header="provide hashbrown">
+```sh
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=your-model-name
+```
+
+## Create the server endpoint
+
+Create `server.ts` in `welcome-server`:
+
+<hb-code-example header="server.ts">
 
 ```ts
-export function Providers() {
-  return (
-    <HashbrownProvider url={url}>
-      {children}
-    </HashbrownProvider>
-  )
-}
-```
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import express from 'express';
 
-</hb-code-example>
+const apiKey = process.env['OPENAI_API_KEY'];
+const model = process.env['OPENAI_MODEL'];
+if (!apiKey || !model)
+  throw new Error('Set OPENAI_API_KEY and OPENAI_MODEL in .env');
 
-1. Import the @hashbrownai/react!HashbrownProvider:function component from `@hashbrownai/react`.
-2. Optionally specify options such as the `url` for chat requests.
-3. Add the provider to your React application.
+const app = express();
+app.use(express.json({ limit: '1mb' }));
 
-<hb-expander title="Intercept requests using middleware">
-
-You can also intercept requests to the Hashbrown adapter using a middleware pattern.
-
-<hb-code-example header="middleware">
-
-```tsx
-export function Providers() {
-  const middleware = [
-    function (request: RequestInit) {
-      console.log({ request });
-      return request;
-    },
-  ];
-
-  return (
-    <HashbrownProvider url={url} middleware={middleware}>
-      {children}
-    </HashbrownProvider>
-  );
-}
-```
-
-</hb-code-example>
-
-1. The `middleware` option to the provider allows the developer to intercept Hashbrown requests.
-2. Middleware functions can be async.
-3. This is useful for appending headers, etc.
-
-</hb-expander>
-
----
-
-## Node Adapters
-
-To get started, we recommend running a local express server following the Hashbrown adapter documentation.
-
-- [OpenAI](/docs/react/platform/openai)
-- [Azure OpenAI](/docs/react/platform/azure)
-- [Anthropic](/docs/react/platform/anthropic)
-- [Amazon Bedrock](/docs/react/platform/bedrock)
-- [Google Gemini](/docs/react/platform/google)
-- [Ollama](/docs/react/platform/ollama)
-
----
-
-## The `useChat()` Hook
-
-The @hashbrownai/react!useChat:function hook from `@hashbrownai/react` is the basic way to interact with the model.
-It provides a set of methods for sending and receiving messages, as well as managing the chat state.
-
-<hb-code-example header="useChat()">
-
-```ts
-useChat({
-  system: 'hashbrowns should be covered and smothered',
-  messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
-});
-```
-
-</hb-code-example>
-
-1. First, we provide [system instructions](/docs/react/concept/system-instructions).
-2. Second, we send some initial messages to the model.
-
----
-
-### `UseChatOptions`
-
-| Property       | Type                            | Required | Default | Description                                                        |
-| -------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------ |
-| `system`       | `string`                        | Yes      | -       | The system message to use for the chat.                            |
-| `messages`     | `Chat.Message<string, Tools>[]` | No       | `[]`    | The initial messages for the chat.                                 |
-| `tools`        | `Tools[]`                       | No       | `[]`    | The tools to make available for the chat.                          |
-| `debounceTime` | `number`                        | No       | `150`   | The debounce time between sends to the endpoint (in milliseconds). |
-| `retries`      | `number`                        | No       | `0`     | Number of retries if an error is received.                         |
-| `debugName`    | `string`                        | No       | -       | The name of the hook, useful for debugging in Redux DevTools.      |
-
----
-
-### `UseChatResult`
-
-The @hashbrownai/react!useChat:function hook returns a @hashbrownai/react!UseChatResult:interface object.
-
-| Property                | Type                                                | Description                                                                                                       |
-| ----------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `messages`              | `Chat.Message<string, Tools>[]`                     | The current chat messages.                                                                                        |
-| `sendMessage(message)`  | `(message: Chat.UserMessage) => void`               | Send a new user message to the chat.                                                                              |
-| `setMessages(messages)` | `(messages: Chat.Message<string, Tools>[]) => void` | Update the chat messages.                                                                                         |
-| `stop(clear?)`          | `(clear?: boolean) => void`                         | Stop any currently-streaming message. Optionally removes the streaming message from state.                        |
-| `reload()`              | `() => boolean`                                     | Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed. |
-| `error`                 | `Error \| undefined`                                | Any error that occurred during the chat operation.                                                                |
-| `isReceiving`           | `boolean`                                           | Whether the chat is receiving a response.                                                                         |
-| `isSending`             | `boolean`                                           | Whether the chat is sending a response.                                                                           |
-| `isRunningToolCalls`    | `boolean`                                           | Whether the chat is running tool calls.                                                                           |
-| `exhaustedRetries`      | `boolean`                                           | Whether the current request has exhausted retries.                                                                |
-| `lastAssistantMessage`  | `Chat.AssistantMessage<string, Tools> \| undefined` | The last assistant message.                                                                                       |
-
----
-
-### API Reference
-
-<hb-next-steps>
-  <hb-next-step link="/api/react/useChat">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>useChat() API</h4>
-      <p>See the hook documentation</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/react/UseChatOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>UseChatOptions API</h4>
-      <p>See all of the options</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/react/UseChatResult">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>UseChatResult API</h4>
-      <p>See all of the properties and methods</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-### Render the Model Response
-
-<hb-code-example header="a short story about breakfast">
-
-```tsx
-import { useChat } from '@hashbrownai/react';
-
-export function App() {
-  // 1. Generate the messages from a prompt
-  const { messages } = useChat({
-    system: 'hashbrowns should be covered and smothered',
-    messages: [
-      { role: 'user', content: 'Write a short story about breakfast.' },
-    ],
+app.post('/api/chat', async (req, res) => {
+  const controller = new AbortController();
+  res.once('close', () => {
+    if (!res.writableEnded) controller.abort();
   });
 
-  // 2. Render the content of each message
-  return (
-    <>
-      {messages.map((message, i) => (
-        <p key={i}>{message.content}</p>
-      ))}
-    </>
-  );
-}
-```
+  const encoder = new EventEncoder();
+  res.setHeader('Content-Type', encoder.getContentType());
+  res.setHeader('Cache-Control', 'no-cache, no-store');
 
-</hb-code-example>
-
-1. The @hashbrownai/react!useChat:function hook creates a new chat instance.
-2. We destructure the response object and set the `messages` constant.
-3. We return the JSX to render the content of each message.
-
-This creates a basic chat interface where messages are displayed automatically.
-
----
-
-## Send Messages
-
-To send messages to the model, we can use the `sendMessage()` method.
-
-<hb-code-example header="sendMessage()">
-
-```tsx
-import { useState } from 'react';
-import { useChat } from '@hashbrownai/react';
-
-export function App() {
-  const [userMessage, setUserMessage] = useState('');
-  const { messages, sendMessage } = useChat({
-    debugName: 'chat',
-    system: 'hashbrowns should be covered and smothered',
-  });
-
-  const handleSend = () => {
-    if (userMessage.trim()) {
-      sendMessage({ role: 'user', content: userMessage });
-      setUserMessage('');
+  try {
+    const stream = HashbrownOpenAI.stream.text({
+      apiKey,
+      model,
+      input: req.body as RunAgentInput,
+      signal: controller.signal,
+    });
+    for await (const event of stream) {
+      if (controller.signal.aborted) break;
+      res.write(encoder.encodeSSE(event));
     }
-  };
+    res.end();
+  } catch {
+    if (!res.headersSent) res.status(500).end('Could not start the response');
+    else res.destroy();
+  }
+});
 
+app.listen(3001, '127.0.0.1', () => {
+  console.log('Hashbrown endpoint: http://127.0.0.1:3001/api/chat');
+});
+```
+
+</hb-code-example>
+
+The adapter turns the model's response into AG-UI events. `EventEncoder` writes those events as a server-sent event stream that Hashbrown can read. If the browser disconnects, we cancel the provider request.
+
+Run the endpoint in one terminal:
+
+```sh
+npx tsx --env-file=.env server.ts
+```
+
+This server listens on your machine's loopback address for local development. Before publishing an endpoint, add request validation, authentication, authorization, and usage limits. See [Securing a public endpoint](/docs/react/recipes/public-endpoint).
+
+## Write the welcome card
+
+Back in the frontend project, create the component:
+
+<hb-code-example header="src/WelcomeCard.tsx">
+
+```tsx
+/** A developer-owned card whose text can be supplied by the model. */
+export function WelcomeCard({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
   return (
-    <div>
-      <div>
-        <input
-          type="text"
-          value={userMessage}
-          onChange={(e) => setUserMessage(e.target.value)}
-          placeholder="Prompt..."
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-        />
-        <button onClick={handleSend}>Send</button>
-      </div>
-      <div>
-        {messages.map((message, i) => (
-          <p key={i}>{message.content}</p>
-        ))}
-      </div>
-    </div>
+    <article aria-label="Welcome card">
+      <h2>{title}</h2>
+      <p>{message}</p>
+    </article>
   );
 }
 ```
 
 </hb-code-example>
 
-1. We create an input field controlled by `userMessage` state for user input.
-2. The `handleSend()` function sends the user message to the chat using `sendMessage()`.
-3. React renders the user message and the assistant response message.
+We have two strings: `title` and `message`. The component renders them as ordinary text, using the same framework bindings as the rest of our app.
 
----
+## Expose the component
 
-## Debugging with Redux Devtools
+The @hashbrownai/react!useUiChat:function hook creates the UI conversation.
 
-Hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
+Replace your root component with the following example:
 
-<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
-
-To enable debugging, specify the `debugName` option.
-
-<hb-code-example header="debug">
+<hb-code-example header="src/App.tsx">
 
 ```tsx
-import { useChat } from '@hashbrownai/react';
+import { Fragment } from 'react';
+import { s } from '@hashbrownai/core';
+import { exposeComponent, useUiChat } from '@hashbrownai/react';
+import { WelcomeCard } from './WelcomeCard';
 
-const chat = useChat({
-  debugName: 'chat',
+const components = [
+  exposeComponent(WelcomeCard, {
+    name: 'WelcomeCard',
+    description: 'Welcome a developer with a title and a short message.',
+    props: {
+      title: s.string('A short welcome title'),
+      message: s.string('A one-sentence welcome message'),
+    },
+    children: false,
+  }),
+];
+
+/** Generates a welcome card from the components we expose. */
+export function App() {
+  const chat = useUiChat({
+    system: 'Welcome developers to Hashbrown. Render one WelcomeCard.',
+    components,
+  });
+
+  return (
+    <main>
+      <h1>Your first generated UI</h1>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content:
+              'Welcome a developer to Hashbrown. Render a WelcomeCard with a short title and a one-sentence message.',
+          })
+        }
+      >
+        Generate a welcome card
+      </button>
+      {chat.isLoading && <p role="status">Creating your card...</p>}
+      {chat.error && (
+        <p role="alert">
+          We could not create the card. Check your server, then try again.
+        </p>
+      )}
+      {chat.messages.map((message, index) =>
+        message.role === 'assistant' ? (
+          <Fragment key={index}>{message.ui}</Fragment>
+        ) : null,
+      )}
+    </main>
+  );
+}
+```
+
+</hb-code-example>
+
+Let's break this down:
+
+1. `exposeComponent()` gives the model a name, a description, and a schema for the card's props.
+2. `s.string()` describes the text the component accepts. Hashbrown validates the generated values before passing them to the component.
+3. `useUiChat()` creates the conversation with that component available.
+4. `message.ui` renders the assistant's component output.
+
+**You own the component.** The model can select from the components you expose and supply their validated props. It does not write a new React component or arbitrary markup. Keep authorization for application actions in your own code; a prop schema does not grant permission to perform an action.
+
+## Connect the application
+
+Replace `src/main.tsx` so @hashbrownai/react!HashbrownProvider:function wraps our application. The Vite starter already includes the required `<div id="root"></div>` in `index.html`.
+
+<hb-code-example header="src/main.tsx">
+
+```tsx
+import { createRoot } from 'react-dom/client';
+import { HashbrownProvider } from '@hashbrownai/react';
+import { App } from './App';
+
+const root = document.getElementById('root');
+if (!root) throw new Error('Missing #root element');
+
+createRoot(root).render(
+  <HashbrownProvider url="/api/chat">
+    <App />
+  </HashbrownProvider>,
+);
+```
+
+</hb-code-example>
+
+Update the Vite configuration to forward `/api` requests to the local server:
+
+<hb-code-example header="vite.config.ts">
+
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: { '/api': 'http://127.0.0.1:3001' },
+  },
 });
 ```
 
 </hb-code-example>
 
----
+Start Vite in a second terminal:
 
-## Beyond Chat
+```sh
+npm run dev
+```
 
-Large language models are highly intelligent and capable of more than just text and chatbots.
-With Hashbrown, you can expose your trusted, tested, and compliant components - in other words, you can generate user interfaces using your components as the building blocks!
+## Generate a card
 
-<hb-next-steps>
-  <hb-next-step link="concept/components">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose React components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Open the frontend URL shown in your terminal and select **Generate a welcome card**. You'll see a loading message, followed by a card with a title and a short welcome message. The exact wording can vary between requests.
 
----
+The recording uses the same component and interaction, with a stylesheet for presentation and a scripted model response so the result is repeatable. Your local server uses the model you configured.
 
-## Tool Calling
+<a id="debugging"></a>
 
-Tool calling enables the model to invoke callback function in your frontend web application code.
-The functions you expose can either have no arguments or you can specify the required and optional arguments.
-The model will choose if, and when, to invoke the function.
+## If the card does not appear
 
-What can functions do?
+- **The request returns 404:** check that the frontend proxy is loaded and the path is `/api/chat`. Restart the frontend server after changing its proxy configuration.
+- **The server cannot start:** confirm that `.env` is in `welcome-server` and both environment variables are set.
+- **The request fails:** check the server terminal and the browser Network panel. Confirm your key can use the configured model. Keep credentials out of browser code.
+- **A response arrives without a card:** check the component name, the schema, and the renderer in your root component. Text chat and UI chat render different kinds of output.
 
-- Expose application state to the model
-- Allow the model to take an action
-- Offer intelligent next actions for the user to take
-- Automate user tasks
+After fixing the cause, select the button again. For more help, see [Debugging](/docs/react/concept/debugging).
 
-<hb-next-steps>
-  <hb-next-step link="concept/functions">
-    <div>
-      <hb-functions />
-    </div>
-    <div>
-      <h4>Tool Calling</h4>
-      <p>Provide callback functions to the LLM.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+## Next, expose another component
 
----
+Try adding a second component with different props. Keep its description specific so the model can choose when to use it.
 
-## Streaming Responses
-
-Streaming is baked into the core of Hashbrown.
-With Skillet, our LLM-optimized schema language, you can use the `.streaming()` keyword to enable streaming with eager JSON parsing.
-
-<hb-next-steps>
-  <hb-next-step link="concept/streaming">
-    <div>
-      <hb-send />
-    </div>
-    <div>
-      <h4>Streaming Responses</h4>
-      <p>Use Skillet for built-in streaming and eager JSON parsing.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-## Run LLM-generated JS Code (Safely)
-
-Hashbrown ships with a JavaScript runtime for safe execution of
-LLM-generated code in the client.
-
-<hb-next-steps>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>JavaScript Runtime</h4>
-      <p>Safely execute JS code generated by the model in the browser.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Continue with [Exposing components](/docs/react/concept/components). When you're ready, learn about [streaming props](/docs/react/concept/streaming) and [browser-side tools](/docs/react/concept/functions).

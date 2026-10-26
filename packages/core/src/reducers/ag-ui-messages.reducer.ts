@@ -1,3 +1,10 @@
+import { restoreHistoryDiagnostics } from '../models/history-diagnostics';
+import { ɵrestoreCancelledTurnProvenance } from '../models/cancelled-turn';
+import {
+  ɵPROVIDER_HISTORY_EVENT_NAME,
+  ɵPROVIDER_HISTORY_METADATA_KEY,
+  ɵreadProviderHistory,
+} from '../models/provider-history';
 import {
   type AGUIEvent,
   EventType,
@@ -110,6 +117,11 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
 export const reducer = createReducer(
   initialAgUiMessagesState,
+  on(devActions.restoreConversation, (_state, action): AgUiMessagesState => ({
+    ...initialAgUiMessagesState,
+    committed: action.payload.canonicalMessages,
+    systemMessage: action.payload.systemMessage,
+  })),
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
     const committed = ownRestored(action.payload.canonicalMessages);
@@ -222,23 +234,27 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.resendMessages, (state): AgUiMessagesState => rollback(state)),
-  on(internalActions.toolTurnSettled, (state, action): AgUiMessagesState => {
-    const canonicalMessages = readPreparedCanonicalMessages(action);
-    if (!canonicalMessages) {
-      return state;
-    }
+  on(
+    internalActions.toolTurnSettled,
+    internalActions.generationCancelled,
+    (state, action): AgUiMessagesState => {
+      const canonicalMessages = readPreparedCanonicalMessages(action);
+      if (!canonicalMessages) {
+        return state;
+      }
 
-    return {
-      ...state,
-      committed: canonicalMessages,
-      draft: Object.freeze([]),
-      attemptActive: false,
-      protocolError: undefined,
-      attemptStartToolCallIds: Object.freeze([]),
-      draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveAttempt(),
-    };
-  }),
+      return {
+        ...state,
+        committed: canonicalMessages,
+        draft: Object.freeze([]),
+        attemptActive: false,
+        protocolError: undefined,
+        attemptStartToolCallIds: Object.freeze([]),
+        draftFinishedTextMessageIds: Object.freeze([]),
+        ...inactiveAttempt(),
+      };
+    },
+  ),
 );
 
 /** Selects the committed synchronized AG-UI history. @internal */
@@ -404,7 +420,13 @@ export function applyCanonicalMessageEvent(
       return mergeSnapshotActivities(
         messages,
         recomputeActivityLinks(
-          ɵreadAgUiMessageSnapshot(event),
+          restoreHistoryDiagnostics(
+            messages,
+            ɵrestoreCancelledTurnProvenance(
+              messages,
+              ɵreadAgUiMessageSnapshot(event),
+            ),
+          ),
           context?.activityArrival?.runId,
         ),
       );
@@ -514,6 +536,9 @@ export function applyCanonicalMessageEvent(
     case EventType.TOOL_CALL_RESULT:
       return upsertToolResult(messages, event);
     case EventType.CUSTOM:
+      if (event.name === ɵPROVIDER_HISTORY_EVENT_NAME) {
+        return foldProviderHistory(messages, event.value);
+      }
       return event.name === ɵTOOL_STEP_EVENT_NAME
         ? foldCustomToolStep(messages, event.value, event.timestamp)
         : messages;
@@ -1086,7 +1111,10 @@ function upsertToolResult(
   if (!findToolCall(messages, event.toolCallId)) {
     return messages;
   }
-  if (findToolCall(messages, event.messageId)) {
+  if (
+    event.messageId !== event.toolCallId &&
+    findToolCall(messages, event.messageId)
+  ) {
     throw new Error(
       `AG-UI message ID ${event.messageId} conflicts with a tool call ID`,
     );
@@ -1446,7 +1474,9 @@ function nextPendingToolSteps(
             readHeldStep(pending, id),
             // Pending steps have no frame lifecycle fallback. Normalize an
             // unknown status before merging so it cannot settle running fields.
-            ɵreadToolStep(withoutToolCallId(event.value, true)) as ɵToolStepRead,
+            ɵreadToolStep(
+              withoutToolCallId(event.value, true),
+            ) as ɵToolStepRead,
             'call',
           ),
           event.timestamp,
@@ -1607,4 +1637,114 @@ function replaceToolCall(
     ),
   } as Message);
   return replaceAt(messages, found.messageIndex, assistant);
+}
+
+/** Folds a validated native-response capture onto its marked canonical owner. */
+function foldProviderHistory(
+  messages: readonly Readonly<Message>[],
+  value: unknown,
+): readonly Readonly<Message>[] {
+  const history = ɵreadProviderHistory(value);
+  if (history === undefined) return messages;
+  const index = messages.findIndex(
+    (message) => message.id === history.ownerMessageId,
+  );
+  const message = messages[index];
+  if (
+    message === undefined ||
+    (message.role !== 'assistant' &&
+      message.role !== 'reasoning' &&
+      message.role !== 'tool')
+  ) {
+    return messages;
+  }
+  const matches = (metadata: Record<string, unknown> | undefined): boolean => {
+    const identity =
+      metadata === undefined
+        ? undefined
+        : ownEventField(metadata, history.provider);
+    return (
+      typeof identity === 'object' &&
+      identity !== null &&
+      !Array.isArray(identity) &&
+      ownEventField(identity, 'responseId') === history.responseId
+    );
+  };
+  const ownIdentity =
+    message.metadata === undefined
+      ? undefined
+      : ownEventField(message.metadata, history.provider);
+  const hasOwnResponseIdentity =
+    typeof ownIdentity === 'object' &&
+    ownIdentity !== null &&
+    Object.hasOwn(ownIdentity, 'responseId');
+  if (
+    !matches(message.metadata) &&
+    (hasOwnResponseIdentity ||
+      !(
+        message.role === 'assistant' &&
+        message.toolCalls?.some((call) => matches(call.metadata))
+      ))
+  ) {
+    return messages;
+  }
+  const otherOwner = messages.find((current) => {
+    if (current.id === message.id) return false;
+    const capture = ɵreadProviderHistory(
+      current.metadata?.[ɵPROVIDER_HISTORY_METADATA_KEY],
+    );
+    return (
+      capture?.provider === history.provider &&
+      capture.responseId === history.responseId
+    );
+  });
+  if (otherOwner !== undefined) {
+    throw new Error(
+      `Conflicting provider history owner for response ${history.responseId}`,
+    );
+  }
+  const prior = message.metadata?.[ɵPROVIDER_HISTORY_METADATA_KEY];
+  if (prior !== undefined) {
+    if (sameJsonValue(prior, history)) return messages;
+    throw new Error(`Conflicting provider history for message ${message.id}`);
+  }
+  return replaceAt(
+    messages,
+    index,
+    freezeMessage({
+      ...message,
+      metadata: Object.freeze({
+        ...message.metadata,
+        [ɵPROVIDER_HISTORY_METADATA_KEY]: history,
+      }),
+    }),
+  );
+}
+
+/** Compares owned JSON structurally without depending on object key order. */
+function sameJsonValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (
+    typeof left !== 'object' ||
+    left === null ||
+    typeof right !== 'object' ||
+    right === null
+  ) {
+    return false;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => sameJsonValue(value, right[index]))
+    );
+  }
+  const a = left as Record<string, unknown>;
+  const b = right as Record<string, unknown>;
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameJsonValue(a[key], b[key]))
+  );
 }

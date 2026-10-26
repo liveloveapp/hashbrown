@@ -9,6 +9,9 @@ meta:
 
 <p class="subtitle">Ask a decision model closed questions about your app state and get typed answers with confidence.</p>
 
+<hb-docs-demo demo="decisions">
+</hb-docs-demo>
+
 - A decision picks from options you define: an enumeration, a yes or no, or a number on a short scale.
 - The answer is typed from a Skillet schema and comes with the model's confidence.
 - Decisions do not stream and do not write text. They are fast and cheap, which makes them good at routing.
@@ -221,6 +224,13 @@ To make decisions inside an agent tool or node, or to send them to an AG-UI agen
 Failures appear in `error`: a transport error, a response that does not match the schema, or a schema the model cannot answer. A decision never returns a partial value. Retryable transport errors are retried up to `retries` times.
 
 ---
+
+## Demo result
+
+<img src="/video/docs/decisions-result.png" width="1440" height="810" loading="lazy" alt="The ATC map shows the aircraft selected by an arrivals request." />
+
+The ATC example routes an arrivals request and narrows the available UI. The recording uses scripted model responses and fixture traffic.
+
 
 ## Next Steps
 

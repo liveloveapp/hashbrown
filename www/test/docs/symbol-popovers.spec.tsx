@@ -36,7 +36,7 @@ test('a docs page wraps its symbol links in popover triggers', async () => {
   const html = renderToStaticMarkup(await DocsPage({ params }));
 
   expect(html).toMatch(
-    /data-symbol-popover="@hashbrownai\/react!useChat:function"><a[^>]*href="\/api\/react\/useChat"/,
+    /data-symbol-popover="@hashbrownai\/react!useUiChat:function"><a[^>]*href="\/api\/react\/useUiChat"/,
   );
 });
 
@@ -47,10 +47,11 @@ test('a docs page ships popover content only for the symbols it references', asy
 
   expect(payloads(html).sort()).toEqual([
     '@hashbrownai/react!HashbrownProvider:function',
-    '@hashbrownai/react!UseChatResult:interface',
-    '@hashbrownai/react!useChat:function',
+    '@hashbrownai/react!useUiChat:function',
   ]);
-  expect(html).toContain('This React hook creates a chat instance');
+  expect(html).toContain(
+    'This React hook creates a chat instance that can generate and render UI components.',
+  );
 });
 
 test('popover content renders the symbol without nested popovers', async () => {

@@ -1,7 +1,9 @@
+import { fixtureCredential } from './recovery';
 import { HashbrownProvider } from '@hashbrownai/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app';
+import { readLocalTransport } from './local-transport';
 import './styles.css';
 
 function showStartupError(error: unknown): never {
@@ -34,6 +36,7 @@ function readRunUrl(): string {
 }
 
 const runUrl = readRunUrl();
+const localTransport = readLocalTransport();
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   showStartupError(new Error('Missing fixture root element.'));
@@ -41,7 +44,11 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <HashbrownProvider url={runUrl}>
+    <HashbrownProvider
+      url={runUrl}
+      transport={localTransport}
+      middleware={[fixtureCredential]}
+    >
       <App />
     </HashbrownProvider>
   </StrictMode>,

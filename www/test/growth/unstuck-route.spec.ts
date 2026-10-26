@@ -6,7 +6,7 @@ import {
 } from '@hashbrownai-internal/growth';
 import { expect, test, vi } from 'vitest';
 
-import { createUnstuckRoute } from '../../src/app/%5F/forms/unstuck/route';
+import { createUnstuckRoute } from '../../src/app/%5F/forms/unstuck/handler';
 import {
   UNSTUCK_FORM_DISCLOSURE,
   UNSTUCK_FORM_POLICY_VERSION,

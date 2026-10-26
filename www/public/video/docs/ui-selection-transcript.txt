@@ -1,0 +1,9 @@
+ui-selection
+
+Recorded through the checked React component after both React and Angular passed the same browser checks. Scripted AG-UI or decision responses, presentation styles added, no live model and no narration. Application state is local and clears on refresh.
+
+The first two seconds preview the final result. The complete interaction follows.
+
+Request a quick overview. The decision chooses the application-owned summary card. Ask for each product and its quantity. The decision chooses the application-owned item list. The application supplies Apples, Bread and all quantities; the model chooses only a candidate ID.
+
+The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

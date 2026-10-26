@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
+  type ConversationRestoreOptions,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -226,5 +227,83 @@ test.each(families)(
     expect(control.requests[2].input.threadId).toBe('fresh');
     expect(control.requests[2].input.resume).toBeUndefined();
     TestBed.resetTestingModule();
+  },
+);
+
+test.each(families)(
+  '$name chat restores canonical history without sending',
+  async (family) => {
+    const control = controlledTransport();
+    TestBed.configureTestingModule({
+      providers: [provideHashbrown({ baseUrl: '/chat' })],
+    });
+    const chat = TestBed.runInInjectionContext(() =>
+      family.create({
+        system: 'test',
+        transport: control.transport,
+        debounce: 0,
+      }),
+    );
+    chat.sendMessage({ role: 'user', content: 'go' });
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(chat.pendingInterrupts()).toBeDefined();
+    });
+    const input = control.requests[0].input;
+    expect(chat.getRecoveryConfiguration().system).toBe('test');
+    const batch = requireBatch(chat.pendingInterrupts());
+
+    chat.restoreConversation(
+      {
+        threadId: input.threadId,
+        messages: input.messages,
+        configuredSystemMessageId: input.messages[0].id,
+      },
+      { expectedRevision: chat.recovery().revision },
+    );
+    TestBed.tick();
+
+    expect(chat.pendingInterrupts()).toBeUndefined();
+    expect(chat.recovery().required).toBe(false);
+    expect(control.requests).toHaveLength(1);
+    expect(() => chat.resume({ batchId: batch.id, entries })).toThrow();
+    TestBed.resetTestingModule();
+  },
+);
+
+test.each(families)(
+  '$name chat forwards public diagnostic recovery options',
+  (family) => {
+    TestBed.configureTestingModule({
+      providers: [provideHashbrown({ baseUrl: '/chat' })],
+    });
+    const control = controlledTransport();
+    const resource = TestBed.runInInjectionContext(() =>
+      family.create({ system: '', transport: control.transport }),
+    );
+    const options: ConversationRestoreOptions = {
+      expectedRevision: resource.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    };
+
+    resource.restoreConversation(
+      {
+        threadId: 'cold',
+        messages: [
+          {
+            id: 'invalid',
+            role: 'assistant',
+            content: '<b>ordinary historical text</b>',
+          },
+        ],
+      },
+      options,
+    );
+    TestBed.tick();
+
+    expect(control.requests).toHaveLength(0);
+    expect(resource.recovery().diagnostics?.[0].content).toBe(
+      family.name === 'text' ? undefined : '<b>ordinary historical text</b>',
+    );
   },
 );

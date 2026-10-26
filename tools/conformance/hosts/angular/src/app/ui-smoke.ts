@@ -12,14 +12,29 @@ import {
   uiChatResource,
 } from '@hashbrownai/angular';
 import { type JsonResolvedValue, s } from '@hashbrownai/core';
+import { InterruptControls } from './interrupt-controls';
+import { createRecoveryControls } from './recovery-controls';
+import { rememberThread, selectedThread } from '../recovery';
 
 @Component({
   selector: 'status',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div data-testid="status-card">{{ title() }}: {{ count() }}</div>`,
+  template: `
+    <section>
+      <div data-testid="status-card">{{ title() }}: {{ count() }}</div>
+      <button data-testid="status-action" type="button" (click)="acknowledge()">
+        Acknowledge
+      </button>
+      <span data-testid="status-action-count">{{ actions() }}</span>
+    </section>
+  `,
 })
 class RuntimeStatusComponent {
+  protected readonly actions = signal(0);
+  protected acknowledge(): void {
+    this.actions.update((value) => value + 1);
+  }
   readonly title = input.required<string>();
   readonly count = input.required<number>();
 }
@@ -39,24 +54,46 @@ class RuntimeStatusFallbackComponent {
   });
 }
 
-const components = [
-  exposeComponent(RuntimeStatusComponent, {
-    name: 'status',
-    description: 'Display a runtime status.',
-    fallback: RuntimeStatusFallbackComponent,
-    input: {
-      title: s.streaming.string('Status title'),
-      count: s.number('Status count'),
-    },
-    children: false,
-  }),
-];
+/** Container used only by the opt-in nested UI scenario. */
+@Component({
+  selector: 'runtime-panel',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<section data-testid="nested-panel">
+    <h2>{{ heading() }}</h2>
+    <ng-content />
+  </section>`,
+})
+class RuntimePanelComponent {
+  readonly heading = input.required<string>();
+}
+
+const statusComponent = exposeComponent(RuntimeStatusComponent, {
+  name: 'status',
+  description: 'Display a runtime status.',
+  fallback: RuntimeStatusFallbackComponent,
+  input: {
+    title: s.streaming.string('Status title'),
+    count: s.number('Status count'),
+  },
+  children: false,
+});
+const panelComponent = exposeComponent(RuntimePanelComponent, {
+  name: 'panel',
+  description: 'Group a status inside a panel.',
+  input: { heading: s.string('Panel heading') },
+  children: [statusComponent],
+});
+const components =
+  new URL(globalThis.location.href).searchParams.get('nested') === 'true'
+    ? [panelComponent]
+    : [statusComponent];
 
 /** Angular generative UI fixture used by the shared runtime smoke scenario. */
 @Component({
   selector: 'runtime-ui-smoke',
   standalone: true,
-  imports: [RenderMessageComponent],
+  imports: [RenderMessageComponent, InterruptControls],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section>
@@ -65,10 +102,51 @@ const components = [
         [value]="prompt()"
         (input)="onPromptInput($event)"
       />
-      <button data-testid="send" type="button" (click)="send()">Send</button>
+      <button
+        data-testid="send"
+        type="button"
+        [disabled]="recovery.disabled()"
+        (click)="send()"
+      >
+        Send
+      </button>
       <button data-testid="stop" type="button" (click)="chat.stop()">
         Stop
       </button>
+      <runtime-interrupt-controls
+        [disabled]="recovery.disabled()"
+        [batch]="chat.pendingInterrupts()"
+        [isResuming]="chat.isResuming()"
+        [resume]="chat.resume"
+      />
+      @if (recovery.enabled) {
+        <button
+          data-testid="refresh-recovery"
+          [disabled]="recovery.fetching() || chat.isLoading()"
+          (click)="recovery.refresh()"
+        >
+          Refresh recovery
+        </button>
+      }
+      <button data-testid="new-thread" (click)="recovery.newThread()">
+        New thread
+      </button>
+      <div data-testid="recovery-status">{{ recovery.status() }}</div>
+      <div data-testid="recovery-fetching">{{ recovery.fetching() }}</div>
+      <div data-testid="recovery-required">{{ chat.recovery().required }}</div>
+      <div data-testid="recovery-thread">{{ threadId() }}</div>
+      @for (
+        diagnostic of chat.recovery().diagnostics ?? [];
+        track diagnostic.messageId
+      ) {
+        <pre
+          data-testid="recovery-diagnostic"
+          [attr.data-message-id]="diagnostic.messageId"
+          [attr.data-thread-id]="diagnostic.threadId"
+          [attr.data-kind]="diagnostic.kind"
+          [textContent]="diagnostic.content"
+        ></pre>
+      }
       <div
         data-testid="status"
         [textContent]="chat.isLoading() ? 'loading' : 'idle'"
@@ -106,6 +184,7 @@ const components = [
 })
 export class UiSmoke {
   protected readonly prompt = signal('');
+  protected readonly threadId = signal(selectedThread());
   protected readonly submitted = signal('');
   protected readonly selectedItem = signal('');
   protected readonly toolCount = signal(0);
@@ -125,9 +204,15 @@ export class UiSmoke {
   });
   protected readonly chat = uiChatResource({
     system: 'Runtime smoke system prompt.',
+    threadId: this.threadId,
     components,
     tools: this.native ? [this.selectItem] : [],
   });
+  protected readonly recovery = createRecoveryControls(
+    this.chat,
+    this.threadId,
+    (value) => this.threadId.set(value),
+  );
   protected readonly visibleMessages = computed(() =>
     this.chat.status() === 'error'
       ? []
@@ -157,6 +242,7 @@ export class UiSmoke {
   }
 
   protected send(): void {
+    rememberThread(this.threadId());
     const content = this.prompt();
     this.submitted.set(content);
     this.chat.sendMessage({ role: 'user', content });

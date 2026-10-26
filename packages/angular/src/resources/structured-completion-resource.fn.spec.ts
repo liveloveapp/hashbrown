@@ -16,6 +16,7 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
       Object.assign(
         () => ({
           threadEpoch: 0,
+          restorationEpoch: 0,
           successfulResumes: 0,
           recoveryRequired: false,
           isResuming: false,
@@ -38,6 +39,9 @@ const createChatStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    recovery: signal({ revision: 0, required: false }),
+    restoreConversation: vi.fn(),
+    getRecoveryConfiguration: vi.fn(),
     pendingInterrupts: signal(undefined),
     isResuming: signal(false),
     resume: vi.fn(),

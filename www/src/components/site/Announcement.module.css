@@ -12,6 +12,7 @@
   opacity: 1;
   transition: opacity 800ms ease-in-out;
   padding: 0 16px;
+  pointer-events: none;
 }
 
 @starting-style {
@@ -23,6 +24,7 @@
 /* The squircle ("0 0 8 8") clipped the alert, which hid its shadow; the
    rounded inset clip keeps that look without the SVG path. */
 .alert {
+  pointer-events: auto;
   display: inline-grid;
   grid-template-areas: 'announcement close' 'gradient gradient';
   grid-template-columns: 1fr 32px;

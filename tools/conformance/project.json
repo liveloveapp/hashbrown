@@ -10,7 +10,9 @@
         "parallel": false,
         "commands": [
           "tsc --noEmit -p tools/conformance/tsconfig.playwright.json",
-          "tsc --noEmit -p tools/conformance/tsconfig.spec.json"
+          "tsc --noEmit -p tools/conformance/tsconfig.spec.json",
+          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.playwright.json",
+          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.spec.json"
         ]
       }
     },
@@ -66,6 +68,306 @@
       "options": {
         "command": "playwright test --config tools/conformance/all.playwright.config.ts"
       }
+    },
+    "local-model-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts"
+      }
+    },
+    "local-model-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE": "1"
+        }
+      }
+    },
+    "local-webllm-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_WEBLLM": "1"
+        }
+      }
+    },
+    "local-provider-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "playwright test --config tools/conformance/local-provider.playwright.config.ts"
+      }
+    },
+    "local-native-capability-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts --grep=\"native runtime capabilities\"",
+        "env": {
+          "LOCAL_LLM_NATIVE": "1",
+          "LOCAL_LLM_CAPABILITIES": "1"
+        }
+      }
+    },
+    "local-media-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-media.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_AUDIO": "1"
+        }
+      }
+    },
+    "local-media-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-media.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_MEDIA_NATIVE": "1",
+          "LOCAL_LLM_AUDIO": "1"
+        }
+      }
+    },
+    "local-native-audio-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts --grep=\"native runtime transcribes generated speech\"",
+        "env": {
+          "LOCAL_LLM_NATIVE": "1",
+          "LOCAL_LLM_AUDIO": "1"
+        }
+      }
+    },
+    "local-provider-workflow-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-workflows.playwright.config.ts"
+      }
+    },
+    "local-provider-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-workflows.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_WORKFLOWS_LIVE": "1"
+        }
+      }
+    },
+    "local-native-tool-roundtrip-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_ROUNDTRIP": "1"
+        }
+      }
+    },
+    "local-native-tool-capability-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOLS": "1"
+        }
+      }
+    },
+    "local-native-tool-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-tools.playwright.config.ts"
+      }
+    },
+    "local-native-tool-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-tools.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
+        }
+      }
+    },
+    "local-native-schema-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-schema.playwright.config.ts"
+      }
+    },
+    "local-native-schema-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-schema.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
+        }
+      }
+    },
+    "local-native-ui-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui.playwright.config.ts"
+      }
+    },
+    "local-native-ui-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1"
+        }
+      }
+    },
+    "local-native-ui-phase-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui-phases.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_APPLICATION_TOOL_PHASES": "1"
+        }
+      }
+    },
+    "local-native-ui-phase-workflow-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-native-ui-phases.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE": "1",
+          "LOCAL_LLM_APPLICATION_TOOL_PHASES": "1"
+        }
+      }
     }
   },
   "implicitDependencies": [
@@ -75,6 +377,7 @@
     "testing",
     "openai",
     "runtime-smoke-angular",
-    "runtime-smoke-react"
+    "runtime-smoke-react",
+    "ollama"
   ]
 }

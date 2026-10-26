@@ -1,7 +1,9 @@
+import { fixtureCredential } from './recovery';
 import { provideHashbrown } from '@hashbrownai/angular';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';
+import { readLocalTransport } from './local-transport';
 
 function showStartupError(error: unknown): never {
   const startupError =
@@ -33,10 +35,15 @@ function readRunUrl(): string {
 }
 
 const runUrl = readRunUrl();
+const localTransport = readLocalTransport();
 
 bootstrapApplication(App, {
   providers: [
     provideZonelessChangeDetection(),
-    provideHashbrown({ baseUrl: runUrl }),
+    provideHashbrown({
+      baseUrl: runUrl,
+      transport: localTransport,
+      middleware: [fixtureCredential],
+    }),
   ],
 }).catch(showStartupError);

@@ -1,10 +1,12 @@
 import { expect, test, vi } from 'vitest';
 
-import { LifecycleInvokeError } from '../../src/lib/growth/lifecycle-client';
 import {
-  createLifecycleCronRoute,
-  maxDuration,
-} from '../../src/app/%5F/cron/lifecycle/route';
+  type deleteLifecycleThread,
+  LIFECYCLE_THREAD_IDS,
+  LifecycleInvokeError,
+} from '../../src/lib/growth/lifecycle-client';
+import { createLifecycleCronRoute } from '../../src/app/%5F/cron/lifecycle/handler';
+import { maxDuration } from '../../src/app/%5F/cron/lifecycle/route';
 
 const URL_ = 'https://hashbrown.dev/_/cron/lifecycle';
 
@@ -275,5 +277,50 @@ test('the cron skips the delete when no budget is left', async () => {
 
     expect(response.status).toBe(200);
     expect(deleteThread).not.toHaveBeenCalled();
+  });
+});
+
+test('after a run the service answered, the cron also deletes the nudge thread', async () => {
+  await isolated(async () => {
+    configure();
+    const invoke = vi.fn(async () => ({ operatorAlerts: [], threadId: 't-6' }));
+    const deleteThread = vi.fn<typeof deleteLifecycleThread>(
+      async () => undefined,
+    );
+    const route = createLifecycleCronRoute({ invoke, deleteThread });
+
+    const response = await route(request());
+
+    expect(response.status).toBe(200);
+    expect(deleteThread.mock.calls.map(([input]) => input.threadId)).toEqual([
+      't-6',
+      LIFECYCLE_THREAD_IDS.nudge,
+    ]);
+  });
+});
+
+test('a rejected run still deletes the cron and nudge threads', async () => {
+  await isolated(async () => {
+    configure();
+    const invoke = vi.fn(async () => {
+      throw new LifecycleInvokeError(
+        'Lifecycle dispatch was not accepted',
+        't-7',
+        true,
+      );
+    });
+    const deleteThread = vi.fn<typeof deleteLifecycleThread>(
+      async () => undefined,
+    );
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const route = createLifecycleCronRoute({ invoke, deleteThread });
+
+    const response = await route(request());
+
+    expect(response.status).toBe(503);
+    expect(deleteThread.mock.calls.map(([input]) => input.threadId)).toEqual([
+      't-7',
+      LIFECYCLE_THREAD_IDS.nudge,
+    ]);
   });
 });

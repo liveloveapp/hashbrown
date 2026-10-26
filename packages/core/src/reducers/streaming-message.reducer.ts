@@ -364,6 +364,7 @@ function hydrateAssistantForEvent(
 
 export const reducer = createReducer(
   initialState,
+  on(devActions.restoreConversation, () => initialState),
   on(
     apiActions.generateMessageStart,
     (_state, action): StreamingMessageState => ({
@@ -389,7 +390,10 @@ export const reducer = createReducer(
         let message: Chat.Internal.AssistantMessage | null = null;
         let toolCalls: Chat.Internal.ToolCall[] = [];
         try {
-          const messages = ɵreadAgUiMessageSnapshot(action.payload);
+          const messages =
+            decision?.kind === 'accepted'
+              ? decision.state.draft
+              : ɵreadAgUiMessageSnapshot(action.payload);
           const projection = projectAgUiMessages(
             messages,
             state.configSnapshot?.toolsByName ?? {},

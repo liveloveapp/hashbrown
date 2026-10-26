@@ -489,31 +489,35 @@ export const reducer = createReducer(
       committedLocalProvenance: localProvenance,
     };
   }),
-  on(devActions.setMessages, (state, action): ToolCallsState => {
-    const committed = toEntityState(
-      action.payload.localProjection?.toolCalls ??
-        projectAgUiMessages(
+  on(
+    devActions.setMessages,
+    devActions.restoreConversation,
+    (state, action): ToolCallsState => {
+      const committed = toEntityState(
+        action.payload.localProjection?.toolCalls ??
+          projectAgUiMessages(
+            action.payload.canonicalMessages,
+            action.payload.toolsByName ?? {},
+          ).toolCalls,
+      );
+      return {
+        ...committed,
+        committed,
+        draft: empty,
+        attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
+        canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+        committedCanonicalIds: ɵindexAgUiCanonicalIds(
           action.payload.canonicalMessages,
-          action.payload.toolsByName ?? {},
-        ).toolCalls,
-    );
-    return {
-      ...committed,
-      committed,
-      draft: empty,
-      attemptActive: false,
-      activeToolCallId: undefined,
-      activeToolCallName: undefined,
-      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
-      committedCanonicalIds: ɵindexAgUiCanonicalIds(
-        action.payload.canonicalMessages,
-      ),
-      localProvenance: createLocalProvenance(action.payload.localProjection),
-      committedLocalProvenance: createLocalProvenance(
-        action.payload.localProjection,
-      ),
-    };
-  }),
+        ),
+        localProvenance: createLocalProvenance(action.payload.localProjection),
+        committedLocalProvenance: createLocalProvenance(
+          action.payload.localProjection,
+        ),
+      };
+    },
+  ),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
     const preparedProjection = readPreparedProjection(action);
     const expected = new Map(
@@ -708,6 +712,23 @@ function reconcilePreparedEntities(
     const local = readOwn(provenance, toolCall.id);
     const source = readOwn(sources, toolCall.id);
     const existing = readOwn(previous.entities, toolCall.id);
+    // Canonical history has no END marker. Keep argument completion in the
+    // live projection when the canonical invocation itself has not changed.
+    const argumentsComplete =
+      (event.type === EventType.TOOL_CALL_END &&
+        event.toolCallId === toolCall.id) ||
+      (event.type !== EventType.MESSAGES_SNAPSHOT &&
+        !(
+          event.type === EventType.TOOL_CALL_START &&
+          event.toolCallId === toolCall.id
+        ) &&
+        existing?.argumentsComplete === true &&
+        existing.name === toolCall.name &&
+        existing.arguments === toolCall.arguments);
+    const projected =
+      argumentsComplete && toolCall.argumentsComplete !== true
+        ? { ...toolCall, argumentsComplete: true }
+        : toolCall;
     const valid =
       local !== undefined &&
       existing !== undefined &&
@@ -715,7 +736,7 @@ function reconcilePreparedEntities(
       (local.source === undefined || sameToolCallSource(local.source, source));
     if (!valid) {
       if (local !== undefined) provenanceChanged = true;
-      return toolCall;
+      return projected;
     }
 
     const next =
@@ -732,10 +753,14 @@ function reconcilePreparedEntities(
     );
     const encryptedValue = toolCall.encryptedValue;
     return metadata === existing.metadata &&
+      argumentsComplete === (existing.argumentsComplete === true) &&
       encryptedValue === existing.encryptedValue
       ? existing
       : {
           ...existing,
+          ...(argumentsComplete !== (existing.argumentsComplete === true)
+            ? { argumentsComplete: argumentsComplete ? true : undefined }
+            : {}),
           ...(metadata === existing.metadata ? {} : { metadata }),
           ...(encryptedValue === undefined ? {} : { encryptedValue }),
         };

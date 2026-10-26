@@ -329,7 +329,8 @@ Cite [^bad]
   const citation = host.querySelector('sup a[role="doc-noteref"]');
 
   expect(link?.getAttribute('href')).toBeNull();
-  expect(image?.getAttribute('src')).toBeNull();
+  // Angular 22.2 normalizes an unset image src to an empty attribute.
+  expect([null, '']).toContain(image?.getAttribute('src'));
   expect(citation).toBeNull();
 });
 

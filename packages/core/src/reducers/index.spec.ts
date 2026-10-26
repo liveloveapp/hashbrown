@@ -34,6 +34,7 @@ const initAction = { type: '@@init' } as const;
 
 function createState() {
   return {
+    recovery: reducers.recovery(undefined, initAction),
     interrupts: reducers.interrupts(undefined, initAction),
     config: reducers.config(undefined, initAction),
     generationOwnership: reducers.generationOwnership(undefined, initAction),
@@ -53,6 +54,7 @@ function reduceAll(
   action: { type: string },
 ) {
   return {
+    recovery: reducers.recovery(state.recovery, action),
     interrupts: reducers.interrupts(state.interrupts, action),
     config: reducers.config(state.config, action),
     generationOwnership: reducers.generationOwnership(
@@ -2050,7 +2052,7 @@ test('reconciles metadata-only prepared compact text and reasoning chunks', () =
   });
 });
 
-test('keeps prepared structural caches equal to the canonical projection across event families', () => {
+test('keeps prepared structural caches equal to canonical content while retaining live argument completion', () => {
   const store = createStore({
     reducers,
     effects: [],
@@ -2166,7 +2168,9 @@ test('keeps prepared structural caches equal to the canonical projection across 
     },
   ];
 
+  let argumentsComplete = false;
   for (const event of events) {
+    if (event.type === EventType.TOOL_CALL_END) argumentsComplete = true;
     store.dispatch(apiActions.generateMessageEvent(event));
     const state = store.read((current) => current);
     const canonical = projectAgUiMessages(
@@ -2175,12 +2179,23 @@ test('keeps prepared structural caches equal to the canonical projection across 
       state.config.responseSchema,
     );
 
+    expect(state.toolCalls.entities['tool-b']?.argumentsComplete).toBe(
+      argumentsComplete ? true : undefined,
+    );
     expect(state.messages.draft).toEqual(canonical.messages);
     expect(state.toolCalls.ids).toEqual(
       canonical.toolCalls.map((tool) => tool.id),
     );
     expect(state.toolCalls.entities).toEqual(
-      Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+      Object.fromEntries(
+        canonical.toolCalls.map((tool) => [
+          tool.id,
+          {
+            ...tool,
+            ...(argumentsComplete ? { argumentsComplete: true } : {}),
+          },
+        ]),
+      ),
     );
   }
 
@@ -2204,7 +2219,12 @@ test('keeps prepared structural caches equal to the canonical projection across 
 
   expect(committed.messages.committed).toEqual(canonical.messages);
   expect(committed.toolCalls.entities).toEqual(
-    Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+    Object.fromEntries(
+      canonical.toolCalls.map((tool) => [
+        tool.id,
+        { ...tool, ...(argumentsComplete ? { argumentsComplete: true } : {}) },
+      ]),
+    ),
   );
 });
 
@@ -3525,7 +3545,7 @@ const invalidSnapshots: readonly InvalidSnapshot[] = [
     }),
   },
   {
-    name: 'a message ID colliding with a tool-call ID',
+    name: 'an unrelated message ID colliding with a tool-call ID',
     create: () => ({
       messages: [
         {
@@ -3541,8 +3561,7 @@ const invalidSnapshots: readonly InvalidSnapshot[] = [
         },
         {
           id: 'collision',
-          role: 'tool',
-          toolCallId: 'collision',
+          role: 'user',
           content: 'bad',
         },
       ],
@@ -6548,4 +6567,53 @@ test('a frame-only RESULT seed keeps an unreadable provider step a provider call
   // Assert
   expect(assistant?.serverToolCalls?.[0]?.kind).toBe('provider');
   expect(assistant?.toolCalls).toEqual([]);
+});
+
+test('rechecks recovery revision at the queued atomic commit boundary', () => {
+  const initial = createState();
+  const restore = devActions.restoreConversation({
+    expectedRevision: initial.recovery.revision,
+    threadId: 'restored-thread',
+    canonicalMessages: [],
+    state: undefined,
+    toolsByName: {},
+  });
+  const changed = reduceAll(initial, devActions.updateOptions({ debounce: 2 }));
+
+  expect(() => ɵprepareRootAction(changed, restore)).toThrow(/revision/i);
+
+  expect(changed.thread.threadId).toBeUndefined();
+  expect(changed.agUiMessages).toBe(initial.agUiMessages);
+  expect(changed.recovery.restorationEpoch).toBe(0);
+});
+
+test('rechecks idle ownership and interrupt expiry at the queued restore commit boundary', () => {
+  const initial = createState();
+  const active = reduceAll(
+    initial,
+    internalActions.logicalGenerationStarted({ generationId: 'active' }),
+  );
+  const restore = devActions.restoreConversation({
+    expectedRevision: initial.recovery.revision,
+    threadId: 'restored-thread',
+    canonicalMessages: [],
+    state: undefined,
+    toolsByName: {},
+    batch: {
+      id: 'local',
+      interrupts: [
+        {
+          id: 'approval',
+          reason: 'approval',
+          expiresAt: '2020-01-01T00:00:00Z',
+        },
+      ],
+    },
+  });
+
+  expect(() => ɵprepareRootAction(active, restore)).toThrow(/active/i);
+  expect(() => ɵprepareRootAction(initial, restore)).toThrow(/expired/i);
+
+  expect(initial.interrupts.pending).toBeUndefined();
+  expect(initial.recovery.restorationEpoch).toBe(0);
 });

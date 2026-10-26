@@ -1,4 +1,10 @@
 export {
+  ɵPROVIDER_HISTORY_EVENT_NAME,
+  ɵPROVIDER_HISTORY_METADATA_KEY,
+  ɵreadProviderHistory,
+  type ɵProviderHistory,
+} from './models/provider-history';
+export {
   ɵreconcileCompletionInput,
   type ɵCompletionInputState,
 } from './completion-input';

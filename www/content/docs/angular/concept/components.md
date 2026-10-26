@@ -9,7 +9,16 @@ meta:
 
 <p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
 
+<hb-docs-demo demo="generative-ui">
+</hb-docs-demo>
+
 ---
+
+## Before we start
+
+Keep the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). We will extend its trusted-component setup. Read [Skillet schemas](/docs/angular/concept/schema) for the values each component accepts.
+
+The snippets below focus on the component API. `MarkdownComponent` represents a component in your application that accepts a string `data` input; its implementation is omitted here. For complete checked examples, use [UI Chatbot with Tools](/docs/angular/recipes/ui-chatbot) or [Magic Text](/docs/angular/recipes/magic-text), which renders streamed Markdown.
 
 ## The `exposeComponent()` Function
 
@@ -180,7 +189,7 @@ chat = uiChatResource({
 | `debugName`  | `string`                                              | No       | The debug name for the UI chat resource                   |
 | `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource                |
 | `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource               |
-| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Thread identifier used to load or continue a conversation |
+| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Opaque AG-UI conversation identity; does not load history |
 
 ---
 
@@ -355,6 +364,12 @@ uiChatResource({
 Prefer rules over sample answers. A rule in a description lives next to the component it describes, so it changes when the component does and leaves with it when the component is removed. A hand-written sample answer silently drifts when an input or component changes.
 
 ---
+
+## Demo result
+
+<img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
+
+The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
 
 ## Next Steps
 

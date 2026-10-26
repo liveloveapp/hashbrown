@@ -73,7 +73,7 @@ test('renders the full React quick start page without unported elements', async 
 
   expect(html).toContain('<h1');
   expect(html).not.toContain('data-unported');
-  expect(html.match(/data-component="code-example"/g)?.length).toBe(7);
+  expect(html.match(/data-component="code-example"/g)?.length).toBe(5);
 });
 
 test('returns the page headings for the table of contents', async () => {
@@ -84,6 +84,10 @@ test('returns the page headings for the table of contents', async () => {
     docsComponents('react'),
   );
 
-  expect(headings[0]).toEqual({ level: 1, text: 'React Quick Start', id: 'react-quick-start' });
-  expect(headings.map((h) => h.id)).toContain('install');
+  expect(headings[0]).toEqual({
+    level: 1,
+    text: 'React Quickstart',
+    id: 'react-quickstart',
+  });
+  expect(headings.map((h) => h.id)).toContain('install-hashbrown');
 });

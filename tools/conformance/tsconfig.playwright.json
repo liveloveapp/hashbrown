@@ -14,7 +14,16 @@
     "provider.playwright.config.ts",
     "harness/**/*.ts",
     "specs/**/*.ts",
-    "provider/native-ui.spec.ts"
+    "provider/native-ui.spec.ts",
+    "local-models.playwright.config.ts",
+    "local-models/**/*.ts",
+    "local-provider.playwright.config.ts",
+    "local-media.playwright.config.ts",
+    "local-workflows.playwright.config.ts",
+    "local-native-tools.playwright.config.ts",
+    "local-native-schema.playwright.config.ts",
+    "local-native-ui.playwright.config.ts",
+    "local-native-ui-phases.playwright.config.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }

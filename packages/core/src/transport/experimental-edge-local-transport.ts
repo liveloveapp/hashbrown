@@ -31,6 +31,7 @@ interface LanguageModelSession {
 
 interface LanguageModelSessionRecord {
   promise: Promise<LanguageModelSession>;
+  initialization: string;
   owners: number;
   destructionPromise?: Promise<void>;
 }
@@ -83,6 +84,7 @@ export interface ExperimentalEdgeLocalTransportOptions {
 export class ExperimentalEdgeLocalTransport implements Transport {
   readonly name = 'ExperimentalEdgeLocalTransport';
   private sessionRecord?: LanguageModelSessionRecord;
+  private readonly sessionRecords = new Set<LanguageModelSessionRecord>();
   private readonly sessionDestructionPromises = new Set<Promise<void>>();
 
   constructor(
@@ -198,17 +200,16 @@ export class ExperimentalEdgeLocalTransport implements Transport {
 
   async destroy() {
     const destructionPromises = new Set(this.sessionDestructionPromises);
-    const sessionRecord = this.sessionRecord;
-
-    if (sessionRecord) {
-      const currentDestructionPromise =
+    if (this.sessionRecords.size === 0 && destructionPromises.size === 0) {
+      return;
+    }
+    for (const sessionRecord of this.sessionRecords) {
+      const destruction =
         sessionRecord.destructionPromise ??
         sessionRecord.promise.then((session) =>
           this.destroySessionRecord(sessionRecord, session),
         );
-      destructionPromises.add(currentDestructionPromise);
-    } else if (destructionPromises.size === 0) {
-      return;
+      destructionPromises.add(destruction);
     }
 
     const results = await Promise.allSettled(destructionPromises);
@@ -257,7 +258,12 @@ export class ExperimentalEdgeLocalTransport implements Transport {
     signal: AbortSignal,
     promptRequest: PromptRequest,
   ): LanguageModelSessionRecord {
-    if (this.sessionRecord && !this.sessionRecord.destructionPromise) {
+    const initialization = JSON.stringify(promptRequest.sessionOptions);
+    if (
+      this.sessionRecord &&
+      !this.sessionRecord.destructionPromise &&
+      this.sessionRecord.initialization === initialization
+    ) {
       return this.sessionRecord;
     }
 
@@ -278,9 +284,11 @@ export class ExperimentalEdgeLocalTransport implements Transport {
       );
     }
 
-    const sessionRecord = { promise, owners: 0 };
+    const sessionRecord = { promise, initialization, owners: 0 };
     this.sessionRecord = sessionRecord;
+    this.sessionRecords.add(sessionRecord);
     void promise.catch(() => {
+      this.sessionRecords.delete(sessionRecord);
       if (this.sessionRecord === sessionRecord) {
         this.sessionRecord = undefined;
       }
@@ -333,6 +341,7 @@ export class ExperimentalEdgeLocalTransport implements Transport {
         await session.destroy?.();
         this.options.events?.sessionState?.('destroyed');
       } finally {
+        this.sessionRecords.delete(record);
         if (this.sessionRecord === record) {
           this.sessionRecord = undefined;
         }
@@ -479,21 +488,33 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
 
   for (const message of input.messages) {
     if (
+      message.role === 'tool' ||
+      (message.role === 'assistant' && message.toolCalls?.length)
+    ) {
+      throw new TransportError(
+        'Edge Prompt API transport does not support tool history',
+        { retryable: false, code: 'FEATURE_UNSUPPORTED' },
+      );
+    }
+    if (
       message.role !== 'system' &&
+      message.role !== 'developer' &&
       message.role !== 'user' &&
       message.role !== 'assistant'
     ) {
       continue;
     }
-    const content =
-      typeof message.content === 'string'
-        ? message.content
-        : JSON.stringify(message.content ?? '');
-    const promptMessage = { role: message.role, content };
-    if (message.role === 'system') {
-      initialPrompts.push(promptMessage);
+    if (message.content !== undefined && typeof message.content !== 'string') {
+      throw new TransportError('Edge local transport requires text messages', {
+        retryable: false,
+        code: 'FEATURE_UNSUPPORTED',
+      });
+    }
+    const content = message.content ?? '';
+    if (message.role === 'system' || message.role === 'developer') {
+      initialPrompts.push({ role: 'system', content });
     } else {
-      messages.push(promptMessage);
+      messages.push({ role: message.role, content });
     }
   }
 
@@ -512,7 +533,19 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
   return {
     messages,
     options,
-    sessionOptions: initialPrompts.length > 0 ? { initialPrompts } : undefined,
+    sessionOptions:
+      initialPrompts.length > 0
+        ? {
+            initialPrompts: [
+              {
+                role: 'system',
+                content: initialPrompts
+                  .map((message) => message.content)
+                  .join('\n\n'),
+              },
+            ],
+          }
+        : undefined,
   };
 }
 

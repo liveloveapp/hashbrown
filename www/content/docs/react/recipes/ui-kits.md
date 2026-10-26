@@ -7,6 +7,15 @@ meta:
 
 # UI Kits in React
 
+Put related components in one kit, then let the model choose a card from that set. The recording renders WelcomeCard and StatusCard from the same trusted kit.
+
+<hb-docs-demo demo="ui-kits">
+</hb-docs-demo>
+
+The recording uses the checked kit example. Your model can choose only among the components and prop schemas that kit exposes. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workflows.tsx).
+
+<img src="/video/docs/ui-kits-result.png" alt="WelcomeCard and StatusCard rendered from the same trusted UI kit." width="920" height="441" loading="lazy" />
+
 UI Kits package trusted components into reusable generative UI building blocks. A kit gives Hashbrown the schema it needs to generate UI and the renderer it needs to turn a resolved UI value into React elements.
 
 Use UI Kits when you want to:

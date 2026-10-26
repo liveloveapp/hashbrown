@@ -28,16 +28,34 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
       <button
         data-testid="resume"
         type="button"
-        [disabled]="!batch() || isResuming()"
+        [disabled]="disabled() || !batch() || isResuming()"
         (click)="submit()"
       >
         Resume
+      </button>
+      <button
+        data-testid="decline"
+        type="button"
+        [disabled]="disabled() || !batch() || isResuming()"
+        (click)="submit('decline')"
+      >
+        Decline
+      </button>
+      <button
+        data-testid="cancel"
+        type="button"
+        [disabled]="disabled() || !batch() || isResuming()"
+        (click)="submit('cancel')"
+      >
+        Cancel
       </button>
       <div data-testid="resume-error">{{ error() }}</div>
     </section>
   `,
 })
 export class InterruptControls {
+  /** Whether application recovery policy blocks decisions. */
+  readonly disabled = input(false);
   /** The currently displayed immutable interrupt batch. */
   readonly batch = input.required<PendingInterruptBatch | undefined>();
   /** Whether a complete resume interaction is in progress. */
@@ -46,7 +64,9 @@ export class InterruptControls {
   readonly resume = input.required<(options: ResumeOptions) => void>();
   protected readonly error = signal('');
 
-  protected submit(): void {
+  protected submit(
+    decision: 'approve' | 'decline' | 'cancel' = 'approve',
+  ): void {
     const batch = this.batch();
     if (!batch) return;
     this.error.set('');
@@ -55,8 +75,10 @@ export class InterruptControls {
         batchId: batch.id,
         entries: batch.interrupts.map(({ id }) => ({
           interruptId: id,
-          status: 'resolved',
-          payload: { approved: true },
+          status: decision === 'cancel' ? 'cancelled' : 'resolved',
+          ...(decision === 'cancel'
+            ? {}
+            : { payload: { approved: decision === 'approve' } }),
         })),
       });
     } catch (cause) {

@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { listDocs, SDKS } from '../../src/lib/content';
 import {
   buildSearchIndex,
   formatMarkdownCell,
@@ -57,9 +58,18 @@ test('a table has one row per entry in column order', () => {
 });
 
 test('the sitemap lists every docs page of both SDKs with its frontmatter', () => {
+  const expectedUrls = SDKS.flatMap((sdk) =>
+    listDocs(sdk).map((slug) => `/docs/${sdk}/${slug.join('/')}`),
+  );
+
   const entries = listSitemapEntries();
 
-  expect(entries).toHaveLength(93);
+  expect(entries.map((entry) => entry.url).sort()).toEqual(expectedUrls.sort());
+  for (const sdk of ['react', 'angular']) {
+    expect(entries).toContainEqual(
+      expect.objectContaining({ url: `/docs/${sdk}/platform/dotnet` }),
+    );
+  }
   expect(entries).toContainEqual({
     url: '/docs/angular/concept/components',
     title: 'Generative UI with Angular Components: Hashbrown Angular Docs',

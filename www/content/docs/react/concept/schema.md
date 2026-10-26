@@ -1,282 +1,93 @@
 ---
-title: 'Skillet Schema Language: Hashbrown React Docs'
+title: 'Skillet schemas: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Skillet is a Zod-like schema language that is LLM-optimized.'
----
-# Skillet Schema Language
-
-<p class="subtitle">Skillet is a Zod-like schema language that is LLM-optimized.</p>
-
-- Skillet is strongly typed
-- Skillet purposefully limits the schema to that which is supported by LLMs
-- Skillet optimizes the schema for processing by an LLM
-- Skillet tightly integrates streaming
-
+    content: 'Describe typed model responses and choose which values can stream.'
 ---
 
-## Methods
+# Skillet schemas
 
-| Method        | Signature                    | Example                               |
-| ------------- | ---------------------------- | ------------------------------------- |
-| `string`      | `string(desc, constraints?)` | `s.string('name', { pattern: '^@' })` |
-| `number`      | `number(desc, constraints?)` | `s.number('age', { minimum: 0 })`     |
-| `integer`     | `integer(desc, constraints?)`| `s.integer('count', { maximum: 10 })` |
-| `boolean`     | `boolean(desc: string)`      | `s.boolean('active')`                 |
-| `literal`     | `literal<T>(value: T)`       | `s.literal('success')`                |
-| `object`      | `object(desc, shape)`        | `s.object('user', {})`                |
-| `array`       | `array(desc, item, constraints?)` | `s.array('items', s.string(), { minItems: 1 })` |
-| `anyOf`       | `anyOf(options)`             | `s.anyOf([s.string(), s.number()])`   |
-| `enumeration` | `enumeration(desc, entries)` | `s.enumeration('status', ['a', 'b'])` |
-| `nullish`     | `nullish()`                  | `s.nullish()`                         |
+A schema describes the data our application expects. We can use one for a model response, a tool argument, or the props of a trusted component. Skillet gives us a TypeScript API for those shapes and controls which values can appear while a response streams.
 
----
+The recording shows a typed flight filter in ATC. Below, we will start with a smaller shopping-list schema that we can use in the next guide.
 
-## Primitive Values
+<hb-docs-demo demo="schemas">
+</hb-docs-demo>
 
-<hb-code-example header="examples">
+## Before we start
+
+Complete the [Quickstart](/docs/react/start/quick) so your application can reach its endpoint. Skillet is exported as `s` from `@hashbrownai/core`.
+
+## Describe one useful response
 
 ```ts
-// string
-s.string("The user's full name");
+import { s } from '@hashbrownai/core';
 
-// number
-s.number("The user's age in years");
-
-// integer
-s.integer('The number of items in the cart');
-
-// boolean
-s.boolean('Whether the user account is active');
-
-// literal
-s.literal('success');
-```
-
-</hb-code-example>
-
----
-
-## Compound Values
-
-<hb-code-example header="objects">
-
-```ts
-s.object('A user profile', {
-  name: s.string("The user's name"),
-  age: s.number("The user's age"),
-  active: s.boolean('Whether the user is active'),
+const shoppingListSchema = s.object('A shopping list draft', {
+  items: s.streaming.array(
+    'The requested shopping items',
+    s.object('A complete shopping item', {
+      name: s.string('The product name'),
+      quantity: s.integer('How many to add'),
+    }),
+  ),
 });
+
+type ShoppingList = s.Infer<typeof shoppingListSchema>;
 ```
 
-</hb-code-example>
+The root object contains an `items` array. Each item has a string name and integer quantity. The descriptions explain what those values mean to the model. `s.Infer<typeof shoppingListSchema>` derives the TypeScript response type from the same schema.
 
-<hb-code-example header="array">
+The streaming array can reveal an item once its required name and quantity resolve. An ordinary object keeps those values together, but it can resolve before its closing brace arrives. Treat it as a preview until the response finishes and application validation passes. Continue with [Structured output](/docs/react/concept/structured-output) for the complete checked example and [Streaming](/docs/react/concept/streaming) for other streaming boundaries.
 
-```ts
-s.array(
-  'A list of users',
-  s.object('A user', {
-    name: s.string("The user's name"),
-    email: s.string("The user's email"),
-  }),
-);
-```
+## Choose the fields your interface needs
 
-</hb-code-example>
+| Value                  | Skillet example                                   |
+| ---------------------- | ------------------------------------------------- |
+| Text                   | `s.string('The product name')`                    |
+| Whole number           | `s.integer('The item quantity')`                  |
+| Number with fractions  | `s.number('The measured weight')`                 |
+| True or false          | `s.boolean('Whether the item is checked')`        |
+| One fixed value        | `s.literal('Draft')`                              |
+| One of several strings | `s.enumeration('Priority', ['low', 'high'])`      |
+| Named fields           | `s.object('An item', { name: s.string('Name') })` |
+| Repeated values        | `s.array('Tags', s.string('One tag'))`            |
 
----
-
-## AnyOf
-
-<hb-code-example header="anyOf">
+An object describes the fields in its shape. If the interface supports different response kinds, give each kind an explicit literal tag:
 
 ```ts
-s.anyOf([
-  s.object('Success response', {
-    status: s.literal('success'),
-    data: s.string('The response data'),
+const responseSchema = s.anyOf([
+  s.object('A draft', {
+    type: s.literal('Draft'),
+    name: s.string('The proposed name'),
   }),
-  s.object('Error response', {
-    status: s.literal('error'),
-    message: s.string('The error message'),
+  s.object('A clarification request', {
+    type: s.literal('Clarification'),
+    question: s.string('What we need to ask the user'),
   }),
 ]);
 ```
 
-</hb-code-example>
+Your interface can branch on `type`. This is useful when the model should ask for missing information instead of inventing a required value. Use `s.nullish()` as a branch when your contract explicitly permits a nullish value.
 
----
-
-## Enumeration
-
-<hb-code-example header="enumeration">
+## Add constraints deliberately
 
 ```ts
-s.enumeration('Task priority level', ['low', 'medium', 'high', 'urgent']);
+const quantity = s.integer('The item quantity', { minimum: 1, maximum: 20 });
+const tags = s.array('Tags', s.string('One tag'), { minItems: 1, maxItems: 5 });
+const username = s.string('A handle', { pattern: '^@[a-z0-9_]+$' });
 ```
 
-</hb-code-example>
+Numeric constraints include bounds and `multipleOf`. Arrays support `minItems` and `maxItems`. Strings support `pattern` and supported `format` hints. A string's `format` is forwarded to the provider but is not validated by Hashbrown on the client; validate it in your application when required.
 
----
+Keep application checks close to the action they protect. The shopping-list guide separately validates quantities, trimmed names and item count before Apply. That makes the difference between the model's response contract and the application's accepted values visible. A schema does not establish ownership, permission, inventory availability, or successful completion of a run.
 
-## Nullish
+## Use another schema library
 
-<hb-code-example header="nullish">
+Hashbrown also accepts supported Standard JSON Schema objects through the `~standard` specification. It normalizes those schemas to Skillet for parsing and validation. Unsupported keywords throw; a schema accepted by another library may use constructs outside that subset.
 
-```ts
-s.anyOf([s.string('A string value'), s.nullish()]);
-```
+Use `s.InferSchemaInput<T>` and `s.InferSchemaOutput<T>` when a reusable type must support both Skillet and Standard JSON Schema. For explicit conversion, use `s.fromStandardJsonSchema(schema, { mode: 'input' })` or output mode as appropriate. See the [Skillet reference](/api/core/s) for supported constructs and signatures.
 
-</hb-code-example>
+## Next steps
 
----
-
-## Inferring Types
-
-Skillet infers a static type from a schema using `s.Infer<T>`.
-
-<hb-code-example header="infer">
-
-```ts
-// 1. define the schema
-const schema = s.streaming.object('The result', {
-  code: s.streaming.string('The JavaScript code to run'),
-});
-
-// 2. define static type using s.Infer<T>
-type Result = s.Infer<schema>;
-
-// 3. use the type
-const mockResult: Result = {
-  code: 'let i = 0',
-};
-```
-
-</hb-code-example>
-
----
-
-## Standard JSON Schema
-
-Hashbrown can ingest Standard JSON Schema objects (the `~standard` spec) alongside Skillet when defining tools, structured outputs, and component props. Internally, Hashbrown normalizes Standard JSON Schema to draft-07 JSON Schema and then converts it to Skillet for streaming and validation.
-
-If you need explicit conversion, use `s.fromStandardJsonSchema(schema, { mode: 'input' | 'output' })`. To type a schema regardless of whether it is Skillet or Standard JSON Schema, use `s.InferSchemaInput<T>` and `s.InferSchemaOutput<T>`. For Standard JSON Schema types specifically, use `s.StandardJSONSchemaV1.InferInput<T>` and `s.StandardJSONSchemaV1.InferOutput<T>`.
-
-Standard JSON Schema support is limited to the Skillet-compatible subset and throws on unsupported keywords:
-
-- `string` with `pattern` and `format` (date-time, time, date, duration, email, hostname, ipv4, ipv6, uuid)
-- `number` / `integer` with `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
-- `boolean`, `null`
-- `const` for string/number/boolean only
-- `enum` for string values only
-- `object` with `properties` (all required) and `additionalProperties: false`
-- `array` with a single `items` schema and optional `minItems`/`maxItems`
-- `anyOf` unions
-
----
-
-## Numeric Types
-
-Skillet supports numeric types using either the `number()` or `integer()` function.
-The `number()` function allows for floating-point numbers, while the `integer()` function restricts the value to integers.
-
-Skillet also supports optional numeric constraints like `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, and `multipleOf`.
-
----
-
-## String Constraints
-
-```ts
-s.string('Username', {
-  pattern: '^@[a-z0-9_]+$',
-  format: 'email',
-});
-```
-
-- `pattern` is enforced in Hashbrown validation.
-- `format` is forwarded to the model provider but not validated client-side.
-- Supported `format` values: `date-time`, `time`, `date`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uuid`.
-
----
-
-## Numeric Constraints
-
-```ts
-s.number('Score', {
-  minimum: 0,
-  exclusiveMaximum: 10,
-  multipleOf: 0.5,
-});
-```
-
----
-
-## Array Constraints
-
-```ts
-s.array('Tags', s.string('Tag'), {
-  minItems: 1,
-  maxItems: 5,
-});
-```
-
----
-
-## Streaming
-
-We saved the best bite for last.
-Skillet supports streaming responses out of the box.
-
-To enable streaming, simply add the `streaming` keyword to your schema.
-
-<hb-code-example header="streaming">
-
-```ts
-// stream strings
-s.streaming.string();
-
-// stream objects
-s.streaming.object();
-
-// stream arrays
-s.streaming.array();
-```
-
-</hb-code-example>
-
-Skillet eagerly parses fragments of the streamed response from the LLM.
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="/api/core/s">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Full API Reference</h4>
-      <p>Check out the full Skillet schema</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/components">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose React components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Use [Structured output](/docs/react/concept/structured-output) to generate and review a shopping-list draft with this schema. Use [Exposing components](/docs/react/concept/components) to validate generated component props, or [Tool calling](/docs/react/concept/functions) to describe arguments for an application function.

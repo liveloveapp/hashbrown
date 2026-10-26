@@ -68,3 +68,34 @@ test('vercel.json schedules lifecycle every ten minutes and inbox recovery every
     { path: '/_/cron/inbox-recovery', schedule: '*/5 * * * *' },
   ]);
 });
+
+test('retired Remote MCP HTML and markdown URLs permanently redirect to each SDK tool guide', async () => {
+  const redirects = await nextConfig.redirects?.();
+
+  const retired = redirects?.filter((redirect) =>
+    redirect.source.includes('/recipes/remote-mcp'),
+  );
+
+  expect(retired).toEqual([
+    {
+      source: '/docs/react/recipes/remote-mcp',
+      destination: '/docs/react/concept/functions',
+      statusCode: 301,
+    },
+    {
+      source: '/docs/react/recipes/remote-mcp.md',
+      destination: '/docs/react/concept/functions',
+      statusCode: 301,
+    },
+    {
+      source: '/docs/angular/recipes/remote-mcp',
+      destination: '/docs/angular/concept/functions',
+      statusCode: 301,
+    },
+    {
+      source: '/docs/angular/recipes/remote-mcp.md',
+      destination: '/docs/angular/concept/functions',
+      statusCode: 301,
+    },
+  ]);
+});

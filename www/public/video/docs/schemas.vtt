@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.600
+The result. A natural-language request becomes a filter applied to the air traffic map.
+
+00:00:02.600 --> 00:00:09.257
+Define the shape. The shared Skillet schema describes the filter fields.
+
+00:00:09.257 --> 00:00:18.781
+Watch the filter arrive. Hashbrown parses structured output as the response arrives and the app applies it.
+
+00:00:18.781 --> 00:00:23.081
+Reuse the contract. The app shares filter fields between its schema and query behavior.
+
+00:00:23.081 --> 00:00:28.481
+Inspect the result. The map filter changes the visible aircraft without adding a chat turn.

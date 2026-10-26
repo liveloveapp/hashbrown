@@ -1,0 +1,15 @@
+threadplane-react
+
+Recorded through the actual installed react consumer. Provider-native Responses events are scripted over local HTTP. No live model or provider key. Presentation styles, header and footer are added. No narration. Both separately installed consumers passed behavior checks before either recording was replaced.
+
+The first two seconds preview the final result; the complete interaction follows.
+
+The actual installed React ChatInput and TextTranscript sends a shipping question, displays a streaming reply, and sends a follow-up containing the completed conversation. Hashbrown's actual OpenAI adapter runs on the server.
+
+Observed phases before the two-second preview is added:
+0.98s: Ask where to find shipping information.
+2.17s: The actual Threadplane transcript displays the streamed shipping reply.
+3.37s: Send a follow-up in the same conversation.
+4.82s: The follow-up includes the completed first turn with its canonical message ID.
+
+Stop, failure, recovery, keyboard interaction, mobile layout and navigation cancellation were checked separately in both consumers. Navigation cancellation does not independently establish every internal disposal callback.

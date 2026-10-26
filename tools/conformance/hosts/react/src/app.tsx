@@ -1,3 +1,7 @@
+import { LocalUiWorkflow } from './local-ui-workflow';
+import { LocalMedia } from './local-media';
+import { LocalWorkflow } from './local-workflow';
+import { LocalSchemaWorkflow } from './local-schema-workflow';
 import { CompletionSmoke } from './completion-smoke';
 import { DecisionSmoke } from './decision-smoke';
 import { PlainSmoke } from './plain-smoke';
@@ -24,10 +28,33 @@ function readScenario(): Scenario {
 /** Minimal React fixture shell selected by the scenario query parameter. */
 export function App() {
   const scenario = readScenario();
+  const localWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localWorkflow') ===
+    'true';
+
+  const localMedia = new URL(globalThis.location.href).searchParams.get(
+    'localMedia',
+  );
+  const localSchemaWorkflow =
+    new URL(globalThis.location.href).searchParams.get(
+      'localSchemaWorkflow',
+    ) === 'true';
+
+  const localUiWorkflow =
+    new URL(globalThis.location.href).searchParams.get('localUiWorkflow') ===
+    'true';
 
   return (
     <main data-testid="fixture-ready">
-      {scenario === 'plain' || scenario === 'tool' ? (
+      {localMedia === 'image' || localMedia === 'audio' ? (
+        <LocalMedia />
+      ) : localUiWorkflow ? (
+        <LocalUiWorkflow />
+      ) : localSchemaWorkflow ? (
+        <LocalSchemaWorkflow />
+      ) : localWorkflow ? (
+        <LocalWorkflow />
+      ) : scenario === 'plain' || scenario === 'tool' ? (
         <PlainSmoke scenario={scenario} />
       ) : scenario === 'structured' ? (
         <StructuredSmoke />

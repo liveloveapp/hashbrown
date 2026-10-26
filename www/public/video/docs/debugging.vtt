@@ -1,0 +1,19 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.300
+The result. The ATC inspector shows the actual browser tool-call arguments for a completed request.
+
+00:00:02.300 --> 00:00:06.322
+Open the inspector. Open the ATC developer drawer and enlarge it with its keyboard-accessible resize handle.
+
+00:00:06.322 --> 00:00:11.592
+Inspect the route. Type a prompt and watch the Router tab identify its destination and confidence.
+
+00:00:11.592 --> 00:00:17.543
+Watch UI JSON arrive. Send the request with the UI stream tab selected to inspect the generated component data.
+
+00:00:17.543 --> 00:00:23.271
+Inspect tool arguments. The Tools tab shows the aircraft query and highlight calls executed by the app.
+
+00:00:23.271 --> 00:00:27.950
+Review the decision. The Router tab retains the submitted prompt, selected chat route, and confidence scores.

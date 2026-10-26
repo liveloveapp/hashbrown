@@ -7,7 +7,14 @@ import type {
   ReasoningContentBlock,
   ToolResultContentBlock,
 } from '@aws-sdk/client-bedrock-runtime';
-import type { BedrockHashbrownRunAgentInput } from './types';
+import type {
+  BedrockBuiltInTools,
+  BedrockHashbrownRunAgentInput,
+} from './types';
+import {
+  isBedrockProviderMetadata,
+  readBedrockHistory,
+} from './bedrock-history';
 
 type BedrockDocument = Extract<
   ToolResultContentBlock,
@@ -77,6 +84,7 @@ function mapReasoningMessage(
 function mapPrecedingReasoning(
   messages: Message[],
   assistantIndex: number,
+  representedMessageIds: ReadonlySet<string>,
 ): ContentBlock[] {
   let reasoningStart = assistantIndex;
   while (
@@ -88,6 +96,7 @@ function mapPrecedingReasoning(
 
   return messages
     .slice(reasoningStart, assistantIndex)
+    .filter((message) => !representedMessageIds.has(message.id))
     .flatMap((message): ContentBlock[] => {
       if (message.role !== 'reasoning') {
         return [];
@@ -100,17 +109,20 @@ function mapPrecedingReasoning(
 function mapAssistantMessage(
   message: Extract<Message, { role: 'assistant' }>,
   reasoning: ContentBlock[],
+  providerCallIds: ReadonlySet<string>,
 ): BedrockMessage | undefined {
   const content: ContentBlock[] = [
     ...reasoning,
     ...(message.content ? [{ text: message.content }] : []),
-    ...(message.toolCalls ?? []).map((toolCall): ContentBlock => ({
-      toolUse: {
-        toolUseId: toolCall.id,
-        name: toolCall.function.name,
-        input: parseJson(toolCall.function.arguments) as BedrockDocument,
-      },
-    })),
+    ...(message.toolCalls ?? [])
+      .filter((call) => !providerCallIds.has(call.id))
+      .map((toolCall): ContentBlock => ({
+        toolUse: {
+          toolUseId: toolCall.id,
+          name: toolCall.function.name,
+          input: parseJson(toolCall.function.arguments) as BedrockDocument,
+        },
+      })),
   ];
 
   return content.length === 0 ? undefined : { role: 'assistant', content };
@@ -155,6 +167,8 @@ function mapMessage(
   messages: Message[],
   message: Message,
   index: number,
+  providerCallIds: ReadonlySet<string>,
+  representedMessageIds: ReadonlySet<string>,
 ): BedrockMessage | undefined {
   switch (message.role) {
     case 'system':
@@ -172,10 +186,14 @@ function mapMessage(
     case 'assistant':
       return mapAssistantMessage(
         message,
-        mapPrecedingReasoning(messages, index),
+        mapPrecedingReasoning(messages, index, representedMessageIds),
+        providerCallIds,
       );
     case 'tool':
-      return mapToolResult(message);
+      return providerCallIds.has(message.toolCallId) ||
+        isBedrockProviderMetadata(message.metadata)
+        ? undefined
+        : mapToolResult(message);
   }
 }
 
@@ -226,7 +244,9 @@ function mapTool(tool: Tool): BedrockTool.ToolSpecMember {
 export function createBedrockRequestOptions(
   input: BedrockHashbrownRunAgentInput,
   model: string,
+  context: { builtInTools?: BedrockBuiltInTools } = {},
 ): ConverseStreamCommandInput {
+  const history = readBedrockHistory(input.messages);
   const system = input.messages.flatMap((message) =>
     message.role === 'system' || message.role === 'developer'
       ? [{ text: message.content }]
@@ -234,11 +254,34 @@ export function createBedrockRequestOptions(
   );
   const messages = mergeAdjacentUserMessages(
     input.messages.flatMap((message, index) => {
-      const mapped = mapMessage(input.messages, message, index);
+      const native = history.responses.get(message.id);
+      if (native) return [{ role: 'assistant' as const, content: native }];
+      if (history.representedMessageIds.has(message.id)) return [];
+      const mapped = mapMessage(
+        input.messages,
+        message,
+        index,
+        history.providerCallIds,
+        history.representedMessageIds,
+      );
       return mapped ? [mapped] : [];
     }),
   );
-  const tools = input.tools.map(mapTool);
+  const tools: BedrockTool[] = [
+    ...input.tools.map(mapTool),
+    ...(context.builtInTools?.webSearch
+      ? [
+          {
+            systemTool: {
+              ...(context.builtInTools.webSearch === true
+                ? {}
+                : structuredClone(context.builtInTools.webSearch)),
+              name: 'nova_grounding',
+            },
+          },
+        ]
+      : []),
+  ];
   const responseSchema = input.forwardedProps?.hashbrown?.responseSchema;
 
   return {
