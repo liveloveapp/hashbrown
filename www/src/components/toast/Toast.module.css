@@ -168,13 +168,11 @@
   padding: 16px;
   min-width: 280px;
   max-width: 480px;
-  box-shadow: 0 8px 16px rgba(61, 60, 58, 0.24);
   border: 1px solid;
-  border-radius: 12px;
-  background: var(--vanilla-ivory, #faf9f0);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
   font:
-    400 14px/20px 'Fredoka',
-    sans-serif;
+    400 14px/20px var(--font-sans);
 }
 
 .icon {

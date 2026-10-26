@@ -38,6 +38,5 @@
   margin: 0;
   color: var(--gray, #5e5c5a);
   font:
-    350 13px/130% 'JetBrains Mono',
-    monospace;
+    350 13px/130% var(--font-code);
 }

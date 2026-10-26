@@ -1,68 +1,70 @@
 /* Port of www/analog/src/app/components/home/RealApp.ts. */
 .section {
   display: block;
-  padding: 24px 0 72px;
+  padding: 0 0 var(--section-gap);
 }
 
 .card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 32px;
+  gap: var(--space-8);
   align-items: center;
-  padding: 28px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 24px;
-  background: #fff;
+  padding: var(--space-6);
+  border-radius: var(--radius-shot);
+  background: var(--color-surface);
 }
 
 .card h2 {
-  font: 800 36px/1.1 var(--font-heading);
+  font: 600 36px/1.1 var(--font-heading);
   letter-spacing: -0.03em;
-  color: var(--chocolate-brown);
+  color: var(--color-ink);
 }
 
 .card p {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   font:
-    400 16px/1.55 'Fredoka',
-    sans-serif;
+    400 16px/1.55 var(--font-sans);
   color: var(--gray);
 }
 
 .built {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  margin: 22px 0;
+  gap: var(--space-3);
+  margin: var(--space-6) 0;
 }
 
 .tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--vanilla-ivory);
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
   color: inherit;
   text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.tile:hover {
+  background: var(--color-highlight);
 }
 
 .tile strong {
-  font: 700 17px/1.3 var(--font-heading);
+  font: 600 17px/1.3 var(--font-heading);
   color: var(--gray-dark);
 }
 
 .tile span {
   font:
-    400 13.5px/1.4 'Fredoka',
-    sans-serif;
+    400 13.5px/1.4 var(--font-sans);
   color: var(--gray);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .shot img,
@@ -70,8 +72,8 @@
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-shot);
 }
 
 /* Matches the breakpoint the old <picture> source used. */
@@ -92,8 +94,8 @@
 @media screen and (min-width: 1024px) {
   .card {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    gap: 36px;
-    padding: 36px;
+    gap: var(--space-12);
+    padding: var(--space-12);
   }
 
   .built {

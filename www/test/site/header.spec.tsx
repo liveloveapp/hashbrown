@@ -45,7 +45,7 @@ test('the header renders the nav labels and logo', () => {
 
   expect(html).toContain('src="/image/logo/word-mark.svg"');
   expect(html).toContain('alt="hashbrown"');
-  for (const label of ['docs', 'api', 'blog', 'Quick start']) {
+  for (const label of ['Docs', 'API', 'Blog', 'Quick start']) {
     expect(html).toContain(`>${label}</a>`);
   }
   expect(html).not.toContain('>example</a>');
@@ -57,12 +57,12 @@ test('the demo link opens the atc app in a new tab and says so', () => {
 
   const demo =
     html.match(
-      /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*>demo<\/a>/,
+      /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*>Demo<\/a>/,
     )?.[0] ?? '';
 
   expect(demo).toContain('target="_blank"');
   expect(demo).toContain('rel="noopener"');
-  expect(demo).toContain('aria-label="demo (opens in a new tab)"');
+  expect(demo).toContain('aria-label="Demo (opens in a new tab)"');
 });
 
 test('the search button has a name and keeps the shortcut hint', () => {
@@ -104,7 +104,7 @@ test('the mobile menu panel links to the demo, blog and quick start', () => {
   expect(html).toMatch(/<button[^>]*aria-label="Close menu"/);
   expect(html).not.toContain('href="/samples"');
   expect(html).toMatch(
-    /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*target="_blank"[^>]*>demo<\/a>/,
+    /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*target="_blank"[^>]*>Demo<\/a>/,
   );
   expect(html).toContain('href="/blog"');
   expect(html).toContain('href="/docs/react/start/quick"');
