@@ -773,8 +773,19 @@ export const selectIsLoading = select(
   selectIsGenerating,
   selectIsReceiving,
   selectIsRunningToolCalls,
-  (isSending, isGenerating, isReceiving, isRunningToolCalls) =>
-    isSending || isGenerating || isReceiving || isRunningToolCalls,
+  ɵselectToolTurnOwnership,
+  (
+    isSending,
+    isGenerating,
+    isReceiving,
+    isRunningToolCalls,
+    reservedToolTurn,
+  ) =>
+    isSending ||
+    isGenerating ||
+    isReceiving ||
+    isRunningToolCalls ||
+    reservedToolTurn !== undefined,
 );
 
 /** Selects actionable interrupt ownership. @internal */

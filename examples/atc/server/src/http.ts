@@ -10,7 +10,7 @@ export type NodeHandler = (
 export class BodyTooLargeError extends Error {}
 
 /** The largest request body any route reads. */
-const MAX_BODY_BYTES = 256 * 1024;
+export const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * Reads and parses a JSON request body. Throws `BodyTooLargeError` past

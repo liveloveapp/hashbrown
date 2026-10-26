@@ -75,6 +75,28 @@ dependencies); this file covers atc.
 | `e2e/prose/`                                           | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                                             |
 | `e2e/decide/`                                          | Live decide eval: labelled router and cards probes sent to TypeSafe Jev, scored the way the apps act                                                                          |
 
+## Optional agent backend
+
+`ATC_CHAT_BACKEND=openai|b4run` selects `/api/run`; OpenAI is the default.
+`server/src/run-policy.ts` owns shared tool and response-schema pinning.
+`server/src/b4run/` owns the private agent adapter, anonymous identity, and
+storage. `server/src/app/atc/index.ts` is the authored agent route;
+`server/agent/b4.config.ts` configures its generated app. The packaging tool
+precompiles ESM inputs under ignored `server/.b4-app/` before invoking public
+b4.run build APIs. Never expose the generated runtime directly.
+
+Keep browser tools and component selection in Hashbrown. No server tools,
+subagents, history restoration, or UI backend selector are part of this example.
+Retain schema narrowing across the full browser-tool turn in both frameworks.
+The backend browser checks in `e2e/src/backends.spec.ts` use a native Node fixture
+and the real `/api/run` path. Use the coherent published b4.run 0.15.4 package
+set for validation; do not rely on a local source overlay. Dependency-pin
+updates still require approval.
+
+Cleanup is an operator command (`npx nx prune-agent-state atc-server --offline`)
+that requires every agent instance to be stopped. Do not run it against user
+state as part of implementation verification. No automatic scheduler is present.
+
 ## Add a component or a tool
 
 - Component: README, "Add a component". A new card goes in four places, in the same
@@ -156,6 +178,8 @@ dependencies); this file covers atc.
 npx nx run-many -t build,test,lint -p atc-shared atc-server atc-angular atc-react atc-e2e atc
 npx nx e2e atc-e2e
 npx nx typecheck atc-e2e
+# Opt-in shared-store checks; disposable Postgres only (creates tables/prunes records):
+ATC_TEST_DATABASE_URL=postgresql://... npx nx test-integration atc-server
 # Live, opt-in, cost a little per run:
 npx nx decide-eval atc-e2e   # needs TYPESAFE_API_KEY
 npx nx prose-eval atc-e2e    # needs OPENAI_API_KEY and the dev servers
