@@ -111,9 +111,15 @@ export async function withDotnetFixture<T>(
           const data = frame.toString('utf8').match(/^data:\s*(\{.*\})/m)?.[1];
           if (data) {
             const payload = JSON.parse(data) as {
+              type?: string;
+              delta?: string;
               choices?: Array<{ delta?: { content?: string } }>;
             };
-            characters += payload.choices?.[0]?.delta?.content?.length ?? 0;
+            characters +=
+              payload.type === 'response.output_text.delta' &&
+              typeof payload.delta === 'string'
+                ? payload.delta.length
+                : (payload.choices?.[0]?.delta?.content?.length ?? 0);
           }
           if (!paused && characters >= streamControl.pauseAfter) {
             paused = true;
