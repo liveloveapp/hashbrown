@@ -95,8 +95,11 @@ artifacts, and PR #754's validation record includes the result.
 The existing worker qualification uses **0.2.85**; current official release is
 [0.2.86](https://github.com/mlc-ai/web-llm/releases/tag/v0.2.86).
 Hashbrown still takes an application-owned structural engine and adds no WebLLM
-dependency. Its current adapter supports text, schemas and trusted UI; it rejects
-tools and media before engine generation.
+dependency. Published 0.8.2 supports text, schemas and trusted UI and rejects tools and media
+before engine generation. PR #764 adds explicitly enabled, bounded user images
+with an application-owned resolver and image-capable engine; see the
+[real vision qualification](2026-10-25-webllm-vision-qualification.md). Tools
+and audio remain unsupported by this adapter.
 
 Both versions' native tool path rejects supplied system messages and
 `response_format`, injects its own Hermes instructions/schema, and allows only
@@ -112,22 +115,23 @@ IDs. Merely passing `tools` through would lose required semantics.
 
 WebLLM 0.2.86 adds audio input to its upstream protocol, guarded by pipeline
 input capabilities. That does not add audio to Hashbrown or establish a compatible
-loaded model. A separate explicit image opt-in is feasible without a dependency;
-real vision qualification needs an application-provided runtime and compatible
-model. Tool/schema/UI support needs an upstream change or a separately designed
+loaded model. The image opt-in uses an application-provided runtime and compatible model;
+it does not select, install or load a model for an application. Tool/schema/UI support needs an upstream change or a separately designed
 protocol. No system instruction, output schema or history is silently discarded.
 
 ## Release check and remaining decisions
 
-Two fresh npm reads, including `--prefer-online`, still returned core **0.8.1**,
-`gitHead: 7b38a6074818c9f92b641242aec20dc8a7c2347e`, at this snapshot.
-GitHub's latest release was v0.8.1. That commit predates #749, so publication of
-the phase API is not yet verified. Direct inspection of the downloaded 0.8.1
-npm tarball confirms native tools and `schemaFinalization` declarations are
-present, while `toolPhase` and `ChromeToolsTurnContext` are absent. Package
-integrity: `sha512-W01Xb86KbgoirQ2rbA9EhSLIyefziTZ8XQpe/7trwanshjo8MbZmuaYKTLdp4vN9xJKNMI9xcC6/ThmLRJ9fGQ==`.
-The user requested deriving the version from npm/GitHub directly; both agree on
-0.8.1. Release verification is resolved: the phase API awaits a later release.
+The earlier snapshot found core 0.8.1 and correctly recorded that it predates
+#749. A subsequent fresh npm read and GitHub CLI check now agree on **0.8.2**,
+`gitHead: a9436b48e6d46dc399b6c465c598661cf4ecf5b7`, published October 25
+in the user's local timezone. Direct inspection of that registry tarball verifies
+`toolPhase`, `ChromeToolsTurnContext` and `schemaFinalization` declarations.
+The phase API is published. The new WebLLM image API is absent from 0.8.2 and
+requires PR #764's source changes or a later release.
+
+Registry tarball SHA-256:
+`97063b6f3f0e3f79e6a72e921850b7ddce7c4ba499328b260b9b0f06ca2b4023`.
+Integrity: `sha512-QDiXDH8gzSBYFF00MQQlflYVreYGOzzudE1Z2UkRnCFTvNr03xqj/okIoAxXOltBkhHSAHH5joMIiV9v5CD4eA==`.
 
 The user has approved Gemma `v4_4b` first; its acquisition and fixed qualification
 are tracked in the [4B report](2026-10-25-gemma4b-qualification.md).
@@ -136,7 +140,7 @@ Remaining: resolve the Gemma E4B native-tool creation gate before qualifying
 its tool workflows;
 minimize nested UI failures without weakening canaries; follow Chromium empty
 call-ID issue [577500782](https://issues.chromium.org/issues/577500782) and batch
-identity constraints; design WebLLM media/alternative tool interop; verify a
+identity constraints; design WebLLM audio/alternative tool interop; verify a
 future Ollama grammar/truncation fix and rerun receipt workflows. Cross-hardware
 work remains explicitly deferred.
 

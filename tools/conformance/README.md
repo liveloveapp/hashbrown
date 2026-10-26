@@ -107,7 +107,7 @@ model, or native inference session, and does not validate model vision quality.
 The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
 
 This image API requires this feature branch's source changes or a future SDK release; published
-version 0.8.1 does not include it. Applications opt in with
+version 0.8.2 does not include it. Applications opt in with
 `experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
 unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
 Every image source is resolved by the application into `{ blob, dispose? }`,
@@ -135,10 +135,12 @@ require upstream development declarations absent from the standalone archives.
 Neither those checks nor these mocked worker contracts qualify a real VLM.
 Selecting/downloading and testing a real vision model is a separate decision.
 
-### Prepared real WebLLM vision canary
+### Real WebLLM vision canary
 
-`local-webllm-vision-smoke` is a separate live target, prepared for a later
-explicit model/download decision. It has not been run to qualify a VLM.
+`local-webllm-vision-smoke` is a separate live target. WebLLM 0.2.86 with
+`Phi-3.5-vision-instruct-q4f16_1-MLC` passed the fixed generated-image
+recognition/structured-output cases in both frameworks on the tested M1 Max;
+see the [qualification report](../../docs/superpowers/research/2026-10-25-webllm-vision-qualification.md).
 It refuses CI and requires all of `LOCAL_LLM_E2E=1`,
 `LOCAL_LLM_WEBLLM_VISION=1`, `LOCAL_LLM_DOWNLOAD=1`, an absolute
 `WEBLLM_MODULE_PATH`, and an explicit `WEBLLM_MODEL`. There is no default vision
@@ -171,13 +173,15 @@ JSON, schema, finish status, reader drain, single-image history, resolver cleanu
 and forbidden fallback checks must all pass. The fixture unloads the engine and
 terminates its worker at the end, after active generation has drained.
 
-Reports contain bundle SHA-256, selected catalog artifact URLs and estimated
+The durable JSON report is `test-results/conformance/webllm-vision/report.json`.
+Separate response-evidence and cleanup attachments are retained after cleanup
+even on failure. Reports contain bundle SHA-256, selected catalog artifact URLs and estimated
 VRAM, browser/GPU metadata, loading/first-token/total times, generated dimensions,
 image MIME/count/byte totals, schema and response evidence, memory-method caveat,
 and cleanup/fallback counts. They do not serialize image data URLs or encoded
 image bytes. Catalog URLs alone do not identify immutable weight revisions;
-real results must retain that limitation. A successful same-device canary would
-not establish broad image understanding or cross-hardware reliability.
+real results retain that limitation. This same-device canary does not establish
+broad image understanding, vision-conditioned component UI or cross-hardware reliability.
 
 ### Selecting a local Chrome model experiment
 
