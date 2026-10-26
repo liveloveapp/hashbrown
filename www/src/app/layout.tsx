@@ -9,7 +9,11 @@ import { RememberSdk } from '../components/site/RememberSdk';
 import { ThreadplaneLinkSignal } from '../components/site/ThreadplaneLinkSignal';
 import { WebsiteCollectorSignal } from '../components/site/WebsiteCollectorSignal';
 import { ToastContainer } from '../components/toast/ToastContainer';
-import { pageMetadata } from '../lib/site-metadata';
+import {
+  pageMetadata,
+  SITE_TITLE_TEMPLATE,
+  SITE_URL,
+} from '../lib/site-metadata';
 import './globals.css';
 
 /** Hanken Grotesk and JetBrains Mono, self-hosted: the LiveLoveApp brand faces. */
@@ -26,12 +30,16 @@ const code = JetBrains_Mono({
 
 /** Site-wide head tags, ported from `www/analog/index.html`. */
 export const metadata: Metadata = {
-  metadataBase: new URL('https://hashbrown.dev'),
+  metadataBase: new URL(SITE_URL),
   ...pageMetadata({
     title: 'Hashbrown: AI chat and agents for React and Angular',
     description:
       'Hashbrown is a headless TypeScript framework for AI chat and agents in React and Angular: generative UI from your own components, client-side tools, and streaming structured output from any model.',
   }),
+  title: {
+    default: 'Hashbrown: AI chat and agents for React and Angular',
+    template: SITE_TITLE_TEMPLATE,
+  },
   twitter: {
     card: 'summary_large_image',
     site: '@liveloveappdev',
