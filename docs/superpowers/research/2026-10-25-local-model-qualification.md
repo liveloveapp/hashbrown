@@ -1,5 +1,10 @@
 # Local model qualification follow-ups
 
+Current status: PR #758 merged and verified. The approved default Nano download
+subsequently passed 6/6 text/UI and 4/4 image/audio cases; native tool creation
+failed before inference. See the [Nano qualification](2026-10-25-default-nano-qualification.md).
+Availability tables below retain the earlier pre-download snapshot.
+
 Snapshot: October 25, 2026 (local time). Main updated to `e73c10a8b` after
 [PR #749](https://github.com/liveloveapp/hashbrown/pull/749) merged at
 `7639ecd41a48ed3d73e26690475e5f477572fb31`. That PR ships application-controlled
@@ -42,8 +47,10 @@ Availability-only probes, without session creation, inference or model downloads
 | v4_4b with tool/conversation interfaces                 | Present, tools dictionary recognized | downloadable                                                               |
 
 The default Nano route can be selected by omitting the foundational-model
-override. Its exact installed identity and parameter count cannot be verified
-until that model is downloaded. Neither Nano nor Gemma 4B inference was tested.
+override. It has since been downloaded and identifies v3Nano; its manifest
+still does not expose a parameter count. At the original pre-download snapshot, neither Nano nor Gemma E4B inference
+had been tested. The linked later reports now establish bounded no-tool UI
+qualification for both, and image/audio fixture results for Nano.
 No tool quality, schema or nested-UI compatibility follows from availability.
 Public [Prompt API documentation](https://developer.chrome.com/docs/ai/prompt-api)
 uses Gemini Nano naming and directs developers to on-device internals for model
@@ -76,7 +83,12 @@ still hardcodes completed; [truncation PR #17239](https://github.com/ollama/olla
 remains open. Schema/tool grammar [issue #18944](https://github.com/ollama/ollama/issues/18944)
 and proposed [fix #18975](https://github.com/ollama/ollama/pull/18975) are open.
 This distinguishes upstream grammar/protocol defects from receipt-copy quality.
-The larger framework receipt suite was not rerun; prior failures remain evidence.
+The subsequent full framework rerun at the same 0.40.11/model combination
+passed **12/20**, without retries, skips or expected-failure reclassification.
+Four dependent cases still changed `HB_RECEIPT` to `HB_RECEPT`; four schema/tool/UI
+cases executed zero required calls. This reproduces both earlier failure classes
+in Angular and React. Reports and attachments are retained with the qualification
+artifacts, and PR #754's validation record includes the result.
 
 ## WebLLM interoperability boundary
 
@@ -114,9 +126,14 @@ the phase API is not yet verified. Direct inspection of the downloaded 0.8.1
 npm tarball confirms native tools and `schemaFinalization` declarations are
 present, while `toolPhase` and `ChromeToolsTurnContext` are absent. Package
 integrity: `sha512-W01Xb86KbgoirQ2rbA9EhSLIyefziTZ8XQpe/7trwanshjo8MbZmuaYKTLdp4vN9xJKNMI9xcC6/ThmLRJ9fGQ==`.
-A version/tag clarification is pending.
+The user requested deriving the version from npm/GitHub directly; both agree on
+0.8.1. Release verification is resolved: the phase API awaits a later release.
 
-Remaining: choose additional Nano versus Gemma 4B download/qualification;
+The user has approved Gemma `v4_4b` first; its acquisition and fixed qualification
+are tracked in the [4B report](2026-10-25-gemma4b-qualification.md).
+
+Remaining: resolve the Gemma E4B native-tool creation gate before qualifying
+its tool workflows;
 minimize nested UI failures without weakening canaries; follow Chromium empty
 call-ID issue [577500782](https://issues.chromium.org/issues/577500782) and batch
 identity constraints; design WebLLM media/alternative tool interop; verify a

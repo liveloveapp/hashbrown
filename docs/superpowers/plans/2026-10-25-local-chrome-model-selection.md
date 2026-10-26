@@ -22,5 +22,9 @@ selection in metadata. Existing inference/download guards remain authoritative.
       with pinned source/evidence boundaries and remaining model decisions.
 - [x] Run conformance build/test/lint and 30 local phase contracts; inspect
       current Ollama provider evaluation independently of deterministic checks.
-- [ ] Independent review; fix findings; PR, merge after required CI, verify
+- [x] Independent review; fix findings; PR, merge after required CI, verify
       merged tree and local contract smoke. Ask before selecting/downloading new models.
+
+Completed in PR #754, merged at `81595863cb5579a327c7186a427704c04830e7e0`;
+fresh merged-tree verification passed 52 unit tests and 30 phase contracts.
+The user subsequently approved Gemma v4_4b acquisition and qualification.

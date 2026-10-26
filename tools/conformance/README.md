@@ -207,6 +207,19 @@ to native execution; deterministic contracts and WebLLM do not qualify it.
 See the [current qualification report](../../docs/superpowers/research/2026-10-25-local-model-qualification.md)
 for model availability, release status, and current Ollama/WebLLM limitations.
 
+### Gemma E4B qualification boundary
+
+Chrome 155's `v4_4b` download identifies `gemma-4-E4B-it`, not Gemini Nano 4B.
+The local native smoke now checks structured output plus exact leaf and nested
+component UI through the text transport. E4B passed those six framework cases
+(two structured and four UI), with no tools or HTTP fallback.
+
+Typed-tool session creation fails before inference on Stable 155.0.8059.85 and
+Canary 158.0.8122.0 on the tested M1 Max, even though exact availability returns
+available. E4B native tools and tool-plus-UI are therefore unqualified. The v4
+2B native tool control still passes. See the [E4B evidence](../../docs/superpowers/research/2026-10-25-gemma4b-qualification.md)
+and retained strict canaries; no model quality assertion is weakened.
+
 ### Chrome media input
 
 ```sh
