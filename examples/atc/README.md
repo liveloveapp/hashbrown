@@ -157,12 +157,16 @@ without changing the process's general `DATABASE_URL`. Hosted startup never
 falls back to ephemeral SQLite. Shared-store integration tests pass against a disposable local Postgres 17
 instance. They exercise separate pools, checkpoint/thread visibility, partial
 and duplicate results, failed tool-result persistence, and retryable cleanup.
-With the compatible source packages, complete agent continuation and ownership
+With the published 0.15.4 packages, complete agent continuation and ownership
 also pass across independent runtime pools. The generated Vercel artifact passes
 continuation across two isolated module copies sharing Postgres, signed visitor
 ownership, duplicate-result handling, pinned schema/output cap, and internal-route
-denial. These source-package results must be repeated with the compatible release.
-Deployed-host validation also remains required before hosting.
+denial. Two Vercel preview deployments sharing a dedicated hosted Postgres database
+also pass continuation, ownership, duplicate-result, schema, and output-cap checks.
+The packaged function opts into Vercel request cancellation so a disconnected run
+cannot later replace a completed follow-up checkpoint. See the
+[hosted validation report](../../docs/superpowers/reports/2026-10-25-atc-hosted-postgres-validation.md)
+for the deployment evidence and cancellation check.
 
 Run the opt-in store and runtime tests against a **disposable test database**:
 
