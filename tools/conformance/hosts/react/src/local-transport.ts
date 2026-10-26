@@ -5,14 +5,16 @@ import {
   experimental_chrome,
   experimental_chrome_tools,
   experimental_webllm,
+  experimental_webllm_tools,
   type TransportFactory,
   type WebLlmEngine,
   type WebLlmImageContent,
+  type WebLlmToolsTurnContext,
 } from '@hashbrownai/core';
 
 /** Selects a phase solely from the current canonical user turn and completed results. */
 function selectUiToolPhase(
-  context: ChromeToolsTurnContext,
+  context: ChromeToolsTurnContext | WebLlmToolsTurnContext,
   workflow: string | null,
 ): ChromeToolPhase {
   if (context.completedCalls.some((call) => call.result.type === 'error')) {
@@ -25,7 +27,15 @@ function selectUiToolPhase(
     return { type: 'finalize' };
   }
   if (context.completedCalls.length === 0)
-    return { type: 'tool', name: 'lookup_secret' };
+    return {
+      type: 'tool',
+      name:
+        workflow === 'permission'
+          ? 'protected_lookup'
+          : workflow === 'error'
+            ? 'error_tool'
+            : 'lookup_secret',
+    };
   if (workflow === 'dependent' && context.completedCalls.length === 1)
     return { type: 'tool', name: 'follow_secret' };
   return { type: 'finalize' };
@@ -75,6 +85,79 @@ export function readLocalTransport(): TransportFactory | undefined {
         },
       },
     });
+  }
+  if (name === 'webllm-tools') {
+    const runtime = globalThis as unknown as {
+      __hashbrownWebLlm?: WebLlmEngine;
+      __webLlmToolContexts: unknown[];
+      __webLlmToolCanonical: unknown[];
+      __webLlmToolEvents: unknown[];
+      __webLlmToolDisposed: number;
+      __webLlmTextTransport: TransportFactory;
+    };
+    const engine = runtime.__hashbrownWebLlm;
+    if (!engine)
+      throw new Error(
+        'The application must prepare a text WebLLM engine first.',
+      );
+    runtime.__webLlmToolContexts = [];
+    runtime.__webLlmToolCanonical = [];
+    runtime.__webLlmToolEvents = [];
+    runtime.__webLlmToolDisposed = 0;
+    runtime.__webLlmTextTransport = experimental_webllm({ engine });
+    const factory = experimental_webllm_tools({
+      engine,
+      toolPhase(context) {
+        runtime.__webLlmToolContexts = [
+          ...runtime.__webLlmToolContexts,
+          {
+            ...context,
+            frozen:
+              Object.isFrozen(context) &&
+              Object.isFrozen(context.userMessage) &&
+              Object.isFrozen(context.completedCalls) &&
+              context.completedCalls.every(
+                (call) =>
+                  Object.isFrozen(call) &&
+                  Object.isFrozen(call.arguments) &&
+                  Object.isFrozen(call.result),
+              ),
+          },
+        ];
+        return selectUiToolPhase(context, parameters.get('uiWorkflow'));
+      },
+    });
+    return () => {
+      const transport = factory();
+      return {
+        ...transport,
+        async send(request) {
+          runtime.__webLlmToolCanonical = [
+            ...runtime.__webLlmToolCanonical,
+            structuredClone(request.input),
+          ];
+          const response = await transport.send(request);
+          return {
+            ...response,
+            events: {
+              async *[Symbol.asyncIterator]() {
+                for await (const event of response.events) {
+                  runtime.__webLlmToolEvents = [
+                    ...runtime.__webLlmToolEvents,
+                    structuredClone(event),
+                  ];
+                  yield event;
+                }
+              },
+            },
+            async dispose() {
+              await response.dispose?.();
+              runtime.__webLlmToolDisposed++;
+            },
+          };
+        },
+      };
+    };
   }
   if (name === 'chrome') {
     const modality = new URL(globalThis.location.href).searchParams.get(
