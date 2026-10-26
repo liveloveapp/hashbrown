@@ -85,6 +85,13 @@
       "options": {
         "command": "node tools/conformance/dotnet/verify-recipe.mjs"
       }
+    },
+    "prepare-live-consumer": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/conformance/dotnet/live-consumer/prepare.mjs"
+      }
     }
   }
 }
