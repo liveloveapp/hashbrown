@@ -22,7 +22,7 @@ npx nx check-docs dotnet-conformance
 
 The build restores with `--locked-mode`. Only deliberate dependency updates use
 `npx nx restore-lock dotnet-conformance`, followed by review of `packages.lock.json`.
-No live model credentials or account are needed. OpenAI uses a public model name;
+The default targets need no live model credentials or account. OpenAI uses a public model name;
 Azure uses a separate deployment name: Chat Completions retains its native deployment URL/API-key wire, while Responses uses the native OpenAI-compatible `/openai/v1/` route and client authentication.
 
 Durable tests require real PostgreSQL 18. Without `DOTNET_TEST_POSTGRES`, the
@@ -39,6 +39,29 @@ fixture, capture proxy, and .NET server use dynamic loopback ports. Reports and
 traces are under `test-results/conformance/dotnet` and
 `playwright-report/conformance/dotnet`. Failed fixtures preserve bounded process
 logs and native model request evidence under the test-results diagnostics folder.
+
+## Native Azure authentication
+
+`ProviderFactory` accepts trusted `AzureAuthentication=api-key|azure-cli|managed-identity`.
+The default remains API key; token modes require HTTPS and do not require a key. CLI uses only
+`AzureCliCredential` with a ten-second process timeout. Managed identity uses only
+the selected system-assigned identity or `ManagedIdentityClientId`. Unknown/mismatched
+configuration fails before credential construction, and credential failure never
+falls back to a key. The explicitly pinned Azure.Core 1.63.0 supplies Azure.Identity
+credential classes and the native System.ClientModel token bridge.
+
+Native probes exercise actual SDK requests through a test-only logical-HTTPS
+transport, including scopes, bearer headers, schema/tool history, same-client token
+reacquisition and cancellation. Responses cancels acquisition with its caller. The
+legacy Azure client shares refresh work: a cancelled or pre-cancelled caller can
+still acquire a token, then stops without model HTTP. Its shared acquisition is not
+caller-preemptible; tests explicitly release/drain it. No detached timeout wrapper
+changes this contract. Credential/auth mode changes do not alter checkpoint identity.
+
+Cloud managed identity qualification remains an explicitly deferred follow-up.
+Deterministic selection and local CLI authentication do not prove deployed identity
+assignment or resource permissions. Live OpenAI/Azure qualification uses a separate
+opt-in target and published npm clients; default aimock tests remain deterministic.
 
 ## Reference source
 

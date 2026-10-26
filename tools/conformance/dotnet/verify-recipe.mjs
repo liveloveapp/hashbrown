@@ -24,6 +24,33 @@ const blocks = (sdk) =>
       'utf8',
     ).matchAll(/```csharp\n([\s\S]*?)\n```/g),
   ].map((match) => match[1]);
+/** Reads the exact package set documented and compiled by the reference recipe. */
+const packageReferences = (text) =>
+  [
+    ...text.matchAll(
+      /<PackageReference Include="([^"]+)" Version="([^"]+)"\s*\/>/g,
+    ),
+  ]
+    .map((match) => `${match[1]}@${match[2]}`)
+    .sort();
+const referencePackages = packageReferences(
+  readFileSync(join(source, 'Hashbrown.Conformance.csproj'), 'utf8'),
+);
+for (const sdk of ['react', 'angular']) {
+  const documentedPackages = packageReferences(
+    readFileSync(
+      join(root, `www/content/docs/${sdk}/platform/dotnet.md`),
+      'utf8',
+    ),
+  );
+  if (
+    referencePackages.length === 0 ||
+    JSON.stringify(documentedPackages) !== JSON.stringify(referencePackages)
+  )
+    throw new Error(
+      `${sdk} recipe package pins must match the locked reference project.`,
+    );
+}
 const react = blocks('react');
 if (
   react.length !== 4 ||

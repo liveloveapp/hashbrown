@@ -44,7 +44,7 @@ New live units: `harness/live-{configuration,budget,diagnostics,fixture,runner}.
 
 - [ ] Write failing native tests through actual factory-created clients and logical-HTTPS handler that routes beneath SDK policy to loopback. Assert Responses /openai/v1/responses, legacy deployment chat/completions path, exact scopes, bearer and no api-key, keyless success, schema/tool continuation.
 - [ ] Add same-client A/B renewal tests. Responses policy requests credential per request even with valid expiry; legacy caches valid tokens, so return already-expired fake tokens to force A then B deterministically without sleeps. Do not claim this proves Azure.Identity cache renewal.
-- [ ] Add cancelled credential acquisition => no upstream request; selected credential failure with configured ApiKey => no fallback. Confirm raw sentinel token never reaches diagnostics. Add browser-forwarded mode/scope/identity override attempts.
+- [ ] Add Responses caller-cancelled acquisition => no upstream request; legacy pre-cancelled calls and credential-cancelled refresh => no model request; explicitly probe the legacy shared-refresh cancellation boundary with a manually released fake credential and drain all work; selected credential failure with configured ApiKey => no fallback. Confirm raw sentinel token never reaches diagnostics. Add browser-forwarded mode/scope/identity override attempts.
 - [ ] Extend `tests/server-identity.spec.ts` with identical identities across three modes/key rotation and changed identity for API/provider/endpoint/model differences.
 - [ ] If feasible, add isolated App Service managed-identity protocol emulator using actual SDK/process-local IDENTITY_ENDPOINT/IDENTITY_HEADER; assert resource/client_id/bearer. Explicitly label emulation, not Azure deployment proof.
 - [ ] Run focused auth/native tests, then full dotnet build/test/lint. Keep production TLS validation unchanged; inspect diff for certificate callbacks/insecure flags.
@@ -98,3 +98,9 @@ New live units: `harness/live-{configuration,budget,diagnostics,fixture,runner}.
 - [ ] Final report includes links, merged revision, all tests/warnings, real matrix result and precise managed-identity qualification limit. If no authorized Azure host exists, state cloud MI remains unqualified; do not provision one.
 
 Design review: independent reviewer approved after clarifying real reload/refresh recovery assertions, upfront immutable budget reservations and linked in-flight deadline cancellation. Isolated native probe compiled with zero warnings/errors; implementation review must recheck split stdout/stderr redaction and both bundle origin proofs.
+
+Native contract amendment: actual bounded tests found legacy AzureOpenAIClient 2.1.0 shared token refresh does not preempt credential acquisition for caller cancellation. Preserve/document this limitation; test pre-cancel, credential cancellation and no model dispatch after a cancelled caller, with explicit fake refresh release and no leaked tasks. Responses must still cancel acquisition. No custom authentication/WaitAsync disguise.
+
+The same legacy policy can initiate credential acquisition for a pre-cancelled caller; assert zero model HTTP, not zero credential acquisition, and report that native contract accurately. Independent design review accepted preserving the supported native architecture and truthful boundary over a detached timeout wrapper.
+
+User scope clarification (2026-10-26): keep real cloud managed identity as a documented follow-up. Implement explicit selection and deterministic coverage now; no Azure-host deployment/provisioning is needed for completion.
