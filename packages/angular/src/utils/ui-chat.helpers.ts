@@ -20,10 +20,6 @@ export type TagNameRegistry = {
   };
 };
 
-export type RenderableMessage = {
-  [TAG_NAME_REGISTRY]: TagNameRegistry;
-};
-
 export const getTagNameRegistry = (
   message: Chat.Message<UiChatSchema, Chat.AnyTool>,
 ): TagNameRegistry | undefined => {

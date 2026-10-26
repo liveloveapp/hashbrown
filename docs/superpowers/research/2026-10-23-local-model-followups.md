@@ -12,8 +12,8 @@ compatibility canaries passed. See the [native-tools follow-up](2026-10-24-chrom
 for current evidence and the single-call ID-repair constraint. The earlier
 model-download decision and release verification are now complete.
 
-This report follows the [capability design](../specs/2026-10-23-browser-local-capabilities-design.md)
-and [implementation plan](../plans/2026-10-23-local-model-capabilities.md).
+This report follows the [capability design](https://github.com/liveloveapp/hashbrown/blob/2fbfb31f3ab7e7f5fdaa916c1bc29dd050eed335/docs/superpowers/specs/2026-10-23-browser-local-capabilities-design.md)
+and [implementation plan](https://github.com/liveloveapp/hashbrown/blob/2fbfb31f3ab7e7f5fdaa916c1bc29dd050eed335/docs/superpowers/plans/2026-10-23-local-model-capabilities.md).
 Cross-hardware work (item 4 of the requested follow-up) is excluded by the user.
 No Windows/Linux or NVIDIA/AMD results are inferred from this machine.
 
