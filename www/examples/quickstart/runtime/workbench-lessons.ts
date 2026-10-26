@@ -5,13 +5,16 @@ export type WorkbenchLessonId =
   | 'structured-output'
   | 'streaming'
   | 'schemas'
-  | 'decisions';
+  | 'decisions'
+  | 'debugging'
+  | 'request-transformation';
 /** Metadata shared by framework clients and their workbench shell. */
 export interface WorkbenchLesson {
   readonly id: WorkbenchLessonId;
   readonly title: string;
   readonly format: 'ui' | 'structured' | 'decision';
-  readonly inspector: 'JSON' | 'Requests' | 'UI' | 'State' | 'Schema';
+  readonly inspector:
+    'JSON' | 'Requests' | 'UI' | 'State' | 'Schema' | 'Transform';
   readonly endpoint: string;
 }
 /** The allowlisted lesson catalog; browser input cannot select arbitrary endpoints. */
@@ -57,6 +60,20 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     format: 'decision',
     inspector: 'JSON',
     endpoint: '/api/workbench/decisions',
+  },
+  {
+    id: 'debugging',
+    title: 'Debugging',
+    format: 'ui',
+    inspector: 'Requests',
+    endpoint: '/api/workbench/debugging',
+  },
+  {
+    id: 'request-transformation',
+    title: 'Request transformation',
+    format: 'ui',
+    inspector: 'Transform',
+    endpoint: '/api/workbench/request-transformation',
   },
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */

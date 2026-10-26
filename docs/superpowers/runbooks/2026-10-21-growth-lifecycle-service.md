@@ -430,12 +430,6 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
-- Migration 0011 (`0011_growth_strip_form_agreement.sql`): after the www and
-  `hashbrown-lifecycle` production deploys from the Get unstuck polish merge are
-  live, apply it to production by hand with `npx nx migrate-growth growth`. Run
-  it as a read-write transaction, and log the before and after row counts of
-  the stored keys it strips (`notice_text`, `notice_version`, `policy_version`,
-  `framework`) in the enable log.
 - Add `VERCEL_PROJECT_ID_LIFECYCLE` for CI. The `lifecycle` entry in
   `DEPLOY_TARGETS` is optional and is skipped while it is unset.
 
@@ -492,6 +486,11 @@ tick's result and the alerts after each one before the next.
   - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
   - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
   - Reply canary passed, 03:18Z. The acknowledgement shows `delivered` with its RFC Message-ID recorded. Brian's reply was admitted, matched to his contact, forwarded, and recorded as `campaign.reply_received` (receipt `stopped`). All three `send_step` jobs were cancelled with `contact_stopped`. The mailbox stayed healthy.
+- **2026-10-26, migration 0011 (Get unstuck polish, #766):**
+  - #766 merged as 1216b814. The www and lifecycle production deploys of that commit were both READY before the migration ran, and `/unstuck` served the new page.
+  - Before (read-only): 1 `contact.form_submission` row held `notice_text`, `notice_version`, `policy_version` or `framework`; 1 `form.outreach_approved` row held `policy_version`; 0 `install_runtime.outreach_approved` rows held `policy_version`; 2 form rows in total; last migration 0010.
+  - `npx nx migrate-growth growth` against production: 1 applied, 11 unchanged.
+  - After (read-only): 0 and 0 rows with the stripped keys, install-runtime rows unchanged at 0, still 2 form rows; last migration 0011.
 
 ### Sender validation and historical notification review
 

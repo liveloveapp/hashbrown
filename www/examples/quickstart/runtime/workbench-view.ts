@@ -111,6 +111,7 @@ export interface WorkbenchCommands {
     readonly format: 'ui' | 'structured' | 'decision';
     readonly inspector: string;
   };
+  readonly setDebugDenied?: (denied: boolean) => void;
   readonly send: (content: string) => void;
   readonly stop: () => void;
   readonly reset: () => void;
@@ -145,6 +146,16 @@ function pre(value: unknown): HTMLPreElement {
 export function workbenchEventLabel(
   event: WorkbenchSnapshot['events'][number],
 ): string {
+  if (event.kind === 'response')
+    return `HTTP ${event.payload && typeof event.payload === 'object' && 'status' in event.payload ? event.payload.status : 'response'}`;
+  if (
+    event.kind === 'event' &&
+    event.payload &&
+    typeof event.payload === 'object' &&
+    'name' in event.payload &&
+    event.payload.name === 'workbench.request-transformation'
+  )
+    return 'Request transformed';
   if (
     event.kind === 'event' &&
     event.payload &&
@@ -185,6 +196,7 @@ export function workbenchEventLabel(
       error: 'Error',
       cancel: 'Cancelled',
       source: 'Source',
+      response: 'HTTP response',
       decision: 'Decision',
       choose: 'Suggestion applied',
     }[event.kind] ?? event.kind
@@ -214,6 +226,8 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
+  const debugging = commands.lesson?.id === 'debugging';
+  let debugDenied = debugging;
   const prompts =
     commands.lesson?.format === 'decision'
       ? workbenchDecisionPrompts
@@ -324,7 +338,32 @@ export function mountWorkbench(
     commands.send(prompt.value.trim());
     prompt.value = '';
   };
-  chat.append(chatHeader, live, replay, form);
+  const debugControls = element('div', '', 'wb-debug-controls');
+  const denyCheckbox = element('input');
+  denyCheckbox.type = 'checkbox';
+  denyCheckbox.checked = debugDenied;
+  denyCheckbox.setAttribute('aria-label', 'Demo denial');
+  denyCheckbox.onchange = () => {
+    debugDenied = denyCheckbox.checked;
+    commands.setDebugDenied?.(debugDenied);
+  };
+  const scenarioLabel = element('label', 'Deny requests for this demo');
+  scenarioLabel.prepend(denyCheckbox);
+  debugControls.append(
+    scenarioLabel,
+    element(
+      'p',
+      'Intentional local HTTP 403 before provider work. This is a demo switch, not authentication.',
+      'wb-muted',
+    ),
+  );
+  chat.append(
+    chatHeader,
+    ...(debugging ? [debugControls] : []),
+    live,
+    replay,
+    form,
+  );
   const inspector = element('section', '', 'wb-panel wb-inspector');
   inspector.setAttribute('aria-label', 'Inspector');
   const tabs = element('div', '', 'wb-tabs');
@@ -338,6 +377,7 @@ export function mountWorkbench(
     'JSON',
     'Requests',
     ...(commands.lesson?.format === 'structured' ? ['Schema'] : []),
+    ...(commands.lesson?.id === 'request-transformation' ? ['Transform'] : []),
     'UI',
     'State',
   ].map((name) => {
@@ -482,16 +522,22 @@ export function mountWorkbench(
   function render() {
     const snapshot = store.getSnapshot();
     const frame = snapshot.frame;
-    const sourceEvent = [...snapshot.events]
+    const visibleEvents = snapshot.events.slice(
+      0,
+      (snapshot.cursor ?? snapshot.events.length - 1) + 1,
+    );
+    const sourceEvent = [...visibleEvents]
       .reverse()
       .find(
         (event) =>
+          event.turn === (frame?.turn ?? snapshot.turn) &&
           event.kind === 'source' &&
           event.payload !== null &&
           typeof event.payload === 'object' &&
           'source' in event.payload &&
           (event.payload.source === 'provider' ||
-            event.payload.source === 'test-fixture'),
+            event.payload.source === 'test-fixture' ||
+            event.payload.source === 'demo-failure'),
       );
     const payload = sourceEvent?.payload;
     const source =
@@ -499,11 +545,13 @@ export function mountWorkbench(
         ? payload.source
         : undefined;
     provenance.textContent =
-      source === 'test-fixture'
-        ? 'Test fixture'
-        : source === 'provider'
-          ? 'Live model'
-          : 'Awaiting source';
+      source === 'demo-failure'
+        ? 'Local demo failure'
+        : source === 'test-fixture'
+          ? 'Test fixture'
+          : source === 'provider'
+            ? 'Live model'
+            : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy = snapshot.status === 'loading';
     live.hidden = historical;
@@ -511,6 +559,18 @@ export function mountWorkbench(
     prompt.disabled = historical || busy;
     send.disabled = historical || busy;
     stop.disabled = historical || !busy;
+    denyCheckbox.disabled = historical || busy;
+    denyCheckbox.checked = historical
+      ? visibleEvents.some(
+          (event) =>
+            event.turn === frame?.turn &&
+            event.kind === 'request' &&
+            event.payload &&
+            typeof event.payload === 'object' &&
+            'url' in event.payload &&
+            String(event.payload.url).includes('demoDenied=1'),
+        )
+      : debugDenied;
     first.disabled = historical || busy;
     followup.disabled = historical || busy;
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
@@ -582,25 +642,36 @@ export function mountWorkbench(
             : 'Model output'
           : tab === 'Schema'
             ? 'Response contract'
-            : tab === 'UI'
-              ? commands.lesson?.format === 'decision'
-                ? 'Application-owned choice'
-                : commands.lesson?.format === 'structured'
-                  ? 'Application-rendered plan'
-                  : 'Trusted component'
-              : tab === 'State'
-                ? 'Application state'
-                : 'Requests and tools',
+            : tab === 'Transform'
+              ? 'Mapped provider request'
+              : tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? 'Application-owned choice'
+                  : commands.lesson?.format === 'structured'
+                    ? 'Application-rendered plan'
+                    : 'Trusted component'
+                : tab === 'State'
+                  ? 'Application state'
+                  : 'Requests and tools',
       ),
     );
-    const visibleEvents = snapshot.events.slice(
-      0,
-      (snapshot.cursor ?? snapshot.events.length - 1) + 1,
-    );
     const requestContext =
-      frame?.kind === 'request' || frame?.kind === 'tool'
+      frame?.kind === 'request' ||
+      frame?.kind === 'tool' ||
+      frame?.kind === 'response'
         ? frame
         : ([...visibleEvents]
+            .reverse()
+            .find(
+              (event) =>
+                event.turn === (frame?.turn ?? snapshot.turn) &&
+                event.kind === 'response' &&
+                event.payload &&
+                typeof event.payload === 'object' &&
+                'status' in event.payload &&
+                Number(event.payload.status) >= 400,
+            ) ??
+          [...visibleEvents]
             .reverse()
             .find(
               (event) =>
@@ -614,53 +685,93 @@ export function mountWorkbench(
                 event.turn === (frame?.turn ?? snapshot.turn) &&
                 event.kind === 'request',
             ));
+    const transform = frame?.transformation;
+    const transformFields = (
+      value: NonNullable<typeof transform>['before'],
+    ) => ({
+      model: value.model,
+      toolNames: value.toolNames,
+      responseFormat:
+        value.responseFormat &&
+        typeof value.responseFormat === 'object' &&
+        'type' in value.responseFormat
+          ? value.responseFormat.type
+          : value.responseFormat,
+      store: value.store,
+      maxOutputTokens: value.maxOutputTokens,
+    });
     const value =
-      tab === 'Schema'
-        ? s.toJsonSchema(
-            getWorkbenchPlanSchema(
-              workbenchLessons.find(
-                (lesson) => lesson.id === commands.lesson?.id,
-              )?.id ?? 'schemas',
-            ),
-          )
-        : tab === 'JSON'
-          ? frame?.json || 'Waiting for model output'
-          : tab === 'UI'
-            ? commands.lesson?.format === 'decision'
-              ? {
-                  renderer: 'Application-owned decision card',
-                  generatedProps: false,
-                }
-              : commands.lesson?.format === 'structured'
-                ? {
-                    renderer: 'Application-owned plan card',
-                    fields: ['title', 'steps'],
-                  }
-                : {
-                    component: 'SummaryCard',
-                    children: false,
-                    inputs: { title: 'string', steps: 'streaming string[]' },
-                  }
-            : tab === 'State'
-              ? (frame?.application ?? snapshot.application)
-              : visibleEvents
-                  .filter(
-                    (event) =>
-                      event.kind === 'request' || event.kind === 'tool',
+      tab === 'Transform'
+        ? transform
+          ? {
+              before: transformFields(transform.before),
+              after: {
+                ...transformFields(transform.after),
+                addedInstructions:
+                  transform.before.instructions &&
+                  (transform.after.instructions ?? '').startsWith(
+                    transform.before.instructions,
                   )
-                  .map((event) => ({
-                    sequence: event.sequence,
-                    turn: event.turn,
-                    kind: event.kind,
-                    payload: event.payload,
-                  }));
+                    ? (transform.after.instructions ?? '')
+                        .slice(transform.before.instructions.length)
+                        .trim()
+                    : transform.after.instructions,
+              },
+            }
+          : 'Waiting for the actual provider transformation callback'
+        : tab === 'Schema'
+          ? s.toJsonSchema(
+              getWorkbenchPlanSchema(
+                workbenchLessons.find(
+                  (lesson) => lesson.id === commands.lesson?.id,
+                )?.id ?? 'schemas',
+              ),
+            )
+          : tab === 'JSON'
+            ? frame?.json || 'Waiting for model output'
+            : tab === 'UI'
+              ? commands.lesson?.format === 'decision'
+                ? {
+                    renderer: 'Application-owned decision card',
+                    generatedProps: false,
+                  }
+                : commands.lesson?.format === 'structured'
+                  ? {
+                      renderer: 'Application-owned plan card',
+                      fields: ['title', 'steps'],
+                    }
+                  : {
+                      component: 'SummaryCard',
+                      children: false,
+                      inputs: { title: 'string', steps: 'streaming string[]' },
+                    }
+              : tab === 'State'
+                ? (frame?.application ?? snapshot.application)
+                : visibleEvents
+                    .filter(
+                      (event) =>
+                        event.kind === 'request' || event.kind === 'tool',
+                    )
+                    .map((event) => ({
+                      sequence: event.sequence,
+                      turn: event.turn,
+                      kind: event.kind,
+                      payload: event.payload,
+                    }));
     if (tab === 'Requests') {
       const list = element('div', '', 'wb-request-list');
       for (const event of visibleEvents.filter(
-        (event) => event.kind === 'request' || event.kind === 'tool',
+        (event) =>
+          event.kind === 'request' ||
+          event.kind === 'tool' ||
+          (event.kind === 'response' &&
+            event.payload &&
+            typeof event.payload === 'object' &&
+            'status' in event.payload &&
+            Number(event.payload.status) >= 400),
       )) {
         const item = button(
-          `${event.kind === 'tool' ? 'readContext' : commands.lesson?.format === 'decision' ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
+          `${event.kind === 'response' ? workbenchEventLabel(event) : event.kind === 'tool' ? 'readContext' : commands.lesson?.format === 'decision' ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
           () => {
             pause();
             store.seek(snapshot.events.indexOf(event));
@@ -727,46 +838,50 @@ export function mountWorkbench(
           'h3',
           frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
         ),
-        pre(frame?.payload),
+        pre(tab === 'Transform' && transform ? transform : frame?.payload),
       );
     } else {
       drawerBody.append(
         element(
           'h3',
-          tab === 'Schema'
-            ? 'Preview validation'
-            : tab === 'JSON' || tab === 'UI'
-              ? commands.lesson?.format === 'decision'
-                ? 'Typed choice and confidence'
-                : commands.lesson?.format === 'structured'
-                  ? 'Typed plan'
-                  : 'Resolved props'
-              : tab === 'State'
-                ? 'Selected moment'
-                : requestContext?.kind === 'tool'
-                  ? 'Browser tool result'
-                  : 'Request payload',
+          tab === 'Transform'
+            ? 'Preserved mapped fields'
+            : tab === 'Schema'
+              ? 'Preview validation'
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? 'Typed choice and confidence'
+                  : commands.lesson?.format === 'structured'
+                    ? 'Typed plan'
+                    : 'Resolved props'
+                : tab === 'State'
+                  ? 'Selected moment'
+                  : requestContext?.kind === 'tool'
+                    ? 'Browser tool result'
+                    : 'Request payload',
         ),
         pre(
-          tab === 'Schema'
-            ? {
-                preview: frame?.props ?? null,
-                passesApplicationRules: isWorkbenchPlan(frame?.props),
-                responseStatus: frame?.status ?? snapshot.status,
-                note: 'Preview values do not authorize applying a plan.',
-              }
-            : tab === 'JSON' || tab === 'UI'
-              ? commands.lesson?.format === 'decision'
-                ? (frame?.decision ?? null)
-                : frame?.props
-              : tab === 'State'
-                ? {
-                    turn: frame?.turn ?? snapshot.turn,
-                    status: frame?.status ?? snapshot.status,
-                    event: frame ? workbenchEventLabel(frame) : 'Ready',
-                    source: frame?.source ?? 'Application',
-                  }
-                : requestContext?.payload,
+          tab === 'Transform'
+            ? (transform?.preserved ?? null)
+            : tab === 'Schema'
+              ? {
+                  preview: frame?.props ?? null,
+                  passesApplicationRules: isWorkbenchPlan(frame?.props),
+                  responseStatus: frame?.status ?? snapshot.status,
+                  note: 'Preview values do not authorize applying a plan.',
+                }
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? (frame?.decision ?? null)
+                  : frame?.props
+                : tab === 'State'
+                  ? {
+                      turn: frame?.turn ?? snapshot.turn,
+                      status: frame?.status ?? snapshot.status,
+                      event: frame ? workbenchEventLabel(frame) : 'Ready',
+                      source: frame?.source ?? 'Application',
+                    }
+                  : requestContext?.payload,
         ),
         element(
           'p',

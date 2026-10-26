@@ -550,3 +550,137 @@ test('replays a captured choice and the app-owned plan without live application 
   expect(store.getSnapshot().application.nextAction).toBe('record');
   shell.dispose();
 });
+
+test('keeps the debugging denial control separate from application writes and disables it in replay', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const setDebugDenied = vi.fn();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'debugging',
+      title: 'Debugging',
+      format: 'ui',
+      inspector: 'Requests',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+    setDebugDenied,
+  });
+  const checkbox = host.querySelector<HTMLInputElement>('input[type=checkbox]');
+
+  expect(checkbox?.checked).toBe(true);
+  if (checkbox) {
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change'));
+  }
+  expect(setDebugDenied).toHaveBeenCalledWith(false);
+  expect(store.getSnapshot().application.revision).toBe(0);
+  store.send('Plan');
+  store.settle('error');
+  store.seek(0);
+  expect(checkbox?.disabled).toBe(true);
+  shell.dispose();
+});
+
+test('historical provenance and HTTP evidence follow the selected failed turn', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'Angular',
+    lesson: {
+      id: 'debugging',
+      title: 'Debugging',
+      format: 'ui',
+      inspector: 'Requests',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.send('Denied');
+  store.record('source', { source: 'demo-failure' });
+  store.record('response', {
+    status: 403,
+    url: '/api/workbench/debugging?demoDenied=1',
+    problem: 'demo-context-denied',
+  });
+  store.settle('error');
+  const failure = store.getSnapshot().events.length - 1;
+  store.send('Retry');
+  expect(host.querySelector('[data-source]')?.textContent).toBe(
+    'Awaiting source',
+  );
+  const retry = store.getSnapshot().events.length - 1;
+  store.record('source', { source: 'provider' });
+  store.settle('complete', 'stop');
+
+  expect(host.querySelector('[data-source]')?.textContent).toBe('Live model');
+  store.seek(retry);
+  expect(host.querySelector('[data-source]')?.textContent).toBe(
+    'Awaiting source',
+  );
+  store.seek(failure);
+  expect(host.querySelector('[data-source]')?.textContent).toBe(
+    'Local demo failure',
+  );
+  expect(host.querySelector('.wb-request-list')?.textContent).toContain(
+    'HTTP 403',
+  );
+  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+    'demo-context-denied',
+  );
+  shell.dispose();
+});
+
+test('transformation inspector isolates added instructions and keeps the actual trace available in Raw', () => {
+  const host = document.createElement('div');
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'request-transformation',
+      title: 'Request transformation',
+      format: 'ui',
+      inspector: 'Transform',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  const before = {
+    model: 'demo-model',
+    instructions: 'Original instructions',
+    toolNames: ['readContext'],
+    responseFormat: { type: 'json_schema' },
+  };
+  const trace = {
+    before,
+    after: {
+      ...before,
+      instructions: 'Original instructions\n\nPublic workspace policy',
+    },
+    preserved: { model: true },
+  };
+
+  store.send('Plan');
+  store.record('event', {
+    type: 'CUSTOM',
+    name: 'workbench.request-transformation',
+    value: trace,
+  });
+  store.settle('complete', 'stop');
+
+  const inspection = host.querySelector('.wb-inspector') ?? host;
+  expect(inspection.textContent).toContain('Public workspace policy');
+  expect(inspection.textContent).not.toContain('Original instructions');
+  const raw = [...host.querySelectorAll('button')].find(
+    (button) => button.textContent === 'Raw',
+  );
+  raw?.click();
+  expect(host.querySelector('.wb-detail')?.textContent).toContain(
+    'Original instructions',
+  );
+  shell.dispose();
+});

@@ -1,3 +1,5 @@
+import type { WorkbenchTransformationTrace } from './workbench-transformation';
+export type { WorkbenchTransformationTrace } from './workbench-transformation';
 import type { WorkbenchLessonId } from './workbench-lessons';
 import { s } from '@hashbrownai/core';
 
@@ -33,7 +35,8 @@ export type WorkbenchEventKind =
   | 'cancel'
   | 'complete'
   | 'user'
-  | 'source';
+  | 'source'
+  | 'response';
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
   readonly sequence: number;
@@ -51,6 +54,7 @@ export interface WorkbenchFrame {
     readonly decision?: WorkbenchDecision;
   }[];
   readonly decision?: WorkbenchDecision;
+  readonly transformation?: WorkbenchTransformationTrace;
   readonly json: string;
   readonly props: {
     readonly title?: string;
@@ -228,6 +232,23 @@ export function isCurrentWorkbenchDecision(
   );
 }
 
+/** Associates SDK errors with the captured user turn before allowing them to settle it. */
+export function isCurrentWorkbenchError(
+  snapshot: WorkbenchSnapshot,
+  messages: readonly { readonly id?: string; readonly role: string }[],
+  error?: unknown,
+  previousError?: unknown,
+): boolean {
+  const user = messages.filter((message) => message.role === 'user').at(-1)?.id;
+  return (
+    snapshot.status === 'loading' &&
+    !(error !== undefined && error === previousError) &&
+    !!user &&
+    snapshot.frame?.messages.filter((message) => message.role === 'user').at(-1)
+      ?.id === user
+  );
+}
+
 /** Reads explicit application choice events to identify an already-used suggestion. */
 export function wasWorkbenchDecisionApplied(
   snapshot: WorkbenchSnapshot,
@@ -252,6 +273,7 @@ export function createWorkbenchStore(
   let application = initialApplication();
   let decision: WorkbenchDecision | undefined;
   let decisionRevision = -1;
+  let transformation: WorkbenchTransformationTrace | undefined;
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
   let turn = 0;
@@ -282,7 +304,9 @@ export function createWorkbenchStore(
     if (
       turn === 0 ||
       (status !== 'loading' &&
-        ['event', 'request', 'tool', 'parsed'].includes(kind))
+        ['event', 'request', 'response', 'source', 'tool', 'parsed'].includes(
+          kind,
+        ))
     )
       return;
     if (events.length >= 2000) {
@@ -294,7 +318,16 @@ export function createWorkbenchStore(
     const raw = object(payload);
     if (format === 'decision' && kind === 'event')
       json = JSON.stringify(payload, null, 2);
-    if (kind === 'request') json = '';
+    if (kind === 'request') {
+      json = '';
+      transformation = undefined;
+    }
+    if (
+      kind === 'event' &&
+      raw?.['type'] === 'CUSTOM' &&
+      raw['name'] === 'workbench.request-transformation'
+    )
+      transformation = copy(raw['value'] as WorkbenchTransformationTrace);
     if (kind === 'event' && raw?.['type'] === 'TEXT_MESSAGE_START') json = '';
     if (
       kind === 'event' &&
@@ -327,6 +360,7 @@ export function createWorkbenchStore(
         elapsedMs: Math.round(Math.max(0, performance.now() - started)),
         application,
         ...(decision ? { decision } : {}),
+        ...(transformation ? { transformation } : {}),
         messages,
         json,
         props,
@@ -361,6 +395,7 @@ export function createWorkbenchStore(
       status = 'loading';
       props = null;
       decision = undefined;
+      transformation = undefined;
       propsReady = false;
       json = '';
       finishReason = undefined;
@@ -525,6 +560,7 @@ export function createWorkbenchStore(
       json = '';
       props = null;
       decision = undefined;
+      transformation = undefined;
       propsReady = false;
       finishReason = undefined;
       appliedTurn = -1;

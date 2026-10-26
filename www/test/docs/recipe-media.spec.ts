@@ -5,11 +5,19 @@ import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 
 test.each([
   'canonical-workbench-react',
-  ...['ui', 'tools', 'structured', 'streaming', 'schemas', 'decisions'].flatMap(
-    (lesson) =>
-      ['react', 'angular'].map(
-        (framework) => `canonical-workbench-${lesson}-${framework}`,
-      ),
+  ...[
+    'ui',
+    'tools',
+    'structured',
+    'streaming',
+    'schemas',
+    'decisions',
+    'debugging',
+    'request-transformation',
+  ].flatMap((lesson) =>
+    ['react', 'angular'].map(
+      (framework) => `canonical-workbench-${lesson}-${framework}`,
+    ),
   ),
   'canonical-workbench-angular',
   'magic-text',

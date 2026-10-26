@@ -16,6 +16,7 @@ import {
 import { createPortal } from 'react-dom';
 import {
   createWorkbenchStore,
+  isCurrentWorkbenchError,
   type WorkbenchStore,
   workbenchSystem,
 } from '../../runtime/workbench';
@@ -110,8 +111,11 @@ function WorkbenchConversation({
 }) {
   const lesson = getWorkbenchLesson(window.location.search);
   const [store] = useState(() => createWorkbenchStore());
+  const debugDenied = useRef(lesson.id === 'debugging');
   const [transport] = useState(() =>
-    createWorkbenchTransport(store, undefined, lesson.endpoint),
+    createWorkbenchTransport(store, undefined, lesson.endpoint, {
+      getDebugDenied: () => debugDenied.current,
+    }),
   );
   const [users, setUsers] = useState<Readonly<Record<string, ProposalOrigin>>>(
     {},
@@ -120,6 +124,7 @@ function WorkbenchConversation({
   const mounted = useRef<ReturnType<typeof mountWorkbench> | null>(null);
   const [live, setLive] = useState<HTMLElement | null>(null);
   const recorded = useRef('');
+  const previousError = useRef<unknown>(undefined);
   const readContext = useTool({
     name: 'readContext',
     description:
@@ -152,6 +157,7 @@ function WorkbenchConversation({
   useLayoutEffect(() => {
     commands.current = {
       send: (content) => {
+        previousError.current = chat.error;
         const message = store.send(content);
         const snapshot = store.getSnapshot();
         setUsers((previous) => ({
@@ -183,6 +189,9 @@ function WorkbenchConversation({
       send: (content) => commands.current.send(content),
       stop: () => commands.current.stop(),
       reset: () => commands.current.reset(),
+      setDebugDenied: (denied) => {
+        debugDenied.current = denied;
+      },
     });
     mounted.current = shell;
     setLive(shell.live);
@@ -204,7 +213,15 @@ function WorkbenchConversation({
     const message = chat.lastAssistantMessage;
     const snapshot = store.getSnapshot();
     if (snapshot.status !== 'loading') return;
-    if (chat.error) {
+    if (
+      chat.error &&
+      isCurrentWorkbenchError(
+        snapshot,
+        chat.messages,
+        chat.error,
+        previousError.current,
+      )
+    ) {
       store.settle('error');
       return;
     }
@@ -223,6 +240,7 @@ function WorkbenchConversation({
       );
   }, [
     chat.lastAssistantMessage,
+    chat.messages,
     chat.isLoading,
     chat.error,
     chat.lastRunFinishReason,
