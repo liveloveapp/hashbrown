@@ -38,6 +38,8 @@ public sealed class WorkflowOperationRegistry(IEnumerable<WorkflowOperation> ope
 /// <summary>Independent approval admission, preparation lease, and terminal retention limits.</summary>
 public sealed record InterruptStoreOptions
 {
+    /// <summary>Trusted server compatibility binding; omission preserves explicit unbound legacy rows. Never derive this value from browser input.</summary>
+    public string? CompatibilityIdentity { get; init; }
     /// <summary>Maximum retained batches, including terminal tombstones.</summary>
     public int Capacity { get; init; } = 128;
     /// <summary>Deadline for admitting a new approval claim.</summary>
@@ -124,15 +126,20 @@ public interface IInterruptStore
 
 internal static class InterruptValidation
 {
-    internal static byte[] Fingerprint(RunAgentInput input) => SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
-        new RunAgentInput { ThreadId = input.ThreadId, RunId = string.Empty, Messages = input.Messages, Tools = input.Tools, ForwardedProperties = input.ForwardedProperties },
-        AGUIJsonSerializerContext.Default.RunAgentInput));
+    internal static byte[] Fingerprint(RunAgentInput input, string? identity = null)
+    {
+        var legacy = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
+            new RunAgentInput { ThreadId = input.ThreadId, RunId = string.Empty, Messages = input.Messages, Tools = input.Tools, ForwardedProperties = input.ForwardedProperties },
+            AGUIJsonSerializerContext.Default.RunAgentInput));
+        return identity is null ? legacy : SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new[] { "hashbrown-bound-request-v1", identity, Convert.ToHexString(legacy) }));
+    }
 
-    internal static int Validate(string scope, RunAgentInput input, InterruptRecord record, DateTimeOffset now)
+    internal static int Validate(string scope, RunAgentInput input, InterruptRecord record, DateTimeOffset now, string? identity = null)
     {
         if (record.Scope != scope || record.ThreadId != input.ThreadId || record.Batch.ExpiresAt <= now) return 410;
+        if (record.CompatibilityIdentity != identity) return 409;
         if (record.State != "Pending" && !(record.State == "Claimed" && record.LeaseUntil <= now)) return 409;
-        if (!CryptographicOperations.FixedTimeEquals(record.Fingerprint, Fingerprint(input))) return 400;
+        if (!CryptographicOperations.FixedTimeEquals(record.Fingerprint, Fingerprint(input, identity))) return 400;
         var entries = input.Resume!;
         if (entries.Count != record.Batch.Ids.Count || entries.Select(entry => entry.InterruptId).Distinct(StringComparer.Ordinal).Count() != entries.Count ||
             entries.Any(entry => !record.Batch.Ids.Contains(entry.InterruptId, StringComparer.Ordinal))) return 400;
@@ -152,4 +159,4 @@ internal static class InterruptValidation
 internal sealed record InterruptRecord(PendingInterrupt Batch, string Scope, string ThreadId, string OriginRunId, byte[] Fingerprint,
     string State = "Pending", string? Token = null, long Generation = 0, DateTimeOffset? LeaseUntil = null, DateTimeOffset? CompletedAt = null, string? OriginalRequest = null, string? TerminalSnapshot = null,
     string GenerationOutcome = "NotStarted", long Revision = 1, DateTimeOffset CreatedAt = default,
-    string? CaptureToken = null, string? ReconciliationOutcome = null);
+    string? CaptureToken = null, string? ReconciliationOutcome = null, string? CompatibilityIdentity = null);

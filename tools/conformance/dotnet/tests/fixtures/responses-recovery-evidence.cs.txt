@@ -1,0 +1,184 @@
+#pragma warning disable OPENAI001 // Exercises pinned native Responses payloads.
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.ClientModel.Primitives;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Extensions.AI;
+using OpenAI.Responses;
+
+var assembly = typeof(StatelessResponsesClient).Assembly;
+var evidenceType = assembly.GetType("Hashbrown.Conformance.Integration.ResponsesRecoveryEvidence") ?? throw new Exception("Missing pre-loss native evidence guard.");
+var begin = evidenceType.GetMethod("Begin", BindingFlags.Static | BindingFlags.NonPublic)!;
+var available = evidenceType.GetProperty("Available", BindingFlags.Instance | BindingFlags.NonPublic)!;
+var message = """{"id":"msg_native","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"hello","annotations":[]}]}""";
+var call = """{"id":"fc_native","type":"function_call","call_id":"call_native","name":"lookup","arguments":"{\"city\":\"Portland\"}","status":"completed"}""";
+var unsupported = new[] {
+    """{"id":"rs_native","type":"reasoning","summary":[],"encrypted_content":"opaque"}""",
+    """{"id":"rs_native","type":"reasoning","summary":[{"type":"summary_text","text":"meaningful hidden history"}]}""",
+    """{"id":"ws_native","type":"web_search_call","status":"completed","action":{"type":"search","query":"weather"}}""",
+    """{"id":"unknown_native","type":"future_hosted_tool","payload":"important"}""",
+    message.Replace("\"annotations\":[]", "\"annotations\":[{\"type\":\"url_citation\",\"url\":\"https://example.com\",\"title\":\"source\",\"start_index\":0,\"end_index\":5}]")
+};
+foreach (var item in new[] { message, call }.Concat(unsupported))
+{
+    foreach (var placement in new[] { "added", "done", "completed" })
+    {
+        using var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!;
+        var json = placement == "completed" ? Response("completed", item) : $$$"""{"type":"response.output_item.{{{placement}}}","output_index":0,"sequence_number":1,"item":{{{item}}}}""";
+        var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(json))!;
+        using var client = new StatelessResponsesClient(new ProbeClient(raw));
+
+        await foreach (var update in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")]))
+            if (update.Text != "hello") throw new Exception("The guard altered forwarded canonical text.");
+
+        var expected = item == message || item == call;
+        if ((bool)available.GetValue(scope)! != expected) throw new Exception($"Wrong native evidence availability: {placement} {item}");
+    }
+}
+foreach (var status in new[] { "incomplete", "failed", "cancelled" })
+{
+    using var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!;
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response(status, message)))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw));
+    var threw = false;
+
+    try { await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { } }
+    catch (InvalidOperationException) { threw = true; }
+
+    if (!threw) throw new Exception($"Native {status} became a successful stream.");
+    threw = false;
+    try { await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hi")]); }
+    catch (InvalidOperationException) { threw = true; }
+    if (!threw) throw new Exception($"Native {status} became a successful nonstream response.");
+}
+foreach (var eventType in new[] { "response.failed", "response.incomplete", "error" })
+{
+    var json = eventType == "error" ? """{"type":"error","sequence_number":1,"code":"server_error","message":"failed"}""" : Response("failed", message).Replace("response.completed", eventType);
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(json))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw));
+    var threw = false;
+
+    try { await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { } }
+    catch (InvalidOperationException) { threw = true; }
+
+    if (!threw) throw new Exception($"Native {eventType} became a successful stream.");
+}
+using (var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!)
+{
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response("completed", unsupported[0])))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw));
+    await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { }
+    if ((bool)available.GetValue(scope)!) throw new Exception("Unsupported fixture was not detected.");
+    if (await Capture(assembly, "msg_native") is not null) throw new Exception("Lost native reasoning still produced a recoverable canonical answer.");
+}
+using (var fresh = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!)
+    if (!(bool)available.GetValue(fresh)!) throw new Exception("Evidence leaked between requests.");
+await Task.WhenAll(Enumerable.Range(0, 8).Select(async index => {
+    using var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!;
+    await Task.Yield();
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response("completed", index % 2 == 0 ? message : unsupported[0])))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw));
+    await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { }
+    if ((bool)available.GetValue(scope)! != (index % 2 == 0)) throw new Exception("Concurrent request evidence leaked.");
+}));
+foreach (var withEvidence in new[] { false, true })
+{
+    using var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!;
+    if (withEvidence)
+    {
+        var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response("completed", message)))!;
+        using var client = new StatelessResponsesClient(new ProbeClient(raw));
+        await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { }
+    }
+    var snapshot = await Capture(assembly, "resp_native");
+    if ((snapshot is not null) != withEvidence) throw new Exception("Distinct response and message IDs were accepted without exact native evidence or discarded despite evidence.");
+    if (withEvidence && await Capture(assembly, "resp_forged") is not null) throw new Exception("Unwitnessed native response ID was accepted.");
+    if (withEvidence)
+        foreach (var mode in new[] { 1, 2, 3 })
+            if (await Capture(assembly, "resp_native", mode) is not null) throw new Exception("Deferred first native text accepted missing or mismatched content.");
+}
+
+
+using (var scope = (IDisposable)begin.Invoke(null, new object[] { 65536, 32 })!)
+{
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response("completed", call)))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw, "fc_native"));
+    await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { }
+    var matches = evidenceType.GetMethod("Matches", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    if (!(bool)matches.Invoke(scope, new object[] { "resp_native", "fc_native" })!) throw new Exception("Native function output ID association was lost.");
+    if ((bool)matches.Invoke(scope, new object[] { "resp_native", "fc_forged" })!) throw new Exception("Unwitnessed function output ID was accepted.");
+    var matchesCall = evidenceType.GetMethod("MatchesCall", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    var nativeArguments = JsonNode.Parse("""{"city":"Portland"}""");
+    if (!(bool)matchesCall.Invoke(scope, new object?[] { "resp_native", "call_native", "lookup", nativeArguments })!) throw new Exception("Exact native function evidence was lost.");
+    foreach (var forged in new object?[][] {
+        ["resp_forged", "call_native", "lookup", nativeArguments],
+        ["resp_native", "call_forged", "lookup", nativeArguments],
+        ["resp_native", "call_native", "forged", nativeArguments],
+        ["resp_native", "call_native", "lookup", JsonNode.Parse("""{"city":"forged"}""")]
+    }) if ((bool)matchesCall.Invoke(scope, forged)!) throw new Exception("Forged native function evidence was accepted.");
+}
+using (var bounded = (IDisposable)begin.Invoke(null, new object[] { 16, 1 })!)
+{
+    var raw = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString(Response("completed", message)))!;
+    using var client = new StatelessResponsesClient(new ProbeClient(raw));
+    await foreach (var _ in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")])) { }
+    if ((bool)available.GetValue(bounded)!) throw new Exception("Native evidence exceeded its bound.");
+}
+
+Console.WriteLine("Native Responses recovery evidence passed.");
+
+static async Task<string?> Capture(Assembly assembly, string responseId, int mode = 0)
+{
+    var checkpoint = new WorkflowCheckpoint("test", 1, JsonSerializer.SerializeToElement(new { }));
+    var claim = new InterruptClaim("batch", "token", 1, checkpoint, "effect");
+    var original = """{"threadId":"thread","runId":"run","messages":[],"tools":[],"context":[],"state":{},"forwardedProps":{}}""";
+    var handle = (CheckpointCaptureHandle)Activator.CreateInstance(typeof(CheckpointCaptureHandle), BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { claim, original, new InterruptStoreOptions() }, null)!;
+    string? snapshot = null;
+    Func<string, string?, ValueTask> commit = (outcome, value) => { snapshot = value; return ValueTask.CompletedTask; };
+    var observerType = assembly.GetType("Hashbrown.Conformance.Integration.CheckpointSseObserver")!;
+    var observer = Activator.CreateInstance(observerType, BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { handle, commit }, null)!;
+    var observe = observerType.GetMethod("ObserveAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    var raw = new { responseId, messageId = "msg_native", role = "assistant", contents = new[] { new Dictionary<string, object?> { ["$type"] = "text", ["text"] = "hello" } } };
+    var contentRaw = mode == 2 ? (object)new { responseId, messageId = "msg_native", role = "assistant", modelId = "forged", contents = new[] { new Dictionary<string, object?> { ["$type"] = "text", ["text"] = "hello" } } } : raw;
+    var events = new List<object> {
+        new { type = "TEXT_MESSAGE_START", messageId = "msg_native", role = "assistant", rawEvent = raw },
+        new { type = "TEXT_MESSAGE_CONTENT", messageId = "msg_native", delta = mode == 3 ? "different" : "hello", rawEvent = contentRaw },
+        new { type = "TEXT_MESSAGE_END", messageId = "msg_native" },
+        new { type = "RUN_FINISHED", threadId = "thread", runId = "run" }
+    };
+    if (mode == 1) events.RemoveAt(1);
+    foreach (var item in events)
+    {
+        var bytes = Encoding.UTF8.GetBytes("data: " + JsonSerializer.Serialize(item) + "\n\n");
+        Func<ReadOnlyMemory<byte>, ValueTask> forward = _ => ValueTask.CompletedTask;
+        await (ValueTask)observe.Invoke(observer, new object[] { new ReadOnlyMemory<byte>(bytes), forward, CancellationToken.None })!;
+    }
+    return snapshot;
+}
+
+static string Response(string status, string item) => $$$"""{"type":"response.completed","sequence_number":2,"response":{"id":"resp_native","object":"response","created_at":1720000000,"model":"model","status":"{{{status}}}","output":[{{{item}}}]}}""";
+
+sealed class ProbeClient(StreamingResponseUpdate raw, string messageId = "msg_native") : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        var json = JsonDocument.Parse(ModelReaderWriter.Write(raw).ToString());
+        var native = ModelReaderWriter.Read<ResponseResult>(BinaryData.FromString(json.RootElement.GetProperty("response").GetRawText()))!;
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "hello")) { RawRepresentation = native });
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        yield return new ChatResponseUpdate(ChatRole.Assistant, "hello") { RawRepresentation = raw, ResponseId = "resp_native", MessageId = messageId };
+        if (raw is not StreamingResponseCompletedUpdate)
+        {
+            var completed = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString("""{"type":"response.completed","sequence_number":3,"response":{"id":"resp_native","object":"response","created_at":1720000000,"model":"model","status":"completed","output":[]}}"""))!;
+            yield return new ChatResponseUpdate(ChatRole.Assistant, "hello") { RawRepresentation = completed, ResponseId = "resp_native", MessageId = messageId };
+        }
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}

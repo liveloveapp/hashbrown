@@ -9,7 +9,7 @@ meta:
 
 Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same Hashbrown APIs as a Node-backed application; the .NET server chooses the model, holds credentials, and runs its own tools.
 
-The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. This is a source recipe, not a Hashbrown NuGet package.
+The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Responses and Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. This is a source recipe, not a Hashbrown NuGet package.
 
 The recovery examples below require Hashbrown SDK **0.8.1 or later**, which includes `getRecoveryConfiguration` and `restoreConversation`; SDK 0.8.0 does not include these APIs. Install matching core and framework SDK versions.
 
@@ -40,14 +40,21 @@ The baseline hosting package is a preview even though the core Agent Framework p
 
 The shared `ProviderFactory` reads these server configuration keys. Supply `ApiKey` through your server's secret configuration, never browser code.
 
-| Key             | OpenAI                      | Azure OpenAI                        |
-| --------------- | --------------------------- | ----------------------------------- |
-| `Provider`      | `openai`                    | `azure`                             |
-| `ModelEndpoint` | `https://api.openai.com/v1` | Your Azure OpenAI resource endpoint |
-| `Model`         | Your OpenAI model name      | Your Azure deployment name          |
-| `ApiKey`        | Your OpenAI key             | Your Azure resource key             |
+| Key             | OpenAI                       | Azure OpenAI                                     |
+| --------------- | ---------------------------- | ------------------------------------------------ |
+| `Provider`      | `openai`                     | `azure`                                          |
+| `ModelApi`      | `responses`                  | `responses`                                      |
+| `ModelEndpoint` | `https://api.openai.com/v1/` | `https://<resource>.openai.azure.com/openai/v1/` |
+| `Model`         | Your OpenAI model name       | Your Azure deployment name                       |
+| `ApiKey`        | Your OpenAI key              | Your Azure resource key                          |
 
-The factory creates the genuine provider client. Azure uses `AzureOpenAIClient`, the deployment route, SDK-selected API version, and API-key authentication. A deployment name is not assumed to equal an OpenAI model name. Select a deployment/model that supports the requested tools and structured output.
+Responses is the recommended API for new integrations. Both providers use the pinned native OpenAI .NET Responses client through Microsoft's `IChatClient` adapter and the existing AG-UI host. The Azure Responses endpoint uses the OpenAI-compatible `/openai/v1/` path; an Azure resource-origin endpoint is also expanded to that path. A deployment name is not assumed to equal an OpenAI model name. Select a deployment/model that supports the requested tools and structured output.
+
+For an existing Chat Completions integration, explicitly set `ModelApi` to `chat-completions`. Use the OpenAI `/v1/` endpoint or Azure resource-origin endpoint as before. That Azure path retains `AzureOpenAIClient`, deployment routing, its SDK-selected API version and API-key authentication. Direct `ProviderFactory` callers that omit `ModelApi` retain Chat Completions compatibility; the startup recipe below explicitly defaults new applications to Responses. Unknown API/provider values fail before model work.
+
+Responses requests use `store=false` and resend application-owned canonical history. Provider conversation IDs, continuation tokens and background responses are disabled; restoration does not poll or resume a provider-owned response. This does not enable general chat-session persistence or hosted tools. Responses carries strict output schemas in `text.format`; Chat Completions uses `response_format`, with the same Hashbrown schema semantics.
+
+The Responses adapter requires a successful native completion; failed, incomplete, or truncated streams cannot become successful final answers. Recovery checks native output before the AG-UI adapter can omit meaningful items. Unsupported reasoning, encrypted continuation, hosted-tool items, annotations, or unknown native output make retained terminal history unavailable. A visible text answer alone does not prove that its full native history can be restored; the checkpoint status remains authoritative and effects are not replayed to obtain another answer.
 
 ## Host the endpoint
 
@@ -60,6 +67,7 @@ using Hashbrown.Conformance.Integration;
 using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration["ModelApi"] ??= "responses";
 HashbrownEndpointConfiguration.Configure(builder.Services);
 builder.Services.AddAuthentication("app").AddCookie("app");
 builder.Services.AddAuthorization(options =>
@@ -90,7 +98,11 @@ var registry = new WorkflowOperationRegistry([
             return ValueTask.CompletedTask;
         })
 ]);
-IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry);
+var checkpointOptions = new InterruptStoreOptions
+{
+    CompatibilityIdentity = ServerConfigurationIdentity.Create(builder.Configuration)
+};
+IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry, checkpointOptions);
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -173,7 +185,7 @@ await using var checkpointSource = Npgsql.NpgsqlDataSource.Create(
         ?? throw new InvalidOperationException("Configure the server checkpoint database."));
 var durable = new PostgresInterruptStore(
     checkpointSource, registry, schema: "hashbrown",
-    options: new InterruptStoreOptions
+    options: checkpointOptions with
     {
         Capacity = 128,
         ApprovalTtl = TimeSpan.FromMinutes(10),
@@ -194,7 +206,13 @@ The pooled `NpgsqlDataSource` lives for the application lifetime and is disposed
 
 `InitializeAsync` creates and checks the versioned schema safely during concurrent startup. Give the initialization identity permission to create the dedicated schema, tables, indexes, and constraints; the runtime needs access to that schema's checkpoint data. Coordinate schema-version upgrades and permissions with your deployment process. The executable reference uses PostgreSQL 18 and Npgsql 10.0.3.
 
-Every application instance must use the same authoritative database and compatible registry. Retain each operation name/version with its original meaning while stored work may reference it; missing versions or invalid persisted parameters fail closed before effect or model work. The checkpoint selector cannot replace stored arguments on resume. Replicas must also resolve the same stable authenticated application/tenant/user scope. With the cookie example, share the normal ASP.NET Core Data Protection keys and session configuration across replicas so authentication remains valid after routing changes.
+The checkpoint options above bind each batch to a secret-free hash of the trusted server API, provider, effective endpoint and model/deployment, as well as its existing browser configuration and operation registry. Credential rotation alone does not change this identity. The endpoint must be an HTTP(S) URL without user information, query or fragment. Changing APIs or model configuration does not authorize resuming old work: recovery and direct resume return 409 before model or effect work when the stored binding differs. Never take this identity from browser input or rewrite it to bypass a mismatch.
+
+**Upgrade all checkpoint workers together.** The new helpers migrate PostgreSQL schema 1/2 to schema 3 transactionally. Stop and drain **all** older workers before migration; overlapping mixed-version rolling operation is unsupported. An already-running older worker can ignore the new identity on reads, write legacy rows, or use an already issued claim. Schema-version checks prevent an older binary starting afterward, and bound fingerprints prevent its old claim validator admitting new bound rows; neither retrofits an existing process.
+
+Migration preserves legacy rows and their original fingerprints, with a null/unbound server identity. It cannot establish their original API/model configuration, so the identity-bound recipe rejects their recovery and resume with 409 rather than relabeling them as Responses. Plan pending approvals and unresolved effects before the upgrade; protected operator inspection and reconciliation remain available. Omitted-identity legacy store callers retain their original legacy behavior, but cannot claim newly bound batches. Do not backfill identities from browser data or automatically retry an uncertain effect.
+
+Every application instance must use the same authoritative database, server compatibility identity and compatible registry. Retain each operation name/version with its original meaning while stored work may reference it; missing versions or invalid persisted parameters fail closed before effect or model work. The checkpoint selector cannot replace stored arguments on resume. Replicas must also resolve the same stable authenticated application/tenant/user scope. With the cookie example, share the normal ASP.NET Core Data Protection keys and session configuration across replicas so authentication remains valid after routing changes.
 
 The approval deadline, preparation lease, and terminal retention are independent. Choose a lease long enough for ordinary pure preparation; there is no lease renewal. PostgreSQL server time controls durable deadlines. Expired pre-effect claims can be reacquired while approval remains valid. Terminal records remain for the configured retention, then their IDs become unknown (410). Capacity includes retained records. Active work and unresolved post-effect records are preserved; they continue occupying capacity until authorized terminal reconciliation and subsequent retention cleanup. No automatic retry queue is supplied.
 
@@ -277,7 +295,7 @@ The PostgreSQL recipe registers `PostgresInterruptCleanupService` before buildin
 
 `EffectStarted` **and** `FailedAfterEffect` records remain until explicit operator reconciliation, even after ordinary terminal retention expires. Their snapshots and audits still expire on their independent deadlines. Retained unresolved metadata counts against capacity; investigate and reconcile using authenticated evidence instead of deleting it to make room. Known terminal records can be removed after retention, making their old selectors unknown rather than reusable.
 
-Schema initialization migrates version 1 to version 2 under the existing startup lock. Version-1 rows retain their dispatch safety but lack reconstructable history and return unavailable snapshots; they are never converted into fresh approvals. Unsupported future schema versions fail closed. Deploy compatible Integration source, operation registry and schema together.
+Schema initialization migrates versions 1/2 to version 3 under the existing startup lock, without fabricating missing history or a server identity. Legacy rows retain their original fingerprints, null identity and dispatch safety. The identity-bound recipe rejects their recovery and resume with 409 rather than converting them into fresh approvals; protected operator inspection remains available. Stop all older workers before migration as described above. Unsupported future schema versions fail closed. Deploy compatible Integration source, operation registry and schema together.
 
 Final-answer capture supports canonical native text and server-tool history, including strictly equivalent redundant upstream diagnostics. Meaningful unknown raw events, reasoning/annotation/continuation extras, incomplete tool rounds, or snapshot replacement during an open text/tool fold fail closed to unavailable terminal history. A disconnect, process death, byte limit or persistence failure can also leave the answer unavailable while preserving the effect marker. This does not establish general AG-UI event replay or feature parity. Effect completion and answer availability remain independent.
 
@@ -446,6 +464,6 @@ Initialize `threadId` from the same router selector on reload. Add these explici
 
 ## Compatibility checks
 
-The [internal conformance suite](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) runs both React and Angular against both genuine provider clients with aimock replacing only the model API. It checks native paths/authentication, exact schemas, partial text/JSON/UI, tools, interrupt decisions, duplicate/concurrent/expired resume, failure/cancellation behavior, and durable restart, reload recovery, competing tabs, authenticated isolation, stale lookup guards, retained answers, historical browser-tool inertness and protected reconciliation across all four framework/provider combinations.
+The [internal conformance suite](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) runs both React and Angular against both genuine provider clients with aimock replacing only the model API. It checks native paths/authentication, exact schemas, partial text/JSON/UI, tools, interrupt decisions, duplicate/concurrent/expired resume, failure/cancellation behavior, and durable restart, reload recovery, competing tabs, authenticated isolation, stale lookup guards, retained answers, historical browser-tool inertness and protected reconciliation across both APIs and all eight framework/provider/API combinations.
 
-Responses-backed .NET clients, Entra authentication, .NET 8/9, automatic native tool approval, general chat-session persistence, reasoning, activities, and Hashbrown finish-reason metadata are outside this initial tested baseline. Other AG-UI backends can use the [custom provider contract](/docs/angular/platform/custom); AG-UI transport compatibility by itself does not establish all Hashbrown features.
+Entra authentication, live cloud-account qualification, .NET 8/9, automatic native tool approval, provider-hosted tools, general chat-session persistence, reasoning/continuation recovery, activities, and Hashbrown finish-reason metadata are outside this tested baseline. The deterministic suite uses aimock for the model API; passing it does not establish live OpenAI or Azure account behavior. Other AG-UI backends can use the [custom provider contract](/docs/angular/platform/custom); AG-UI transport compatibility by itself does not establish all Hashbrown features.

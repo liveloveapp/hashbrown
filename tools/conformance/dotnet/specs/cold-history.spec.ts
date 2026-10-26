@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
-import { durableEffects, withDurableCluster } from '../harness/durable-fixture';
+import { durableEffects, withDurableCluster } from '../harness/browser-fixture';
 import { withRoutedEndpoint } from '../harness/routed-endpoint';
 
 /** Reads captured native wire evidence without inventing missing requests. */

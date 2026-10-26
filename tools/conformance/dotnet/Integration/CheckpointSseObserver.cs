@@ -9,10 +9,12 @@ namespace Hashbrown.Conformance.Integration;
 internal sealed class CheckpointSseObserver
 {
     private readonly CheckpointCaptureHandle _handle;
+    private readonly ResponsesRecoveryEvidence? _evidence = ResponsesRecoveryEvidence.Current;
     private readonly Func<string, string?, ValueTask> _commit;
     private readonly List<byte> _frame = [];
     private readonly Dictionary<string, JsonObject> _texts = new(StringComparer.Ordinal);
     private readonly Dictionary<string, JsonObject> _calls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, JsonObject> _rawTexts = new(StringComparer.Ordinal);
     private readonly Dictionary<string, JsonObject> _rawCalls = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _callParents = new(StringComparer.Ordinal);
     private readonly HashSet<string> _openTexts = new(StringComparer.Ordinal);
@@ -70,7 +72,7 @@ internal sealed class CheckpointSseObserver
     {
         _available = false;
         _messages.Clear(); _state = null; _texts.Clear(); _calls.Clear();
-        _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear(); _rawCalls.Clear(); _callParents.Clear();
+        _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear(); _rawCalls.Clear(); _rawTexts.Clear(); _callParents.Clear();
     }
 
     private async ValueTask ProcessAsync(byte[] frame)
@@ -102,12 +104,16 @@ internal sealed class CheckpointSseObserver
                     _messages.Add(message); _texts.Add(id, message); _openTexts.Add(id); break;
                 case "TEXT_MESSAGE_CONTENT":
                     var textId = item["messageId"]!.GetValue<string>();
+                    if (_rawTexts.ContainsKey(textId)) { Discard(); break; }
                     if (!_texts.TryGetValue(textId, out var text) || !_openTexts.Contains(textId)) { Discard(); break; }
                     text["content"] = (text["content"]?.GetValue<string>() ?? "") + item["delta"]!.GetValue<string>(); break;
-                case "TEXT_MESSAGE_END": if (!_openTexts.Remove(item["messageId"]!.GetValue<string>())) Discard(); break;
+                case "TEXT_MESSAGE_END":
+                    var endedText = item["messageId"]!.GetValue<string>();
+                    if (_rawTexts.ContainsKey(endedText) || !_openTexts.Remove(endedText)) Discard();
+                    break;
                 case "TOOL_CALL_START":
                     var callId = item["toolCallId"]!.GetValue<string>();
-                    var parent = item["parentMessageId"]?.GetValue<string>() ?? callId;
+                    var parent = item["parentMessageId"]?.GetValue<string>() ?? NativeCallMessageId(item) ?? callId;
                     var assistant = _messages.OfType<JsonObject>().FirstOrDefault(message => message["id"]?.GetValue<string>() == parent);
                     if (assistant is null) { assistant = new JsonObject { ["id"] = parent, ["role"] = "assistant", ["toolCalls"] = new JsonArray() }; _messages.Add(assistant); }
                     if (item["rawEvent"]?["authorName"] is { } author) assistant["name"] ??= author.DeepClone();
@@ -132,8 +138,8 @@ internal sealed class CheckpointSseObserver
                     _messages.Add(new JsonObject { ["id"] = item["messageId"]!.DeepClone(), ["role"] = "tool", ["toolCallId"] = resultId, ["content"] = item["content"]?.DeepClone() }); break;
                 case "MESSAGES_SNAPSHOT":
                     // A replacement cannot erase an unfinished canonical event or bypass deferred diagnostic equivalence.
-                    if (_openTexts.Count > 0 || _openCalls.Count > 0 || _rawCalls.Count > 0) { Discard(); break; }
-                    _messages = (JsonArray)item["messages"]!.DeepClone(); _texts.Clear(); _calls.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear(); _rawCalls.Clear(); _callParents.Clear(); break;
+                    if (_openTexts.Count > 0 || _openCalls.Count > 0 || _rawCalls.Count > 0 || _rawTexts.Count > 0) { Discard(); break; }
+                    _messages = (JsonArray)item["messages"]!.DeepClone(); _texts.Clear(); _calls.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear(); _rawCalls.Clear(); _rawTexts.Clear(); _callParents.Clear(); break;
                 case "STATE_SNAPSHOT": _state = item["snapshot"]?.DeepClone(); break;
                 case "RUN_ERROR": await TerminalAsync("Failed", false); break;
                 case "RUN_FINISHED":
@@ -143,7 +149,7 @@ internal sealed class CheckpointSseObserver
                     await TerminalAsync(success ? "Finished" : outcome == "interrupt" ? "Interrupted" : "Interrupted", success); break;
                 default: Discard(); break;
             }
-            var retainedBytes = Encoding.UTF8.GetByteCount(_messages.ToJsonString()) + (_state is null ? 0 : Encoding.UTF8.GetByteCount(_state.ToJsonString())) + _rawCalls.Values.Sum(raw => Encoding.UTF8.GetByteCount(raw.ToJsonString()));
+            var retainedBytes = Encoding.UTF8.GetByteCount(_messages.ToJsonString()) + (_state is null ? 0 : Encoding.UTF8.GetByteCount(_state.ToJsonString())) + _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => Encoding.UTF8.GetByteCount(raw.ToJsonString()));
             if (_messages.Count > _handle.MaximumMessages || retainedBytes > _handle.MaximumBytes) Discard();
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or NullReferenceException or ArgumentException)
@@ -176,12 +182,22 @@ internal sealed class CheckpointSseObserver
         var message = id is not null && _texts.TryGetValue(id, out var existing) ? existing : null;
         var role = item["role"]?.GetValue<string>() ?? message?["role"]?.GetValue<string>();
         var name = item["name"]?.GetValue<string>() ?? message?["name"]?.GetValue<string>();
-        if (raw["messageId"]?.GetValue<string>() != id || raw["responseId"]?.GetValue<string>() != id || raw["role"]?.GetValue<string>() != role || raw["authorName"]?.GetValue<string>() != name) return false;
+        if (raw["messageId"]?.GetValue<string>() != id || !EquivalentResponseId(raw, id) || raw["role"]?.GetValue<string>() != role || raw["authorName"]?.GetValue<string>() != name) return false;
         var allowed = new HashSet<string>(["authorName", "role", "contents", "additionalProperties", "responseId", "messageId", "conversationId", "createdAt", "finishReason", "modelId", "continuationToken"], StringComparer.Ordinal);
         if (raw.Any(property => !allowed.Contains(property.Key)) || raw["additionalProperties"] is not null || raw["conversationId"] is not null || raw["finishReason"] is not null || raw["continuationToken"] is not null) return false;
         if (raw["contents"] is not JsonArray { Count: 1 } contents || contents[0] is not JsonObject content) return false;
         if (content.Any(property => property.Key is not ("$type" or "text" or "annotations" or "additionalProperties")) || content["$type"]?.GetValue<string>() != "text" || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
-        return content["text"]?.GetValue<string>() == (type == "TEXT_MESSAGE_START" ? "" : item["delta"]?.GetValue<string>());
+        var diagnosticText = content["text"]?.GetValue<string>();
+        if (type == "TEXT_MESSAGE_START")
+        {
+            if (diagnosticText == "") return true;
+            if (string.IsNullOrEmpty(diagnosticText) || id is null || _evidence?.Matches(raw["responseId"]?.GetValue<string>(), id) != true || _rawTexts.ContainsKey(id)) return false;
+            // Responses reuses the first nonempty text update for START and CONTENT; require exact subsequent agreement.
+            _rawTexts.Add(id, (JsonObject)raw.DeepClone());
+            return true;
+        }
+        if (id is not null && _rawTexts.Remove(id, out var first) && !JsonNode.DeepEquals(first, raw)) return false;
+        return diagnosticText == item["delta"]?.GetValue<string>();
     }
 
     // Native server-tool rounds use redundant functionCall/functionResult ChatResponseUpdate diagnostics.
@@ -191,9 +207,13 @@ internal sealed class CheckpointSseObserver
         if (type is not ("TOOL_CALL_START" or "TOOL_CALL_ARGS" or "TOOL_CALL_END" or "TOOL_CALL_RESULT") || item["rawEvent"] is not JsonObject raw) return false;
         var allowed = new HashSet<string>(["authorName", "role", "contents", "additionalProperties", "responseId", "messageId", "conversationId", "createdAt", "finishReason", "modelId", "continuationToken"], StringComparer.Ordinal);
         if (raw.Any(property => !allowed.Contains(property.Key)) || raw["additionalProperties"] is not null || raw["conversationId"] is not null || raw["continuationToken"] is not null ||
-            string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) || raw["responseId"]?.GetValue<string>() != raw["messageId"]?.GetValue<string>() || raw["contents"] is not JsonArray { Count: 1 } contents || contents[0] is not JsonObject content) return false;
+            raw["contents"] is not JsonArray { Count: 1 } contents || contents[0] is not JsonObject content) return false;
         var callId = item["toolCallId"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(callId) || content["callId"]?.GetValue<string>() != callId || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
+        var nativeCall = _evidence?.MatchesCall(raw["responseId"]?.GetValue<string>(), callId, content["name"]?.GetValue<string>(), content["arguments"]) == true;
+        // Native function items have an output ID and call ID, but MEAI can leave MessageId and FinishReason null.
+        var anonymousNativeCall = nativeCall && raw["messageId"] is null;
+        if (!anonymousNativeCall && (string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) || !EquivalentResponseId(raw, raw["messageId"]?.GetValue<string>()))) return false;
         if (type == "TOOL_CALL_RESULT")
         {
             if (!_calls.ContainsKey(callId) || raw["role"]?.GetValue<string>() != "tool" || raw["finishReason"] is not null || content["$type"]?.GetValue<string>() != "functionResult" || content.Any(property => property.Key is not ("$type" or "result" or "callId" or "annotations" or "additionalProperties"))) return false;
@@ -202,26 +222,38 @@ internal sealed class CheckpointSseObserver
             try { return JsonNode.DeepEquals(JsonNode.Parse(text), content["result"]); }
             catch (JsonException) { return false; }
         }
-        if (raw["role"]?.GetValue<string>() != "assistant" || raw["finishReason"]?.GetValue<string>() != "tool_calls" || content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"]?.GetValue<bool>() != false || content["arguments"] is not JsonObject ||
+        if (raw["role"]?.GetValue<string>() != "assistant" || (raw["finishReason"]?.GetValue<string>() != "tool_calls" && !(nativeCall && raw["finishReason"] is null)) || content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"]?.GetValue<bool>() != false || content["arguments"] is not JsonObject ||
             content.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties"))) return false;
         if (type == "TOOL_CALL_START")
         {
-            if (content["name"]?.GetValue<string>() != item["toolCallName"]?.GetValue<string>() || raw["messageId"]?.GetValue<string>() != item["parentMessageId"]?.GetValue<string>() || _rawCalls.ContainsKey(callId)) return false;
+            if (content["name"]?.GetValue<string>() != item["toolCallName"]?.GetValue<string>() || (raw["messageId"]?.GetValue<string>() != item["parentMessageId"]?.GetValue<string>() && !(anonymousNativeCall && item["parentMessageId"] is null)) || _rawCalls.ContainsKey(callId)) return false;
             _rawCalls.Add(callId, (JsonObject)raw.DeepClone());
             return true;
         }
         if (!_rawCalls.TryGetValue(callId, out var first) || !JsonNode.DeepEquals(first, raw) || !_calls.TryGetValue(callId, out var call) || !_callParents.TryGetValue(callId, out var parent) ||
-            raw["messageId"]?.GetValue<string>() != parent || call["function"]?["name"]?.GetValue<string>() != content["name"]?.GetValue<string>()) return false;
+            (raw["messageId"]?.GetValue<string>() != parent && !(anonymousNativeCall && parent == NativeCallMessageId(item))) || call["function"]?["name"]?.GetValue<string>() != content["name"]?.GetValue<string>()) return false;
         if (type != "TOOL_CALL_END") return true;
         try { return JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), content["arguments"]); }
         catch (JsonException) { return false; }
     }
 
+    // When AG-UI omits the parent, retain the witnessed native output ID; the result already uses the call ID.
+    private string? NativeCallMessageId(JsonNode item)
+    {
+        var raw = item["rawEvent"];
+        var content = raw?["contents"]?[0];
+        return _evidence?.CallMessageId(raw?["responseId"]?.GetValue<string>(), item["toolCallId"]?.GetValue<string>(), content?["name"]?.GetValue<string>(), content?["arguments"]);
+    }
+
+    private bool EquivalentResponseId(JsonObject raw, string? messageId) =>
+        raw["responseId"]?.GetValue<string>() == messageId || _evidence?.Matches(raw["responseId"]?.GetValue<string>(), messageId) == true;
+
     private async ValueTask TerminalAsync(string outcome, bool successful)
     {
         _terminal = true;
+        if (_evidence?.Available == false) Discard();
         string? snapshot = null;
-        if (successful && _available && _openTexts.Count == 0 && _openCalls.Count == 0 && _calls.Keys.All(_answeredCalls.Contains))
+        if (successful && _available && _openTexts.Count == 0 && _openCalls.Count == 0 && _rawTexts.Count == 0 && _calls.Keys.All(_answeredCalls.Contains))
         {
             // A native round trip validates canonical message shape before any persisted answer is acknowledged.
             var native = JsonSerializer.Deserialize(_handle.OriginalRequest!, AGUIJsonSerializerContext.Default.RunAgentInput)!;
