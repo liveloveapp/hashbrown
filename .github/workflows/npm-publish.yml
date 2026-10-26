@@ -75,6 +75,9 @@ jobs:
           cache: true
           cache-dependency-path: tools/conformance/dotnet/packages.lock.json
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Determine release channel
         id: channel
         run: |
