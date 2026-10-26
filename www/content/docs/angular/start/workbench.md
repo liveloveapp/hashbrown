@@ -28,7 +28,7 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens eight lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The left navigation opens eleven lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
 
 | Lesson                                                                    | Local URL                                     | Follow                                                                     |
 | ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
@@ -40,10 +40,15 @@ The left navigation opens eight lessons. All use the same two-step plan and keep
 | [Decisions](/docs/angular/concept/decisions)                              | `/angular.html?lesson=decisions`              | Complete typed choices, confidence and explicit application.               |
 | [Debugging](/docs/angular/concept/debugging)                              | `/angular.html?lesson=debugging`              | Local HTTP denial, same-conversation recovery, and captured evidence.      |
 | [Request transformation](/docs/angular/concept/transform-request-options) | `/angular.html?lesson=request-transformation` | Actual server callback, added instructions, and preserved provider fields. |
+| [Magic Text](/docs/angular/recipes/magic-text)                            | `/angular.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
+| [Predictive suggestions](/docs/angular/recipes/predictive-actions)        | `/angular.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
+| [UI selection](/docs/angular/recipes/ui-selection)                        | `/angular.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
 
-## Follow one turn
+The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+
+## Follow a Generative UI turn
 
 1. Send the first prompt. `uiChatResource` starts a real request.
 2. The `readContext` browser tool returns the current plan and revision. Reading context does not change it.

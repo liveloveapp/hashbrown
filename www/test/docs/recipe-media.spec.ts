@@ -14,6 +14,9 @@ test.each([
     'decisions',
     'debugging',
     'request-transformation',
+    'magic-text',
+    'predictions',
+    'ui-selection',
   ].flatMap((lesson) =>
     ['react', 'angular'].map(
       (framework) => `canonical-workbench-${lesson}-${framework}`,
