@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, mkdtemp, appendFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
   createLiveBudget,
@@ -53,6 +54,17 @@ export function parseLiveRunnerArguments(
       ? { consumerMetadata: values['--consumer-metadata'] }
       : {}),
   };
+}
+
+/** Resolves the installed package's declared public CLI bin without unsupported subpath exports. */
+export function resolveLivePlaywrightCli(): string {
+  const manifestPath = require.resolve('playwright/package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+    bin?: { playwright?: unknown };
+  };
+  if (typeof manifest.bin?.playwright !== 'string')
+    throw safeLiveError('LIVE_CHILD_START_FAILED');
+  return resolve(dirname(manifestPath), manifest.bin.playwright);
 }
 
 /** Native fixture handle; its owner must abort and drain the process before releasing its budget. */
@@ -493,6 +505,7 @@ async function executeQualification(
   let coordinator:
     Awaited<ReturnType<typeof createLiveCoordinator>> | undefined;
   try {
+    const playwrightCli = resolveLivePlaywrightCli();
     process.stdout.write(JSON.stringify({ reportDirectory: output }) + '\n');
     const metadata = await prepareArtifacts(
       args.consumerMetadata,
@@ -534,7 +547,7 @@ async function executeQualification(
     const result = await runOwnedChild(
       process.execPath,
       [
-        require.resolve('playwright/cli'),
+        playwrightCli,
         'test',
         '--config',
         resolve(__dirname, '../live.playwright.config.ts'),

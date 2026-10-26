@@ -44,6 +44,7 @@ test('case guard removes assertion messages, stacks and causes before Playwright
   }
 
   expect(caught).toBeInstanceOf(Error);
+  expect((caught as Error).name).toBe('');
   expect((caught as Error).message).toBe('');
   expect((caught as Error).stack).toBe('');
   expect((caught as Error).cause).toBeUndefined();
@@ -74,7 +75,7 @@ test('case deadline aborts and drains its owned callback before throwing a blank
       () => undefined,
       5,
     ),
-  ).rejects.toMatchObject({ message: '', stack: '' });
+  ).rejects.toMatchObject({ name: '', message: '', stack: '' });
 
   expect(events).toEqual(['aborted', 'drained']);
 });

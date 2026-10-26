@@ -86,6 +86,7 @@ export async function withSafeLiveCase<T>(
   } catch {
     annotate({ type: 'live-failure', description: 'LIVE_ASSERTION_FAILED' });
     const error = new Error('');
+    error.name = '';
     error.stack = '';
     throw error;
   } finally {

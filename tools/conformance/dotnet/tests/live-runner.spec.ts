@@ -5,9 +5,13 @@ import {
   parseLiveRunnerArguments,
   executeLiveRunner,
   createLiveCoordinator,
+  resolveLivePlaywrightCli,
 } from '../harness/live-runner';
 import { startLiveStaticServer } from '../harness/live-static-server';
-import { LIVE_PROJECTS } from '../harness/live-configuration';
+import {
+  LIVE_PROJECTS,
+  publicChildEnvironment,
+} from '../harness/live-configuration';
 
 test('list is independent of opt-in, credentials and child construction', async () => {
   const load = jest.fn();
@@ -141,6 +145,7 @@ test('actual Playwright forced failure discards assertion, DOM, cause and split 
   const { resolve } = await import('node:path');
   const directory = await mkdtemp(join(tmpdir(), 'hashbrown-pw-canary-'));
   const canary = 'CANARY_PRIVATE_NATIVE_472936';
+  const witness = join(directory, 'body-executed.txt');
   const guard = resolve(
     'tools/conformance/dotnet/harness/live-browser-fixture.ts',
   );
@@ -149,26 +154,28 @@ test('actual Playwright forced failure discards assertion, DOM, cause and split 
   const source = `import { test, expect } from ${JSON.stringify(playwright)};
 import { withSafeLiveCase } from ${JSON.stringify(guard)};
 import { spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 test('canary', async ({page}, info) => {
  await withSafeLiveCase(async () => {
   const secret=process.env.CANARY_VALUE;
   await page.setContent('<main>'+secret+'</main>');
   const child=spawnSync(process.execPath,['-e','process.stdout.write(process.env.CANARY_VALUE)'],{encoding:'utf8'});
   const output=child.stdout;console.log(output.slice(0,8));console.log(output.slice(8));
+  writeFileSync(${JSON.stringify(witness)},'canary-body-reached-forced-assertion');
   try { expect(secret).toBe('public'); } catch (error) { throw new Error(secret,{cause:error}); }
  }, annotation=>info.annotations.push(annotation));
 });`;
   await writeFile(join(directory, 'canary.spec.ts'), source);
   await writeFile(
     join(directory, 'playwright.config.ts'),
-    `export default {testDir:${JSON.stringify(directory)},testMatch:'canary.spec.ts',workers:1,retries:0,outputDir:${JSON.stringify(join(directory, 'outputs'))},reporter:[[${JSON.stringify(reporter)}]],use:{trace:'off',screenshot:'off',video:'off'}}`,
+    `export default {testDir:${JSON.stringify(directory)},testMatch:'canary.spec.ts',workers:1,retries:0,outputDir:${JSON.stringify(join(directory, 'outputs'))},reporter:[[${JSON.stringify(reporter)}]],use:{trace:'off',screenshot:'off',video:'off',launchOptions:{env:${JSON.stringify(publicChildEnvironment(process.env))}}}}`,
   );
 
   try {
     const result = await promisify(execFile)(
       process.execPath,
       [
-        require.resolve('playwright/cli'),
+        resolveLivePlaywrightCli(),
         'test',
         '--config',
         join(directory, 'playwright.config.ts'),
@@ -176,7 +183,7 @@ test('canary', async ({page}, info) => {
       {
         cwd: resolve('.'),
         env: {
-          ...process.env,
+          ...publicChildEnvironment(process.env),
           CANARY_VALUE: canary,
           PLAYWRIGHT_NO_COPY_PROMPT: '1',
         },
@@ -203,6 +210,9 @@ test('canary', async ({page}, info) => {
     };
     await scan(directory);
 
+    expect(await readFile(witness, 'utf8')).toBe(
+      'canary-body-reached-forced-assertion',
+    );
     expect(result.code).toBe(1);
     expect(result.stdout).toContain('failed');
     expect(result.stdout + result.stderr + outputs.join('\n')).not.toContain(
@@ -800,4 +810,30 @@ test('failed native preflight preserves safe wire facts without promoting qualif
     server.closeAllConnections();
     await new Promise<void>((done) => server.close(() => done()));
   }
+});
+
+test('runner resolves and launches the declared Playwright CLI bin in real Node with only public environment', async () => {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { resolve } = await import('node:path');
+  const { publicChildEnvironment } =
+    await import('../harness/live-configuration');
+  const runner = resolve('tools/conformance/dotnet/harness/live-runner.ts');
+  const script = `const {resolveLivePlaywrightCli}=require(${JSON.stringify(runner)});const {spawnSync}=require('node:child_process');const result=spawnSync(process.execPath,[resolveLivePlaywrightCli(),'--version'],{encoding:'utf8',env:process.env});process.stdout.write(JSON.stringify({code:result.status,stdout:result.stdout,stderr:result.stderr}));`;
+
+  const result = await promisify(execFile)(
+    process.execPath,
+    ['--import', 'tsx', '-e', script],
+    {
+      cwd: resolve('.'),
+      env: publicChildEnvironment(process.env),
+      timeout: 15_000,
+    },
+  );
+
+  expect(JSON.parse(result.stdout)).toEqual({
+    code: 0,
+    stdout: `Version ${require('playwright/package.json').version}\n`,
+    stderr: '',
+  });
 });
