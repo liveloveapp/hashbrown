@@ -84,8 +84,36 @@ The suite checks structured output and nested UI across both frameworks and
 attaches JSON load/first-token/total timings, schema sizes and process RSS.
 Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
 more than once and does not measure unique GPU allocations. Tests use bounded,
-application-owned generation settings. WebLLM remains text-only in this adapter, and native typed tools remain
-unsupported. Chrome media input has a separate explicit opt-in described below.
+application-owned generation settings. WebLLM remains text-only in this adapter and rejects tools. Chrome native typed
+tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
+
+### Selecting a local Chrome model experiment
+
+`LOCAL_LLM_CHROME_MODEL_VERSION` accepts `default`, `v4`, or `v4_4b` for
+native Chrome text/capability, media, and tool/schema/UI targets. Omission keeps
+the original defaults: browser default for text/media, v4 for typed tools.
+Explicit `default` omits the foundational-model override while retaining tool
+interfaces when that target requests them. Unknown and empty values fail early.
+This is a browser experiment, not an SDK model-selection option.
+
+The tested v4 profile identifies `gemma4-2b-it`. The installed Chrome 155 manifest
+has a separate Gemma `v4_4b` route and a default Nano v3 route. Neither the word
+v4 nor an accepted flag establishes Gemini Nano 4B. Inspect the actual downloaded
+manifest and `chrome://on-device-internals` before naming a model. Missing
+experimental manifest keys can fall back to the browser default.
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_CHROME_MODEL_VERSION=v4_4b \
+  LOCAL_LLM_PROFILE=/absolute/path/separate-4b-test-profile \
+  npx nx local-native-tool-capability-smoke conformance
+```
+
+That command checks interfaces/availability only and does not download or infer.
+Normal download gates still apply; live workflow suites refuse downloads.
+Playwright metadata records the requested configuration and whether it applies
+to native execution; deterministic contracts and WebLLM do not qualify it.
+See the [current qualification report](../../docs/superpowers/research/2026-10-25-local-model-qualification.md)
+for model availability, release status, and current Ollama/WebLLM limitations.
 
 ### Chrome media input
 

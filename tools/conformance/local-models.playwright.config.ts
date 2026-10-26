@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 import conformance from './conformance.playwright.config';
+import { localChromeLaunch } from './harness/local-chrome-launch';
 
 if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
   throw new Error(
@@ -15,8 +16,22 @@ const nativeTools =
 const native = process.env['LOCAL_LLM_NATIVE'] === '1' || nativeTools;
 const webllm = process.env['LOCAL_LLM_WEBLLM'] === '1';
 
+const chrome = localChromeLaunch({
+  tools: nativeTools,
+  modelVersion: process.env['LOCAL_LLM_CHROME_MODEL_VERSION'],
+});
+
 export default defineConfig({
   ...conformance,
+  metadata: {
+    ...conformance.metadata,
+    localChromeExperiment: {
+      applicable: native,
+      requestedModelVersion: chrome.modelVersion,
+      toolInterfaces: nativeTools,
+      note: 'Requested browser configuration; not verified loaded model identity or inference quality.',
+    },
+  },
   testDir: resolve(__dirname, 'local-models'),
   testMatch: nativeToolRoundtrip
     ? 'native-tools-roundtrip.e2e.ts'
@@ -73,23 +88,12 @@ export default defineConfig({
       ? {
           channel: 'chrome',
           headless: false,
-          launchOptions: {
-            // Playwright disables OptimizationHints by default, which removes
-            // Chrome's AI model broker. Use normal feature defaults locally.
-            args: nativeTools
-              ? [
-                  '--disable-features=',
-                  '--enable-features=AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4',
-                ]
-              : native
-                ? ['--disable-features=']
-                : [],
-            ignoreDefaultArgs: [
-              '--disable-component-update',
-              '--disable-background-networking',
-              '--disable-field-trial-config',
-            ],
-          },
+          launchOptions: native
+            ? chrome.launchOptions
+            : {
+                args: [],
+                ignoreDefaultArgs: chrome.launchOptions.ignoreDefaultArgs,
+              },
         }
       : {}),
   },

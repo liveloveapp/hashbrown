@@ -1,5 +1,11 @@
 # Chrome application-controlled tool phases: compatibility checkpoint
 
+Status: [PR #749](https://github.com/liveloveapp/hashbrown/pull/749) merged and
+verified at `7639ecd41a48ed3d73e26690475e5f477572fb31`. Both fixed native samples
+passed the approved single-component subset (8/10 overall each); nested failures
+remain strict canaries. The sections below retain the chronological checkpoints.
+See [current qualification follow-ups](2026-10-25-local-model-qualification.md).
+
 Research date: October 25, 2026. The user authorized design and implementation
 of application-controlled phases after the bounded model-led samples passed only
 2/8 and 4/8. Prior failures remain in the component UI research.
