@@ -43,9 +43,6 @@ export const section = (
   children,
 });
 
-/** Create a line break. */
-export const lineBreak = (): LineBreak => ({ kind: 'break' });
-
 /**
  * Open or close the section with the given title, returning new sections
  * and leaving the input untouched.

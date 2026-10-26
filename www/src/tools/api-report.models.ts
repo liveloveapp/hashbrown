@@ -33,36 +33,6 @@ export type CanonicalReference =
   | `${string}!~${string}:${CanonicalReferenceKind}`
   | `${string}!~${string}:${CanonicalReferenceKind}(${number})`;
 
-export class ParsedCanonicalReference {
-  readonly package: string;
-  readonly name: string;
-  readonly kind: CanonicalReferenceKind;
-  readonly index: number | undefined;
-  readonly isPrivate: boolean;
-
-  constructor(readonly referenceString: CanonicalReference) {
-    const [packagePart, restOfParts] = referenceString.split('!');
-
-    this.package = packagePart === '' ? '@@internal' : packagePart;
-
-    const [symbolName, kindParts] = restOfParts.split(':');
-    if (!symbolName || !kindParts) {
-      throw new Error(`Invalid reference: ${referenceString}`);
-    }
-
-    this.name = symbolName;
-    const [memberKind, countWithClosingParens] = kindParts.split('(');
-
-    this.kind = memberKind as CanonicalReferenceKind;
-
-    if (countWithClosingParens) {
-      this.index = parseInt(countWithClosingParens.slice(0, -1));
-    }
-
-    this.isPrivate = this.name.startsWith('~') || this.package === '@@internal';
-  }
-}
-
 export interface ApiContentExcerptToken {
   kind: ApiExcerptTokenKind.Content;
   text: string;

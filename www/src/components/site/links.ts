@@ -2,9 +2,6 @@ import type { Sdk } from '../../lib/content';
 
 export type { Sdk };
 
-/** The SDK the Angular `ConfigService` falls back to. */
-export const DEFAULT_SDK: Sdk = 'angular';
-
 /** The GitHub repository the header and footer link to. */
 export const GITHUB_REPO_URL = 'https://github.com/liveloveapp/hashbrown';
 

@@ -258,10 +258,6 @@ export const DOCS_DEMOS = {
     caption:
       'Expose trusted components and let the model choose what to render.',
   },
-  streaming: {
-    title: 'Render as the response arrives.',
-    caption: 'Watch a streamed response render into the application’s own UI.',
-  },
   'browser-tools': {
     title: 'Give the model useful tools.',
     caption:
