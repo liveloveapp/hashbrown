@@ -45,11 +45,13 @@ Files: new tool transport implementation/spec; private byte-buffer utility only 
 
 Files: `tools/conformance/hosts/{angular,react}/src/local-transport.ts`, existing schema/UI/workflow fixtures where reusable; new `local-webllm-tools.playwright.config.ts`, `local-models/webllm-tools.e2e.ts`, worker shim, harness gate tests, project.json/tsconfig/README.
 
-- [ ] Add failing explicit local gate / CI-refusal tests and model-free browser cases using existing @copilotkit/aimock LLMock plus installLocalModelShim for functional workflows, and controlled workers for lifecycle/drain cases. Do not add a package or initialize real inference in these cases.
-- [ ] Wire explicit localModel=webllm-tools selection and application phase callback from canonical context. Reuse existing handlers/permission checks, schema and trusted leaf-component workflows without changing native routes/defaults.
-- [ ] Cover selected lookup, dependency and exact replay, error and denied operations, direct no-tool finalization, subsequent turn, malformed/wrong-type args with zero handler calls, cancellation and overlap/drain. Assert canonical external history, system instructions, handler args/counts, final output and no HTTP fallback/page errors.
-- [ ] Add durable JSON report with separate schema/raw response and metadata attachments on success/failure, including after cleanup. Guard idle Stop; no model input payload logs.
-- [ ] Verify conformance build/test/lint, both production host builds/lint, all new contracts and affected existing text/image/schema/UI contracts. Use4451/4452 and explicit local flags; commit. Independent spec then quality review.
+- [x] Add failing explicit local gate / CI-refusal tests and model-free browser cases using existing @copilotkit/aimock LLMock plus installLocalModelShim for functional workflows, and controlled workers for lifecycle/drain cases. Do not add a package or initialize real inference in these cases.
+- [x] Wire explicit localModel=webllm-tools selection and application phase callback from canonical context. Reuse existing handlers/permission checks, schema and trusted leaf-component workflows without changing native routes/defaults.
+- [x] Cover selected lookup, dependency and exact replay, error and denied operations, direct no-tool finalization, subsequent turn, malformed/wrong-type args with zero handler calls, cancellation and overlap/drain. Assert canonical external history, system instructions, handler args/counts, final output and no HTTP fallback/page errors.
+- [x] Add durable JSON report with separate schema/raw response and metadata attachments on success/failure, including after cleanup. Guard idle Stop; no model input payload logs.
+- [x] Verify conformance build/test/lint, both production host builds/lint, all new contracts and affected existing text/image/schema/UI contracts. Use4451/4452 and explicit local flags; commit. Independent spec then quality review.
+
+Task 4 verified and independently approved at `1622dff1b93a5031bc19cb518ad4d1ecece33593`: 36 new and 102 existing browser contracts, 80 unit tests, conformance build/lint and both host production builds/lints passed. Review fixes add post-disposal exact terminal assertions, atomic shim observation, and independent canonical/replay argument expectations; retained mutation reports prove the checks reject corruption. Latest main `a2c780b270f5acc506689d8dc543257cc17b5cb9` was merged without incoming core/conformance/manifest changes.
 
 ## Task 5: Explicit real-engine qualification and delivery
 
