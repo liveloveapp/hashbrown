@@ -332,7 +332,7 @@ Copy threadplane migrations `0002` through `0008` as hashbrown `0001` through
   rendered campaign drafts and digest reports.
 - Drop `growth_projects.claim_key_hash` and the `/connect` claim flow; hashbrown
   has no explicit project-claim form. Keep `posthog_distinct_id`.
-- Job `kind` enum is `fulfill | notify | send_step | digest | reply_reconcile`.
+- Job `kind` enum is `fulfill | notify | send_step | digest`.
 - Table prefix stays `growth_`. Views keep their `_v1` names.
 - Threadplane's `0001` (`rate_limit_events` for the demo proxy) is not ported.
 
@@ -409,10 +409,10 @@ site footer, the runtime console announcement, and the package READMEs.
 
 Fields:
 
-| Field                | Type              | Rule                                                                    |
-| -------------------- | ----------------- | ----------------------------------------------------------------------- |
-| Email                | required          | Full address; error copy "Enter a full address, like jordan@acme.dev."  |
-| Where are you stuck? | required textarea | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog |
+| Field                | Type              | Rule                                                                                                  |
+| -------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Email                | required          | Full address; error copy "That doesn't look like a full address. Try something like jordan@acme.dev." |
+| Where are you stuck? | required textarea | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog                               |
 
 Layout and copy live in `2026-10-25-unstuck-page-polish-design.md`. Validation
 on blur, final pass on submit, focus to first invalid field, `aria-describedby`
@@ -519,7 +519,7 @@ threadplane's precedence; environment-tag mismatches are acknowledged and
 ignored. HMAC-signed action tokens with purposes `unsubscribe | founder_stop |
 founder_approve_install`, served at `/_/unsubscribe`, `/_/growth/stop`,
 `/_/growth/approve-install` on `GROWTH_PUBLIC_ACTION_ORIGIN`. Replies arrive through
-Resend receiving and stops the sequence only on the opt-out
+Resend receiving and stop the sequence only on the opt-out
 phrases above (#717, #744, #753; `tools/growth/src/lib/reply-intent.ts`). Reply
 bodies are never stored.
 

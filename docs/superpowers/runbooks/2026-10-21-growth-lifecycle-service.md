@@ -430,11 +430,12 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
-- Migration 0011 (`0011_growth_strip_form_agreement.sql`): after the Get unstuck
-  polish merges, apply it to production by hand with `npx nx migrate-growth
-growth`, and log the before and after row counts of the stored keys it strips
-  (`notice_text`, `notice_version`, `policy_version`, `framework`) in the
-  enable log.
+- Migration 0011 (`0011_growth_strip_form_agreement.sql`): after the www and
+  `hashbrown-lifecycle` production deploys from the Get unstuck polish merge are
+  live, apply it to production by hand with `npx nx migrate-growth growth`. Run
+  it as a read-write transaction, and log the before and after row counts of
+  the stored keys it strips (`notice_text`, `notice_version`, `policy_version`,
+  `framework`) in the enable log.
 - Add `VERCEL_PROJECT_ID_LIFECYCLE` for CI. The `lifecycle` entry in
   `DEPLOY_TARGETS` is optional and is skipped while it is unset.
 

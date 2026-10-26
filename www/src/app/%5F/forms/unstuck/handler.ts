@@ -95,10 +95,9 @@ function isJson(request: Request): boolean {
  * Builds the `POST /_/forms/unstuck` handler. With the switch off it answers
  * 503 before reading the body. Otherwise it validates the body (400; the
  * legacy `policy_version` and `framework` keys are tolerated and ignored),
- * accepts the submission in one
- * transaction, closes the database, and only then nudges the lifecycle
- * service; a nudge failure never reaches the visitor. A rate limit answers
- * 429 with `Retry-After`; a permanent identity conflict (a reused
+ * accepts the submission in one transaction, closes the database, and only
+ * then nudges the lifecycle service; a nudge failure never reaches the
+ * visitor. A rate limit answers 429 with `Retry-After`; a permanent identity conflict (a reused
  * `submission_id` with a changed body, or jobs owned by another contact)
  * answers 422 without `retryable`; faults answer a retryable 503 and log
  * `[unstuck-form-failed]` with the stage and the error's name only. Responses
