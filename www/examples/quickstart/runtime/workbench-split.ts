@@ -60,6 +60,7 @@ export function createWorkbenchSplit(options: WorkbenchSplitOptions): {
     const width = inspector.getBoundingClientRect().right - left;
     const pointerId = (event as PointerEvent).pointerId;
     handle.setPointerCapture?.(pointerId);
+    handle.focus();
     handle.classList.add('wb-dragging');
     const move = (e: Event) => {
       if (width <= 0) return;
@@ -74,11 +75,13 @@ export function createWorkbenchSplit(options: WorkbenchSplitOptions): {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', end);
       handle.removeEventListener('pointercancel', end);
+      handle.removeEventListener('lostpointercapture', end);
       stopDrag = undefined;
     };
     handle.addEventListener('pointermove', move);
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
+    handle.addEventListener('lostpointercapture', end);
     stopDrag = end;
     event.preventDefault();
   });

@@ -15,6 +15,8 @@ import {
   adjacentTurnIndex,
   formatPlaybackSeconds,
   nextPlaybackSpeed,
+  workbenchFlagAnchor,
+  workbenchSegmentFill,
   workbenchShortcut,
   workbenchTickPercent,
   workbenchTurnSegments,
@@ -163,8 +165,29 @@ function iconButton(
 ): HTMLButtonElement {
   const node = button('', action);
   node.setAttribute('aria-label', label);
+  node.title = label;
   node.append(workbenchIcon(icon));
   return node;
+}
+/**
+ * Rebuilds `container` and, when focus was on one of its keyed children,
+ * moves focus to the rebuilt child with the same key.
+ */
+function rebuildKeepingFocus(
+  container: HTMLElement,
+  key: string,
+  rebuild: () => void,
+): void {
+  const active = container.ownerDocument.activeElement;
+  const restore =
+    active instanceof HTMLElement && container.contains(active)
+      ? active.closest<HTMLElement>(`[${key}]`)?.getAttribute(key)
+      : null;
+  rebuild();
+  if (restore == null) return;
+  [...container.querySelectorAll<HTMLElement>(`[${key}]`)]
+    .find((node) => node.getAttribute(key) === restore)
+    ?.focus();
 }
 function playbackSpeedLabel(speed: number): string {
   return speed === 0.5 ? '½×' : `${speed}×`;
@@ -308,12 +331,18 @@ export function mountWorkbench(
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
-  function renderNavigation() {
+  let sidebarKey: string | undefined;
+  function renderLayout() {
     const current = layoutStore.get();
-    root.classList.toggle('wb-rail', current.rail);
-    layout.style.setProperty('--wb-split', String(current.split));
     layout.style.setProperty('--wb-chat', `${current.split}fr`);
     layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
+    const key = JSON.stringify([current.rail, current.collapsed]);
+    if (key !== sidebarKey) renderNavigation();
+  }
+  function renderNavigation() {
+    const current = layoutStore.get();
+    sidebarKey = JSON.stringify([current.rail, current.collapsed]);
+    root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       currentLesson: (commands.lesson?.id ??
@@ -508,15 +537,24 @@ export function mountWorkbench(
   });
   returnLive.className = 'wb-live';
   returnLive.setAttribute('aria-label', 'Return to live');
+  returnLive.title = 'Return to live';
   const liveLabel = document.createTextNode('LIVE');
   returnLive.append(element('span', '', 'wb-live-dot'), liveLabel);
-  const speedButton = button(playbackSpeedLabel(speed), () => {
+  const speedValue = element(
+    'span',
+    playbackSpeedLabel(speed),
+    'wb-speed-value',
+  );
+  const speedButton = button('', () => {
     speed = nextPlaybackSpeed(speed);
-    speedButton.textContent = playbackSpeedLabel(speed);
+    speedValue.textContent = playbackSpeedLabel(speed);
     if (playing) schedule();
   });
   speedButton.className = 'wb-speed';
-  speedButton.setAttribute('aria-label', 'Playback speed');
+  speedButton.append(
+    element('span', 'Playback speed ', 'wb-visually-hidden'),
+    speedValue,
+  );
   const seek = element('input');
   seek.type = 'range';
   seek.min = '0';
@@ -619,6 +657,7 @@ export function mountWorkbench(
     const label = playing ? 'Pause' : 'Play';
     if (play.getAttribute('aria-label') === label) return;
     play.setAttribute('aria-label', label);
+    play.title = label;
     play.replaceChildren(workbenchIcon(playing ? 'pause' : 'play'));
   }
   function schedule() {
@@ -907,49 +946,56 @@ export function mountWorkbench(
       : (frame?.status ?? snapshot.status) === 'loading'
         ? 'streaming'
         : 'captured';
-    inspection.replaceChildren();
-    if (rawFrame) {
-      inspection.append(
-        element(
-          'h3',
-          frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
-        ),
-        pre(tab === 'Transform' && transform ? transform : frame?.payload),
-      );
-    } else if (tab === 'Requests') {
-      const list = element('div', '', 'wb-request-list');
-      for (const event of visibleEvents.filter(
-        (event) =>
-          event.kind === 'request' ||
-          event.kind === 'tool' ||
-          (event.kind === 'response' &&
-            event.payload &&
-            typeof event.payload === 'object' &&
-            'status' in event.payload &&
-            Number(event.payload.status) >= 400),
-      )) {
-        const item = button(
-          `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
-          () => {
-            pause();
-            store.seek(snapshot.events.indexOf(event));
-          },
+    rebuildKeepingFocus(inspection, 'data-sequence', () => {
+      inspection.replaceChildren();
+      if (rawFrame) {
+        inspection.append(
+          element(
+            'h3',
+            frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
+          ),
+          pre(tab === 'Transform' && transform ? transform : frame?.payload),
         );
-        item.disabled = busy;
-        item.setAttribute(
-          'aria-pressed',
-          String(frame?.sequence === event.sequence),
+      } else if (tab === 'Requests') {
+        const list = element('div', '', 'wb-request-list');
+        for (const event of visibleEvents.filter(
+          (event) =>
+            event.kind === 'request' ||
+            event.kind === 'tool' ||
+            (event.kind === 'response' &&
+              event.payload &&
+              typeof event.payload === 'object' &&
+              'status' in event.payload &&
+              Number(event.payload.status) >= 400),
+        )) {
+          const item = button(
+            `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
+            () => {
+              pause();
+              store.seek(snapshot.events.indexOf(event));
+            },
+          );
+          item.disabled = busy;
+          item.dataset.sequence = String(event.sequence);
+          item.setAttribute(
+            'aria-pressed',
+            String(frame?.sequence === event.sequence),
+          );
+          list.append(item);
+        }
+        inspection.append(
+          list.childElementCount
+            ? list
+            : element(
+                'p',
+                'Send a message to follow its requests.',
+                'wb-muted',
+              ),
         );
-        list.append(item);
+      } else {
+        inspection.append(pre(value));
       }
-      inspection.append(
-        list.childElementCount
-          ? list
-          : element('p', 'Send a message to follow its requests.', 'wb-muted'),
-      );
-    } else {
-      inspection.append(pre(value));
-    }
+    });
     const detailHeader = element('header', '', 'wb-section-head');
     detailHeader.append(
       element(
@@ -1017,7 +1063,6 @@ export function mountWorkbench(
       issue.setAttribute('role', 'alert');
       inspection.append(issue);
     }
-    events.replaceChildren();
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
     const milestones = rawEvents
@@ -1030,23 +1075,27 @@ export function mountWorkbench(
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
       .at(-1);
-    milestones.forEach(({ index, label }) => {
-      const event = snapshot.events[index];
-      const item = button(label, () => {
-        pause();
-        store.seek(index);
+    rebuildKeepingFocus(events, 'data-index', () => {
+      events.replaceChildren();
+      milestones.forEach(({ index, label }) => {
+        const event = snapshot.events[index];
+        const item = button(label, () => {
+          pause();
+          store.seek(index);
+        });
+        item.disabled = busy;
+        item.dataset.index = String(index);
+        item.style.left = `${workbenchTickPercent(index, total)}%`;
+        item.setAttribute(
+          'aria-label',
+          `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
+        );
+        item.setAttribute(
+          'aria-pressed',
+          String(index === activeMilestone?.index),
+        );
+        events.append(item);
       });
-      item.disabled = busy;
-      item.style.left = `${workbenchTickPercent(index, total)}%`;
-      item.setAttribute(
-        'aria-label',
-        `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
-      );
-      item.setAttribute(
-        'aria-pressed',
-        String(index === activeMilestone?.index),
-      );
-      events.append(item);
     });
     segments.replaceChildren(
       ...workbenchTurnSegments(snapshot.events).map(({ turn, start, end }) => {
@@ -1054,15 +1103,20 @@ export function mountWorkbench(
         const left = workbenchTickPercent(start, total);
         segment.style.left = `${left}%`;
         segment.style.width = `${workbenchTickPercent(end, total) - left}%`;
-        segment.toggleAttribute('data-played', selectedIndex >= start);
+        segment.style.setProperty(
+          '--wb-fill',
+          `${workbenchSegmentFill({ start, end }, selectedIndex, total)}%`,
+        );
         segment.append(element('span', `Turn ${turn}`, 'wb-mono'));
         return segment;
       }),
     );
     flag.textContent = total ? (activeMilestone?.label ?? '') : '';
-    flag.style.left = total
-      ? `${workbenchTickPercent(selectedIndex, total)}%`
-      : '';
+    const flagPercent = workbenchTickPercent(selectedIndex, total);
+    flag.style.left = total ? `${flagPercent}%` : '';
+    const anchor = workbenchFlagAnchor(flagPercent);
+    if (total && anchor !== 'middle') flag.dataset.anchor = anchor;
+    else delete flag.dataset.anchor;
     previous.disabled = busy || selectedIndex <= 0;
     next.disabled = busy || selectedIndex >= total - 1;
     previousTurn.disabled =
@@ -1076,7 +1130,7 @@ export function mountWorkbench(
     syncPlayButton();
     returnLive.disabled = !historical;
     returnLive.toggleAttribute('data-live', !historical);
-    liveLabel.data = historical ? 'Go live' : 'LIVE';
+    liveLabel.data = historical ? 'Return to live' : 'LIVE';
     const last = snapshot.events.at(-1);
     timing.textContent =
       frame && last
@@ -1087,8 +1141,8 @@ export function mountWorkbench(
       else if (following) live.scrollTop = live.scrollHeight;
     });
   }
-  renderNavigation();
-  const unsubscribeLayout = layoutStore.subscribe(renderNavigation);
+  renderLayout();
+  const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
   render();
   return {

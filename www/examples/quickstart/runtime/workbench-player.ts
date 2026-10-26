@@ -37,6 +37,42 @@ export function workbenchTickPercent(index: number, total: number): number {
 }
 
 /**
+ * Returns how much of a turn segment the playhead has played, as a percentage
+ * of the segment's width (0–100). A one-event segment is either empty or full.
+ *
+ * @param segment - The turn's first and last event indexes.
+ * @param index - The selected event index (the playhead).
+ * @param total - The number of captured events.
+ */
+export function workbenchSegmentFill(
+  segment: { readonly start: number; readonly end: number },
+  index: number,
+  total: number,
+): number {
+  const left = workbenchTickPercent(segment.start, total);
+  const width = workbenchTickPercent(segment.end, total) - left;
+  const progress = workbenchTickPercent(index, total);
+  if (width <= 0) return progress >= left ? 100 : 0;
+  const fill = ((progress - left) / width) * 100;
+  return Math.round(Math.min(100, Math.max(0, fill)) * 100) / 100;
+}
+
+/** Where the scrubber flag anchors so it stays inside the scrubber. */
+export type WorkbenchFlagAnchor = 'start' | 'middle' | 'end';
+
+/**
+ * Chooses the flag anchor for a playhead position: left-aligned below 15%,
+ * right-aligned above 85%, centred otherwise.
+ *
+ * @param percent - The playhead position on the scrubber, 0–100.
+ */
+export function workbenchFlagAnchor(percent: number): WorkbenchFlagAnchor {
+  if (percent < 15) return 'start';
+  if (percent > 85) return 'end';
+  return 'middle';
+}
+
+/**
  * Finds the event index a previous/next-turn jump lands on. A `null` cursor
  * means the last event. Previous returns the start of the current turn when
  * the cursor is past it, otherwise the previous turn's start.

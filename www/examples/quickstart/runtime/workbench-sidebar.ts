@@ -94,6 +94,7 @@ export function renderWorkbenchSidebar(
     'aria-label',
     layout.rail ? 'Expand sidebar' : 'Collapse sidebar',
   );
+  rail.title = layout.rail ? 'Expand sidebar' : 'Collapse sidebar';
   rail.setAttribute('aria-expanded', String(!layout.rail));
   rail.append(workbenchIcon('sidebar'));
   top.append(cta, rail);

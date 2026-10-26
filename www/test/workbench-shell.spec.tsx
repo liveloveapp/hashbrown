@@ -253,7 +253,7 @@ test('steps, clamps and resets the split from the keyboard', () => {
 
   expect(separator?.getAttribute('aria-valuenow')).toBe('52');
   expect(layout.get().split).toBe(52);
-  expect(grid?.style.getPropertyValue('--wb-split')).toBe('52');
+  expect(grid?.style.getPropertyValue('--wb-split')).toBe('');
   expect(grid?.style.getPropertyValue('--wb-chat')).toBe('52fr');
   expect(grid?.style.getPropertyValue('--wb-inspector')).toBe('48fr');
 
@@ -288,6 +288,7 @@ test('drags the split relative to chat and inspector', () => {
     separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
 
   fire('pointerdown', 500);
+  const focused = document.activeElement;
   fire('pointermove', 700);
   const middle = layout.get().split;
   const dragging = separator?.classList.contains('wb-dragging');
@@ -297,10 +298,37 @@ test('drags the split relative to chat and inspector', () => {
   fire('pointermove', 300);
 
   expect(capture).toHaveBeenCalled();
+  expect(focused).toBe(separator);
   expect(middle).toBe(70);
   expect(dragging).toBe(true);
   expect(clamped).toBe(75);
   expect(layout.get().split).toBe(75);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
+  shell.dispose();
+});
+
+test('ends a split drag when pointer capture is lost', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const chat = host.querySelector('.wb-chat');
+  const inspector = host.querySelector('.wb-inspector');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(chat as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(0, 600),
+  );
+  vi.spyOn(inspector as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(600, 1000),
+  );
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  fire('pointermove', 600);
+  fire('lostpointercapture', 600);
+  fire('pointermove', 300);
+
+  expect(layout.get().split).toBe(60);
   expect(separator?.classList.contains('wb-dragging')).toBe(false);
   shell.dispose();
 });
@@ -361,17 +389,22 @@ test('jumps turns and cycles speed from the player', () => {
   const afterSecondPrevious = store.getSnapshot().cursor;
   playerButton(host, 'Next turn').click();
   const afterNext = store.getSnapshot().cursor;
-  const speeds = [speed?.textContent];
+  const value = () => speed?.querySelector('.wb-speed-value')?.textContent;
+  const speeds = [value()];
   speed?.click();
-  speeds.push(speed?.textContent);
+  speeds.push(value());
   speed?.click();
-  speeds.push(speed?.textContent);
+  speeds.push(value());
 
   expect(secondTurnStart).toBeGreaterThan(0);
   expect(afterFirstPrevious).toBe(secondTurnStart);
   expect(afterSecondPrevious).toBe(0);
   expect(afterNext).toBe(secondTurnStart);
-  expect(speed?.getAttribute('aria-label')).toBe('Playback speed');
+  expect(speed?.hasAttribute('aria-label')).toBe(false);
+  expect(speed?.textContent).toBe('Playback speed ½×');
+  expect(speed?.querySelector('.wb-visually-hidden')?.textContent).toBe(
+    'Playback speed ',
+  );
   expect(speeds).toEqual(['1×', '2×', '½×']);
   expect(host.querySelectorAll('.wb-scrubber .wb-segment')).toHaveLength(2);
   expect(host.querySelector('select')).toBeNull();
@@ -404,7 +437,11 @@ test('shows LIVE at the head and Return to live in replay', () => {
     text: 'LIVE',
     dot: true,
   });
-  expect(inReplay).toEqual({ disabled: false, marked: false, text: 'Go live' });
+  expect(inReplay).toEqual({
+    disabled: false,
+    marked: false,
+    text: 'Return to live',
+  });
   expect(store.getSnapshot().cursor).toBeNull();
   shell.dispose();
 });
@@ -461,10 +498,117 @@ test('positions ticks and the flag on the scrubber', () => {
   expect(flag?.getAttribute('aria-hidden')).toBe('true');
   expect(flag?.textContent).toBe(pressed?.textContent);
   expect(flag?.style.left).toBe('60%');
+  expect(flag?.hasAttribute('data-anchor')).toBe(false);
   expect(
-    segments.map((segment) => segment.hasAttribute('data-played')),
-  ).toEqual([true, true]);
+    segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
+  ).toEqual(['100%', '0%']);
   expect(segments[1]?.textContent).toContain('Turn 2');
+  shell.dispose();
+});
+
+test('fills played portions of each turn up to the playhead', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const fills = () =>
+    [...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment')].map(
+      (segment) => segment.style.getPropertyValue('--wb-fill'),
+    );
+
+  store.seek(1);
+  const early = fills();
+  store.seek(4);
+  const late = fills();
+
+  expect(early).toEqual(['50%', '0%']);
+  expect(late).toEqual(['100%', '50%']);
+  expect(
+    host.querySelector('.wb-scrubber .wb-segment[data-played]'),
+  ).toBeNull();
+  shell.dispose();
+});
+
+test('keeps the flag inside the scrubber at either end', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const flag = host.querySelector<HTMLElement>('.wb-scrubber .wb-flag');
+
+  const atHead = flag?.dataset.anchor;
+  store.seek(0);
+  const atStart = flag?.dataset.anchor;
+
+  expect(atHead).toBe('end');
+  expect(atStart).toBe('start');
+  shell.dispose();
+});
+
+test('keeps focus on an activated request row and tick', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const row = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-request-list button',
+  )[0];
+  const rowText = row?.textContent;
+  row?.focus();
+
+  row?.click();
+  const focusedRow = document.activeElement;
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[0];
+  const label = tick?.getAttribute('aria-label');
+  tick?.focus();
+  tick?.click();
+  const focusedTick = document.activeElement;
+
+  expect(focusedRow?.closest('.wb-request-list')).not.toBeNull();
+  expect(focusedRow?.textContent).toBe(rowText);
+  expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
+  expect(focusedTick?.closest('.wb-events')).not.toBeNull();
+  expect(focusedTick?.getAttribute('aria-label')).toBe(label);
+  expect(focusedTick?.getAttribute('aria-pressed')).toBe('true');
+  shell.dispose();
+});
+
+test('labels player icon buttons and the rail toggle with a visible title', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const play = playerButton(host, 'Play');
+
+  play.click();
+  const controls = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-transport button, .wb-player .wb-live, .wb-player [aria-label="Raw events"], .wb-rail-toggle',
+    ),
+  ];
+  const titles = controls.map((node) => [
+    node.getAttribute('title'),
+    node.getAttribute('aria-label'),
+  ]);
+  shell.pause();
+
+  expect(controls).toHaveLength(8);
+  expect(titles.every(([title, label]) => !!title && title === label)).toBe(
+    true,
+  );
+  expect(play.getAttribute('title')).toBe('Play');
+  expect(titles).toContainEqual(['Pause', 'Pause']);
+  shell.dispose();
+});
+
+test('rebuilds the sidebar only when rail or sections change', () => {
+  const { host, shell, layout } = mountShell();
+  const grid = host.querySelector<HTMLElement>('.wb-layout');
+  const before = host.querySelector('.wb-cta');
+
+  layout.set({ split: 60 });
+  const afterSplit = host.querySelector('.wb-cta');
+  layout.set({ collapsed: ['recipes'] });
+  const afterCollapse = host.querySelector('.wb-cta');
+
+  expect(afterSplit).toBe(before);
+  expect(grid?.style.getPropertyValue('--wb-chat')).toBe('60fr');
+  expect(grid?.style.getPropertyValue('--wb-inspector')).toBe('40fr');
+  expect(afterCollapse).not.toBe(before);
   shell.dispose();
 });
 

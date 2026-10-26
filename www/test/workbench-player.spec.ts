@@ -4,6 +4,8 @@ import {
   adjacentTurnIndex,
   formatPlaybackSeconds,
   nextPlaybackSpeed,
+  workbenchFlagAnchor,
+  workbenchSegmentFill,
   workbenchShortcut,
   workbenchTickPercent,
   workbenchTurnSegments,
@@ -30,6 +32,37 @@ test('positions ticks by event index', () => {
   expect(workbenchTickPercent(0, 1)).toBe(0);
   expect(workbenchTickPercent(61, 123)).toBe(50);
   expect(workbenchTickPercent(122, 123)).toBe(100);
+});
+
+test('fills a turn segment up to the playhead', () => {
+  const first = { start: 0, end: 2 };
+  const second = { start: 3, end: 4 };
+  const single = { start: 2, end: 2 };
+
+  const fills = [
+    workbenchSegmentFill(first, 1, 5),
+    workbenchSegmentFill(first, 3, 5),
+    workbenchSegmentFill(second, 1, 5),
+    workbenchSegmentFill(second, 4, 5),
+    workbenchSegmentFill(single, 1, 5),
+    workbenchSegmentFill(single, 2, 5),
+  ];
+
+  expect(fills).toEqual([50, 100, 0, 100, 0, 100]);
+});
+
+test('anchors the flag inside the scrubber near its ends', () => {
+  const anchors = [0, 14.9, 15, 50, 85, 85.1, 100].map(workbenchFlagAnchor);
+
+  expect(anchors).toEqual([
+    'start',
+    'start',
+    'middle',
+    'middle',
+    'middle',
+    'end',
+    'end',
+  ]);
 });
 
 test('jumps between turns like a media player', () => {

@@ -779,7 +779,15 @@ body {
   border-radius: 3px;
   background: var(--wb-line);
 }
-.wb-segment[data-played] {
+/* The played portion of a turn, up to the playhead; --wb-fill is set per segment. */
+.wb-segment::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--wb-fill, 0%);
+  border-radius: inherit;
   background: var(--wb-cobalt);
 }
 .wb-segment > span {
@@ -910,6 +918,13 @@ body {
   transform: translateX(-50%);
   pointer-events: none;
 }
+/* Near either end the flag aligns to the playhead edge so it stays on the scrubber. */
+.wb-flag[data-anchor='start'] {
+  transform: none;
+}
+.wb-flag[data-anchor='end'] {
+  transform: translateX(-100%);
+}
 .wb-flag:empty {
   display: none;
 }
@@ -926,6 +941,14 @@ body {
   padding: 2px 8px;
   border-radius: 8px;
   font: 12px/1.6 var(--wb-mono-font);
+}
+.wb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .wb .wb-live {
   flex: none;
@@ -1104,7 +1127,7 @@ app-selection-workbench-conversation[hidden] {
   .wb-scrubber::before {
     background: GrayText;
   }
-  .wb-segment[data-played] {
+  .wb-segment::after {
     background: Highlight;
   }
 }
