@@ -82,59 +82,59 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 
 ## Page coverage
 
-| Page                                          | Status                | Recording or remaining work                                                                                      |
-| --------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `concept/activities`                          | Recorded              | activities                                                                                                       |
-| `concept/ai-basics`                           | Recorded              | conversation                                                                                                     |
-| `concept/components`                          | Recorded              | canonical-workbench-ui-react / canonical-workbench-ui-angular                                                                                                    |
-| `concept/debugging`                           | Recorded              | debugging                                                                                                        |
-| `concept/decisions`                           | Recorded              | canonical-workbench-decisions-react / canonical-workbench-decisions-angular                                                                                                        |
-| `concept/functions`                           | Recorded              | canonical-workbench-tools-react / canonical-workbench-tools-angular                                                                                                    |
-| `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                                       |
-| `concept/message-history`                     | Recorded              | persistence; completed text only                                                                                 |
-| `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                              |
-| `concept/schema`                              | Recorded              | canonical-workbench-schemas-react / canonical-workbench-schemas-angular                                                                                                          |
-| `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                                     |
-| `concept/streaming`                           | Recorded              | canonical-workbench-streaming-react / canonical-workbench-streaming-angular                                                                                                   |
-| `concept/structured-output`                   | Recorded              | canonical-workbench-structured-react / canonical-workbench-structured-angular |
-| `concept/system-instructions`                 | Recorded              | conversation                                                                                                     |
-| `concept/transform-request-options`           | Recorded              | request-transformation; actual adapter, trusted workspace context and scripted provider-native HTTP output. |
-| `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
-| `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
-| `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
-| `migrations/v0-5`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
-| `migrations/v0-6`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
-| `migrations/v0-7`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
-| `migrations/threadplane` | Intentional exception | Framework-specific presentation/runtime changes and migration boundaries are easier to scan as steps. |
-| `migrations/v0-8`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
-| `platform/anthropic`                          | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/azure`                              | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/bedrock`                            | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/custom`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/dotnet`                             | Intentional exception | Server hosting and provider configuration belong in named, copyable files; conformance verifies the integration. |
-| `platform/google`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/ollama`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/openai`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
-| `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                                      |
-| `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.              |
+| Page                                          | Status                | Recording or remaining work                                                                                                |
+| --------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `concept/activities`                          | Recorded              | activities                                                                                                                 |
+| `concept/ai-basics`                           | Recorded              | conversation                                                                                                               |
+| `concept/components`                          | Recorded              | canonical-workbench-ui-react / canonical-workbench-ui-angular                                                              |
+| `concept/debugging`                           | Recorded              | debugging                                                                                                                  |
+| `concept/decisions`                           | Recorded              | canonical-workbench-decisions-react / canonical-workbench-decisions-angular                                                |
+| `concept/functions`                           | Recorded              | canonical-workbench-tools-react / canonical-workbench-tools-angular                                                        |
+| `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                                                 |
+| `concept/message-history`                     | Recorded              | persistence; completed text only                                                                                           |
+| `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                                        |
+| `concept/schema`                              | Recorded              | canonical-workbench-schemas-react / canonical-workbench-schemas-angular                                                    |
+| `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                                               |
+| `concept/streaming`                           | Recorded              | canonical-workbench-streaming-react / canonical-workbench-streaming-angular                                                |
+| `concept/structured-output`                   | Recorded              | canonical-workbench-structured-react / canonical-workbench-structured-angular                                              |
+| `concept/system-instructions`                 | Recorded              | conversation                                                                                                               |
+| `concept/transform-request-options`           | Recorded              | request-transformation; actual adapter, trusted workspace context and scripted provider-native HTTP output.                |
+| `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
+| `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
+| `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
+| `migrations/v0-5`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                          |
+| `migrations/v0-6`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                          |
+| `migrations/v0-7`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                          |
+| `migrations/threadplane`                      | Intentional exception | Framework-specific presentation/runtime changes and migration boundaries are easier to scan as steps.                      |
+| `migrations/v0-8`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                          |
+| `platform/anthropic`                          | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/azure`                              | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/bedrock`                            | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/custom`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/dotnet`                             | Intentional exception | Server hosting and provider configuration belong in named, copyable files; conformance verifies the integration.           |
+| `platform/google`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/ollama`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/openai`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                                        |
+| `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                                                |
+| `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.                       |
 | `recipes/json-parser`                         | Recorded              | json-parser-react and json-parser-angular; finite local chunks, partial previews, stop/reset, and raw-document validation. |
-| `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                      |
-| `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                               |
-| `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                 |
-| `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                          |
-| `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                    |
-| `recipes/threadplane`                         | Recorded              | threadplane-react and threadplane-angular; separately installed consumers, runtime checks and media review passed. |
-| `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                              |
-| `recipes/ui-chatbot`                          | Recorded              | ui-chatbot-react and ui-chatbot-angular; real browser read tool, trusted proposal, explicit Apply, and updated follow-up. |
-| `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                          |
-| `recipes/ui-selection`                        | Recorded              | ui-selection; app-owned summary/list views and manual fallback.                                                  |
-| `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                                |
-| `start/intro`                                 | Recorded              | welcome-card                                                                                                     |
-| `start/overview`                              | Intentional exception | Decision table links to checked task recordings; no separate interaction to demonstrate.                         |
-| `start/platforms`                             | Intentional exception | Runtime and provider setup comparison links to runnable guides and their recordings.                             |
-| `start/quick`                                 | Recorded              | welcome-card                                                                                                     |
-| `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                                      |
+| `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                                |
+| `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                                         |
+| `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                           |
+| `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                                    |
+| `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                              |
+| `recipes/threadplane`                         | Recorded              | threadplane-react and threadplane-angular; separately installed consumers, runtime checks and media review passed.         |
+| `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                                        |
+| `recipes/ui-chatbot`                          | Recorded              | ui-chatbot-react and ui-chatbot-angular; real browser read tool, trusted proposal, explicit Apply, and updated follow-up.  |
+| `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                                    |
+| `recipes/ui-selection`                        | Recorded              | ui-selection; app-owned summary/list views and manual fallback.                                                            |
+| `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                                          |
+| `start/intro`                                 | Recorded              | welcome-card                                                                                                               |
+| `start/overview`                              | Intentional exception | Decision table links to checked task recordings; no separate interaction to demonstrate.                                   |
+| `start/platforms`                             | Intentional exception | Runtime and provider setup comparison links to runnable guides and their recordings.                                       |
+| `start/quick`                                 | Recorded              | welcome-card                                                                                                               |
+| `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                                                |
 
 ## Content gaps after this increment
 
@@ -220,7 +220,6 @@ The React and Angular components, tools and structured-output guides use six sep
 
 Run `npx nx workbench-demo www` with server-only OpenAI credentials/model after deterministic `npx nx workbench-e2e www` passes. The recorder verifies actual framework SDKs and the OpenAI adapter before replacing media; fixture source is rejected. It encodes half-speed readable footage, measured multi-phase captions, posters, final screenshots and honest walkthroughs. Fixture checks stay under ignored `dist/docs-workbench/verification`; each real recording preserves its report and original captures under a unique `dist/docs-workbench/captures/<run-id>` directory. The structured lesson uses actual structured-chat APIs and plain plan JSON; the UI lessons use exposed SummaryCard components. A tool reads application context in every turn; only explicit fresh, completed acceptance changes state. No SDK release is involved.
 
-
 ## Canonical streaming, schemas and decisions
 
 Updated 2026-10-26. The React and Angular `concept/streaming`, `concept/schema`
@@ -273,3 +272,37 @@ The recorder rejects fixture provenance for successful provider turns; the local
 debug denial is disclosed separately. Presentation pacing and half-speed footage
 are disclosed. Originals, phase times and verification reports remain under the
 unique ignored `dist/docs-workbench/captures/<run-id>` directory.
+
+## Canonical recipe workbench
+
+The six Angular and React recipe guides for Magic Text, predictive suggestions,
+and UI selection use `canonical-workbench-{magic-text,predictions,ui-selection}-{react,angular}`.
+Each lesson keeps the application-owned two-step plan, LLA four-panel layout,
+bottom milestone timeline, independent conversations and immutable captured
+history. Earlier packing/shopping media remains available for bookmarks and
+independent fixture checks; the active guides use the matching framework's new
+canonical recording.
+
+Magic Text uses genuine text-chat APIs, browser readContext calls and the SDK's
+Markdown renderer in both live and historical views. Source details come from
+an actual renderer citation selection; the supplied reference is not evidence
+of retrieval or correctness. Predictions use structured-completion APIs with an
+explicit current context, a known action catalogue and bounded reasons. Only
+fresh complete successful proposals can be accepted, and accepting one makes
+siblings stale. Dismissal changes presentation without applying an action.
+
+UI selection uses genuine UI decision candidates and the TypeSafe boundary.
+Components, plan data and props belong to the app; the model selects only a
+known ID. Whole responses and confidence are shown honestly. Use view or manual
+choice is explicit. Low confidence and failed, stale or cancelled results cannot
+apply a model choice. The recording finishes with a manual steps choice at
+revision 2 and preserves the actual confidence score. Manual selection cancels pending work and blocks late
+overwrite. Captured rendering has no live action handlers or provider calls.
+
+Run `WORKBENCH_LESSONS=magic-text,predictions,ui-selection npx nx workbench-demo www`
+with the existing server-only OpenAI and TypeSafe credentials/models. Both
+frameworks and all selected live semantic paths must pass before publication.
+Each media ID has MP4/WebM, poster, result image, measured VTT captions and a text
+walkthrough. Source provenance, filming-only pacing and half-speed playback are
+disclosed. Keep originals and phase reports in unique ignored
+`dist/docs-workbench/captures/<run-id>` directories. No SDK release or new dependencies.

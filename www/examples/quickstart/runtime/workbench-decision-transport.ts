@@ -6,6 +6,7 @@ export function createWorkbenchDecisionTransport(
   store: WorkbenchStore,
   requestId: string,
   delegate?: Decision.Transport,
+  endpoint = '/api/workbench/decisions',
 ): Decision.Transport {
   return async (request, signal) => {
     const current = () =>
@@ -18,7 +19,7 @@ export function createWorkbenchDecisionTransport(
     const transport =
       delegate ??
       createHttpDecisionTransport({
-        url: '/api/workbench/decisions',
+        url: endpoint,
         fetch: async (...args) => {
           const response = await fetch(...args);
           if (current())

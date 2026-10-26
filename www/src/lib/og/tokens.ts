@@ -1,14 +1,17 @@
 /**
- * Card literals from LiveLoveApp's house style (its `src/lib/og.tsx` and
- * `globals.css`). Satori cannot read CSS variables, so they are copied here.
+ * Card literals: LiveLoveApp's flat house style in hashbrown's colours, the
+ * same values as the site tokens in `app/globals.css`. Satori cannot read CSS
+ * variables, so they are copied here.
  */
 export const CARD_COLORS = {
   ground: '#ffffff',
-  ink: '#0d0d0d',
-  muted: '#5d5d5d',
-  surface: '#f7f7f8',
-  rule: '#e8e8e8',
+  ink: '#1c1917',
+  muted: '#57524d',
+  highlight: '#fde4ba',
 } as const;
+
+/** The height of the striped hashbrown band along a card's bottom edge. */
+export const CARD_STRIPE_HEIGHT = 12;
 
 /** The 1.905:1 Open Graph card most platforms unfurl. */
 export const OG_SIZE = { width: 1200, height: 630 } as const;

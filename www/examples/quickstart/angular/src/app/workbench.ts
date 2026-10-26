@@ -1,3 +1,6 @@
+import { MagicTextWorkbenchConversation } from './magic-text-workbench';
+import { PredictionsWorkbenchConversation } from './predictions-workbench';
+import { SelectionWorkbenchConversation } from './selection-workbench';
 import { DecisionWorkbenchConversation } from './decision-workbench';
 import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
 import { StructuredWorkbenchConversation } from './structured-workbench';
@@ -329,10 +332,31 @@ export class WorkbenchConversation implements AfterViewInit {
     WorkbenchConversation,
     StructuredWorkbenchConversation,
     DecisionWorkbenchConversation,
+    MagicTextWorkbenchConversation,
+    PredictionsWorkbenchConversation,
+    SelectionWorkbenchConversation,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (decision) {
+    @if (format === 'text') {
+      <app-magic-text-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'predictions') {
+      <app-predictions-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'selection') {
+      <app-selection-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (decision) {
       <app-decision-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -354,6 +378,7 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly format = getWorkbenchLesson(window.location.search).format;
   protected readonly decision =
     getWorkbenchLesson(window.location.search).format === 'decision';
   protected readonly structured =

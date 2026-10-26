@@ -1,0 +1,15 @@
+REACT · magic-text
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+Real text chat streams Markdown. Magic Text renders headings, emphasis and list items as the reply arrives.
+
+Select the citation. A reference does not verify the reply.
+
+A follow-up shortens the same conversation. Explaining the plan does not change application state.
+
+Replay captured Markdown, source and state. No requests or writes.
+
+Back live. The plan remains at revision 0.
+
+The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. The text-chat API streams plain Markdown into the real SDK Magic Text renderer. The supplied source is a reference, not proof of retrieval or correctness. The plan remains unchanged.  Refresh clears local sessions.

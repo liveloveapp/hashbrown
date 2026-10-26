@@ -312,3 +312,78 @@ test('debug denial returns real HTTP403 before provider invocation and is limite
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('selection endpoint pins the whole candidate decision and passes the trusted lesson to the provider', async () => {
+  let calls = 0;
+  const server = createServer(
+    createWorkbenchApp({
+      stream: async function* () {
+        throw new Error('Selection cannot enter generation');
+        yield { type: EventType.RUN_ERROR, message: 'unreachable' };
+      },
+      decide: async (request, _signal, lesson) => {
+        calls++;
+        expect(lesson).toBe('ui-selection');
+        expect(request.questions).toMatchObject({
+          pick: {
+            type: 'choice',
+            options: { summary: expect.any(String), steps: expect.any(String) },
+          },
+        });
+        expect(request.questions).not.toHaveProperty('attacker');
+        expect(request.state).toMatchObject({
+          input: {
+            application: {
+              plan: { title: 'Show how a model renders trusted UI' },
+            },
+          },
+        });
+        return {
+          kind: 'hashbrown.decision',
+          version: 1,
+          value: { pick: 'steps' },
+          meta: {
+            pick: {
+              confidence: 0.9,
+              probabilities: { summary: 0.1, steps: 0.9 },
+            },
+          },
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/workbench/ui-selection`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: {
+            input: {
+              requestId: 'selection-1',
+              prompt: 'Show ordered steps',
+              application: {
+                revision: 0,
+                selectedView: null,
+                plan: { title: 'Attacker plan', steps: [] },
+              },
+            },
+          },
+          questions: { attacker: {} },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ value: { pick: 'steps' } });
+    expect(calls).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});

@@ -1,0 +1,106 @@
+/** One caption interval in original capture seconds, converted to half-speed time by the encoder. */
+export type WorkbenchRecordingCue = readonly [
+  from: number,
+  to: number,
+  text: string,
+];
+
+/** Builds truthful recipe captions from measured phases and rejects incomplete or backwards evidence. */
+export function workbenchRecipeRecordingCues(
+  report: {
+    readonly lesson: string;
+    readonly firstManualChoice?: boolean;
+    readonly phases: Readonly<Record<string, number>>;
+  },
+  encodedDuration: number,
+): readonly WorkbenchRecordingCue[] | undefined {
+  if (!['magic-text', 'predictions', 'ui-selection'].includes(report.lesson))
+    return undefined;
+  if (
+    report.lesson === 'ui-selection' &&
+    typeof report.firstManualChoice !== 'boolean'
+  )
+    throw new Error('Missing recorded first-selection policy evidence');
+  const phase = (name: string): number => {
+    const value = report.phases[name];
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error(`Missing or invalid recording phase: ${name}`);
+    return value;
+  };
+  const complete = phase('firstComplete'),
+    followup = phase('followup'),
+    replay = phase('replay'),
+    live = phase('returnedLive');
+  const end = encodedDuration / 2;
+  const cues: readonly WorkbenchRecordingCue[] =
+    report.lesson === 'magic-text'
+      ? [
+          [
+            0,
+            complete,
+            'Real text chat streams Markdown. Magic Text renders headings, emphasis and list items as the reply arrives.',
+          ],
+          [
+            complete,
+            followup,
+            'Select the citation. A reference does not verify the reply.',
+          ],
+          [
+            followup,
+            replay,
+            'A follow-up shortens the same conversation. Explaining the plan does not change application state.',
+          ],
+          [
+            replay,
+            live,
+            'Replay captured Markdown, source and state. No requests or writes.',
+          ],
+          [live, end, 'Back live. The plan remains at revision 0.'],
+        ]
+      : report.lesson === 'predictions'
+        ? [
+            [
+              0,
+              complete,
+              'A completion proposes known action IDs for this context. Partial output cannot apply them.',
+            ],
+            [
+              complete,
+              phase('accept'),
+              'Dismiss the first proposal, then request fresh suggestions. The application revision stays at 0.',
+            ],
+            [phase('accept'), followup, 'Accept: revision 1.'],
+            [
+              followup,
+              replay,
+              'A fresh snapshot includes the accepted action and suggests a review.',
+            ],
+            [
+              replay,
+              live,
+              'Replay proposals and state. No requests or writes.',
+            ],
+            [live, end, 'Back live. Revision 1.'],
+          ]
+        : [
+            [0, complete, 'TypeSafe: whole choice and confidence.'],
+            [
+              complete,
+              followup,
+              report.firstManualChoice
+                ? 'Show summary manually. Revision 1.'
+                : 'Use view: summary saved at revision 1.',
+            ],
+            [followup, phase('manual'), 'Confidence gates the preview.'],
+            [phase('manual'), replay, 'Show steps manually. Revision 2.'],
+            [replay, live, 'Replay: no requests or writes.'],
+            [live, end, 'Back live. Revision 2.'],
+          ];
+  let previous = 0;
+  for (const [from, to] of cues) {
+    if (!Number.isFinite(end) || from < previous || to <= from || to > end)
+      throw new Error('Recording phase order exceeds the encoded timeline');
+    previous = to;
+  }
+  return cues;
+}
