@@ -236,6 +236,8 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'streaming',
     'schemas',
     'decisions',
+    'debugging',
+    'request-transformation',
   ]);
 });
 
@@ -317,4 +319,39 @@ test('decision confidence, cancellation and request identity prevent application
   store.settle('complete', 'stop');
 
   expect(store.applyDecision()).toBe(false);
+});
+
+test('SDK errors settle only the captured user turn represented by healthy framework history', async () => {
+  const { isCurrentWorkbenchError } =
+    await import('../examples/quickstart/runtime/workbench');
+  const store = createWorkbenchStore();
+  const old = store.send('First');
+  store.settle('error');
+  const current = store.send('Retry');
+
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old])).toBe(false);
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
+    true,
+  );
+  const previousError = new Error('Previous denial');
+  expect(
+    isCurrentWorkbenchError(
+      store.getSnapshot(),
+      [old, current],
+      previousError,
+      previousError,
+    ),
+  ).toBe(false);
+  expect(
+    isCurrentWorkbenchError(
+      store.getSnapshot(),
+      [old, current],
+      new Error('Current schema failure'),
+      previousError,
+    ),
+  ).toBe(true);
+  store.settle('error');
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
+    false,
+  );
 });

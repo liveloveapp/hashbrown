@@ -52,6 +52,8 @@ const names: Record<string, string> = {
   streaming: 'streaming',
   schemas: 'schemas',
   decisions: 'decisions',
+  debugging: 'debugging',
+  'request-transformation': 'request-transformation',
 };
 const timestamp = (seconds: number) =>
   new Date(Math.round(seconds * 1000)).toISOString().slice(11, 23);
@@ -152,16 +154,29 @@ for (const report of reports) {
     `${base}-result.png`,
   );
   const cues = [
+    ...(report.lesson === 'debugging'
+      ? ([
+          [
+            0,
+            report.phases['recovery'],
+            'A deliberate local HTTP 403 denies the request before provider work. The plan stays at revision 0.',
+          ],
+        ] as const)
+      : []),
     [
-      0,
+      report.lesson === 'debugging' ? report.phases['recovery'] : 0,
       report.phases['firstComplete'],
       report.lesson === 'decisions'
         ? 'A complete TypeSafe decision returns a known next action and confidence. It does not stream text.'
-        : report.lesson === 'schemas'
-          ? 'The shared response contract stays visible beside the SDK-resolved plan preview.'
-          : report.lesson === 'tools'
-            ? 'The model calls readContext. Hashbrown returns browser state in a continuation.'
-            : 'Real model output streams through Hashbrown into the plan preview.',
+        : report.lesson === 'debugging'
+          ? 'Disable Demo denial and retry in the same conversation. Real model output now streams into the trusted plan card.'
+          : report.lesson === 'request-transformation'
+            ? 'The actual provider callback adds server-owned instructions while preserving the mapped model, tools and response schema.'
+            : report.lesson === 'schemas'
+              ? 'The shared response contract stays visible beside the SDK-resolved plan preview.'
+              : report.lesson === 'tools'
+                ? 'The model calls readContext. Hashbrown returns browser state in a continuation.'
+                : 'Real model output streams through Hashbrown into the plan preview.',
     ],
     [
       report.phases['firstComplete'],
@@ -189,7 +204,7 @@ for (const report of reports) {
       duration / 2,
       report.lesson === 'decisions'
         ? 'Return to live to continue. The chosen next action stays at revision 1.'
-        : 'Return to live to continue the conversation. The accepted plan stays at revision 1.',
+        : 'Back live. The accepted plan remains at revision 1.',
     ],
   ] as const;
   const vtt =
@@ -207,7 +222,7 @@ for (const report of reports) {
   writeFileSync(`${base}.vtt`, vtt);
   writeFileSync(
     `${base}-transcript.txt`,
-    `${report.framework.toUpperCase()} · ${report.lesson}\n\nThis is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. ${report.lesson === 'decisions' ? 'Decision responses arrive whole.' : 'Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.'} There is no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\n${report.lesson === 'decisions' ? 'The source is TypeSafe through the real Hashbrown decision SDK. The application supplies the fixed plan; the model selects only record, review or clarify. Confidence below 0.75, errors and cancellation preserve state and show manual review guidance. Use suggestion is an explicit application action.' : `The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. ${['structured-output', 'streaming', 'schemas'].includes(report.lesson) ? 'The structured-chat API returns plain typed data; the application renders the card.' : 'The UI-chat API renders the exposed SummaryCard from resolved props.'} Accept plan is an explicit application action.`} Refresh clears local sessions.\n`,
+    `${report.framework.toUpperCase()} · ${report.lesson}\n\nThis is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. ${report.lesson === 'decisions' ? 'Decision responses arrive whole.' : 'Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.'} ${report.lesson === 'debugging' ? 'The initial HTTP 403 is a deliberate local demo denial before provider work, not authentication or a provider failure. Recovery uses the same SDK conversation.' : report.lesson === 'request-transformation' ? 'The sanitized transformation trace is captured inside the actual provider callback after request mapping.' : ''} There is no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\n${report.lesson === 'decisions' ? 'The source is TypeSafe through the real Hashbrown decision SDK. The application supplies the fixed plan; the model selects only record, review or clarify. Confidence below 0.75, errors and cancellation preserve state and show manual review guidance. Use suggestion is an explicit application action.' : `The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. ${['structured-output', 'streaming', 'schemas'].includes(report.lesson) ? 'The structured-chat API returns plain typed data; the application renders the card.' : 'The UI-chat API renders the exposed SummaryCard from resolved props.'} Accept plan is an explicit application action.`} Refresh clears local sessions.\n`,
   );
   if (report.lesson === 'generative-ui') {
     for (const suffix of [

@@ -1,5 +1,38 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-debugging-react': {
+    title: 'React workbench: debugging.',
+    caption:
+      'Inspect a local HTTP 403, retry in the same conversation, then accept and revise the plan.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. The initial HTTP 403 is a deliberate local demo denial before provider work; it is not authentication or a provider failure. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-request-transformation-react': {
+    title: 'React workbench: request transformation.',
+    caption:
+      'Compare the actual mapped request before and after server-owned instructions, then accept and revise the plan.',
+    recording:
+      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. The before/after trace is captured inside the real provider transformation callback. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-debugging-angular': {
+    title: 'Angular workbench: debugging.',
+    caption:
+      'Inspect a local HTTP 403, retry in the same conversation, then accept and revise the plan.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. The initial HTTP 403 is a deliberate local demo denial before provider work; it is not authentication or a provider failure. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-request-transformation-angular': {
+    title: 'Angular workbench: request transformation.',
+    caption:
+      'Compare the actual mapped request before and after server-owned instructions, then accept and revise the plan.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. The before/after trace is captured inside the real provider transformation callback. Unchanged provider events paced at 20 ms for filming. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-streaming-react': {
     title: 'React workbench: streaming.',
     caption:
