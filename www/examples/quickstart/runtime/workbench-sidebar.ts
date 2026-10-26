@@ -47,12 +47,24 @@ function labelled(
   return node;
 }
 
-function actionButton(className: string, onClick: () => void) {
+function actionButton(
+  className: string,
+  key: string,
+  onClick: () => void,
+): HTMLButtonElement {
   const node = document.createElement('button');
   node.type = 'button';
   if (className) node.className = className;
+  node.dataset.navKey = key;
   node.onclick = onClick;
   return node;
+}
+
+/** Returns the stable key of the focused sidebar control, if focus is inside nav. */
+function focusedKey(nav: HTMLElement): string | undefined {
+  const active = nav.ownerDocument.activeElement;
+  if (!active || !nav.contains(active)) return undefined;
+  return active.closest<HTMLElement>('[data-nav-key]')?.dataset.navKey;
 }
 
 /**
@@ -68,15 +80,16 @@ export function renderWorkbenchSidebar(
   options: WorkbenchSidebarOptions,
 ): void {
   const { layout } = options;
+  const restore = focusedKey(nav);
   const prefix = options.idPrefix ?? 'wb';
   const top = document.createElement('div');
   top.className = 'wb-nav-top';
   const cta = labelled(
-    actionButton('wb-cta', options.onCreate),
+    actionButton('wb-cta', 'cta', options.onCreate),
     workbenchIcon('plus'),
     'New conversation',
   );
-  const rail = actionButton('wb-rail-toggle', options.onToggleRail);
+  const rail = actionButton('wb-rail-toggle', 'rail', options.onToggleRail);
   rail.setAttribute(
     'aria-label',
     layout.rail ? 'Expand sidebar' : 'Collapse sidebar',
@@ -95,9 +108,13 @@ export function renderWorkbenchSidebar(
     node.className = 'wb-nav-group';
     node.dataset.section = section;
     list.id = `${prefix}-nav-${section}`;
-    const heading = actionButton('wb-nav-heading', () =>
+    const heading = actionButton('wb-nav-heading', `section:${section}`, () =>
       options.onToggleSection(section),
     );
+    heading.id = `${prefix}-nav-${section}-heading`;
+    node.setAttribute('aria-labelledby', heading.id);
+    const headingTitle = document.createElement('h2');
+    headingTitle.append(heading);
     heading.setAttribute('aria-expanded', String(!collapsed));
     heading.setAttribute('aria-controls', list.id);
     const text = document.createElement('span');
@@ -108,7 +125,7 @@ export function renderWorkbenchSidebar(
       list.dataset.collapsed = '';
       if (!layout.rail) list.setAttribute('inert', '');
     }
-    node.append(heading, list);
+    node.append(headingTitle, list);
     return node;
   }
 
@@ -116,7 +133,9 @@ export function renderWorkbenchSidebar(
   conversations.className = 'wb-conversations';
   for (const item of options.conversations) {
     const select = labelled(
-      actionButton('', () => options.onSelect(item.id)),
+      actionButton('', `conversation:${item.id}`, () =>
+        options.onSelect(item.id),
+      ),
       workbenchIcon('conversation'),
       item.label,
     );
@@ -133,6 +152,7 @@ export function renderWorkbenchSidebar(
     for (const lesson of lessons) {
       const meta = workbenchLessons.find((entry) => entry.id === lesson);
       const link = document.createElement('a');
+      link.dataset.navKey = `lesson:${lesson}`;
       link.href = `${options.framework.toLowerCase()}.html?lesson=${lesson}`;
       labelled(
         link,
@@ -151,4 +171,8 @@ export function renderWorkbenchSidebar(
     group('conversations', 'Conversations', conversations),
     ...lessonGroups,
   );
+  if (restore)
+    [...nav.querySelectorAll<HTMLElement>('[data-nav-key]')]
+      .find((node) => node.dataset.navKey === restore)
+      ?.focus();
 }

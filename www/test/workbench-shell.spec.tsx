@@ -87,10 +87,10 @@ test('folds a section and persists it', () => {
 });
 
 test('collapses to an icon rail that keeps accessible names', () => {
-  const { host, shell } = mountShell(
-    createWorkbenchLayoutStore(fakeStorage()),
-  );
-  host.querySelector<HTMLButtonElement>('[data-section=recipes] .wb-nav-heading')?.click();
+  const { host, shell } = mountShell(createWorkbenchLayoutStore(fakeStorage()));
+  host
+    .querySelector<HTMLButtonElement>('[data-section=recipes] .wb-nav-heading')
+    ?.click();
 
   host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
 
@@ -158,4 +158,82 @@ test('uses unique heading list ids per mounted instance', () => {
   expect(new Set(ids).size).toBe(8);
   first.shell.dispose();
   second.shell.dispose();
+});
+
+test('keeps keyboard focus on the activated heading and rail toggle', () => {
+  const { host, shell } = mountShell();
+  const heading = host.querySelector<HTMLButtonElement>(
+    '[data-section=concepts] .wb-nav-heading',
+  );
+  heading?.focus();
+
+  heading?.click();
+  const focusedHeading = document.activeElement;
+  host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.focus();
+  host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
+  const focusedToggle = document.activeElement;
+
+  expect(
+    focusedHeading?.closest('[data-section]')?.getAttribute('data-section'),
+  ).toBe('concepts');
+  expect(focusedHeading?.classList.contains('wb-nav-heading')).toBe(true);
+  expect(focusedToggle?.classList.contains('wb-rail-toggle')).toBe(true);
+  expect(focusedToggle?.isConnected).toBe(true);
+  shell.dispose();
+});
+
+test('keeps focus on a conversation after navigation re-renders', () => {
+  const { host, shell } = mountShell();
+  const navigation = {
+    currentId: 'one',
+    conversations: [
+      { id: 'one', label: 'Two-step plan' },
+      { id: 'two', label: 'Conversation 2' },
+    ],
+    select: vi.fn(),
+    create: vi.fn(),
+  };
+  shell.navigation(navigation);
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Conversation 2"]')
+    ?.focus();
+
+  shell.navigation({ ...navigation, currentId: 'two' });
+
+  expect(document.activeElement?.getAttribute('aria-label')).toBe(
+    'Conversation 2',
+  );
+  expect(document.activeElement?.getAttribute('aria-pressed')).toBe('true');
+  shell.dispose();
+});
+
+test('does not steal focus when the sidebar rebuilds while focus is elsewhere', () => {
+  const { host, shell, layout } = mountShell();
+  const prompt = host.querySelector('textarea');
+  prompt?.focus();
+
+  layout.set({ rail: true });
+
+  expect(document.activeElement).toBe(prompt);
+  shell.dispose();
+});
+
+test('labels each section by a heading button inside an h2', () => {
+  const { host, shell } = mountShell();
+
+  const sections = [...host.querySelectorAll('section.wb-nav-group')];
+
+  expect(
+    sections.every((section) => {
+      const heading = document.getElementById(
+        section.getAttribute('aria-labelledby') ?? '',
+      );
+      return (
+        heading?.classList.contains('wb-nav-heading') &&
+        heading.parentElement?.tagName === 'H2' &&
+        section.contains(heading)
+      );
+    }),
+  ).toBe(true);
+  shell.dispose();
 });
