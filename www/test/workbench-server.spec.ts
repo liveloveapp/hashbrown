@@ -110,3 +110,205 @@ test('streams encoded events, labels provenance and rejects cross-origin runs wi
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('pins a plain structured plan separately from the UI schema', () => {
+  const input = {
+    threadId: 't',
+    runId: 'r',
+    messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+    context: [],
+    tools: [],
+    state: {},
+    forwardedProps: {
+      hashbrown: { ui: true, responseSchema: { arbitrary: true } },
+    },
+  };
+
+  const pinned = pinWorkbenchInput(input, 'structured-output');
+
+  expect(pinned.messages[0].content).not.toContain('SummaryCard');
+  expect(pinned.messages[0].content).toContain('readContext');
+  expect(JSON.stringify(pinned.forwardedProps)).not.toContain('SummaryCard');
+  expect(pinned.forwardedProps).toMatchObject({
+    hashbrown: {
+      ui: false,
+      responseSchema: { properties: { title: {}, steps: {} } },
+    },
+  });
+});
+
+test('routes each allowlisted lesson to its server schema and rejects unknown endpoints', async () => {
+  const schemas: string[] = [];
+  const server = createServer(
+    createWorkbenchApp({
+      stream: async function* (input) {
+        schemas.push(JSON.stringify(input.forwardedProps));
+        yield {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const base = `http://127.0.0.1:${address.port}/api/workbench/`;
+  const body = JSON.stringify({
+    threadId: 't',
+    runId: 'r',
+    messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+    context: [],
+    tools: [],
+    state: {},
+  });
+
+  try {
+    for (const lesson of ['generative-ui', 'tools', 'structured-output']) {
+      const response = await fetch(base + lesson, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      expect(response.status).toBe(200);
+      await response.text();
+    }
+    const unknown = await fetch(base + 'arbitrary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    expect(unknown.status).toBe(404);
+    expect(schemas).toHaveLength(3);
+    expect(schemas[0]).toContain('SummaryCard');
+    expect(schemas[1]).toBe(schemas[0]);
+    expect(schemas[2]).not.toContain('SummaryCard');
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('decision lesson cannot be forwarded through the streaming chat input boundary', () => {
+  expect(() => pinWorkbenchInput({}, 'decisions')).toThrow();
+});
+
+test('decision endpoint returns whole fixture responses and keeps credentials optional', async () => {
+  let decisions = 0;
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* () {
+        yield { type: EventType.RUN_ERROR, message: 'Must not call chat' };
+      },
+      decide: async (request) => {
+        decisions++;
+        expect(request.questions).toHaveProperty('nextAction');
+        return {
+          kind: 'hashbrown.decision',
+          version: 1,
+          value: { nextAction: 'record' },
+          meta: {
+            nextAction: {
+              confidence: 0.9,
+              probabilities: { record: 0.9, review: 0.05, clarify: 0.05 },
+            },
+          },
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const url = `http://127.0.0.1:${address.port}/api/workbench/decisions`;
+  const body = JSON.stringify({
+    state: {
+      input: {
+        requestId: 'r',
+        prompt: 'The outline is complete. What should I do next?',
+        application: { revision: 0, nextAction: null },
+      },
+    },
+    questions: {},
+  });
+
+  try {
+    const denied = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://unrelated.example',
+      },
+      body,
+    });
+    expect(denied.status).toBe(403);
+    expect(decisions).toBe(0);
+    const result = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.headers.get('X-Workbench-Source')).toBe('test-fixture');
+    expect(await result.json()).toMatchObject({
+      kind: 'hashbrown.decision',
+      value: { nextAction: 'record' },
+    });
+    expect(decisions).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('debug denial returns real HTTP403 before provider invocation and is limited to the debugging route', async () => {
+  const calls: unknown[] = [];
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* (_input, _signal, lesson) {
+        calls.push(lesson);
+        yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No port');
+  const root = `http://127.0.0.1:${address.port}/api/workbench`;
+  const init = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+      tools: [],
+      context: [],
+      state: {},
+    }),
+  };
+
+  try {
+    const denied = await fetch(`${root}/debugging?demoDenied=1`, init);
+    expect(denied.status).toBe(403);
+    expect(denied.headers.get('X-Workbench-Source')).toBe('demo-failure');
+    expect(await denied.json()).toEqual({
+      error: 'Demo denial is enabled. Disable Demo denial and send again.',
+    });
+    expect(calls).toEqual([]);
+    const accepted = await fetch(`${root}/debugging`, init);
+    await accepted.text();
+    const other = await fetch(`${root}/generative-ui?demoDenied=1`, init);
+    await other.text();
+    expect(accepted.status).toBe(200);
+    expect(other.status).toBe(200);
+    expect(calls).toEqual(['debugging', 'generative-ui']);
+  } finally {
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});

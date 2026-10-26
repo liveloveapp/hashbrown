@@ -46,7 +46,7 @@ job-queue correctness, and its reporting, instead of rebuilding them.
   fulfils form submissions, sends one fixed three-step founder sequence through
   Resend, sends internal notifications, and sends a daily install digest.
 - Add a "Get unstuck" contact form on hashbrown.dev that enrolls the person in
-  the founder sequence with a visible disclosure.
+  the founder sequence.
 - Ship funnel, journey, and health reports, and PostHog dashboards as code, so
   the stall points are visible without reading the database by hand.
 - Document everything collected and every opt-out in the package READMEs and a
@@ -162,7 +162,6 @@ Vercel cron (*/30) ──▶ /_/cron/lifecycle ──bearer──▶ lifecycle (
                                                                      ├──▶ campaign enrollment (approved contacts only)
                                                                      ├──▶ lease due jobs → Resend (send_step, fulfill, notify, digest)
 Resend webhooks ──svix──▶ /_/webhooks/resend ──▶ delivery status / stops                │
-Gmail poller ──hmac──▶ /_/growth/replies/google ──▶ campaign.reply_received → stop        │
 posthog-js / core ──▶ /_/ingest ──▶ PostHog (engagement only) ◀──────── dashboards as code
 ```
 
@@ -333,7 +332,7 @@ Copy threadplane migrations `0002` through `0008` as hashbrown `0001` through
   rendered campaign drafts and digest reports.
 - Drop `growth_projects.claim_key_hash` and the `/connect` claim flow; hashbrown
   has no explicit project-claim form. Keep `posthog_distinct_id`.
-- Job `kind` enum is `fulfill | notify | send_step | digest | reply_reconcile`.
+- Job `kind` enum is `fulfill | notify | send_step | digest`.
 - Table prefix stays `growth_`. Views keep their `_v1` names.
 - Threadplane's `0001` (`rate_limit_events` for the demo proxy) is not ported.
 
@@ -342,7 +341,7 @@ Tables, for the builder's orientation: `growth_contacts` (email citext,
 `growth_projects`, `growth_activity` (append-only ledger, `event_key UNIQUE`),
 `growth_jobs` (status `pending|leased|completed|failed|cancelled`, lease,
 attempts, `idempotency_key`, `available_at`, `provider_email_id`,
-`rfc_message_id`, `gmail_seed_message_id`, `delivery_status`),
+`rfc_message_id`, `delivery_status`),
 `growth_observation_subjects|observations|identities|redactions|work|facts`,
 `growth_collection_budgets`, `growth_observation_operations`,
 `growth_observation_form_links`, `growth_install_runtime_links`,
@@ -367,8 +366,6 @@ production use different Neon resources for both.
   `RESEND_TRACKING_DISABLED=true` is set.
 - Plain text body plus the plain HTML alternative (paragraphs and HTTPS anchors
   only) so the footer can read "click here to unsubscribe".
-- BCC Brian on every message that may begin a conversation, so the Gmail poller
-  can register the seed Message-ID.
 - Non-production: `RESEND_NON_PRODUCTION_ALLOWLIST` and
   `RESEND_NON_PRODUCTION_REDIRECT_TO` as in threadplane.
 
@@ -376,9 +373,7 @@ production use different Neon resources for both.
 
 Only `outreach_approved_at` authorizes a send. It is set by exactly three paths:
 
-1. **Get unstuck form** accepted with the visible disclosure (§8.4). The exact
-   disclosure string and version are recorded in `growth_activity` as
-   `form.outreach_approved`.
+1. **Get unstuck form** accepted (§8.4).
 2. **Founder install digest** approve link, which creates and approves the
    contact through the founder reauthorization path (`contact.reauthorized`,
    `provenance = 'founder_action'`).
@@ -414,16 +409,15 @@ site footer, the runtime console announcement, and the package READMEs.
 
 Fields:
 
-| Field                | Type                             | Rule                                                                                                                                                            |
-| -------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email                | required                         | Full address; error copy "Enter a full address, like jordan@acme.dev."                                                                                          |
-| Framework            | required select                  | React, Angular, Both, Not sure yet                                                                                                                              |
-| Where are you stuck? | required textarea                | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog                                                                                         |
-| Disclosure           | muted paragraph above the button | "By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime." |
+| Field                | Type              | Rule                                                                                                  |
+| -------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Email                | required          | Full address; error copy "That doesn't look like a full address. Try something like jordan@acme.dev." |
+| Where are you stuck? | required textarea | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog                               |
 
-Validation on blur, final pass on submit, focus to first invalid field,
-`aria-describedby` on errors and on the button for the disclosure. Success:
-"Got it. Brian reads every one of these and replies from brian@hashbrown.dev."
+Layout and copy live in `2026-10-25-unstuck-page-polish-design.md`. Validation
+on blur, final pass on submit, focus to first invalid field, `aria-describedby`
+on errors. Success: "Got it. A confirmation is on its way, and I'll reply from
+brian@hashbrown.dev."
 Failure offers `mailto:brian@hashbrown.dev` (it was `brian@liveloveapp.com` until
 the root mailbox received mail; PR 7 switched it).
 
@@ -524,9 +518,9 @@ delivered | delivery_delayed | bounced | complained | suppressed | failed` with
 threadplane's precedence; environment-tag mismatches are acknowledged and
 ignored. HMAC-signed action tokens with purposes `unsubscribe | founder_stop |
 founder_approve_install`, served at `/_/unsubscribe`, `/_/growth/stop`,
-`/_/growth/approve-install` on `GROWTH_PUBLIC_ACTION_ORIGIN`. Reply detection
-through the Google Apps Script mailbox poller (`tools/growth/mailbox-poller`),
-`gmail.metadata` scope, HMAC-signed POSTs to `/_/growth/replies/google`. Reply
+`/_/growth/approve-install` on `GROWTH_PUBLIC_ACTION_ORIGIN`. Replies arrive through
+Resend receiving and stop the sequence only on the opt-out
+phrases above (#717, #744, #753; `tools/growth/src/lib/reply-intent.ts`). Reply
 bodies are never stored.
 
 ### 8.7 Founder install digest (mirror)
@@ -612,7 +606,7 @@ emails the installer and never creates a contact.
 ## 13. Answered during review
 
 1. `brian@hashbrown.dev` does not exist yet; Brian creates it in Google
-   Workspace before the mailbox poller and BCC seed are enabled.
+   Workspace before delivery is enabled.
 2. `hashbrown.dev/call` redirects to the same Google Calendar appointment page
    threadplane's `/call` uses, through a `redirects()` entry in
    `www/next.config.ts`.
@@ -667,7 +661,7 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
    delivery, campaign enrollment, campaign, cron, digest, install-runtime hello,
    then the Get unstuck form switch.
    Delivery waits until the `brian@hashbrown.dev` mailbox receives mail, the
-   reply poller is deployed, and a synthetic reply has stopped a test contact.
+   Resend receiving is on, and a synthetic reply has stopped a test contact.
 
 Each PR runs build, test, and lint for every affected project, including the
 ten packages for PR 3.

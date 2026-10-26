@@ -1220,8 +1220,6 @@ export async function readLifecycleJobContext(
 
 /** The form facts a founder notification quotes. */
 export interface NotificationSubmission {
-  /** The framework the submitter chose, or `null` when none was recorded. */
-  framework: string | null;
   /** The "Where are you stuck?" text, or `null` when none was given. */
   message: string | null;
 }
@@ -1232,19 +1230,17 @@ export interface NotificationSubmission {
  * contact's latest `contact.form_submission`. The message text is read only
  * here, for the founder notification.
  *
- * @returns The framework and message, or `null` when there is no submission.
+ * @returns The message, or `null` when there is no submission.
  */
 export async function readNotificationSubmission(
   executor: SqlTransaction,
   input: { jobId: string },
 ): Promise<NotificationSubmission | null> {
   const result = await executor.execute<{
-    framework: string | null;
     message: string | null;
   }>(
     `/* growth:read-notification-submission */
-     select a.data->>'framework' as framework,
-            a.data->>'message' as message
+     select a.data->>'message' as message
      from growth_jobs target
      join growth_activity a
        on a.contact_id = target.contact_id
@@ -1265,7 +1261,6 @@ export async function readNotificationSubmission(
   const row = result.rows[0];
   if (!row) return null;
   return {
-    framework: row.framework?.trim() ? row.framework.trim() : null,
     message: row.message ? row.message : null,
   };
 }

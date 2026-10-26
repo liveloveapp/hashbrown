@@ -1,5 +1,6 @@
 import { LocalUiWorkflow } from './local-ui-workflow';
 import { LocalMedia } from './local-media';
+import { LocalVision } from './local-vision';
 import { LocalWorkflow } from './local-workflow';
 import { LocalSchemaWorkflow } from './local-schema-workflow';
 import { CompletionSmoke } from './completion-smoke';
@@ -32,6 +33,11 @@ export function App() {
     new URL(globalThis.location.href).searchParams.get('localWorkflow') ===
     'true';
 
+  const parameters = new URL(globalThis.location.href).searchParams;
+  const localVision =
+    parameters.get('localModel') === 'webllm' &&
+    parameters.get('localMedia') === 'image' &&
+    parameters.get('localVision') === '1';
   const localMedia = new URL(globalThis.location.href).searchParams.get(
     'localMedia',
   );
@@ -46,7 +52,9 @@ export function App() {
 
   return (
     <main data-testid="fixture-ready">
-      {localMedia === 'image' || localMedia === 'audio' ? (
+      {localVision ? (
+        <LocalVision />
+      ) : localMedia === 'image' || localMedia === 'audio' ? (
         <LocalMedia />
       ) : localUiWorkflow ? (
         <LocalUiWorkflow />

@@ -176,3 +176,71 @@ overlapping late delivery, keyboard operation, unmount, and mobile layout.
 Unique ignored `dist/docs-ui-chatbot` directories preserve browser builds,
 requests, raw captures, masters, measured phases, and verification reports.
 Run sequentially with other recorders that share compiled output.
+
+## Canonical concept lessons
+
+The workbench now has eight allowlisted lessons in both framework hosts:
+
+- `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
+- `?lesson=tools`: the same conversation, initially focused on requests and readContext.
+- `?lesson=structured-output`: real structured-chat, plain title/steps data, application-owned rendering.
+- `?lesson=streaming`: partial title text and resolved step values.
+- `?lesson=schemas`: exact response contract and preview validation.
+- `?lesson=decisions`: complete typed next-action choices and confidence.
+- `?lesson=debugging`: deliberate local HTTP 403, same-conversation retry, captured response evidence.
+- `?lesson=request-transformation`: actual mapped provider options, public workspace policy, and sanitized callback traces.
+
+All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
+
+Run `npx nx workbench-demo www` with server-only `OPENAI_API_KEY` and `OPENAI_MODEL` to verify and record the selected paths, encode MP4/WebM with ffmpeg, and publish local media, posters, result screenshots, measured captions and transcripts. It refuses to publish fixture footage. `WORKBENCH_LESSONS=generative-ui,tools,structured-output` optionally selects a subset and rejects unknown values. Run sequentially with other compilation/recording targets. Footage uses half-speed timing for readable streaming; reports include captured phase times and provider provenance. Each recording run preserves its original captures and report under a unique `dist/docs-workbench/captures/<run-id>` directory. The Generative UI recording also refreshes the workbench overview media.
+
+## Streaming, schemas and decisions in the workbench
+
+`?lesson=streaming` selects the shared schema with a streaming title and array.
+`?lesson=schemas` opens the exact selected contract in Schema, with preview
+validation kept separate from completion and explicit acceptance.
+`?lesson=decisions` mounts actual `useDecision` / `decisionResource` clients.
+The application supplies a fixed plan; TypeSafe selects record/review/clarify.
+A completed fresh choice at confidence >=0.75 can be explicitly used. Low
+confidence, errors and cancellation preserve state and offer manual review.
+Decision responses arrive as whole JSON, not generated streaming text.
+
+The decision route additionally needs server-only `TYPESAFE_API_KEY` and
+`TYPESAFE_MODEL` (the recordings pin `jev-1.14.0`). Missing decision credentials
+return 503 without preventing the OpenAI lessons from running. The server fixes
+the plan, system policy, schema and question options, bounds prompts/revisions,
+and propagates cancellation.
+
+Use `WORKBENCH_LESSONS=streaming,schemas,decisions npx nx workbench-demo www` to
+record this batch with both providers configured. The recorder verifies partial
+visible title text, completed-only acceptance, exact plan revision semantics,
+typed decisions/confidence, explicit selection and inert synchronized replay.
+Decision media require TypeSafe provider provenance and have separate captions
+that never describe decisions as streaming. Existing recordings are preserved
+unless selected. Each capture/report lives in a unique ignored run directory.
+
+Recording presentation: the new OpenAI streaming/schema captures pace unchanged provider events at 20 ms so browser batching does not hide previews. This is disclosed in the media notes and walkthroughs. The normal demo host adds no delay; complete TypeSafe decisions are not paced as streams.
+
+## Debugging and request transformation in the workbench
+
+`?lesson=debugging` starts with the local **Deny requests for this demo** switch
+enabled. Its HTTP 403 happens before provider invocation, has `demo-failure`
+provenance, and does not model authentication. Clear the switch and resend in the
+same conversation to recover through the real UI-chat SDK. Captured HTTP status,
+URL, source and fixed public denial detail remain available when replay selects
+the failed turn. Changing the switch does not request or write application state.
+
+`?lesson=request-transformation` opens Transform. The shared OpenAI adapter
+callback observes actual mapped options and appends fixed public workspace
+instructions. A sanitized `workbench.request-transformation` custom event records
+before/after fields and preservation checks. Input messages, headers and keys
+are omitted. Required context failures fail closed; stop/disposal closes the
+underlying provider iterator. Neither transformation nor replay accepts a plan.
+
+Use `WORKBENCH_LESSONS=debugging,request-transformation npx nx workbench-demo www`
+with server-only OpenAI credentials to record this batch. Each framework has its
+own recording, captions, transcript, poster and result screenshot. The debugging
+walkthrough identifies its intentional local failure separately from successful
+provider turns. Unchanged OpenAI events are paced for filming and footage uses
+half-speed timing; the normal host adds no delay. Reports and originals remain
+in each unique ignored capture directory.

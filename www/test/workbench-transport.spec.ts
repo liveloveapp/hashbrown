@@ -90,3 +90,128 @@ test('ignores late events after clearing and starting a new conversation with th
 
   expect(store.getSnapshot().frame?.json).toBe('');
 });
+
+test('records a real HTTP denial and reads the gate for each new request', async () => {
+  const { createServer } = await import('node:http');
+  const server = createServer((req, res) => {
+    res.writeHead(403, {
+      'X-Workbench-Source': 'demo-failure',
+      'Content-Type': 'application/json',
+    });
+    res.end(
+      JSON.stringify({
+        error: 'private-response-body',
+      }),
+    );
+  });
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No port');
+  const store = createWorkbenchStore();
+  let denied = true;
+  const transport = createWorkbenchTransport(
+    store,
+    undefined,
+    `http://127.0.0.1:${address.port}/api/workbench/debugging`,
+    { getDebugDenied: () => denied },
+  );
+  const request = {
+    input: {
+      threadId: 't',
+      runId: 'r',
+      messages: [],
+      tools: [],
+      context: [],
+      state: {},
+    },
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: 'request',
+  } satisfies TransportRequest;
+
+  try {
+    store.send('Plan');
+    await expect(
+      (async () => {
+        const response = await transport.send(request);
+        for await (const event of response.events) void event;
+      })(),
+    ).rejects.toThrow();
+    const response = store
+      .getSnapshot()
+      .events.find((event) => event.kind === 'response');
+    expect(response?.payload).toMatchObject({
+      status: 403,
+      source: 'demo-failure',
+      problem: 'Demo denial is enabled. Disable Demo denial and send again.',
+    });
+    expect((response?.payload as { url: string }).url).toContain(
+      '?demoDenied=1',
+    );
+    expect(JSON.stringify(store.getSnapshot())).not.toContain(
+      'private-response-body',
+    );
+    store.settle('error');
+    denied = false;
+    store.send('Retry');
+    await expect(
+      (async () => {
+        const response = await transport.send(request);
+        for await (const event of response.events) void event;
+      })(),
+    ).rejects.toThrow();
+    expect(
+      (
+        store
+          .getSnapshot()
+          .events.filter((event) => event.kind === 'request')
+          .at(-1)?.payload as { url: string }
+      ).url,
+    ).not.toContain('demoDenied');
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('ignores superseded request errors within the same user turn', async () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  const transport = createWorkbenchTransport(store, {
+    name: 'fixture',
+    send: async () => ({
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' };
+        throw new Error('old request');
+      })(),
+    }),
+  });
+  const request = {
+    input: {
+      threadId: 't',
+      runId: 'r',
+      messages: [],
+      tools: [],
+      context: [],
+      state: {},
+    },
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: 'request',
+  } satisfies TransportRequest;
+  const old = await transport.send(request);
+  await transport.send({ ...request, requestId: 'new' });
+
+  await expect(
+    (async () => {
+      for await (const event of old.events) void event;
+    })(),
+  ).rejects.toThrow('old request');
+
+  expect(store.getSnapshot().status).toBe('loading');
+  expect(
+    store.getSnapshot().events.some((event) => event.kind === 'error'),
+  ).toBe(false);
+});

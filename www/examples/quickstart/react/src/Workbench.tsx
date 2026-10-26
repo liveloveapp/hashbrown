@@ -1,3 +1,6 @@
+import { DecisionWorkbenchConversation } from './DecisionWorkbench';
+import { getWorkbenchLesson } from '../../runtime/workbench-lessons';
+import { StructuredWorkbenchConversation } from './StructuredWorkbench';
 import { s } from '@hashbrownai/core';
 import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
 import {
@@ -13,6 +16,7 @@ import {
 import { createPortal } from 'react-dom';
 import {
   createWorkbenchStore,
+  isCurrentWorkbenchError,
   type WorkbenchStore,
   workbenchSystem,
 } from '../../runtime/workbench';
@@ -26,13 +30,16 @@ import {
   type WorkbenchNavigation,
 } from '../../runtime/workbench-view';
 
-const Session = createContext<WorkbenchStore | null>(null);
-const Origin = createContext<ProposalOrigin>({ turn: -1, revision: -1 });
+/** Session shared by generated and application-rendered plan cards. */
+export const Session = createContext<WorkbenchStore | null>(null);
+/** Immutable assistant-message provenance for revision-checked acceptance. */
+export const Origin = createContext<ProposalOrigin>({ turn: -1, revision: -1 });
 
 /** Renders validated streaming props; acceptance is an explicit, revision-checked action. */
 export function SummaryCard(props: {
   readonly title: string;
   readonly steps: string[];
+  readonly format?: 'ui' | 'structured';
 }) {
   const store = useContext(Session);
   if (!store) throw new Error('SummaryCard requires a workbench session.');
@@ -43,7 +50,11 @@ export function SummaryCard(props: {
   const allowed = canAcceptSummary(snapshot, origin, props, used);
   return (
     <article className="wb-summary" aria-label="Summary card">
-      <span className="wb-muted">SummaryCard · trusted component</span>
+      <span className="wb-muted">
+        {props.format === 'structured'
+          ? 'Typed plan · application component'
+          : 'SummaryCard · trusted component'}
+      </span>
       <h2>{props.title || 'Building your plan…'}</h2>
       <ol>
         {(props.steps ?? []).map((step, index) => (
@@ -98,8 +109,14 @@ function WorkbenchConversation({
   readonly active: boolean;
   readonly navigation: WorkbenchNavigation;
 }) {
-  const [store] = useState(createWorkbenchStore);
-  const [transport] = useState(() => createWorkbenchTransport(store));
+  const lesson = getWorkbenchLesson(window.location.search);
+  const [store] = useState(() => createWorkbenchStore());
+  const debugDenied = useRef(lesson.id === 'debugging');
+  const [transport] = useState(() =>
+    createWorkbenchTransport(store, undefined, lesson.endpoint, {
+      getDebugDenied: () => debugDenied.current,
+    }),
+  );
   const [users, setUsers] = useState<Readonly<Record<string, ProposalOrigin>>>(
     {},
   );
@@ -107,6 +124,7 @@ function WorkbenchConversation({
   const mounted = useRef<ReturnType<typeof mountWorkbench> | null>(null);
   const [live, setLive] = useState<HTMLElement | null>(null);
   const recorded = useRef('');
+  const previousError = useRef<unknown>(undefined);
   const readContext = useTool({
     name: 'readContext',
     description:
@@ -139,6 +157,7 @@ function WorkbenchConversation({
   useLayoutEffect(() => {
     commands.current = {
       send: (content) => {
+        previousError.current = chat.error;
         const message = store.send(content);
         const snapshot = store.getSnapshot();
         setUsers((previous) => ({
@@ -166,9 +185,13 @@ function WorkbenchConversation({
     if (!host.current) return;
     const shell = mountWorkbench(host.current, store, {
       framework: 'React',
+      lesson,
       send: (content) => commands.current.send(content),
       stop: () => commands.current.stop(),
       reset: () => commands.current.reset(),
+      setDebugDenied: (denied) => {
+        debugDenied.current = denied;
+      },
     });
     mounted.current = shell;
     setLive(shell.live);
@@ -190,7 +213,15 @@ function WorkbenchConversation({
     const message = chat.lastAssistantMessage;
     const snapshot = store.getSnapshot();
     if (snapshot.status !== 'loading') return;
-    if (chat.error) {
+    if (
+      chat.error &&
+      isCurrentWorkbenchError(
+        snapshot,
+        chat.messages,
+        chat.error,
+        previousError.current,
+      )
+    ) {
       store.settle('error');
       return;
     }
@@ -209,6 +240,7 @@ function WorkbenchConversation({
       );
   }, [
     chat.lastAssistantMessage,
+    chat.messages,
     chat.isLoading,
     chat.error,
     chat.lastRunFinishReason,
@@ -254,6 +286,12 @@ function WorkbenchConversation({
 
 /** Retains independent SDK conversations and their captured application histories. */
 export function Workbench() {
+  const Conversation =
+    getWorkbenchLesson(window.location.search).format === 'decision'
+      ? DecisionWorkbenchConversation
+      : getWorkbenchLesson(window.location.search).format === 'structured'
+        ? StructuredWorkbenchConversation
+        : WorkbenchConversation;
   const [conversations, setConversations] = useState([
     { id: '1', label: 'Two-step plan' },
   ]);
@@ -270,7 +308,7 @@ export function Workbench() {
     <>
       {conversations.map((conversation) => (
         <div key={conversation.id} hidden={conversation.id !== activeId}>
-          <WorkbenchConversation
+          <Conversation
             active={conversation.id === activeId}
             navigation={{
               currentId: conversation.id,

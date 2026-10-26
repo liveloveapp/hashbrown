@@ -2,394 +2,111 @@
 title: 'Generative UI with Angular Components: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Expose trusted , tested , and compliant components to the model.'
+    content: 'Expose a trusted plan component and follow its props as the model streams.'
 ---
 
-# Generative UI with Angular Components
+# Generative UI with Angular components
 
-<p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
-
-<hb-docs-demo demo="generative-ui">
+<hb-docs-demo demo="canonical-workbench-ui-angular">
 </hb-docs-demo>
 
----
+Let’s build a two-step plan. We will give the model one component, `SummaryCard`, and describe the props it accepts. As the response arrives, Hashbrown parses the JSON and renders our component.
 
-## Before we start
+I use the same plan in [Tools](/docs/angular/concept/functions) and [Structured output](/docs/angular/concept/structured-output). Here, we’ll focus on how a model selects a component and supplies its props.
 
-Keep the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). We will extend its trusted-component setup. Read [Skillet schemas](/docs/angular/concept/schema) for the values each component accepts.
+## Run the same conversation
 
-The snippets below focus on the component API. `MarkdownComponent` represents a component in your application that accepts a string `data` input; its implementation is omitted here. For complete checked examples, use [UI Chatbot with Tools](/docs/angular/recipes/ui-chatbot) or [Magic Text](/docs/angular/recipes/magic-text), which renders streamed Markdown.
+Use the [conversation workbench](/docs/angular/start/workbench) with the server environment from the [Quickstart](/docs/angular/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=generative-ui`. Selecting a lesson does not send a request.
 
-## The `exposeComponent()` Function
+The recording uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
-The @hashbrownai/angular!exposeComponent:function function exposes Angular components to the LLM that can be generated.
-Let's first look at how this function works.
+## Expose one trusted component
 
-<hb-code-example header="expose component">
+`SummaryCard` is ordinary application code: a title, an ordered list, and an **Accept plan** button. We expose that existing component with a stable name, a description, and a schema. The model chooses from this catalog; it does not write executable component code.
+
+The following excerpt is from the checked workbench client. Open the complete client for the component implementation, application state, and acceptance guard.
+
+<hb-code-example header="angular/src/app/workbench.ts">
 
 ```ts
-import { exposeComponent } from '@hashbrownai/angular';
-
-exposeComponent(MarkdownComponent, {
-  description: 'Show markdown to the user',
-  input: {
-    data: s.string('The markdown content'),
-  },
-});
+const components = [
+  exposeComponent(SummaryCard, {
+    name: 'SummaryCard',
+    description:
+      'Propose a concise plan for explicit user review and acceptance.',
+    input: {
+      title: s.string('A concise plan title'),
+      steps: s.streaming.array(
+        'The ordered plan steps',
+        s.string('A clear, concise action'),
+      ),
+    },
+    children: false,
+  }),
+];
 ```
 
 </hb-code-example>
 
-Let's break down the example above:
+[`exposeComponent()`](/api/angular/exposeComponent) connects the schema to the component’s inputs. A mismatched type is a build error. `children: false` disallows nested components; larger catalogs can allow children explicitly.
 
-1. `MarkdownComponent` is the Angular component that we want to expose.
-2. `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
-3. `input` is an object that defines the inputs that the component accepts. In this case, it accepts a single input called `data`, which is a string representing the markdown content to be displayed.
-4. The `s.string()` function is used to define the type of the input.
+## Watch the props arrive
 
-We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
+The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The rightmost **Details** view follows that selection.
 
-- The `data` input is expected to be a `string` type.
-- The schema specified is a `string()`.
-- If the schema does not match the Angular component's input type, you'll see an error in both your editor and when you attempt to build the application.
+A partial value is useful feedback. It is still a preview. The workbench enables **Accept plan** only after a fresh, successfully completed response passes its two-step plan rules. Rendering the card does not update the accepted plan.
 
-You can also describe component inputs with Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType). Hashbrown normalizes these to Skillet (draft-07) for streaming and validation. Unsupported keywords throw at runtime.
+<img src="/video/docs/canonical-workbench-ui-angular-result.png" alt="The canonical plan appears in the chat beside its captured JSON and resolved component props." width="1600" height="1000" loading="lazy" />
 
----
+## Start and render the conversation
 
-## Streaming with Skillet
+The checked client passes the catalog, tool, system instruction, and capturing transport to `uiChatResource()`:
 
-Streaming generative user interfaces is baked into the core of Hashbrown.
-Hashbrown ships with an LLM-optimized schema language called Skillet.
-
-Skillet supports streaming for:
-
-- arrays
-- objects
-- strings
-
-Let's update the previous example to support streaming of the markdown string into the `Markdown` component.
-
-<hb-code-example header="enable streaming">
+<hb-code-example header="angular/src/app/workbench.ts">
 
 ```ts
-exposeComponent(MarkdownComponent, {
-  description: 'Show markdown to the user',
-  input: {
-    data: s.streaming.string('The markdown content'),
-  },
-});
+  readonly chat = uiChatResource({
+    system: workbenchSystem,
+    components,
+    transport: createWorkbenchTransport(
+      this.store,
+      undefined,
+      getWorkbenchLesson(window.location.search).endpoint,
+      { getDebugDenied: () => this.debugDenied() },
+    ),
+    tools: [
+      createTool({
+        name: 'readContext',
+        description:
+          'Read the accepted application plan and revision without changing state.',
+        handler: async () => {
+          const result = this.store.getSnapshot().application;
+          this.store.record('tool', { name: 'readContext', result });
+          return result;
+        },
+      }),
+    ],
+  });
 ```
 
 </hb-code-example>
 
-The `s.streaming.string()` function is used to define the type of the input, indicating that it can be a string that will be streamed in chunks.
+The conversation renders each assistant message through `<hb-render-message [message]="message()" />`. Keep the complete message history for follow-up turns.
 
-A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the input can be streamed in chunks, which is useful for large content like markdown.
+[Read the checked client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workbench.ts). The workbench shell records requests and parsed output; Angular owns the live component renderer.
 
-<hb-next-steps>
-  <hb-next-step link="concept/streaming">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Streaming Docs</h4>
-      <p>Learn more about streaming with Skillet</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+## Follow the second turn
 
----
+Send the first prompt and select **Accept plan**. In **State**, the application revision advances from `0` to `1`. Then choose **Follow-up** and send “Make the second step shorter.” The tool reads the accepted plan before the model proposes its revision.
 
-## Children
+Use the bottom timeline to revisit the first streamed JSON, parsed output, or acceptance. The chat, inspector, and state follow the same captured moment. **Raw events** reveals every frame; playback makes no provider requests and cannot accept a plan.
 
-When exposing components, you can also define the `children` that the component can accept.
+## Grow the component catalog
 
-<hb-code-example header="children">
+Use descriptions that explain when a component is useful and what its props mean. Keep names stable. If the layout accepts children, use `children: 'any'` for any exposed child, or provide an explicit collection of exposed components. Those children still come from your trusted catalog.
 
-```ts
-exposeComponent(LightListComponent, {
-  description: 'Show a list of lights to the user',
-  input: {
-    title: s.string('The name of the list'),
-  },
-  children: 'any',
-});
-```
+Skillet also accepts its supported Standard JSON Schema inputs. Read [Skillet schemas](/docs/angular/concept/schema) before substituting another schema library; unsupported constructs are rejected.
 
-</hb-code-example>
+## Next steps
 
-In the example above, we're allowing `any` children to be rendered within the `LightListComponent` using the `&lt;ng-content&gt;` element.
-
-However, if we wanted to explicitly limit the children that the model can generate, we can provide an array of exposed components.
-
-<hb-code-example header="children">
-
-```ts
-exposeComponent(LightListComponent, {
-  description: 'Show a list of lights to the user',
-  input: {
-    title: s.string('The name of the list'),
-    icon: LightListIconSchema,
-  },
-  children: [
-    exposeComponent(LightComponent, {
-      description: 'Show a light to the user',
-      input: {
-        lightId: s.string('The id of the light'),
-        icon: LightIconSchema,
-      },
-    }),
-  ],
-}),
-```
-
-</hb-code-example>
-
-In the example above, the `LightListComponent` children is limited to the `LightComponent`.
-
----
-
-## The `uiChatResource()` Function
-
-<hb-code-example header="expose components to the model">
-
-```ts
-// 1. Create the UI chat resource
-chat = uiChatResource({
-  // 2. Specify the collection of exposed components
-  components: [
-    // 3. Expose the MarkdownComponent to th emodel
-    exposeComponent(MarkdownComponent, {
-      description: 'Show markdown to the user',
-      input: {
-        data: s.streaming.string('The markdown content'),
-      },
-    }),
-  ],
-});
-```
-
-</hb-code-example>
-
-1. The @hashbrownai/angular!uiChatResource:function function is used to create a UI chat resource.
-2. The `components` option defines the collection of exposed components that the model can choose to render in the application.
-3. The @hashbrownai/angular!exposeComponent:function function creates and exposed component.
-
----
-
-### `UiChatResourceOptions`
-
-| Option       | Type                                                  | Required | Description                                               |
-| ------------ | ----------------------------------------------------- | -------- | --------------------------------------------------------- |
-| `components` | `ExposedComponent<any>[]`                             | Yes      | The components to use for the UI chat resource            |
-| `system`     | `ReactiveOption<string>`                              | Yes      | The system prompt to use for the UI chat resource         |
-| `messages`   | `Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[]` | No       | The initial messages for the UI chat resource             |
-| `tools`      | `Tools[]`                                             | No       | The tools to use for the UI chat resource                 |
-| `debugName`  | `string`                                              | No       | The debug name for the UI chat resource                   |
-| `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource                |
-| `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource               |
-| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Opaque AG-UI conversation identity; does not load history |
-
----
-
-### API Reference
-
-<hb-next-steps>
-  <hb-next-step link="/api/angular/uiChatResource">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>uiChatResource() API</h4>
-      <p>See the full resource</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/angular/UiChatResourceOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>UiChatResourceOptions API</h4>
-      <p>See the options</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-## Render User Interface
-
-The `&lt;hb-render-message&gt;` Angular component renders an assistant message that contains the user interface schema.
-
-<hb-code-example header="render">
-
-```ts
-<hb-render-message [message]="message" />
-```
-
-</hb-code-example>
-
----
-
-## Render Last Assistant Message
-
-If you only want to render the <em>last</em> assistant message, Hashbrown provides the `lastAssistantMessage` Signal.
-
-<hb-code-example header="render last message">
-
-```ts
-@Component({
-
-  // 1. Render the last assistant message
-  template: `
-    @let message = chat.lastAssistantMessage();
-    @if (message) {
-      <hb-render-message [message]="message" />
-    }
-  `,
-})
-export class UI {
-
-  // 2. Create the UI chat resource specifying the exposed components
-  chat = uiChatResource({
-    components: [
-      exposeComponent(ChartComponent, { ... })
-    ]
-  })
-}
-```
-
-</hb-code-example>
-
-1. We render the last assistant message using the `lastAssistantMessage` signal.
-2. The `&lt;hb-render-message&gt;` requires the `message` to render.
-3. The @hashbrownai/angular!uiChatResource:function function creates a new resource with the exposed components.
-
----
-
-## Render All Message with Components
-
-If you building a chat-like experience, you likely want to iterate over all of the `messages` and render the generated text _and_ components.
-
-<hb-code-example header="render all messages">
-
-```ts
-@Component({
-  template: `
-    @for (message of chat.value(); track $index) {
-      @switch (message.role) {
-        @case ('user') {
-          <div class="chat-message user">
-            <p>{{ message.content }}</p>
-          </div>
-        }
-        @case ('assistant') {
-          <div class="chat-message assistant">
-            @if (message.content) {
-              <hb-render-message [message]="message" />
-            }
-          </div>
-        }
-      }
-    }
-  `,
-})
-export class Chat {}
-```
-
-</hb-code-example>
-
-1. We use Angular's `@for` control-flow syntax to iterate over the messages in the chat resource `value()` signal.
-2. The `@switch` control-flow is used to determine the role of the message (either 'user' or 'assistant').
-3. For user messages, it simply displays the content in a paragraph tag.
-4. For assistant messages, it uses the @hashbrownai/angular!RenderMessageComponent:class component to render the message content.
-5. The @hashbrownai/angular!RenderMessageComponent:class component is responsible for rendering the exposed components based on the message content.
-6. The `message` input is passed to the @hashbrownai/angular!RenderMessageComponent:class component, which will handle rendering the components defined in the chat resource.
-
----
-
-## Guide the Model
-
-The model picks components from their descriptions and fills in inputs from their schemas. Put guidance where it travels with the component, so it stays correct when you add, remove or compose components:
-
-1. **Component descriptions** say when to use the component, when not to, and how it differs from similar components.
-2. **Input descriptions and schema constraints** carry value conventions: units, formats, ranges and allowed values. Anything the schema can enforce, such as a fixed set of values, belongs in the schema.
-3. **A short system prompt** holds layout and composition rules, such as which component comes first or how many results to show.
-
-<hb-code-example header="guide the model">
-
-```ts
-// Component names default to their selectors, such as app-light-card
-uiChatResource({
-  // 3. Layout and composition rules in a plain string
-  system: `
-    You are a smart home assistant.
-
-    - Show one app-light-card for each light the user asks about.
-    - Add at most one app-markdown summary, after the cards, only when there is
-      more to say.
-  `,
-  components: [
-    exposeComponent(LightCardComponent, {
-      // 1. When to use it, when not to, and how it differs
-      description:
-        'One light and its current state. Use it once per light the user asks about. For general explanations, use app-markdown instead.',
-      input: {
-        lightId: s.string(
-          'The light ID from the getLights tool, such as "light-1"',
-        ),
-        // 2. Value conventions in input descriptions and the schema
-        brightness: s.number('Brightness from 0 (off) to 100 (full)'),
-        scene: s.enumeration('The active scene', {
-          day: 'Bright, cool light',
-          evening: 'Warm, dimmed light',
-          night: 'Minimal light for moving around',
-        }),
-      },
-    }),
-    exposeComponent(MarkdownComponent, {
-      description:
-        'A short markdown message for explanations and summaries. Never use it to show the state of a light; use app-light-card for that.',
-      input: {
-        data: s.string('The markdown content, one or two short paragraphs'),
-      },
-    }),
-  ],
-});
-```
-
-</hb-code-example>
-
-Prefer rules over sample answers. A rule in a description lives next to the component it describes, so it changes when the component does and leaves with it when the component is removed. A hand-written sample answer silently drifts when an input or component changes.
-
----
-
-## Demo result
-
-<img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
-
-The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Execute LLM-generated JS in the browser (safely)</h4>
-      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Continue with [Tools](/docs/angular/concept/functions) to inspect `readContext`, or [Structured output](/docs/angular/concept/structured-output) to return the same plan as typed data. See [Streaming](/docs/angular/concept/streaming) for string, array, and object streaming, and the [`uiChatResource()` API](/api/angular/uiChatResource) for the complete options.

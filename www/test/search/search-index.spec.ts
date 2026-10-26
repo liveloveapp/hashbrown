@@ -77,7 +77,7 @@ test('the sitemap lists every docs page of both SDKs with its frontmatter', () =
     url: '/docs/angular/concept/components',
     title: 'Generative UI with Angular Components: Hashbrown Angular Docs',
     description:
-      'Expose trusted , tested , and compliant components to the model.',
+      'Expose a trusted plan component and follow its props as the model streams.',
   });
   expect(entries).toContainEqual(
     expect.objectContaining({ url: '/docs/react/start/quick' }),

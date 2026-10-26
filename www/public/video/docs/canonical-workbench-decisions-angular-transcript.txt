@@ -1,0 +1,15 @@
+ANGULAR · decisions
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Decision responses arrive whole. There is no narration.
+
+A complete TypeSafe decision returns a known next action and confidence. It does not stream text.
+
+Review the typed choice. Use suggestion saves nextAction and advances the application revision to 1.
+
+The next input says the demo is recorded. The decision suggests review using the current application snapshot.
+
+Replay follows complete choices, confidence and state. It makes no decision requests or writes.
+
+Return to live to continue. The chosen next action stays at revision 1.
+
+The source is TypeSafe through the real Hashbrown decision SDK. The application supplies the fixed plan; the model selects only record, review or clarify. Confidence below 0.75, errors and cancellation preserve state and show manual review guidance. Use suggestion is an explicit application action. Refresh clears local sessions.

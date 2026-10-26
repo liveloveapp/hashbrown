@@ -128,4 +128,4 @@ Keep Azure image generation outside the enabling table for this streaming API. I
 
 ## Review gate
 
-The user approved the separate-provider delivery and Anthropic design, including the defaults and native-history footer. Implementation follows `../plans/2026-10-22-anthropic-provider-steps.md`. Later provider designs must resolve their backend and replay-specific details before their code changes.
+The user approved the separate-provider delivery and Anthropic design, including the defaults and native-history footer. The historical [Anthropic implementation plan](https://github.com/liveloveapp/hashbrown/blob/2fbfb31f3ab7e7f5fdaa916c1bc29dd050eed335/docs/superpowers/plans/2026-10-22-anthropic-provider-steps.md) records that delivery. Later provider designs must resolve their backend and replay-specific details before their code changes.

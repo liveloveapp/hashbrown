@@ -77,7 +77,7 @@ body {
 .wb-header {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
   min-height: 44px;
   padding: 0 8px;
 }
@@ -131,8 +131,8 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  min-height: 60px;
-  padding: 14px 16px;
+  min-height: 44px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--wb-line);
 }
 .wb-chat {
@@ -141,7 +141,7 @@ body {
 }
 .wb-feed {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   overflow: auto;
   min-height: 0;
 }
@@ -161,7 +161,7 @@ body {
   margin: 12px 0 24px;
 }
 .wb-summary h2 {
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: -0.03em;
   margin-top: 8px;
 }
@@ -264,10 +264,11 @@ body {
 .wb pre {
   margin: 12px 0;
   padding: 14px;
-  background: #0d0d0d;
-  color: #fff;
+  background: #fafafa;
+  color: #0d0d0d;
+  border: 1px solid var(--wb-line);
   font:
-    11px/1.7 'JetBrains Mono',
+    12px/1.65 'JetBrains Mono',
     ui-monospace,
     monospace;
   white-space: pre-wrap;
@@ -299,30 +300,33 @@ body {
   padding: 4px 0;
 }
 .wb-playback {
-  background: #0d0d0d;
-  color: #fff;
+  background: #fff;
+  color: #0d0d0d;
+  border: 1px solid var(--wb-line);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 10px 14px;
 }
 .wb-playback .wb-actions {
   margin-top: 0;
 }
 .wb-playback button,
 .wb-playback select {
-  background: #0d0d0d;
-  color: #fff;
-  border-color: #52525b;
+  background: #fff;
+  color: #0d0d0d;
+  border-color: var(--wb-line);
   font-size: 12px;
+  min-height: 30px;
+  padding: 4px 9px;
 }
 .wb-playback .wb-muted {
-  color: #c4c4c8;
+  color: var(--wb-muted);
   font-size: 11px;
 }
 .wb-events {
   display: flex;
   overflow-x: auto;
   gap: 5px;
-  padding: 12px 2px;
+  padding: 8px 2px;
 }
 .wb-events button {
   flex: 0 0 auto;
@@ -332,11 +336,12 @@ body {
 }
 .wb-events [aria-pressed='true'] {
   background: #002fa7;
-  border-color: #fff;
+  border-color: #002fa7;
+  color: #fff;
 }
 .wb-playback input[type='range'] {
   width: 100%;
-  accent-color: #fff;
+  accent-color: #002fa7;
   margin-bottom: 8px;
 }
 @media (max-width: 1200px) {
@@ -408,7 +413,7 @@ body {
 }
 .wb-events {
   flex-direction: column;
-  max-height: 112px;
+  max-height: 124px;
   overflow: auto;
 }
 .wb-timeline-row {
@@ -426,6 +431,67 @@ body {
   background: white;
   border-color: var(--wb-line);
 }
-app-workbench-conversation[hidden] {
+app-workbench-conversation[hidden],
+app-structured-workbench-conversation[hidden],
+app-decision-workbench-conversation[hidden] {
   display: none !important;
+}
+
+.wb-lessons {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 22px;
+}
+.wb-lessons a {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+.wb-lessons a:hover {
+  background: #eaeaec;
+}
+.wb-lessons a[aria-current='page'] {
+  color: #002fa7;
+  background: #e9eefb;
+}
+.wb-request-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.wb-request-list button {
+  text-align: left;
+  font-size: 13px;
+}
+.wb-request-list [aria-pressed='true'],
+.wb-playback button[aria-pressed='true'] {
+  border-color: #002fa7;
+}
+.wb-playback .wb-timeline-row [aria-pressed='true'] {
+  color: #fff;
+  background: #002fa7;
+}
+@media (max-width: 800px) {
+  .wb-lessons {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+}
+
+.wb-debug-controls {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--wb-line);
+  background: #fafafa;
+}
+.wb-debug-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.wb-debug-controls p {
+  margin-top: 4px;
 }

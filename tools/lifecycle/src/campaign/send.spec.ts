@@ -155,7 +155,6 @@ function dependencies(
     emailKeyring: EMAIL_KEYRING,
     readJobContext: vi.fn().mockResolvedValue(context()),
     readNotificationSubmission: vi.fn().mockResolvedValue({
-      framework: 'react',
       message: 'The stream stops after the first tool call.',
     }),
     scoreContact: vi.fn().mockResolvedValue({
@@ -512,7 +511,7 @@ test('notify defers while delivery is disabled and claims at most once', async (
     idempotencyKey: 'notify:fixture',
     kind: 'notify',
   });
-  expect(request?.text).toContain('Framework: react');
+  expect(request?.text).not.toContain('Framework:');
   expect(request?.text).toContain(
     '> The stream stops after the first tool call.',
   );
