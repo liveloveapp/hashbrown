@@ -25,7 +25,7 @@ const schema = s.object('Image answer', {
     <button data-testid="send" type="button" (click)="send()">
       Send generated image
     </button>
-    <button data-testid="stop" type="button" (click)="chat.stop()">Stop</button>
+    <button data-testid="stop" type="button" (click)="stop()">Stop</button>
     <div data-testid="structured-answer">
       {{ chat.lastAssistantMessage()?.content?.answer ?? '' }}
     </div>
@@ -63,6 +63,10 @@ export class LocalVision {
     } catch (error) {
       this.commandError.set(String(error));
     }
+  }
+  /** Repeated or late Stop events must not call the runtime after generation ends. */
+  protected stop(): void {
+    if (this.chat.isLoading()) this.chat.stop();
   }
   protected errorText(): string {
     const error =

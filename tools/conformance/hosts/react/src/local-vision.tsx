@@ -27,6 +27,10 @@ export function LocalVision() {
       setCommandError(String(error));
     }
   }
+  /** Repeated or late Stop events must not call the runtime after generation ends. */
+  function stop() {
+    if (chat.isLoading) chat.stop();
+  }
   return (
     <section>
       <button
@@ -43,7 +47,7 @@ export function LocalVision() {
       <button data-testid="send" type="button" onClick={send}>
         Send generated image
       </button>
-      <button data-testid="stop" type="button" onClick={() => chat.stop()}>
+      <button data-testid="stop" type="button" onClick={stop}>
         Stop
       </button>
       <div data-testid="structured-answer">

@@ -308,3 +308,76 @@ test('structured vision fixture uses fresh threads and two generated squares wit
     checks.every((check) => JSON.parse(check.schema).type === 'object'),
   ).toBe(true);
 });
+
+test('vision Stop is a no-op while idle before and after completion', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (
+      message.type() === 'error' &&
+      message
+        .text()
+        .includes('Cannot stop streaming messages when not streaming')
+    )
+      errors.push(message.text());
+  });
+  await page.addInitScript(() => {
+    const runtime = globalThis as unknown as {
+      __hashbrownWebLlm: WebLlmEngine<WebLlmImageContent>;
+      __visionIdleStop: { creates: number; interrupts: number };
+    };
+    runtime.__visionIdleStop = { creates: 0, interrupts: 0 };
+    runtime.__hashbrownWebLlm = {
+      chat: {
+        completions: {
+          async *create() {
+            runtime.__visionIdleStop.creates++;
+            yield {
+              choices: [
+                {
+                  delta: { content: '{"answer":"red","count":2}' },
+                  finish_reason: 'stop',
+                },
+              ],
+            };
+          },
+        },
+      },
+      interruptGenerate() {
+        runtime.__visionIdleStop.interrupts++;
+      },
+    };
+  });
+
+  await page.goto(
+    '/?runUrl=http://127.0.0.1/unused&localModel=webllm&localMedia=image&localVision=1&visionColor=red',
+  );
+  for (const stage of ['before', 'after'] as const) {
+    if (stage === 'after') {
+      await page.getByTestId('send').click();
+      await expect(page.getByTestId('structured-answer')).toHaveText('red');
+      await expect(page.getByTestId('structured-count')).toHaveText('2');
+    }
+    await expect(page.getByTestId('status')).toHaveText('idle');
+    await page.getByTestId('stop').click();
+    await page.getByTestId('stop').click();
+    const calls = await page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __visionIdleStop: { creates: number; interrupts: number };
+          }
+        ).__visionIdleStop,
+    );
+
+    expect(errors).toEqual([]);
+    expect(calls).toEqual({
+      creates: stage === 'before' ? 0 : 1,
+      interrupts: 0,
+    });
+    await expect(page.getByTestId('status')).toHaveText('idle');
+    await expect(page.getByTestId('error')).toBeEmpty();
+  }
+});

@@ -217,6 +217,7 @@ test('real application-selected VLM distinguishes counterbalanced generated squa
         contentType: 'application/json',
       });
       if (succeeded) {
+        expect(errors).toEqual([]);
         expect(terminal.cleanupError).toBeUndefined();
         expect(terminal.evidenceError).toBeUndefined();
         expect(terminal.snapshot?.metrics).toMatchObject({
