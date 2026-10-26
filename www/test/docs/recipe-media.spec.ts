@@ -5,7 +5,19 @@ import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 
 test.each([
   'canonical-workbench-react',
-  ...['ui', 'tools', 'structured'].flatMap((lesson) =>
+  ...[
+    'ui',
+    'tools',
+    'structured',
+    'streaming',
+    'schemas',
+    'decisions',
+    'debugging',
+    'request-transformation',
+    'magic-text',
+    'predictions',
+    'ui-selection',
+  ].flatMap((lesson) =>
     ['react', 'angular'].map(
       (framework) => `canonical-workbench-${lesson}-${framework}`,
     ),

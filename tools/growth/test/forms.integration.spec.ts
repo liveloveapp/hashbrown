@@ -1,4 +1,6 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { afterAll, beforeAll, expect, test } from 'vitest';
 
@@ -17,7 +19,6 @@ import {
   materializeCampaignEnrollment,
   readNotificationSubmission,
 } from '../src/lib/jobs.ts';
-import type { UnstuckFramework } from '../src/lib/models.ts';
 import { stopContact } from '../src/lib/stops.ts';
 import { deleteCreatedContacts, runCleanup } from './job-fixtures.ts';
 
@@ -29,10 +30,6 @@ const createdEmails = new Set<string>();
 const createdContactIds = new Set<string>();
 let recordedCampaignConfiguration = false;
 
-const NOTICE_TEXT =
-  'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.';
-const NOTICE_VERSION = 'unstuck-notice-v1.integration';
-const POLICY_VERSION = 'unstuck_v1.2026-10-22';
 const MESSAGE = 'My streaming chat component never finishes rendering.';
 
 beforeAll(async () => {
@@ -83,20 +80,13 @@ function submission(
   occurredAt: Date,
   overrides: {
     submissionId?: string;
-    framework?: UnstuckFramework;
     message?: string;
   } = {},
 ): AcceptFormSubmissionInput {
   return {
     submissionId: overrides.submissionId ?? randomUUID(),
     email,
-    form: {
-      framework: overrides.framework ?? 'react',
-      message: overrides.message ?? MESSAGE,
-    },
-    noticeText: NOTICE_TEXT,
-    noticeVersion: NOTICE_VERSION,
-    policyVersion: POLICY_VERSION,
+    form: { message: overrides.message ?? MESSAGE },
     occurredAt,
     keyring,
   };
@@ -166,11 +156,9 @@ async function deleteCampaignConfiguration(): Promise<void> {
   );
 }
 
-test('accepts an unstuck submission: one contact, consent record with notice text and version, fulfill and notify jobs', async () => {
+test('accepts an unstuck submission: one contact, a submission record with no notice or framework, fulfill and notify jobs', async () => {
   const email = newEmail('accept');
-  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'), {
-    framework: 'angular',
-  });
+  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'));
 
   const result = await accept(input);
 
@@ -193,16 +181,20 @@ test('accepts an unstuck submission: one contact, consent record with notice tex
     approval_granted: true,
     form_kind: 'unstuck',
     submission_id: input.submissionId,
-    framework: 'angular',
     message: MESSAGE,
-    notice_text: NOTICE_TEXT,
-    notice_version: NOTICE_VERSION,
-    policy_version: POLICY_VERSION,
     source: 'website',
     source_form: 'unstuck',
     email_classification: 'work',
   });
   expect(consent?.data).not.toHaveProperty('paper');
+  for (const key of [
+    'notice_text',
+    'notice_version',
+    'policy_version',
+    'framework',
+  ]) {
+    expect(consent?.data).not.toHaveProperty(key);
+  }
   const approval = await activityData(
     `form:${input.submissionId}:accepted:outreach-approved`,
   );
@@ -455,11 +447,9 @@ test('enrollment picks up an accepted unstuck approval with reason unstuck_form'
   });
 });
 
-test('readNotificationSubmission reads framework and message from the accepted submission', async () => {
+test('readNotificationSubmission reads the message from the accepted submission', async () => {
   const email = newEmail('notify');
-  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'), {
-    framework: 'both',
-  });
+  const input = submission(email, new Date('2026-10-22T15:10:00.000Z'));
   await accept(input);
   const notify = (await formJobs(input.submissionId)).find(
     ({ kind }) => kind === 'notify',
@@ -473,7 +463,7 @@ test('readNotificationSubmission reads framework and message from the accepted s
     jobId: randomUUID(),
   });
 
-  expect(read).toEqual({ framework: 'both', message: MESSAGE });
+  expect(read).toEqual({ message: MESSAGE });
   expect(missing).toBeNull();
 });
 
@@ -545,4 +535,91 @@ test('the eleventh submission for one email in a UTC day throws FormRateLimitErr
 
   await expect(rejected).rejects.toBeInstanceOf(FormRateLimitError);
   await expect(rejected).rejects.toMatchObject({ retryAfterSec: 75_600 });
+});
+
+test('migration 0011 strips old form keys, leaves other approvals alone and is idempotent', async () => {
+  const contactId = randomUUID();
+  createdContactIds.add(contactId);
+  await executor.execute(
+    `insert into growth_contacts (
+       id, email_normalized, email_lookup_hmac, email_hmac_key_version, source
+     ) values ($1, $2, $3, 1, 'forms-integration')`,
+    [contactId, `${contactId}@example.com`, `forms-integration:${contactId}`],
+  );
+  const insertActivity = (kind: string, data: Record<string, unknown>) =>
+    executor.execute(
+      `insert into growth_activity (event_key, contact_id, kind, occurred_at, data)
+       values ($1, $2, $3, now(), $4::jsonb)`,
+      [
+        `forms-integration:${randomUUID()}`,
+        contactId,
+        kind,
+        JSON.stringify(data),
+      ],
+    );
+  await insertActivity('contact.form_submission', {
+    notice_text: 'We will email you about Hashbrown.',
+    notice_version: 'notice_v1',
+    policy_version: 'unstuck_v1.2026-10-22',
+    framework: 'react',
+    message: MESSAGE,
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  await insertActivity('form.outreach_approved', {
+    policy_version: 'unstuck_v1.2026-10-22',
+    verification: 'server_verified',
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  await insertActivity('install_runtime.outreach_approved', {
+    policy_version: 'growth-v1',
+  });
+  const migration = await readFile(
+    join(defaultMigrationsDirectory(), '0011_growth_strip_form_agreement.sql'),
+    'utf8',
+  );
+  const statements = migration
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.replace(/--.*$/gmu, '').trim() !== '');
+  // The executor reports no row count, so count the updated rows with RETURNING.
+  const run = async () => {
+    let updated = 0;
+    for (const statement of statements) {
+      const counted = await executor.execute<{ updated: number }>(
+        `with changed as (${statement} returning id)
+         select count(*)::int as updated from changed`,
+      );
+      updated += counted.rows[0]?.updated ?? 0;
+    }
+    return updated;
+  };
+
+  const first = await run();
+  const second = await run();
+
+  const rows = await executor.execute<{
+    kind: string;
+    data: Record<string, unknown>;
+  }>('select kind, data from growth_activity where contact_id = $1', [
+    contactId,
+  ]);
+  const dataOf = (kind: string) =>
+    rows.rows.find((row) => row.kind === kind)?.data;
+  expect(first).toBeGreaterThanOrEqual(2);
+  expect(second).toBe(0);
+  expect(dataOf('contact.form_submission')).toEqual({
+    message: MESSAGE,
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  expect(dataOf('form.outreach_approved')).toEqual({
+    verification: 'server_verified',
+    source: 'hashbrown.dev',
+    source_form: 'unstuck',
+  });
+  expect(dataOf('install_runtime.outreach_approved')).toEqual({
+    policy_version: 'growth-v1',
+  });
 });

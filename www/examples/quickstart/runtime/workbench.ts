@@ -1,3 +1,14 @@
+import {
+  isWorkbenchRecipe,
+  type WorkbenchActionId,
+  type WorkbenchCitation,
+  type WorkbenchRecipe,
+  workbenchSelectionMinConfidence,
+  type WorkbenchViewId,
+} from './workbench-recipes';
+import type { WorkbenchTransformationTrace } from './workbench-transformation';
+export type { WorkbenchTransformationTrace } from './workbench-transformation';
+import type { WorkbenchLessonId } from './workbench-lessons';
 import { s } from '@hashbrownai/core';
 
 /** A validated, application-owned plan, independent of rendered proposals. */
@@ -5,16 +16,27 @@ export interface WorkbenchPlan {
   readonly title: string;
   readonly steps: readonly string[];
 }
+/** The decoded decision and its model confidence. */
+export interface WorkbenchDecision {
+  readonly nextAction: 'record' | 'review' | 'clarify';
+  readonly confidence: number;
+}
 /** The committed application snapshot. */
 export interface WorkbenchApplication {
   readonly revision: number;
   readonly plan: WorkbenchPlan | null;
+  readonly acceptedActions?: readonly WorkbenchActionId[];
+  readonly selectedView?: WorkbenchViewId | null;
+  readonly nextAction?: WorkbenchDecision['nextAction'] | null;
 }
 /** Runtime state for one captured user turn. */
 export type WorkbenchStatus =
   'idle' | 'loading' | 'complete' | 'error' | 'cancelled';
 /** The origin of an observable change in the canonical example. */
 export type WorkbenchEventKind =
+  | 'decision'
+  | 'dismiss'
+  | 'choose'
   | 'request'
   | 'event'
   | 'tool'
@@ -24,7 +46,8 @@ export type WorkbenchEventKind =
   | 'cancel'
   | 'complete'
   | 'user'
-  | 'source';
+  | 'source'
+  | 'response';
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
   readonly sequence: number;
@@ -39,7 +62,14 @@ export interface WorkbenchFrame {
     readonly role: 'user' | 'assistant';
     readonly content: string;
     readonly props?: WorkbenchFrame['props'];
+    readonly decision?: WorkbenchDecision;
+    readonly recipe?: WorkbenchRecipe;
   }[];
+  readonly decision?: WorkbenchDecision;
+  readonly recipe?: WorkbenchRecipe;
+  readonly citation?: WorkbenchCitation & { readonly origin: string };
+  readonly dismissedPredictions?: readonly WorkbenchActionId[];
+  readonly transformation?: WorkbenchTransformationTrace;
   readonly json: string;
   readonly props: {
     readonly title?: string;
@@ -69,6 +99,20 @@ export interface WorkbenchStore {
     status: 'complete' | 'error' | 'cancelled',
     finishReason?: string,
   ): void;
+  /** Captures a validated observation only for the current loading recipe request. */
+  recordRecipe(reply: WorkbenchRecipe, requestId: string): boolean;
+  /** Applies a fresh completed proposal once, advancing the application revision. */
+  acceptPrediction(id: WorkbenchActionId): boolean;
+  /** Records presentation-only dismissal without applying an action or advancing the revision. */
+  dismissPrediction(id: WorkbenchActionId): boolean;
+  /** Applies a fresh completed candidate only when its confidence satisfies application policy. */
+  applySelection(): boolean;
+  /** Captures an explicit manual view choice and invalidates pending captures; clients abort active SDK work first. */
+  manualSelection(id: WorkbenchViewId): boolean;
+  /** Records reference inspection without changing the application plan. */
+  inspectCitation(data: WorkbenchCitation, origin: string): boolean;
+  recordDecision(result: WorkbenchDecision, requestId: string): void;
+  applyDecision(): boolean;
   accept(proposal: WorkbenchPlan): boolean;
   seek(index: number): void;
   live(): void;
@@ -87,6 +131,47 @@ export const workbenchPlanSchema = s.object('A two-step plan proposal', {
     s.string('A clear action'),
   ),
 });
+/** Plan schema that streams its title as well as its step array. */
+export const workbenchStreamingPlanSchema = s.object(
+  'A two-step plan proposal',
+  {
+    title: s.streaming.string('A concise plan title'),
+    steps: s.streaming.array(
+      'Exactly two concise steps',
+      s.string('A clear action'),
+    ),
+  },
+);
+/** Selects the schema owned by the allowlisted lesson. */
+export function getWorkbenchPlanSchema(lessonId: WorkbenchLessonId) {
+  return lessonId === 'streaming'
+    ? workbenchStreamingPlanSchema
+    : workbenchPlanSchema;
+}
+/** The bounded options the decision model can suggest. */
+export const workbenchDecisionSchema = s.object(
+  'Choose the next action for this plan',
+  {
+    nextAction: s.enumeration('The next useful action', {
+      record: 'Record the demo after the outline is complete.',
+      review: 'Review the demo after it has been recorded.',
+      clarify: 'Ask for clarification when progress is unclear.',
+    }),
+  },
+);
+/** App-owned plan supplied as context to the decision model. */
+export const workbenchDecisionPlan: WorkbenchPlan = {
+  title: 'Show how a model renders trusted UI',
+  steps: ['Outline the trusted UI demo.', 'Record the demo.'],
+};
+/** User actions that start the independent decision turns. */
+export const workbenchDecisionPrompts = [
+  'The outline is complete. What should I do next?',
+  'The demo is recorded. What should I do next?',
+] as const;
+/** Server-owned decision policy; suggestions never change application state. */
+export const workbenchDecisionSystem =
+  'Choose the next useful action from the supplied application snapshot and progress prompt. When the outline is complete choose record. When the demo is recorded choose review. If progress is unclear choose clarify. Suggest only; the user must explicitly use the suggestion.';
 /** Fixed instructions for plain structured output and explicit application review. */
 export const workbenchStructuredSystem =
   'You help a developer create a small two-step plan. Before every answer call readContext exactly once to read the current application revision and accepted plan. Return a plain typed plan with a short title and exactly two concise steps. The first request should create a plan with outline and record steps. A follow-up requesting a shorter second step should revise that step while retaining the first step verbatim. Returning data does not apply a plan; only the user accepts it. Do not claim application state changed.';
@@ -162,11 +247,76 @@ export function isWorkbenchPlan(input: unknown): input is WorkbenchPlan {
   );
 }
 
+/** Identifies the live user request before a decision runtime can publish or settle it. */
+export function isCurrentWorkbenchDecision(
+  snapshot: WorkbenchSnapshot,
+  requestId: string,
+): boolean {
+  return (
+    snapshot.status === 'loading' &&
+    snapshot.frame?.messages.filter((message) => message.role === 'user').at(-1)
+      ?.id === requestId
+  );
+}
+
+/** Associates SDK errors with the captured user turn before allowing them to settle it. */
+export function isCurrentWorkbenchError(
+  snapshot: WorkbenchSnapshot,
+  messages: readonly { readonly id?: string; readonly role: string }[],
+  error?: unknown,
+  previousError?: unknown,
+): boolean {
+  const user = messages.filter((message) => message.role === 'user').at(-1)?.id;
+  return (
+    snapshot.status === 'loading' &&
+    !(error !== undefined && error === previousError) &&
+    !!user &&
+    snapshot.frame?.messages.filter((message) => message.role === 'user').at(-1)
+      ?.id === user
+  );
+}
+
+/** Reads explicit application choice events to identify an already-used suggestion. */
+export function wasWorkbenchDecisionApplied(
+  snapshot: WorkbenchSnapshot,
+  messageId: string,
+): boolean {
+  return snapshot.events.some(
+    (event) =>
+      event.kind === 'choose' && event.messages.at(-1)?.id === messageId,
+  );
+}
+
 /** Creates an isolated capture. Seeking changes only the selected frame, never live state. */
 export function createWorkbenchStore(
-  format: 'ui' | 'structured' = 'ui',
+  format:
+    | 'ui'
+    | 'structured'
+    | 'decision'
+    | 'text'
+    | 'predictions'
+    | 'selection' = 'ui',
 ): WorkbenchStore {
-  let application: WorkbenchApplication = freeze({ revision: 0, plan: null });
+  const initialApplication = (): WorkbenchApplication =>
+    freeze(
+      ['decision', 'text', 'predictions', 'selection'].includes(format)
+        ? {
+            revision: 0,
+            plan: copy(workbenchDecisionPlan),
+            nextAction: null,
+            ...(format === 'predictions' ? { acceptedActions: [] } : {}),
+            ...(format === 'selection' ? { selectedView: null } : {}),
+          }
+        : { revision: 0, plan: null },
+    );
+  let application = initialApplication();
+  let decision: WorkbenchDecision | undefined;
+  let decisionRevision = -1;
+  let recipe: WorkbenchRecipe | undefined;
+  let recipeRevision = -1;
+  let citation: (WorkbenchCitation & { readonly origin: string }) | undefined;
+  let dismissedPredictions: readonly WorkbenchActionId[] = [];
+  let transformation: WorkbenchTransformationTrace | undefined;
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
   let turn = 0;
@@ -197,7 +347,9 @@ export function createWorkbenchStore(
     if (
       turn === 0 ||
       (status !== 'loading' &&
-        ['event', 'request', 'tool', 'parsed'].includes(kind))
+        ['event', 'request', 'response', 'source', 'tool', 'parsed'].includes(
+          kind,
+        ))
     )
       return;
     if (events.length >= 2000) {
@@ -207,7 +359,18 @@ export function createWorkbenchStore(
       return;
     }
     const raw = object(payload);
-    if (kind === 'request') json = '';
+    if ((format === 'decision' || format === 'selection') && kind === 'event')
+      json = JSON.stringify(payload, null, 2);
+    if (kind === 'request') {
+      json = '';
+      transformation = undefined;
+    }
+    if (
+      kind === 'event' &&
+      raw?.['type'] === 'CUSTOM' &&
+      raw['name'] === 'workbench.request-transformation'
+    )
+      transformation = copy(raw['value'] as WorkbenchTransformationTrace);
     if (kind === 'event' && raw?.['type'] === 'TEXT_MESSAGE_START') json = '';
     if (
       kind === 'event' &&
@@ -239,6 +402,11 @@ export function createWorkbenchStore(
               : 'Application',
         elapsedMs: Math.round(Math.max(0, performance.now() - started)),
         application,
+        ...(decision ? { decision } : {}),
+        ...(recipe ? { recipe } : {}),
+        ...(citation ? { citation } : {}),
+        dismissedPredictions,
+        ...(transformation ? { transformation } : {}),
         messages,
         json,
         props,
@@ -247,6 +415,24 @@ export function createWorkbenchStore(
     );
     events = [...events, frame];
     notify();
+  };
+  const recipeReady = () =>
+    cursor === null &&
+    status === 'complete' &&
+    finishReason === 'stop' &&
+    recipeRevision === application.revision &&
+    !!recipe;
+  const commitView = (id: WorkbenchViewId, manual: boolean) => {
+    application = freeze(
+      copy({
+        ...application,
+        revision: application.revision + 1,
+        selectedView: id,
+      }),
+    );
+    appliedTurn = turn;
+    record('choose', { selectedView: id, manual });
+    return true;
   };
   notify();
   return {
@@ -272,6 +458,11 @@ export function createWorkbenchStore(
       turn++;
       status = 'loading';
       props = null;
+      decision = undefined;
+      recipe = undefined;
+      citation = undefined;
+      dismissedPredictions = [];
+      transformation = undefined;
       propsReady = false;
       json = '';
       finishReason = undefined;
@@ -284,7 +475,155 @@ export function createWorkbenchStore(
       record('user', message);
       return message;
     },
-    record,
+    record(kind, payload) {
+      if (cursor !== null) return;
+      record(kind, payload);
+    },
+    recordRecipe(reply, requestId) {
+      if (
+        cursor !== null ||
+        status !== 'loading' ||
+        messages.filter((message) => message.role === 'user').at(-1)?.id !==
+          requestId ||
+        !isWorkbenchRecipe(reply) ||
+        (
+          {
+            text: 'text',
+            predictions: 'predictions',
+            selection: 'selection',
+          } as Record<string, string>
+        )[format] !== reply.kind
+      )
+        return false;
+      // Copy only the typed POJO fields, excluding accidental runtime properties.
+      recipe = freeze(
+        copy(
+          reply.kind === 'text'
+            ? { kind: reply.kind, markdown: reply.markdown }
+            : reply.kind === 'predictions'
+              ? {
+                  kind: reply.kind,
+                  contextId: reply.contextId,
+                  suggestions: reply.suggestions.map(
+                    ({ actionId, reason }) => ({ actionId, reason }),
+                  ),
+                }
+              : {
+                  kind: reply.kind,
+                  selected: [...reply.selected],
+                  confidence: reply.confidence,
+                },
+        ),
+      );
+      recipeRevision = application.revision;
+      const id =
+        reply.kind === 'text' && messages.at(-1)?.role === 'assistant'
+          ? (messages.at(-1)?.id ?? `recipe-${requestId}`)
+          : `recipe-${requestId}`;
+      const previous = messages.find((message) => message.id === id);
+      messages = [
+        ...messages.filter((message) => message.id !== id),
+        {
+          ...previous,
+          id,
+          role: 'assistant',
+          content: reply.kind === 'text' ? reply.markdown : json,
+          recipe,
+        },
+      ];
+      record('parsed', recipe);
+      return true;
+    },
+    acceptPrediction(id) {
+      if (
+        format !== 'predictions' ||
+        !recipeReady() ||
+        recipe?.kind !== 'predictions' ||
+        recipe.contextId !==
+          messages.filter((message) => message.role === 'user').at(-1)?.id ||
+        dismissedPredictions.includes(id) ||
+        application.acceptedActions?.includes(id) ||
+        !recipe.suggestions.some((suggestion) => suggestion.actionId === id)
+      )
+        return false;
+      application = freeze(
+        copy({
+          ...application,
+          revision: application.revision + 1,
+          nextAction: id,
+          acceptedActions: [...(application.acceptedActions ?? []), id],
+        }),
+      );
+      record('choose', { actionId: id });
+      return true;
+    },
+    dismissPrediction(id) {
+      if (
+        !recipeReady() ||
+        recipe?.kind !== 'predictions' ||
+        recipe.contextId !==
+          messages.filter((message) => message.role === 'user').at(-1)?.id ||
+        dismissedPredictions.includes(id) ||
+        !recipe.suggestions.some((suggestion) => suggestion.actionId === id)
+      )
+        return false;
+      dismissedPredictions = [...dismissedPredictions, id];
+      record('dismiss', { dismissed: id, presentationOnly: true });
+      return true;
+    },
+    applySelection() {
+      if (
+        format !== 'selection' ||
+        !recipeReady() ||
+        recipe?.kind !== 'selection' ||
+        recipe.selected.length !== 1 ||
+        recipe.confidence < workbenchSelectionMinConfidence ||
+        appliedTurn === turn
+      )
+        return false;
+      return commitView(recipe.selected[0], false);
+    },
+    manualSelection(id) {
+      if (
+        format !== 'selection' ||
+        cursor !== null ||
+        !['summary', 'steps'].includes(id)
+      )
+        return false;
+      if (turn === 0) {
+        started = performance.now();
+        turn = 1;
+      }
+      if (status === 'loading') {
+        status = 'cancelled';
+        finishReason = undefined;
+        record('cancel', { manual: true });
+      }
+      return commitView(id, true);
+    },
+    inspectCitation(data, origin) {
+      if (
+        format !== 'text' ||
+        cursor !== null ||
+        !messages.some(
+          (message) => message.id === origin && message.role === 'assistant',
+        ) ||
+        typeof data.id !== 'string' ||
+        !Number.isSafeInteger(data.number) ||
+        data.number < 1 ||
+        typeof data.url !== 'string' ||
+        data.url.length > 2000
+      )
+        return false;
+      citation = freeze({
+        id: data.id,
+        number: data.number,
+        url: data.url,
+        origin,
+      });
+      record('choose', { citation });
+      return true;
+    },
     parsed(value) {
       if (status !== 'loading') return;
       const next =
@@ -338,6 +677,54 @@ export function createWorkbenchStore(
         { status: next, finishReason: reason },
       );
     },
+    recordDecision(result, requestId) {
+      if (
+        format !== 'decision' ||
+        status !== 'loading' ||
+        messages.filter((message) => message.role === 'user').at(-1)?.id !==
+          requestId ||
+        !['record', 'review', 'clarify'].includes(result.nextAction) ||
+        !Number.isFinite(result.confidence) ||
+        result.confidence < 0 ||
+        result.confidence > 1
+      )
+        return;
+      decision = freeze(copy(result));
+      decisionRevision = application.revision;
+      messages = [
+        ...messages.filter((message) => message.id !== `decision-${requestId}`),
+        {
+          id: `decision-${requestId}`,
+          role: 'assistant',
+          content: json,
+          decision,
+        },
+      ];
+      record('decision', result);
+    },
+    applyDecision() {
+      if (
+        format !== 'decision' ||
+        cursor !== null ||
+        status !== 'complete' ||
+        finishReason !== 'stop' ||
+        appliedTurn === turn ||
+        !decision ||
+        decision.confidence < 0.75 ||
+        decisionRevision !== application.revision
+      )
+        return false;
+      application = freeze(
+        copy({
+          ...application,
+          revision: application.revision + 1,
+          nextAction: decision.nextAction,
+        }),
+      );
+      appliedTurn = turn;
+      record('choose', application);
+      return true;
+    },
     accept(proposal) {
       if (
         cursor !== null ||
@@ -379,7 +766,7 @@ export function createWorkbenchStore(
     },
     clear() {
       generation++;
-      application = freeze({ revision: 0, plan: null });
+      application = initialApplication();
       events = [];
       cursor = null;
       turn = 0;
@@ -387,8 +774,14 @@ export function createWorkbenchStore(
       messages = [];
       json = '';
       props = null;
+      decision = undefined;
+      transformation = undefined;
       propsReady = false;
       finishReason = undefined;
+      recipe = undefined;
+      citation = undefined;
+      dismissedPredictions = [];
+      recipeRevision = -1;
       appliedTurn = -1;
       notify();
     },

@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.310
+A complete TypeSafe decision returns a known next action and confidence. It does not stream text.
+
+00:00:02.310 --> 00:00:05.702
+Review the typed choice. Use suggestion saves nextAction and advances the application revision to 1.
+
+00:00:05.702 --> 00:00:07.512
+The next input says the demo is recorded. The decision suggests review using the current application snapshot.
+
+00:00:07.512 --> 00:00:13.562
+Replay follows complete choices, confidence and state. It makes no decision requests or writes.
+
+00:00:13.562 --> 00:00:15.600
+Return to live to continue. The chosen next action stays at revision 1.

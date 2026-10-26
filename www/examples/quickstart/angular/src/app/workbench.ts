@@ -1,3 +1,7 @@
+import { MagicTextWorkbenchConversation } from './magic-text-workbench';
+import { PredictionsWorkbenchConversation } from './predictions-workbench';
+import { SelectionWorkbenchConversation } from './selection-workbench';
+import { DecisionWorkbenchConversation } from './decision-workbench';
 import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
 import { StructuredWorkbenchConversation } from './structured-workbench';
 import {
@@ -23,6 +27,7 @@ import {
 import { s } from '@hashbrownai/core';
 import {
   createWorkbenchStore,
+  isCurrentWorkbenchError,
   workbenchSystem,
 } from '../../../runtime/workbench';
 import { createWorkbenchTransport } from '../../../runtime/workbench-transport';
@@ -40,6 +45,9 @@ import {
 /** Owns the Angular runtime and the capture session shared with trusted cards. */
 @Injectable()
 export class WorkbenchSession {
+  readonly debugDenied = signal(
+    getWorkbenchLesson(window.location.search).id === 'debugging',
+  );
   readonly store = createWorkbenchStore();
   readonly snapshot = signal(this.store.getSnapshot());
   readonly users = signal<Readonly<Record<string, ProposalOrigin>>>({});
@@ -50,6 +58,7 @@ export class WorkbenchSession {
       this.store,
       undefined,
       getWorkbenchLesson(window.location.search).endpoint,
+      { getDebugDenied: () => this.debugDenied() },
     ),
     tools: [
       createTool({
@@ -71,7 +80,11 @@ export class WorkbenchSession {
   readonly origins = computed(() =>
     messageOrigins(this.messages(), this.users()),
   );
+  private readonly healthyMessages = signal<ReturnType<typeof this.chat.value>>(
+    [],
+  );
   private recorded = '';
+  private previousError: unknown;
   constructor() {
     const unsubscribe = this.store.subscribe(() =>
       this.snapshot.set(this.store.getSnapshot()),
@@ -81,15 +94,28 @@ export class WorkbenchSession {
       this.stop();
     });
     effect(() => {
-      if (!this.chat.error()) this.history.set(this.chat.value());
+      if (!this.chat.error()) {
+        const messages = this.chat.value();
+        this.history.set(messages);
+        this.healthyMessages.set(messages);
+      }
     });
     effect(() => {
       const snapshot = this.snapshot();
       if (snapshot.status !== 'loading') return;
-      if (this.chat.error()) {
+      if (
+        this.chat.error() &&
+        isCurrentWorkbenchError(
+          snapshot,
+          this.healthyMessages(),
+          this.chat.error(),
+          this.previousError,
+        )
+      ) {
         this.store.settle('error');
         return;
       }
+      if (this.chat.error()) return;
       const message = this.chat.lastAssistantMessage();
       if (!message || this.origins()[message.id]?.turn !== snapshot.turn)
         return;
@@ -110,6 +136,7 @@ export class WorkbenchSession {
   }
   /** Captures the user origin before handing the message to Hashbrown. */
   send(content: string): void {
+    this.previousError = this.chat.error();
     const message = this.store.send(content);
     const snapshot = this.store.getSnapshot();
     this.users.update((users) => ({
@@ -136,6 +163,7 @@ export class WorkbenchSession {
     this.stop();
     this.chat.setMessages([]);
     this.history.set([]);
+    this.healthyMessages.set([]);
     this.users.set({});
     this.recorded = '';
   }
@@ -288,6 +316,7 @@ export class WorkbenchConversation implements AfterViewInit {
         send: (content) => this.session.send(content),
         stop: () => this.session.stop(),
         reset: () => this.session.reset(),
+        setDebugDenied: (denied) => this.session.debugDenied.set(denied),
       },
     );
     mounted.live.append(this.live().nativeElement);
@@ -299,10 +328,41 @@ export class WorkbenchConversation implements AfterViewInit {
 /** Retains separate Angular resources and application captures for every conversation. */
 @Component({
   selector: 'app-workbench',
-  imports: [WorkbenchConversation, StructuredWorkbenchConversation],
+  imports: [
+    WorkbenchConversation,
+    StructuredWorkbenchConversation,
+    DecisionWorkbenchConversation,
+    MagicTextWorkbenchConversation,
+    PredictionsWorkbenchConversation,
+    SelectionWorkbenchConversation,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (structured) {
+    @if (format === 'text') {
+      <app-magic-text-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'predictions') {
+      <app-predictions-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'selection') {
+      <app-selection-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (decision) {
+      <app-decision-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (structured) {
       <app-structured-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -318,6 +378,9 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly format = getWorkbenchLesson(window.location.search).format;
+  protected readonly decision =
+    getWorkbenchLesson(window.location.search).format === 'decision';
   protected readonly structured =
     getWorkbenchLesson(window.location.search).format === 'structured';
   protected readonly conversations = signal([

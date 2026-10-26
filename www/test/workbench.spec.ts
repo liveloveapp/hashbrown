@@ -233,6 +233,14 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'generative-ui',
     'tools',
     'structured-output',
+    'streaming',
+    'schemas',
+    'decisions',
+    'debugging',
+    'request-transformation',
+    'magic-text',
+    'predictions',
+    'ui-selection',
   ]);
 });
 
@@ -279,4 +287,74 @@ test('tool-only structured assistant messages do not produce captured or rendera
   expect(workbenchStructuredProps({ steps: ['Outline'] })).toEqual({
     steps: ['Outline'],
   });
+});
+
+test('decision suggestions require a current complete response and explicit use', () => {
+  const store = createWorkbenchStore('decision');
+  const message = store.send('The outline is complete. What should I do next?');
+
+  store.recordDecision({ nextAction: 'record', confidence: 0.9 }, message.id);
+  expect(store.applyDecision()).toBe(false);
+  store.settle('complete', 'stop');
+
+  expect(store.getSnapshot().application.nextAction).toBe(null);
+  expect(store.applyDecision()).toBe(true);
+  expect(store.getSnapshot().application.nextAction).toBe('record');
+  expect(store.applyDecision()).toBe(false);
+});
+
+test('decision confidence, cancellation and request identity prevent application writes', () => {
+  for (const confidence of [0.5, NaN, 2]) {
+    const store = createWorkbenchStore('decision');
+    const message = store.send('Next?');
+
+    store.recordDecision({ nextAction: 'record', confidence }, message.id);
+    store.settle('complete', 'stop');
+
+    expect(store.applyDecision()).toBe(false);
+  }
+  const store = createWorkbenchStore('decision');
+  const first = store.send('Next?');
+  store.settle('cancelled');
+  store.send('Next again?');
+
+  store.recordDecision({ nextAction: 'record', confidence: 0.9 }, first.id);
+  store.settle('complete', 'stop');
+
+  expect(store.applyDecision()).toBe(false);
+});
+
+test('SDK errors settle only the captured user turn represented by healthy framework history', async () => {
+  const { isCurrentWorkbenchError } =
+    await import('../examples/quickstart/runtime/workbench');
+  const store = createWorkbenchStore();
+  const old = store.send('First');
+  store.settle('error');
+  const current = store.send('Retry');
+
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old])).toBe(false);
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
+    true,
+  );
+  const previousError = new Error('Previous denial');
+  expect(
+    isCurrentWorkbenchError(
+      store.getSnapshot(),
+      [old, current],
+      previousError,
+      previousError,
+    ),
+  ).toBe(false);
+  expect(
+    isCurrentWorkbenchError(
+      store.getSnapshot(),
+      [old, current],
+      new Error('Current schema failure'),
+      previousError,
+    ),
+  ).toBe(true);
+  store.settle('error');
+  expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
+    false,
+  );
 });

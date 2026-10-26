@@ -241,7 +241,6 @@ test('a notify job reads the submission, mails the founder once and completes', 
       JSON.stringify({
         form_kind: 'unstuck',
         submission_id: submissionId,
-        framework: 'angular',
         message: 'My tool call never resolves in the second turn.',
       }),
     ],
@@ -300,7 +299,7 @@ test('a notify job reads the submission, mails the founder once and completes', 
       { name: 'job_kind', value: 'notify' },
     ],
   });
-  expect(payload.text).toContain('Framework: angular');
+  expect(payload.text).not.toContain('Framework:');
   expect(payload.text).toContain(
     '> My tool call never resolves in the second turn.',
   );

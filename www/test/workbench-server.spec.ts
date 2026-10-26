@@ -190,3 +190,200 @@ test('routes each allowlisted lesson to its server schema and rejects unknown en
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('decision lesson cannot be forwarded through the streaming chat input boundary', () => {
+  expect(() => pinWorkbenchInput({}, 'decisions')).toThrow();
+});
+
+test('decision endpoint returns whole fixture responses and keeps credentials optional', async () => {
+  let decisions = 0;
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* () {
+        yield { type: EventType.RUN_ERROR, message: 'Must not call chat' };
+      },
+      decide: async (request) => {
+        decisions++;
+        expect(request.questions).toHaveProperty('nextAction');
+        return {
+          kind: 'hashbrown.decision',
+          version: 1,
+          value: { nextAction: 'record' },
+          meta: {
+            nextAction: {
+              confidence: 0.9,
+              probabilities: { record: 0.9, review: 0.05, clarify: 0.05 },
+            },
+          },
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const url = `http://127.0.0.1:${address.port}/api/workbench/decisions`;
+  const body = JSON.stringify({
+    state: {
+      input: {
+        requestId: 'r',
+        prompt: 'The outline is complete. What should I do next?',
+        application: { revision: 0, nextAction: null },
+      },
+    },
+    questions: {},
+  });
+
+  try {
+    const denied = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://unrelated.example',
+      },
+      body,
+    });
+    expect(denied.status).toBe(403);
+    expect(decisions).toBe(0);
+    const result = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.headers.get('X-Workbench-Source')).toBe('test-fixture');
+    expect(await result.json()).toMatchObject({
+      kind: 'hashbrown.decision',
+      value: { nextAction: 'record' },
+    });
+    expect(decisions).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('debug denial returns real HTTP403 before provider invocation and is limited to the debugging route', async () => {
+  const calls: unknown[] = [];
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      stream: async function* (_input, _signal, lesson) {
+        calls.push(lesson);
+        yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No port');
+  const root = `http://127.0.0.1:${address.port}/api/workbench`;
+  const init = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+      tools: [],
+      context: [],
+      state: {},
+    }),
+  };
+
+  try {
+    const denied = await fetch(`${root}/debugging?demoDenied=1`, init);
+    expect(denied.status).toBe(403);
+    expect(denied.headers.get('X-Workbench-Source')).toBe('demo-failure');
+    expect(await denied.json()).toEqual({
+      error: 'Demo denial is enabled. Disable Demo denial and send again.',
+    });
+    expect(calls).toEqual([]);
+    const accepted = await fetch(`${root}/debugging`, init);
+    await accepted.text();
+    const other = await fetch(`${root}/generative-ui?demoDenied=1`, init);
+    await other.text();
+    expect(accepted.status).toBe(200);
+    expect(other.status).toBe(200);
+    expect(calls).toEqual(['debugging', 'generative-ui']);
+  } finally {
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('selection endpoint pins the whole candidate decision and passes the trusted lesson to the provider', async () => {
+  let calls = 0;
+  const server = createServer(
+    createWorkbenchApp({
+      stream: async function* () {
+        throw new Error('Selection cannot enter generation');
+        yield { type: EventType.RUN_ERROR, message: 'unreachable' };
+      },
+      decide: async (request, _signal, lesson) => {
+        calls++;
+        expect(lesson).toBe('ui-selection');
+        expect(request.questions).toMatchObject({
+          pick: {
+            type: 'choice',
+            options: { summary: expect.any(String), steps: expect.any(String) },
+          },
+        });
+        expect(request.questions).not.toHaveProperty('attacker');
+        expect(request.state).toMatchObject({
+          input: {
+            application: {
+              plan: { title: 'Show how a model renders trusted UI' },
+            },
+          },
+        });
+        return {
+          kind: 'hashbrown.decision',
+          version: 1,
+          value: { pick: 'steps' },
+          meta: {
+            pick: {
+              confidence: 0.9,
+              probabilities: { summary: 0.1, steps: 0.9 },
+            },
+          },
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/workbench/ui-selection`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: {
+            input: {
+              requestId: 'selection-1',
+              prompt: 'Show ordered steps',
+              application: {
+                revision: 0,
+                selectedView: null,
+                plan: { title: 'Attacker plan', steps: [] },
+              },
+            },
+          },
+          questions: { attacker: {} },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ value: { pick: 'steps' } });
+    expect(calls).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});

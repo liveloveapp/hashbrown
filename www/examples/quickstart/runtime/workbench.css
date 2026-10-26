@@ -413,7 +413,7 @@ body {
 }
 .wb-events {
   flex-direction: column;
-  max-height: 88px;
+  max-height: 124px;
   overflow: auto;
 }
 .wb-timeline-row {
@@ -432,7 +432,11 @@ body {
   border-color: var(--wb-line);
 }
 app-workbench-conversation[hidden],
-app-structured-workbench-conversation[hidden] {
+app-structured-workbench-conversation[hidden],
+app-decision-workbench-conversation[hidden],
+app-magic-text-workbench-conversation[hidden],
+app-predictions-workbench-conversation[hidden],
+app-selection-workbench-conversation[hidden] {
   display: none !important;
 }
 
@@ -478,4 +482,44 @@ app-structured-workbench-conversation[hidden] {
     flex-wrap: wrap;
     margin: 0;
   }
+}
+
+.wb-debug-controls {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--wb-line);
+  background: #fafafa;
+}
+.wb-debug-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.wb-debug-controls p {
+  margin-top: 4px;
+}
+
+.wb-markdown {
+  line-height: 1.6;
+}
+.wb-markdown p + p,
+.wb-markdown h2 + p,
+.wb-markdown ul + p {
+  margin-top: 12px;
+}
+.wb-markdown a {
+  color: #002fa7;
+}
+.wb [aria-label='Predictive suggestions'] > section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--wb-line);
+}
+.wb [aria-label='Predictive suggestions'] button + button {
+  margin-left: 8px;
+}
+.wb [aria-label='UI selection result'] .wb-summary {
+  border: 0;
+  padding: 0;
+  margin: 12px 0;
 }

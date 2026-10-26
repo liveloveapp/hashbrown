@@ -1,31 +1,31 @@
 /* Port of www/analog/src/app/components/home/ClosingCta.ts. */
 .section {
   display: block;
-  padding: 24px 0 72px;
+  padding: 0 0 var(--section-gap);
 }
 
 .card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 56px 24px;
-  border-radius: 28px;
+  gap: var(--space-4);
+  padding: var(--space-16) var(--space-6);
+  border-radius: var(--radius-shot);
   background: var(--sunshine-yellow-light);
   text-align: center;
 }
 
 .card h2 {
-  font: 800 36px/1.1 var(--font-heading);
+  font: 600 36px/1.1 var(--font-heading);
   letter-spacing: -0.03em;
-  color: var(--chocolate-brown);
+  color: var(--color-ink);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 @media screen and (min-width: 1024px) {

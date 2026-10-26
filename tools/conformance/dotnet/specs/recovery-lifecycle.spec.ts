@@ -7,7 +7,7 @@ import {
   durableEffects,
   waitForStage,
   withDurableCluster,
-} from '../harness/durable-fixture';
+} from '../harness/browser-fixture';
 
 async function open(page: Page, runUrl: string, scenario = 'plain') {
   await page.goto(

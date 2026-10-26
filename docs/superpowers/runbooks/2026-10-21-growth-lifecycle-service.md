@@ -87,8 +87,8 @@ same switch and does nothing unless it is exactly `true`.
 ## Get unstuck form
 
 Path: `/unstuck` (dynamic page) posts to `POST /_/forms/unstuck` on www. One
-transaction writes the contact, the consent record
-(`form:<id>:accepted`, carrying the disclosure text and its version) and, for
+transaction writes the contact, the submission record
+(`form:<id>:accepted`, carrying only the email and the message) and, for
 an unsuppressed address, `form:<id>:accepted:outreach-approved`, then enqueues
 `fulfill` (acknowledgement, at most one per contact per UTC day under
 `form:contact:<contact_id>:fulfill:<yyyy-mm-dd>`, carrying that day's first
@@ -115,8 +115,7 @@ exhausted window. A limiter fault fails open. The honeypot field and an abuse
 score of 80 or more answer a silent 200 with no jobs and charge only the IP
 budget, so spam cannot spend a real visitor's address budget. Setup, accept
 and close failures log `[unstuck-form-failed]` with the stage and the error
-name only. A stale `policy_version`
-answers 409 with the current version. Reusing a `submission_id` with the same
+name only. Reusing a `submission_id` with the same
 body returns the original result; with a changed body (or a `submission_id` owned by another contact) it
 answers 422 `{ error: 'This submission changed. Please send it again.' }`
 without `retryable`.
@@ -178,8 +177,8 @@ The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
 
 ## Scheduling the tick
 
-`www/vercel.json` schedules `GET /_/cron/lifecycle` every ten minutes
-(`*/10 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
+`www/vercel.json` schedules `GET /_/cron/lifecycle` every 30 minutes
+(`*/30 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
 route answers 503 until `LIFECYCLE_CRON_ENABLED` is `true`, so the schedule is
 harmless while the switch is off.
 
@@ -413,8 +412,8 @@ where id = '<job id>'
   and last_error_code = 'handler_error_exhausted';
 ```
 
-Until PR 6's form route writes `framework`, the founder notification shows
-"Framework: not given".
+The founder notification carries the email and the message only; the form no
+longer asks for a framework.
 
 ## Announcements
 
@@ -487,6 +486,11 @@ tick's result and the alerts after each one before the next.
   - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
   - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
   - Reply canary passed, 03:18Z. The acknowledgement shows `delivered` with its RFC Message-ID recorded. Brian's reply was admitted, matched to his contact, forwarded, and recorded as `campaign.reply_received` (receipt `stopped`). All three `send_step` jobs were cancelled with `contact_stopped`. The mailbox stayed healthy.
+- **2026-10-26, migration 0011 (Get unstuck polish, #766):**
+  - #766 merged as 1216b814. The www and lifecycle production deploys of that commit were both READY before the migration ran, and `/unstuck` served the new page.
+  - Before (read-only): 1 `contact.form_submission` row held `notice_text`, `notice_version`, `policy_version` or `framework`; 1 `form.outreach_approved` row held `policy_version`; 0 `install_runtime.outreach_approved` rows held `policy_version`; 2 form rows in total; last migration 0010.
+  - `npx nx migrate-growth growth` against production: 1 applied, 11 unchanged.
+  - After (read-only): 0 and 0 rows with the stripped keys, install-runtime rows unchanged at 0, still 2 form rows; last migration 0011.
 
 ### Sender validation and historical notification review
 

@@ -7,11 +7,9 @@
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 16px;
+  border-radius: var(--radius-shot);
   background: var(--vanilla-ivory, #faf9f0);
-  box-shadow:
-    0 16px 40px rgba(61, 60, 58, 0.16),
-    0 0 0 1px rgba(61, 60, 58, 0.08);
+  box-shadow: 0 0 0 1px var(--color-rule);
 }
 
 .demo figcaption {

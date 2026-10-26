@@ -327,18 +327,14 @@ test('legacy checkpoint migration retains dispatch safety without fabricating re
     await a.stop();
     const [b, c] = await Promise.all([cluster.start(), cluster.start()]);
 
-    const envelope = await (await recovery(b)).json();
+    const recovered = await recovery(b);
     const list = await (
       await fetch(`${c.url}/checkpoints`, {
         headers: { 'X-Fixture-Principal': 'operator' },
       })
     ).json();
 
-    expect(envelope).toMatchObject({
-      effectState: 'Pending',
-      transcriptAvailability: 'Unavailable',
-      snapshot: null,
-    });
+    expect(recovered.status).toBe(409);
     expect(list.items).toHaveLength(1);
     expect(await durableEffects(b)).toBe(0);
     expect(b.requests).toHaveLength(0);

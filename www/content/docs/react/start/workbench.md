@@ -28,17 +28,27 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens three lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The left navigation opens eleven lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
 
-| Lesson | Local URL | Follow |
-| --- | --- | --- |
-| [Generative UI](/docs/react/concept/components) | `/react.html?lesson=generative-ui` | Streamed props and the trusted SummaryCard. |
-| [Tools](/docs/react/concept/functions) | `/react.html?lesson=tools` | Browser context, tool result, and continuation. |
-| [Structured output](/docs/react/concept/structured-output) | `/react.html?lesson=structured-output` | Plain typed plan data rendered by the application. |
+| Lesson                                                                  | Local URL                                   | Follow                                                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| [Generative UI](/docs/react/concept/components)                         | `/react.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
+| [Tools](/docs/react/concept/functions)                                  | `/react.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
+| [Structured output](/docs/react/concept/structured-output)              | `/react.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
+| [Streaming](/docs/react/concept/streaming)                              | `/react.html?lesson=streaming`              | Partial title text and resolved steps.                                     |
+| [Schemas](/docs/react/concept/schema)                                   | `/react.html?lesson=schemas`                | The exact response contract and application validation.                    |
+| [Decisions](/docs/react/concept/decisions)                              | `/react.html?lesson=decisions`              | Complete typed choices, confidence and explicit application.               |
+| [Debugging](/docs/react/concept/debugging)                              | `/react.html?lesson=debugging`              | Local HTTP denial, same-conversation recovery, and captured evidence.      |
+| [Request transformation](/docs/react/concept/transform-request-options) | `/react.html?lesson=request-transformation` | Actual server callback, added instructions, and preserved provider fields. |
+| [Magic Text](/docs/react/recipes/magic-text)                            | `/react.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
+| [Predictive suggestions](/docs/react/recipes/predictive-actions)        | `/react.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
+| [UI selection](/docs/react/recipes/ui-selection)                        | `/react.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
 
-## Follow one turn
+The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+
+## Follow a Generative UI turn
 
 1. Send the first prompt. `useUiChat` starts a real request.
 2. The `readContext` browser tool returns the current plan and revision. Reading context does not change it.
@@ -63,6 +73,8 @@ The inspector has JSON, Requests, UI, and State views on light code surfaces. Se
 - [Capturing transport](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-transport.ts): request and event capture without changing the SDK stream.
 - [Server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts): bounded input and server-owned instructions, tools, and response schema.
 
-Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTTP events. The test report identifies this as `test-fixture`; it is not a live model run. Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
+Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTTP events. The test report identifies this as `test-fixture`; it is not a live model run. The Decisions lesson additionally needs server-only `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. It uses a fixed application-owned plan and complete decision responses, while the generation lessons use OpenAI and streaming.
+
+Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
 
 Continue with [Exposing components](/docs/react/concept/components), [Tool calling](/docs/react/concept/functions), or [Streaming](/docs/react/concept/streaming) to focus on one part of the conversation.

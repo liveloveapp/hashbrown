@@ -27,6 +27,7 @@ await using var source = connectionString is null ? null : NpgsqlDataSource.Crea
 var schema = builder.Configuration["InterruptSchema"] ?? "hashbrown";
 var options = new InterruptStoreOptions
 {
+    CompatibilityIdentity = ServerConfigurationIdentity.Create(builder.Configuration),
     Capacity = int.Parse(builder.Configuration["InterruptCapacity"] ?? "128"),
     PreparationLease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["PreparationLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)),
     ApprovalTtl = TimeSpan.FromSeconds(double.Parse(builder.Configuration["ApprovalTtlSeconds"] ?? "600", System.Globalization.CultureInfo.InvariantCulture))
@@ -54,6 +55,7 @@ var pending = new FixtureInterruptStore(underlying, tools, captureGate);
 app.MapGet("/__test/capture-stage", () => Results.Json(new { stage = captureGate.Stage }));
 app.MapPost("/__test/release-capture", () => { captureGate.Release(); return Results.Ok(); });
 FixtureRecoveryControls.Map(app, source, schema, pending);
+FixtureServerIdentityControls.Map(app, source, schema, registry);
 RecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/recovery", pending, "recovery",
     context => context.User.FindFirst("scope")?.Value, options);
 RecoveryEndpointConfiguration.MapOperations(app, "/checkpoints", pending, "checkpoint-operator",
