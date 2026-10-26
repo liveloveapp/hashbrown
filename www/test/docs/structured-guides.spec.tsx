@@ -36,7 +36,7 @@ test.each(SDKS)(
   '%s typed-data guides lead with their own recorded behavior',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo,
+      demo: slug[1] === 'structured-output' ? `canonical-workbench-structured-${sdk}` : demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
@@ -45,34 +45,6 @@ test.each(SDKS)(
 
       expect(media, demo).toBeGreaterThan(-1);
       expect(media, demo).toBeLessThan(body.indexOf('\n## '));
-    }
-  },
-);
-
-test.each(SDKS)(
-  '%s structured-output guide publishes the checked complete files',
-  (sdk) => {
-    const body = readDoc(sdk, ['concept', 'structured-output'])?.body ?? '';
-    const files = [
-      'runtime/shopping-list.ts',
-      sdk === 'react'
-        ? 'react/src/StructuredList.tsx'
-        : 'angular/src/app/structured-list.ts',
-    ];
-
-    for (const file of files) {
-      const section = body.slice(
-        body.indexOf(`<hb-code-example header="${file}">`),
-      );
-      const snippet = section.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1];
-
-      expect(snippet?.trim(), file).toBe(
-        readFileSync(
-          resolve(import.meta.dirname, '../../examples/quickstart', file),
-          'utf8',
-        ).trim(),
-      );
-      expect(body).toContain(`<hb-expander title="Complete ${file}">`);
     }
   },
 );

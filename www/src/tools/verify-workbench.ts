@@ -5,11 +5,14 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
+import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
 const requests: RunAgentInput[] = [];
-const work = resolve('dist/docs-workbench/verification');
+const work = resolve(
+  process.env['WORKBENCH_OUTPUT'] ?? 'dist/docs-workbench/verification',
+);
 mkdirSync(work, { recursive: true });
 let outcome: 'success' | 'error' | 'length' = 'success';
 async function* fixture(
@@ -43,7 +46,7 @@ async function* fixture(
   const second =
     input.messages.filter((message) => message.role === 'user').length > 1;
   const messageId = `${input.runId}-answer`;
-  const json = JSON.stringify({
+  const ui = {
     ui: [
       {
         SummaryCard: {
@@ -59,7 +62,10 @@ async function* fixture(
         },
       },
     ],
-  });
+  };
+  const format = (input.forwardedProps as { hashbrown?: { ui?: boolean } })
+    ?.hashbrown?.ui;
+  const json = JSON.stringify(format ? ui : ui.ui[0].SummaryCard.props);
   yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
   for (let index = 0; index < json.length; index += 14) {
     await new Promise((done) => setTimeout(done, 80));
@@ -117,172 +123,306 @@ const browser = await chromium.launch({ headless: true }).catch((error) => {
   if (process.env['CI']) throw error;
   return chromium.launch({ headless: true, channel: 'chrome' });
 });
+const requestedLessons = process.env['WORKBENCH_LESSONS']?.split(',');
+if (
+  requestedLessons?.some(
+    (id) => !workbenchLessons.some((lesson) => lesson.id === id),
+  )
+)
+  throw new Error('Unknown WORKBENCH_LESSONS value');
+const lessons = workbenchLessons.filter(
+  (lesson) => !requestedLessons || requestedLessons.includes(lesson.id),
+);
 const report: unknown[] = [];
 try {
-  for (const framework of ['react', 'angular']) {
-    console.log(
-      `Verifying ${framework} (${live ? 'provider' : 'test-fixture'})`,
-    );
-    const errors: string[] = [];
-    const page = await browser.newPage({
-      viewport: { width: 1600, height: 1000 },
-      ...(process.env['WORKBENCH_RECORD'] === '1'
-        ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
-        : {}),
-    });
-    page.on('pageerror', (error) => {
-      errors.push(error.message);
-      console.log(`${framework} browser error: ${error.message}`);
-    });
-    page.on('console', (message) => {
-      if (message.type() === 'error')
-        console.log(`${framework} console: ${message.text()}`);
-    });
-    const start = requests.length;
-    await page.goto(`http://127.0.0.1:${address.port}/${framework}.html`);
-    const send = page.locator('.wb:visible [data-send]');
-    const newConversation = async () => {
-      const selected = page.locator('.wb:visible .wb-nav [aria-pressed=true]');
-      const before = await selected.innerText();
+  for (const lesson of lessons) {
+    for (const framework of ['react', 'angular']) {
+      console.log(
+        `Verifying ${framework}/${lesson.id} (${live ? 'provider' : 'test-fixture'})`,
+      );
+      const errors: string[] = [];
+      const page = await browser.newPage({
+        viewport: { width: 1600, height: 1000 },
+        ...(process.env['WORKBENCH_RECORD'] === '1'
+          ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
+          : {}),
+      });
+      const captureStarted = Date.now();
+      const phases: Record<string, number> = {};
+      const mark = (name: string) => {
+        phases[name] = (Date.now() - captureStarted) / 1000;
+      };
+      page.on('pageerror', (error) => {
+        errors.push(error.message);
+        console.log(`${framework} browser error: ${error.message}`);
+      });
+      page.on('console', (message) => {
+        if (message.type() === 'error')
+          console.log(`${framework} console: ${message.text()}`);
+      });
+      const start = requests.length;
+      await page.goto(
+        `http://127.0.0.1:${address.port}/${framework}.html?lesson=${lesson.id}`,
+      );
+      const send = page.locator('.wb:visible [data-send]');
+      const newConversation = async () => {
+        const selected = page.locator(
+          '.wb:visible .wb-nav [aria-pressed=true]',
+        );
+        const before = await selected.innerText();
+        await page
+          .getByRole('button', { name: 'New conversation', exact: true })
+          .click();
+        try {
+          await expect(selected).not.toHaveText(before);
+        } catch (error) {
+          await page.screenshot({
+            path: resolve(
+              work,
+              `${framework}-${lesson.id}-navigation-failure.png`,
+            ),
+            fullPage: true,
+            animations: 'disabled',
+          });
+          console.log('Navigation errors:', JSON.stringify(errors));
+          throw error;
+        }
+      };
+      await expect(send).toBeVisible();
+      await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
+      await expect(page.locator('.wb:visible .wb-detail')).toBeVisible();
+      await expect(
+        page.getByRole('tab', { name: lesson.inspector, exact: true }),
+      ).toHaveAttribute('aria-selected', 'true');
+      if (lesson.id === 'generative-ui')
+        await page.getByRole('tab', { name: 'JSON', exact: true }).click();
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(800);
+      mark('firstRequest');
+      await send.click();
+      const card = page.getByRole('article', { name: 'Summary card' }).last();
+      await expect(card).toBeVisible({ timeout: 60_000 });
+      const accept = card.getByRole('button', {
+        name: 'Accept plan',
+        exact: true,
+      });
+      if (!live) await expect(accept).toBeDisabled();
+      await expect(accept).toBeEnabled({ timeout: 60_000 });
+      await expect(page.locator('.wb:visible [data-source]')).toHaveText(
+        live ? 'Live model' : 'Test fixture',
+      );
+      const firstSteps = await card.locator('li').allTextContents();
+      expect(firstSteps).toHaveLength(2);
+      mark('firstComplete');
+      await page.getByRole('tab', { name: 'State', exact: true }).click();
+      await expect(
+        page.locator('.wb:visible .wb-inspector .wb-inspection'),
+      ).toContainText('"revision": 0');
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(900);
+      mark('accept');
+      await accept.click();
+      await expect(
+        page.locator('.wb:visible .wb-inspector .wb-inspection'),
+      ).toContainText('"revision": 1');
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(900);
       await page
-        .getByRole('button', { name: 'New conversation', exact: true })
+        .getByRole('tab', {
+          name: lesson.id === 'tools' ? 'Requests' : 'JSON',
+          exact: true,
+        })
         .click();
-      try {
-        await expect(selected).not.toHaveText(before);
-      } catch (error) {
-        await page.screenshot({
-          path: resolve(work, `${framework}-navigation-failure.png`),
-          fullPage: true,
-        });
-        console.log('Navigation errors:', JSON.stringify(errors));
-        throw error;
-      }
-    };
-    await expect(send).toBeVisible();
-    if (process.env['WORKBENCH_RECORD'] === '1') await page.waitForTimeout(800);
-    await send.click();
-    const card = page.getByRole('article', { name: 'Summary card' }).last();
-    await expect(card).toBeVisible({ timeout: 60_000 });
-    const accept = card.getByRole('button', {
-      name: 'Accept plan',
-      exact: true,
-    });
-    if (!live) await expect(accept).toBeDisabled();
-    await expect(accept).toBeEnabled({ timeout: 60_000 });
-    await expect(page.locator('.wb:visible [data-source]')).toHaveText(
-      live ? 'Live model' : 'Test fixture',
-    );
-    await page.getByRole('tab', { name: 'State', exact: true }).click();
-    await expect(
-      page.locator('.wb:visible .wb-inspector .wb-inspection'),
-    ).toContainText('"revision": 0');
-    if (process.env['WORKBENCH_RECORD'] === '1') await page.waitForTimeout(900);
-    await accept.click();
-    await expect(
-      page.locator('.wb:visible .wb-inspector .wb-inspection'),
-    ).toContainText('"revision": 1');
-    if (process.env['WORKBENCH_RECORD'] === '1') await page.waitForTimeout(900);
-    await page.getByRole('tab', { name: 'JSON', exact: true }).click();
-    await page.getByRole('button', { name: 'Follow-up', exact: true }).click();
-    await send.click();
-    await expect(
-      page.getByRole('article', { name: 'Summary card' }),
-    ).toHaveCount(2, { timeout: 60_000 });
-    await expect(
-      page
-        .getByRole('article', { name: 'Summary card' })
-        .last()
-        .getByRole('button', { name: 'Accept plan', exact: true }),
-    ).toBeEnabled({ timeout: 60_000 });
-    if (process.env['WORKBENCH_RECORD'] === '1') await page.waitForTimeout(900);
-    await page.getByRole('tab', { name: 'State', exact: true }).click();
-    const captured = requests.slice(start);
-    expect(captured.length).toBeGreaterThanOrEqual(4);
-    if (!live) expect(captured).toHaveLength(4);
-    const tool = [...captured[captured.length - 1].messages]
-      .reverse()
-      .find((message) => message.role === 'tool');
-    expect(tool?.content).toContain('"revision":1');
-    const count = requests.length;
-    await page.getByRole('button', { name: 'Play', exact: true }).click();
-    await expect(page.locator('[data-replay]')).toBeVisible();
-    await expect(send).toBeDisabled();
-    await page.getByRole('button', { name: 'Pause', exact: true }).click();
-    const slider = page.getByRole('slider', { name: 'Seek captured event' });
-    await slider.fill('0');
-    await expect(
-      page.locator('.wb:visible .wb-inspector .wb-inspection'),
-    ).toContainText('"revision": 0');
-    await expect(page.locator('[data-replay]')).not.toContainText(
-      'Record a demo',
-    );
-    await page
-      .getByRole('button', { name: 'Return to live', exact: true })
-      .click();
-    await expect(
-      page.locator('.wb:visible .wb-inspector .wb-inspection'),
-    ).toContainText('"revision": 1');
-    expect(requests).toHaveLength(count);
-    await newConversation();
-    await expect(
-      page.getByRole('article', { name: 'Summary card' }),
-    ).toHaveCount(0);
-    await page
-      .getByRole('button', { name: 'Two-step plan', exact: true })
-      .click();
-    await expect(
-      page.getByRole('article', { name: 'Summary card' }),
-    ).toHaveCount(2);
-    await expect(
-      page.locator('.wb:visible .wb-inspector .wb-inspection'),
-    ).toContainText('"revision": 1');
-    expect(requests).toHaveLength(count);
-    await page.screenshot({
-      path: resolve(work, `${framework}-${live ? 'live' : 'fixture'}.png`),
-      fullPage: true,
-    });
-    if (!live) {
-      for (const failed of ['error', 'length'] as const) {
-        await newConversation();
-        outcome = failed;
-        await send.click();
-        await expect(page.getByRole('alert').first()).toBeVisible({
-          timeout: 15_000,
-        });
-        await expect(
-          page.locator('.wb:visible .wb-summary button:enabled'),
-        ).toHaveCount(0);
-      }
-      outcome = 'success';
-      await newConversation();
+      await page
+        .getByRole('button', { name: 'Follow-up', exact: true })
+        .click();
+      mark('followup');
       await send.click();
       await expect(
-        page.getByRole('button', { name: 'Stop', exact: true }),
-      ).toBeEnabled();
-      await page.getByRole('button', { name: 'Stop', exact: true }).click();
+        page.getByRole('article', { name: 'Summary card' }),
+      ).toHaveCount(2, { timeout: 60_000 });
       await expect(
-        page.locator('.wb:visible .wb-chat .wb-panel-head'),
-      ).toContainText(/cancelled/);
-    }
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    expect(errors).toEqual([]);
-    report.push({
-      framework,
-      source: live ? 'provider' : 'test-fixture',
-      requests: captured.length,
-      passed: true,
-    });
-    const video = page.video();
-    await page.close();
-    if (video)
-      await video.saveAs(
-        resolve(work, `${framework}-${live ? 'live' : 'fixture'}.webm`),
+        page
+          .getByRole('article', { name: 'Summary card' })
+          .last()
+          .getByRole('button', { name: 'Accept plan', exact: true }),
+      ).toBeEnabled({ timeout: 60_000 });
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(900);
+      await page.getByRole('tab', { name: 'State', exact: true }).click();
+      const revisedSteps = await page
+        .getByRole('article', { name: 'Summary card' })
+        .last()
+        .locator('li')
+        .allTextContents();
+      expect(revisedSteps).toHaveLength(2);
+      expect(revisedSteps[0]).toBe(firstSteps[0]);
+      expect(revisedSteps[1].length).toBeLessThan(firstSteps[1].length);
+      mark('secondComplete');
+      const captured = requests.slice(start);
+      expect(captured.length).toBeGreaterThanOrEqual(4);
+      if (!live) expect(captured).toHaveLength(4);
+      const tool = [...captured[captured.length - 1].messages]
+        .reverse()
+        .find((message) => message.role === 'tool');
+      expect(tool?.content).toContain('"revision":1');
+      const grouped = new Map<string, RunAgentInput[]>();
+      for (const request of captured) {
+        const id = [...request.messages]
+          .reverse()
+          .find((message) => message.role === 'user')?.id;
+        if (!id) throw new Error('Missing user origin');
+        grouped.set(id, [...(grouped.get(id) ?? []), request]);
+      }
+      expect(grouped.size).toBe(2);
+      [...grouped.values()].forEach((turn, index) => {
+        const final = turn.at(-1);
+        if (!final) throw new Error('Missing turn request');
+        const userIndex = final.messages
+          .map((message) => message.role)
+          .lastIndexOf('user');
+        const results = final.messages
+          .slice(userIndex + 1)
+          .filter((message) => message.role === 'tool');
+        expect(results).toHaveLength(1);
+        expect(JSON.parse(String(results[0].content)).revision).toBe(index);
+      });
+      const count = requests.length;
+      mark('replay');
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.getByRole('tab', { name: 'JSON', exact: true }).click();
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await expect(page.locator('[data-replay]')).toBeVisible();
+      await expect(send).toBeDisabled();
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(2200);
+      const pause = page.getByRole('button', { name: 'Pause', exact: true });
+      if (await pause.count()) await pause.click();
+      await page
+        .getByRole('button', { name: /^Parsed output[.]/ })
+        .first()
+        .click();
+      await expect(page.locator('[data-replay] .wb-summary')).toHaveCount(1);
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(600);
+      await page.getByRole('tab', { name: 'State', exact: true }).click();
+      await page
+        .getByRole('button', { name: /^Plan accepted[.]/ })
+        .first()
+        .click();
+      await expect(
+        page.locator('.wb:visible .wb-inspector .wb-inspection'),
+      ).toContainText('"revision": 1');
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await page.waitForTimeout(700);
+      const slider = page.getByRole('slider', { name: 'Seek captured event' });
+      await slider.fill('0');
+      await expect(
+        page.locator('.wb:visible .wb-inspector .wb-inspection'),
+      ).toContainText('"revision": 0');
+      await expect(page.locator('[data-replay]')).not.toContainText(
+        'Record a demo',
       );
+      await page
+        .getByRole('button', { name: 'Return to live', exact: true })
+        .click();
+      await expect(
+        page.locator('.wb:visible .wb-inspector .wb-inspection'),
+      ).toContainText('"revision": 1');
+      expect(requests).toHaveLength(count);
+      mark('returnedLive');
+      if (process.env['WORKBENCH_RECORD'] !== '1') {
+        await newConversation();
+        await expect(
+          page.getByRole('article', { name: 'Summary card' }),
+        ).toHaveCount(0);
+        await page
+          .getByRole('button', { name: 'Two-step plan', exact: true })
+          .click();
+        await expect(
+          page.getByRole('article', { name: 'Summary card' }),
+        ).toHaveCount(2);
+        await expect(
+          page.locator('.wb:visible .wb-inspector .wb-inspection'),
+        ).toContainText('"revision": 1');
+        expect(requests).toHaveLength(count);
+      }
+      await page
+        .getByRole('tab', {
+          name: lesson.id === 'tools' ? 'Requests' : 'JSON',
+          exact: true,
+        })
+        .click();
+      await page.screenshot({
+        path: resolve(
+          work,
+          `${framework}-${lesson.id}-${live ? 'live' : 'fixture'}.png`,
+        ),
+        fullPage: true,
+        animations: 'disabled',
+      });
+      if (!live) {
+        for (const failed of ['error', 'length'] as const) {
+          await newConversation();
+          outcome = failed;
+          await send.click();
+          await expect(page.getByRole('alert').first()).toBeVisible({
+            timeout: 15_000,
+          });
+          await expect(
+            page.locator('.wb:visible .wb-summary button:enabled'),
+          ).toHaveCount(0);
+        }
+        outcome = 'success';
+        await newConversation();
+        await send.click();
+        await expect(
+          page.getByRole('button', { name: 'Stop', exact: true }),
+        ).toBeEnabled();
+        await page.getByRole('button', { name: 'Stop', exact: true }).click();
+        await expect(
+          page.locator('.wb:visible .wb-chat .wb-panel-head'),
+        ).toContainText(/cancelled/);
+      }
+      if (process.env['WORKBENCH_RECORD'] !== '1') {
+        await page.setViewportSize({ width: 390, height: 844 });
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+      } else {
+        await page.waitForTimeout(800);
+      }
+      if (!live) {
+        const beforeNavigation = requests.length;
+        const target = lesson.id === 'tools' ? 'structured-output' : 'tools';
+        await page
+          .locator(`.wb:visible .wb-lessons a[href$="lesson=${target}"]`)
+          .click();
+        await expect(page.locator('.wb:visible [data-send]')).toBeEnabled();
+        await expect(page.locator('.wb:visible .wb-summary')).toHaveCount(0);
+        expect(requests).toHaveLength(beforeNavigation);
+      }
+      expect(errors).toEqual([]);
+      report.push({
+        framework,
+        lesson: lesson.id,
+        phases,
+        source: live ? 'provider' : 'test-fixture',
+        requests: captured.length,
+        passed: true,
+      });
+      const video = page.video();
+      await page.close();
+      if (video)
+        await video.saveAs(
+          resolve(
+            work,
+            `${framework}-${lesson.id}-${live ? 'live' : 'fixture'}.webm`,
+          ),
+        );
+    }
   }
   writeFileSync(
     resolve(work, `${live ? 'live' : 'fixture'}-report.json`),

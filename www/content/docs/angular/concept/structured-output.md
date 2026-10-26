@@ -2,327 +2,100 @@
 title: 'Structured output: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Generate typed data, review the result, and apply it explicitly.'
+    content: 'Stream a typed two-step plan, review it, and accept it explicitly.'
 ---
 
 # Structured output
 
-Let's turn **“Add 2 apples and 1 loaf of bread”** into a shopping list. The model returns JSON with item names and quantities. Our application displays a draft, checks its rules, and waits for us to apply it.
-
-<hb-docs-demo demo="structured-form">
+<hb-docs-demo demo="canonical-workbench-structured-angular">
 </hb-docs-demo>
 
-## Before we start
+Let’s use the same two-step plan, this time as typed data. The model returns a title and two steps. Hashbrown parses the response as it streams, and our application renders those values.
 
-Use the endpoint and provider configuration from the [Quickstart](/docs/angular/start/quick). Read [Skillet schemas](/docs/angular/concept/schema) for the response shape. This example uses `structuredChatResource()` to request data that our own interface renders.
+I like keeping the example familiar. In [Generative UI](/docs/angular/concept/components), the model selects `SummaryCard` from a catalog. Here, `structuredChatResource()` returns plan data and the application chooses how to display it.
 
-Keep `runtime/shopping-list.ts` beside the `react` and `angular` example directories. If you copy the files into your app, update the shared file import to match your layout.
+## Run the same conversation
 
-## Describe the response
+Use the [conversation workbench](/docs/angular/start/workbench) with the server environment from the [Quickstart](/docs/angular/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=structured-output`. Selecting a lesson does not send a request.
 
-Our response has one `items` array. Each item has a string `name` and integer `quantity`. Hashbrown parses the model's response with this schema and exposes typed assistant content.
+The recording uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
-We use `s.streaming.array` around ordinary `s.object` items. That lets items appear once their required field values resolve, before the whole list finishes. [Streaming](/docs/angular/concept/streaming) explains where to place the streaming markers.
+## Describe the plan
 
-The shared file also checks our application's rules: 1–10 items, names with 1–80 characters after trimming, and quantities from 1–20. A value can match the schema and still fail these rules. For example, zero is an integer, but it is not a useful quantity in this list.
+The shared schema describes a title and a streaming array of step strings. Both frameworks and the server use this same contract.
 
-<hb-expander title="Complete runtime/shopping-list.ts">
-
-<hb-code-example header="runtime/shopping-list.ts">
+<hb-code-example header="runtime/workbench.ts">
 
 ```ts
-import { s } from '@hashbrownai/core';
-
-/** Streams shopping-list items once their required field values resolve. */
-export const shoppingListSchema = s.object('A shopping list draft', {
-  items: s.streaming.array(
-    'The requested shopping items',
-    s.object('A complete shopping item', {
-      name: s.string('The product name'),
-      quantity: s.integer('How many to add'),
-    }),
+export const workbenchPlanSchema = s.object('A two-step plan proposal', {
+  title: s.string('A concise plan title'),
+  steps: s.streaming.array(
+    'Exactly two concise steps',
+    s.string('A clear action'),
   ),
 });
-
-/** A shopping list after parsing; application rules still require validation. */
-export type ShoppingList = s.Infer<typeof shoppingListSchema>;
-
-/** Runtime state needed to authorize applying one explicitly requested draft. */
-export interface ShoppingListRun {
-  readonly requestId: string | undefined;
-  readonly cancelled: boolean;
-  readonly messages: readonly {
-    readonly id?: string;
-    readonly role: string;
-    readonly content?: unknown;
-  }[];
-  readonly isSending: boolean;
-  readonly isReceiving: boolean;
-  readonly isGenerating: boolean;
-  readonly isLoading: boolean;
-  readonly error?: unknown;
-  readonly finishReason?: string;
-}
-
-/** Returns a trimmed, independent copy when all application rules pass. */
-export function validateShoppingList(input: unknown): ShoppingList | undefined {
-  if (
-    typeof input !== 'object' ||
-    input === null ||
-    !('items' in input) ||
-    !Array.isArray(input.items)
-  )
-    return undefined;
-  if (input.items.length < 1 || input.items.length > 10) return undefined;
-  const items: ShoppingList['items'] = [];
-  for (const item of input.items) {
-    if (
-      typeof item !== 'object' ||
-      item === null ||
-      typeof item.name !== 'string' ||
-      !Number.isInteger(item.quantity)
-    )
-      return undefined;
-    const name = item.name.trim();
-    if (
-      name.length < 1 ||
-      name.length > 80 ||
-      item.quantity < 1 ||
-      item.quantity > 20
-    )
-      return undefined;
-    items.push({ name, quantity: item.quantity });
-  }
-  return { items };
-}
-
-/** Revalidates a fresh answer only after its runtime settles without failure. */
-export function getApplicableShoppingList(
-  run: ShoppingListRun,
-): ShoppingList | undefined {
-  // isSending covers the debounce window before aggregate isLoading becomes true.
-  if (
-    !run.requestId ||
-    run.cancelled ||
-    run.error ||
-    run.isSending ||
-    run.isReceiving ||
-    run.isGenerating ||
-    run.isLoading ||
-    (run.finishReason !== undefined && run.finishReason !== 'stop')
-  )
-    return undefined;
-  const reversedMessages = [...run.messages].reverse();
-  const userIndex = reversedMessages.findIndex(
-    (message) => message.role === 'user',
-  );
-  if (userIndex < 0 || reversedMessages[userIndex].id !== run.requestId)
-    return undefined;
-  const answer = reversedMessages
-    .slice(0, userIndex)
-    .find((message) => message.role === 'assistant');
-  return validateShoppingList(answer?.content);
-}
 ```
 
 </hb-code-example>
 
-</hb-expander>
+`s.streaming.array` lets resolved steps appear before the whole response finishes. It does not mean the plan is ready to accept. The workbench also checks application rules: a nonempty title of at most 120 characters and exactly two nonempty steps, each at most 200 characters.
 
-## Generate a draft
+## Request typed data
 
-Create the component below, then connect it to your configured application. Import the standalone `StructuredList` component into your root component and render `<app-structured-list />`. Keep `provideHashbrown()` in your application configuration.
+The checked Angular client uses `structuredChatResource()` with the plan schema, the same read-only `readContext` tool, and the capturing transport:
 
-Enter the request and select **Generate draft**. The event handler sends one user message. Editing the input alone does not start a request, and rendering the component does not send one.
-
-The example starts a fresh model conversation for each draft. We want each request to describe a replacement list; previous drafts are not additional instructions. Use a continuing structured chat when your feature needs follow-up turns.
-
-<hb-expander title="Complete angular/src/app/structured-list.ts">
-
-<hb-code-example header="angular/src/app/structured-list.ts">
+<hb-code-example header="angular/src/app/structured-workbench.ts">
 
 ```ts
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  signal,
-} from '@angular/core';
-import { structuredChatResource } from '@hashbrownai/angular';
-import {
-  getApplicableShoppingList,
-  type ShoppingList,
-  shoppingListSchema,
-} from '../../../runtime/shopping-list';
-
-/** Generates a reviewable draft and applies a validated copy to local state. */
-@Component({
-  selector: 'app-structured-list',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <main>
-      <h1>Turn a request into a shopping list</h1>
-      <label for="shopping-request">Shopping request</label>
-      <textarea
-        id="shopping-request"
-        [value]="prompt()"
-        (input)="prompt.set($any($event.target).value)"
-      ></textarea>
-      <nav aria-label="Draft actions">
-        <button
-          type="button"
-          [disabled]="!prompt().trim() || busy()"
-          (click)="generate()"
-        >
-          Generate draft
-        </button>
-        <button
-          type="button"
-          [disabled]="!busy() || request()?.cancelled"
-          (click)="cancel()"
-        >
-          Cancel
-        </button>
-        <button type="button" [disabled]="!candidate()" (click)="apply()">
-          Apply list
-        </button>
-      </nav>
-      <p role="status">{{ status() }}</p>
-      <p>
-        List rules: 1–10 items, names of 1–80 characters, quantities from 1–20.
-      </p>
-      <h2>Draft list</h2>
-      <ul data-testid="draft-list">
-        @for (item of draft()?.items ?? []; track $index) {
-          <li>{{ item.quantity }} × {{ item.name }}</li>
-        }
-      </ul>
-      <h2>Applied list</h2>
-      <ul data-testid="applied-list">
-        @for (item of applied()?.items ?? []; track $index) {
-          <li>{{ item.quantity }} × {{ item.name }}</li>
-        }
-      </ul>
-      <p>
-        The applied list is saved only in this component. Refreshing clears it.
-      </p>
-    </main>
-  `,
-})
-export class StructuredList {
-  protected readonly prompt = signal('Add 2 apples and 1 loaf of bread.');
-  protected readonly request = signal<
-    { id: string; cancelled: boolean } | undefined
-  >(undefined);
-  protected readonly applied = signal<ShoppingList | undefined>(undefined);
-  private readonly chat = structuredChatResource({
-    schema: shoppingListSchema,
-    system:
-      'Turn the request into a shopping list. Use 1–10 items, names of 1–80 characters, and integer quantities from 1–20.',
+  readonly chat = structuredChatResource({
+    system: workbenchStructuredSystem,
+    schema: workbenchPlanSchema,
+    transport: createWorkbenchTransport(
+      this.store,
+      undefined,
+      getWorkbenchLesson(window.location.search).endpoint,
+    ),
+    tools: [
+      createTool({
+        name: 'readContext',
+        description:
+          'Read the accepted application plan and revision without changing state.',
+        handler: async () => {
+          const result = this.store.getSnapshot().application;
+          this.store.record('tool', { name: 'readContext', result });
+          return result;
+        },
+      }),
+    ],
   });
-  protected readonly busy = computed(
-    () => this.chat.isSending() || this.chat.isLoading(),
-  );
-  protected readonly draft = computed(
-    () => this.chat.lastAssistantMessage()?.content,
-  );
-  protected readonly candidate = computed(() =>
-    getApplicableShoppingList(this.run()),
-  );
-  protected readonly status = computed(() => {
-    if (this.request()?.cancelled)
-      return 'Generation cancelled. Generate another draft to continue.';
-    if (this.chat.error())
-      return 'Could not generate a valid draft. Try generating again.';
-    if (this.busy())
-      return 'Generating draft. Complete items appear as they arrive.';
-    if (
-      this.chat.lastRunFinishReason() &&
-      this.chat.lastRunFinishReason() !== 'stop'
-    )
-      return 'Generation ended before a complete draft. Generate another draft.';
-    if (this.candidate())
-      return 'Draft ready. Review the items, then apply the list.';
-    if (this.request())
-      return 'Draft does not meet the list rules. Generate another draft.';
-    return 'Describe your list, then generate a draft.';
-  });
-
-  protected generate(): void {
-    const next = { id: crypto.randomUUID(), cancelled: false };
-    this.request.set(next);
-    // This component generates independent lists, so each request replaces its history.
-    this.chat.setMessages([
-      { id: next.id, role: 'user', content: this.prompt() },
-    ]);
-  }
-
-  protected cancel(): void {
-    const request = this.request();
-    if (!request) return;
-    this.request.set({ ...request, cancelled: true });
-    this.chat.stop();
-  }
-
-  protected apply(): void {
-    // Revalidate at the event boundary, after any synchronous Generate or Cancel.
-    const list = getApplicableShoppingList(this.run());
-    if (list) this.applied.set(list);
-  }
-
-  private run() {
-    return {
-      requestId: this.request()?.id,
-      cancelled: this.request()?.cancelled ?? false,
-      messages: this.chat.error() ? [] : this.chat.value(),
-      isSending: this.chat.isSending(),
-      isReceiving: this.chat.isReceiving(),
-      isGenerating: this.chat.isGenerating(),
-      isLoading: this.chat.isLoading(),
-      error: this.chat.error(),
-      finishReason: this.chat.lastRunFinishReason(),
-    };
-  }
-}
 ```
 
 </hb-code-example>
 
-</hb-expander>
+The latest assistant message exposes its parsed plan in `content`. The application renders that data into its plan card. There is no generated component tree in this lesson.
 
-## Read the typed content
+[Read the checked Angular implementation](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/structured-workbench.ts). It includes the rendered card, captured origins, cancellation, and explicit acceptance.
 
-The latest assistant message carries the parsed response in `content`. Before a response is available, there may be no assistant message. During generation, the list can grow as item names and quantities resolve, even before an item’s closing brace arrives. These values are a preview of the response.
+## Watch the preview become a result
 
-Keep the **Draft list** separate from the **Applied list**. Showing generated data is useful feedback; it does not mean the run has finished or the user has accepted it.
+Send the first prompt. Keep **JSON** selected to see response text arrive beside the plan. The **Details** view shows values resolved by the SDK. Select **State** before accepting: the application still has revision `0` and no accepted plan.
 
-<img src="/video/docs/structured-form-result.png" alt="The draft contains two apples and one loaf of bread. After explicit review and Apply list, the same items appear in the separate applied list." width="920" height="564" loading="lazy" />
+<img src="/video/docs/canonical-workbench-structured-angular-result.png" alt="The model streams a plain title and steps while the application renders a plan preview beside the typed data." width="1600" height="1000" loading="lazy" />
 
-## Apply a completed result
+## Accept a completed plan
 
-**Apply list** becomes available only for a new, completed draft that passes our validation. The handler checks again before copying its items into application state. Starting another generation or selecting **Cancel** makes the draft ineligible immediately, including while the request is waiting to send.
+Select **Accept plan** after the successful response completes. The handler rechecks the plan at the action boundary, copies only validated fields, and advances the application revision. Then send “Make the second step shorter.” The tool reads the accepted plan and the response proposes a revision.
 
-A failed request keeps the previously applied list. A cancelled request cannot be applied, even if it already displayed items. A replacement request without a new assistant answer cannot reuse the previous draft.
+A partial response is a preview. A failed, cancelled, truncated, stale, or already accepted result cannot be applied. A failed follow-up keeps the accepted plan. Selecting a historical timeline moment cannot change live application state.
 
-This example updates local component state. It does not buy anything, write to a server, or save across a refresh. Validate and authorize any real server write separately.
+This example stores the accepted plan in browser memory. Enforce authorization and validation separately for any server write.
 
-## Keep the endpoint schema intact
+## Keep the response schema intact
 
-Hashbrown sends the response schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`. The [provider adapter](/docs/angular/start/platforms) uses it to request the appropriate output from its model, while the client parses the streamed text events.
+Hashbrown sends the schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`. The [provider adapter](/docs/angular/start/platforms) uses that schema, while the client parses streamed text into typed content. Hashbrown does not add an `output` tool to request structured output.
 
-If you customize the endpoint, preserve the response schema for this feature. The [secured text-only endpoint example](/docs/angular/recipes/public-endpoint) deliberately removes browser-supplied schemas as part of its different policy; adapt that policy explicitly for structured data or UI. Hashbrown does not add an `output` tool to request structured output.
-
-## When the draft is not usable
-
-| What we see                          | What to do                                                                                                                  |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| A request error                      | Check the endpoint, credentials and provider response in [Debugging](/docs/angular/concept/debugging), then generate again. |
-| A list outside the application rules | Make the request more specific, then generate another draft.                                                                |
-| A cancelled run                      | Generate a fresh draft before applying.                                                                                     |
-| No assistant answer                  | Inspect the endpoint events; a finished run alone does not supply a list.                                                   |
-
-Skillet also accepts its supported Standard JSON Schema inputs. See [schema inputs and constraints](/docs/angular/concept/schema) before substituting another schema library.
+The local workbench endpoint pins its own schema for each lesson. If you customize your endpoint, preserve the schema your feature needs. The [secured text-only endpoint](/docs/angular/recipes/public-endpoint) deliberately removes browser-supplied schemas as part of its different policy.
 
 ## Next steps
 
-Continue with [Streaming](/docs/angular/concept/streaming) to see why resolved item values appear progressively. Then use [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect review and validation to your application's form. For model-selected components, continue with [Exposing components](/docs/angular/concept/components).
+Use [Streaming](/docs/angular/concept/streaming) to explore the streaming markers, then [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect typed data to a form. See [Skillet schemas](/docs/angular/concept/schema) for supported schema inputs and constraints, or [Tools](/docs/angular/concept/functions) to follow the plan’s context read.
