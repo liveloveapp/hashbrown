@@ -13,7 +13,7 @@
 }
 
 .demo video:focus-visible {
-  outline: 2px solid var(--chocolate-brown, #774625);
+  outline: 2px solid var(--color-accent);
   outline-offset: 4px;
 }
 
@@ -23,6 +23,6 @@
 }
 
 .demo .note {
-  color: var(--gray, #5e5c5a);
+  color: var(--color-muted);
   font-size: 13px;
 }

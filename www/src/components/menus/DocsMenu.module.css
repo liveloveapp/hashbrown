@@ -130,7 +130,7 @@ details.section {
   transition: border-color var(--duration-fast) var(--ease-out);
 
   &:hover {
-    border-color: var(--gray-light);
+    border-color: var(--color-rule-strong);
   }
 
   > p {
@@ -182,7 +182,7 @@ details.section {
   transition: border-color var(--duration-fast) var(--ease-out);
 
   &:hover {
-    border-color: var(--gray-light);
+    border-color: var(--color-rule-strong);
   }
 
   > label {

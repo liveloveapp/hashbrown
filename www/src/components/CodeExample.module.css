@@ -3,7 +3,7 @@
 .example {
   display: flex;
   flex-direction: column;
-  background: #2b2622;
+  background: var(--color-code-frame);
   border-radius: var(--radius-shot);
   overflow: hidden;
   margin: var(--space-2) 0 var(--space-6);
@@ -29,7 +29,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #e3e3e3;
+  color: var(--color-code-fg);
   background: none;
   border: 0;
   cursor: pointer;

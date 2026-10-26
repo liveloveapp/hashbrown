@@ -8,10 +8,10 @@
   padding: var(--space-6) var(--gutter);
   border-top: 1px solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--color-surface);
   font:
     500 15px/1 var(--font-sans);
-  color: var(--gray);
+  color: var(--color-muted);
 }
 
 .provider {

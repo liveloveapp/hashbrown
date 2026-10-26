@@ -8,12 +8,12 @@
   width: 100%;
   height: auto;
   border-radius: var(--radius-shot);
-  background: var(--vanilla-ivory, #faf9f0);
+  background: var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-rule);
 }
 
 .demo figcaption {
   margin-top: 12px;
   font-size: 14px;
-  color: var(--gray, #5e5c5a);
+  color: var(--color-muted);
 }

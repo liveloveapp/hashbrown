@@ -5,12 +5,12 @@
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: rgba(61, 60, 58, 0.72);
+  color: var(--color-muted);
   transition: all 0.2s ease-in-out;
 }
 
 .chip:hover {
-  color: rgb(61, 60, 58);
+  color: var(--color-ink);
 }
 
 .kindChip {
@@ -20,12 +20,12 @@
 }
 
 .kindChip:hover {
-  color: rgba(61, 60, 58, 0.72);
-  border-color: rgba(61, 60, 58, 0.24);
+  color: var(--color-muted);
+  border-color: var(--color-rule);
 }
 
 .kindChip.selected {
-  background: rgba(61, 60, 58, 0.04);
+  background: var(--color-surface);
 }
 
 .initial {
