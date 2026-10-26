@@ -4,7 +4,13 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { type WorkbenchLesson, workbenchLessons } from './workbench-lessons';
+import { workbenchLayout, type WorkbenchLayoutStore } from './workbench-layout';
+import {
+  type WorkbenchLesson,
+  type WorkbenchLessonId,
+  workbenchLessons,
+} from './workbench-lessons';
+import { renderWorkbenchSidebar } from './workbench-sidebar';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -225,11 +231,25 @@ export interface WorkbenchNavigation {
   readonly create: () => void;
 }
 
-/** Mounts a shared accessible shell, leaving live rendering entirely to the framework. */
+/** Optional collaborators for {@link mountWorkbench}. */
+export interface WorkbenchMountOptions {
+  /** The layout preference store; defaults to the shared `workbenchLayout`. */
+  readonly layout?: WorkbenchLayoutStore;
+}
+
+/**
+ * Mounts a shared accessible shell, leaving live rendering entirely to the framework.
+ *
+ * @param host - The element the shell is appended to.
+ * @param store - The workbench capture store.
+ * @param commands - Framework-owned live commands.
+ * @param options - Optional collaborators such as the layout store.
+ */
 export function mountWorkbench(
   host: HTMLElement,
   store: WorkbenchStore,
   commands: WorkbenchCommands,
+  options: WorkbenchMountOptions = {},
 ): {
   readonly live: HTMLElement;
   readonly dispose: () => void;
@@ -237,6 +257,7 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
+  const layoutStore = options.layout ?? workbenchLayout;
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
@@ -264,39 +285,25 @@ export function mountWorkbench(
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
-  function lessonLinks() {
-    const links = element('div', '', 'wb-lessons');
-    for (const { id, title } of workbenchLessons) {
-      const link = element('a', title);
-      link.href = `${commands.framework.toLowerCase()}.html?lesson=${id}`;
-      if (id === (commands.lesson?.id ?? 'generative-ui'))
-        link.setAttribute('aria-current', 'page');
-      links.append(link);
-    }
-    return links;
-  }
   function renderNavigation() {
-    nav.replaceChildren(
-      element('h2', 'Examples'),
-      lessonLinks(),
-      element('h2', 'Conversations'),
-    );
-    for (const item of navigation?.conversations ?? [
-      { id: 'default', label: 'Two-step plan' },
-    ]) {
-      const select = button(item.label, () => {
+    const current = layoutStore.get();
+    root.classList.toggle('wb-rail', current.rail);
+    renderWorkbenchSidebar(nav, {
+      framework: commands.framework,
+      currentLesson: (commands.lesson?.id ??
+        'generative-ui') as WorkbenchLessonId,
+      conversations: navigation?.conversations ?? [
+        { id: 'default', label: 'Two-step plan' },
+      ],
+      currentConversation: navigation?.currentId ?? 'default',
+      layout: current,
+      idPrefix: instanceId,
+      onSelect: (id) => {
         pause();
-        if (navigation) navigation.select(item.id);
+        if (navigation) navigation.select(id);
         else store.live();
-      });
-      select.setAttribute(
-        'aria-pressed',
-        String(item.id === (navigation?.currentId ?? 'default')),
-      );
-      nav.append(select);
-    }
-    nav.append(
-      button('New conversation', () => {
+      },
+      onCreate: () => {
         pause();
         if (navigation) navigation.create();
         else {
@@ -304,8 +311,17 @@ export function mountWorkbench(
           store.clear();
           prompt.value = prompts[0];
         }
-      }),
-    );
+      },
+      onToggleRail: () => layoutStore.set({ rail: !layoutStore.get().rail }),
+      onToggleSection: (section) => {
+        const { collapsed } = layoutStore.get();
+        layoutStore.set({
+          collapsed: collapsed.includes(section)
+            ? collapsed.filter((item) => item !== section)
+            : [...collapsed, section],
+        });
+      },
+    });
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
@@ -993,6 +1009,7 @@ export function mountWorkbench(
     });
   }
   renderNavigation();
+  const unsubscribeLayout = layoutStore.subscribe(renderNavigation);
   const unsubscribe = store.subscribe(render);
   render();
   return {
@@ -1005,6 +1022,7 @@ export function mountWorkbench(
     dispose: () => {
       pause();
       unsubscribe();
+      unsubscribeLayout();
       root.remove();
     },
   };

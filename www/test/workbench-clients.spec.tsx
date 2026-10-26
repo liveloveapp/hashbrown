@@ -292,7 +292,7 @@ test('labels captured fixture provenance and pauses playback when selecting the 
     (button) => button.textContent === 'Play',
   );
   const conversation = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Two-step plan',
+    (button) => button.textContent?.trim() === 'Two-step plan',
   );
 
   play?.click();
@@ -329,10 +329,12 @@ test('retained conversation navigation selects sessions without clearing their c
     create,
   });
   [...host.querySelectorAll('button')]
-    .find((button) => button.textContent === 'Conversation 2')
+    .find((button) => button.textContent?.trim() === 'Conversation 2')
     ?.click();
   [...host.querySelectorAll('button')]
-    .find((button) => button.textContent === 'New conversation')
+    .find(
+      (button) => button.getAttribute('aria-label') === 'New conversation',
+    )
     ?.click();
 
   expect(select).toHaveBeenCalledWith('two');
