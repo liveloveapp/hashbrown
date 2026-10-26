@@ -4,6 +4,8 @@ Updated 2026-10-25. Paths are below `/docs/<sdk>/`; React and Angular share a re
 
 ## Current recordings
 
+The canonical conversation workbench now has separate `canonical-workbench-react` and `canonical-workbench-angular` captures on `start/workbench`. These use the checked framework clients, real OpenAI requests, the actual browser tool, streamed SDK parsing, trusted components and explicit local acceptance. Both live-provider runs passed with four requests each. Footage is slowed to half speed for readability; both videos retain the `Live model` provenance label. The separate deterministic browser suite is labelled `test-fixture` and is not used for these recordings.
+
 | Recording     | Source                                                                                     | Pages                                         | Notes                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Welcome card  | `www/examples/quickstart/{react,angular}`                                                  | Introduction, Quickstart, How Hashbrown works | Real client rendering; deterministic AG-UI output; presentation CSS added in recorder            |
