@@ -44,7 +44,7 @@ export const ANNOUNCEMENTS: readonly SiteAnnouncement[] = [
   // URL. Both share the pill text and time; the first one wins the pill.
   {
     id: 'get-unstuck-form-react',
-    text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+    text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founder: hashbrown.dev/unstuck",
     href: '/unstuck',
     publishedAt: '2026-10-22T18:00:00Z',
     expiresAt: '2027-04-20T18:00:00Z',
@@ -56,7 +56,7 @@ export const ANNOUNCEMENTS: readonly SiteAnnouncement[] = [
   },
   {
     id: 'get-unstuck-form-angular',
-    text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+    text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founder: hashbrown.dev/unstuck",
     href: '/unstuck',
     publishedAt: '2026-10-22T18:00:00Z',
     expiresAt: '2027-04-20T18:00:00Z',
