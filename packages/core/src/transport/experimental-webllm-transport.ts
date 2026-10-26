@@ -3,6 +3,7 @@ import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import { createLocalTextEventStream } from './local-text-event-stream';
 import type { TransportFactory, TransportRequest } from './transport';
 import { TransportError } from './transport-error';
+import { createWebLlmRun } from './webllm-run';
 import {
   preflightWebLlmImages,
   type PreparedWebLlmImages,
@@ -116,9 +117,6 @@ type WebLlmUserMessage = Extract<
   { role: 'user' }
 >;
 
-// interruptGenerate affects an entire engine, so ownership spans transports.
-const activeEngines = new WeakSet<WebLlmEngine>();
-
 /**
  * Creates a local transport from an application-owned WebLLM engine.
  *
@@ -162,72 +160,21 @@ export function experimental_webllm(
       const { engine } = options;
       const imageEngine = options.media ? options.engine : undefined;
       const textEngine = options.media ? undefined : options.engine;
-      if (activeEngines.has(engine)) {
-        throw new TransportError('The local engine is already generating', {
-          code: 'MODEL_BUSY',
-          retryable: false,
-        });
-      }
-      activeEngines.add(engine);
-
-      let pending: Promise<AsyncIterator<WebLlmChunk>> | undefined;
-      let nextResult: Promise<IteratorResult<WebLlmChunk>> | undefined;
-      let finished = false;
-      let cancelled = false;
-      let cleanupStarted = false;
-      let removeAbortListener = () => undefined as void;
-      const release = () => {
-        input = undefined;
-        textInput = undefined;
-        imagePlan = undefined;
-        imageMessages.clear();
-        const owned = prepared;
-        prepared = undefined;
-        void owned?.dispose().catch(() => undefined);
-        activeEngines.delete(engine);
-      };
-      const cleanup = () => {
-        if (cleanupStarted) return;
-        cleanupStarted = true;
-        cancelled = true;
-        removeAbortListener();
-        try {
-          if (pending && !finished) engine.interruptGenerate();
-        } finally {
-          if (pending) {
-            // WebLLM releases its model lock only after advancing past the last
-            // chunk. Worker iterator.return() does not close its backend stream.
-            // Keep ownership while draining, without delaying UI cancellation.
-            void pending
-              .then(async (iterator) => {
-                let result = await nextResult;
-                while (!result?.done) {
-                  result = await iterator.next();
-                }
-              })
-              .finally(release)
-              .catch(() => undefined);
-          } else {
-            release();
-          }
-        }
-      };
-
-      const local = createLocalTextEventStream({
-        input: request.input,
-        signal: request.signal,
-        destroy: cleanup,
-        start: async (signal) => {
-          signal.addEventListener('abort', cleanup, { once: true });
-          removeAbortListener = () =>
-            signal.removeEventListener('abort', cleanup);
-          if (signal.aborted) {
-            cleanup();
-            throw aborted();
-          }
+      const run = createWebLlmRun({
+        engine,
+        release: () => {
+          input = undefined;
+          textInput = undefined;
+          imagePlan = undefined;
+          imageMessages.clear();
+          const owned = prepared;
+          prepared = undefined;
+          void owned?.dispose().catch(() => undefined);
+        },
+        prepare: async (signal) => {
           if (imagePlan) {
             prepared = await prepareWebLlmImages(imagePlan, signal);
-            if (cancelled || signal.aborted) {
+            if (signal.aborted) {
               await prepared.dispose();
               prepared = undefined;
               throw aborted();
@@ -246,55 +193,19 @@ export function experimental_webllm(
             };
             imageMessages.clear();
           }
-          // Promise.resolve().then also owns synchronous engine exceptions.
-          pending = Promise.resolve()
-            .then(() => {
-              if (cancelled || !input) throw aborted();
-              if (imageEngine)
-                return imageEngine.chat.completions.create(input);
-              if (!textEngine || !textInput) throw aborted();
-              return textEngine.chat.completions.create(textInput);
-            })
-            .then((stream) => stream[Symbol.asyncIterator]());
-          let iterator: AsyncIterator<WebLlmChunk>;
-          try {
-            iterator = await pending;
-          } catch (error) {
-            throw engineError(error);
-          }
-          if (cancelled) throw aborted();
-          return new ReadableStream<string>({
-            async pull(controller) {
-              try {
-                while (!cancelled) {
-                  nextResult = Promise.resolve().then(() => iterator.next());
-                  const result = await nextResult;
-                  if (cancelled) return;
-                  if (result.done) {
-                    finished = true;
-                    controller.close();
-                    return;
-                  }
-                  const choice = result.value.choices[0];
-                  if (choice?.finish_reason === 'length') {
-                    throw new TransportError(
-                      'Local model output was truncated',
-                      { code: 'WEBLLM_OUTPUT_TRUNCATED', retryable: false },
-                    );
-                  }
-                  const content = choice?.delta.content;
-                  if (content) {
-                    controller.enqueue(content);
-                    return;
-                  }
-                }
-              } catch (error) {
-                if (!cancelled) controller.error(engineError(error));
-              }
-            },
-            cancel: cleanup,
-          });
         },
+        create: () => {
+          if (!input) throw aborted();
+          if (imageEngine) return imageEngine.chat.completions.create(input);
+          if (!textEngine || !textInput) throw aborted();
+          return textEngine.chat.completions.create(textInput);
+        },
+      });
+      const local = createLocalTextEventStream({
+        input: request.input,
+        signal: request.signal,
+        destroy: run.cleanup,
+        start: run.start,
       });
       return {
         events: local.events,
@@ -384,13 +295,4 @@ function aborted(): TransportError {
     code: 'PROMPT_API_ABORTED',
     retryable: false,
   });
-}
-
-function engineError(error: unknown): TransportError {
-  return error instanceof TransportError
-    ? error
-    : new TransportError(
-        error instanceof Error ? error.message : String(error),
-        { code: 'WEBLLM_ENGINE_ERROR', retryable: false },
-      );
 }

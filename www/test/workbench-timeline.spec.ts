@@ -95,3 +95,45 @@ test('keeps one failure milestone while retaining the detailed error frames', ()
   expect(failures).toHaveLength(1);
   expect(failures[0].index).toBe(events.length - 1);
 });
+
+test('labels Markdown chunks and citation interactions without presenting them as JSON or writes', () => {
+  const store = createWorkbenchStore('text');
+  const user = store.send('Explain the plan');
+  store.record('event', { type: 'TEXT_MESSAGE_CONTENT', delta: '## Plan' });
+  store.recordRecipe({ kind: 'text', markdown: '## Plan' }, user.id);
+  store.settle('complete', 'stop');
+  const origin = store.getSnapshot().frame?.messages.at(-1)?.id ?? '';
+  store.inspectCitation(
+    { id: '1', number: 1, url: 'https://hashbrown.dev' },
+    origin,
+  );
+
+  const labels = workbenchMilestones(store.getSnapshot().events, 'text').map(
+    (item) => item.label,
+  );
+
+  expect(labels).toContain('Streaming text');
+  expect(labels).toContain('Reference selected');
+  expect(labels).not.toContain('Streaming JSON');
+  expect(labels).not.toContain('Suggestion applied');
+});
+
+test('groups repeated Markdown parser observations into one final parser milestone', () => {
+  const store = createWorkbenchStore('text');
+  const user = store.send('Explain');
+  store.recordRecipe({ kind: 'text', markdown: '## Plan' }, user.id);
+  store.recordRecipe(
+    { kind: 'text', markdown: '## Plan\nExplain the steps.' },
+    user.id,
+  );
+  store.settle('complete', 'stop');
+  const events = store.getSnapshot().events;
+
+  const parsed = workbenchMilestones(events, 'text').filter(
+    (item) => item.label === 'Parsed Markdown',
+  );
+
+  expect(events.filter((event) => event.kind === 'parsed')).toHaveLength(2);
+  expect(parsed).toHaveLength(1);
+  expect(parsed[0].index).toBe(events.length - 2);
+});

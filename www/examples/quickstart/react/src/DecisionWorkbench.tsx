@@ -46,7 +46,8 @@ function DecisionRun({
     input: {
       ...request,
       application: {
-        ...request.application,
+        revision: request.application.revision,
+        nextAction: request.application.nextAction ?? null,
         plan: request.application.plan
           ? {
               title: request.application.plan.title,

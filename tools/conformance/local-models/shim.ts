@@ -1,12 +1,13 @@
 import type { Page } from '@playwright/test';
 
-/** Installs browser API shims whose token responses come from aimock. */
+/** Installs aimock browser shims, optionally observing WebLLM in the same atomic initializer. */
 export async function installLocalModelShim(
   page: Page,
   url: string,
+  options: { readonly observeWebLlm?: boolean } = {},
 ): Promise<void> {
   await page.addInitScript(
-    ({ url }) => {
+    ({ url, observeWebLlm }) => {
       type Message = { role: string; content: string };
       type Chunk = {
         choices: {
@@ -146,13 +147,62 @@ export async function installLocalModelShim(
           engineController.abort();
         },
       };
+      const observation = globalThis as unknown as {
+        __webLlmRawChunks: Chunk[];
+        __webLlmActive: number;
+      };
+      if (observeWebLlm) {
+        observation.__webLlmRawChunks = [];
+        observation.__webLlmActive = 0;
+      }
+      const selectedEngine = observeWebLlm
+        ? {
+            ...engine,
+            chat: {
+              completions: {
+                async create(
+                  request: Parameters<typeof engine.chat.completions.create>[0],
+                ) {
+                  const stream = await engine.chat.completions.create(request);
+                  const iterator = stream[Symbol.asyncIterator]();
+                  observation.__webLlmActive++;
+                  let settled = false;
+                  const settle = () => {
+                    if (!settled) {
+                      settled = true;
+                      observation.__webLlmActive--;
+                    }
+                  };
+                  return {
+                    [Symbol.asyncIterator]: () => ({
+                      async next() {
+                        try {
+                          const result = await iterator.next();
+                          if (result.done) settle();
+                          else
+                            observation.__webLlmRawChunks.push(
+                              structuredClone(result.value),
+                            );
+                          return result;
+                        } catch (error) {
+                          settle();
+                          throw error;
+                        }
+                      },
+                    }),
+                  };
+                },
+              },
+            },
+          }
+        : engine;
       Object.assign(globalThis, {
         LanguageModel: languageModel,
-        __hashbrownWebLlm: engine,
+        __hashbrownWebLlm: selectedEngine,
         __localModelCalls: calls,
         __localModelLifecycle: lifecycle,
       });
     },
-    { url },
+    { url, observeWebLlm: options.observeWebLlm === true },
   );
 }

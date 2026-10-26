@@ -1,4 +1,5 @@
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import { workbenchSelectionSchema } from '../runtime/workbench-recipes';
 import { workbenchDecisionSchema } from '../runtime/workbench';
 import { createWorkbenchOpenAIStream } from './workbench-openai';
 import { resolve } from 'node:path';
@@ -16,12 +17,15 @@ const decisionModel = process.env['TYPESAFE_MODEL'];
 const app = createWorkbenchApp({
   decide:
     decisionKey && decisionModel
-      ? (request, signal) =>
+      ? (request, signal, lesson) =>
           HashbrownTypeSafe.decide({
             apiKey: decisionKey,
             model: decisionModel,
             request,
-            schema: workbenchDecisionSchema,
+            schema:
+              lesson === 'ui-selection'
+                ? workbenchSelectionSchema
+                : workbenchDecisionSchema,
             signal,
             maxRequestChars: 16_000,
           })

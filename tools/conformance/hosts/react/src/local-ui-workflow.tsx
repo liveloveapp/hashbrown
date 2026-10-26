@@ -149,7 +149,13 @@ export function LocalUiWorkflow() {
       >
         Send
       </button>
-      <button data-testid="stop" type="button" onClick={() => chat.stop()}>
+      <button
+        data-testid="stop"
+        type="button"
+        onClick={() => {
+          if (chat.isLoading) chat.stop();
+        }}
+      >
         Stop
       </button>
       <div data-testid="operation-count">{snapshot.operations.length}</div>

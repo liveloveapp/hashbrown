@@ -1,3 +1,5 @@
+import type { WorkbenchLesson } from './workbench-lessons';
+import { workbenchRecipeEventLabel } from './workbench-recipe-view';
 import type { WorkbenchEvent } from './workbench';
 
 /** A meaningful transition pointing at its original, immutable captured frame. */
@@ -10,6 +12,7 @@ export interface WorkbenchMilestone {
 /** Summarizes repetitive streaming events without deleting or resampling any frames. */
 export function workbenchMilestones(
   events: readonly WorkbenchEvent[],
+  format?: WorkbenchLesson['format'],
 ): readonly WorkbenchMilestone[] {
   const firstChunks = new Set<number>();
   const lastParsed = new Map<number, number>();
@@ -19,6 +22,8 @@ export function workbenchMilestones(
     if (event.kind === 'error') lastError.set(event.turn, index);
   });
   return events.flatMap((event, index) => {
+    if (event.kind === 'parsed' && lastParsed.get(event.turn) !== index)
+      return [];
     if (event.kind === 'error' && lastError.get(event.turn) !== index)
       return [];
     const payload = event.payload;
@@ -47,12 +52,12 @@ export function workbenchMilestones(
       return [{ index, turn: event.turn, label: 'Request transformed' }];
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
-      label = 'Streaming JSON';
+      label = format === 'text' ? 'Streaming text' : 'Streaming JSON';
     } else if (
       event.kind === 'parsed' &&
       lastParsed.get(event.turn) === index
     ) {
-      label = 'Parsed output';
+      label = workbenchRecipeEventLabel(event) ?? 'Parsed output';
     } else {
       const names: Partial<Record<WorkbenchEvent['kind'], string>> = {
         user: 'Prompt',
@@ -65,7 +70,7 @@ export function workbenchMilestones(
         decision: 'Decision',
         choose: 'Suggestion applied',
       };
-      label = names[event.kind];
+      label = workbenchRecipeEventLabel(event) ?? names[event.kind];
     }
     return label ? [{ index, turn: event.turn, label }] : [];
   });

@@ -11,7 +11,34 @@ import { createWorkflow, type WorkflowSnapshot } from './workflow';
   template: `<section>
     <input data-testid="prompt" [value]="prompt()" (input)="input($event)" />
     <button data-testid="send" type="button" (click)="send()">Send</button>
-    <button data-testid="stop" type="button" (click)="chat.stop()">Stop</button>
+    <button
+      data-testid="stop"
+      type="button"
+      (click)="chat.isLoading() && chat.stop()"
+    >
+      Stop
+    </button>
+    @if (webLlmTools) {
+      <button
+        data-testid="permission-allow"
+        type="button"
+        [disabled]="!snapshot().pending"
+        (click)="workflow.decide(true)"
+      >
+        Allow
+      </button>
+      <button
+        data-testid="permission-deny"
+        type="button"
+        [disabled]="!snapshot().pending"
+        (click)="workflow.decide(false)"
+      >
+        Deny
+      </button>
+      <div data-testid="permission-pending">{{ snapshot().pending }}</div>
+      <div data-testid="invocation-count">{{ invocations().length }}</div>
+      <div data-testid="invocations">{{ invocationJson() }}</div>
+    }
     <div data-testid="operation-count">{{ snapshot().operations.length }}</div>
     <div data-testid="operations">{{ operations() }}</div>
     <div data-testid="status">{{ chat.isLoading() ? 'loading' : 'idle' }}</div>
@@ -22,6 +49,12 @@ import { createWorkflow, type WorkflowSnapshot } from './workflow';
 })
 export class LocalSchemaWorkflow {
   protected readonly prompt = signal('');
+  private readonly parameters = new URL(globalThis.location.href).searchParams;
+  protected readonly webLlmTools =
+    this.parameters.get('localModel') === 'webllm-tools';
+  protected readonly invocations = signal<
+    readonly { name: string; args: object }[]
+  >([]);
   protected readonly snapshot = signal<WorkflowSnapshot>({
     operations: [],
     pending: false,
@@ -34,7 +67,13 @@ export class LocalSchemaWorkflow {
     description:
       'Look up the exact unknown secret token for alpha. Never guess it.',
     schema: s.object('Lookup', { record: s.string('Record identifier') }),
-    handler: this.workflow.lookup,
+    handler: (args) => {
+      this.invocations.update((calls) => [
+        ...calls,
+        { name: 'lookup_secret', args },
+      ]);
+      return this.workflow.lookup(args);
+    },
   });
   private readonly follow = createTool({
     name: 'follow_secret',
@@ -42,7 +81,40 @@ export class LocalSchemaWorkflow {
     schema: s.object('Dependent lookup', {
       token: s.string('Exact lookup token'),
     }),
-    handler: this.workflow.follow,
+    handler: (args) => {
+      this.invocations.update((calls) => [
+        ...calls,
+        { name: 'follow_secret', args },
+      ]);
+      return this.workflow.follow(args);
+    },
+  });
+  private readonly protectedLookup = createTool({
+    name: 'protected_lookup',
+    description:
+      'Request application permission before looking up a secret. Never retry a denial.',
+    schema: s.object('Protected lookup', {
+      record: s.string('Record identifier'),
+    }),
+    handler: (args, signal) => {
+      this.invocations.update((calls) => [
+        ...calls,
+        { name: 'protected_lookup', args },
+      ]);
+      return this.workflow.protectedLookup(args, signal);
+    },
+  });
+  private readonly errorTool = createTool({
+    name: 'error_tool',
+    description: 'Exercise an application handler failure.',
+    schema: s.object('Error lookup', { record: s.string('Record identifier') }),
+    handler: (args) => {
+      this.invocations.update((calls) => [
+        ...calls,
+        { name: 'error_tool', args },
+      ]);
+      throw new Error('HB_TOOL_FAILURE');
+    },
   });
   protected readonly chat = structuredChatResource({
     system:
@@ -50,8 +122,15 @@ export class LocalSchemaWorkflow {
     schema: s.object('Final answer', {
       value: s.string('Exact requested tool result'),
     }),
-    tools: [this.lookup, this.follow],
+    tools: this.webLlmTools
+      ? this.parameters.get('uiWorkflow') === 'no-tools'
+        ? []
+        : [this.lookup, this.follow, this.protectedLookup, this.errorTool]
+      : [this.lookup, this.follow],
   });
+  protected invocationJson(): string {
+    return JSON.stringify(this.invocations());
+  }
   protected operations(): string {
     return JSON.stringify(this.snapshot().operations);
   }
