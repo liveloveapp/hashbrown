@@ -28,7 +28,9 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens eleven lessons under Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the arrow keys, or double-click it to reset:
+The collapsible sidebar opens eleven lessons under Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+
+The lessons are:
 
 | Lesson                                                                    | Local URL                                     | Follow                                                                     |
 | ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
@@ -64,7 +66,7 @@ The bottom player records user prompts, requests, decoded stream events, tool re
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select it under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

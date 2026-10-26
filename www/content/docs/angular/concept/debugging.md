@@ -22,7 +22,7 @@ The **Deny requests for this demo** checkbox starts checked. Send the first prom
 
 This is an intentional local demo denial, not authentication or a provider outage. The checkbox only demonstrates the failure path. Your application still needs its own authentication and authorization.
 
-1. In **Requests**, select the failed HTTP response. Its status and captured URL appear beside the list; the `{ }` toggle shows the captured evidence.
+1. In **Requests**, select the failed HTTP response. Its status and captured URL appear in the inspector; the `{ }` toggle shows the raw frame.
 2. Choose **Return to live**, then clear **Deny requests for this demo**, then send the first prompt again in the same conversation. Changing the checkbox does not send a request or change the plan.
 3. Watch the real model call `readContext` and stream the trusted `SummaryCard`. After successful completion, choose **Accept plan**. Application state advances to revision 1.
 4. Send the follow-up to shorten the second step. The next tool call reads the accepted plan; the revised card remains a proposal.

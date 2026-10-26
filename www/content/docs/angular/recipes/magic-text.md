@@ -30,7 +30,7 @@ The application supplies a fixed plan. The model explains that plan; it does not
 
 1. Send **First prompt**. The browser's `readContext` tool supplies the current plan and revision.
 2. Watch raw Markdown arrive in the inspector and formatting appear in the chat. The reply includes a heading, emphasis, a list, and a documentation footnote.
-3. Select the numbered citation after its source URL resolves. The interpreted side of the inspector shows the actual reference selected by the renderer. The workbench prevents navigation.
+3. Select the numbered citation after its source URL resolves. The side of the inspector that shows what the SDK made of it shows the actual reference selected by the renderer. The workbench prevents navigation.
 4. Send **Follow-up** to shorten the explanation in the same conversation. The plan stays at revision 0.
 5. Use the bottom player to inspect either reply. Chat, Markdown, source details, and state follow the selected frame. Replay does not send requests or run tools.
 
@@ -58,7 +58,7 @@ The click handler records the renderer's actual citation ID, number, URL, and or
 
 **Stop** cancels active work and keeps the partial explanation visible. A failed or early response does not change the plan. Check the request and terminal event, return to live, then submit an explicit retry. The workbench keeps an earlier error from settling the new request.
 
-Use **Raw events** to put every captured chunk on the scrubber. Markdown streaming is labeled as text; the AG-UI transport still carries JSON event envelopes around those text chunks.
+Turn on **Raw events** to see every captured chunk on the scrubber. Markdown streaming is labeled as text; the AG-UI transport still carries JSON event envelopes around those text chunks.
 
 ## Use the framework API
 

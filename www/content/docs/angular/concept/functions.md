@@ -51,7 +51,7 @@ The React version uses `deps` to keep handler dependencies current; the Angular 
 4. Review the card and select **Accept plan**. This explicit user action advances application state to revision `1`.
 5. Send the follow-up. The next tool result contains revision `1` and the accepted plan.
 
-Select **Requests** to see each request and tool result. Select a row to inspect its captured payload beside the list. The `{ }` toggle shows the original frame.
+Select **Requests** to see each request and tool result. Select a row to inspect its captured payload in the inspector. The `{ }` toggle shows the original frame.
 
 <img src="/video/docs/canonical-workbench-tools-angular-result.png" alt="The Requests view lists model requests and readContext results from both plan turns." width="1600" height="1000" loading="lazy" />
 
