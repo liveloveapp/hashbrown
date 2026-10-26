@@ -145,3 +145,8 @@ These results cover the hosted shared-state boundary and the full Angular path
 from user input through decisions, model calls, browser tools, components, and
 live map updates. They do not switch production to b4.run or establish
 load/concurrent-run guarantees.
+
+The subsequent [load and concurrency validation](./2026-10-25-atc-load-concurrency-validation.md)
+passed 30 independent conversations up to eight concurrent runs, but found
+cross-replica same-thread execution races. Production rollout is blocked until
+shared run admission and competing browser-tool continuations are made safe.

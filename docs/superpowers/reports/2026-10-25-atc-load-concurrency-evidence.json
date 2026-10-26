@@ -1,0 +1,487 @@
+{
+  "artifactSource": "67a737bacdffd8dc71b28fcc9d0a64fb0cce42ef",
+  "b4runVersion": "0.15.4",
+  "productionGate": "blocked",
+  "deployments": [
+    {
+      "id": "dpl_4uQr39MZxAyqxcYz86JeNGU4XGqi",
+      "url": "https://hashbrown-lx484bvgp-blovedev.vercel.app"
+    },
+    {
+      "id": "dpl_8UH5QAnob6Mq2Q8QecZk22fp1F31",
+      "url": "https://hashbrown-1j8rbwpzq-blovedev.vercel.app"
+    }
+  ],
+  "independentLoad": {
+    "startedAt": "2026-10-26T02:31:58.878Z",
+    "finishedAt": "2026-10-26T02:32:43.881Z",
+    "limit": {
+      "maxConcurrency": 8,
+      "wavesPerLevel": 2,
+      "levels": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "timeoutMs": 55000
+    },
+    "summary": {
+      "runs": 30,
+      "p50Ms": 4441,
+      "p95Ms": 5896,
+      "maxMs": 7242,
+      "uniqueProviderResponses": 30
+    },
+    "waves": [
+      {
+        "concurrency": 1,
+        "wave": 0,
+        "elapsedMs": 7242,
+        "passed": 1,
+        "failures": []
+      },
+      {
+        "concurrency": 1,
+        "wave": 1,
+        "elapsedMs": 5680,
+        "passed": 1,
+        "failures": []
+      },
+      {
+        "concurrency": 2,
+        "wave": 0,
+        "elapsedMs": 4853,
+        "passed": 2,
+        "failures": []
+      },
+      {
+        "concurrency": 2,
+        "wave": 1,
+        "elapsedMs": 5099,
+        "passed": 2,
+        "failures": []
+      },
+      {
+        "concurrency": 4,
+        "wave": 0,
+        "elapsedMs": 4777,
+        "passed": 4,
+        "failures": []
+      },
+      {
+        "concurrency": 4,
+        "wave": 1,
+        "elapsedMs": 5658,
+        "passed": 4,
+        "failures": []
+      },
+      {
+        "concurrency": 8,
+        "wave": 0,
+        "elapsedMs": 5896,
+        "passed": 8,
+        "failures": []
+      },
+      {
+        "concurrency": 8,
+        "wave": 1,
+        "elapsedMs": 5790,
+        "passed": 8,
+        "failures": []
+      }
+    ]
+  },
+  "overlappingTurns": {
+    "startedAt": "2026-10-26T02:33:33.204Z",
+    "cases": [
+      {
+        "kind": "same-thread-distinct-run",
+        "attempt": 0,
+        "threadId": "overlap-ba4f8df2-1adb-4416-badd-0451ba5514c9",
+        "results": [
+          {
+            "status": 200,
+            "elapsedMs": 9035,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_01864837835e6d71006adebbfdb1d887d2985e421cc1cf6c77"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": false
+          },
+          {
+            "status": 200,
+            "elapsedMs": 7526,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_07cb4ce8b0fdc662006adebbfdedd887d2b824409e7f23d429"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": true
+          }
+        ],
+        "retainedA": true,
+        "retainedB": false,
+        "persistedIds": [
+          "resp_01864837835e6d71006adebbfdb1d887d2985e421cc1cf6c77"
+        ],
+        "allResponseIds": [
+          "resp_01864837835e6d71006adebbfdb1d887d2985e421cc1cf6c77",
+          "resp_07cb4ce8b0fdc662006adebbfdedd887d2b824409e7f23d429"
+        ],
+        "safe": false,
+        "checkpointId": "1f1d0e5a-8b9c-60b0-8001-4f7eaf0bb226",
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:27.203Z",
+          "persistedIds": [
+            "resp_01864837835e6d71006adebbfdb1d887d2985e421cc1cf6c77"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 6,
+          "providerIdsAcrossHistory": [
+            "resp_01864837835e6d71006adebbfdb1d887d2985e421cc1cf6c77",
+            "resp_07cb4ce8b0fdc662006adebbfdedd887d2b824409e7f23d429"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        }
+      },
+      {
+        "kind": "same-thread-distinct-run",
+        "attempt": 1,
+        "threadId": "overlap-f57731cb-b70a-4ca6-a727-11e24e8242d3",
+        "results": [
+          {
+            "status": 200,
+            "elapsedMs": 6370,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_09b0b99c219b2144006adebc07bc0887d2a85abd88793628b9"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": false
+          },
+          {
+            "status": 200,
+            "elapsedMs": 7412,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_074b81c0be82fb11006adebc07f1c087d2a010430d2a9e1d18"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": true
+          }
+        ],
+        "retainedA": true,
+        "retainedB": true,
+        "persistedIds": [
+          "resp_074b81c0be82fb11006adebc07f1c087d2a010430d2a9e1d18"
+        ],
+        "allResponseIds": [
+          "resp_09b0b99c219b2144006adebc07bc0887d2a85abd88793628b9",
+          "resp_074b81c0be82fb11006adebc07f1c087d2a010430d2a9e1d18"
+        ],
+        "safe": false,
+        "checkpointId": "1f1d0e5a-dfcf-6380-8003-9fb4b6c51afc",
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:27.570Z",
+          "persistedIds": [
+            "resp_074b81c0be82fb11006adebc07f1c087d2a010430d2a9e1d18"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 6,
+          "providerIdsAcrossHistory": [
+            "resp_074b81c0be82fb11006adebc07f1c087d2a010430d2a9e1d18",
+            "resp_09b0b99c219b2144006adebc07bc0887d2a85abd88793628b9"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        }
+      }
+    ],
+    "finishedAt": "2026-10-26T02:33:51.383Z",
+    "safe": false
+  },
+  "overlappingFullHistory": {
+    "startedAt": "2026-10-26T02:39:08.574Z",
+    "cases": [
+      {
+        "kind": "same-thread-distinct-run",
+        "attempt": 0,
+        "threadId": "overlap-aaa849c7-2854-4880-9de2-78b8aa19b1f1",
+        "results": [
+          {
+            "status": 200,
+            "elapsedMs": 9897,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_043df3c22d62fd22006adebd4d40b487d2a987c6a9a4264d46"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": false
+          },
+          {
+            "status": 200,
+            "elapsedMs": 12697,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "responseIds": [
+              "resp_0dc746cbfe5578e5006adebd4d6cf487d284ef3dffab9688c5"
+            ],
+            "started": true,
+            "outputContainsA": true,
+            "outputContainsB": true
+          }
+        ],
+        "retainedA": true,
+        "retainedB": true,
+        "persistedIds": [
+          "resp_0dc746cbfe5578e5006adebd4d6cf487d284ef3dffab9688c5"
+        ],
+        "allResponseIds": [
+          "resp_043df3c22d62fd22006adebd4d40b487d2a987c6a9a4264d46",
+          "resp_0dc746cbfe5578e5006adebd4d6cf487d284ef3dffab9688c5"
+        ],
+        "safe": false,
+        "checkpointId": "1f1d0e67-30b1-6e40-8003-0866ccb47ee6",
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:28.869Z",
+          "persistedIds": [
+            "resp_0dc746cbfe5578e5006adebd4d6cf487d284ef3dffab9688c5"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 6,
+          "providerIdsAcrossHistory": [
+            "resp_0dc746cbfe5578e5006adebd4d6cf487d284ef3dffab9688c5",
+            "resp_043df3c22d62fd22006adebd4d40b487d2a987c6a9a4264d46"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        }
+      }
+    ],
+    "finishedAt": "2026-10-26T02:39:22.983Z",
+    "safe": false
+  },
+  "logicalCallbackRetries": {
+    "startedAt": "2026-10-26T02:35:38.107Z",
+    "cases": [
+      {
+        "attempt": 0,
+        "threadId": "callback-race-6a5086c3-74c9-4cf4-8ddd-0588fa55bd68",
+        "toolCallId": "call_Awh8uMEhfqoTsGfPzUYlXXKs",
+        "results": [
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [
+              "resp_0daec30ffb466a2d006adebc7ad84487d2a08bc204649cdcae",
+              "resp_0daec30ffb466a2d006adebc7dc69887d28a85a9aef11deb70"
+            ],
+            "newToolCalls": []
+          },
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [
+              "resp_0daec30ffb466a2d006adebc7ad84487d2a08bc204649cdcae",
+              "resp_0daec30ffb466a2d006adebc7dd4e487d28a2ec6f68d6dfa92"
+            ],
+            "newToolCalls": []
+          }
+        ],
+        "completionIds": [
+          "resp_0daec30ffb466a2d006adebc7dc69887d28a85a9aef11deb70",
+          "resp_0daec30ffb466a2d006adebc7dd4e487d28a2ec6f68d6dfa92"
+        ],
+        "persistedIds": [
+          "resp_0daec30ffb466a2d006adebc7ad84487d2a08bc204649cdcae",
+          "resp_0daec30ffb466a2d006adebc7dc69887d28a85a9aef11deb70"
+        ],
+        "toolRows": [
+          {
+            "tool_call_id": "call_Awh8uMEhfqoTsGfPzUYlXXKs",
+            "answered": true,
+            "settled": false
+          }
+        ],
+        "safe": false,
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:27.873Z",
+          "persistedIds": [
+            "resp_0daec30ffb466a2d006adebc7ad84487d2a08bc204649cdcae",
+            "resp_0daec30ffb466a2d006adebc7dc69887d28a85a9aef11deb70"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 7,
+          "providerIdsAcrossHistory": [
+            "resp_0daec30ffb466a2d006adebc7ad84487d2a08bc204649cdcae",
+            "resp_0daec30ffb466a2d006adebc7dc69887d28a85a9aef11deb70",
+            "resp_0daec30ffb466a2d006adebc7dd4e487d28a2ec6f68d6dfa92"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        }
+      },
+      {
+        "attempt": 1,
+        "threadId": "callback-race-d2947669-6244-402d-8586-d04f0fd2cb72",
+        "toolCallId": "call_qwBNkRPn8Y9LOTLkSIGLHMyG",
+        "results": [
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [
+              "resp_0c396f10bb19177d006adebc800d2487d2bc8baa5b3c08cdda",
+              "resp_0c396f10bb19177d006adebc83ddd887d2a5821a7cbd7deaa7"
+            ],
+            "newToolCalls": []
+          },
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [
+              "resp_0c396f10bb19177d006adebc800d2487d2bc8baa5b3c08cdda",
+              "resp_0c396f10bb19177d006adebc83ec1487d283eb73a5af91c4e1"
+            ],
+            "newToolCalls": []
+          }
+        ],
+        "completionIds": [
+          "resp_0c396f10bb19177d006adebc83ddd887d2a5821a7cbd7deaa7",
+          "resp_0c396f10bb19177d006adebc83ec1487d283eb73a5af91c4e1"
+        ],
+        "persistedIds": [
+          "resp_0c396f10bb19177d006adebc800d2487d2bc8baa5b3c08cdda",
+          "resp_0c396f10bb19177d006adebc83ec1487d283eb73a5af91c4e1"
+        ],
+        "toolRows": [
+          {
+            "tool_call_id": "call_qwBNkRPn8Y9LOTLkSIGLHMyG",
+            "answered": true,
+            "settled": false
+          }
+        ],
+        "safe": false,
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:28.558Z",
+          "persistedIds": [
+            "resp_0c396f10bb19177d006adebc800d2487d2bc8baa5b3c08cdda",
+            "resp_0c396f10bb19177d006adebc83ec1487d283eb73a5af91c4e1"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 7,
+          "providerIdsAcrossHistory": [
+            "resp_0c396f10bb19177d006adebc800d2487d2bc8baa5b3c08cdda",
+            "resp_0c396f10bb19177d006adebc83ec1487d283eb73a5af91c4e1",
+            "resp_0c396f10bb19177d006adebc83ddd887d2a5821a7cbd7deaa7"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        }
+      }
+    ],
+    "finishedAt": "2026-10-26T02:35:49.154Z",
+    "safe": false
+  },
+  "byteIdenticalCallbackControl": {
+    "startedAt": "2026-10-26T02:39:11.345Z",
+    "cases": [
+      {
+        "byteIdenticalRequests": true,
+        "delayedRetryStatus": 200,
+        "attempt": 0,
+        "threadId": "callback-race-969e8a10-894c-47a9-a8ea-eaa74485a031",
+        "toolCallId": "call_KNGVDSGMWDvsm28Awib5XKjf",
+        "results": [
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [
+              "resp_038eec3eeb157277006adebd4fc73c87d28e36c16e39d99035",
+              "resp_038eec3eeb157277006adebd53932c87d2ab1966f9c454ca28"
+            ],
+            "newToolCalls": []
+          },
+          {
+            "status": 200,
+            "terminal": "RUN_FINISHED",
+            "errors": [],
+            "providerIds": [],
+            "newToolCalls": []
+          }
+        ],
+        "completionIds": [
+          "resp_038eec3eeb157277006adebd53932c87d2ab1966f9c454ca28"
+        ],
+        "persistedIds": [
+          "resp_038eec3eeb157277006adebd4fc73c87d28e36c16e39d99035",
+          "resp_038eec3eeb157277006adebd53932c87d2ab1966f9c454ca28"
+        ],
+        "toolRows": [
+          {
+            "tool_call_id": "call_KNGVDSGMWDvsm28Awib5XKjf",
+            "answered": true,
+            "settled": false
+          }
+        ],
+        "safe": true,
+        "settledVerification": {
+          "checkedAt": "2026-10-26T02:40:29.202Z",
+          "persistedIds": [
+            "resp_038eec3eeb157277006adebd4fc73c87d28e36c16e39d99035",
+            "resp_038eec3eeb157277006adebd53932c87d2ab1966f9c454ca28"
+          ],
+          "providerIdsUnchanged": true
+        },
+        "lineage": {
+          "checkpointsInspected": 5,
+          "providerIdsAcrossHistory": [
+            "resp_038eec3eeb157277006adebd4fc73c87d28e36c16e39d99035",
+            "resp_038eec3eeb157277006adebd53932c87d2ab1966f9c454ca28"
+          ],
+          "allExpectedProviderIdsExistInHistory": true
+        },
+        "delayedRetryCanonicalProviderIdsUnchanged": true
+      }
+    ],
+    "finishedAt": "2026-10-26T02:39:17.896Z",
+    "safe": true
+  },
+  "sequentialControl": {
+    "startedAt": "2026-10-26T02:39:40.325Z",
+    "cases": [
+      {
+        "kind": "sequential-full-history",
+        "threadId": "sequential-5b9ed77d-91fa-4bd8-89b0-cdc7f5b22d75",
+        "firstStatus": 200,
+        "secondStatus": 200,
+        "humanMessages": 2,
+        "providerResponses": 2,
+        "safe": true
+      }
+    ],
+    "finishedAt": "2026-10-26T02:39:48.430Z"
+  }
+}
