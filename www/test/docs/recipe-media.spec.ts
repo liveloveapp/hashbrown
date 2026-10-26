@@ -4,6 +4,8 @@ import { expect, test } from 'vitest';
 import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 
 test.each([
+  'canonical-workbench-react',
+  'canonical-workbench-angular',
   'magic-text',
   'predictive-suggestions',
   'ui-selection',

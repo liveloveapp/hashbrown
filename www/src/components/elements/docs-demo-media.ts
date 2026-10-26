@@ -1,5 +1,21 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-react': {
+    title: 'Follow one React conversation from request to replay.',
+    caption:
+      'Watch JSON resolve into a trusted SummaryCard, accept a plan, and inspect a follow-up in the same conversation.',
+    recording:
+      'Recorded in the checked React workbench with real OpenAI requests, the browser readContext tool, Hashbrown streaming and component rendering. Footage slowed to half speed for readability. Playback reads captured data. No scripted provider output or narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-angular': {
+    title: 'Follow one Angular conversation from request to replay.',
+    caption:
+      'Watch JSON resolve into a trusted SummaryCard, accept a plan, and inspect a follow-up in the same conversation.',
+    recording:
+      'Recorded in the checked Angular workbench with real OpenAI requests, the browser readContext tool, Hashbrown streaming and component rendering. Footage slowed to half speed for readability. Playback reads captured data. No scripted provider output or narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'ui-chatbot-react': {
     title: 'Read, propose, then apply.',
     caption:
