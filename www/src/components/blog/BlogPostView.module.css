@@ -168,10 +168,13 @@
   display: none;
 }
 
+/* ScrollTable wraps each table in a frame that scrolls it sideways. */
+.markdown [data-scroll-table] {
+  margin: 0 0 24px;
+}
+
 .markdown table {
   border-collapse: collapse;
-  margin: 0 0 24px;
-  overflow: hidden;
   font-size: 15px;
 }
 
