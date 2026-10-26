@@ -45,6 +45,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     entries: [
       { text: 'Introduction', path: 'start/intro' },
       { text: 'Quickstart', path: 'start/quick' },
+      { text: 'Conversation workbench', path: 'start/workbench' },
       { text: 'How Hashbrown works', path: 'start/how-it-works' },
       { text: 'Example app', path: 'start/sample' },
       { text: 'Choosing an API', path: 'start/overview' },

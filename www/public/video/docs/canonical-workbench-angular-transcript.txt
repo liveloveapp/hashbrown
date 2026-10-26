@@ -1,0 +1,7 @@
+Angular canonical conversation workbench
+
+Recorded through the checked Angular source and real OpenAI adapter using gpt-4.1-mini. Both Angular and React passed the same live provider checks with four requests per two-turn conversation. The readContext tool executes in the browser, Hashbrown parses real streamed output, and only the registered SummaryCard renders. No provider response fixtures were used. The footage is shown at half speed for readability; no narration.
+
+Send the first prompt to create a two-step plan. The JSON and Details views show response text and SDK-resolved props. After successful completion, inspect revision 0 and explicitly accept the plan. The application saves the plan at revision 1. Send the follow-up asking for a shorter second step. Its browser tool reads the accepted plan; the newly rendered card is an unapplied proposal. The recording then enters read-only captured playback, seeks backward, returns to live, and switches to a new conversation and back without any additional provider request or acceptance.
+
+The source badge identifies the live model. Model-generated wording may vary between runs. Application state and sessions are kept in memory and clear on refresh.

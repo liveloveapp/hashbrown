@@ -1,9 +1,10 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readBrowserMemory } from './webllm-runtime';
+import { installNativeToolObserver } from './native-tool-shim';
 
 // Reuse only a dedicated test profile so downloaded models survive local runs.
 const generationTimeout =
@@ -24,12 +25,8 @@ const test = base.extend({
   },
 });
 
-test('native Chrome produces structured output on the local device', async ({
-  page,
-}, testInfo) => {
-  await page.goto(
-    '/?runUrl=http://127.0.0.1/unused&scenario=structured&localModel=chrome',
-  );
+/** Checks availability before a fixture can create a session or request a download. */
+async function requireNativeAvailability(page: Page): Promise<string> {
   const availability = await page.evaluate(async () => {
     const languageModel = (
       globalThis as unknown as {
@@ -48,6 +45,16 @@ test('native Chrome produces structured output on the local device', async ({
       : ['available'],
     `Native LanguageModel availability: ${availability}. Check chrome://on-device-internals and device eligibility.`,
   ).toContain(availability);
+  return availability;
+}
+
+test('native Chrome produces structured output on the local device', async ({
+  page,
+}, testInfo) => {
+  await page.goto(
+    '/?runUrl=http://127.0.0.1/unused&scenario=structured&localModel=chrome',
+  );
+  const availability = await requireNativeAvailability(page);
   const measurements: { requestedAnswerMs: number; totalMs: number }[] = [];
   for (const answer of [
     'Local inference works',
@@ -87,6 +94,135 @@ test('native Chrome produces structured output on the local device', async ({
     contentType: 'application/json',
   });
 });
+
+for (const nested of [false, true]) {
+  test(`native Chrome generates exact ${nested ? 'nested' : 'leaf'} component UI without tools`, async ({
+    page,
+  }, testInfo) => {
+    const title = `Local UI ${crypto.randomUUID()}`;
+    const status = (count: number) => ({
+      status: { props: { title, count } },
+    });
+    const expected = {
+      ui: nested
+        ? [
+            {
+              panel: {
+                props: { heading: 'Workflow' },
+                children: [status(1), status(2)],
+              },
+            },
+          ]
+        : [status(2)],
+    };
+    const errors: string[] = [];
+    const fallback: string[] = [];
+    let availability: string | undefined;
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/unused')
+        fallback.push(request.url());
+    });
+    await installNativeToolObserver(page);
+
+    try {
+      await page.goto(
+        `/?runUrl=${encodeURIComponent('http://127.0.0.1:1/unused')}&scenario=ui&nested=${nested}&localModel=chrome`,
+      );
+      availability = await requireNativeAvailability(page);
+      await page
+        .getByTestId('prompt')
+        .fill(
+          nested
+            ? `Render exactly one panel with heading Workflow, containing exactly two status components. Both titles must be exactly ${title}. Their counts must be 1 and 2, in that order. Render no additional components.`
+            : `Render exactly one status component with title exactly ${title} and count 2. Render no additional components.`,
+        );
+
+      await page.getByTestId('send').click();
+
+      await expect(page.getByTestId('status-card')).toHaveText(
+        nested ? [`${title}: 1`, `${title}: 2`] : [`${title}: 2`],
+        { timeout: generationTimeout },
+      );
+      await expect(page.getByTestId('status')).toHaveText('idle', {
+        timeout: generationTimeout,
+      });
+      await expect(page.getByTestId('error')).toBeEmpty();
+      await expect(page.getByTestId('tool-count')).toHaveText('0');
+      await expect(page.getByTestId('nested-panel')).toHaveCount(
+        nested ? 1 : 0,
+      );
+      if (nested)
+        await expect(
+          page.getByTestId('nested-panel').getByRole('heading'),
+        ).toHaveText('Workflow');
+      const observed = await page.evaluate(() => {
+        const runtime = globalThis as unknown as {
+          __nativeToolNativeEvents: {
+            phase: string;
+            value?: unknown;
+            options?: { tools?: unknown };
+          }[];
+          __nativeToolActive(): number;
+        };
+        return {
+          events: runtime.__nativeToolNativeEvents,
+          active: runtime.__nativeToolActive(),
+        };
+      });
+      const raw = observed.events
+        .filter((event) => event.phase === 'chunk')
+        .map((event) => {
+          expect(typeof event.value).toBe('string');
+          return event.value;
+        })
+        .join('');
+      expect(JSON.parse(raw)).toEqual(expected);
+      expect(observed.active).toBe(0);
+      expect(
+        observed.events.filter((event) => event.phase === 'created'),
+      ).toHaveLength(1);
+      expect(
+        observed.events.filter((event) => event.phase === 'destroyed'),
+      ).toHaveLength(1);
+      expect(
+        observed.events.find((event) => event.phase === 'create-start')?.options
+          ?.tools,
+      ).toBeUndefined();
+      expect(errors).toEqual([]);
+      expect(fallback).toEqual([]);
+    } finally {
+      await testInfo.attach('native-no-tools-ui.json', {
+        contentType: 'application/json',
+        body: JSON.stringify({
+          requestedExperiment:
+            testInfo.config.metadata['localChromeExperiment'],
+          availability,
+          browserVersion: page.context().browser()?.version(),
+          flags: testInfo.project.use.launchOptions?.args,
+          profile: process.env['LOCAL_LLM_PROFILE'],
+          expected,
+          errors,
+          fallback,
+          events: await page
+            .evaluate(
+              () =>
+                (
+                  globalThis as unknown as {
+                    __nativeToolNativeEvents?: unknown;
+                  }
+                ).__nativeToolNativeEvents,
+            )
+            .catch(() => null),
+          body: await page
+            .locator('body')
+            .innerText()
+            .catch(() => null),
+        }),
+      });
+    }
+  });
+}
 
 if (process.env['LOCAL_LLM_CAPABILITIES'] === '1') {
   test('native runtime capabilities and generated image', async ({
