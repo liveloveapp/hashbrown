@@ -1,13 +1,17 @@
+import type { ImagePart } from '@ag-ui/core';
 import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import { createLocalTextEventStream } from './local-text-event-stream';
 import type { TransportFactory, TransportRequest } from './transport';
 import { TransportError } from './transport-error';
 
-/** Text-only streaming request accepted by an injected WebLLM engine. @alpha */
-export interface WebLlmRequest {
+/** Streaming request accepted by an injected WebLLM engine; user content defaults to text. @alpha */
+export interface WebLlmRequest<TUserContent = string> {
   stream: true;
   model?: string;
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  messages: (
+    | { role: 'system' | 'assistant'; content: string }
+    | { role: 'user'; content: TUserContent }
+  )[];
   response_format?: { type: 'json_object'; schema: string };
 }
 
@@ -24,11 +28,11 @@ export interface WebLlmChunk {
  * The application creates, loads, and eventually unloads the engine.
  * @alpha
  */
-export interface WebLlmEngine {
+export interface WebLlmEngine<TUserContent = string> {
   chat: {
     completions: {
       create(
-        request: WebLlmRequest,
+        request: WebLlmRequest<TUserContent>,
       ): Promise<AsyncIterable<WebLlmChunk>> | AsyncIterable<WebLlmChunk>;
     };
   };
@@ -41,6 +45,64 @@ export interface ExperimentalWebLlmTransportOptions {
   engine: WebLlmEngine;
   /** Selects a model when the injected engine has multiple models loaded. */
   model?: string;
+  /** Image input requires the image-specific engine contract and overload. */
+  media?: never;
+}
+
+/** User content supported by the explicitly image-enabled WebLLM protocol. @alpha */
+export type WebLlmImageContent =
+  | string
+  | (
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: { url: string } }
+    )[];
+
+/** Application-owned encoded image and its optional cleanup. @alpha */
+export interface WebLlmImageResource {
+  readonly blob: Blob;
+  readonly dispose?: () => void | Promise<void>;
+}
+
+/** Resolves an image without implicit transport network access. @alpha */
+export type WebLlmImageResolver = (
+  part: ImagePart,
+  context: { readonly signal: AbortSignal },
+) => WebLlmImageResource | Promise<WebLlmImageResource>;
+
+/** Bounds encoded and decoded image input. @alpha */
+export interface WebLlmImagePolicy {
+  /** Maximum encoded bytes per image; defaults to 10 MiB. */
+  readonly maxBytes?: number;
+  /** Maximum decoded pixels per image; defaults to 16 million. */
+  readonly maxPixels?: number;
+  /** Maximum image count across a run; defaults to eight. */
+  readonly maxImages?: number;
+}
+
+/** Explicit image opt-in and application source resolution. @alpha */
+export interface WebLlmImageMediaOptions {
+  readonly images: WebLlmImagePolicy;
+  readonly resolve: WebLlmImageResolver;
+  /** Maximum encoded bytes across complete image history; defaults to 20 MiB. */
+  readonly maxTotalBytes?: number;
+}
+
+/** Configuration asserting the application engine supports image input. @alpha */
+export interface ExperimentalWebLlmImageTransportOptions {
+  /** Loaded image-capable engine; Hashbrown never loads, resets or unloads it. */
+  engine: {
+    chat: {
+      completions: {
+        create: (
+          request: WebLlmRequest<WebLlmImageContent>,
+        ) => Promise<AsyncIterable<WebLlmChunk>> | AsyncIterable<WebLlmChunk>;
+      };
+    };
+    interruptGenerate(): void;
+  };
+  /** Selects an already loaded model. */
+  model?: string;
+  readonly media: WebLlmImageMediaOptions;
 }
 
 // interruptGenerate affects an entire engine, so ownership spans transports.
@@ -57,6 +119,15 @@ const activeEngines = new WeakSet<WebLlmEngine>();
  */
 export function experimental_webllm(
   options: ExperimentalWebLlmTransportOptions,
+): TransportFactory;
+/** Creates an explicitly image-enabled transport for an application-owned engine. @alpha */
+export function experimental_webllm(
+  options: ExperimentalWebLlmImageTransportOptions,
+): TransportFactory;
+export function experimental_webllm(
+  options:
+    | ExperimentalWebLlmTransportOptions
+    | ExperimentalWebLlmImageTransportOptions,
 ): TransportFactory {
   return () => ({
     name: 'ExperimentalWebLlmTransport',
