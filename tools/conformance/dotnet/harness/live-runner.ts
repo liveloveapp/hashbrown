@@ -2,9 +2,9 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { mkdir, mkdtemp, appendFile, copyFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, resolve, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
   createLiveBudget,
@@ -14,9 +14,9 @@ import {
 import { createLiveDiagnostics, safeLiveError } from './live-diagnostics';
 import {
   LIVE_PROJECTS,
+  type LiveConfiguration,
   loadLiveConfiguration,
   publicChildEnvironment,
-  type LiveConfiguration,
 } from './live-configuration';
 import { startLiveStaticServer } from './live-static-server';
 import { createLiveQualificationLedger } from './live-qualification';
@@ -209,11 +209,12 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
         response.end();
         return;
       }
+      const requestUrl = request.url ?? '';
       if (
         request.method === 'DELETE' &&
-        /^\/fixture\/[a-f0-9]{32}$/.test(request.url ?? '')
+        /^\/fixture\/[a-f0-9]{32}$/.test(requestUrl)
       ) {
-        await stopFixture(request.url!.split('/')[2]);
+        await stopFixture(requestUrl.split('/')[2]);
         response.writeHead(204);
         response.end();
         return;
@@ -314,11 +315,12 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
           signal,
           options.origins,
         );
+        const fixtureUrl = fixture.url;
         await allocation.dispatch(
           { signal, maxOutputTokens: 384 },
           async (signal) => {
             const response = await fetch(
-              `${fixture!.url}/__test/live-preflight`,
+              `${fixtureUrl}/__test/live-preflight`,
               { method: 'POST', signal },
             );
             if (!response.ok) throw safeLiveError('LIVE_PROVIDER_FAILED');

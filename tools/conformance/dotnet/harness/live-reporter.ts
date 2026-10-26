@@ -1,8 +1,8 @@
 import type {
+  FullResult,
   Reporter,
   TestCase,
   TestResult,
-  FullResult,
 } from '@playwright/test/reporter';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';

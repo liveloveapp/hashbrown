@@ -67,10 +67,11 @@ export async function startNativeLiveFixture(
     (stopping ??= (async () => {
       signal.removeEventListener('abort', abort);
       kill('SIGTERM');
-      if (process.platform !== 'win32' && child.pid) {
+      const processGroup = child.pid;
+      if (process.platform !== 'win32' && processGroup) {
         const groupAlive = () => {
           try {
-            process.kill(-child.pid!, 0);
+            process.kill(-processGroup, 0);
             return true;
           } catch {
             return false;
@@ -107,7 +108,9 @@ export async function startNativeLiveFixture(
       await new Promise<void>((done) => setTimeout(done, 20));
     }
     if (signal.aborted) throw safeLiveError('LIVE_CHILD_TIMEOUT');
-    return Object.freeze({ url: output.url()!, stop });
+    const origin = output.url();
+    if (!origin) throw safeLiveError('LIVE_CHILD_START_FAILED');
+    return Object.freeze({ url: origin, stop });
   } catch {
     await stop();
     throw safeLiveError(

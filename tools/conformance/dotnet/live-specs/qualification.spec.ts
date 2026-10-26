@@ -1,11 +1,11 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Page, test, type TestInfo } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
 import { LIVE_BUDGET_MANIFEST } from '../harness/live-budget';
 import {
   type LiveBrowserFixture,
+  waitForLiveNativeCompletion,
   withLiveBrowserFixture,
   withSafeLiveCase,
-  waitForLiveNativeCompletion,
 } from '../harness/live-browser-fixture';
 
 type Group = (typeof LIVE_BUDGET_MANIFEST.groups)[number]['name'];

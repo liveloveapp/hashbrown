@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
-import { resolve, sep, extname } from 'node:path';
+import { extname, resolve, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
 
 /** Owned loopback origin serving only an already verified published consumer artifact. */

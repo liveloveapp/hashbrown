@@ -238,6 +238,15 @@ export async function withLiveBrowserFixture<T>(
   )
     throw new Error('LIVE_FIXTURE_START_FAILED');
   const id = selected.id;
+  /** Drains fixture ownership even when the operation fails. */
+  const cleanup = async () => {
+    const stopped = await fetch(`${coordinator.origin}/fixture/${id}`, {
+      method: 'DELETE',
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!stopped.ok) throw new Error('LIVE_FIXTURE_STOP_FAILED');
+  };
   try {
     const url = loopbackOrigin(selected.url);
     const fixture = Object.freeze({
@@ -263,11 +272,6 @@ export async function withLiveBrowserFixture<T>(
     });
     return await operation(fixture);
   } finally {
-    const stopped = await fetch(`${coordinator.origin}/fixture/${id}`, {
-      method: 'DELETE',
-      headers,
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!stopped.ok) throw new Error('LIVE_FIXTURE_STOP_FAILED');
+    await cleanup();
   }
 }

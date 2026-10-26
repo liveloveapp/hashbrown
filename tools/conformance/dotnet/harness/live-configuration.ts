@@ -89,9 +89,11 @@ export async function loadLiveConfiguration(
   if (!input.credentialFile.trim())
     throw new Error('LIVE_CREDENTIAL_FILE_REQUIRED');
   const projects = Object.freeze(
-    input.projects.map((name) =>
-      LIVE_PROJECTS.find((project) => project.name === name)!,
-    ),
+    input.projects.map((name) => {
+      const project = LIVE_PROJECTS.find((entry) => entry.name === name);
+      if (!project) throw new Error('LIVE_PROJECT_INVALID');
+      return project;
+    }),
   );
   let parsed: Readonly<Record<string, string | undefined>>;
   try {
@@ -145,6 +147,9 @@ export async function loadLiveConfiguration(
     ) => {
       const project = projects.find((entry) => entry.name === name);
       if (!project) throw new Error('LIVE_PROJECT_NOT_SELECTED');
+      const key = project.provider === 'openai' ? openaiKey : azureKey;
+      if (project.auth === 'api-key' && !key?.trim())
+        throw new Error('LIVE_KEY_REQUIRED');
       return Object.freeze({
         ...publicChildEnvironment(parent),
         ...(project.auth === 'azure-cli' &&
@@ -159,8 +164,8 @@ export async function loadLiveConfiguration(
             ? 'https://api.openai.com/v1'
             : azureEndpoint,
         AzureAuthentication: project.auth,
-        ...(project.auth === 'api-key'
-          ? { ApiKey: (project.provider === 'openai' ? openaiKey : azureKey)! }
+        ...(project.auth === 'api-key' && key !== undefined
+          ? { ApiKey: key }
           : {}),
       });
     },

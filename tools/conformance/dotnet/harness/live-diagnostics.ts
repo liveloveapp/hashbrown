@@ -135,7 +135,9 @@ export function createLiveOutputReader() {
         }
       }
     },
-    stderr: (_chunk: Uint8Array) => undefined,
+    stderr: (chunk: Uint8Array) => {
+      void chunk;
+    },
     url: () => origin,
   });
 }
@@ -150,7 +152,8 @@ const safeCodes = [
 ] as const;
 
 /** Returns a fixed-code failure, deliberately discarding every raw error field and cause. */
-export function safeLiveError(code: string, _raw?: unknown): Error {
+export function safeLiveError(code: string, raw?: unknown): Error {
+  void raw;
   if (!(safeCodes as readonly string[]).includes(code))
     throw new Error('LIVE_UNKNOWN_FAILURE');
   const error = new Error(code);

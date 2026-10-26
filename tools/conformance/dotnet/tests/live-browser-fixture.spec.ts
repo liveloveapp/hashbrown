@@ -346,8 +346,9 @@ test('actual stats HTTP parser preserves pending wire status through acquiring a
     release();
     const outcome = await child;
     if (outcome.error) throw outcome.error;
+    if (!outcome.result) throw new Error('SYNTHETIC_STATS_FAILED');
 
-    expect(JSON.parse(outcome.result!.stdout)).toEqual({
+    expect(JSON.parse(outcome.result.stdout)).toEqual({
       stage: 'completed',
       calls: 2,
       statuses: [200, 200],

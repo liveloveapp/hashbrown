@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { PlainSmoke } from './plain-smoke';
 import { StructuredSmoke } from './structured-smoke';
 import { UiSmoke } from './ui-smoke';
