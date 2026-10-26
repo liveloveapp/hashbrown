@@ -67,7 +67,12 @@ export async function packageAgentFunction(
   assert.deepEqual(await readFile(resolve(functionRoot, 'index.mjs')), native);
   await writeFile(
     configPath,
-    JSON.stringify({ ...config, handler: 'atc.mjs', maxDuration: 60 }),
+    JSON.stringify({
+      ...config,
+      handler: 'atc.mjs',
+      maxDuration: 60,
+      supportsCancellation: true,
+    }),
   );
 }
 
