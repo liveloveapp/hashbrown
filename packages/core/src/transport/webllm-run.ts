@@ -113,6 +113,7 @@ export function createWebLlmRun(options: {
               controller.close();
               return;
             }
+            if (options.strictCompletion) assertStrictChunk(result.value);
             const choice = result.value.choices[0];
             if (choice?.finish_reason === 'length') {
               throw new TransportError('Local model output was truncated', {
@@ -122,11 +123,14 @@ export function createWebLlmRun(options: {
             }
             const content = choice?.delta.content;
             if (options.strictCompletion) {
+              const hasFinish =
+                choice?.finish_reason !== undefined &&
+                choice?.finish_reason !== null;
               if (
                 result.value.choices.length > 1 ||
                 (!choice && !stopped) ||
-                (stopped && (content || choice?.finish_reason)) ||
-                (choice?.finish_reason && choice.finish_reason !== 'stop')
+                (stopped && (content || hasFinish)) ||
+                (hasFinish && choice?.finish_reason !== 'stop')
               ) {
                 throw invalidCompletion();
               }
@@ -168,4 +172,34 @@ function invalidCompletion(): TransportError {
     code: 'WEBLLM_INVALID_COMPLETION',
     retryable: false,
   });
+}
+
+/** Validates the runtime chunk boundary before strict completion semantics. */
+function assertStrictChunk(value: unknown): asserts value is WebLlmChunk {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value['choices']) ||
+    value['choices'].length > 1
+  ) {
+    throw invalidCompletion();
+  }
+  for (const choice of value['choices']) {
+    if (!isRecord(choice) || !isRecord(choice['delta']))
+      throw invalidCompletion();
+    const content = choice['delta']['content'];
+    const finish = choice['finish_reason'];
+    if (
+      (content !== undefined &&
+        content !== null &&
+        typeof content !== 'string') ||
+      (finish !== undefined && finish !== null && typeof finish !== 'string')
+    ) {
+      throw invalidCompletion();
+    }
+  }
+}
+
+/** Narrows protocol objects without accepting arrays or null. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

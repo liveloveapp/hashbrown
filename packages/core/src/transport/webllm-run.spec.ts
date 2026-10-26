@@ -280,3 +280,88 @@ test('releases engine ownership when resource cleanup throws', () => {
   });
   retry.cleanup();
 });
+
+const malformedStrictChunks: [string, unknown][] = [
+  ['null chunk', null],
+  ['missing choices', {}],
+  ['null choices', { choices: null }],
+  ['object choices', { choices: { 0: { delta: {} }, length: 1 } }],
+  ['empty choices before stop', { choices: [] }],
+  ['null choice', { choices: [null] }],
+  ['array choice', { choices: [[]] }],
+  ['missing delta', { choices: [{}] }],
+  ['null delta', { choices: [{ delta: null }] }],
+  ['array delta', { choices: [{ delta: [] }] }],
+  ['string delta', { choices: [{ delta: 'text' }] }],
+  ['false content', { choices: [{ delta: { content: false } }] }],
+  ['zero content', { choices: [{ delta: { content: 0 } }] }],
+  ['object content', { choices: [{ delta: { content: {} } }] }],
+  ['array content', { choices: [{ delta: { content: [] } }] }],
+  ['empty finish reason', { choices: [{ delta: {}, finish_reason: '' }] }],
+  ['false finish reason', { choices: [{ delta: {}, finish_reason: false }] }],
+  ['zero finish reason', { choices: [{ delta: {}, finish_reason: 0 }] }],
+  ['object finish reason', { choices: [{ delta: {}, finish_reason: {} }] }],
+  [
+    'malformed length content',
+    { choices: [{ delta: { content: 0 }, finish_reason: 'length' }] },
+  ],
+];
+
+for (const [name, value] of malformedStrictChunks) {
+  test(`rejects strict malformed ${name} before a later stop`, async () => {
+    // @ts-expect-error Exercise invalid runtime output from an injected engine.
+    const run = runChunks([value, chunk('final', 'stop')]);
+
+    const result = collect(run);
+
+    await expect(result).rejects.toMatchObject({
+      code: 'WEBLLM_INVALID_COMPLETION',
+    });
+  });
+}
+
+test('accepts metadata-only empty choices after the strict stop', async () => {
+  const run = runChunks([chunk('final', 'stop'), { choices: [] }]);
+
+  const result = await collect(run);
+
+  expect(result).toBe('final');
+});
+
+test('preserves split surrogate pairs and combining text without altering raw chunks', async () => {
+  const parts = ['A\ud83d', '\ude80e', '\u0301'];
+  const run = runChunks([
+    chunk(parts[0]),
+    chunk(parts[1]),
+    chunk(parts[2], 'stop'),
+  ]);
+  const reader = (await run.start(new AbortController().signal)).getReader();
+  const received: string[] = [];
+
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      received.push(result.value);
+    }
+  } finally {
+    run.cleanup();
+  }
+
+  expect(received).toEqual(parts);
+  expect(received.join('')).toBe('A🚀e\u0301');
+});
+
+for (const finish_reason of ['', false, 0]) {
+  test(`rejects strict falsy finish reason ${JSON.stringify(finish_reason)} after stop`, async () => {
+    const invalid: unknown = { choices: [{ delta: {}, finish_reason }] };
+    // @ts-expect-error Exercise invalid runtime output from an injected engine.
+    const run = runChunks([chunk('final', 'stop'), invalid]);
+
+    const result = collect(run);
+
+    await expect(result).rejects.toMatchObject({
+      code: 'WEBLLM_INVALID_COMPLETION',
+    });
+  });
+}
