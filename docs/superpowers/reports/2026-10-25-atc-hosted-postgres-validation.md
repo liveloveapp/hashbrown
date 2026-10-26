@@ -88,6 +88,60 @@ also confirmed unchanged persisted provider response IDs on this run.
   passes. A read-only code review found no actionable issues.
 - Tooling emits the existing `NO_COLOR`/`FORCE_COLOR` environment warning.
 
-These results validate the hosted shared-state boundary for the optional backend.
-They do not switch production to b4.run, exercise a full hosted browser session,
-or establish load/concurrent-run guarantees.
+## Post-merge production verification
+
+PR [#755](https://github.com/liveloveapp/hashbrown/pull/755) merged as
+`6ee82f3f315e1938ee19f77f3d37593a32275594` after updating from main and passing
+the fresh CI run. The [post-merge workflow](https://github.com/liveloveapp/hashbrown/actions/runs/40256131334)
+passed, including production ATC, lifecycle, and website deployment jobs.
+
+At `2026-10-26T02:00:46.061Z`, Vercel reported ATC production deployment
+`dpl_3aEQ4c7jwcap1R9y2JBdEVSq5rTt` READY at that exact merge commit, with
+`atc.hashbrown.dev` among its assigned aliases. Live HTTPS checks confirmed:
+
+- `/` resolves to `/angular/`, which returns 200.
+- GET `/api/run` returns 405.
+- `/threads/probe` and `/healthz` return 404.
+- The optional backend has no production environment override; the dedicated
+  database and signing secret remain preview-only.
+
+## Hosted Angular browser verification
+
+A real Chromium browser exercised replica A's deployed Angular application.
+The model and b4.run function remained live throughout. Initial traffic and
+decision fixtures came from the existing browser-test helpers, followed by live
+decision routing and then a final run with every fixture removed.
+
+1. With 21 known aircraft, asking which plane was highest executed the browser
+   traffic query and highlight tools. AAL2711 (`a1c005`) was correctly selected at
+   41,000 ft. The model chose a valid prose response; an explicit follow-up asking
+   for its flight card rendered that component with the same aircraft highlighted.
+   Six agent requests shared one thread and the same narrowed schema, excluding
+   `ArrivalsBoard`; every request returned 200.
+2. Reload removed the prior transcript, card, and highlight. The anonymous cookie
+   remained Secure, HttpOnly, and SameSite=Lax. With the decision stub removed,
+   the next question reached both real hosted decision endpoints (200), used a
+   new thread, and rendered/highlighted AAL2711 again across four successful agent
+   requests with a stable narrowed schema.
+3. With all network fixtures removed, the app loaded 162 aircraft initially and
+   164 at the final assertion. Live aircraft, chart airports, chart airspace, and
+   decision services returned 200. The question asking for the highest aircraft's
+   card and highlight completed through four agent requests in one new thread,
+   with the same narrowed schema on each continuation. At
+   `2026-10-26T02:07:45.994Z`, LXJ282 (`a2d5fc`) rendered at 43,000 ft with the
+   matching map marker highlighted. Subsequent polling updated its card to
+   42,975 ft without another question, confirming the component remains live.
+4. Desktop screenshots were visually inspected. At 390 × 844, the mobile chat
+   sheet expanded, the live card remained visible, and the document had no
+   horizontal overflow.
+
+No browser page exceptions occurred. The only console errors were route-data
+404s: the deliberate AAL2711 fixture and the real external lookup for LXJ282.
+Both rendered the expected "Route unavailable" fallback without interrupting
+the assistant, card, or map action. Browser-tool results were produced by the
+actual Angular handlers rather than submitted by the HTTP probe.
+
+These results cover the hosted shared-state boundary and the full Angular path
+from user input through decisions, model calls, browser tools, components, and
+live map updates. They do not switch production to b4.run or establish
+load/concurrent-run guarantees.
