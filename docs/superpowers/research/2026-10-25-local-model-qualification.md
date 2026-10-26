@@ -76,7 +76,12 @@ still hardcodes completed; [truncation PR #17239](https://github.com/ollama/olla
 remains open. Schema/tool grammar [issue #18944](https://github.com/ollama/ollama/issues/18944)
 and proposed [fix #18975](https://github.com/ollama/ollama/pull/18975) are open.
 This distinguishes upstream grammar/protocol defects from receipt-copy quality.
-The larger framework receipt suite was not rerun; prior failures remain evidence.
+The subsequent full framework rerun at the same 0.40.11/model combination
+passed **12/20**, without retries, skips or expected-failure reclassification.
+Four dependent cases still changed `HB_RECEIPT` to `HB_RECEPT`; four schema/tool/UI
+cases executed zero required calls. This reproduces both earlier failure classes
+in Angular and React. Reports and attachments are retained with the qualification
+artifacts, and PR #754's validation record includes the result.
 
 ## WebLLM interoperability boundary
 
@@ -114,9 +119,13 @@ the phase API is not yet verified. Direct inspection of the downloaded 0.8.1
 npm tarball confirms native tools and `schemaFinalization` declarations are
 present, while `toolPhase` and `ChromeToolsTurnContext` are absent. Package
 integrity: `sha512-W01Xb86KbgoirQ2rbA9EhSLIyefziTZ8XQpe/7trwanshjo8MbZmuaYKTLdp4vN9xJKNMI9xcC6/ThmLRJ9fGQ==`.
-A version/tag clarification is pending.
+The user requested deriving the version from npm/GitHub directly; both agree on
+0.8.1. Release verification is resolved: the phase API awaits a later release.
 
-Remaining: choose additional Nano versus Gemma 4B download/qualification;
+The user has approved Gemma `v4_4b` first; its acquisition and fixed qualification
+are tracked in the [4B report](2026-10-25-gemma4b-qualification.md).
+
+Remaining: qualify that model;
 minimize nested UI failures without weakening canaries; follow Chromium empty
 call-ID issue [577500782](https://issues.chromium.org/issues/577500782) and batch
 identity constraints; design WebLLM media/alternative tool interop; verify a
