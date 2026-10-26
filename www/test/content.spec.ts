@@ -18,7 +18,7 @@ test('reads a docs page with its frontmatter title and description', () => {
 
   expect(doc?.title).toBe('React Quickstart: Hashbrown React Docs');
   expect(doc?.description).toBe(
-    'Build your first generated UI with a trusted welcome card.',
+    'Generate a two-step plan in an ordinary app using one trusted component and a streaming endpoint.',
   );
   expect(doc?.body).toContain('# React Quickstart');
 });

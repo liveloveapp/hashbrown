@@ -26,6 +26,7 @@ Use SDK `10.0.402`. Add these exact references to a `Microsoft.NET.Sdk.Web` proj
   <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
   <PackageReference Include="OpenAI" Version="2.14.0" />
   <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+  <PackageReference Include="Azure.Core" Version="1.63.0" />
   <PackageReference Include="Npgsql" Version="10.0.3" />
 </ItemGroup>
 ```
@@ -38,23 +39,48 @@ The baseline hosting package is a preview even though the core Agent Framework p
 
 ## Choose the provider on the server
 
-The shared `ProviderFactory` reads these server configuration keys. Supply `ApiKey` through your server's secret configuration, never browser code.
+The shared `ProviderFactory` reads these server configuration keys. Supply keys through server secret configuration; Azure identity modes do not require `ApiKey`. Keep provider credentials and identity selection out of browser code.
 
-| Key             | OpenAI                       | Azure OpenAI                                     |
-| --------------- | ---------------------------- | ------------------------------------------------ |
-| `Provider`      | `openai`                     | `azure`                                          |
-| `ModelApi`      | `responses`                  | `responses`                                      |
-| `ModelEndpoint` | `https://api.openai.com/v1/` | `https://<resource>.openai.azure.com/openai/v1/` |
-| `Model`         | Your OpenAI model name       | Your Azure deployment name                       |
-| `ApiKey`        | Your OpenAI key              | Your Azure resource key                          |
+| Key                       | OpenAI                       | Azure OpenAI                                                        |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `Provider`                | `openai`                     | `azure`                                                             |
+| `ModelApi`                | `responses`                  | `responses`                                                         |
+| `ModelEndpoint`           | `https://api.openai.com/v1/` | `https://<resource>.openai.azure.com/openai/v1/`                    |
+| `Model`                   | Your OpenAI model name       | Your Azure deployment name                                          |
+| `ApiKey`                  | Your OpenAI key              | Required only for `api-key` authentication                          |
+| `AzureAuthentication`     | `api-key` (default)          | `api-key` (default), `azure-cli`, or `managed-identity`             |
+| `ManagedIdentityClientId` | Omit                         | Optional user-assigned client ID; omit for system-assigned identity |
 
 Responses is the recommended API for new integrations. Both providers use the pinned native OpenAI .NET Responses client through Microsoft's `IChatClient` adapter and the existing AG-UI host. The Azure Responses endpoint uses the OpenAI-compatible `/openai/v1/` path; an Azure resource-origin endpoint is also expanded to that path. A deployment name is not assumed to equal an OpenAI model name. Select a deployment/model that supports the requested tools and structured output.
 
-For an existing Chat Completions integration, explicitly set `ModelApi` to `chat-completions`. Use the OpenAI `/v1/` endpoint or Azure resource-origin endpoint as before. That Azure path retains `AzureOpenAIClient`, deployment routing, its SDK-selected API version and API-key authentication. Direct `ProviderFactory` callers that omit `ModelApi` retain Chat Completions compatibility; the startup recipe below explicitly defaults new applications to Responses. Unknown API/provider values fail before model work.
+For an existing Chat Completions integration, explicitly set `ModelApi` to `chat-completions`. Use the OpenAI `/v1/` endpoint or Azure resource-origin endpoint as before. That Azure path retains `AzureOpenAIClient`, deployment routing, its SDK-selected API version and the selected Azure authentication mode. Direct `ProviderFactory` callers that omit `ModelApi` retain Chat Completions compatibility; the startup recipe below explicitly defaults new applications to Responses. Unknown API/provider values fail before model work.
 
 Responses requests use `store=false` and resend application-owned canonical history. Provider conversation IDs, continuation tokens and background responses are disabled; restoration does not poll or resume a provider-owned response. This does not enable general chat-session persistence or hosted tools. Responses carries strict output schemas in `text.format`; Chat Completions uses `response_format`, with the same Hashbrown schema semantics.
 
 The Responses adapter requires a successful native completion; failed, incomplete, or truncated streams cannot become successful final answers. Recovery checks native output before the AG-UI adapter can omit meaningful items. Unsupported reasoning, encrypted continuation, hosted-tool items, annotations, or unknown native output make retained terminal history unavailable. A visible text answer alone does not prove that its full native history can be restored; the checkpoint status remains authoritative and effects are not replayed to obtain another answer.
+
+## Azure authentication
+
+Omitting `AzureAuthentication` keeps API-key authentication for both APIs. Set it to `azure-cli` for an explicitly selected developer CLI identity, or `managed-identity` on an Azure host. These modes use the native SDK's token credential support and require an HTTPS `ModelEndpoint`. Empty or unknown modes, an identity mode with OpenAI, and a managed identity selector outside managed identity mode fail at startup. Identity failure never falls back to a configured key or another credential.
+
+For local Azure CLI authentication, sign in outside application startup using the account with inference permission on your resource, then configure your server:
+
+```sh
+Provider=azure \
+ModelApi=responses \
+ModelEndpoint='https://<resource>.openai.azure.com/' \
+Model='<deployment>' \
+AzureAuthentication=azure-cli \
+dotnet run
+```
+
+The factory uses `AzureCliCredential` with a ten-second CLI process timeout. It does not start interactive sign-in or change the CLI's selected account. For an Azure-hosted application, select `AzureAuthentication=managed-identity`; omit `ManagedIdentityClientId` for its system-assigned identity, or set it to the client ID of an already assigned user identity. Grant that identity inference permission through your normal deployment process. No developer credential chain is used in managed identity mode.
+
+This pinned package baseline supplies the `Azure.Identity` credential types through `Azure.Core` 1.63.0. Responses uses the fixed public-Azure scope `https://ai.azure.com/.default`; the legacy Azure client uses `https://cognitiveservices.azure.com/.default`. These scopes and the authentication mode are trusted server configuration, independent of the application's browser/session authentication. Rotating credentials or switching between Azure authentication modes preserves checkpoint compatibility when provider, API, endpoint and model remain the same.
+
+Responses propagates caller cancellation during token acquisition. In the pinned legacy Chat Completions client, shared token refresh is not interrupted by one caller's cancellation; even a pre-cancelled call can acquire a token before it stops without model dispatch. The CLI process timeout bounds CLI execution, not an entire model request. Prefer Responses when prompt cancellation is required.
+
+Managed identity selection is covered deterministically. A real Azure-hosted managed identity run remains a documented follow-up; a successful local Azure CLI run does not establish managed identity qualification.
 
 ## Host the endpoint
 

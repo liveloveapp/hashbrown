@@ -130,10 +130,24 @@ test('groups repeated Markdown parser observations into one final parser milesto
   const events = store.getSnapshot().events;
 
   const parsed = workbenchMilestones(events, 'text').filter(
-    (item) => item.label === 'Parsed Markdown',
+    (item) => item.label === 'Parsed text',
   );
 
   expect(events.filter((event) => event.kind === 'parsed')).toHaveLength(2);
   expect(parsed).toHaveLength(1);
   expect(parsed[0].index).toBe(events.length - 2);
+});
+
+test('keeps effective provider policy as a distinct captured milestone', () => {
+  const store = createWorkbenchStore('text');
+  store.send('Explain the plan');
+  store.record('event', {
+    type: 'CUSTOM',
+    name: 'workbench.system-instructions',
+    value: { origin: 'OpenAI adapter mapping', policy: 'Public policy' },
+  });
+
+  const milestones = workbenchMilestones(store.getSnapshot().events, 'text');
+
+  expect(milestones.at(-1)).toMatchObject({ index: 1, label: 'Policy observed' });
 });

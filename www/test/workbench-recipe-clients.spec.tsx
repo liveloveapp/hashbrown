@@ -634,3 +634,73 @@ test('prediction acceptance labels belong to the used proposal and previously ac
   expect(recordCards()[2].querySelector('button')?.disabled).toBe(true);
   await act(() => root.unmount());
 });
+
+test('plain onboarding captures escaped replies and retained turns without tools or replay requests', async () => {
+  for (const lesson of ['conversation', 'system-instructions']) {
+    window.history.replaceState(null, '', `?lesson=${lesson}`);
+    const chat = {
+      messages: [],
+      lastAssistantMessage: undefined,
+      isLoading: false,
+      isResuming: false,
+      lastRunFinishReason: undefined,
+      error: undefined,
+      pendingInterrupts: undefined,
+      sendMessage: vi.fn(),
+      setMessages: vi.fn(),
+      stop: vi.fn(),
+    };
+    sdk.chat.mockReturnValue(chat);
+    const host = document.createElement('div');
+    const root = createRoot(host);
+
+    await act(() =>
+      root.render(
+        <MagicTextWorkbenchConversation active navigation={navigation} />,
+      ),
+    );
+    expect(chat.sendMessage).not.toHaveBeenCalled();
+    const options = sdk.chat.mock.calls.at(-1)?.[0];
+    expect(options.tools).toEqual([]);
+    expect(options.schema).toBeUndefined();
+    expect(options.system).toContain(
+      lesson === 'conversation'
+        ? 'Remember the plan name'
+        : 'planting a garden',
+    );
+    await send(host);
+    const user = chat.sendMessage.mock.calls[0][0];
+    const assistant = {
+      id: `answer-${lesson}`,
+      role: 'assistant',
+      content: '<script>Lighthouse</script> **next**',
+    };
+    sdk.chat.mockReturnValue({
+      ...chat,
+      messages: [user, assistant],
+      lastAssistantMessage: assistant,
+      lastRunFinishReason: 'stop',
+    });
+    await act(() =>
+      root.render(
+        <MagicTextWorkbenchConversation
+          active
+          navigation={{ ...navigation }}
+        />,
+      ),
+    );
+
+    expect(
+      host.querySelector('[aria-label="Plain text response"]')?.textContent,
+    ).toContain(assistant.content);
+    expect(host.querySelector('script')).toBeNull();
+    expect(host.querySelector('[data-final]')).toBeNull();
+    await send(host);
+    expect(chat.sendMessage).toHaveBeenCalledTimes(2);
+    expect(sdk.chat.mock.calls.at(-1)?.[0].transport).toBe(options.transport);
+    await act(() => button(host, 'Previous event').click());
+    expect(chat.sendMessage).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain('Lighthouse');
+    await act(() => root.unmount());
+  }
+});

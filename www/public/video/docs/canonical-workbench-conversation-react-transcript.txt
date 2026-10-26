@@ -1,0 +1,15 @@
+REACT · conversation
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+A user names the plan. The assistant replies. Messages are not saved automatically.
+
+Local history only.
+
+A new run retains the same conversation and earlier messages.
+
+Replay follows captured turns without another request.
+
+Back live. Same conversation.
+
+The source is OpenAI through the real Hashbrown SDK. No browser tools are registered and application state stays at revision 0. Plain text chat retains earlier messages, a stable conversation ID and a fresh run ID for each turn. Local history is not durable storage. Refresh clears local sessions.

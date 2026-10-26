@@ -757,3 +757,32 @@ test('shows Markdown and selected source details through the recipe inspector in
   );
   shell.dispose();
 });
+
+test('plain text onboarding UI inspector describes text rendering without exposed component props', async () => {
+  const { getWorkbenchLesson } =
+    await import('../examples/quickstart/runtime/workbench-lessons');
+
+  for (const lessonId of ['conversation', 'system-instructions']) {
+    const host = document.createElement('div');
+    const store = createWorkbenchStore('text');
+    const shell = mountWorkbench(host, store, {
+      framework: 'React',
+      lesson: getWorkbenchLesson(`?lesson=${lessonId}`),
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+      .find((button) => button.textContent === 'UI')
+      ?.click();
+
+    const inspector = host.querySelector('[role="tabpanel"]');
+    expect(inspector?.textContent).toContain('Plain text renderer');
+    expect(inspector?.textContent).toContain('"generatedProps": false');
+    expect(inspector?.textContent).toContain('"exposedComponents": []');
+    expect(host.textContent).toContain('Text rendering and request outcome');
+    expect(inspector?.textContent).not.toMatch(/SummaryCard|steps|string\[\]/);
+    shell.dispose();
+  }
+});

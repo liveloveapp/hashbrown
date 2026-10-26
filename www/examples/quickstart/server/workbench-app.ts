@@ -1,4 +1,9 @@
 import {
+  workbenchConversationSystem,
+  workbenchFirstPlanSystem,
+  workbenchInstructionsSystem,
+} from '../runtime/workbench-onboarding';
+import {
   workbenchPredictionsSchema,
   workbenchPredictionsSystem,
   workbenchSelectionOptions,
@@ -72,6 +77,14 @@ export function pinWorkbenchInput(
     )
   )
     throw new Error('Prompt too large');
+  const onboarding =
+    lesson === 'first-plan' ||
+    lesson === 'conversation' ||
+    lesson === 'system-instructions';
+  const plainText =
+    lesson === 'magic-text' ||
+    lesson === 'conversation' ||
+    lesson === 'system-instructions';
   return {
     ...input,
     messages: [
@@ -79,18 +92,24 @@ export function pinWorkbenchInput(
         id: 'workbench-system',
         role: 'system',
         content:
-          lesson === 'magic-text'
-            ? workbenchTextSystem
-            : lesson === 'predictions'
-              ? workbenchPredictionsSystem
-              : structured
-                ? workbenchStructuredSystem
-                : workbenchSystem,
+          lesson === 'first-plan'
+            ? workbenchFirstPlanSystem
+            : lesson === 'conversation'
+              ? workbenchConversationSystem
+              : lesson === 'system-instructions'
+                ? workbenchInstructionsSystem
+                : lesson === 'magic-text'
+                  ? workbenchTextSystem
+                  : lesson === 'predictions'
+                    ? workbenchPredictionsSystem
+                    : structured
+                      ? workbenchStructuredSystem
+                      : workbenchSystem,
       },
       ...messages,
     ],
     tools:
-      lesson === 'predictions'
+      onboarding || lesson === 'predictions'
         ? []
         : [
             {
@@ -107,8 +126,8 @@ export function pinWorkbenchInput(
           ],
     forwardedProps: {
       hashbrown: {
-        ui: !structured && lesson !== 'magic-text' && lesson !== 'predictions',
-        ...(lesson === 'magic-text'
+        ui: !structured && !plainText && lesson !== 'predictions',
+        ...(plainText
           ? {}
           : {
               responseSchema:

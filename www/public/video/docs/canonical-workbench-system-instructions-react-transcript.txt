@@ -1,0 +1,15 @@
+REACT · system-instructions
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+The endpoint replaces browser policy before calling the provider.
+
+Mapped public policy.
+
+The next turn keeps this server policy. Prompts do not grant authorization.
+
+Replay retains the captured provider evidence without another request.
+
+Back live. No application writes.
+
+The source is OpenAI through the real Hashbrown SDK. No browser tools are registered and application state stays at revision 0. The browser garden declaration is replaced by the fixed server application policy. Public policy evidence is captured from the actual OpenAI adapter mapping callback on both turns. Instructions do not authorize application actions. Refresh clears local sessions.

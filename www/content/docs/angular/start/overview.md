@@ -9,7 +9,7 @@ meta:
 
 Start with what your interface needs to show: text, typed data, your own components, or a choice among known options. Then decide whether the request needs earlier conversation turns.
 
-New to Hashbrown? Build the trusted welcome card in the [Quickstart](/docs/angular/start/quick) first. The examples below extend that setup.
+New to Hashbrown? Build the two-step plan in the [Quickstart](/docs/angular/start/quick) first. The examples below extend that setup.
 
 ## Choose by result
 

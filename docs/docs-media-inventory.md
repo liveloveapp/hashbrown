@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-25. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
+Updated 2026-10-26. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
 
 ## Current recordings
 
@@ -8,19 +8,19 @@ The canonical conversation workbench now has separate `canonical-workbench-react
 
 | Recording     | Source                                                                                     | Pages                                         | Notes                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Welcome card  | `www/examples/quickstart/{react,angular}`                                                  | Introduction, Quickstart, How Hashbrown works | Real client rendering; deterministic AG-UI output; presentation CSS added in recorder            |
-| Conversation  | `www/examples/quickstart/{react,angular}`                                                  | Messages and turns, System instructions       | Name and follow-up in the same instance; does not demonstrate persistence                        |
+| Welcome card  | `www/examples/quickstart/{react,angular}`                                                  | Retained legacy asset | Real client rendering; deterministic AG-UI output; presentation CSS added in recorder            |
+| Conversation  | `www/examples/quickstart/{react,angular}`                                                  | Retained legacy asset       | Name and follow-up in the same instance; does not demonstrate persistence                        |
 | Persistence   | `SavedConversations.tsx` / `saved-conversations.ts` and each framework’s `text-history.ts` | Message history, Browser history              | Completed text only; refresh, two independent selections, and a follow-up using restored history |
 | Interrupts    | `www/examples/quickstart/{react,angular}`                                                  | Interrupt and resume                          | Two-answer approval batch followed by the resumed result                                         |
 | Shared state  | `www/examples/quickstart/{react,angular}`                                                  | Shared agent state                            | Local destination edit sent to the agent; streamed agent update shown in the app                 |
 | Activities    | `www/examples/quickstart/{react,angular}`                                                  | Activities                                    | Itinerary progress reaches completion                                                            |
 | UI kits       | `www/examples/quickstart/{react,angular}`                                                  | UI kits                                       | Select and render two trusted component types from one reusable kit                              |
-| Generative UI | `examples/atc`                                                                             | Exposing components                           | Trusted ATC components                                                                           |
+| Generative UI | `examples/atc`                                                                             | Earlier ATC capture; retained asset | Trusted ATC components                                                                           |
 | Streaming     | `examples/atc`                                                                             | Earlier ATC capture; retained asset           | Incremental ATC response                                                                         |
-| Browser tools | `examples/atc`                                                                             | Tool calling                                  | Fixture traffic read through tools                                                               |
-| Schemas       | `examples/atc`                                                                             | Skillet schemas                               | Typed flight filter                                                                              |
-| Decisions     | `examples/atc`                                                                             | Decisions                                     | Intent routing and component narrowing                                                           |
-| Debugging     | `examples/atc`                                                                             | Debugging                                     | ATC-specific inspector, separate from Redux DevTools                                             |
+| Browser tools | `examples/atc`                                                                             | Earlier ATC capture; retained asset | Fixture traffic read through tools                                                               |
+| Schemas       | `examples/atc`                                                                             | Earlier ATC capture; retained asset | Typed flight filter                                                                              |
+| Decisions     | `examples/atc`                                                                             | Earlier ATC capture; retained asset | Intent routing and component narrowing                                                           |
+| Debugging     | `examples/atc`                                                                             | Earlier ATC capture; retained asset | ATC-specific inspector, separate from Redux DevTools                                             |
 
 All recordings have MP4, WebM, a poster, captions, and a text walkthrough under `www/public/video/docs`. Welcome card, conversation, and the five workflow recordings have result screenshots. ATC captures disclose fixture traffic and scripted responses. Earlier tutorial captures disclose scripted AG-UI responses and use the checked client example files. The local-model recording below uses real native inference. The workflow recorder verifies both frameworks and records their shared visible behavior from React.
 
@@ -85,9 +85,9 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | Page                                          | Status                | Recording or remaining work                                                                                                |
 | --------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `concept/activities`                          | Recorded              | activities                                                                                                                 |
-| `concept/ai-basics`                           | Recorded              | conversation                                                                                                               |
+| `concept/ai-basics` | Recorded | canonical-workbench-conversation-react / canonical-workbench-conversation-angular |
 | `concept/components`                          | Recorded              | canonical-workbench-ui-react / canonical-workbench-ui-angular                                                              |
-| `concept/debugging`                           | Recorded              | debugging                                                                                                                  |
+| `concept/debugging` | Recorded | canonical-workbench-debugging-react / canonical-workbench-debugging-angular |
 | `concept/decisions`                           | Recorded              | canonical-workbench-decisions-react / canonical-workbench-decisions-angular                                                |
 | `concept/functions`                           | Recorded              | canonical-workbench-tools-react / canonical-workbench-tools-angular                                                        |
 | `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                                                 |
@@ -97,8 +97,8 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                                               |
 | `concept/streaming`                           | Recorded              | canonical-workbench-streaming-react / canonical-workbench-streaming-angular                                                |
 | `concept/structured-output`                   | Recorded              | canonical-workbench-structured-react / canonical-workbench-structured-angular                                              |
-| `concept/system-instructions`                 | Recorded              | conversation                                                                                                               |
-| `concept/transform-request-options`           | Recorded              | request-transformation; actual adapter, trusted workspace context and scripted provider-native HTTP output.                |
+| `concept/system-instructions` | Recorded | canonical-workbench-system-instructions-react / canonical-workbench-system-instructions-angular; actual provider mapping evidence |
+| `concept/transform-request-options` | Recorded | canonical-workbench-request-transformation-react / canonical-workbench-request-transformation-angular |
 | `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
 | `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
 | `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                                     |
@@ -120,20 +120,20 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.                       |
 | `recipes/json-parser`                         | Recorded              | json-parser-react and json-parser-angular; finite local chunks, partial previews, stop/reset, and raw-document validation. |
 | `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                                |
-| `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                                         |
+| `recipes/magic-text` | Recorded | canonical-workbench-magic-text-react / canonical-workbench-magic-text-angular |
 | `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                           |
-| `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                                    |
+| `recipes/predictive-actions` | Recorded | canonical-workbench-predictions-react / canonical-workbench-predictions-angular |
 | `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                              |
 | `recipes/threadplane`                         | Recorded              | threadplane-react and threadplane-angular; separately installed consumers, runtime checks and media review passed.         |
 | `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                                        |
 | `recipes/ui-chatbot`                          | Recorded              | ui-chatbot-react and ui-chatbot-angular; real browser read tool, trusted proposal, explicit Apply, and updated follow-up.  |
 | `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                                    |
-| `recipes/ui-selection`                        | Recorded              | ui-selection; app-owned summary/list views and manual fallback.                                                            |
-| `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                                          |
-| `start/intro`                                 | Recorded              | welcome-card                                                                                                               |
+| `recipes/ui-selection` | Recorded | canonical-workbench-ui-selection-react / canonical-workbench-ui-selection-angular |
+| `start/how-it-works` | Recorded | canonical-workbench-first-plan-react / canonical-workbench-first-plan-angular; tool-free request path |
+| `start/intro` | Recorded | canonical-workbench-first-plan-react / canonical-workbench-first-plan-angular |
 | `start/overview`                              | Intentional exception | Decision table links to checked task recordings; no separate interaction to demonstrate.                                   |
 | `start/platforms`                             | Intentional exception | Runtime and provider setup comparison links to runnable guides and their recordings.                                       |
-| `start/quick`                                 | Recorded              | welcome-card                                                                                                               |
+| `start/quick` | Recorded | canonical-workbench-first-plan-react / canonical-workbench-first-plan-angular; shared standalone PlanCard |
 | `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                                                |
 
 ## Content gaps after this increment
@@ -306,3 +306,30 @@ Each media ID has MP4/WebM, poster, result image, measured VTT captions and a te
 walkthrough. Source provenance, filming-only pacing and half-speed playback are
 disclosed. Keep originals and phase reports in unique ignored
 `dist/docs-workbench/captures/<run-id>` directories. No SDK release or new dependencies.
+
+## Canonical onboarding and conversation fundamentals
+
+Introduction, Quickstart and How Hashbrown works now share the framework-specific
+`canonical-workbench-first-plan-{react,angular}` recordings. The standalone
+FirstPlanApp and workbench expose the same pure PlanCard as SummaryCard with only
+title and streaming steps. One request generates a preview; no browser tool,
+acceptance action or application write is shown. Older WelcomeCard entry points
+and media remain available to existing fixtures and bookmarks.
+
+Messages and turns uses `canonical-workbench-conversation-{react,angular}`. Two
+plain-text requests retain earlier messages and thread identity while each run
+gets a fresh ID. These local conversations are not durable storage. System
+instructions uses `canonical-workbench-system-instructions-{react,angular}` and
+compares the actual browser declaration with the fixed public server policy
+observed inside the OpenAI adapter mapping callback. Only the allowlisted public
+policy is captured, not private provider input or credentials.
+
+All six videos use real OpenAI requests and actual framework SDKs, with separate
+labelled deterministic tests. Measured captions, both codecs, posters, result
+images and walkthroughs accompany each capture. Presentation event pacing and
+half-speed footage are disclosed. Replay is inert. The full workbench suite now
+covers fourteen lessons and 28 framework paths. Run
+`WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`
+with existing server-only OpenAI credentials/model, sequentially with other
+builds/recorders. Keep raw captures and reports in a unique ignored directory.
+No SDK release or new dependencies.
