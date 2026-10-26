@@ -40,7 +40,7 @@ Install these server-side values on the deployment hosting the webhook/recovery 
 
 Resend currently offers only `sending_access` and `full_access`; receiving reads require `full_access`. A variable named READ does not confer a read-only provider permission. This shared-account credential needs explicit approval and server-only storage. Do not deploy the provisioning PAT as a shortcut.
 
-Keep existing delivery, tracking and token policies. Do not enable `CAMPAIGN_ENABLED`, `DELIVERY_ENABLED`, or enrollment merely to activate receiving. The current lifecycle dispatcher uses these same pilot flags and mailbox gates. It runs every ten minutes; inbox recovery runs every five minutes.
+Keep existing delivery, tracking and token policies. Do not enable `CAMPAIGN_ENABLED`, `DELIVERY_ENABLED`, or enrollment merely to activate receiving. The current lifecycle dispatcher uses these same pilot flags and mailbox gates. It runs every thirty minutes; inbox recovery runs every five minutes.
 
 ## Provisioning and deployment
 
@@ -77,7 +77,7 @@ Contact erasure scrubs associated reply evidence. Before forwarding, the impleme
 - `growth_provider_attempts` commits the first-attempt timestamp and SHA-256 of the exact payload before submission. Changed content under the same key is refused. Unknown attempts expire at **23 hours**, before Resend's 24-hour deduplication boundary. Known acceptance can finalize without another send, even later.
 - Use `createUnsubscribeActionUrlForJob` for future send rendering: the issued time is `job.createdAt` and nonce is the job ID. Retain the same origin/signing key during retries; drift is rejected by the payload ledger.
 - Campaign sends recheck the send window after reserving an attempt. Unknown provider outcomes remain failed closed under the existing jobs policy; this pilot does not introduce automatic campaign retries.
-- The lifecycle dispatcher runs every ten minutes so ten-minute retries can fit the morning send window; it rechecks that window before submission. The separate five-minute cron handles receiving recovery.
+- The lifecycle dispatcher runs every thirty minutes, which gives two ticks (07:00 and 07:30) in the 07:00-08:00 Pacific send window; it rechecks that window before submission. The separate five-minute cron handles receiving recovery.
 - One-click unsubscribe accepts strict URL-encoded and multipart POST forms. Duplicate fields, files, unexpected fields and oversized requests are rejected.
 
 ## Recovery and health
@@ -127,7 +127,7 @@ The operator explicitly requested Gmail polling removal. Hashbrown’s Google re
 
 The operator confirmed Hashbrown never had Gmail or a Hashbrown Apps Script trigger installed, and is removing Threadplane’s poller separately. This change removes Hashbrown’s unused Google intake/signing API, provisioning path and deployed HMAC secret. Historical database fields and already-admitted reply reconciliation are preserved; new campaign eligibility is gated by Resend coverage rather than old Google recovery activity.
 
-Current-main lifecycle integration covers campaign/fulfillment plus founder/digest sends, with fixed job-time tokens, product/environment tags and durable provider attempt guards. Lifecycle dispatch runs every ten minutes; receiving recovery remains every five minutes. Production lifecycle routing/safety flags are installed without giving the sending service the account-wide receiving credential or enabling delivery/enrollment/campaign flags. The lifecycle migration was applied while all previous migration filenames/checksums were preserved.
+Current-main lifecycle integration covers campaign/fulfillment plus founder/digest sends, with fixed job-time tokens, product/environment tags and durable provider attempt guards. Lifecycle dispatch runs every thirty minutes; receiving recovery remains every five minutes. Production lifecycle routing/safety flags are installed without giving the sending service the account-wide receiving credential or enabling delivery/enrollment/campaign flags. The lifecycle migration was applied while all previous migration filenames/checksums were preserved.
 
 Verification after integration: growth build/test/lint, lifecycle build/test/check/lint, www build/test/lint and normal pre-commit checks passed. Dedicated growth database integration passed all59 tests across14files. A fixture cleanup correction removes only the synthetic fences owned by each inbox test; the clean run left zero email fences. The old strict inventory mismatch is resolved by incorporating main’s lifecycle migration.
 

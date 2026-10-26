@@ -23,7 +23,6 @@ import { redactContactObservationEvidence } from './observability/redaction.ts';
 import type {
   FormOutreachApprovedActivityData,
   GrowthEmailClassification,
-  UnstuckFramework,
 } from './models.ts';
 
 /** Activity kinds that permanently or conditionally stop outreach to a contact. */
@@ -165,9 +164,6 @@ export interface ApproveContactFromFormInput {
   source: string;
   /** One of {@link GROWTH_SOURCE_FORMS}; any other form is rejected. */
   sourceForm: GrowthSourceForm;
-  noticeText: string;
-  noticeVersion: string;
-  policyVersion: string;
   eventKey: string;
   occurredAt: Date;
   keyring: EmailHmacKeyring;
@@ -185,7 +181,6 @@ export type GrowthSourceForm = (typeof GROWTH_SOURCE_FORMS)[number];
 export interface FormSubmittedFacts {
   form_kind: GrowthSourceForm;
   submission_id: string;
-  framework: UnstuckFramework;
   /** "Where are you stuck?", trimmed, 20 to 1,000 characters. */
   message: string;
 }
@@ -246,12 +241,10 @@ const LIMITS = {
   companyName: 200,
   displayName: 200,
   eventKey: 255,
-  noticeText: 2_000,
   policyVersion: 100,
   reason: 500,
   source: 100,
   sourceForm: 100,
-  version: 100,
 } as const;
 
 function requiredText(
@@ -428,7 +421,6 @@ interface PreparedFormApproval {
   formRequestData: Record<string, unknown>;
   normalizedEmail: string;
   occurredAt: Date;
-  policyVersion: string;
   source: string;
   sourceForm: string;
 }
@@ -470,21 +462,6 @@ function prepareFormApproval(
       `sourceForm must be one of: ${GROWTH_SOURCE_FORMS.join(', ')}`,
     );
   }
-  const noticeText = requiredText(
-    'noticeText',
-    input.noticeText,
-    LIMITS.noticeText,
-  );
-  const noticeVersion = requiredText(
-    'noticeVersion',
-    input.noticeVersion,
-    LIMITS.version,
-  );
-  const policyVersion = requiredText(
-    'policyVersion',
-    input.policyVersion,
-    LIMITS.policyVersion,
-  );
   const eventKey = requiredText('eventKey', input.eventKey, LIMITS.eventKey);
   const occurredAt = validDate('occurredAt', input.occurredAt);
   const emailClassification = serverEmailClassification(
@@ -497,9 +474,6 @@ function prepareFormApproval(
     company_name: companyName,
     display_name: displayName,
     email_classification: emailClassification,
-    notice_text: noticeText,
-    notice_version: noticeVersion,
-    policy_version: policyVersion,
     provenance: 'form_submission',
     source,
     source_form: sourceForm,
@@ -518,7 +492,6 @@ function prepareFormApproval(
     formRequestData,
     normalizedEmail,
     occurredAt,
-    policyVersion,
     source,
     sourceForm,
   };
@@ -540,7 +513,6 @@ async function approvePreparedContactFromForm(
     formRequestData,
     normalizedEmail,
     occurredAt,
-    policyVersion,
     source,
     sourceForm,
   } = prepared;
@@ -762,7 +734,6 @@ async function approvePreparedContactFromForm(
   if (approvalAllowed) {
     const approvalData: FormOutreachApprovedActivityData = {
       email_classification: emailClassification,
-      policy_version: policyVersion,
       source,
       source_form: sourceForm,
       verification: 'server_verified',

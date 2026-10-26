@@ -1,3 +1,4 @@
+import { DecisionWorkbenchConversation } from './DecisionWorkbench';
 import { getWorkbenchLesson } from '../../runtime/workbench-lessons';
 import { StructuredWorkbenchConversation } from './StructuredWorkbench';
 import { s } from '@hashbrownai/core';
@@ -268,9 +269,11 @@ function WorkbenchConversation({
 /** Retains independent SDK conversations and their captured application histories. */
 export function Workbench() {
   const Conversation =
-    getWorkbenchLesson(window.location.search).format === 'structured'
-      ? StructuredWorkbenchConversation
-      : WorkbenchConversation;
+    getWorkbenchLesson(window.location.search).format === 'decision'
+      ? DecisionWorkbenchConversation
+      : getWorkbenchLesson(window.location.search).format === 'structured'
+        ? StructuredWorkbenchConversation
+        : WorkbenchConversation;
   const [conversations, setConversations] = useState([
     { id: '1', label: 'Two-step plan' },
   ]);

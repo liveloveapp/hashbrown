@@ -432,7 +432,8 @@ body {
   border-color: var(--wb-line);
 }
 app-workbench-conversation[hidden],
-app-structured-workbench-conversation[hidden] {
+app-structured-workbench-conversation[hidden],
+app-decision-workbench-conversation[hidden] {
   display: none !important;
 }
 

@@ -36,7 +36,12 @@ test.each(SDKS)(
   '%s typed-data guides lead with their own recorded behavior',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo: slug[1] === 'structured-output' ? `canonical-workbench-structured-${sdk}` : demo,
+      demo:
+        slug[1] === 'structured-output'
+          ? `canonical-workbench-structured-${sdk}`
+          : slug[1] === 'streaming'
+            ? `canonical-workbench-streaming-${sdk}`
+            : demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 

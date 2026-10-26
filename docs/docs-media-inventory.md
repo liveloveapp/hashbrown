@@ -46,7 +46,7 @@ The runtime recording submits visible prewritten scripts to real QuickJS through
 
 The first recording demonstrates generating, reviewing and explicitly applying a typed shopping list. The second shows complete array items arriving while Apply remains disabled until successful completion and application validation. Result screenshots show draft and applied values separately. Both have MP4/WebM, poster, VTT and a text walkthrough.
 
-`concept/structured-output` now introduces the canonical two-step plan. The schema, streaming, and natural-language form guides retain the checked shopping-list examples during the staged canonical rollout. The schema page also retains the ATC filter recording as a second use case. The Streaming guide uses its own list interaction (`streaming-data`), which replaces the retired ATC streaming recording.
+`concept/structured-output` now introduces the canonical two-step plan. The schema and streaming guides now use the canonical plan. The natural-language form recipe retains its checked shopping-list example during the staged rollout. The earlier `streaming-data` shopping-list clip is retained as legacy media; the Streaming guide uses its framework-specific canonical plan capture.
 
 ## Assisted interface recordings
 
@@ -88,14 +88,14 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `concept/ai-basics`                           | Recorded              | conversation                                                                                                     |
 | `concept/components`                          | Recorded              | canonical-workbench-ui-react / canonical-workbench-ui-angular                                                                                                    |
 | `concept/debugging`                           | Recorded              | debugging                                                                                                        |
-| `concept/decisions`                           | Recorded              | decisions                                                                                                        |
+| `concept/decisions`                           | Recorded              | canonical-workbench-decisions-react / canonical-workbench-decisions-angular                                                                                                        |
 | `concept/functions`                           | Recorded              | canonical-workbench-tools-react / canonical-workbench-tools-angular                                                                                                    |
 | `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                                       |
 | `concept/message-history`                     | Recorded              | persistence; completed text only                                                                                 |
 | `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                              |
-| `concept/schema`                              | Recorded              | schemas                                                                                                          |
+| `concept/schema`                              | Recorded              | canonical-workbench-schemas-react / canonical-workbench-schemas-angular                                                                                                          |
 | `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                                     |
-| `concept/streaming`                           | Recorded              | streaming-data                                                                                                   |
+| `concept/streaming`                           | Recorded              | canonical-workbench-streaming-react / canonical-workbench-streaming-angular                                                                                                   |
 | `concept/structured-output`                   | Recorded              | canonical-workbench-structured-react / canonical-workbench-structured-angular |
 | `concept/system-instructions`                 | Recorded              | conversation                                                                                                     |
 | `concept/transform-request-options`           | Recorded              | request-transformation; actual adapter, trusted workspace context and scripted provider-native HTTP output. |
@@ -219,3 +219,30 @@ Checks cover trusted instructions at the actual provider boundary, forged browse
 The React and Angular components, tools and structured-output guides use six separate real-provider recordings: `canonical-workbench-{ui,tools,structured}-{react,angular}`. The two workbench overview IDs are refreshed from their matching Generative UI capture. All use the same two-step plan, LLA light surfaces, four visible columns, bottom milestone timeline and immutable synchronized playback. Every streaming frame remains available under Raw events.
 
 Run `npx nx workbench-demo www` with server-only OpenAI credentials/model after deterministic `npx nx workbench-e2e www` passes. The recorder verifies actual framework SDKs and the OpenAI adapter before replacing media; fixture source is rejected. It encodes half-speed readable footage, measured multi-phase captions, posters, final screenshots and honest walkthroughs. Fixture checks stay under ignored `dist/docs-workbench/verification`; each real recording preserves its report and original captures under a unique `dist/docs-workbench/captures/<run-id>` directory. The structured lesson uses actual structured-chat APIs and plain plan JSON; the UI lessons use exposed SummaryCard components. A tool reads application context in every turn; only explicit fresh, completed acceptance changes state. No SDK release is involved.
+
+
+## Canonical streaming, schemas and decisions
+
+Updated 2026-10-26. The React and Angular `concept/streaming`, `concept/schema`
+and `concept/decisions` guides use separate
+`canonical-workbench-{streaming,schemas,decisions}-{react,angular}` captures.
+Streaming and schemas use actual structured-chat SDKs and OpenAI. Streaming
+verification observes real partial title values before successful completion;
+the Schema view displays the shared contract and preview validation.
+
+Decisions uses actual `useDecision` / `decisionResource` and TypeSafe with the
+pinned `jev-1.14.0` model. The application owns the fixed plan. Whole JSON
+responses contain only the closed nextAction choice and metadata. A fresh,
+completed choice at confidence >=0.75 can be explicitly used; low confidence,
+errors and cancellation preserve state with manual review guidance. Neither
+rendering nor replay performs an application write.
+
+The selected-batch recorder verifies both framework implementations, provider
+provenance and semantic follow-ups before encoding. Each ID has MP4/WebM, poster,
+result screenshot, five measured caption phases and an honest text walkthrough.
+Reports/originals remain in unique ignored `dist/docs-workbench/captures` runs.
+CI exercises all twelve framework/lesson paths with labelled fixtures, including
+low confidence, failure, cancellation/replacement and retained conversation
+navigation. No SDK release or new dependencies.
+
+Recording presentation: the new OpenAI streaming/schema captures pace unchanged provider events at 20 ms so browser batching does not hide previews. This is disclosed in the media notes and walkthroughs. The normal demo host adds no delay; complete TypeSafe decisions are not paced as streams.

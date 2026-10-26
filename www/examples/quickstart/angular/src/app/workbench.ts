@@ -1,3 +1,4 @@
+import { DecisionWorkbenchConversation } from './decision-workbench';
 import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
 import { StructuredWorkbenchConversation } from './structured-workbench';
 import {
@@ -299,10 +300,20 @@ export class WorkbenchConversation implements AfterViewInit {
 /** Retains separate Angular resources and application captures for every conversation. */
 @Component({
   selector: 'app-workbench',
-  imports: [WorkbenchConversation, StructuredWorkbenchConversation],
+  imports: [
+    WorkbenchConversation,
+    StructuredWorkbenchConversation,
+    DecisionWorkbenchConversation,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (structured) {
+    @if (decision) {
+      <app-decision-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (structured) {
       <app-structured-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -318,6 +329,8 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly decision =
+    getWorkbenchLesson(window.location.search).format === 'decision';
   protected readonly structured =
     getWorkbenchLesson(window.location.search).format === 'structured';
   protected readonly conversations = signal([
