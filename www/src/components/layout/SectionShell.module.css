@@ -5,12 +5,7 @@
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  background-color: var(--vanilla-ivory, #faf9f0);
-  background-image: url('/image/texture/fabric.png');
-  background-size: auto;
-  background-repeat: repeat;
-  background-position: center;
-  background-attachment: fixed;
+  background: var(--color-bg);
 }
 
 .grid {
@@ -28,17 +23,24 @@
   min-width: 0;
 }
 
+/* Inset by the gutter less a link's own inline padding, so sidebar text
+   lines up with the header logo. */
 .docs .menu {
-  padding: 16px;
+  padding: var(--space-6) calc(var(--gutter) - var(--space-3));
+}
+
+@media screen and (min-width: 768px) {
+  .menu {
+    border-right: 1px solid var(--color-rule);
+  }
 }
 
 .panel {
   min-height: 0;
   min-width: 0;
-  background: #fff;
+  background: var(--color-bg);
   overflow-y: auto;
   overflow-x: hidden;
-  border-top-left-radius: 16px;
 }
 
 .blog {
@@ -48,8 +50,7 @@
 .blogPanel {
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: 16px 16px 0 0;
+  background: var(--color-bg);
 }
 
 @media screen and (min-width: 768px) {

@@ -1,7 +1,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .trap {
@@ -15,27 +15,26 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .label {
   color: var(--gray-dark, #3d3c3a);
   font:
-    500 15px/21px Fredoka,
-    sans-serif;
+    500 15px/21px var(--font-sans);
 }
 
 .control {
   width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  min-height: var(--control-lg);
+  padding: var(--space-3);
   border: 1px solid var(--gray-light, #a4a3a1);
-  border-radius: 8px;
+  border-radius: var(--radius-input);
   background: #fff;
   color: var(--gray-dark, #3d3c3a);
   font:
-    400 15px/21px Fredoka,
-    sans-serif;
+    400 15px/21px var(--font-sans);
 }
 
 textarea.control {
@@ -56,8 +55,7 @@ textarea.control {
   margin: 0;
   color: var(--indian-red-dark, #924e4e);
   font:
-    400 14px/20px Fredoka,
-    sans-serif;
+    400 14px/20px var(--font-sans);
 }
 
 .below {
@@ -72,8 +70,7 @@ textarea.control {
   margin: 0;
   color: var(--gray, #5e5c5a);
   font:
-    400 13px/18px Fredoka,
-    sans-serif;
+    400 13px/18px var(--font-sans);
 }
 
 .count,
@@ -82,8 +79,7 @@ textarea.control {
   margin: 0 0 0 auto;
   text-align: right;
   font:
-    400 13px/18px Fredoka,
-    sans-serif;
+    400 13px/18px var(--font-sans);
 }
 
 .count {
@@ -106,8 +102,7 @@ textarea.control {
   margin: 0;
   color: var(--gray, #5e5c5a);
   font:
-    400 14px/20px Fredoka,
-    sans-serif;
+    400 14px/20px var(--font-sans);
   overflow-wrap: anywhere;
 }
 
@@ -123,15 +118,15 @@ textarea.control {
 }
 
 .button {
-  padding: 10px 20px;
+  min-height: var(--control-lg);
+  padding: 0 var(--space-5);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   background: var(--sunshine-yellow, #fbbb52);
   color: var(--gray-dark, #3d3c3a);
   cursor: pointer;
   font:
-    500 16px/24px Fredoka,
-    sans-serif;
+    500 16px/24px var(--font-sans);
 }
 
 .button:hover:not(:disabled) {
@@ -154,6 +149,5 @@ textarea.control {
   background: var(--sky-blue-light, #d8ecef);
   color: var(--gray-dark, #3d3c3a);
   font:
-    400 15px/21px Fredoka,
-    sans-serif;
+    400 15px/21px var(--font-sans);
 }

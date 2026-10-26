@@ -2,8 +2,7 @@
 .link {
   color: var(--sky-blue-dark, #64afb5);
   font:
-    700 14px/21px 'JetBrains Mono',
-    monospace;
+    500 14px/21px var(--font-code);
   text-decoration: underline;
   text-decoration-style: solid;
   text-decoration-thickness: 1px;

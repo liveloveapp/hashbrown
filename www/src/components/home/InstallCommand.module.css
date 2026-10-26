@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
@@ -13,60 +13,70 @@
 
 .tabs {
   display: inline-flex;
-  padding: 4px;
-  background: #fff;
-  border: 1px solid rgba(232, 162, 61, 0.4);
-  border-radius: 12px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
 }
 
 .tabs button {
   font:
-    600 14px/1 'Fredoka',
-    sans-serif;
-  padding: 8px 16px;
+    600 14px/1 var(--font-sans);
+  min-height: var(--control-sm);
+  padding: 0 var(--space-4);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--gray);
+  color: var(--color-muted);
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.tabs button:hover {
+  color: var(--color-ink);
 }
 
 .tabs button.on {
   background: var(--sunshine-yellow);
-  color: var(--gray-dark);
+  color: var(--color-ink);
 }
 
 .command {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 520px;
-  padding: 14px 16px;
-  background: #fff;
-  border: 2px solid var(--sunshine-yellow);
-  border-radius: 14px;
-  color: var(--chocolate-brown);
+  min-height: 52px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-code-bg);
+  border-radius: var(--radius-card);
+  color: var(--color-code-fg);
 }
 
 .command code {
   min-width: 0;
   font:
-    500 15px/1.4 'JetBrains Mono',
-    monospace;
+    500 15px/1.4 var(--font-code);
   overflow-wrap: normal;
 }
 
 .copy {
   flex-shrink: 0;
   font:
-    600 13px/1 'Fredoka',
-    sans-serif;
-  padding: 8px 10px;
+    600 13px/1 var(--font-sans);
+  min-height: var(--control-md);
+  padding: 0 var(--space-3);
   border: 0;
-  border-radius: 8px;
-  background: var(--sunshine-yellow-light);
-  color: var(--chocolate-brown);
+  border-radius: var(--radius-input);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-code-fg);
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.copy:hover {
+  background: rgba(255, 255, 255, 0.18);
 }

@@ -7,9 +7,9 @@
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
-  background: var(--vanilla-ivory, #faf9f0);
-  box-shadow: 0 0 0 1px rgba(61, 60, 58, 0.12);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-rule);
 }
 
 .demo video:focus-visible {

@@ -25,10 +25,10 @@
   color: var(--gray-dark);
   /* Longhands: with the `font` shorthand, Next's CSS minifier drops
      font-variation-settings, and the variable font renders light. */
-  font-family: 'KefirVariable', sans-serif;
+  font-family: var(--font-sans);
   font-size: 28px;
   line-height: 36px;
-  font-weight: 700;
+  font-weight: 600;
   font-variation-settings: 'wght' 700;
 }
 
@@ -36,8 +36,7 @@
 .title > time {
   color: var(--gray-light, #a4a3a1);
   font:
-    400 normal 14px/18px Fredoka,
-    sans-serif;
+    400 normal 14px/18px var(--font-sans);
 }
 
 .markdown {
@@ -47,16 +46,14 @@
 
 .markdown h2 {
   font:
-    500 24px/32px Fredoka,
-    sans-serif;
+    500 24px/32px var(--font-sans);
   margin-top: 16px;
   margin-bottom: 24px;
 }
 
 .markdown h3 {
   font:
-    500 20px/28px Fredoka,
-    sans-serif;
+    500 20px/28px var(--font-sans);
   margin-top: 16px;
   margin-bottom: 24px;
 }
@@ -123,8 +120,7 @@
 
 .markdown code:not(pre code) {
   font:
-    700 16px/24px 'JetBrains Mono',
-    monospace;
+    500 16px/24px var(--font-code);
 }
 
 .markdown [data-component='code-example'] {
@@ -133,7 +129,7 @@
 
 .markdown blockquote {
   background: #faf9f0;
-  border-radius: 16px;
+  border-radius: var(--radius-shot);
   padding: 24px;
   margin: 32px 0;
 }
@@ -141,8 +137,7 @@
 .markdown blockquote > p {
   margin: 0;
   font:
-    500 24px/32px Fredoka,
-    sans-serif;
+    500 24px/32px var(--font-sans);
 }
 
 .markdown img {
@@ -159,7 +154,7 @@
 
 /* `hb-carousel` host: the Carousel root holds the `[data-scroller]` wrapper. */
 .markdown div:has(> div > [data-scroller]) {
-  margin: 32px 0 56px;
+  margin: var(--space-8) 0 var(--space-12);
 }
 
 /* Angular's `.carousel` rule matched the Carousel's inner wrapper. */
@@ -175,23 +170,20 @@
 
 .markdown table {
   border-collapse: collapse;
-  border-radius: 12px;
   margin: 0 0 24px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px #000;
+  font-size: 15px;
 }
 
 .markdown table > thead {
-  padding: 8px 16px;
-  color: rgba(250, 249, 240, 0.8);
-  background: #3d3c3a;
-  border-bottom: 1px solid #000;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-rule);
   font-size: 12px;
   font-weight: 500;
 }
 
 .markdown table tr {
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .markdown table th,
@@ -202,8 +194,7 @@
 
 .markdown table th {
   font:
-    400 16px/24px Fredoka,
-    sans-serif;
+    400 16px/24px var(--font-sans);
 }
 
 .markdown table code {
@@ -218,10 +209,10 @@
   }
 
   .title > h1 {
-    font-family: 'KefirVariable', sans-serif;
+    font-family: var(--font-sans);
     font-size: 32px;
     line-height: 44px;
-    font-weight: 800;
+    font-weight: 600;
     font-variation-settings: 'wght' 700;
     color: var(--gray-dark);
   }
