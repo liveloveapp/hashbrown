@@ -11,6 +11,7 @@ import {
   workbenchLessons,
 } from './workbench-lessons';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
+import { createWorkbenchSplit } from './workbench-split';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -288,6 +289,9 @@ export function mountWorkbench(
   function renderNavigation() {
     const current = layoutStore.get();
     root.classList.toggle('wb-rail', current.rail);
+    layout.style.setProperty('--wb-split', String(current.split));
+    layout.style.setProperty('--wb-chat', `${current.split}fr`);
+    layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       currentLesson: (commands.lesson?.id ??
@@ -526,7 +530,8 @@ export function mountWorkbench(
     timing,
   );
   footer.append(controls, events, seek);
-  layout.append(nav, chat, inspector, detail);
+  const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
+  layout.append(nav, chat, split.element, inspector, detail);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
@@ -1023,6 +1028,7 @@ export function mountWorkbench(
       pause();
       unsubscribe();
       unsubscribeLayout();
+      split.dispose();
       root.remove();
     },
   };

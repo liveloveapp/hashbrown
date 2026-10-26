@@ -237,3 +237,81 @@ test('labels each section by a heading button inside an h2', () => {
   ).toBe(true);
   shell.dispose();
 });
+
+test('steps, clamps and resets the split from the keyboard', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const grid = host.querySelector<HTMLElement>('.wb-layout');
+  const press = (key: string) =>
+    separator?.dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+    );
+
+  separator?.focus();
+  press('ArrowRight');
+  press('ArrowRight');
+
+  expect(separator?.getAttribute('aria-valuenow')).toBe('52');
+  expect(layout.get().split).toBe(52);
+  expect(grid?.style.getPropertyValue('--wb-split')).toBe('52');
+  expect(grid?.style.getPropertyValue('--wb-chat')).toBe('52fr');
+  expect(grid?.style.getPropertyValue('--wb-inspector')).toBe('48fr');
+
+  press('Home');
+  expect(layout.get().split).toBe(44);
+
+  press('ArrowLeft');
+  separator?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(layout.get().split).toBe(44);
+  expect(separator?.getAttribute('aria-valuenow')).toBe('44');
+  shell.dispose();
+});
+
+test('drags the split relative to chat and inspector', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  const chat = host.querySelector<HTMLElement>('.wb-layout > :nth-child(2)');
+  const inspector = host.querySelector<HTMLElement>(
+    '.wb-layout > :nth-child(4)',
+  );
+  vi.spyOn(chat as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(0, 600),
+  );
+  vi.spyOn(inspector as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(600, 1000),
+  );
+  const capture = vi.fn();
+  (separator as HTMLElement).setPointerCapture = capture;
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  fire('pointermove', 700);
+  const middle = layout.get().split;
+  const dragging = separator?.classList.contains('wb-dragging');
+  fire('pointermove', 900);
+  const clamped = layout.get().split;
+  fire('pointerup', 900);
+  fire('pointermove', 300);
+
+  expect(capture).toHaveBeenCalled();
+  expect(middle).toBe(70);
+  expect(dragging).toBe(true);
+  expect(clamped).toBe(75);
+  expect(layout.get().split).toBe(75);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
+  shell.dispose();
+});
+
+test('keeps the handle across store updates', () => {
+  const { host, store, shell } = mountShell();
+  const before = host.querySelector('[role=separator]');
+
+  store.record('tool', { name: 'readContext', result: null });
+
+  expect(host.querySelector('[role=separator]')).toBe(before);
+  expect(before?.querySelectorAll('.wb-grip polyline')).toHaveLength(2);
+  shell.dispose();
+});
