@@ -154,7 +154,7 @@
   min-height: var(--control-lg);
   border-radius: var(--radius-pill);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font: 600 15px/1 var(--font-sans);
   text-decoration: none;
   padding: 0 var(--space-6);

@@ -23,18 +23,18 @@
 .paramHeader > code,
 .typeParam > code,
 .returns > code {
-  color: var(--sunset-orange, #fbbb52);
+  color: var(--sunset-orange);
 }
 
 .paramHeader > code.symbol,
 .typeParam > code.symbol,
 .returns > code.symbol {
   font-weight: 300;
-  color: var(--vanilla-ivory, #faf9f0);
+  color: var(--color-code-fg);
 }
 
 .param > p {
-  color: var(--vanilla-ivory, #faf9f0);
+  color: var(--color-code-fg);
   font-size: 12px;
 }
 

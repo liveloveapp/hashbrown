@@ -19,7 +19,7 @@
 }
 
 .title > h2 {
-  color: var(--gray-dark, #3d3c3a);
+  color: var(--color-ink);
   transition: color 0.2s ease-in-out;
   /* Longhands: with the `font` shorthand, Next's CSS minifier drops
      font-variation-settings, and the variable font renders light. */
@@ -31,11 +31,11 @@
 }
 
 .link:hover > .title > h2 {
-  color: var(--sunset-orange, #e88c4d);
+  color: var(--color-accent);
 }
 
 .title > time {
-  color: var(--gray-light, #a4a3a1);
+  color: var(--color-muted);
   font:
     400 normal 14px/18px var(--font-sans);
 }

@@ -47,7 +47,7 @@
   border-radius: 50%;
   background: var(--sunshine-yellow);
   font: 600 15px/1 var(--font-heading);
-  color: var(--gray-dark);
+  color: var(--color-ink);
 }
 
 .steps h3 {
@@ -61,7 +61,7 @@
   margin-bottom: var(--space-4);
   font:
     400 15px/1.5 var(--font-sans);
-  color: var(--gray);
+  color: var(--color-muted);
 }
 
 .code {

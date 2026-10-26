@@ -15,7 +15,7 @@
 
 /* Longhands: Next's minifier drops font-variation-settings next to `font`. */
 .controls > h1 {
-  color: var(--gray, #5e5c5a);
+  color: var(--color-muted);
   font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 750;
@@ -66,7 +66,7 @@
 
 .index > hr {
   border: 0;
-  border-top: 1px solid rgba(61, 60, 58, 0.24);
+  border-top: 1px solid var(--color-rule);
   margin: 32px 32px;
 }
 
@@ -82,7 +82,7 @@
 .packages > h2 {
   font:
     500 14px/18px var(--font-code);
-  color: #774625;
+  color: var(--color-accent);
   margin-top: 32px;
 }
 
@@ -96,7 +96,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid var(--color-code-rule);
 }
 
 @media screen and (min-width: 768px) {

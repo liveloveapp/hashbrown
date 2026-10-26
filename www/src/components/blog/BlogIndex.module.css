@@ -43,7 +43,7 @@
 }
 
 .filters > button:hover {
-  border-color: rgba(61, 60, 58, 0.24);
+  border-color: var(--color-rule);
 }
 
 .posts {
@@ -53,7 +53,7 @@
 }
 
 .posts > * {
-  border: 1px solid rgba(61, 60, 58, 0.24);
+  border: 1px solid var(--color-rule);
 }
 
 @media screen and (min-width: 768px) and (max-width: 1023px) {
@@ -64,14 +64,14 @@
   .posts {
     grid-template-columns: repeat(2, 1fr);
     row-gap: 0;
-    border-top: 1px solid rgba(61, 60, 58, 0.24);
-    border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    border-top: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--color-rule);
   }
 
   .posts > * {
     border-top: none;
-    border-right: 1px solid rgba(61, 60, 58, 0.24);
-    border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    border-right: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--color-rule);
     border-left: none;
   }
 
@@ -82,7 +82,7 @@
 
   .posts > *:nth-child(2),
   .posts > *:nth-child(3) {
-    border-top: 1px solid rgba(61, 60, 58, 0.24);
+    border-top: 1px solid var(--color-rule);
   }
 
   .posts > *:nth-child(2n + 1) {
@@ -107,14 +107,14 @@
   .posts {
     grid-template-columns: repeat(3, 1fr);
     row-gap: 0;
-    border-top: 1px solid rgba(61, 60, 58, 0.24);
-    border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    border-top: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--color-rule);
   }
 
   .posts > * {
     border-top: none;
-    border-right: 1px solid rgba(61, 60, 58, 0.24);
-    border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    border-right: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--color-rule);
     border-left: none;
   }
 
@@ -130,7 +130,7 @@
   .posts > *:nth-child(2),
   .posts > *:nth-child(3),
   .posts > *:nth-child(4) {
-    border-top: 1px solid rgba(61, 60, 58, 0.24);
+    border-top: 1px solid var(--color-rule);
   }
 
   .posts > *:nth-last-child(1),
