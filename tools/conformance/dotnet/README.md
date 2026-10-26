@@ -2,7 +2,7 @@
 
 Internal test infrastructure for the documented AG-UI integration. The actual
 ASP.NET Core endpoint, Microsoft Agent Framework, AG-UI serializer, and native
-OpenAI/Azure clients run against strict aimock fixtures. Both React and Angular
+OpenAI/Azure clients run both Responses and Chat Completions against strict aimock fixtures. Both React and Angular
 consume the endpoint's real SSE stream. Model API requests are captured before
 aimock normalization, with credentials reduced to their authentication type.
 
@@ -23,7 +23,7 @@ npx nx check-docs dotnet-conformance
 The build restores with `--locked-mode`. Only deliberate dependency updates use
 `npx nx restore-lock dotnet-conformance`, followed by review of `packages.lock.json`.
 No live model credentials or account are needed. OpenAI uses a public model name;
-Azure uses a separate deployment name and its genuine deployment URL/API-key wire.
+Azure uses a separate deployment name: Chat Completions retains its native deployment URL/API-key wire, while Responses uses the native OpenAI-compatible `/openai/v1/` route and client authentication.
 
 Durable tests require real PostgreSQL 18. Without `DOTNET_TEST_POSTGRES`, the
 harness starts one owned disposable Docker container on a dynamic loopback port,
@@ -82,7 +82,7 @@ operator API records bounded external evidence and never supplies a retry queue.
 acknowledged commits; backup rollback, unsafe failover, or administrative edits
 can invalidate the guarantee.
 
-The browser matrix preserves all original 108 cases, including live-browser
+The browser matrix preserves all 172 Chat Completions cases from SDK 0.8.2 and adds the same scenarios for Responses plus native-history regressions, including live-browser
 restart and competing-instance confirmation scenarios across React/Angular and
 OpenAI/Azure. Durable HTTP coverage additionally exercises process death,
 preparation lease takeover, stale workers, committed-marker and completed-effect
@@ -133,9 +133,7 @@ canonical final history only, not general chat sessions. Defaults: original/quer
 checkpoint creation, independent ordinary terminal metadata retention and thirty-day
 audit retention from each audit's recorded time. Stored history/state can be private;
 apply database access controls and deliberate retention. Purging private bytes never
-reopens a consumed ID or silently evicts unresolved dispatch markers. Schema1-to2
-migration keeps legacy rows safe but cannot fabricate their missing history; future
-versions fail closed.
+reopens a consumed ID or silently evicts unresolved dispatch markers. Schema 1/2-to-3 migration preserves legacy rows and fingerprints without inventing a server compatibility identity or missing history; future versions fail closed.
 
 Final capture supports canonical text and server-tool history with strictly
 equivalent redundant upstream diagnostics. Meaningful unknown raw/reasoning/
@@ -146,7 +144,7 @@ no general AG-UI event replay/parity guarantee. CompletedAnswerUnavailable displ
 status without inventing assistant text or repeating the effect.
 
 The exact four C# blocks in both framework recipes are compared and compiled in all
-eight memory/PostgreSQL × confirmation/no-confirmation × optional recovery mapping
+sixteen Responses/Chat Completions × memory/PostgreSQL × confirmation/no-confirmation × optional recovery mapping
 combinations by `check-docs`, using the actual Integration source and locked packages
 without a database. Checked insertion targets reject drift instead of compiling an
 unintended combination.
@@ -165,8 +163,10 @@ unintended combination.
 | Npgsql                                      | 10.0.3                  |
 | PostgreSQL executable reference             | 18                      |
 
-The selected model wire is Chat Completions. Responses-backed .NET clients,
-Entra authentication, older .NET runtimes, reasoning,
-activities, shared chat-session state, and provider finish-reason metadata are not included in
-this initial compatibility guarantee. Hashbrown's existing Node providers keep
-their own behavior and tests.
+Responses is the recommended new-application path. Trusted `ModelApi=responses|chat-completions` selects the native client; omission in `ProviderFactory` preserves Chat Completions compatibility. Both providers use the pinned OpenAI Responses client and MEAI adapter. Responses runs explicitly disable storage, conversation IDs, continuation tokens and background mode; all canonical input and tool-call/output pairs remain application-owned.
+
+Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdentity.Create(configuration)` as both recipes show. Checkpoints bind the trusted API, provider, effective endpoint and model/deployment, separately from browser configuration. Credential rotation does not alter the hash. Endpoints with user information, query or fragment are rejected. Both recovery and direct resume reject mismatches before effect/model work, including when retained original history is gone. Null identities remain explicit legacy/unbound data and are never reassigned to Responses.
+
+**Stop and drain all older workers before migrating to schema 3.** Overlapping mixed-version rolling operation is unsupported. Older binaries cannot start afterward; already-running older workers can still read new rows without identity checks, write legacy rows or use previously issued claims. Bound fingerprints fence their old admission validator from new rows, but cannot retrofit a running process. Identity-bound stores reject unbound legacy recovery/resume with 409; protected inspection/reconciliation remains available. Plan pending approvals and unknown effects before upgrading rather than backfilling browser-selected identities or replaying work.
+
+Entra authentication, live cloud-account qualification, older .NET runtimes, native MAF approval, provider-hosted tools, reasoning/continuation recovery, activities, shared chat-session persistence and provider finish-reason metadata remain outside this compatibility guarantee. Deterministic aimock coverage is not live OpenAI/Azure service qualification. Hashbrown's existing Node providers keep their own behavior and tests.
