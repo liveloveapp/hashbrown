@@ -10,7 +10,7 @@
 
 ---
 
-Authorization: parent session permits autonomous routine design/review/subagent implementation, live qualification using specified credentials, PR/green merge and verification. Do not ask again for routine decisions. Do not read credentials or call cloud services until the live task. No provisioning or role changes. No new SDK release. Specification: `docs/superpowers/specs/2026-10-26-dotnet-entra-live-design.md`.
+Authorization: parent session permits autonomous routine design/review/subagent implementation, live qualification using specified credentials, PR/green merge and verification. Do not ask again for routine decisions. Do not read credentials or call cloud services until the live task. No provisioning or role changes. No new SDK release. The user explicitly approved Azure.Core 1.63.0 and a standalone test-consumer lockfile using existing framework/build-tool versions plus published SDK 0.8.2 on 2026-10-26. Existing AGENTS.md conventions remain applicable; no blanket waiver is claimed. Specification: `docs/superpowers/specs/2026-10-26-dotnet-entra-live-design.md`.
 
 ## File structure and boundaries
 
