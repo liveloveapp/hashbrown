@@ -49,10 +49,10 @@ Files: `dotnet.playwright.config.ts`, `harness/http-fixture.ts`, `harness/durabl
 
 Files: both `www/content/docs/{react,angular}/platform/dotnet.md`, `tools/conformance/dotnet/README.md`, `verify-recipe.mjs`, validation evidence research document.
 
-- [ ] Recommend explicit Responses configuration with OpenAI/Azure v1 endpoints, model/deployment mapping and correct credentials; show explicit Chat Completions compatibility selection. Document stateless storage, server identity migration policy and qualified feature limits.
-- [ ] Compile both guides' identical C# blocks across both APIs and all existing memory/PG × confirmation × recovery combinations; verify insertion targets and intended API selections. No live account credentials are needed for compilation.
-- [ ] Run docs normal-environment test/lint, production-environment build/routes, exact recipe verification and full relevant tests. Record warnings, counts and environment in research evidence. Do not claim aimock is live-cloud qualification or change SDK version/publish.
-- [ ] Review complete diff independently and fix material findings before PR.
+- [x] Recommend explicit Responses configuration with OpenAI/Azure v1 endpoints, model/deployment mapping and correct credentials; show explicit Chat Completions compatibility selection. Document stateless storage, server identity migration policy and qualified feature limits.
+- [x] Compile both guides' identical C# blocks across both APIs and all existing memory/PG × confirmation × recovery combinations; verify insertion targets and intended API selections. No live account credentials are needed for compilation.
+- [x] Run docs normal-environment test/lint, production-environment build/routes, exact recipe verification and full relevant tests. Record warnings, counts and environment in research evidence. Do not claim aimock is live-cloud qualification or change SDK version/publish.
+- [x] Review complete diff independently and fix material findings before PR.
 
 ## Task 5: PR, green merge and verification
 
