@@ -1,6 +1,6 @@
 # Draft: Gemma E4B tool session fails during creation
 
-Status: prepared for review; not submitted. Separate from the empty-call-ID report
+Status: retained as a draft; the user asked to skip posting. Not submitted. Separate from the empty-call-ID report
 [577500782](https://issues.chromium.org/issues/577500782).
 
 ## Title
