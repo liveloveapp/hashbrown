@@ -1,7 +1,9 @@
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import { workbenchSelectionSchema } from '../../examples/quickstart/runtime/workbench-recipes';
 import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
+import { verifyRecipeWorkbench } from './verify-recipe-workbench';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { createWorkbenchOpenAIStream } from '../../examples/quickstart/server/workbench-openai';
@@ -32,15 +34,26 @@ const transformations: WorkbenchTransformationTrace[] = [];
 const nativeRequests: Record<string, unknown>[] = [];
 let fixtureBaseURL = '';
 const decisionRequests: Decision.Request[] = [];
-let decisionOutcome: 'success' | 'low' | 'error' | 'delay' = 'success';
+let decisionOutcome: 'success' | 'low' | 'error' | 'delay' | 'unknown' =
+  'success';
 const work = resolve(
   process.env['WORKBENCH_OUTPUT'] ?? 'dist/docs-workbench/verification',
 );
 mkdirSync(work, { recursive: true });
+let recipeOutcome:
+  | 'success'
+  | 'empty'
+  | 'wrong-context'
+  | 'unknown'
+  | 'duplicate'
+  | 'error'
+  | 'length'
+  | 'schema' = 'success';
 let outcome: 'success' | 'error' | 'length' | 'schema' = 'success';
 async function* fixture(
   input: RunAgentInput,
   signal: AbortSignal,
+  lessonId?: string,
 ): AsyncGenerator<AGUIEvent> {
   const ids = { threadId: input.threadId, runId: input.runId };
   yield { type: EventType.RUN_STARTED, ...ids };
@@ -48,7 +61,11 @@ async function* fixture(
     .reverse()
     .find((message) => message.role === 'user');
   const offset = input.messages.findIndex((message) => message.id === user?.id);
+  const predictions = lessonId === 'predictions';
+  const text = lessonId === 'magic-text';
+  const verdict = predictions || text ? recipeOutcome : outcome;
   if (
+    !predictions &&
     !input.messages.slice(offset + 1).some((message) => message.role === 'tool')
   ) {
     const toolCallId = input.runId + '-context';
@@ -87,9 +104,48 @@ async function* fixture(
   };
   const format = (input.forwardedProps as { hashbrown?: { ui?: boolean } })
     ?.hashbrown?.ui;
-  const valid = JSON.stringify(format ? ui : ui.ui[0].SummaryCard.props);
+  const completionInput = predictions
+    ? (JSON.parse(String(user?.content)) as {
+        contextId: string;
+        application: { acceptedActions: string[] };
+      })
+    : null;
+  const afterRecord =
+    completionInput?.application.acceptedActions.includes('record');
+  const suggestions = afterRecord
+    ? [
+        {
+          actionId: 'review',
+          reason: 'Review the recorded demo before sharing it.',
+        },
+      ]
+    : [{ actionId: 'record', reason: 'The outline is ready to record.' }];
+  const valid = text
+    ? second
+      ? '## Your plan\n\n**Outline**, then record.[^1]\n\n- Outline the demo.\n- Record a demo.\n\n[^1]: https://hashbrown.dev'
+      : '## Your two-step plan\n\nYour application owns this **trusted plan**. Follow its two clear steps, then capture a short demonstration of the generated interface.[^1]\n\n- Outline the trusted UI demo.\n- Record a short demo showing the generated interface.\n\n[^1]: https://hashbrown.dev'
+    : predictions
+      ? JSON.stringify({
+          contextId:
+            verdict === 'wrong-context'
+              ? 'stale-context'
+              : completionInput?.contextId,
+          suggestions:
+            verdict === 'empty'
+              ? []
+              : verdict === 'unknown'
+                ? [{ actionId: 'delete', reason: 'Unknown action' }]
+                : verdict === 'duplicate'
+                  ? [suggestions[0], suggestions[0]]
+                  : suggestions,
+        })
+      : JSON.stringify(format ? ui : ui.ui[0].SummaryCard.props);
   const json =
-    outcome === 'schema' ? `${valid.slice(0, -2)},{"SummaryCard":,}]}` : valid;
+    verdict === 'schema'
+      ? predictions || text
+        ? valid.slice(0, -8)
+        : `${valid.slice(0, -2)},{"SummaryCard":,}]}`
+      : valid;
   yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
   for (let index = 0; index < json.length; index += 14) {
     await new Promise((done) => setTimeout(done, 80));
@@ -103,13 +159,13 @@ async function* fixture(
   yield { type: EventType.TEXT_MESSAGE_END, messageId };
   // Leave a visible complete-looking preview before the terminal verdict.
   await new Promise((done) => setTimeout(done, 400));
-  yield outcome === 'error'
+  yield verdict === 'error'
     ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
     : {
         type: EventType.RUN_FINISHED,
         ...ids,
         metadata: {
-          hashbrown: { finishReason: outcome === 'length' ? 'length' : 'stop' },
+          hashbrown: { finishReason: verdict === 'length' ? 'length' : 'stop' },
         },
       };
 }
@@ -120,7 +176,7 @@ if (live && (!apiKey || !model))
     'Live verification requires OPENAI_API_KEY and OPENAI_MODEL.',
   );
 const app = createWorkbenchApp({
-  decide: async (request, signal) => {
+  decide: async (request, signal, lessonId): Promise<Decision.Response> => {
     decisionRequests.push(structuredClone(request));
     if (live) {
       const key = process.env['TYPESAFE_API_KEY'],
@@ -133,7 +189,10 @@ const app = createWorkbenchApp({
         apiKey: key,
         model,
         request,
-        schema: workbenchDecisionSchema,
+        schema:
+          lessonId === 'ui-selection'
+            ? workbenchSelectionSchema
+            : workbenchDecisionSchema,
         signal,
         maxRequestChars: 16000,
       });
@@ -143,6 +202,29 @@ const app = createWorkbenchApp({
       await new Promise((resolve) => setTimeout(resolve, 600));
     if (mode === 'error') throw new Error('Intentional decision failure');
     const input = (request.state as { input: { prompt: string } }).input;
+    if (lessonId === 'ui-selection') {
+      const pick =
+        mode === 'unknown'
+          ? 'unknown'
+          : input.prompt.toLowerCase().includes('ordered')
+            ? 'steps'
+            : 'summary';
+      const confidence = mode === 'low' ? 0.4 : 0.97;
+      return {
+        kind: 'hashbrown.decision',
+        version: 1,
+        value: { pick },
+        meta: {
+          pick: {
+            confidence,
+            probabilities: {
+              summary: pick === 'summary' ? confidence : 1 - confidence,
+              steps: pick === 'steps' ? confidence : 1 - confidence,
+            },
+          },
+        },
+      };
+    }
     const choice = input.prompt.toLowerCase().includes('recorded')
       ? 'review'
       : 'record';
@@ -181,7 +263,7 @@ const app = createWorkbenchApp({
             model: live ? (model as string) : 'fixture-model',
             ...(live ? {} : { baseURL: fixtureBaseURL }),
           })(input, signal, lessonId)
-        : fixture(input, signal);
+        : fixture(input, signal, lessonId);
     return (async function* () {
       for await (const event of pacedProvider(events, signal)) {
         if (
@@ -284,9 +366,39 @@ const lessons = workbenchLessons.filter(
   (lesson) => !requestedLessons || requestedLessons.includes(lesson.id),
 );
 const report: unknown[] = [];
+/** Retains completed-path evidence separately from the publication-gating final report. */
+function saveCheckpoint(complete = false) {
+  writeFileSync(
+    resolve(work, 'checkpoint-report.json'),
+    JSON.stringify({ complete, results: report }, null, 2),
+  );
+}
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (['magic-text', 'predictions', 'ui-selection'].includes(lesson.id)) {
+        report.push(
+          await verifyRecipeWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id as 'magic-text' | 'predictions' | 'ui-selection',
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            decisionRequests,
+            outcome: (value) => {
+              recipeOutcome = value;
+            },
+            decisionOutcome: (value) => {
+              decisionOutcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (lesson.format === 'decision') {
         report.push(
           await verifyDecisionWorkbench({
@@ -302,6 +414,7 @@ try {
             },
           }),
         );
+        saveCheckpoint();
         continue;
       }
       console.log(
@@ -833,6 +946,7 @@ try {
           : {}),
         passed: true,
       });
+      saveCheckpoint();
       const video = page.video();
       await page.close();
       if (video)
@@ -848,6 +962,7 @@ try {
     resolve(work, `${live ? 'live' : 'fixture'}-report.json`),
     JSON.stringify(report, null, 2),
   );
+  saveCheckpoint(true);
   console.log(JSON.stringify(report));
 } finally {
   await browser.close();

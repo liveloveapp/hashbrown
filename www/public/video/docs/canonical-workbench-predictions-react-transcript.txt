@@ -1,0 +1,17 @@
+REACT · predictions
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+A completion proposes known action IDs for this context. Partial output cannot apply them.
+
+Dismiss the first proposal, then request fresh suggestions. The application revision stays at 0.
+
+Accept: revision 1.
+
+A fresh snapshot includes the accepted action and suggests a review.
+
+Replay proposals and state. No requests or writes.
+
+Back live. Revision 1.
+
+The source is OpenAI through the real Hashbrown SDK. This completion registers no browser tools. The structured-completion API receives an explicit current-context snapshot. Only fresh completed validated proposals can be accepted; dismissal does not apply an action. The model does not execute code or invent catalogue IDs.  Refresh clears local sessions.

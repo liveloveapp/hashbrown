@@ -87,6 +87,42 @@ more than once and does not measure unique GPU allocations. Tests use bounded,
 application-owned generation settings. The default WebLLM contract remains string-only; image input requires the separate explicit opt-in below. Tools remain unsupported. Chrome native typed
 tools have a separate experimental opt-in described below. Chrome media input has a separate explicit opt-in described below.
 
+### Deterministic WebLLM structured tool contracts
+
+The separate `experimental_webllm_tools` adapter accepts an application-owned
+text engine, a synchronous application phase callback, and a required final
+response schema (`useStructuredChat` / `useUiChat` and Angular equivalents).
+The default WebLLM adapter retains its existing text/image behavior and rejects
+tools. The tool adapter requests one closed argument object using `json_object`,
+validates the complete response before framework dispatch, and projects actual
+canonical tool results into labeled conversation data for finalization. It does
+not use native WebLLM tool calling. Permission decisions remain in application
+handlers.
+
+```bash
+LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS=1 \
+  RUNTIME_SMOKE_ANGULAR_PORT=4451 RUNTIME_SMOKE_REACT_PORT=4452 \
+  NX_DAEMON=false NX_NO_CLOUD=true \
+  npx nx local-webllm-tool-contract-e2e conformance
+```
+
+This target refuses CI and requires both explicit local flags. It builds both
+production hosts and runs model-free contracts with the existing aimock
+`LLMock` and local model shim. Handler-generated tokens and receipts drive final
+answers. Controlled isolated workers test structured clone, clean-stop/done
+ordering, Stop recovery, a native-call canary, and text/tool engine overlap.
+The suite checks structured answers, one trusted UI leaf, dependent tools,
+no-tool finalization, follow-up turn reset and replay, handler errors,
+application permission allow/deny, and malformed arguments without dispatch.
+No inference runtime, model download, native browser AI session, personal
+profile, audio, or hardware qualification is involved.
+
+List output and the durable JSON report at
+`test-results/conformance/webllm-tools/contracts-report.json` retain separate
+metadata, raw requests/schemas, raw responses, and canonical replay attachments
+for success and failure, after cleanup. These are transport/framework contracts;
+they provide no evidence about real-model schema compliance or inference quality.
+
 ### Deterministic WebLLM image contracts
 
 ```sh
@@ -704,3 +740,50 @@ credential capture. Compare route upstream headers, first bytes and browser
 response boundaries; `/health` proves process liveness, not provider readiness.
 Keep the original five-second assertion and zero retries when investigating.
 A repeat pass alone does not establish the cause of an earlier failure.
+
+### Real WebLLM structured tools canary
+
+`local-webllm-tools-live` is a separate noncached live target with exactly six
+fixed cases: Angular and React each run lookup → schema, dependent lookup →
+schema, and lookup → one trusted `status` component with title from the handler
+and count 7. This is text-only structured argument generation with an
+application-selected tool phase, not native WebLLM tool calling.
+
+The fixed structured-tool sample passed all six cases with the existing WebLLM 0.2.86 / `Phi-3.5-vision-instruct-q4f16_1-MLC` on the tested M1 Max: 14 text-only model requests, eight tool executions, six exact final outputs, and clean worker teardown. This does not qualify native WebLLM tools or broader/nested/media UI. See the [structured tool qualification report](../../docs/superpowers/research/2026-10-26-webllm-structured-tool-qualification.md).
+
+Execution and even discovery refuse CI and require all three explicit opt-ins:
+`LOCAL_LLM_E2E=1`, `LOCAL_LLM_WEBLLM_TOOLS_LIVE=1`, and `LOCAL_LLM_DOWNLOAD=1`.
+Set an absolute `WEBLLM_MODULE_PATH` to an application-provided browser bundle
+and explicitly select `WEBLLM_MODEL`; neither has a default. Model selection and
+any required download remain an application decision. The dedicated persistent
+profile is `hashbrown-webllm-vision-profile` beneath the system temporary
+directory, sharing the existing vision model cache, and the production hosts
+use ports 4451/4452. Personal/native browser profiles are never selected.
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS_LIVE=1 LOCAL_LLM_DOWNLOAD=1 \
+  WEBLLM_MODULE_PATH=/absolute/application/webllm/lib/index.js \
+  WEBLLM_MODEL=explicit-application-model \
+  npx nx local-webllm-tools-live conformance
+```
+
+Append `--list` for six-case discovery without opening a profile, reading the
+bundle, importing WebLLM, downloading, or loading a model. Generation uses
+application-owned `max_tokens=256` (override `WEBLLM_MAX_TOKENS` with an integer
+from 1 through 2048), temperature 0, seed 1, and zero retries or repair passes.
+Each fixed case owns one worker load/unload and requires stop plus iterator
+drain before accepting exact raw JSON and canonical call/result replay.
+
+The list and JSON reporters write a durable report at
+`test-results/conformance/webllm-tools-live/report.json`. File attachments are
+retained on success and failure: full engine requests, schemas, raw response
+text/chunks, canonical replay, handler operations, framework output, and
+separate metadata. Cleanup interrupts and awaits pending requests before
+unloading, terminates/revokes the worker, independently captures terminal
+status/error, and preserves the primary failure. Metadata records the actual
+bundle SHA256, selected model, browser/GPU/machine details, catalog URLs,
+estimated VRAM, and load/first-token/total timings. Catalog URLs are not
+immutable model artifact identities, estimated VRAM is not measured GPU
+allocation, and optional browser process RSS may double-count shared pages.
+No image data is retained by this text-only target. Broad/nested UI, media,
+other model choices, and other hardware require separate qualification.

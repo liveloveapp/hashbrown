@@ -4,83 +4,65 @@ import { expect, test } from 'vitest';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 test.each(SDKS)(
-  '%s selection recipe leads with the recorded app-owned views',
+  '%s selection guide opens with its canonical framework recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
+    const marker = `<hb-docs-demo demo="canonical-workbench-ui-selection-${sdk}">`;
 
-    const media = body.indexOf('<hb-docs-demo demo="ui-selection">');
-
-    expect(media).toBeGreaterThan(-1);
-    expect(media).toBeLessThan(body.indexOf('\n## '));
-    expect(body).toContain('/video/docs/ui-selection-result.png');
-    expect(body).toContain('2 products');
-    expect(body).toContain('3 total items');
-    expect(body).toContain('scripted');
+    expect(body.indexOf(marker)).toBeGreaterThan(-1);
+    expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
+    expect(body).toContain(
+      `/video/docs/canonical-workbench-ui-selection-${sdk}-result.png`,
+    );
+    expect(body).toContain(`/${sdk}.html?lesson=ui-selection`);
+    expect(body).toContain(`/docs/${sdk}/start/workbench`);
+    expect(body).toContain('two-step plan');
+    expect(body).not.toMatch(/packing|shopping|Apples|Passport/);
   },
 );
 
 test.each(SDKS)(
-  '%s selection recipe publishes exact checked source in closed disclosures',
+  '%s selection guide preserves its API and outcome boundaries',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
-    const files = [
-      'runtime/selection.ts',
-      sdk === 'react'
-        ? 'react/src/UiSelection.tsx'
-        : 'angular/src/app/ui-selection.ts',
-      'server/selection-server.ts',
-    ];
 
-    for (const file of files) {
-      const section = body.split(`<hb-code-example header="${file}">`)[1];
-      const source = readFileSync(
+    expect(body).toContain(
+      sdk === 'angular' ? 'uiDecisionResource' : 'useUiDecision',
+    );
+    expect(body).toContain('0.75');
+    expect(body).toContain('confidence');
+    expect(body).toContain('manual');
+    expect(body).toContain('authorization');
+    expect(body).toContain('Use view');
+    expect(body).toContain('/api/workbench/ui-selection');
+  },
+);
+
+test.each(SDKS)(
+  '%s selection excerpts match checked source without full-file disclosures',
+  (sdk) => {
+    const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
+    const excerpts = [
+      ...body.matchAll(
+        /<hb-code-example header="((?:runtime|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+      ),
+    ];
+    const normalize = (text: string) =>
+      text
+        .split('\n')
+        .map((line) => line.trim())
+        .join('\n')
+        .trim();
+
+    for (const [, file, excerpt] of excerpts) {
+      const checked = readFileSync(
         resolve(import.meta.dirname, '../../examples/quickstart', file),
         'utf8',
-      ).trim();
-
-      expect(body).toContain(`<hb-expander title="Complete ${file}">`);
-      expect(body).not.toMatch(/<hb-expander[^>]*\bopen[=>\s]/);
-      expect(section?.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1].trim()).toBe(
-        source,
       );
+
+      expect(normalize(checked), file).toContain(normalize(excerpt));
     }
-  },
-);
-
-test.each(SDKS)(
-  '%s selection setup explains the decision endpoint and explicit recovery',
-  (sdk) => {
-    const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
-
-    const visible = body.replace(/<hb-expander\b[\s\S]*?<\/hb-expander>/g, '');
-
-    for (const required of [
-      'TYPESAFE_API_KEY',
-      'TYPESAFE_MODEL',
-      '/api/decide',
-      '/api/chat',
-      '127.0.0.1:3001',
-      "select: 'one'",
-      'minConfidence: 0.7',
-      'null',
-      'Show summary',
-      'Show items',
-      'same order',
-      'local development',
-      'latest',
-      'authorization',
-    ]) {
-      expect(visible).toContain(required);
-    }
-    expect(visible).toContain(
-      sdk === 'react'
-        ? "decision={{ url: '/api/decide' }}"
-        : "decision: { url: '/api/decide' }",
-    );
-    expect(visible).toContain(`/docs/${sdk}/platform/typesafe`);
-    expect(visible).toContain(`/docs/${sdk}/concept/decisions`);
-    expect(visible).toContain('chat mode');
-    expect(visible).toContain('all components');
-    expect(visible).toContain('restores');
+    expect(excerpts.length).toBeGreaterThan(0);
+    expect(body).not.toMatch(/<hb-expander[^>]*\bopen[=>\s]/);
   },
 );

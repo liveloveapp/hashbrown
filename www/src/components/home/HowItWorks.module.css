@@ -1,32 +1,31 @@
 /* Port of www/analog/src/app/components/home/HowItWorks.ts. */
 .section {
   display: block;
-  padding: 72px 0;
+  padding: var(--section-gap) 0;
 }
 
 .header {
   max-width: 640px;
-  margin-bottom: 32px;
+  margin-bottom: var(--space-8);
 }
 
 .header h2 {
-  font: 800 40px/1.08 var(--font-heading);
+  font: 600 40px/1.08 var(--font-heading);
   letter-spacing: -0.03em;
-  color: var(--chocolate-brown);
+  color: var(--color-ink);
 }
 
 .header p {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   font:
-    400 17px/1.5 'Fredoka',
-    sans-serif;
-  color: var(--gray);
+    400 17px/1.5 var(--font-sans);
+  color: var(--color-muted);
 }
 
 .steps {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
+  gap: var(--space-8) var(--space-10);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -35,48 +34,44 @@
 .steps li {
   display: flex;
   flex-direction: column;
-  padding: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 18px;
-  background: #fff;
+  padding: var(--space-6) 0 0;
+  border-top: 1px solid var(--color-rule);
 }
 
 .num {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 12px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: var(--space-4);
   border-radius: 50%;
   background: var(--sunshine-yellow);
-  font: 800 15px/1 var(--font-heading);
+  font: 600 15px/1 var(--font-heading);
   color: var(--gray-dark);
 }
 
 .steps h3 {
-  margin-bottom: 6px;
-  font: 700 20px/1.2 var(--font-heading);
-  letter-spacing: -0.02em;
-  color: var(--chocolate-brown);
+  margin-bottom: var(--space-2);
+  font: 600 20px/1.2 var(--font-heading);
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
 }
 
 .steps li p {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
   font:
-    400 15px/1.5 'Fredoka',
-    sans-serif;
+    400 15px/1.5 var(--font-sans);
   color: var(--gray);
 }
 
 .code {
   margin-top: auto;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   overflow-x: auto;
-  border-radius: 12px;
-  background: var(--gray-dark);
+  border-radius: var(--radius-card);
+  background: var(--color-code-bg);
   font:
-    400 12px/1.6 'JetBrains Mono',
-    monospace;
+    400 12px/1.6 var(--font-code);
 }
 
 .code :global(pre) {

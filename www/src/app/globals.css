@@ -3,6 +3,12 @@
   scrollbar-width: thin;
 }
 
+/*
+ * Design tokens. The type, spacing and flat surfaces follow the LiveLoveApp
+ * brand (Hanken Grotesk and JetBrains Mono, no shadows or gradients, one
+ * accent); the colours stay hashbrown's. Components should reach for the
+ * semantic `--color-*` tokens; the named palette below remains for accents.
+ */
 :root {
   /* Yellows */
   --sunshine-yellow: rgba(251, 187, 82, 1);
@@ -22,21 +28,83 @@
   --olive-green: rgba(97, 111, 54, 1);
   --olive-green-light: rgba(160, 169, 133, 1);
 
-  /* Neutrals */
+  /* Neutrals: warm greys, darkened so body text holds 4.5:1 on ivory */
   --vanilla-ivory: rgba(250, 249, 240, 1);
   --chocolate-brown: rgba(119, 70, 37, 1);
   --chocolate-brown-light: rgba(173, 144, 124, 1);
-  --gray-light: rgba(164, 163, 161, 1);
-  --gray: rgba(94, 92, 90, 1);
-  --gray-dark: rgba(61, 60, 58, 1);
+  --gray-light: rgba(164, 160, 154, 1);
+  --gray: rgba(87, 82, 77, 1);
+  --gray-dark: rgba(28, 25, 23, 1);
 
   /* Reds */
   --indian-red-dark: rgba(146, 78, 78, 1);
   --indian-red: rgba(184, 96, 96, 1);
   --indian-red-light: rgba(226, 118, 118, 1);
 
-  /* Typography */
-  --font-heading: 'Inter Tight', 'Fredoka', system-ui, sans-serif;
+  /* Semantic */
+  --color-bg: #ffffff;
+  --color-surface: var(--vanilla-ivory);
+  --color-ink: var(--gray-dark);
+  --color-muted: var(--gray);
+  --color-rule: #ebe7dd;
+  --color-accent: var(--chocolate-brown);
+  --color-accent-hover: #5a3419;
+  --color-highlight: var(--sunshine-yellow-light);
+  --color-code-bg: #1c1917;
+  --color-code-fg: #ece8e1;
+  --color-selection: var(--sunshine-yellow-light);
+
+  --radius-input: 8px;
+  --radius-card: 12px;
+  --radius-shot: 16px;
+  --radius-pill: 999px;
+
+  /*
+   * Spacing: every margin, padding and gap sits on a 4px grid. Controls get
+   * their height from a fixed min-height and centre their label, rather than
+   * from odd vertical padding. 1px and 2px are kept for hairlines only.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* Layout: one gutter and one section rhythm for every page. */
+  --gutter: var(--space-4);
+  --section-gap: var(--space-16);
+  --container: 1180px;
+  --header-height: 64px;
+  --control-sm: 32px;
+  --control-md: 36px;
+  --control-lg: 44px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+
+  /* Typography (the families are set by next/font in layout.tsx) */
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-code: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+}
+
+@media screen and (min-width: 768px) {
+  :root {
+    --gutter: var(--space-6);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  :root {
+    --gutter: var(--space-8);
+    --section-gap: var(--space-24);
+  }
 }
 
 html,
@@ -147,15 +215,41 @@ html {
 }
 
 body {
-  background: #fff;
-  color: rgba(61, 60, 58, 1);
-  font-family: 'Poppins', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   font-weight: 400;
   font-style: normal;
   font-size: 1rem;
-  line-height: 1.5rem;
-  letter-spacing: 0.005em;
+  line-height: 1.6;
   height: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--color-selection);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 ol,
@@ -207,13 +301,12 @@ button {
 }
 
 pre {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-code);
 }
 
 code {
   font:
-    700 14px/1.5rem 'JetBrains Mono',
-    monospace;
+    400 0.875em/1.6 var(--font-code);
   font-variant-ligatures: none;
   font-optical-sizing: auto;
 }
@@ -268,102 +361,40 @@ code {
   color: #155724;
 }
 
-.shake:hover {
-  animation: shake 0.8s ease-in-out infinite;
-  animation-delay: 0s;
-  animation-iteration-count: infinite;
-  animation-play-state: running;
-  animation-direction: normal;
-}
-
-@keyframes shake {
-  0% {
-    transform: rotate(0deg);
-  }
-  10% {
-    transform: rotate(5deg);
-  }
-  20% {
-    transform: rotate(-5deg);
-  }
-  30% {
-    transform: rotate(4deg);
-  }
-  40% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(2deg);
-  }
-  60% {
-    transform: rotate(-2deg);
-  }
-  70% {
-    transform: rotate(1deg);
-  }
-  80% {
-    transform: rotate(-1deg);
-  }
-  90% {
-    transform: rotate(0.5deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
-
-[wwwSquircle] {
-  position: relative;
-}
-
-[wwwSquircle]::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 9999;
-  pointer-events: none;
-  background-image: var(--www-squircle-border-image-url);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-  border-radius: inherit;
-}
-
 .hb-btn {
   display: inline-flex;
   align-items: center;
-  padding: 11px 18px;
-  border: 1.5px solid var(--chocolate-brown);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--chocolate-brown);
-  font:
-    600 15px/1 'Fredoka',
-    sans-serif;
+  gap: 8px;
+  justify-content: center;
+  min-height: var(--control-lg);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 600 15px/1 var(--font-sans);
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .hb-btn.primary {
-  background: var(--chocolate-brown);
+  background: var(--color-accent);
   color: #fff;
 }
 
 .hb-btn:hover {
-  background: var(--sunshine-yellow-light);
+  background: var(--color-highlight);
 }
 
 .hb-btn.primary:hover {
-  background: var(--gray-dark);
+  background: var(--color-accent-hover);
 }
 
-.hb-btn:focus-visible {
-  outline: 2px solid var(--sunset-orange);
-  outline-offset: 2px;
+.hb-btn:active {
+  transform: scale(0.98);
 }
 
 /* Spike: custom elements with no React component yet. */

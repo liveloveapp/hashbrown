@@ -24,7 +24,7 @@ The default browser check runs both real SDKs against explicitly labelled determ
 
 `workbench-build` strictly compiles both framework sources, builds browser assets and bundles the Node server and verifier. The normal docs route-report target also runs the deterministic workbench checks. It never needs provider credentials in CI. Run recording/build targets sequentially because the checked examples share `dist/docs-quickstart/compiled`.
 
-The earlier guide-specific examples below remain useful focused tutorials. New recordings should use this workbench so prompts, requests, partial JSON, components and application changes share one teaching surface.
+The earlier guide-specific examples below remain useful focused tutorials. New recordings should use this workbench so prompts, requests, partial output, rendered views and application changes share one teaching surface.
 
 These are the complete files used in the React and Angular Quickstarts, conversation and workflow guides, Public endpoint, Threads, and JS Runtime. Guide tests compare published code blocks with checked files. `npx nx typecheck www` checks React/server types and Angular strict templates against the built packages.
 
@@ -177,9 +177,9 @@ Unique ignored `dist/docs-ui-chatbot` directories preserve browser builds,
 requests, raw captures, masters, measured phases, and verification reports.
 Run sequentially with other recorders that share compiled output.
 
-## Canonical concept lessons
+## Canonical workbench lessons
 
-The workbench now has eight allowlisted lessons in both framework hosts:
+The workbench now has eleven allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -189,6 +189,9 @@ The workbench now has eight allowlisted lessons in both framework hosts:
 - `?lesson=decisions`: complete typed next-action choices and confidence.
 - `?lesson=debugging`: deliberate local HTTP 403, same-conversation retry, captured response evidence.
 - `?lesson=request-transformation`: actual mapped provider options, public workspace policy, and sanitized callback traces.
+- `?lesson=magic-text`: streaming Markdown and actual citation inspection.
+- `?lesson=predictions`: fresh context snapshots, catalogue proposals, explicit acceptance/dismissal.
+- `?lesson=ui-selection`: whole candidate decisions, app-owned views and manual control.
 
 All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
 
@@ -244,3 +247,23 @@ walkthrough identifies its intentional local failure separately from successful
 provider turns. Unchanged OpenAI events are paced for filming and footage uses
 half-speed timing; the normal host adds no delay. Reports and originals remain
 in each unique ignored capture directory.
+
+### Canonical recipe lessons
+
+The same workbench also hosts three recipe lessons in each framework:
+
+| Lesson                 | Query                  | Actual API and boundary                                                                                    |
+| ---------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Magic Text             | `?lesson=magic-text`   | Text chat and the real SDK Markdown renderer; reference inspection does not change the plan.               |
+| Predictive suggestions | `?lesson=predictions`  | Structured completion for a fresh context snapshot; only explicit acceptance applies a known action.       |
+| UI selection           | `?lesson=ui-selection` | UI decision candidates over TypeSafe; app-owned views and props, confidence threshold and manual fallback. |
+
+Run `WORKBENCH_LESSONS=magic-text,predictions,ui-selection npx nx workbench-demo www`
+with both providers' existing server credentials and exact model settings.
+The recorder uses separate real Angular and React captures. OpenAI text and
+completion events may be paced only for filming; TypeSafe decisions arrive whole.
+Replay reads immutable frames, never repeats a request or action, and disables
+handlers while rendering the captured Markdown or trusted view registry.
+
+All eleven lessons (22 framework paths) are covered by `npx nx workbench-e2e www`.
+The optional selected-lesson filter is also available for local verification.

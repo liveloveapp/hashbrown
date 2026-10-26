@@ -854,7 +854,7 @@ for opt-in native and aimock targets; all local-model suites refuse CI.
 
 <hb-expander title="Advanced: application-owned WebLLM engines">
 
-Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. The adapter's structural API has been type-checked against WebLLM 0.2.85, including worker engines.
+Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. Structural consumer checks cover WebLLM 0.2.85 and 0.2.86 direct and worker engine declarations. These checks establish assignability, with upstream declaration-body checking skipped; they do not establish model capability.
 
 Create the worker in the application:
 
@@ -883,11 +883,39 @@ const transport = experimental_webllm({ engine });
 
 Pass `transport` to `provideHashbrown({ transport })` or an individual resource's options.
 
-The application owns model selection, downloads, worker creation, caching, and unloading. Stop active Hashbrown runs before calling `engine.unload()` and terminating the worker. The transport supports text, structured output, and trusted UI; it rejects tools and multimodal messages. Keep UI kits and schemas small, and test nested schemas on the real model.
+The application owns model selection, downloads, worker creation, caching, and unloading. Stop active Hashbrown runs before calling `engine.unload()` and terminating the worker. The default text transport supports text, structured output, and trusted UI; it rejects tools and multimodal messages. Keep UI kits and schemas small, and test nested schemas on the real model.
 
 Hashbrown converts the response schema to WebLLM's `json_object` format with a JSON-encoded `schema` string. This differs from OpenAI's `json_schema` wrapper. A truncated response raises `WEBLLM_OUTPUT_TRUNCATED` rather than completing successfully with partial JSON.
 
-Only one Hashbrown run may reserve a given engine at a time, including across transport instances. Overlap fails with `MODEL_BUSY`. Do not invoke that engine directly while Hashbrown owns a run. Cancellation interrupts the active generation without unloading the engine; a late setup or interrupted stream keeps the reservation until it drains through completion. The UI can stop before draining finishes, so an immediate replacement run may briefly receive `MODEL_BUSY`. An ignored or abandoned transport response must be disposed.
+For an application-selected image model, `experimental_webllm({ engine, media: { images: {}, resolve: resolveImage } })` enables image input through an image-capable engine. The application must qualify that model and implement `resolveImage` for every image source, including inline data. Hashbrown does not fetch image sources implicitly. Text-only input remains the default. See the [vision qualification report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-webllm-vision-qualification.md) for the tested model, exact cases, and limits.
+
+Use `experimental_webllm_tools` for opt-in, application-controlled tool phases. The application selects one declared tool; the model generates its arguments as JSON. Hashbrown buffers the complete response, validates the arguments, and then dispatches through the existing tool handler. The application selects finalization when it is ready for schema output or trusted component UI. This protocol uses structured output rather than WebLLM's native tool mode.
+
+```ts
+import { experimental_webllm_tools } from '@hashbrownai/core';
+
+const transport = experimental_webllm_tools({
+  engine,
+  toolPhase({ completedCalls }) {
+    if (completedCalls.some((call) => call.result.type === 'error')) {
+      throw new Error('The lookup failed.');
+    }
+    return completedCalls.length === 0
+      ? { type: 'tool', name: 'lookup_record' }
+      : { type: 'finalize' };
+  },
+});
+```
+
+Declare `lookup_record` through the normal tool API and supply a final response schema through structured chat or UI chat. The selector receives an owned, frozen view of the current user turn and completed calls, including their exact arguments and success/error result text. Use those results to choose dependent phases. Tool selection does not grant permission: handlers still own application authorization, confirmation, and side effects.
+
+Tool phases accept text input only. Argument schemas must use closed objects with every property required, plus supported primitive, array, enum, and `anyOf` shapes and constraints. References, optional object fields, format annotations, and reserved property names (`__proto__`, `constructor`, `prototype`) are rejected before inference. Final response schemas retain the normal structured-output/UI path. Invalid, truncated, oversized, or cancelled argument generation dispatches no complete tool call; arguments are not streamed into handlers or repaired automatically. Keep component catalogs and workflows small and qualify them on the selected model.
+
+WebLLM 0.2.86 with `Phi-3.5-vision-instruct-q4f16_1-MLC` passed six fixed text-only cases: lookup to schema, dependent lookup to schema, and lookup to one trusted Status component in both frameworks on an M1 Max. See the [structured tool qualification report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-26-webllm-structured-tool-qualification.md) for exact assertions, timings, and limits. Broader catalogs, nested tool-plus-UI, and other devices remain unqualified.
+
+The image and tool opt-ins require Hashbrown exports added after 0.8.2. All engines remain application-owned; no WebLLM dependency is added to Hashbrown. The [local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) separate deterministic contracts from opt-in real-model qualification. Audio interop remains deferred until a suitable upstream prebuilt model is available; cross-hardware qualification is also deferred.
+
+Only one Hashbrown run may reserve a given engine at a time, including across transport instances. Overlap fails with `MODEL_BUSY`. Do not invoke that engine directly while Hashbrown owns a run. Cancellation interrupts the active generation without unloading the engine; pending engine creation or an interrupted stream keeps the reservation until it drains through completion. Cancellation during media preparation releases the reservation promptly before engine creation. The UI can stop before draining finishes, so an immediate replacement run may briefly receive `MODEL_BUSY`. An ignored or abandoned transport response must be disposed.
 
 Local inference does not enable a hosted fallback automatically. Keep permission to send prompts off-device an explicit application choice. Model downloads and application telemetry have their own network behavior; local generation alone does not make the entire application offline.
 

@@ -1,0 +1,19 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.916
+A completion proposes known action IDs for this context. Partial output cannot apply them.
+
+00:00:05.916 --> 00:00:13.102
+Dismiss the first proposal, then request fresh suggestions. The application revision stays at 0.
+
+00:00:13.102 --> 00:00:14.954
+Accept: revision 1.
+
+00:00:14.954 --> 00:00:20.066
+A fresh snapshot includes the accepted action and suggests a review.
+
+00:00:20.066 --> 00:00:23.292
+Replay proposals and state. No requests or writes.
+
+00:00:23.292 --> 00:00:25.367
+Back live. Revision 1.

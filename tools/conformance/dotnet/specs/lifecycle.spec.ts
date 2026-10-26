@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
 import { createEventGate } from '../../harness/event-gate';
-import { withDotnetFixture } from '../harness/http-fixture';
+import { withDotnetFixture } from '../harness/browser-fixture';
 import { withTruncatedEndpoint } from '../harness/truncated-endpoint';
 
 test('rejects real .NET SSE cut off before its terminal event', async ({

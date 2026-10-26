@@ -29,8 +29,7 @@
    renders them; popovers sit outside an article and keep plain headings. */
 .article h2 {
   font:
-    500 18px/24px Fredoka,
-    sans-serif;
+    500 18px/24px var(--font-sans);
   color: var(--gray, #5e5c5a);
   margin: 32px 0 0;
 }

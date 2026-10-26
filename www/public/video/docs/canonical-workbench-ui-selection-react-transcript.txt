@@ -1,0 +1,17 @@
+REACT · ui-selection
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Decision responses arrive whole.  There is no narration.
+
+TypeSafe: whole choice and confidence.
+
+Use view: summary saved at revision 1.
+
+Confidence gates the preview.
+
+Show steps manually. Revision 2.
+
+Replay: no requests or writes.
+
+Back live. Revision 2.
+
+The source is TypeSafe through the real Hashbrown UI decision SDK. The application owns the plan, candidate components and props. The model chooses a known ID. Use view is explicit; low confidence and failures preserve state and offer manual choice. The recording finishes with an explicit manual steps choice at revision 2, without lowering the model-confidence threshold. Refresh clears local sessions.

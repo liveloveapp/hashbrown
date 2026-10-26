@@ -113,7 +113,13 @@ function readUiWorkflow(): UiWorkflow {
   template: `<section>
     <input data-testid="prompt" [value]="prompt()" (input)="input($event)" />
     <button data-testid="send" type="button" (click)="send()">Send</button>
-    <button data-testid="stop" type="button" (click)="chat.stop()">Stop</button>
+    <button
+      data-testid="stop"
+      type="button"
+      (click)="chat.isLoading() && chat.stop()"
+    >
+      Stop
+    </button>
     <div data-testid="operation-count">{{ snapshot().operations.length }}</div>
     <div data-testid="operations">{{ operations() }}</div>
     <div data-testid="status">{{ chat.isLoading() ? 'loading' : 'idle' }}</div>
