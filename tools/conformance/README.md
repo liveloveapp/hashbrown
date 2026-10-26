@@ -747,8 +747,9 @@ A repeat pass alone does not establish the cause of an earlier failure.
 fixed cases: Angular and React each run lookup → schema, dependent lookup →
 schema, and lookup → one trusted `status` component with title from the handler
 and count 7. This is text-only structured argument generation with an
-application-selected tool phase, not native WebLLM tool calling. The harness
-makes no qualification claim before a real run.
+application-selected tool phase, not native WebLLM tool calling.
+
+The fixed structured-tool sample passed all six cases with the existing WebLLM 0.2.86 / `Phi-3.5-vision-instruct-q4f16_1-MLC` on the tested M1 Max: 14 text-only model requests, eight tool executions, six exact final outputs, and clean worker teardown. This does not qualify native WebLLM tools or broader/nested/media UI. See the [structured tool qualification report](../../docs/superpowers/research/2026-10-26-webllm-structured-tool-qualification.md).
 
 Execution and even discovery refuse CI and require all three explicit opt-ins:
 `LOCAL_LLM_E2E=1`, `LOCAL_LLM_WEBLLM_TOOLS_LIVE=1`, and `LOCAL_LLM_DOWNLOAD=1`.

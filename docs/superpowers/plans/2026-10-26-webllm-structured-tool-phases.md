@@ -57,13 +57,15 @@ Task 4 verified and independently approved at `1622dff1b93a5031bc19cb518ad4d1ece
 
 Files: separate local real WebLLM tool-phases config/test, runtime bridge only where needed for metadata, research/README records.
 
-- [ ] Add fail-closed local/live/download gates, explicit bundle/model/no default, CI refusal, durable reporter and dedicated existing WebLLM profile selection. `--list` must not import runtime/load model.
-- [ ] Prepare fixed six-case real sample (two frameworks × lookup+schema, dependency+schema, lookup+single-component UI). No broad/nested/media claim. Hidden random tokens, exact handler args and canonical replay, schema/DOM, counts and terminal cleanup checks.
-- [ ] Run the approved application-owned `.86` bundle `/tmp/hashbrown-webllm-types/086/package/lib/index.js` and `Phi-3.5-vision-instruct-q4f16_1-MLC` with existing dedicated cache on4451/4452. No other model/runtime/download is authorized. Retain all results before follow-ups; no retries/repair/relaxed assertions to force green.
-- [ ] If strict quality fails, diagnose transport versus model with raw calls/schema/output and exact history. Fix proven bugs with RED/GREEN; ask user only for a material quality/scope/model decision.
+- [x] Add fail-closed local/live/download gates, explicit bundle/model/no default, CI refusal, durable reporter and dedicated existing WebLLM profile selection. `--list` must not import runtime/load model.
+- [x] Prepare fixed six-case real sample (two frameworks × lookup+schema, dependency+schema, lookup+single-component UI). No broad/nested/media claim. Hidden random tokens, exact handler args and canonical replay, schema/DOM, counts and terminal cleanup checks.
+- [x] Run the approved application-owned `.86` bundle `/tmp/hashbrown-webllm-types/086/package/lib/index.js` and `Phi-3.5-vision-instruct-q4f16_1-MLC` with existing dedicated cache on4451/4452. No other model/runtime/download is authorized. Retain all results before follow-ups; no retries/repair/relaxed assertions to force green.
+- [x] If strict quality fails, diagnose transport versus model with raw calls/schema/output and exact history. Fix proven bugs with RED/GREEN; ask user only for a material quality/scope/model decision.
 - [ ] Run required affected build/test/lint/API and type checks, review complete diff/spec/quality, record warnings and bounded support in research/README. Record audio/cross-hardware deferrals.
 - [ ] Commit/push/create PR, attach it to this chat. Merge only after protected CI passes; resynchronize latest main rather than messaging other chats. No publishing or upstream posting.
 - [ ] Verify merged tree matches reviewed head, rerun the bounded local real canary on merge commit, archive JSON/raw/cleanup/CI identities and update original shared worktree. Stop only for the next material decision.
+
+Task 5 harness independently approved at `15a1f02701702dc3ac84f8791c338a43f4c5d220`. Its first fixed live sample passed 6/6 cases, 14 model requests, eight tool executions and six exact final outputs, with clean unload/worker teardown and no fallback. Root independently verified archived raw evidence; see the 2026-10-26 structured-tool qualification report. Conformance now has 101 passing unit tests; docs-site build/lint and 1,005 tests passed. PR/CI delivery and post-merge verification remain pending.
 
 ## Standard command environment
 
