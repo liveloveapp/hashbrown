@@ -1,8 +1,13 @@
-import type { ImagePart } from '@ag-ui/core';
+import type { ImagePart, Message } from '@ag-ui/core';
 import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import { createLocalTextEventStream } from './local-text-event-stream';
 import type { TransportFactory, TransportRequest } from './transport';
 import { TransportError } from './transport-error';
+import {
+  preflightWebLlmImages,
+  type PreparedWebLlmImages,
+  prepareWebLlmImages,
+} from './webllm-image-media';
 
 /** Streaming request accepted by an injected WebLLM engine; user content defaults to text. @alpha */
 export interface WebLlmRequest<TUserContent = string> {
@@ -105,6 +110,12 @@ export interface ExperimentalWebLlmImageTransportOptions {
   readonly media: WebLlmImageMediaOptions;
 }
 
+/** Owned user message descriptor used to apply prepared content to a request snapshot. */
+type WebLlmUserMessage = Extract<
+  WebLlmRequest<WebLlmImageContent>['messages'][number],
+  { role: 'user' }
+>;
+
 // interruptGenerate affects an entire engine, so ownership spans transports.
 const activeEngines = new WeakSet<WebLlmEngine>();
 
@@ -112,7 +123,7 @@ const activeEngines = new WeakSet<WebLlmEngine>();
  * Creates a local transport from an application-owned WebLLM engine.
  *
  * Supports text, structured output, and trusted UI without importing WebLLM.
- * Tools and multimodal messages are rejected before generation. Overlapping
+ * Tools are rejected; images require an explicit media opt-in and resolver. Overlapping
  * runs sharing an engine fail with MODEL_BUSY; applications must also avoid
  * using that engine directly while a Hashbrown run owns it.
  * @alpha
@@ -132,7 +143,21 @@ export function experimental_webllm(
   return () => ({
     name: 'ExperimentalWebLlmTransport',
     async send(request) {
-      const input = toWebLlmRequest(request, options.model);
+      if (!request.input)
+        throw new TransportError('Missing AG-UI run input', {
+          retryable: false,
+        });
+      let imagePlan =
+        options.media &&
+        preflightWebLlmImages(request.input.messages, options.media);
+      let textInput = options.media
+        ? undefined
+        : toWebLlmRequest(request, options.model);
+      const imageMessages = new Map<WebLlmUserMessage, Message>();
+      let input: WebLlmRequest<WebLlmImageContent> | undefined =
+        textInput ??
+        toWebLlmRequest(request, options.model, !!imagePlan, imageMessages);
+      let prepared: PreparedWebLlmImages | undefined;
       if (request.signal.aborted) throw aborted();
       const { engine } = options;
       if (activeEngines.has(engine)) {
@@ -150,6 +175,13 @@ export function experimental_webllm(
       let cleanupStarted = false;
       let removeAbortListener = () => undefined as void;
       const release = () => {
+        input = undefined;
+        textInput = undefined;
+        imagePlan = undefined;
+        imageMessages.clear();
+        const owned = prepared;
+        prepared = undefined;
+        void owned?.dispose().catch(() => undefined);
         activeEngines.delete(engine);
       };
       const cleanup = () => {
@@ -191,11 +223,35 @@ export function experimental_webllm(
             cleanup();
             throw aborted();
           }
+          if (imagePlan) {
+            prepared = await prepareWebLlmImages(imagePlan, signal);
+            if (cancelled || signal.aborted) {
+              await prepared.dispose();
+              prepared = undefined;
+              throw aborted();
+            }
+            if (!input) throw aborted();
+            const contents = prepared.contents;
+            input = {
+              ...input,
+              messages: input.messages.map((message) => {
+                if (message.role !== 'user') return message;
+                const source = imageMessages.get(message);
+                return source
+                  ? { ...message, content: contents.get(source) ?? '' }
+                  : message;
+              }),
+            };
+            imageMessages.clear();
+          }
           // Promise.resolve().then also owns synchronous engine exceptions.
           pending = Promise.resolve()
             .then(() => {
-              if (cancelled) throw aborted();
-              return engine.chat.completions.create(input);
+              if (cancelled || !input) throw aborted();
+              if (options.media)
+                return options.engine.chat.completions.create(input);
+              if (!textInput) throw aborted();
+              return options.engine.chat.completions.create(textInput);
             })
             .then((stream) => stream[Symbol.asyncIterator]());
           let iterator: AsyncIterator<WebLlmChunk>;
@@ -250,11 +306,23 @@ export function experimental_webllm(
 function toWebLlmRequest(
   request: TransportRequest,
   model?: string,
-): WebLlmRequest {
+): WebLlmRequest;
+function toWebLlmRequest(
+  request: TransportRequest,
+  model: string | undefined,
+  allowImages: boolean,
+  imageMessages?: Map<WebLlmUserMessage, Message>,
+): WebLlmRequest<WebLlmImageContent>;
+function toWebLlmRequest(
+  request: TransportRequest,
+  model?: string,
+  allowImages = false,
+  imageMessages?: Map<WebLlmUserMessage, Message>,
+): WebLlmRequest<WebLlmImageContent> {
   if (!request.input)
     throw new TransportError('Missing AG-UI run input', { retryable: false });
   if (request.input.tools.length > 0) throw unsupported();
-  const messages: WebLlmRequest['messages'] = [];
+  const messages: WebLlmRequest<WebLlmImageContent>['messages'] = [];
   const instructions: string[] = [];
   for (const message of request.input.messages) {
     if (message.role === 'activity' || message.role === 'reasoning') continue;
@@ -263,8 +331,19 @@ function toWebLlmRequest(
       (message.role === 'assistant' && message.toolCalls?.length)
     )
       throw unsupported();
-    if (message.content !== undefined && typeof message.content !== 'string')
+    if (message.content !== undefined && typeof message.content !== 'string') {
+      if (
+        allowImages &&
+        message.role === 'user' &&
+        Array.isArray(message.content)
+      ) {
+        const snapshot: WebLlmUserMessage = { role: 'user', content: '' };
+        messages.push(snapshot);
+        imageMessages?.set(snapshot, message);
+        continue;
+      }
       throw unsupported();
+    }
     const content = message.content ?? '';
     if (message.role === 'system' || message.role === 'developer')
       instructions.push(content);
