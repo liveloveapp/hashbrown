@@ -250,3 +250,34 @@ test('identity retains distinct multiple trailing path separators', async () => 
     expect(fixture.requests).toHaveLength(0);
   });
 });
+
+for (const mode of ['api-key', 'azure-cli', 'managed-identity']) {
+  test(`identity excludes ${mode} authentication and managed identity selectors`, async () => {
+    await withDotnetFixture('openai', async (fixture) => {
+      const source = {
+        ...base,
+        Provider: 'azure',
+        AzureAuthentication: 'api-key',
+        ApiKey: 'rotating-key-one',
+      };
+      const target = {
+        ...source,
+        AzureAuthentication: mode,
+        ApiKey: 'rotating-key-two',
+        ManagedIdentityClientId: 'trusted-user-client',
+      };
+
+      const response = await fetch(`${fixture.url}/__test/server-identity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ original: runInput(), source, target }),
+      });
+      const result = await response.json();
+
+      expect(result.sourceIdentity).toBe(result.targetIdentity);
+      expect(result.recovery).toBe(200);
+      expect(result.resume).toBe(200);
+      expect(fixture.requests).toHaveLength(0);
+    });
+  });
+}

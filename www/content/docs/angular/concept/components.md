@@ -60,36 +60,7 @@ A partial value is useful feedback. It is still a preview. The workbench enables
 
 ## Start and render the conversation
 
-The checked client passes the catalog, tool, system instruction, and capturing transport to `uiChatResource()`:
-
-<hb-code-example header="angular/src/app/workbench.ts">
-
-```ts
-  readonly chat = uiChatResource({
-    system: workbenchSystem,
-    components,
-    transport: createWorkbenchTransport(
-      this.store,
-      undefined,
-      getWorkbenchLesson(window.location.search).endpoint,
-      { getDebugDenied: () => this.debugDenied() },
-    ),
-    tools: [
-      createTool({
-        name: 'readContext',
-        description:
-          'Read the accepted application plan and revision without changing state.',
-        handler: async () => {
-          const result = this.store.getSnapshot().application;
-          this.store.record('tool', { name: 'readContext', result });
-          return result;
-        },
-      }),
-    ],
-  });
-```
-
-</hb-code-example>
+The checked client passes the catalog, `readContext` tool, system instruction, and capturing transport to `uiChatResource()`. The [Quickstart](/docs/angular/start/quick) shows the smaller tool-free setup; this lesson adds context and explicit acceptance.
 
 The conversation renders each assistant message through `<hb-render-message [message]="message()" />`. Keep the complete message history for follow-up turns.
 

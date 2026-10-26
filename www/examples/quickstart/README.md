@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has eleven allowlisted lessons in both framework hosts:
+The workbench now has fourteen allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -192,6 +192,9 @@ The workbench now has eleven allowlisted lessons in both framework hosts:
 - `?lesson=magic-text`: streaming Markdown and actual citation inspection.
 - `?lesson=predictions`: fresh context snapshots, catalogue proposals, explicit acceptance/dismissal.
 - `?lesson=ui-selection`: whole candidate decisions, app-owned views and manual control.
+- `?lesson=first-plan`: one tool-free UI request and a trusted preview, without an application write.
+- `?lesson=conversation`: two plain-text turns, retained messages, and request identities.
+- `?lesson=system-instructions`: browser declaration and public server policy observed at provider mapping.
 
 All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
 
@@ -265,5 +268,24 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All eleven lessons (22 framework paths) are covered by `npx nx workbench-e2e www`.
+All fourteen lessons (28 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
+
+
+### Canonical onboarding
+
+The `first-plan`, `conversation`, and `system-instructions` lessons add the first
+learning steps without changing the existing lesson default. First-plan exposes
+the same pure PlanCard used by FirstPlanApp and makes no application write. The
+new FirstPlanApp and first-plan-main files are standalone source for the public
+Quickstart; older WelcomeCard/App entry points remain for legacy fixtures.
+ConversationBasics supplies the minimal text example. The workbench wraps those
+contracts in its inspector and capture timeline.
+
+Plain-text onboarding uses no tools or UI schema. The Instructions view compares
+captured browser configuration with the fixed public policy observed from actual
+mapped provider input. It is not an authorization mechanism. Fourteen lessons
+produce 28 Angular/React verification paths; recording only these three uses
+`WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`.
+The six new canonical media IDs each have MP4/WebM, poster, result image, measured
+captions and walkthrough. Preserve unique capture reports; no SDK release.

@@ -241,6 +241,9 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'magic-text',
     'predictions',
     'ui-selection',
+    'first-plan',
+    'conversation',
+    'system-instructions',
   ]);
 });
 

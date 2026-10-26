@@ -1,4 +1,8 @@
 import {
+  workbenchBrowserInstructions,
+  workbenchConversationSystem,
+} from '../../../runtime/workbench-onboarding';
+import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
@@ -44,19 +48,31 @@ import { createRecipeWorkbenchSession } from './recipe-workbench-session';
         } @else {
           <article
             class="wb-summary wb-markdown"
-            aria-label="Markdown explanation"
+            [attr.aria-label]="
+              plain ? 'Plain text response' : 'Markdown explanation'
+            "
           >
-            <hb-magic-text
-              [text]="
-                message.recipe?.kind === 'text'
-                  ? message.recipe.markdown
-                  : message.content
-              "
-              [isComplete]="complete(message.id)"
-              [caret]="busy(message.id)"
-              (linkClick)="$event.mouseEvent.preventDefault()"
-              (citationClick)="inspect($event, message.id)"
-            />
+            @if (plain) {
+              <p style="white-space: pre-wrap">
+                {{
+                  message.recipe?.kind === 'text'
+                    ? message.recipe.markdown
+                    : message.content
+                }}
+              </p>
+            } @else {
+              <hb-magic-text
+                [text]="
+                  message.recipe?.kind === 'text'
+                    ? message.recipe.markdown
+                    : message.content
+                "
+                [isComplete]="complete(message.id)"
+                [caret]="busy(message.id)"
+                (linkClick)="$event.mouseEvent.preventDefault()"
+                (citationClick)="inspect($event, message.id)"
+              />
+            }
           </article>
         }
       }
@@ -78,6 +94,10 @@ import { createRecipeWorkbenchSession } from './recipe-workbench-session';
     </div>`,
 })
 export class MagicTextWorkbenchConversation implements AfterViewInit {
+  private readonly lesson = getWorkbenchLesson(window.location.search);
+  protected readonly plain =
+    this.lesson.id === 'conversation' ||
+    this.lesson.id === 'system-instructions';
   readonly active = input.required<boolean>();
   readonly navigation = input.required<WorkbenchNavigation>();
   protected readonly session = createRecipeWorkbenchSession(
@@ -94,26 +114,36 @@ export class MagicTextWorkbenchConversation implements AfterViewInit {
   private readonly live = viewChild.required<ElementRef<HTMLElement>>('live');
   private readonly users = signal<Readonly<Record<string, ProposalOrigin>>>({});
   private readonly chat = chatResource({
-    system: workbenchTextSystem,
+    system:
+      this.lesson.id === 'system-instructions'
+        ? workbenchBrowserInstructions
+        : this.plain
+          ? workbenchConversationSystem
+          : workbenchTextSystem,
     transport: createWorkbenchTransport(
       this.session.store,
       undefined,
       getWorkbenchLesson(window.location.search).endpoint,
     ),
-    tools: [
-      createTool({
-        name: 'readContext',
-        description:
-          'Read the application-owned plan and revision. Never changes state.',
-        handler: async () => {
-          const result = workbenchApplicationInput(
-            this.session.store.getSnapshot().application,
-          );
-          this.session.store.record('tool', { name: 'readContext', result });
-          return result;
-        },
-      }),
-    ],
+    tools: this.plain
+      ? []
+      : [
+          createTool({
+            name: 'readContext',
+            description:
+              'Read the application-owned plan and revision. Never changes state.',
+            handler: async () => {
+              const result = workbenchApplicationInput(
+                this.session.store.getSnapshot().application,
+              );
+              this.session.store.record('tool', {
+                name: 'readContext',
+                result,
+              });
+              return result;
+            },
+          }),
+        ],
   });
   private readonly healthyMessages = signal<ReturnType<typeof this.chat.value>>(
     [],

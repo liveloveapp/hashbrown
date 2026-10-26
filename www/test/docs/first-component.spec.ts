@@ -10,13 +10,19 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['start', 'quick'])?.body ?? '';
 
-    const video = body.indexOf('<hb-docs-demo demo="welcome-card">');
+    const video = body.indexOf(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     const firstSection = body.indexOf('\n## ');
 
     expect(video).toBeGreaterThan(-1);
     expect(video).toBeLessThan(firstSection);
-    expect(body).toContain('/video/docs/welcome-card-result.png');
-    expect(body).toContain('WelcomeCard');
+    expect(body).toContain(
+      `/video/docs/canonical-workbench-first-plan-${sdk}-result.png`,
+    );
+    expect(body).toContain('SummaryCard');
+    expect(body).toContain('two-step plan');
+    expect(body).not.toContain('WelcomeCard');
     expect(body).toContain('OPENAI_API_KEY');
     expect(body).toContain('OPENAI_MODEL');
     expect(body).toContain('/api/chat');
@@ -32,7 +38,10 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['start', 'intro'])?.body ?? '';
 
-    expect(body).toContain('WelcomeCard');
+    expect(body).toContain('two-step plan');
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     expect(body).toContain('start/quick');
     expect(body).not.toContain('Getting started and text generation');
   },
@@ -45,16 +54,16 @@ test.each(SDKS)(
     const files =
       sdk === 'react'
         ? [
-            'src/WelcomeCard.tsx',
-            'src/App.tsx',
-            'src/main.tsx',
+            'src/PlanCard.tsx',
+            'src/FirstPlanApp.tsx',
+            'src/first-plan-main.tsx',
             'vite.config.ts',
           ]
         : [
-            'src/app/welcome-card.ts',
-            'src/app/app.ts',
+            'src/app/plan-card.ts',
+            'src/app/first-plan-app.ts',
             'src/app/app.config.ts',
-            'src/main.ts',
+            'src/first-plan-main.ts',
             'proxy.conf.json',
           ];
     const mappings = [
@@ -81,14 +90,42 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['concept', 'ai-basics'])?.body ?? '';
     const file =
       sdk === 'react'
-        ? 'react/src/Conversation.tsx'
-        : 'angular/src/app/conversation.ts';
+        ? 'react/src/ConversationBasics.tsx'
+        : 'angular/src/app/conversation-basics.ts';
     const snippet = body.match(/```(?:tsx|ts)\n([\s\S]*?)\n```/)?.[1];
 
     expect(snippet?.trim()).toBe(
       readFileSync(resolve(examples, file), 'utf8').trim(),
     );
-    expect(body).toContain('<hb-docs-demo demo="conversation">');
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-conversation-${sdk}">`,
+    );
+    expect(body).toContain('threadId');
+    expect(body).toContain('runId');
+    expect(body).toContain('page refresh');
     expect(body).not.toContain('retry()');
+  },
+);
+
+test.each(SDKS)(
+  '%s request path and instruction guides use actual canonical evidence',
+  (sdk) => {
+    const path = readDoc(sdk, ['start', 'how-it-works'])?.body ?? '';
+    const instructions =
+      readDoc(sdk, ['concept', 'system-instructions'])?.body ?? '';
+
+    expect(path).toContain(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
+    expect(path).toContain('SummaryCard');
+    expect(path).toContain('AG-UI');
+    expect(path).not.toContain('WelcomeCard');
+    expect(instructions).toContain(
+      `<hb-docs-demo demo="canonical-workbench-system-instructions-${sdk}">`,
+    );
+    expect(instructions).toContain('provider');
+    expect(instructions).toContain('browser');
+    expect(instructions).toContain('authorization');
+    expect(instructions).toContain('two-step plan');
   },
 );

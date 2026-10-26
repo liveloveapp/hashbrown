@@ -469,7 +469,7 @@ export async function verifyRecipeWorkbench(options: {
       .getByRole('button', {
         name:
           lesson === 'magic-text'
-            ? /^Parsed Markdown[.]/
+            ? /^Parsed text[.]/
             : lesson === 'predictions'
               ? /^Suggestions ready[.]/
               : /^Selection result[.]/,
