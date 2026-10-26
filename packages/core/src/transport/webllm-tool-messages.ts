@@ -44,10 +44,39 @@ export function webLlmToolObject(
   }
 }
 
-/** Rejects argument annotations that Skillet does not validate at runtime. */
+/** Rejects argument schema constraints that conversion would not enforce. */
 function assertSupportedArgumentSchema(
   schema: Readonly<Record<string, unknown>>,
 ): void {
+  const type = schema['type'];
+  if (
+    Object.hasOwn(schema, 'type') &&
+    (typeof type !== 'string' ||
+      ![
+        'string',
+        'number',
+        'integer',
+        'boolean',
+        'null',
+        'object',
+        'array',
+      ].includes(type))
+  )
+    throw webLlmToolError(
+      'Tool argument schemas require valid explicit types.',
+    );
+  if (
+    Object.hasOwn(schema, 'type') &&
+    Array.isArray(schema['enum']) &&
+    !schema['enum'].every((entry) =>
+      type === 'integer'
+        ? typeof entry === 'number' && Number.isInteger(entry)
+        : typeof entry === type,
+    )
+  )
+    throw webLlmToolError(
+      'Tool argument enum entries must match the explicit type.',
+    );
   if (Object.hasOwn(schema, 'format'))
     throw webLlmToolError(
       'Tool argument schemas cannot use format annotations.',

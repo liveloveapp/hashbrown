@@ -29,6 +29,8 @@ export interface WebLlmToolsTurnContext {
  * Configuration for application-controlled text-only structured tool phases.
  * Tool argument schemas use the Skillet-convertible closed-object subset and
  * reject format annotations, which Skillet does not validate at runtime.
+ * Explicit types must be valid supported types; enum entries must all match
+ * their explicit primitive type, including integer constraints.
  * @alpha
  */
 export interface ExperimentalWebLlmToolsTransportOptions {

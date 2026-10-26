@@ -707,3 +707,105 @@ test('permits ordinary properties named format while preserving opaque final sch
     JSON.stringify(finalSchema),
   );
 });
+
+for (const leaf of [
+  { type: 'number', enum: [true, 1] },
+  { type: 'boolean', enum: [1, true] },
+  { type: 'number', enum: [1, 'x'] },
+  { type: 'integer', enum: [1, 1.5] },
+  { type: 'string', enum: ['x', 1] },
+]) {
+  for (const wrap of [
+    (node: object) => node,
+    (node: object) => ({ type: 'array', items: node }),
+    (node: object) => ({ anyOf: [{ type: 'null' }, node] }),
+  ]) {
+    test(`rejects argument enum/type intersections without weakening constraints ${JSON.stringify(wrap(leaf))}`, () => {
+      const source = input();
+      source.tools[0].parameters = {
+        ...parameters(),
+        properties: { query: wrap(leaf) },
+      };
+      const selector = jest.fn(finalize);
+
+      const act = () => prepareWebLlmToolMessages(source, selector);
+
+      expect(act).toThrow();
+      expect(selector).not.toHaveBeenCalled();
+    });
+  }
+}
+
+for (const type of [null, false, 0, '', [], {}, 'unsupported']) {
+  for (const annotation of [{ const: 1 }, { enum: [1, true] }]) {
+    test(`rejects invalid explicit type metadata ${JSON.stringify({ type, ...annotation })}`, () => {
+      const source = input();
+      source.tools[0].parameters = {
+        ...parameters(),
+        properties: { query: { type, ...annotation } },
+      };
+      const selector = jest.fn(finalize);
+
+      const act = () => prepareWebLlmToolMessages(source, selector);
+
+      expect(act).toThrow();
+      expect(selector).not.toHaveBeenCalled();
+    });
+  }
+}
+
+for (const [leaf, value] of [
+  [{ type: 'number', enum: [1, 1.5] }, 1.5],
+  [{ type: 'integer', enum: [1, 2] }, 2],
+  [{ type: 'boolean', enum: [true, false] }, false],
+  [{ type: 'string', enum: ['x', 'y'] }, 'x'],
+  [{ enum: [1, true, 'x'] }, true],
+  [{ const: 1 }, 1],
+] as const) {
+  test(`permits supported type-consistent enums and omitted types ${JSON.stringify(leaf)}`, () => {
+    const source = input([
+      { id: 'u', role: 'user', content: 'Question' },
+      call('c', 'lookup', JSON.stringify({ query: value })),
+      result(),
+    ]);
+    source.tools[0].parameters = {
+      ...parameters(),
+      properties: { query: leaf },
+    };
+
+    const prepared = prepareWebLlmToolMessages(source, tool);
+
+    expect(prepared.context.completedCalls[0].arguments['query']).toBe(value);
+    expect(
+      prepared.selectedTool?.argumentSchema.validate({ query: value }),
+    ).toEqual({ query: value });
+  });
+}
+
+test('treats enum, type, and const property names as ordinary property names', () => {
+  const source = input([
+    { id: 'u', role: 'user', content: 'Question' },
+    call('c', 'lookup', '{"enum":1,"type":true,"const":"x"}'),
+    result(),
+  ]);
+  const schema = {
+    type: 'object',
+    properties: {
+      enum: { type: 'integer' },
+      type: { type: 'boolean' },
+      const: { type: 'string' },
+    },
+    required: ['enum', 'type', 'const'],
+    additionalProperties: false,
+  };
+  source.tools[0].parameters = schema;
+
+  const prepared = prepareWebLlmToolMessages(source, tool);
+
+  expect(prepared.context.completedCalls[0].arguments).toEqual({
+    enum: 1,
+    type: true,
+    const: 'x',
+  });
+  expect(prepared.request.response_format?.schema).toBe(JSON.stringify(schema));
+});
