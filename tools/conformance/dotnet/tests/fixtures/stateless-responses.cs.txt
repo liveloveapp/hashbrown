@@ -1,5 +1,6 @@
 #pragma warning disable OPENAI001 // Tests the pinned experimental native Responses options.
 using System.Runtime.CompilerServices;
+using System.ClientModel.Primitives;
 using Hashbrown.Conformance.Integration;
 using Microsoft.Extensions.AI;
 using OpenAI.Responses;
@@ -49,7 +50,8 @@ sealed class ProbeClient : IChatClient
     {
         Inspect(messages, options);
         await Task.CompletedTask;
-        yield return new ChatResponseUpdate(ChatRole.Assistant, "ok");
+        var native = ModelReaderWriter.Read<StreamingResponseUpdate>(BinaryData.FromString("""{"type":"response.completed","sequence_number":1,"response":{"id":"resp_options","object":"response","created_at":1720000000,"model":"model","status":"completed","output":[]}}"""))!;
+        yield return new ChatResponseUpdate(ChatRole.Assistant, "ok") { RawRepresentation = native, ResponseId = "resp_options" };
     }
     private void Inspect(IEnumerable<ChatMessage> messages, ChatOptions? options)
     {

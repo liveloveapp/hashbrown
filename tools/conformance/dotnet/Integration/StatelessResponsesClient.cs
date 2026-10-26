@@ -9,17 +9,27 @@ namespace Hashbrown.Conformance.Integration;
 public sealed class StatelessResponsesClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
 {
     /// <inheritdoc />
-    public override Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
-        CancellationToken cancellationToken = default) =>
-        base.GetResponseAsync(messages, Configure(options), cancellationToken);
+    public override async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await base.GetResponseAsync(messages, Configure(options), cancellationToken);
+        ResponsesRecoveryEvidence.Observe(response);
+        return response;
+    }
 
     /// <inheritdoc />
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages, ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var completed = false;
         await foreach (var update in base.GetStreamingResponseAsync(messages, Configure(options), cancellationToken).WithCancellation(cancellationToken))
+        {
+            ResponsesRecoveryEvidence.Observe(update);
+            completed |= update.RawRepresentation is StreamingResponseCompletedUpdate;
             yield return update;
+        }
+        if (!completed) throw new InvalidOperationException("The native Responses stream ended before successful completion.");
     }
 
     private static ChatOptions Configure(ChatOptions? options)
