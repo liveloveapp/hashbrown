@@ -153,7 +153,7 @@ test('keeps late and historical assistant cards bound to their original applicat
 });
 
 test.each(['react', 'angular'])(
-  '%s light chatbot guide publishes exact checked source in closed disclosures',
+  '%s chatbot guide follows the canonical proposal and read-only reading',
   (sdk) => {
     const body = readFileSync(
       resolve(
@@ -162,33 +162,19 @@ test.each(['react', 'angular'])(
       ),
       'utf8',
     );
-    const files = [
-      'runtime/light-chatbot.ts',
+    const file =
       sdk === 'react'
-        ? 'react/src/LightChatbot.tsx'
-        : 'angular/src/app/light-chatbot.ts',
-    ];
+        ? 'react/src/UiKitWorkbench.tsx'
+        : 'angular/src/app/ui-kit-workbench.ts';
 
-    for (const file of files) {
-      const disclosure =
-        body
-          .split(`<hb-expander title="Complete ${file}">`)[1]
-          ?.split('</hb-expander>')[0] ?? '';
-      const snippet = disclosure.match(/```(?:ts|tsx)\n([\s\S]*?)\n```/)?.[1];
-
-      expect(snippet, file).toBeDefined();
-      if (snippet)
-        expect(snippet.trim()).toBe(
-          readFileSync(
-            resolve(import.meta.dirname, '../../examples/quickstart', file),
-            'utf8',
-          ).trim(),
-        );
-      expect(disclosure).not.toContain('default-open');
-    }
-    expect(body).toContain(`<hb-docs-demo demo="ui-chatbot-${sdk}">`);
-    expect(body).toContain('no real device or live model');
-    expect(body).toContain('Apply brightness');
-    expect(body).toContain('What is the desk light set to now?');
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-ui-chatbot-${sdk}">`,
+    );
+    expect(body).toContain(file);
+    expect(body).toContain('PlanReading');
+    expect(body).toContain('read-only model report');
+    expect(body).toContain('Accept plan');
+    expect(body).toContain('authoritative application values');
+    expect(body).not.toContain('Apply brightness');
   },
 );

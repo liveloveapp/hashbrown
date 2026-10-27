@@ -8,7 +8,7 @@
 
 ## Task 1: Shared UI lesson contract, store and server
 
-Files: create `www/examples/quickstart/runtime/workbench-ui-kits.ts`; modify `workbench.ts`, `workbench-lessons.ts`, `workbench-sidebar-data.ts` (actual sidebar grouping file), `workbench-icons.ts`, `server/workbench-app.ts`; add `www/test/workbench-ui-kits.spec.ts` and server tests.
+Files: create `www/examples/quickstart/runtime/workbench-ui-kits.ts`; modify `workbench.ts`, `workbench-lessons.ts`, `workbench-lessons.ts` (workbenchLessonGroups data; renderer is `workbench-sidebar.ts`), `workbench-icons.ts`, `server/workbench-app.ts`; add `www/test/workbench-ui-kits.spec.ts` and server tests.
 - [ ] Write top-level failing tests for closed component schemas, exact original JSON validation, immutable identity, read-only PlanReading, cancelled/error/truncated/unknown/multiple/stale/replay and once-only acceptance. Exercise server pinning and original older SummaryCard behavior.
 - [ ] Run `npx nx test www --excludeTaskDependencies --args=<focused test path>` with standard NX flags; verify intended failures.
 - [ ] Implement helpers, narrow optional `uiLesson` store mode, actual kit metadata registration, component identity on frames/messages, safe acceptance boundaries, catalog/sidebar and server schemas/system/tool pinning. Keep new reusable APIs TSDoc documented and old modes unchanged.

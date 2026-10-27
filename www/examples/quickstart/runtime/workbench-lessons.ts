@@ -232,7 +232,7 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
   },
   ...(['ui-kits', 'ui-chatbot'] as const).map((id) => ({
     id,
-    title: id === 'ui-kits' ? 'UI kits' : 'UI chatbot',
+    title: id === 'ui-kits' ? 'UI Kits' : 'UI chatbot',
     format: 'ui' as const,
     inspector: 'UI' as const,
     protocol: 'chat' as const,

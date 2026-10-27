@@ -1809,3 +1809,37 @@ app-workflow-workbench-conversation[hidden] {
   margin: 8px 0 12px;
   font-size: 17px;
 }
+
+/* Trusted kit variants retain the same quiet plan vocabulary. */
+.wb .wb-steps ol {
+  list-style: none;
+  counter-reset: plan-step;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.wb .wb-steps li {
+  counter-increment: plan-step;
+  position: relative;
+  min-height: 30px;
+  padding: 4px 0 4px 40px;
+}
+.wb .wb-steps li::before {
+  content: counter(plan-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-code);
+  font-size: 13px;
+}
+.wb [data-kit-fallback] {
+  min-height: 84px;
+  color: var(--wb-muted);
+  background: var(--wb-code);
+}

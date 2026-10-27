@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has twenty-four allowlisted lessons in both framework hosts:
+The workbench now has twenty-six allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -273,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All twenty-four lessons (48 framework paths) are covered by `npx nx workbench-e2e www`.
+All twenty-six lessons (52 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -366,3 +366,7 @@ Record `WORKBENCH_LESSONS=agent-decisions,json-parser,natural-forms npx nx workb
 with existing server-only OpenAI/TypeSafe credentials and exact models. Six
 framework-specific captures disclose unchanged-event pacing and half-speed footage.
 Replay is read-only. Legacy standalone examples and media remain independent.
+
+## Canonical UI kits and chatbot
+
+The `ui-kits` and `ui-chatbot` lessons use actual framework kits and UI chat. Both capture the normalized registry, serialized schema and selected component. Only explicit, validated acceptance changes the application plan; PlanReading is read-only. Separate Angular and React recordings use real OpenAI output.

@@ -1,3 +1,4 @@
+import { workbenchUiRecordingCues } from './workbench-ui-recording';
 import { workbenchAuthoringRecordingCues } from './workbench-authoring-recording';
 import { workbenchServerRecordingCues } from './workbench-server-recording';
 import {
@@ -62,8 +63,11 @@ const reports = JSON.parse(
   agentFallbacks?: readonly boolean[];
   agentConfidences?: readonly number[];
   formFirstStepPreserved?: boolean;
+  fallbackObserved?: boolean;
 }[];
 const names: Record<string, string> = {
+  'ui-kits': 'ui-kits',
+  'ui-chatbot': 'ui-chatbot',
   'agent-decisions': 'agent-decisions',
   'json-parser': 'json-parser',
   'natural-forms': 'natural-forms',
@@ -180,9 +184,11 @@ for (const report of reports) {
     '-y',
     '-ss',
     String(
-      (report.lesson === 'natural-forms'
-        ? Math.min(duration - 0.1, report.phases['applied'] * 2 + 0.5)
-        : undefined) ??
+      (['ui-kits', 'ui-chatbot'].includes(report.lesson)
+        ? (report.phases['firstAccepted'] ?? 2) * 2
+        : report.lesson === 'natural-forms'
+          ? Math.min(duration - 0.1, report.phases['applied'] * 2 + 0.5)
+          : undefined) ??
         workbenchHistoryPosterTime(report, duration) ??
         workbenchWorkflowPosterTime(report, duration) ??
         Math.min(duration - 0.1, (report.phases['firstComplete'] ?? 2) * 2),
@@ -198,6 +204,7 @@ for (const report of reports) {
     `${base}-result.png`,
   );
   const cues =
+    workbenchUiRecordingCues(report, duration) ??
     workbenchAuthoringRecordingCues(report, duration) ??
     workbenchServerRecordingCues(report, duration) ??
     workbenchHistoryRecordingCues(report, duration) ??
@@ -281,6 +288,14 @@ for (const report of reports) {
     writeFileSync(
       `${base}-transcript.txt`,
       `${report.framework.toUpperCase()} · ${report.lesson}\n\nThis is a real provider recording of the checked canonical workbench. ${report.lesson === 'agent-decisions' ? `Real TypeSafe decisions arrive whole and select fixed read-only application handlers. Handler text is application output, not streamed model prose. Confidence is not correctness or authorization. Actual confidence scores: ${report.agentConfidences?.join(', ')}. Scores below 0.75 use the clarification handler.` : 'Real OpenAI JSON arrives through actual Hashbrown text chat and direct framework parser APIs. No local timer invents model tokens. Source completion, parser completion and original-document validation are independent.'} Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\n${report.lesson === 'natural-forms' ? 'Review copies a fresh successful valid draft into editable application fields. Edits do not apply state. Explicit Apply revalidates the fields, source identity, turn and application revision, and can run once per generation. The real readContext browser tool returns the applied plan and revision to the next request.' : 'Application state remains at revision zero.'} Replay makes no requests or writes. Refresh clears these local sessions and captures.\n`,
+    );
+  }
+  if (['ui-kits', 'ui-chatbot'].includes(report.lesson)) {
+    if (report.fallbackObserved !== true)
+      throw new Error('Missing actual framework fallback evidence');
+    writeFileSync(
+      `${base}-transcript.txt`,
+      `${report.framework.toUpperCase()} · ${report.lesson}\n\nReal OpenAI output through actual Hashbrown UI chat, kit APIs and trusted framework renderers. The actual normalized kit registry and serialized schema are captured. A real configured framework fallback was observed. Only explicit acceptance of a current completed valid proposal changes application state; PlanReading is a read-only model report. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nThe real readContext tool returns the accepted application plan and revision to the next request. Original JSON, parsed props, current source/turn/revision and once-only guards protect acceptance. Replay makes no requests or writes. Refresh clears local sessions and captures.\n`,
     );
   }
   if (['server-threads', 'public-endpoint'].includes(report.lesson)) {
