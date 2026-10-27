@@ -1,5 +1,5 @@
 import { LIVE_PROJECTS } from './live-configuration';
-import { LIVE_BUDGET_MANIFEST } from './live-budget';
+import { LIVE_BUDGET_MANIFEST, LIVE_CASE_COUNT } from './live-budget';
 
 /** Fixed-case evidence counts, distinct from the planned matrix size. */
 export interface LiveQualificationSnapshot {
@@ -75,7 +75,7 @@ function validEvidence(
   );
 }
 
-/** Tracks only the fixed 42 case identities and three preflights, failing closed on incomplete or repeated evidence. */
+/** Tracks only the fixed manifest case identities and three preflights, failing closed on incomplete or repeated evidence. */
 export function createLiveQualificationLedger() {
   const outcomes = new Set<string>();
   const fixtures = new Set<string>();
@@ -125,6 +125,7 @@ export function createLiveQualificationLedger() {
         'browser-tool',
         'server-tool',
         'cancellation-recovery',
+        'mixed-native-tools',
       ].includes(groupName)
         ? 2
         : 1;
@@ -142,12 +143,24 @@ export function createLiveQualificationLedger() {
           group.calls,
           minimum,
           path,
-          groupName === 'server-tool' ? 1 : 0,
+          ['server-tool', 'mixed-native-tools'].includes(groupName) ? 1 : 0,
           groupName === 'approval-resume-decline' ? 1 : 0,
           groupName === 'cancellation-recovery',
         )
       )
         return reject();
+      if (groupName === 'mixed-native-tools') {
+        const native = stats as Record<string, unknown>;
+        const effects = counters as Record<string, unknown>;
+        if (
+          native['calls'] !== 2 ||
+          native['nativeCoEmission'] !== true ||
+          native['nativeExactHistory'] !== true ||
+          effects['durableNative'] !== 1 ||
+          effects['nativeCode'] !== 'PDX'
+        )
+          return reject();
+      }
       if (
         project.auth === 'azure-cli' &&
         (stats as { wire: Array<{ authentication: string }> }).wire.some(
@@ -185,9 +198,9 @@ export function createLiveQualificationLedger() {
       const actual = snapshot();
       if (
         actual.invalid ||
-        actual.actualPassedCases !== 42 ||
-        actual.completedFixtures !== 42 ||
-        actual.successfulPreflights !== 3
+        actual.actualPassedCases !== LIVE_CASE_COUNT ||
+        actual.completedFixtures !== LIVE_CASE_COUNT ||
+        actual.successfulPreflights !== LIVE_BUDGET_MANIFEST.preflights.length
       )
         throw new Error('LIVE_QUALIFICATION_INCOMPLETE');
     },

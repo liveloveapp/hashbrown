@@ -1,5 +1,6 @@
 #pragma warning disable MAAI001 // Pinned MAF 1.26.0 public native-session boundary is experimental.
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 using AGUI.Abstractions;
 using Microsoft.Agents.AI;
@@ -9,6 +10,9 @@ namespace Hashbrown.Conformance.Integration;
 /// <summary>Request-local native capability. Only the authenticated composition can create or admit one.</summary>
 internal sealed class NativeSessionContext : IAsyncDisposable
 {
+    /// <summary>Maximum pre-work grace period for a current publisher to finish its reserved write.</summary>
+    private static readonly TimeSpan PublicationAdmissionWait = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan PublicationAdmissionPoll = TimeSpan.FromMilliseconds(25);
     private readonly CancellationTokenSource _work;
     private readonly CancellationTokenSource _heartbeatStop = new();
     private readonly ConcurrentDictionary<string, NativeToolCall> _pending = new(StringComparer.Ordinal);
@@ -42,10 +46,38 @@ internal sealed class NativeSessionContext : IAsyncDisposable
         if (_closed || Admission is not null || agent.Name != Registration.AgentName || key.SessionId != Input.ThreadId ||
             key.Partitions is null || !key.Partitions.TryGetValue("isolation", out var isolation) || isolation != Isolation) throw new NativeSessionRequestException(409);
         var ownedKey = new NativeSessionKey(Registration.AgentName, Scope, key.SessionId, key.Partitions);
-        Admission = await Registration.Journal.TryAcquireAsync(ownedKey, PublicRequest, cancellationToken);
+        Admission = await AcquireAsync(ownedKey, cancellationToken);
         if (Admission.Status != 200 || Admission.Lease is null) throw new NativeSessionRequestException(Admission.Status);
         foreach (var call in Admission.Snapshot?.PendingCalls ?? []) { _pending[call.Id] = call; _witnesses[call.Id] = call; }
         _heartbeat = HeartbeatAsync();
+    }
+    /// <summary>Resolves finalization races with authoritative retries, waiting briefly only on a live Publishing observation.</summary>
+    private async ValueTask<NativeSessionAdmission> AcquireAsync(NativeSessionKey key, CancellationToken cancellationToken)
+    {
+        var admission = await Registration.Journal.TryAcquireAsync(key, PublicRequest, cancellationToken);
+        if (admission.Status != 409) return admission;
+        var started = Stopwatch.GetTimestamp();
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, Cancellation);
+        budget.CancelAfter(PublicationAdmissionWait);
+        try
+        {
+            while (admission.Status == 409)
+            {
+                if (Stopwatch.GetElapsedTime(started) >= PublicationAdmissionWait) return admission;
+                var status = await Registration.Journal.ReadStatusAsync(key, budget.Token);
+                if (status.Status != 200) return new NativeSessionAdmission(status.Status);
+                if (status.State == "Ready") return await Registration.Journal.TryAcquireAsync(key, PublicRequest, budget.Token);
+                // Expiry can only refuse this wait. Actual ownership always comes from the journal's database-clock acquisition.
+                if (status.State != "Publishing" || status.LeaseUntil is null || status.LeaseUntil <= DateTimeOffset.UtcNow) return admission;
+                var remaining = PublicationAdmissionWait - Stopwatch.GetElapsedTime(started);
+                if (remaining <= TimeSpan.Zero) return admission;
+                await Task.Delay(remaining < PublicationAdmissionPoll ? remaining : PublicationAdmissionPoll, budget.Token);
+                admission = await Registration.Journal.TryAcquireAsync(key, PublicRequest, budget.Token);
+            }
+            return admission;
+        }
+        catch (OperationCanceledException) when (budget.IsCancellationRequested && !cancellationToken.IsCancellationRequested && !Cancellation.IsCancellationRequested)
+        { return admission; }
     }
     internal void Bind(AgentSession session)
     {

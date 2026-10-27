@@ -27,6 +27,42 @@ Check(toolInner.Options!.ToolMode is RequiredChatToolMode required && required.R
 await foreach (var _ in toolClient.GetStreamingResponseAsync([.. messages, new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call_1", "getWeather", new Dictionary<string,object?> { ["city"] = "Paris" })]), new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call_1", "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}")])], original)) { }
 Check(toolInner.Options!.ToolMode is NoneChatToolMode, "tool continuation was not disabled");
 
+using var mixedState = new FixtureLiveGate("mixed-native-tools");
+Check(mixedState.MaxCalls == 2, "native mixed cap changed");
+mixedState.Dispatch(); mixedState.Dispatch();
+await Reject(() => { mixedState.Dispatch(); return Task.CompletedTask; }, "LIVE_CALL_CAP");
+Check(mixedState.Calls == 2, "native mixed cap exceeded");
+
+var mixedCalls = new FunctionCallContent[] { new("b1", "getWeather", new Dictionary<string, object?> { ["city"] = "Paris" }), new("s1", "lookupAirport", new Dictionary<string, object?> { ["code"] = "PDX" }) };
+var mixedInput = new ChatMessage[] { new(ChatRole.User, "request") };
+using var nativeMixedState = new FixtureLiveGate("mixed-native-tools");
+using var nativeMixedInner = new MixedProbe(mixedCalls);
+using var nativeMixedClient = new FixtureLiveModelClient(nativeMixedInner, nativeMixedState);
+await foreach(var _ in nativeMixedClient.GetStreamingResponseAsync(mixedInput)) { }
+if (nativeMixedInner.Options?.AllowMultipleToolCalls != true || nativeMixedInner.Options.ToolMode is not RequiredChatToolMode { RequiredFunctionName: null }) throw new Exception("mixed choice not required");
+await Reject(async () => { await foreach (var _ in nativeMixedClient.GetStreamingResponseAsync([.. mixedInput, new(ChatRole.Assistant, [.. mixedCalls]), new(ChatRole.Tool, [new FunctionResultContent("b1", "{\"city\":\"Paris\"}")])])) { } }, "LIVE_TOOL_INVALID");
+Check(nativeMixedState.Calls == 1, "incomplete native history acquired model work");
+var nativeWeather = "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}";
+var nativeAirport = "{\"code\":\"PDX\",\"name\":\"Portland International Airport\"}";
+foreach (var (weatherResult, airportResult) in new[] {
+    ("{\"city\":\"Paris\",\"temperatureC\":999,\"condition\":\"sunny\"}", nativeAirport),
+    ("{\"city\":\"Paris\",\"temperatureC\":21}", nativeAirport),
+    ("{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\",\"extra\":true}", nativeAirport),
+    (nativeWeather, "{\"code\":\"PDX\",\"name\":\"Wrong Airport\"}"),
+    (nativeWeather, "{\"code\":\"PDX\"}"),
+    (nativeWeather, "{\"code\":\"PDX\",\"name\":\"Portland International Airport\",\"extra\":true}") })
+{
+    await Reject(async () => { await foreach (var _ in nativeMixedClient.GetStreamingResponseAsync([.. mixedInput, new(ChatRole.Assistant, [.. mixedCalls]), new(ChatRole.Tool, [new FunctionResultContent("b1", weatherResult), new FunctionResultContent("s1", airportResult)])])) { } }, "LIVE_TOOL_INVALID");
+    Check(nativeMixedState.Calls == 1, "changed native result acquired model work");
+}
+await foreach(var _ in nativeMixedClient.GetStreamingResponseAsync([..mixedInput,new(ChatRole.Assistant,[..mixedCalls]),new(ChatRole.Tool,[new FunctionResultContent("b1",nativeWeather),new FunctionResultContent("s1",nativeAirport)])])) { }
+var nativeMixedStats = JsonSerializer.SerializeToElement(nativeMixedState.Snapshot());
+if(nativeMixedState.Calls != 2 || !nativeMixedStats.GetProperty("nativeCoEmission").GetBoolean() || !nativeMixedStats.GetProperty("nativeExactHistory").GetBoolean()) throw new Exception("missing proof");
+try { await foreach(var _ in nativeMixedClient.GetStreamingResponseAsync(mixedInput)) {} throw new Exception("cap absent"); } catch (InvalidOperationException) { }
+using var sequential = new FixtureLiveGate("mixed-native-tools");
+using var sequentialClient = new FixtureLiveModelClient(new MixedProbe([mixedCalls[0]]),sequential);
+try { await foreach(var _ in sequentialClient.GetStreamingResponseAsync(mixedInput)) {} throw new Exception("sequential fallback accepted"); } catch(InvalidOperationException e) when(e.Message == "LIVE_TOOL_INVALID") {}
+
 var invalidHistory = new FixtureLiveGate("browser-tool");
 using var invalidClient = new FixtureLiveModelClient(new ProbeClient(), invalidHistory);
 await Reject(async () => { await foreach (var _ in invalidClient.GetStreamingResponseAsync([.. messages, new ChatMessage(ChatRole.Tool, [new FunctionResultContent("unowned", "secret-canary")])], original)) { } }, "LIVE_TOOL_INVALID");
@@ -216,4 +252,12 @@ sealed class RedirectLoopback(HttpMessageHandler inner, Uri loopback) : Delegati
         request.RequestUri = new Uri(loopback, request.RequestUri!.AbsolutePath);
         return base.SendAsync(request, cancellationToken);
     }
+}
+
+sealed class MixedProbe(FunctionCallContent[] calls): IChatClient {
+ int count; public ChatOptions? Options;
+ public void Dispose(){}
+ public object? GetService(Type t, object? key=null)=>null;
+ public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> m,ChatOptions? o=null,CancellationToken c=default)=>throw new NotSupportedException();
+ public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> m,ChatOptions? o=null,[EnumeratorCancellation]CancellationToken c=default) { await Task.CompletedTask; Options=o; yield return ++count==1 ? new ChatResponseUpdate { Contents=[..calls] } : new ChatResponseUpdate { Contents=[new TextContent("done")] }; }
 }

@@ -1,12 +1,19 @@
 import { once } from 'node:events';
 import { createServer, request as upstreamRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { StringDecoder } from 'node:string_decoder';
 import { recoveryRequestRecorder } from './recovery-timings';
 
 /** Stable browser address with captured request bodies and selectable application instance. */
 export interface RoutedEndpoint {
   readonly url: string;
   readonly requests: readonly string[];
+  /** Bounded genuine run response bytes observed without changing SSE forwarding. */
+  readonly responses: readonly {
+    readonly body: string;
+    readonly truncated: boolean;
+    readonly complete: boolean;
+  }[];
   readonly routeTo: (target: string) => void;
 }
 
@@ -17,6 +24,11 @@ export async function withRoutedEndpoint<T>(
 ): Promise<T> {
   let target = initialTarget;
   const requests: string[] = [];
+  const responses: Array<{
+    body: string;
+    truncated: boolean;
+    complete: boolean;
+  }> = [];
   const beginTrace = recoveryRequestRecorder('route');
   const routeTrace = beginTrace();
   const server = createServer(async (request, response) => {
@@ -59,6 +71,27 @@ export async function withRoutedEndpoint<T>(
       });
       response.on('drain', () => trace('drain'));
       upstream.once('response', (result) => {
+        if (destination.pathname === '/run') {
+          const captured = { body: '', truncated: false, complete: false };
+          responses.push(captured);
+          const decoder = new StringDecoder('utf8');
+          let bytes = 0;
+          result.on('data', (chunk: Buffer) => {
+            const remaining = 1024 * 1024 - bytes;
+            if (chunk.length > remaining) captured.truncated = true;
+            if (remaining > 0) {
+              const prefix = chunk.subarray(0, remaining);
+              bytes += prefix.length;
+              captured.body += decoder.write(prefix);
+            }
+          });
+          result.on('end', () => {
+            if (!captured.truncated) {
+              captured.body += decoder.end();
+              captured.complete = true;
+            }
+          });
+        }
         trace('upstream-headers', result.statusCode);
         result.once('data', () => trace('first-byte'));
         result.once('end', () => trace('end'));
@@ -90,6 +123,7 @@ export async function withRoutedEndpoint<T>(
     return await use({
       url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/run`,
       requests,
+      responses,
       routeTo: (destination) => {
         target = destination;
         routeTrace('route-change');

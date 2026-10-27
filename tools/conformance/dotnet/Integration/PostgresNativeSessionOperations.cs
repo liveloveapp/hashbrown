@@ -117,12 +117,13 @@ public sealed partial class PostgresNativeSessionJournal
             if (row.Expires <= now) return new(row.State == "Retired" ? 410 : 200,
                 row.State is "Publishing" or "PublicationUnknown" ? "PublicationUnknown" : row.State == "Blocked" ? "Blocked" : "Expired", row.Generation, row.Revision, null, row.LeaseUntil);
             string? history = null;
+            var completed = false;
             if (row.State == "Ready")
             {
-                try { history = ValidatePayload(row.Payload, key).PublicRequest; }
+                try { var snapshot = ValidatePayload(row.Payload, key); history = snapshot.PublicRequest; completed = snapshot.TurnCompleted; }
                 catch (Exception exception) when (BadInput(exception)) { return new(503, "Unavailable", row.Generation, row.Revision); }
             }
-            return new(row.State == "Retired" ? 410 : 200, row.State, row.Generation, row.Revision, history, row.LeaseUntil);
+            return new(row.State == "Retired" ? 410 : 200, row.State, row.Generation, row.Revision, history, row.LeaseUntil, !row.EverSaved, completed);
         }
         catch (Exception exception) when (exception is NpgsqlException or TimeoutException) { return new(503); }
     }

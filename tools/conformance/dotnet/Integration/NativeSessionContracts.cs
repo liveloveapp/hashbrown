@@ -121,7 +121,7 @@ public sealed record NativeSessionSave
 /// <summary>Private receipt binding publication to the successfully saved owner and revision.</summary>
 public sealed record NativeSavedReceipt(NativeSessionLease Lease, long SavedRevision);
 /// <summary>Bounded public status; private native JSON is never exposed.</summary>
-public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null);
+public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null, bool IsNew = false, bool TurnCompleted = false);
 /// <summary>Scoped operator CAS requiring explicit quiescence and external evidence.</summary>
 public sealed record NativeSessionReconciliation(string ExpectedState, long ExpectedGeneration, long ExpectedRevision, string Outcome, string Reason, string EvidenceReference, bool ExternalQuiescenceAcknowledged);
 /// <summary>Immutable operator audit entry.</summary>

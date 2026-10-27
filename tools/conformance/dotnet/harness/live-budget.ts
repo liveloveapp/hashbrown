@@ -11,6 +11,7 @@ export const LIVE_BUDGET_MANIFEST = Object.freeze({
       { name: 'server-tool', calls: 2 },
       { name: 'approval-resume-decline', calls: 3 },
       { name: 'cancellation-recovery', calls: 3 },
+      { name: 'mixed-native-tools', calls: 2 },
     ].map((group) => Object.freeze(group)),
   ),
   preflights: Object.freeze([
@@ -18,13 +19,17 @@ export const LIVE_BUDGET_MANIFEST = Object.freeze({
     'azure-responses',
     'azure-cli-chat',
   ]),
-  reservedCalls: 87,
+  reservedCalls: 99,
   maxRunCalls: 128,
   maxScenarioCalls: 4,
   maxOutputTokens: 384,
   scenarioTimeoutMs: 60_000,
   runTimeoutMs: 900_000,
 });
+
+/** Number of distinct cases required by the frozen project/group manifest. */
+export const LIVE_CASE_COUNT =
+  LIVE_PROJECTS.length * LIVE_BUDGET_MANIFEST.groups.length;
 
 /** Immutable counters safe to include in diagnostic metadata. */
 export interface LiveBudgetSnapshot {

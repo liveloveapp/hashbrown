@@ -106,7 +106,7 @@ public static class NativeSessionHistory
             }
         return copy;
     }
-    /// <summary>Checks exact owned-prefix admission and only the expected client results or one subsequent user turn.</summary>
+    /// <summary>Checks owned history with exact pending client results after their calls, or one subsequent user turn.</summary>
     public static bool Admits(string incoming, NativeSessionSnapshot? stored)
     {
         var current = JsonNode.Parse(incoming)!.AsObject();
@@ -114,15 +114,40 @@ public static class NativeSessionHistory
         if (stored is null) return messages.All(message => message!["role"]!.GetValue<string>() is "user" or "system") && messages.Any(message => message!["role"]!.GetValue<string>() == "user");
         var original = JsonNode.Parse(stored.PublicRequest)!.AsObject();
         var prefix = original["messages"]!.AsArray();
-        if (messages.Count < prefix.Count || prefix.Where((message, index) => !EquivalentMessage(message, messages[index])).Any()) return false;
         current.Remove("messages"); original.Remove("messages");
+        if (stored.ExpectedBrowserCallIds.Count != 0)
+            return JsonNode.DeepEquals(current, original) && AdmitsBrowserResults(messages, prefix, stored.ExpectedBrowserCallIds);
+        if (messages.Count < prefix.Count || prefix.Where((message, index) => !EquivalentMessage(message, messages[index])).Any()) return false;
         if (!stored.TurnCompleted && !JsonNode.DeepEquals(current, original)) return false;
         var delta = messages.Skip(prefix.Count).ToArray();
-        if (stored.ExpectedBrowserCallIds.Count != 0)
-        {
-            var expected = stored.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal);
-            return delta.Length == expected.Count && delta.All(message => message!["role"]?.GetValue<string>() == "tool" && expected.Remove(message["toolCallId"]!.GetValue<string>())) && expected.Count == 0;
-        }
         return stored.TurnCompleted && delta.Length == 1 && delta[0]!["role"]!.GetValue<string>() == "user";
     }
+    private static bool AdmitsBrowserResults(JsonArray messages, JsonArray prefix, IReadOnlyList<string> expectedIds)
+    {
+        var expected = expectedIds.ToHashSet(StringComparer.Ordinal);
+        if (expected.Count != expectedIds.Count) return false;
+        var announced = new HashSet<string>(StringComparer.Ordinal);
+        var received = new HashSet<string>(StringComparer.Ordinal);
+        var ownedIndex = 0;
+        foreach (var message in messages)
+        {
+            var resultId = message!["role"]?.GetValue<string>() == "tool" ? message["toolCallId"]?.GetValue<string>() : null;
+            if (resultId is not null && expected.Contains(resultId))
+            {
+                if (!announced.Contains(resultId) || !received.Add(resultId)) return false;
+                continue;
+            }
+            if (ownedIndex >= prefix.Count || !EquivalentMessage(prefix[ownedIndex], message)) return false;
+            // Only a matched stored call permits a new result. Incoming calls never establish authority.
+            if (prefix[ownedIndex]!["toolCalls"] is JsonArray calls)
+                foreach (var call in calls)
+                {
+                    var callId = call!["id"]!.GetValue<string>();
+                    if (expected.Contains(callId)) announced.Add(callId);
+                }
+            ownedIndex++;
+        }
+        return ownedIndex == prefix.Count && received.SetEquals(expected);
+    }
+
 }

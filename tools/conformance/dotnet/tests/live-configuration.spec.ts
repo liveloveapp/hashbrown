@@ -198,3 +198,19 @@ test('public build and browser child environments exclude all provider and ident
   });
   expect(Object.isFrozen(result)).toBe(true);
 });
+
+test('public child environment excludes PostgreSQL fixture secrets', async () => {
+  const { publicChildEnvironment } =
+    await import('../harness/live-configuration');
+  const input = {
+    PATH: '/bin',
+    DOTNET_TEST_POSTGRES: 'postgres-secret-sentinel',
+    InterruptConnectionString: 'interrupt-secret-sentinel',
+    InterruptSchema: 'schema-secret-sentinel',
+  };
+
+  const actual = publicChildEnvironment(input);
+
+  expect(actual).toEqual({ PATH: '/bin' });
+  expect(JSON.stringify(actual)).not.toContain('sentinel');
+});

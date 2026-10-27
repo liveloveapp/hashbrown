@@ -40,6 +40,10 @@ export function withDotnetFixture<T>(
 export function withDurableCluster<T>(
   provider: 'openai' | 'azure',
   use: (cluster: DurableFixtureCluster) => Promise<T>,
+  environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
-  return withHttpCluster(provider, use, { ModelApi: projectModelApi() });
+  return withHttpCluster(provider, use, {
+    ModelApi: projectModelApi(),
+    ...environment,
+  });
 }

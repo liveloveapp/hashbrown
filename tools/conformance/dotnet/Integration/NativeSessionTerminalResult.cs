@@ -27,11 +27,13 @@ internal sealed class NativeSessionTerminalResult(IResult inner, NativeSessionCo
             var receipt = request.Receipt;
             if (receipt is null || !projection.Result.Available || !await request.Registration.Journal.AuthorizePublicationAsync(receipt, request.Cancellation))
                 throw new NativeSessionRequestException(409);
-            using var publication = CancellationTokenSource.CreateLinkedTokenSource(request.Cancellation);
-            publication.CancelAfter(TimeSpan.FromSeconds(5));
+            // The durable reservation owns this bounded write even when the SDK closes its reader on RUN_FINISHED.
+            using var publication = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await projection.ReleaseTerminalAsync(async bytes => await original.Stream.WriteAsync(bytes, publication.Token), publication.Token);
             await original.Stream.FlushAsync(publication.Token);
-            if (!await request.Registration.Journal.FinalizePublicationAsync(receipt, publication.Token)) throw new NativeSessionRequestException(409);
+            // Successful transport completion must not lose its bookkeeping when the SDK closes its reader on RUN_FINISHED.
+            using var finalization = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            if (!await request.Registration.Journal.FinalizePublicationAsync(receipt, finalization.Token)) throw new NativeSessionRequestException(409);
         }
         catch (Exception exception) when (exception is NativeSessionRequestException or DbException or TimeoutException)
         {

@@ -155,3 +155,125 @@ test('live child cleanup kills an independent-stdio descendant after its parent 
     await rm(directory, { recursive: true, force: true });
   }
 }, 10_000);
+
+test('native live cleanup drains its worker before a separate credential-free schema owner starts', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-cleanup-'));
+  const executable = join(directory, 'worker');
+  const observation = join(directory, 'observation.json');
+  const owner = join(directory, 'owner.pid');
+  await writeFile(
+    executable,
+    `#!${process.execPath}
+const fs=require('node:fs'), http=require('node:http');
+if(process.env.FixtureDropSchemaOnly==='true') {
+  let alive=true; try { process.kill(Number(fs.readFileSync(${JSON.stringify(owner)},'utf8')),0); } catch { alive=false; }
+  fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify({alive,key:process.env.ApiKey,profile:process.env.AZURE_CONFIG_DIR,pg:process.env.InterruptConnectionString,schema:process.env.InterruptSchema}));
+} else fs.writeFileSync(${JSON.stringify(owner)},String(process.pid));
+const server=http.createServer((req,res)=>{ req.resume(); res.end('ok'); });
+server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:'+server.address().port));
+`,
+  );
+  await chmod(executable, 0o755);
+  const controller = new AbortController();
+  const schema = 'durable_live_0123456789abcdef0123456789abcdef';
+  const fixture = await startNativeLiveFixture(
+    {
+      DOTNET_HOST_PATH: executable,
+      FixtureNativeSessions: 'true',
+      InterruptConnectionString: 'postgres-secret-sentinel',
+      InterruptSchema: schema,
+      ApiKey: 'provider-secret-sentinel',
+      AZURE_CONFIG_DIR: 'profile-secret-sentinel',
+    },
+    'mixed-native-tools',
+    controller.signal,
+    [],
+  );
+
+  try {
+    controller.abort();
+    await fixture.stop();
+
+    expect(JSON.parse(await readFile(observation, 'utf8'))).toEqual({
+      alive: false,
+      pg: 'postgres-secret-sentinel',
+      schema,
+    });
+    await fixture.stop();
+  } finally {
+    await fixture.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 10_000);
+
+test('schema cleanup mode needs no provider configuration and rejects unowned schemas', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const { publicChildEnvironment } =
+    await import('../harness/live-configuration');
+  const environment = {
+    ...publicChildEnvironment(process.env),
+    FixtureDropSchemaOnly: 'true',
+    InterruptConnectionString:
+      'Host=127.0.0.1;Port=1;Username=unused;Password=postgres-secret-sentinel;Database=postgres',
+    InterruptSchema: 'durable_live_0123456789abcdef0123456789abcdef',
+  };
+  const fixture = await startNativeLiveFixture(
+    environment,
+    'preflight',
+    new AbortController().signal,
+    [],
+  );
+
+  try {
+    expect((await fetch(`${fixture.url}/health`)).ok).toBe(true);
+    expect((await fetch(`${fixture.url}/__test/live-stats`)).status).toBe(404);
+    expect((await fetch(`${fixture.url}/__test/counters`)).status).toBe(404);
+  } finally {
+    await fixture.stop();
+  }
+  await expect(
+    startNativeLiveFixture(
+      { ...environment, InterruptSchema: 'public' },
+      'preflight',
+      new AbortController().signal,
+      [],
+    ),
+  ).rejects.toThrow('LIVE_CHILD_START_FAILED');
+}, 20_000);
+
+test('native live cleanup failure is retained after all owned children stop', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const directory = await mkdtemp(
+    join(tmpdir(), 'hashbrown-live-cleanup-failed-'),
+  );
+  const executable = join(directory, 'worker');
+  await writeFile(
+    executable,
+    `#!${process.execPath}
+const http=require('node:http');
+const server=http.createServer((req,res)=>{req.resume();res.writeHead(process.env.FixtureDropSchemaOnly==='true'?500:200);res.end();});
+server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:'+server.address().port));
+`,
+  );
+  await chmod(executable, 0o755);
+  const fixture = await startNativeLiveFixture(
+    {
+      DOTNET_HOST_PATH: executable,
+      FixtureNativeSessions: 'true',
+      InterruptConnectionString: 'postgres-secret-sentinel',
+      InterruptSchema: 'durable_live_0123456789abcdef0123456789abcdef',
+    },
+    'mixed-native-tools',
+    new AbortController().signal,
+    [],
+  );
+
+  try {
+    await expect(fixture.stop()).rejects.toThrow('LIVE_CHILD_FAILED');
+    await expect(fixture.stop()).rejects.toThrow('LIVE_CHILD_FAILED');
+    await expect(fetch(`${fixture.url}/health`)).rejects.toThrow();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 10_000);

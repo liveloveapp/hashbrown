@@ -127,6 +127,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Google', path: 'platform/google' },
       { text: 'Azure', path: 'platform/azure' },
       { text: '.NET with OpenAI and Azure', path: 'platform/dotnet' },
+      { text: 'Native .NET mixed tools', path: 'platform/dotnet-native-tools' },
       { text: 'LangGraph without B4', path: 'platform/langgraph' },
       { text: 'Amazon Bedrock', path: 'platform/bedrock' },
       { text: 'Ollama', path: 'platform/ollama' },

@@ -55,7 +55,15 @@ test('native projection bounds and folds genuine SSE while holding terminal publ
       messages: Readonly<Message>[];
     }[];
     expect(cases).toHaveLength(7);
-    for (const subject of cases) {
+    const browserBatchPrefix = 'Native projection browser batch: ';
+    const browserBatchOutput = result.stdout
+      .split('\n')
+      .find((line) => line.startsWith(browserBatchPrefix));
+    expect(browserBatchOutput).toBeDefined();
+    const browserBatch = JSON.parse(
+      browserBatchOutput!.slice(browserBatchPrefix.length),
+    ) as (typeof cases)[number];
+    for (const subject of [...cases, browserBatch]) {
       const active = reducer(
         {
           ...initialAgUiMessagesState,

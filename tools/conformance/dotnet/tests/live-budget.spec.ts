@@ -8,9 +8,9 @@ test('reserves the immutable six-project manifest and three preflights within sa
   const budget = createLiveBudget();
 
   expect(LIVE_BUDGET_MANIFEST.groups.map((group) => group.calls)).toEqual([
-    1, 1, 2, 2, 2, 3, 3,
+    1, 1, 2, 2, 2, 3, 3, 2,
   ]);
-  expect(LIVE_BUDGET_MANIFEST.reservedCalls).toBe(87);
+  expect(LIVE_BUDGET_MANIFEST.reservedCalls).toBe(99);
   expect(LIVE_BUDGET_MANIFEST.maxRunCalls).toBe(128);
   expect(LIVE_BUDGET_MANIFEST.maxOutputTokens).toBe(384);
   expect(Object.isFrozen(LIVE_BUDGET_MANIFEST.groups[0])).toBe(true);
@@ -246,7 +246,7 @@ test('drains native iteration when a linked deadline cancels after the first rea
   expect(stages).toEqual(['first-native-item', 'drained']);
 });
 
-test('executes all fixed reservations without exceeding eighty-seven native attempts', async () => {
+test('executes all fixed reservations without exceeding ninety-nine native attempts', async () => {
   const budget = createLiveBudget();
   const projects = [
     'react-openai-key',
@@ -276,6 +276,6 @@ test('executes all fixed reservations without exceeding eighty-seven native atte
       .reservePreflight(name)
       .dispatch(request, async () => undefined);
 
-  expect(budget.snapshot()).toEqual({ reservedCalls: 87, dispatchedCalls: 87 });
+  expect(budget.snapshot()).toEqual({ reservedCalls: 99, dispatchedCalls: 99 });
   budget.dispose();
 });

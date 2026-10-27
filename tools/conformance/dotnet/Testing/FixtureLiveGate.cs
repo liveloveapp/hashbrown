@@ -12,6 +12,8 @@ public sealed class FixtureLiveGate : IDisposable
     private int _calls;
     private int _cancelledCalls;
     private bool _entered;
+    private bool _nativeCoEmission;
+    private bool _nativeExactHistory;
     private long _inputTokens;
     private long _outputTokens;
     private string _stage = "ready";
@@ -22,7 +24,7 @@ public sealed class FixtureLiveGate : IDisposable
         MaxCalls = group switch
         {
             "streaming-plain" or "structured-schema" or "preflight" => 1,
-            "trusted-ui-action" or "browser-tool" or "server-tool" => 2,
+            "trusted-ui-action" or "browser-tool" or "server-tool" or "mixed-native-tools" => 2,
             "approval-resume-decline" or "cancellation-recovery" => 3,
             _ => throw new InvalidOperationException("LIVE_GROUP_INVALID")
         };
@@ -68,6 +70,10 @@ public sealed class FixtureLiveGate : IDisposable
     }
     /// <summary>Records only an HTTP status number.</summary>
     public void WireFinished(int index, int status) { lock (_sync) _wire[index] = _wire[index] with { Status = status }; }
+    /// <summary>Records validated genuine native co-emission, without retaining model arguments.</summary>
+    public void NativeCoEmission() { lock (_sync) _nativeCoEmission = true; }
+    /// <summary>Records an exact owned call/result match in the next actual native model invocation.</summary>
+    public void NativeExactHistory() { lock (_sync) _nativeExactHistory = true; }
     /// <summary>Records numeric usage without retaining native update contents.</summary>
     public void Observe(ChatResponseUpdate update)
     {
@@ -106,7 +112,7 @@ public sealed class FixtureLiveGate : IDisposable
     /// <summary>Projects only approved numeric and fixed-enum statistics.</summary>
     public object Snapshot()
     {
-        lock (_sync) return new { calls = _calls, httpCalls = _wire.Count, cancelledCalls = _cancelledCalls, stage = _stage, wire = _wire.ToArray(), inputTokens = _inputTokens, outputTokens = _outputTokens };
+        lock (_sync) return new { calls = _calls, httpCalls = _wire.Count, cancelledCalls = _cancelledCalls, stage = _stage, wire = _wire.ToArray(), inputTokens = _inputTokens, outputTokens = _outputTokens, nativeCoEmission = _nativeCoEmission, nativeExactHistory = _nativeExactHistory };
     }
     /// <summary>Cancels and releases owned scenario work.</summary>
     public void Dispose() { _deadline.Cancel(); _release.TrySetResult(); _deadline.Dispose(); }

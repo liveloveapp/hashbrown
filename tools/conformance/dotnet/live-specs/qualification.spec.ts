@@ -1,6 +1,7 @@
 import { expect, type Page, test, type TestInfo } from '@playwright/test';
 import { createAppDriver } from '../../harness/app-driver';
 import { LIVE_BUDGET_MANIFEST } from '../harness/live-budget';
+import { withRoutedEndpoint } from '../harness/routed-endpoint';
 import {
   type LiveBrowserFixture,
   waitForLiveNativeCompletion,
@@ -282,5 +283,85 @@ test('cancellation-recovery', async ({ page }, info) => {
     await driver.expectIdle();
     await expect(driver.error()).toBeEmpty();
     expect(await effects(fixture)).toMatchObject({ server: 0, protected: 0 });
+  });
+});
+
+test('mixed-native-tools', async ({ page }, info) => {
+  await qualify(page, info, 'mixed-native-tools', async (fixture) => {
+    await withRoutedEndpoint(fixture.url, async (endpoint) => {
+      const driver = createAppDriver(page);
+      await page.goto(
+        `/?${new URLSearchParams({ scenario: 'tool', runUrl: endpoint.url, recoveryUrl: new URL(endpoint.url).origin, recoveryMode: 'native', fixturePrincipal: 'alice', retries: '0' })}`,
+      );
+
+      await driver.send(
+        'In your first response, call BOTH getWeather for city Paris AND lookupAirport for code PDX together in the SAME response, exactly once each. Do not call them sequentially. After both results, give one short sentence about the weather and airport.',
+      );
+      await expect
+        .poll(
+          async () =>
+            (await (await fetch(`${fixture.url}/__test/native-stage`)).json())
+              .stage,
+        )
+        .toBe('before-pending-save');
+
+      expect((await fixture.stats()).calls).toBe(1);
+      expect(endpoint.requests).toHaveLength(1);
+      await expect(driver.toolCount()).toHaveText('0');
+      expect(await effects(fixture)).toMatchObject({
+        server: 0,
+        protected: 0,
+        durableNative: 0,
+      });
+      const released = await fetch(`${fixture.url}/__test/release-native`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5_000),
+      });
+      expect(released.ok).toBe(true);
+      await expect(driver.toolCount()).toHaveText('1');
+      await driver.expectIdle();
+      await expect(driver.assistant()).not.toBeEmpty();
+      await expectWire(page, fixture, 2);
+      expect(await fixture.stats()).toMatchObject({
+        nativeCoEmission: true,
+        nativeExactHistory: true,
+      });
+      expect(await effects(fixture)).toMatchObject({
+        server: 1,
+        protected: 0,
+        durableNative: 1,
+        nativeCode: 'PDX',
+      });
+      const persisted = await (
+        await fetch(`${fixture.url}/__test/native-effects`, {
+          signal: AbortSignal.timeout(5_000),
+        })
+      ).json();
+      expect(persisted).toMatchObject({ count: 1, rows: [{ code: 'PDX' }] });
+      expect(endpoint.requests).toHaveLength(2);
+      expect(endpoint.responses).toHaveLength(2);
+      const captured = endpoint.responses[0];
+      expect(captured.truncated).toBe(false);
+      const initial = captured.body;
+      expect(initial).toMatch(/\r?\n\r?\n$/);
+      const events = initial
+        .split(/\r?\n\r?\n/)
+        .filter((frame) => frame.trim())
+        .map((frame) => {
+          const data = frame
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith('data:'));
+          expect(data).toHaveLength(1);
+          return JSON.parse(data[0].slice(5).trim()) as Record<string, unknown>;
+        });
+      expect(
+        events
+          .filter((event) => event['type'] === 'TOOL_CALL_START')
+          .map((event) => event['toolCallName']),
+      ).toEqual(['getWeather']);
+      expect(
+        events.filter((event) => event['type'] === 'RUN_FINISHED'),
+      ).toHaveLength(1);
+    });
   });
 });

@@ -242,7 +242,7 @@ internal sealed class NativeSessionProjection
                     _messages.Add(result); break;
                 case "STATE_SNAPSHOT": _request!["state"] = item["snapshot"]?.DeepClone(); break;
                 case "RUN_FINISHED":
-                    if (_terminalOutcome != "success" || item["outcome"] is JsonObject outcome && outcome.Any(property => property.Key != "type")) Discard();
+                    if (_terminalOutcome != "success" || !SupportedTerminalUsage(item["usage"]) || item["outcome"] is JsonObject outcome && outcome.Any(property => property.Key != "type")) Discard();
                     break;
                 case "RUN_ERROR": break;
                 default: Discard(); break;
@@ -258,7 +258,7 @@ internal sealed class NativeSessionProjection
         string[] fields = type switch
         {
             "RUN_STARTED" => ["threadId", "runId", "protocolVersion"],
-            "RUN_FINISHED" => ["threadId", "runId", "outcome"],
+            "RUN_FINISHED" => ["threadId", "runId", "outcome", "usage"],
             "RUN_ERROR" => ["message", "code", "threadId", "runId"],
             "STEP_STARTED" or "STEP_FINISHED" => ["stepName"],
             "TEXT_MESSAGE_START" => ["messageId", "role", "name"],
@@ -272,6 +272,37 @@ internal sealed class NativeSessionProjection
             _ => [],
         };
         return item.All(property => property.Value is null || property.Key is "type" or "timestamp" or "rawEvent" || fields.Contains(property.Key, StringComparer.Ordinal));
+    }
+
+    // TokenUsage contains only the pinned accounting labels/counts. It stays in the bounded genuine terminal, never the transcript.
+    private bool SupportedTerminalUsage(JsonNode? usage)
+    {
+        if (usage is null) return true;
+        if (usage is not JsonArray entries || entries.Count > _maximumMessages) return false;
+        foreach (var node in entries)
+        {
+            if (node is not JsonObject entry) return false;
+            foreach (var property in entry)
+            {
+                switch (property.Key)
+                {
+                    case "provider":
+                    case "model":
+                        if (property.Value is not null && (property.Value is not JsonValue label || !label.TryGetValue<string>(out _))) return false;
+                        break;
+                    case "inputTokens":
+                    case "outputTokens":
+                    case "totalTokens":
+                    case "reasoningTokens":
+                    case "cachedInputTokens":
+                    case "cacheWriteInputTokens":
+                        if (property.Value is not null && (property.Value is not JsonValue count || !count.TryGetValue<long>(out var value) || value < 0 || value > 9007199254740991L)) return false;
+                        break;
+                    default: return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static string Required(JsonNode node, string property) => !string.IsNullOrWhiteSpace(node[property]?.GetValue<string>()) ? node[property]!.GetValue<string>() : throw new JsonException($"Missing {property}.");
@@ -351,6 +382,7 @@ internal sealed class NativeSessionProjection
     {
         if (contents.Count > _maximumMessages) return false;
         var resultBatch = type == "TOOL_CALL_RESULT";
+        bool? informationalBatch = null;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         JsonObject? selected = null;
         foreach (var node in contents)
@@ -376,9 +408,13 @@ internal sealed class NativeSessionProjection
             }
             else
             {
-                if (content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"]?.GetValue<bool>() != true || content["arguments"] is not JsonObject ||
-                    content.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties")) ||
-                    _evidence?.OwnsCall(id, Required(content, "name"), content["arguments"]) != true) return false;
+                if (content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"] is not JsonValue flag || !flag.TryGetValue<bool>(out var informationalOnly) || content["arguments"] is not JsonObject ||
+                    content.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties"))) return false;
+                if (informationalBatch is not null && informationalBatch != informationalOnly) return false;
+                informationalBatch = informationalOnly;
+                // Diagnostic siblings are obligations only: server announcements require owned descriptors;
+                // ordinary model calls must all name admitted browser tools and gain no execution authority.
+                if (informationalOnly ? _evidence?.OwnsCall(id, Required(content, "name"), content["arguments"]) != true : !_browserTools.Contains(Required(content, "name"))) return false;
                 var parent = Required(raw, "messageId");
                 if (_rawBatchCalls.TryGetValue(id, out var expected))
                 {

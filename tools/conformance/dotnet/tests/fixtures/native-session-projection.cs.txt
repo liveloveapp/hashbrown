@@ -555,4 +555,154 @@ var sameParentWithoutDiagnostic = RewriteBatchEvents(actualBatchWire, item =>
 var sameParent = await ObserveServerBatch(sameParentWithoutDiagnostic, ownedBatchEvidence);
 
 Check(sameParent.Projection.Result.Available && JsonNode.Parse(sameParent.Projection.Result.PublicRequestJson!)!["messages"]!.AsArray().Count == 4, "A sibling without repeated diagnostics remains representable when its native parent and descriptor match the original obligation.");
+
+var actualAimockBrowserWire = """
+data: {"type":"TOOL_CALL_START","toolCallId":"native-browser","toolCallName":"getWeather","parentMessageId":"chatcmpl-KdGG3pvEkpqaA92Z","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"native-browser","delta":"{\"city\":\"Paris\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"native-browser","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+""" + "\n\n";
+var actualAimockBrowser = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+await actualAimockBrowser.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire + Terminal()), _ => ValueTask.CompletedTask, default);
+actualAimockBrowser.Complete();
+
+Check(actualAimockBrowser.Result.Available && actualAimockBrowser.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "native-browser" }), "Exact actual aimock browser frames with a nonnull offset timestamp must produce the owned public browser-call prefix.");
+var actualUsage = JsonNode.Parse("""[{"model":"fixture-openai-model","inputTokens":5,"outputTokens":14,"totalTokens":19}]""")!;
+var actualUsageTerminal = Frame(new JsonObject { ["type"] = "RUN_FINISHED", ["threadId"] = "thread", ["runId"] = "run", ["outcome"] = new JsonObject { ["type"] = "success" }, ["usage"] = actualUsage.DeepClone() });
+var withActualUsage = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+var usageForwarded = new MemoryStream();
+
+await withActualUsage.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire + actualUsageTerminal), chunk => usageForwarded.WriteAsync(chunk), default);
+withActualUsage.Complete();
+
+Check(withActualUsage.Result.Available && withActualUsage.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "native-browser" }), "Actual strict aimock RUN_FINISHED standard token usage must preserve the owned browser continuation.");
+Check(withActualUsage.Result.PublicRequestJson == actualAimockBrowser.Result.PublicRequestJson, "Terminal usage must not become public history or tool authority.");
+Check(Encoding.UTF8.GetString(usageForwarded.ToArray()) == actualAimockBrowserWire, "Standard usage must stay within the held genuine terminal.");
+var releasedUsage = new MemoryStream();
+
+await withActualUsage.ReleaseTerminalAsync(chunk => releasedUsage.WriteAsync(chunk), default);
+
+Check(Encoding.UTF8.GetString(releasedUsage.ToArray()) == actualUsageTerminal, "Standard usage terminal bytes must be released exactly as emitted by native hosting.");
+
+static string UsageTerminal(JsonNode? usage) => Frame(new JsonObject { ["type"] = "RUN_FINISHED", ["threadId"] = "thread", ["runId"] = "run", ["outcome"] = new JsonObject { ["type"] = "success" }, ["usage"] = usage?.DeepClone() });
+var allStandardUsage = JsonNode.Parse("""[{"provider":"openai","model":"fixture-openai-model","inputTokens":5,"outputTokens":14,"totalTokens":19,"reasoningTokens":3,"cachedInputTokens":2,"cacheWriteInputTokens":1}]""");
+var standardUsageProjection = new NativeSessionProjection(Input(), new HashSet<string>());
+
+await standardUsageProjection.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(allStandardUsage)), _ => ValueTask.CompletedTask, default);
+standardUsageProjection.Complete();
+
+Check(standardUsageProjection.Result.Available && standardUsageProjection.Result.TurnCompleted, "All pinned documented TokenUsage labels and counts are terminal metadata without history effects.");
+foreach (var (name, json) in new[] {
+    ("unknown usage field", """[{"inputTokens":5,"prompt":"private"}]"""),
+    ("unknown nullable field", """[{"inputTokens":5,"unknown":null}]"""),
+    ("count string", """[{"inputTokens":"5"}]"""),
+    ("negative count", """[{"inputTokens":-1}]"""),
+    ("fractional count", """[{"inputTokens":1.5}]"""),
+    ("unsafe integer", """[{"inputTokens":9007199254740992}]"""),
+    ("wrong label type", """[{"model":{"private":true},"inputTokens":5}]"""),
+    ("usage object", """{"inputTokens":5}"""),
+    ("nonobject entry", """["private"]"""),
+})
+{
+    var invalidUsage = new NativeSessionProjection(Input(), new HashSet<string>());
+
+    try { await invalidUsage.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(JsonNode.Parse(json))), _ => ValueTask.CompletedTask, default); invalidUsage.Complete(); }
+    catch (Exception exception) when (exception is IOException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException) { }
+
+    Check(!invalidUsage.Result.Available && invalidUsage.Result.PublicRequestJson is null, "Terminal usage " + name + " must fail closed.");
+}
+var tooManyUsage = new NativeSessionProjection(Input(), new HashSet<string>(), maximumMessages: 1);
+
+await tooManyUsage.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(JsonNode.Parse("""[{"inputTokens":1},{"outputTokens":1}]"""))), _ => ValueTask.CompletedTask, default);
+tooManyUsage.Complete();
+
+Check(!tooManyUsage.Result.Available, "Terminal usage collections honor the configured bounded item count.");
+var usageByteLimit = new NativeSessionProjection(Input(), new HashSet<string>(), maximumTerminalBytes: 128);
+var usageBytesRejected = false;
+
+try { await usageByteLimit.ObserveAsync(Encoding.UTF8.GetBytes(actualUsageTerminal), _ => ValueTask.CompletedTask, default); } catch (IOException) { usageBytesRejected = true; }
+
+Check(usageBytesRejected && !usageByteLimit.Result.Available, "Terminal usage bytes honor the existing held-terminal cap.");
+foreach (var date in new[] { "2026-10-27T04:20:22+00:00", "2026-10-27T04:20:22.1234567-07:00", "2026-10-27T04:20:22Z" })
+{
+    var timestampProjection = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+    await timestampProjection.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire.Replace("2026-10-27T04:20:22+00:00", date, StringComparison.Ordinal) + Terminal()), _ => ValueTask.CompletedTask, default);
+    timestampProjection.Complete();
+
+    Check(timestampProjection.Result.Available, "Valid native timestamp is already supported: " + date);
+}
+foreach (var timestamp in new[] { "\"not-a-timestamp\"", "42", "{\"private\":true}" })
+{
+    var badTimestamp = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+    var malformedTimestampWire = actualAimockBrowserWire.Replace("\"createdAt\":\"2026-10-27T04:20:22+00:00\"", "\"createdAt\":" + timestamp, StringComparison.Ordinal);
+
+    await badTimestamp.ObserveAsync(Encoding.UTF8.GetBytes(malformedTimestampWire + Terminal()), _ => ValueTask.CompletedTask, default);
+    badTimestamp.Complete();
+
+    Check(!badTimestamp.Result.Available, "Malformed native timestamp types remain unsupported.");
+}
+
+var actualBrowserBatchWire = """
+data: {"type":"TOOL_CALL_START","toolCallId":"browser-one","toolCallName":"getWeather","parentMessageId":"chatcmpl-g6tBkXPcXU6WMuHn","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"browser-one","delta":"{\"city\":\"Paris\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"browser-one","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"browser-two","toolCallName":"getWeather","parentMessageId":"chatcmpl-g6tBkXPcXU6WMuHn","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"browser-two","delta":"{\"city\":\"Portland\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"browser-two","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+""" + "\n\n";
+var actualBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+var browserBatchForwarded = new MemoryStream();
+
+await actualBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), chunk => browserBatchForwarded.WriteAsync(chunk), default);
+actualBrowserBatch.Complete();
+
+Check(actualBrowserBatch.Result.Available && actualBrowserBatch.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "browser-one", "browser-two" }), "Exact captured declared-browser false sibling diagnostics must preserve both canonical pending calls.");
+Check(Encoding.UTF8.GetString(browserBatchForwarded.ToArray()) == actualBrowserBatchWire, "Browser batch diagnostics must preserve ordinary frame bytes exactly.");
+var browserBatchEvents = actualBrowserBatchWire.Split("\n\n", StringSplitOptions.RemoveEmptyEntries).Select(frame => JsonNode.Parse(frame[6..])!.AsObject()).ToArray();
+Console.WriteLine("Native projection browser batch: " + new JsonObject { ["name"] = "actual browser siblings", ["original"] = JsonNode.Parse(Input()), ["events"] = new JsonArray(browserBatchEvents.Select(item => item.DeepClone()).ToArray()), ["messages"] = JsonNode.Parse(actualBrowserBatch.Result.PublicRequestJson!)!["messages"]!.DeepClone() }.ToJsonString());
+foreach (var mutation in new[] { "missing", "extra", "changed args", "changed name", "unknown browser", "mixed flags", "parent", "duplicate", "metadata", "alias" })
+{
+    var items = browserBatchEvents.Select(item => (JsonObject)item.DeepClone()).ToList();
+    if (mutation == "missing") items.RemoveAll(item => item["toolCallId"]!.GetValue<string>() == "browser-two");
+    else if (mutation == "extra") { foreach (var item in items) { var children = item["rawEvent"]!["contents"]!.AsArray(); var extra = children[1]!.DeepClone(); extra["callId"] = "raw-only"; children.Add(extra); } }
+    else if (mutation == "changed args") { foreach (var item in items.Where(item => item["toolCallId"]!.GetValue<string>() == "browser-two")) item.Remove("rawEvent"); items.Single(item => item["type"]!.GetValue<string>() == "TOOL_CALL_ARGS" && item["toolCallId"]!.GetValue<string>() == "browser-two")["delta"] = "{\"city\":\"Changed\"}"; }
+    else if (mutation == "changed name" || mutation == "parent") { foreach (var item in items.Where(item => item["toolCallId"]!.GetValue<string>() == "browser-two")) item.Remove("rawEvent"); items.Single(item => item["type"]!.GetValue<string>() == "TOOL_CALL_START" && item["toolCallId"]!.GetValue<string>() == "browser-two")[mutation == "parent" ? "parentMessageId" : "toolCallName"] = "changed"; }
+    else foreach (var item in items)
+    {
+        var raw = item["rawEvent"]!;
+        var children = raw["contents"]!.AsArray();
+        if (mutation == "unknown browser") children[1]!["name"] = "unknown";
+        if (mutation == "mixed flags") children[1]!["informationalOnly"] = true;
+        if (mutation == "duplicate") children[1]!["callId"] = "browser-one";
+        if (mutation == "metadata") children[1]!["additionalProperties"] = new JsonObject { ["hidden"] = true };
+        if (mutation == "alias") raw["responseId"] = "unwitnessed-alias";
+    }
+    var invalidBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+    await invalidBatch.ObserveAsync(Encoding.UTF8.GetBytes(string.Concat(items.Select(Frame)) + Terminal()), _ => ValueTask.CompletedTask, default);
+    invalidBatch.Complete();
+
+    Check(!invalidBatch.Result.Available, "Browser batch " + mutation + " must fail closed without raw-created history.");
+}
+var byteCappedBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]), maximumBytes: 600);
+
+await byteCappedBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), _ => ValueTask.CompletedTask, default);
+byteCappedBrowserBatch.Complete();
+
+Check(!byteCappedBrowserBatch.Result.Available, "Browser sibling obligations participate in retained-byte accounting.");
+var cappedBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]), maximumMessages: 1);
+
+await cappedBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), _ => ValueTask.CompletedTask, default);
+cappedBrowserBatch.Complete();
+
+Check(!cappedBrowserBatch.Result.Available, "Browser sibling obligations obey the bounded collection count.");
+
 Console.WriteLine("Native session projection passed.");

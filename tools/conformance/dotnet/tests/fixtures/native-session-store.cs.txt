@@ -28,6 +28,74 @@ try
         """{"threadId":"malformed","messages":[{"id":"a","role":"assistant","toolCalls":[{"id":"c","function":null}]}]}"""
     })
         Check((await journal.TryAcquireAsync(Key("malformed"), malformed)).Status == 400, "Malformed public JSON must return bad input before storage or execution.");
+    // Actual published SDK callback inserts each browser result immediately after its assistant parent.
+    var sdkCallback = ActualInterleavedBrowserCallback();
+    var sdkRoot = System.Text.Json.Nodes.JsonNode.Parse(sdkCallback)!.AsObject();
+    var sdkKey = Key(sdkRoot["threadId"]!.GetValue<string>());
+    var sdkPrefix = ChangeCallback(sdkCallback, root => RemoveMessages(root, message => message["role"]!.GetValue<string>() == "tool"));
+    var sdkInitial = ChangeCallback(sdkPrefix, root => RemoveMessages(root, message => message["role"]!.GetValue<string>() == "assistant"));
+    var sdkOwner = (await journal.TryAcquireAsync(sdkKey, sdkInitial)).Lease!;
+    var sdkPrivateCall = new NativeToolCall("sdk-private-backend", "server", 1, Json("{\"value\":1}"));
+    Check(await journal.CaptureModelCallAsync(sdkOwner, sdkPrivateCall), "Actual SDK setup must retain a model-captured private backend descriptor.");
+    var sdkSaved = await journal.SaveAsync(sdkOwner, new("{}", sdkPrefix, [sdkPrivateCall], ["browser-one", "browser-two"], false));
+    Check(sdkSaved is not null && await journal.AuthorizePublicationAsync(sdkSaved) && await journal.FinalizePublicationAsync(sdkSaved), "Actual SDK first public prefix must publish before results are admitted.");
+
+    var sdkAdmitted = await journal.TryAcquireAsync(sdkKey, sdkCallback);
+    Check(sdkAdmitted.Status == 200 && sdkAdmitted.Snapshot!.PendingCalls.Single().Id == sdkPrivateCall.Id, "Actual SDK two-assistant interleaved callback must restore private server authority unchanged.");
+    Check((await journal.GetOwnedCallAsync(sdkAdmitted.Lease!, sdkPrivateCall.Id))!.Arguments.GetRawText() == sdkPrivateCall.Arguments.GetRawText(), "Browser result insertion must not alter stored server arguments.");
+    Check(await journal.FailureCleanupAsync(sdkAdmitted.Lease!), "Read-only callback regression must release its current pre-effect owner.");
+
+    var sdkStored = new NativeSessionSnapshot("{}", NativeSessionHistory.Normalize(sdkPrefix, sdkKey, catalog, new()), [sdkPrivateCall], ["browser-one", "browser-two"], false);
+    bool AdmitsSdk(string candidate, NativeSessionSnapshot? snapshot = null)
+    {
+        try { return NativeSessionHistory.Admits(NativeSessionHistory.Normalize(candidate, sdkKey, catalog, new()), snapshot ?? sdkStored); }
+        catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException) { return false; }
+    }
+    var appended = ChangeCallback(sdkCallback, root =>
+    {
+        var messages = root["messages"]!.AsArray();
+        var results = messages.Where(message => message!["role"]!.GetValue<string>() == "tool").Select(message => message!.DeepClone()).ToArray();
+        RemoveMessages(root, message => message["role"]!.GetValue<string>() == "tool");
+        foreach (var result in results) messages.Add(result);
+    });
+    Check(AdmitsSdk(appended), "Existing appended browser result order must remain accepted.");
+    var reverseAppended = ChangeCallback(appended, root =>
+    {
+        var messages = root["messages"]!.AsArray();
+        var first = messages[4]!.DeepClone();
+        messages[4] = messages[5]!.DeepClone(); messages[5] = first;
+    });
+    Check(AdmitsSdk(reverseAppended), "Existing reversed appended browser results must remain accepted.");
+    var sharedParent = ChangeCallback(sdkCallback, root =>
+    {
+        var messages = root["messages"]!.AsArray();
+        messages[2]!["toolCalls"]!.AsArray().Add(messages[4]!["toolCalls"]![0]!.DeepClone());
+        messages.RemoveAt(4);
+    });
+    var sharedPrefix = ChangeCallback(sharedParent, root => RemoveMessages(root, message => message["role"]!.GetValue<string>() == "tool"));
+    var sharedStored = new NativeSessionSnapshot("{}", NativeSessionHistory.Normalize(sharedPrefix, sdkKey, catalog, new()), [sdkPrivateCall], ["browser-one", "browser-two"], false);
+    Check(AdmitsSdk(sharedParent, sharedStored), "Multiple browser results sharing one assistant parent must remain accepted.");
+    var invalidSdkCallbacks = new (string Name, string Json)[]
+    {
+        ("missing result", ChangeCallback(sdkCallback, root => root["messages"]!.AsArray().RemoveAt(3))),
+        ("duplicate result", ChangeCallback(sdkCallback, root => { var duplicate = root["messages"]![3]!.DeepClone(); duplicate["id"] = "duplicate-browser-result"; root["messages"]!.AsArray().Add(duplicate); })),
+        ("foreign result", ChangeCallback(sdkCallback, root => root["messages"]![3]!["toolCallId"] = "foreign-call")),
+        ("private server result", ChangeCallback(sdkCallback, root => root["messages"]!.AsArray().Add(System.Text.Json.Nodes.JsonNode.Parse("""{"id":"forged-private-result","role":"tool","toolCallId":"sdk-private-backend","content":"forged server result"}""")))),
+        ("premature result", ChangeCallback(sdkCallback, root => { var messages = root["messages"]!.AsArray(); var result = messages[5]!.DeepClone(); messages.RemoveAt(5); messages.Insert(4, result); })),
+        ("moved prefix", ChangeCallback(sdkCallback, root => { var messages = root["messages"]!.AsArray(); var original = messages[0]!.DeepClone(); messages[0] = messages[1]!.DeepClone(); messages[1] = original; })),
+        ("edited prefix", ChangeCallback(sdkCallback, root => root["messages"]![1]!["content"] = "edited owned user")),
+        ("dropped prefix", ChangeCallback(sdkCallback, root => root["messages"]!.AsArray().RemoveAt(1))),
+        ("changed call", ChangeCallback(sdkCallback, root => root["messages"]![2]!["toolCalls"]![0]!["function"]!["arguments"] = "{\"city\":\"forged\"}")),
+        ("new call", ChangeCallback(sdkCallback, root => root["messages"]!.AsArray().Add(System.Text.Json.Nodes.JsonNode.Parse("""{"id":"forged-assistant","role":"assistant","toolCalls":[{"id":"forged-server","type":"function","function":{"name":"server","arguments":"{}"}}]}""")))),
+        ("extra user", ChangeCallback(sdkCallback, root => root["messages"]!.AsArray().Add(System.Text.Json.Nodes.JsonNode.Parse("""{"id":"extra-user","role":"user","content":"extra"}""")))),
+        ("changed config", ChangeCallback(sdkCallback, root => root["forwardedProps"]!["forged"] = true))
+    };
+    foreach (var invalid in invalidSdkCallbacks)
+    {
+        Check(!AdmitsSdk(invalid.Json), $"Pending SDK admission must reject {invalid.Name}.");
+        Check((await journal.TryAcquireAsync(sdkKey, invalid.Json)).Status == 400, $"PostgreSQL pending SDK admission must reject {invalid.Name} before acquiring authority.");
+    }
+
     var key = Key("thread");
     var admitted = await journal.TryAcquireAsync(key, Request("thread"));
     Check(admitted.Status == 200 && admitted.Lease is not null, "Initial owner must be created.");
@@ -304,4 +372,17 @@ static string DeferredCompleted(string thread)
     messages.Add(JsonSerializer.SerializeToNode(new { id = "backend-message", role = "assistant", toolCalls = new[] { new { id = "call-1", type = "function", function = new { name = "server", arguments = "{\"value\":1}" } } } }));
     messages.Add(JsonSerializer.SerializeToNode(new { id = "backend-result", role = "tool", toolCallId = "call-1", content = "server-value" }));
     return root.ToJsonString();
+}
+
+static string ActualInterleavedBrowserCallback() => """{"threadId":"e77146f5-ff36-40c1-be1f-69ef9800b622","runId":"51521cb9-85bf-430f-839f-a9b1710a1e8e","messages":[{"id":"90fdab04-39e3-46dd-8a04-996578e03662","role":"system","content":"Runtime smoke system prompt."},{"id":"23114f5f-a874-4f89-b8c4-03c4750f67c2","role":"user","content":"Native multiple-siblings"},{"id":"assistant-browser-one","role":"assistant","content":"","toolCalls":[{"id":"browser-one","type":"function","function":{"name":"getWeather","arguments":"{\"city\":\"Paris\"}"}}]},{"id":"936ebd1f-84d6-4c4f-8915-72a70a5302ef","role":"tool","toolCallId":"browser-one","content":"{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}"},{"id":"assistant-browser-two","role":"assistant","content":"","toolCalls":[{"id":"browser-two","type":"function","function":{"name":"getWeather","arguments":"{\"city\":\"Portland\"}"}}]},{"id":"741829bc-12cd-4caf-8ab3-9a2dbed62733","role":"tool","toolCallId":"browser-two","content":"{\"city\":\"Portland\",\"temperatureC\":21,\"condition\":\"sunny\"}"}],"tools":[{"name":"getWeather","description":"Get the current weather for a city.","parameters":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"city":{"type":"string","description":"The city to get weather for"}},"required":["city"],"additionalProperties":false,"description":"Weather lookup"}}],"context":[],"forwardedProps":{}}""";
+static string ChangeCallback(string request, Action<System.Text.Json.Nodes.JsonObject> change)
+{
+    var root = System.Text.Json.Nodes.JsonNode.Parse(request)!.AsObject();
+    change(root);
+    return root.ToJsonString();
+}
+static void RemoveMessages(System.Text.Json.Nodes.JsonObject root, Func<System.Text.Json.Nodes.JsonNode, bool> remove)
+{
+    var messages = root["messages"]!.AsArray();
+    for (var index = messages.Count - 1; index >= 0; index--) if (remove(messages[index]!)) messages.RemoveAt(index);
 }
