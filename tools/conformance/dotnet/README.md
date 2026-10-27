@@ -262,7 +262,7 @@ Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdent
 
 **Stop and drain all older workers before migrating to schema 3.** Overlapping mixed-version rolling operation is unsupported. Older binaries cannot start afterward; already-running older workers can still read new rows without identity checks, write legacy rows or use previously issued claims. Bound fingerprints fence their old admission validator from new rows, but cannot retrofit a running process. Identity-bound stores reject unbound legacy recovery/resume with 409; protected inspection/reconciliation remains available. Plan pending approvals and unknown effects before upgrading rather than backfilling browser-selected identities or replaying work.
 
-The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 54 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. Native MAF approval has separate deterministic coverage in the opt-in native composition above; its expanded live qualification is pending. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
+The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 54 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. The 2026-10-27 qualification passed all 54 cases and three preflights on the frozen published 0.8.3 consumer with gpt-4.1-mini, using 93 actual calls without retries. All six native MAF approval cases completed their three phases with 18 complete native usage calls and six matched protected effects; overall usage completeness remains unknown for legacy cancellation. This bounded service result does not broaden the deterministic compatibility contract. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
 
 ## Provider-free native approval browser regression
 
@@ -280,7 +280,7 @@ Both frameworks complete all three phases while the HTTP connection remains open
 after each valid terminal event. Partial, truncated and error terminals are
 rejected. HTTP end-of-stream is a separate observation from complete AG-UI event
 framing. This regression establishes local protocol behavior; live results are
-recorded separately.
+recorded separately. Valid 31s/5s/5s response acquisition and indefinitely blocked first responses also exercise the shared 55-second case deadline. Blocked requests must cancel and drain with one SDK call, zero protected effects and no fabricated terminal.
 
 ## Opt-in published-client live qualification
 
@@ -324,7 +324,7 @@ Chat Completions with its separate cognitive-services audience. Managed identity
 on an actual Azure host remains an explicitly deferred qualification.
 
 One worker, zero retries, fixed per-group ceilings, a 384-token native wire cap,
-60-second scenario deadlines, and a 15-minute run deadline bound execution. The
+a shared 55-second UI/native case guard inside 60-second native scenario deadlines, and a 15-minute run deadline bound execution. The
 manifest reserves 123 calls including the three preflights, below the unchanged
 128-call run ceiling. Native approval reserves four calls but only its validated
 three-phase sequence qualifies; unused calls cannot fund retries or another group. Owned
@@ -335,7 +335,7 @@ native cancellation limitation documented in the identity tests.
 
 The runner persists only projected metadata through one 2 MiB run-level JSONL
 sink in its fresh `hashbrown-live-run-*` temporary directory. Raw child output and
-errors are discarded. Playwright traces, screenshots, video, and page snapshots
+errors are discarded. Failed native/mixed outcomes may include only a fixed, group-specific phase label; unknown or malformed labels fail closed. Playwright traces, screenshots, video, and page snapshots
 are disabled; test failures are replaced before Playwright's artifact recorder
 runs. The deterministic tests include an actual forced Playwright failure with
 secret canaries in assertion/error/cause, DOM, and split child output, then inspect
