@@ -684,9 +684,12 @@ test('keeps the flag inside the scrubber at either end', () => {
 
 test('keeps focus on an activated request row and tick', () => {
   const { host, store, shell } = mountShell();
-  recordTwoTurns(store);
+  store.send('Plan');
+  store.record('request', { requestId: 'r1', input: { messages: [] } });
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
   const row = host.querySelectorAll<HTMLButtonElement>(
-    '.wb-request-list button',
+    '.wb-requests-table button[data-exchange]',
   )[0];
   const rowText = row?.textContent;
   row?.focus();
@@ -701,7 +704,7 @@ test('keeps focus on an activated request row and tick', () => {
   tick?.click();
   const focusedTick = document.activeElement;
 
-  expect(focusedRow?.closest('.wb-request-list')).not.toBeNull();
+  expect(focusedRow?.closest('.wb-requests-table')).not.toBeNull();
   expect(focusedRow?.textContent).toBe(rowText);
   expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
   expect(focusedTick?.closest('.wb-events')).not.toBeNull();
@@ -881,11 +884,19 @@ test('drags the bottom scrubber from anywhere on the track, including a tick', (
   scrubberPointer(tick, 'pointerdown', 500);
   scrubberPointer(tick, 'pointermove', 530);
   scrubberPointer(tick, 'pointerup', 530);
+  // The scrub rebuilt the ticks; the trailing click lands on the current one.
+  host
+    .querySelector<HTMLButtonElement>(
+      `.wb-scrubber .wb-events button[data-index="${tick.dataset.index}"]`,
+    )
+    ?.click();
 
   expect(atStart).toBe(0);
   expect(atEnd).toBe(total - 1);
   expect(store.getSnapshot().cursor).toBe(Math.round(0.53 * (total - 1)));
-  expect(playing).not.toBeNull();
+  expect(document.activeElement?.getAttribute('aria-label')).toBe(
+    'Seek captured event',
+  );
   expect(playing).not.toBeNull();
   expect(
     host.querySelector('.wb-player button[aria-label="Pause"]'),

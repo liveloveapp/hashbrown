@@ -1,0 +1,479 @@
+// @vitest-environment jsdom
+import { expect, test, vi } from 'vitest';
+import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+
+type Store = ReturnType<typeof createWorkbenchStore>;
+
+const url = 'http://localhost:4300/api/workbench/tools';
+
+function fakeStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => void map.set(key, value),
+  };
+}
+
+function mountRequests() {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: {
+        id: 'tools',
+        title: 'Tools',
+        format: 'ui',
+        inspector: 'Requests',
+        endpoint: '/api/workbench/tools',
+      },
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: createWorkbenchLayoutStore(fakeStorage()) },
+  );
+  return { host, store, shell };
+}
+
+function requestPayload(requestId: string) {
+  return {
+    url,
+    requestId,
+    attempt: 1,
+    input: {
+      threadId: 'thread-1',
+      runId: `run-${requestId}`,
+      messages: [
+        { id: 'system', role: 'system', content: 'Be brief.' },
+        { id: 'user', role: 'user', content: 'Plan' },
+      ],
+      tools: [
+        {
+          name: 'readContext',
+          description: 'Reads the application plan',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+      state: { revision: 0 },
+      context: [],
+    },
+  };
+}
+
+/** One turn: a model request, a browser tool call and its continuation. */
+function recordToolTurn(store: Store) {
+  store.send('Plan');
+  store.record('request', requestPayload('r1'));
+  store.record('response', { status: 200, url, source: 'provider' });
+  store.record('event', { type: 'RUN_STARTED' });
+  store.record('event', {
+    type: 'TOOL_CALL_START',
+    toolCallId: 'call-1',
+    toolCallName: 'readContext',
+  });
+  store.record('event', { type: 'TOOL_CALL_END', toolCallId: 'call-1' });
+  store.record('event', { type: 'RUN_FINISHED' });
+  store.record('tool', { name: 'readContext', result: { revision: 0 } });
+  store.record('request', requestPayload('r2'));
+  store.record('response', { status: 200, url, source: 'provider' });
+  store.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'm1',
+    delta: '{"title":"Plan"}',
+  });
+  store.record('event', { type: 'RUN_FINISHED' });
+  store.settle('complete', 'stop');
+}
+
+function recordDeniedTurn(store: Store, content = 'Denied') {
+  store.send(content);
+  store.record('request', requestPayload(`denied-${content}`));
+  store.record('response', {
+    status: 403,
+    url,
+    source: 'demo-failure',
+    problem: 'Demo denial is enabled',
+  });
+  store.settle('error');
+}
+
+function rowButton(host: HTMLElement, name: string, nth = 0) {
+  const found = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-requests-table button[data-exchange]',
+    ),
+  ].filter((node) => node.textContent === name)[nth];
+  if (!found) throw new Error(`Missing ${name} row`);
+  return found;
+}
+
+function detailTabs(host: HTMLElement) {
+  return [
+    ...host.querySelectorAll<HTMLButtonElement>('[data-detail] [role=tab]'),
+  ];
+}
+
+function detailTab(host: HTMLElement, name: string) {
+  const found = detailTabs(host).find((tab) =>
+    tab.textContent?.startsWith(name),
+  );
+  if (!found) throw new Error(`Missing ${name} tab`);
+  return found;
+}
+
+function press(target: EventTarget, key: string, init: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+function pointer(target: EventTarget, type: string, clientX: number) {
+  target.dispatchEvent(
+    Object.assign(
+      new MouseEvent(type, { clientX, bubbles: true, cancelable: true }),
+      { pointerId: 1 },
+    ),
+  );
+}
+
+test('renders the overview, a turn-grouped table and no selection', () => {
+  const { host, store, shell } = mountRequests();
+
+  recordToolTurn(store);
+
+  const headers = [...host.querySelectorAll('.wb-requests-table thead th')].map(
+    (cell) => cell.textContent,
+  );
+  const group = host.querySelector('.wb-requests-table tbody th');
+  expect(headers).toEqual([
+    'Name',
+    'Type',
+    'Status',
+    'Start',
+    'Duration',
+    'Events',
+    'Waterfall',
+  ]);
+  expect(
+    host.querySelector('[role=slider][aria-label="Seek request timeline"]'),
+  ).not.toBeNull();
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelector('.wb-inspector .wb-inspection')?.textContent,
+  ).toContain('Model request');
+  expect(group?.textContent).toBe('Turn 1 · Plan');
+  expect(host.querySelector('.wb-requests-table')?.textContent).toContain(
+    'POST /api/workbench/tools',
+  );
+  shell.dispose();
+});
+
+test('selecting a row seeks, narrows the table and opens request tabs', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const events = store.getSnapshot().events;
+  const firstRequest = events.findIndex((event) => event.kind === 'request');
+
+  rowButton(host, 'Model request').click();
+
+  const row = host.querySelector('.wb-requests-table tr[aria-selected=true]');
+  expect(store.getSnapshot().cursor).toBe(firstRequest);
+  expect(
+    host.querySelector('.wb-requests-table')?.hasAttribute('data-narrow'),
+  ).toBe(true);
+  expect(detailTabs(host).map((tab) => tab.textContent)).toEqual([
+    'Overview',
+    'Messages 2',
+    'Tools 1',
+    'State',
+    'Raw request',
+    'Response 5',
+  ]);
+  expect(host.querySelector('[data-detail]')).not.toBeNull();
+  expect(row?.querySelector('button')?.getAttribute('aria-pressed')).toBe(
+    'true',
+  );
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'Sent: 2 messages · 1 tool · state revision 0',
+  );
+  shell.dispose();
+});
+
+test('shows tool and error tabs', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+
+  rowButton(host, 'readContext').click();
+  const toolTabs = detailTabs(host).map((tab) => tab.textContent);
+  const call = host.querySelector('[data-detail]')?.textContent;
+  store.live();
+  recordDeniedTurn(store);
+  rowButton(host, 'Model request', 1).click();
+  const errorTabs = detailTabs(host).map((tab) => tab.textContent);
+
+  expect(toolTabs).toEqual(['Call', 'Result', 'Raw']);
+  expect(call).toContain('Runs in');
+  expect(call).toContain('Browser');
+  expect(errorTabs).toEqual(['Overview', 'Raw']);
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'Demo denial is enabled',
+  );
+  shell.dispose();
+});
+
+test("auto-selects a live HTTP error but never replaces a user's selection", () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const selectedName = () =>
+    host.querySelector(
+      '.wb-requests-table tr[aria-selected=true] button[data-exchange]',
+    );
+
+  recordDeniedTurn(store, 'Second');
+  const auto = selectedName();
+  const autoTurn = auto?.closest('tbody')?.getAttribute('data-turn');
+  rowButton(host, 'readContext').click();
+  store.live();
+  recordDeniedTurn(store, 'Third');
+
+  expect(auto?.textContent).toBe('Model request');
+  expect(autoTurn).toBe('2');
+  expect(selectedName()?.textContent).toBe('readContext');
+  expect(host.querySelector('[data-detail]')?.textContent).not.toContain(
+    'Demo denial is enabled',
+  );
+  shell.dispose();
+});
+
+test('closes the detail with the close button and Escape', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+
+  const first = rowButton(host, 'Model request');
+  first.focus();
+  first.click();
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Close request detail"]')
+    ?.click();
+  const afterClose = document.activeElement;
+  const closedDetail = host.querySelector('[data-detail]');
+  rowButton(host, 'readContext').click();
+  const escape = press(detailTab(host, 'Result'), 'Escape');
+
+  expect(closedDetail).toBeNull();
+  expect(afterClose?.textContent).toBe('Model request');
+  expect(afterClose?.hasAttribute('data-exchange')).toBe(true);
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelector('.wb-requests-table')?.hasAttribute('data-narrow'),
+  ).toBe(false);
+  expect(escape.defaultPrevented).toBe(true);
+  expect(document.activeElement?.textContent).toBe('readContext');
+  expect(host.querySelector('[aria-label="Back to requests"]')).toBeNull();
+  shell.dispose();
+});
+
+test('keeps the selection and focus across store updates', () => {
+  const { host, store, shell } = mountRequests();
+  store.send('Plan');
+  store.record('request', requestPayload('r1'));
+  store.record('response', { status: 200, url, source: 'provider' });
+  const button = rowButton(host, 'Model request');
+  button.focus();
+  button.click();
+  detailTab(host, 'Response').click();
+  button.focus();
+
+  store.record('event', { type: 'RUN_STARTED' });
+  store.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'm1',
+    delta: 'Hi',
+  });
+
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute('aria-pressed')).toBe('true');
+  expect(
+    host.querySelector('[data-detail] [role=tab][aria-selected=true]')
+      ?.textContent,
+  ).toBe('Response 3');
+  expect(
+    host.querySelectorAll('[data-detail] [data-event-index]'),
+  ).toHaveLength(3);
+  shell.dispose();
+});
+
+test('greys rows after the playhead and marks the current row', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const live = host.querySelectorAll('.wb-requests-table tr[data-future]');
+  const firstRequest = store
+    .getSnapshot()
+    .events.findIndex((event) => event.kind === 'request');
+
+  store.seek(firstRequest);
+
+  const rows = [
+    ...host.querySelectorAll<HTMLElement>(
+      '.wb-requests-table tr[data-exchange]',
+    ),
+  ];
+  expect(live).toHaveLength(0);
+  expect(rows.map((row) => row.hasAttribute('data-current'))).toEqual([
+    true,
+    false,
+    false,
+  ]);
+  expect(rows.map((row) => row.hasAttribute('data-future'))).toEqual([
+    false,
+    true,
+    true,
+  ]);
+  shell.dispose();
+});
+
+test('Response lists events and seeks on click', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  rowButton(host, 'Model request').click();
+  detailTab(host, 'Response').click();
+  const rows = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '[data-detail] button[data-event-index]',
+    ),
+  ];
+  const target = rows[2];
+  const index = Number(target.dataset.eventIndex);
+
+  target.click();
+
+  const raw = host.querySelector('[data-detail] .wb-requests-event-raw');
+  const items = [...host.querySelectorAll('[data-detail] li[data-event]')];
+  expect(
+    rows.map((row) => row.querySelector('.wb-badge')?.textContent),
+  ).toEqual([
+    'response',
+    'RUN_STARTED',
+    'TOOL_CALL_START',
+    'TOOL_CALL_END',
+    'RUN_FINISHED',
+  ]);
+  expect(store.getSnapshot().cursor).toBe(index);
+  expect(raw?.textContent).toContain('"toolCallName": "readContext"');
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'readContext',
+  );
+  expect(items.map((item) => item.hasAttribute('data-future'))).toEqual([
+    false,
+    false,
+    false,
+    true,
+    true,
+  ]);
+  shell.dispose();
+});
+
+test('Raw request highlights the captured payload and copies it', async () => {
+  const { host, store, shell } = mountRequests();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+  });
+  recordToolTurn(store);
+  rowButton(host, 'Model request').click();
+  detailTab(host, 'Raw request').click();
+
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Copy raw request"]')
+    ?.click();
+
+  const block = host.querySelector('[data-detail] pre');
+  expect(block?.querySelector('.wb-tok-key')).not.toBeNull();
+  expect(block?.textContent).toBe(
+    JSON.stringify(requestPayload('r1'), null, 2),
+  );
+  expect(writeText).toHaveBeenCalledWith(
+    JSON.stringify(requestPayload('r1'), null, 2),
+  );
+  Reflect.deleteProperty(navigator, 'clipboard');
+  shell.dispose();
+});
+
+test('roves between row buttons with the arrow keys', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const first = rowButton(host, 'Model request');
+  first.focus();
+
+  const down = press(first, 'ArrowDown');
+  const afterDown = document.activeElement;
+  press(afterDown as HTMLElement, 'End');
+  const afterEnd = document.activeElement;
+  press(afterEnd as HTMLElement, 'ArrowUp');
+
+  expect(down.defaultPrevented).toBe(true);
+  expect(afterDown?.textContent).toBe('readContext');
+  expect(afterDown?.getAttribute('tabindex')).toBe('0');
+  expect(first.getAttribute('tabindex')).toBe('-1');
+  expect(afterEnd?.textContent).toBe('Continuation');
+  expect(document.activeElement?.textContent).toBe('readContext');
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('scrubs from the overview strip', () => {
+  let now = 0;
+  const clock = vi
+    .spyOn(performance, 'now')
+    .mockImplementation(() => (now += 10));
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const total = store.getSnapshot().events.length;
+  const slider = host.querySelector<HTMLElement>(
+    '[role=slider][aria-label="Seek request timeline"]',
+  ) as HTMLElement;
+  vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 1000,
+    width: 1000,
+  } as DOMRect);
+  const before = slider.getAttribute('aria-valuenow');
+
+  pointer(slider, 'pointerdown', 0);
+  const atStart = store.getSnapshot().cursor;
+  pointer(slider, 'pointermove', 1000);
+  pointer(slider, 'pointerup', 1000);
+  const atEnd = store.getSnapshot().cursor;
+  press(slider, 'Home');
+  const home = store.getSnapshot().cursor;
+  const right = press(slider, 'ArrowRight');
+  const stepped = store.getSnapshot().cursor;
+  press(slider, 'End');
+
+  expect(before).toBe(String(total - 1));
+  expect(slider.getAttribute('aria-valuemax')).toBe(String(total - 1));
+  expect(slider.tabIndex).toBe(0);
+  expect(atStart).toBe(0);
+  expect(atEnd).toBe(total - 1);
+  expect(home).toBe(0);
+  expect(right.defaultPrevented).toBe(true);
+  expect(stepped).toBe(1);
+  expect(store.getSnapshot().cursor).toBe(total - 1);
+  expect(slider.getAttribute('aria-valuenow')).toBe(String(total - 1));
+  expect(slider.getAttribute('aria-valuetext')).toContain(`${total}`);
+  expect(document.activeElement).toBe(slider);
+  clock.mockRestore();
+  shell.dispose();
+});
