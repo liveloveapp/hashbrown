@@ -189,3 +189,33 @@ test('SDK failure hides parser previews and stopped partials never become succes
     expect(store.applyAuthoring()).toBe(false);
   }
 });
+
+test('completed authoring turns allow intentional SDK clear restore and load replacements', () => {
+  for (const action of ['clear', 'restore', 'load'] as const) {
+    const store = createWorkbenchStore('history', { authoringMode: 'form' });
+    complete(store);
+    const history = store.getSnapshot().frame?.history;
+    if (!history) throw new Error('Expected captured history');
+    const replaced =
+      action === 'clear'
+        ? []
+        : [
+            { id: 'restored-user', role: 'user', content: 'Restored' },
+            {
+              id: 'restored-assistant',
+              role: 'assistant',
+              content: JSON.stringify(plan),
+            },
+          ];
+
+    expect(store.recordHistoryApp(history.app, action)).toBe(true);
+    expect(store.recordHistory({ messages: replaced, isLoading: false })).toBe(
+      true,
+    );
+    expect(store.getSnapshot().frame?.history?.replacement).toBeNull();
+    expect(store.getSnapshot().frame?.history?.sdk.messages).toEqual(replaced);
+    expect(store.recordAuthoring(input())).toBe(false);
+    expect(store.applyAuthoring()).toBe(false);
+    expect(store.send('Fresh generation').role).toBe('user');
+  }
+});

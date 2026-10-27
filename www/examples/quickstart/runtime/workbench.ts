@@ -723,7 +723,7 @@ export function createWorkbenchStore(
       const currentUser = messages
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
-      if (turn > 0 && observedUser !== currentUser) return false;
+      if (status === 'loading' && observedUser !== currentUser) return false;
       const busy = isWorkbenchHistoryBusy(sdk);
       if (history?.replacement && busy) replacementObservedBusy = true;
       const replacement =
