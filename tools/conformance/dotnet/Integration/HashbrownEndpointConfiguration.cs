@@ -8,14 +8,19 @@ namespace Hashbrown.Conformance.Integration;
 /// <summary>Reference configuration composed with the upstream ASP.NET AG-UI integration.</summary>
 public static class HashbrownEndpointConfiguration
 {
-    /// <summary>Registers upstream hosting and native interrupt polymorphism for this package baseline.</summary>
+    /// <summary>Registers upstream hosting and native interrupt polymorphism once per service collection for this package baseline.</summary>
     public static void Configure(IServiceCollection services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        if (services.Any(service => service.ServiceType == typeof(HostingRegistration))) return;
         services.AddAGUIServer();
         services.AddHttpContextAccessor();
         services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
             AGUIJsonUtilities.RegisterInterruptContentTypes(options.SerializerOptions));
+        services.AddSingleton(new HostingRegistration());
     }
+
+    private sealed class HostingRegistration { }
 
     /// <summary>Reads the opaque server claim attached to this HTTP request before streaming.</summary>
     public static InterruptClaim? GetClaim(HttpContext? context) => context?.Items[typeof(InterruptClaim)] as InterruptClaim;

@@ -26,7 +26,7 @@ test('list is independent of opt-in, credentials and child construction', async 
   expect(result).toEqual({
     exitCode: 0,
     projects: LIVE_PROJECTS.map((entry) => entry.name),
-    cases: 42,
+    cases: 48,
   });
   expect(load).not.toHaveBeenCalled();
   expect(start).not.toHaveBeenCalled();
@@ -514,11 +514,14 @@ test('qualification integrity requires actual unique passed cases, valid native 
         'browser-tool',
         'server-tool',
         'cancellation-recovery',
+        'mixed-native-tools',
       ].includes(group.name)
         ? 2
         : 1;
       const evidence = {
         ...stats,
+        nativeCoEmission: group.name === 'mixed-native-tools',
+        nativeExactHistory: group.name === 'mixed-native-tools',
         calls,
         httpCalls: calls,
         cancelledCalls: group.name === 'cancellation-recovery' ? 1 : 0,
@@ -532,7 +535,11 @@ test('qualification integrity requires actual unique passed cases, valid native 
       };
       expect(
         ledger.recordFixture(project.name, group.name, evidence, {
-          server: group.name === 'server-tool' ? 1 : 0,
+          server: ['server-tool', 'mixed-native-tools'].includes(group.name)
+            ? 1
+            : 0,
+          durableNative: group.name === 'mixed-native-tools' ? 1 : 0,
+          nativeCode: group.name === 'mixed-native-tools' ? 'PDX' : null,
           protected: group.name === 'approval-resume-decline' ? 1 : 0,
         }),
       ).toBe(true);
@@ -572,9 +579,9 @@ test('qualification integrity requires actual unique passed cases, valid native 
 
   expect(() => ledger.assertComplete()).not.toThrow();
   expect(ledger.snapshot()).toMatchObject({
-    actualPassedCases: 42,
+    actualPassedCases: 48,
     successfulPreflights: 3,
-    completedFixtures: 42,
+    completedFixtures: 48,
     invalid: false,
   });
 });
@@ -836,4 +843,119 @@ test('runner resolves and launches the declared Playwright CLI bin in real Node 
     stdout: `Version ${require('playwright/package.json').version}\n`,
     stderr: '',
   });
+});
+
+test('native qualification rejects missing coemission, exact history, durable effect or actual two calls', async () => {
+  const { createLiveQualificationLedger } =
+    await import('../harness/live-qualification');
+  const stats = {
+    calls: 2,
+    httpCalls: 2,
+    cancelledCalls: 0,
+    stage: 'completed',
+    inputTokens: 2,
+    outputTokens: 2,
+    nativeCoEmission: true,
+    nativeExactHistory: true,
+    wire: Array.from({ length: 2 }, () => ({
+      method: 'POST',
+      path: '/v1/responses',
+      authentication: 'bearer',
+      maxOutputTokens: 384,
+      store: false,
+      status: 200,
+    })),
+  };
+  const counters = {
+    server: 1,
+    protected: 0,
+    durableNative: 1,
+    nativeCode: 'PDX',
+  };
+
+  for (const change of [
+    { nativeCoEmission: false },
+    { nativeExactHistory: false },
+    { calls: 1 },
+    { calls: 3 },
+  ])
+    expect(
+      createLiveQualificationLedger().recordFixture(
+        'react-openai-key',
+        'mixed-native-tools',
+        { ...stats, ...change },
+        counters,
+      ),
+    ).toBe(false);
+  for (const change of [
+    { durableNative: 0 },
+    { durableNative: 2 },
+    { nativeCode: 'SEA' },
+    { server: 0 },
+  ])
+    expect(
+      createLiveQualificationLedger().recordFixture(
+        'react-openai-key',
+        'mixed-native-tools',
+        stats,
+        { ...counters, ...change },
+      ),
+    ).toBe(false);
+  expect(
+    createLiveQualificationLedger().recordFixture(
+      'react-openai-key',
+      'mixed-native-tools',
+      stats,
+      counters,
+    ),
+  ).toBe(true);
+});
+
+test('native fixture context copies PostgreSQL only to its owned native child', async () => {
+  const { nativeLiveChildEnvironment } =
+    await import('../harness/live-configuration');
+  const parent = {
+    DOTNET_TEST_POSTGRES: 'Host=fixture;Password=postgres-secret-sentinel',
+    ApiKey: 'parent-secret-sentinel',
+  };
+  const provider = { Provider: 'openai', ApiKey: 'selected-provider-key' };
+
+  const native = nativeLiveChildEnvironment(
+    provider,
+    parent,
+    'mixed-native-tools',
+    'durable_live_0123456789abcdef0123456789abcdef',
+  );
+  const ordinary = nativeLiveChildEnvironment(
+    provider,
+    parent,
+    'browser-tool',
+    'durable_live_0123456789abcdef0123456789abcdef',
+  );
+
+  expect(native).toMatchObject({
+    FixtureNativeSessions: 'true',
+    InterruptSchema: 'durable_live_0123456789abcdef0123456789abcdef',
+    InterruptConnectionString:
+      parent.DOTNET_TEST_POSTGRES +
+      ';Search Path=durable_live_0123456789abcdef0123456789abcdef',
+    ApiKey: 'selected-provider-key',
+  });
+  expect(ordinary).toEqual(provider);
+  expect(() =>
+    nativeLiveChildEnvironment(
+      provider,
+      {},
+      'mixed-native-tools',
+      'durable_live_0123456789abcdef0123456789abcdef',
+    ),
+  ).toThrow('LIVE_POSTGRES_REQUIRED');
+  expect(() =>
+    nativeLiveChildEnvironment(
+      provider,
+      parent,
+      'mixed-native-tools',
+      'unowned',
+    ),
+  ).toThrow('LIVE_SCHEMA_INVALID');
 });
