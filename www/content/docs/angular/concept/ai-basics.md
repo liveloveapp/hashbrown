@@ -104,7 +104,7 @@ Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/an
 | `threadId` | The conversation keeps the same thread identity. |
 | `runId` | The next run has a fresh identity. |
 
-Drag the bottom timeline, or the overview above the request table, to revisit either turn. The chat, selected request, text, and captured state move together. Replay makes no new request.
+Drag the bottom timeline, or the overview above the request table, to revisit either turn. The chat, current request, text, and captured state move together. Replay makes no new request.
 
 <img src="/video/docs/canonical-workbench-conversation-angular-result.png" alt="The Angular conversation workbench retains the Lighthouse plan discussion while the inspector shows the follow-up request." width="1600" height="1000" loading="lazy" />
 
