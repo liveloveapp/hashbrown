@@ -774,7 +774,8 @@ export function mountWorkbench(
     const historical = snapshot.cursor !== null;
     const busy =
       snapshot.status === 'loading' ||
-      isWorkbenchHistoryBusy(frame?.history?.sdk);
+      isWorkbenchHistoryBusy(frame?.history?.sdk) ||
+      !!frame?.history?.replacement;
     const blocked =
       busy ||
       snapshot.status === 'paused' ||
@@ -980,6 +981,7 @@ export function mountWorkbench(
               detail: {
                 retained: history?.app.retained ?? null,
                 action: history?.app.action ?? null,
+                replacementIntent: history?.replacement ?? null,
                 error: history?.app.error ?? null,
               },
             }
@@ -992,6 +994,7 @@ export function mountWorkbench(
               detailHeading: 'Current operation and save eligibility',
               detail: {
                 action: history?.app.action ?? null,
+                replacementIntent: history?.replacement ?? null,
                 error: history?.app.error ?? null,
                 canSave: canSaveWorkbenchHistory(snapshot),
                 successfulGeneration: history?.successfulGeneration ?? false,

@@ -50,8 +50,11 @@ export interface WorkbenchHistoryObservation {
   readonly pendingInterrupts: unknown;
   readonly recoveryRequired: boolean;
 }
+/** Application intent awaiting actual SDK replacement; never a fabricated lifecycle flag. */
+export type WorkbenchHistoryReplacement = 'clear' | 'restore' | 'load';
 /** Paired capture keeps application text and SDK lifecycle distinct. */
 export interface WorkbenchHistoryFrame {
+  readonly replacement: WorkbenchHistoryReplacement | null;
   readonly sdk: WorkbenchHistoryObservation;
   readonly app: WorkbenchHistoryApp;
   readonly successfulGeneration: boolean;
@@ -248,6 +251,7 @@ export function canMutateWorkbenchHistory(
 ): boolean {
   const sdk = snapshot.frame?.history?.sdk;
   return (
+    !snapshot.frame?.history?.replacement &&
     snapshot.cursor === null &&
     snapshot.status !== 'loading' &&
     snapshot.status !== 'paused' &&

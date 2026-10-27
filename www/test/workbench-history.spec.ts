@@ -371,3 +371,46 @@ test('rejects programmatic sends that would bypass pending or recovery workflows
   store.recordHistory(observation({ recoveryRequired: true }));
   expect(() => store.send('Bypass recovery')).toThrow();
 });
+
+test('replacement intent blocks synchronously before the SDK effect and clears only on settled replacement', () => {
+  const store = createWorkbenchStore('history');
+  store.recordHistory(observation());
+  const app = { ...createWorkbenchHistoryApp(), retained: document };
+
+  expect(store.recordHistoryApp(app, 'restore')).toBe(true);
+  store.seek(0);
+
+  expect(store.getSnapshot().cursor).toBeNull();
+  expect(canMutateWorkbenchHistory(store.getSnapshot())).toBe(false);
+  expect(() => store.send('Too early')).toThrow();
+  expect(store.recordHistoryApp(app, 'keep')).toBe(false);
+  store.recordHistory(observation());
+  expect(canMutateWorkbenchHistory(store.getSnapshot())).toBe(false);
+  const restored = messages.map((message, index) => ({
+    ...message,
+    id: `restored-${index}`,
+  }));
+  store.recordHistory(observation({ messages: restored, isSending: true }));
+  expect(canMutateWorkbenchHistory(store.getSnapshot())).toBe(false);
+  store.recordHistory(observation({ messages: restored }));
+  expect(canMutateWorkbenchHistory(store.getSnapshot())).toBe(true);
+  expect(store.getSnapshot().frame?.history?.sdk.isSending).toBe(false);
+});
+
+test('failed setter releases intent without inventing SDK messages or losing retained data', () => {
+  const store = createWorkbenchStore('history');
+  store.recordHistory(observation());
+  store.recordHistoryApp(
+    { ...createWorkbenchHistoryApp(), retained: document },
+    'clear',
+  );
+
+  expect(store.failHistoryReplacement(new Error('setter rejected'))).toBe(true);
+
+  expect(canMutateWorkbenchHistory(store.getSnapshot())).toBe(true);
+  expect(store.getSnapshot().frame?.history?.sdk.messages[0].id).toBe('sdk-0');
+  expect(store.getSnapshot().frame?.history?.app.retained).toEqual(document);
+  expect(store.getSnapshot().frame?.history?.app.error).toBe('setter rejected');
+  expect(store.failHistoryReplacement()).toBe(false);
+  expect(canSaveWorkbenchHistory(store.getSnapshot())).toBe(false);
+});

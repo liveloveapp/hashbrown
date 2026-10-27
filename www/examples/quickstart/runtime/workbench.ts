@@ -6,6 +6,7 @@ import {
   type WorkbenchHistoryApp,
   type WorkbenchHistoryFrame,
   type WorkbenchHistoryObservationInput,
+  type WorkbenchHistoryReplacement,
 } from './workbench-history';
 import {
   normalizeWorkbenchWorkflowObservation,
@@ -121,6 +122,8 @@ export interface WorkbenchStore {
   recordHistory(observation: WorkbenchHistoryObservationInput): boolean;
   /** Captures explicit application text actions; replay and active SDK work are inert. */
   recordHistoryApp(app: WorkbenchHistoryApp, action: string): boolean;
+  /** Releases failed/cancelled replacement intent without claiming the SDK transcript changed. */
+  failHistoryReplacement(error?: unknown): boolean;
   /** Captures actual SDK state, messages, activities, pending batch and lifecycle flags. */
   recordWorkflow(observation: WorkbenchWorkflowObservationInput): boolean;
   /** Records intent before calling the synchronous SDK resume API; adds no user message. */
@@ -358,6 +361,8 @@ export function createWorkbenchStore(
   let application = initialApplication();
   let history: WorkbenchHistoryFrame | undefined;
   let historySuccess = false;
+  let replacementBaseline = '';
+  let replacementObservedBusy = false;
   let workflow: WorkbenchWorkflowObservation | undefined;
   let resumeIntent = false;
   let decision: WorkbenchDecision | undefined;
@@ -527,7 +532,22 @@ export function createWorkbenchStore(
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
       if (status === 'loading' && observedUser !== currentUser) return false;
-      if (JSON.stringify(sdk) === JSON.stringify(history?.sdk)) return false;
+      const busy = isWorkbenchHistoryBusy(sdk);
+      if (history?.replacement && busy) replacementObservedBusy = true;
+      const replacement =
+        history?.replacement &&
+        !(
+          !busy &&
+          (replacementObservedBusy ||
+            JSON.stringify(sdk.messages) !== replacementBaseline)
+        )
+          ? history.replacement
+          : null;
+      if (
+        JSON.stringify(sdk) === JSON.stringify(history?.sdk) &&
+        replacement === history?.replacement
+      )
+        return false;
       if (
         sdk.error ||
         sdk.recoveryRequired ||
@@ -536,6 +556,7 @@ export function createWorkbenchStore(
       )
         historySuccess = false;
       history = {
+        replacement,
         sdk,
         app: history?.app ?? createWorkbenchHistoryApp(),
         successfulGeneration: historySuccess,
@@ -563,13 +584,41 @@ export function createWorkbenchStore(
         !canMutateWorkbenchHistory(snapshot)
       )
         return false;
-      if (['clear', 'restore', 'load'].includes(action)) historySuccess = false;
+      const replacement = ['clear', 'restore', 'load'].includes(action)
+        ? (action as WorkbenchHistoryReplacement)
+        : null;
+      if (replacement) {
+        historySuccess = false;
+        replacementBaseline = JSON.stringify(history.sdk.messages);
+        replacementObservedBusy = false;
+      }
       history = {
         ...history,
+        replacement,
         app: copy({ ...app, action }),
         successfulGeneration: historySuccess,
       };
       record('history-app', { action });
+      return true;
+    },
+    failHistoryReplacement(error) {
+      if (format !== 'history' || cursor !== null || !history?.replacement)
+        return false;
+      const action = `${history.replacement}-failed`;
+      const message =
+        error === undefined
+          ? 'Text replacement cancelled.'
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      history = {
+        ...history,
+        replacement: null,
+        app: { ...history.app, action, error: message },
+      };
+      replacementBaseline = '';
+      replacementObservedBusy = false;
+      record('history-app', { action, error: message });
       return true;
     },
     recordWorkflow(observation) {
@@ -633,7 +682,8 @@ export function createWorkbenchStore(
         cursor !== null ||
         status === 'loading' ||
         (format === 'history' &&
-          (isWorkbenchHistoryBusy(history?.sdk) ||
+          (!!history?.replacement ||
+            isWorkbenchHistoryBusy(history?.sdk) ||
             !!history?.sdk.pendingInterrupts ||
             !!history?.sdk.recoveryRequired)) ||
         status === 'paused' ||
@@ -951,7 +1001,8 @@ export function createWorkbenchStore(
     seek(index) {
       if (
         status === 'loading' ||
-        (format === 'history' && isWorkbenchHistoryBusy(history?.sdk)) ||
+        (format === 'history' &&
+          (!!history?.replacement || isWorkbenchHistoryBusy(history?.sdk))) ||
         !Number.isInteger(index) ||
         index < 0 ||
         index >= events.length
@@ -967,6 +1018,8 @@ export function createWorkbenchStore(
     clear() {
       generation++;
       history = undefined;
+      replacementBaseline = '';
+      replacementObservedBusy = false;
       historySuccess = false;
       workflow = undefined;
       resumeIntent = false;
