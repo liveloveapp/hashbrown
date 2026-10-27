@@ -2,71 +2,76 @@
 title: 'Natural language forms: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Generate a typed form draft and apply it only after review and validation.'
+    content: 'Generate a two-step plan, review it in editable form fields, and explicitly apply validated values without conflating draft and application state.'
 ---
 
 # Natural language forms
 
-Let's add a natural-language input to a form without giving the model control of submission. A request becomes a typed shopping-list draft. We review it, then select **Apply list** to replace the list in our application.
+Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
 
-<hb-docs-demo demo="structured-form">
+<hb-docs-demo demo="canonical-workbench-natural-forms-angular">
 </hb-docs-demo>
 
-## Before we start
+<img src="/video/docs/canonical-workbench-natural-forms-angular-result.png" alt="The Angular workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />
 
-Complete [Structured output](/docs/angular/concept/structured-output). Its checked `StructuredList` component and shared shopping-list file are the complete implementation for this recipe. The [Streaming](/docs/angular/concept/streaming) guide explains how the draft appears progressively.
+## Keep the values separate
 
-Start with a small, explicit contract. Our example collects item names and quantities. It does not infer prices, purchase products, or submit a checkout.
+| Value | Who changes it | Purpose |
+| --- | --- | --- |
+| Request text | The user | Describes the desired plan. |
+| Generated draft | The actual model response, parsed by Hashbrown | Proposes title and step values. |
+| Reviewed fields | Review draft, then the user | Holds an editable application copy. |
+| Applied plan | The validated Apply handler | Holds the application's accepted plan and revision. |
 
-## Keep three values separate
+The workbench begins with the same application-owned two-step plan at revision zero. A new draft leaves that accepted data in place. Typing, parsing a partial response, or rendering a component does not apply a replacement.
 
-| Value        | Who changes it                                | Purpose                              |
-| ------------ | --------------------------------------------- | ------------------------------------ |
-| Request text | The user                                      | Describes the list to generate       |
-| Draft list   | The model response, parsed by Hashbrown       | Shows the proposed replacement       |
-| Applied list | The Apply handler after validation and review | Holds the application's current list |
+## Generate, review, edit, apply
 
-Typing changes the request text. **Generate draft** starts a request. **Apply list** changes application state. Keeping these actions separate prevents every keystroke, partial response, or component render from submitting data.
+1. Open **Natural language forms** in the [canonical workbench](/docs/angular/start/workbench).
+2. Send the first prompt. The read-only `readContext` tool returns the current application plan and revision.
+3. Watch the JSON become a draft. **Review draft** stays disabled until the source successfully completes and the original document validates.
+4. Select **Review draft** to copy that document into **Plan title**, **First step**, and **Second step**.
+5. Edit the first step to **Outline the demo**. The applied plan has not changed.
+6. Select **Apply plan**. The handler validates the reviewed values and advances the application revision.
+7. Ask for a shorter second step. Inspect `readContext`: it returns the applied plan, including the edited first step.
+8. Review the next draft. If the model rewrote the first step, restore **Outline the demo** in the field, then apply the reviewed values explicitly.
 
-## Generate and review
+Both framework recordings use real OpenAI requests, real browser tool results, and their actual text and parser APIs. The model proposes data. It can rewrite a value we asked it to keep. That is why we review the next draft too. Our application owns the form and its actions.
 
-1. Enter **Add 2 apples and 1 loaf of bread**.
-2. Select **Generate draft** and watch the complete items arrive.
-3. Check the names and quantities against your request.
-4. Select **Apply list** after the run finishes.
+## Validate both the document and the edits
 
-The applied list now contains the reviewed items. Generating another draft leaves that applied list in place until a valid replacement is explicitly accepted.
+The parser's preview is useful while the response arrives. A fresh successful source, completed parser, and valid original JSON are required before Review can create an actionable form copy.
 
-<img src="/video/docs/structured-form-result.png" alt="A generated shopping-list draft and the separately applied list both show two apples and one loaf of bread after review." width="920" height="564" loading="lazy" />
+The application then validates the edited fields again when applying:
 
-If the result is wrong, change the request and generate again. This small example does not include editable item fields. In a larger form, copy the completed draft into your existing editable controls, let the user correct it, and validate those edited values before submission.
+- A trimmed title of 1–120 characters.
+- Exactly two steps, each 1–200 trimmed characters.
+- The same user turn and assistant source that produced the reviewed draft.
+- The same application revision on which that draft was based.
+- A successful current run, with no error, pending interrupt, recovery requirement, or earlier Apply for this turn.
 
-## Validate the application rules
+The handler rechecks these rules. A disabled button is presentation, not the validation boundary. Whitespace-only or oversized edits stay editable and cannot replace the accepted plan.
 
-The shared validator requires 1–10 items, a trimmed name of 1–80 characters, and an integer quantity from 1–20. If the generated draft contains a zero quantity, our application rejects it and leaves the applied list unchanged. Zero matches the integer schema but fails our list rules. The recording fixture tests this case deterministically; a real model may instead correct the request or ask for clarification.
+A new generation invalidates the previous review. A cancelled, failed, replaced, or stale response cannot reuse a completed-looking draft. The existing applied plan remains available throughout.
 
-Prompt instructions help the model produce useful suggestions. They do not replace validation. The Apply handler revalidates the candidate instead of relying solely on whether the button is enabled.
+## Use current application context
 
-If your form needs identifiers from the application, expose a narrow lookup through [Tool calling](/docs/angular/concept/functions). Validate that a returned identifier still exists and that the current user may use it when saving. Do not accept a generated label as proof of a valid record or permission.
+The browser tool reads the accepted plan without changing it. The server pins the tool declaration and instructs the model to preserve the applied first step during the follow-up, including edits made after the earlier model response.
 
-## Recover without losing accepted data
+This is application-provided context. It is not authorization for a server write. If your form saves to a backend, validate the reviewed values again, verify identity and ownership, and show saving and failure states. See [Securing a Public Endpoint](/docs/angular/recipes/public-endpoint).
 
-| Situation                          | Application behavior                                      |
-| ---------------------------------- | --------------------------------------------------------- |
-| Generation in progress             | Show the draft; keep Apply disabled.                      |
-| Invalid quantity or missing data   | Explain the list rules; ask for a revised request.        |
-| Endpoint or parse error            | Show the error; preserve the applied list.                |
-| Cancelled generation               | Invalidate Apply immediately; allow a fresh request.      |
-| Replacement run with no new answer | Keep the earlier applied list; do not reuse an old draft. |
+Keep ordinary labelled inputs available. Users need a precise path to correct the generated draft; natural-language input does not replace usable controls or explicit submission.
 
-For ambiguous input, ask the user to clarify. A more involved flow can use `s.anyOf` with literal tags for a draft or a clarification request; see [Skillet schemas](/docs/angular/concept/schema). Do not silently guess a required amount, date, or identifier in a consequential form.
+## Inspect and replay
 
-## Connect a real form
+**Form** pairs the generated document with reviewed fields, the applied plan, and its revision. **Parser** shows actual parser values and the independent source lifecycle. **Requests** shows the browser tool result and the follow-up input.
 
-The example's applied list is local state. Refreshing the page clears it. For a server write, send the reviewed values to an authenticated endpoint, validate the body again, authorize the operation, and show saving and failure states. Keep the reviewed form available if the save fails. See [Securing a public endpoint](/docs/angular/recipes/public-endpoint) for the server integration boundaries.
+Replay uses immutable captured values. It cannot edit fields, apply a plan, rerun a tool, or call the provider. Returning to live restores the current application view. This local example does not persist a form across a page refresh.
 
-Keep an ordinary input path available where users need precise edits or cannot use the generated draft. Natural-language input can help fill a form; it does not remove the need for usable controls, labels, keyboard access, or explicit submission.
+## Read the checked source
 
-## Next steps
+- [Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/authoring-workbench.ts) binds the actual SDK and framework parser.
+- [Shared authoring contract](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-authoring.ts) defines the schema, original-document validation, and explicit review actions.
+- [Capture and application guards](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench.ts) bind observations and Apply to the current request and revision.
 
-Use [Exposing components](/docs/angular/concept/components) when the model should select from your trusted components. Use [Tool calling](/docs/angular/concept/functions) when it needs application data, and [Message history](/docs/angular/concept/message-history) if your form assistant should retain earlier turns.
+Use [Structured output](/docs/angular/concept/structured-output) when you want the structured chat API to own parsing. Use [Streaming JSON Parser](/docs/angular/recipes/json-parser) for the direct parser boundary shown here, or [Exposing components](/docs/angular/concept/components) when the model should select trusted components.

@@ -1,3 +1,8 @@
+import {
+  workbenchAuthoringSchema,
+  workbenchFormsSystem,
+  workbenchParserSystem,
+} from '../runtime/workbench-authoring';
 import { createWorkbenchThreads } from './workbench-threads';
 import { workbenchHistorySystem } from '../runtime/workbench-history';
 import {
@@ -97,7 +102,11 @@ export function pinWorkbenchInput(
     lesson === 'first-plan' ||
     lesson === 'conversation' ||
     lesson === 'system-instructions';
+  const authoring = lesson === 'json-parser' || lesson === 'natural-forms';
+  const agent = lesson === 'agent-decisions';
   const plainText =
+    authoring ||
+    agent ||
     history ||
     workflow ||
     lesson === 'magic-text' ||
@@ -109,28 +118,40 @@ export function pinWorkbenchInput(
       {
         id: 'workbench-system',
         role: 'system',
-        content: history
-          ? workbenchHistorySystem
-          : workflow
-            ? workbenchWorkflowSystem
-            : lesson === 'first-plan'
-              ? workbenchFirstPlanSystem
-              : lesson === 'conversation'
-                ? workbenchConversationSystem
-                : lesson === 'system-instructions'
-                  ? workbenchInstructionsSystem
-                  : lesson === 'magic-text'
-                    ? workbenchTextSystem
-                    : lesson === 'predictions'
-                      ? workbenchPredictionsSystem
-                      : structured
-                        ? workbenchStructuredSystem
-                        : workbenchSystem,
+        content:
+          lesson === 'json-parser'
+            ? workbenchParserSystem
+            : lesson === 'natural-forms'
+              ? workbenchFormsSystem
+              : agent
+                ? 'Classify bounded user text using server-owned read-only handlers.'
+                : history
+                  ? workbenchHistorySystem
+                  : workflow
+                    ? workbenchWorkflowSystem
+                    : lesson === 'first-plan'
+                      ? workbenchFirstPlanSystem
+                      : lesson === 'conversation'
+                        ? workbenchConversationSystem
+                        : lesson === 'system-instructions'
+                          ? workbenchInstructionsSystem
+                          : lesson === 'magic-text'
+                            ? workbenchTextSystem
+                            : lesson === 'predictions'
+                              ? workbenchPredictionsSystem
+                              : structured
+                                ? workbenchStructuredSystem
+                                : workbenchSystem,
       },
       ...messages,
     ],
     tools:
-      history || workflow || onboarding || lesson === 'predictions'
+      history ||
+      workflow ||
+      onboarding ||
+      agent ||
+      lesson === 'json-parser' ||
+      lesson === 'predictions'
         ? []
         : [
             {
@@ -148,11 +169,12 @@ export function pinWorkbenchInput(
     forwardedProps: {
       hashbrown: {
         ui: !structured && !plainText && lesson !== 'predictions',
-        ...(plainText
+        ...(plainText && !authoring
           ? {}
           : {
-              responseSchema:
-                lesson === 'predictions'
+              responseSchema: authoring
+                ? s.toJsonSchema(workbenchAuthoringSchema)
+                : lesson === 'predictions'
                   ? s.toJsonSchema(workbenchPredictionsSchema)
                   : structured
                     ? s.toJsonSchema(getWorkbenchPlanSchema(lesson))

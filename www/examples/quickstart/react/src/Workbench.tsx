@@ -1,3 +1,4 @@
+import { AuthoringWorkbenchConversation } from './AuthoringWorkbench';
 import { ServerWorkbenchConversation } from './ServerWorkbench';
 import { HistoryWorkbenchConversation } from './HistoryWorkbench';
 import { WorkflowWorkbenchConversation } from './WorkflowWorkbench';
@@ -297,22 +298,29 @@ export function Workbench() {
     getWorkbenchLesson(window.location.search).id,
   )
     ? ServerWorkbenchConversation
-    : getWorkbenchLesson(window.location.search).format === 'history'
-      ? HistoryWorkbenchConversation
-      : getWorkbenchLesson(window.location.search).format === 'workflow'
-        ? WorkflowWorkbenchConversation
-        : getWorkbenchLesson(window.location.search).format === 'text'
-          ? MagicTextWorkbenchConversation
-          : getWorkbenchLesson(window.location.search).format === 'predictions'
-            ? PredictionsWorkbenchConversation
-            : getWorkbenchLesson(window.location.search).format === 'selection'
-              ? SelectionWorkbenchConversation
-              : getWorkbenchLesson(window.location.search).format === 'decision'
-                ? DecisionWorkbenchConversation
+    : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
+          getWorkbenchLesson(window.location.search).id,
+        )
+      ? AuthoringWorkbenchConversation
+      : getWorkbenchLesson(window.location.search).format === 'history'
+        ? HistoryWorkbenchConversation
+        : getWorkbenchLesson(window.location.search).format === 'workflow'
+          ? WorkflowWorkbenchConversation
+          : getWorkbenchLesson(window.location.search).format === 'text'
+            ? MagicTextWorkbenchConversation
+            : getWorkbenchLesson(window.location.search).format ===
+                'predictions'
+              ? PredictionsWorkbenchConversation
+              : getWorkbenchLesson(window.location.search).format ===
+                  'selection'
+                ? SelectionWorkbenchConversation
                 : getWorkbenchLesson(window.location.search).format ===
-                    'structured'
-                  ? StructuredWorkbenchConversation
-                  : WorkbenchConversation;
+                    'decision'
+                  ? DecisionWorkbenchConversation
+                  : getWorkbenchLesson(window.location.search).format ===
+                      'structured'
+                    ? StructuredWorkbenchConversation
+                    : WorkbenchConversation;
   const [conversations, setConversations] = useState([
     { id: '1', label: 'Two-step plan' },
   ]);

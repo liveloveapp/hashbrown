@@ -1761,3 +1761,51 @@ app-workflow-workbench-conversation[hidden] {
 .wb-workflow-approvals button {
   margin: 4px;
 }
+
+/* The application review form uses ordinary labelled fields, separate from the model preview. */
+.wb-authoring-controls {
+  display: grid;
+  gap: 12px;
+}
+.wb-authoring-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--wb-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.wb-authoring-controls input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-panel);
+  font-size: 15px;
+  font-weight: 400;
+}
+.wb-authoring-controls input:focus-visible {
+  outline: 2px solid var(--wb-cobalt);
+  outline-offset: 2px;
+}
+.wb-authoring-controls input:disabled {
+  background: var(--wb-code);
+  color: var(--wb-muted);
+}
+.wb-authoring-controls > button {
+  justify-self: start;
+}
+.wb-authoring-controls > button:last-child {
+  background: var(--wb-ink);
+  border-color: var(--wb-ink);
+  color: var(--wb-panel);
+}
+.wb [data-authoring-status] {
+  color: var(--wb-muted);
+  font-size: 12px;
+}
+.wb [data-authoring-preview] h3 {
+  margin: 8px 0 12px;
+  font-size: 17px;
+}

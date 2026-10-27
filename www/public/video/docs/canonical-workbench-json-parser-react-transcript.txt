@@ -1,0 +1,17 @@
+REACT · json-parser
+
+This is a real provider recording of the checked canonical workbench. Real OpenAI JSON arrives through actual Hashbrown text chat and direct framework parser APIs. No local timer invents model tokens. Source completion, parser completion and original-document validation are independent. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
+
+OpenAI JSON feeds the actual framework parser as it arrives.
+
+Source completion, parser completion and validation are separate.
+
+A new request replaces the preview with a shorter plan.
+
+The completed document is validated against the original JSON.
+
+Replay follows captured JSON and values. No requests or writes.
+
+Back live.
+
+Application state remains at revision zero. Replay makes no requests or writes. Refresh clears these local sessions and captures.

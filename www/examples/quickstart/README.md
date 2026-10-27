@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has twenty-one allowlisted lessons in both framework hosts:
+The workbench now has twenty-four allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -273,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All twenty-one lessons (42 framework paths) are covered by `npx nx workbench-e2e www`.
+All twenty-four lessons (48 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -350,3 +350,19 @@ requests or writes; a refreshed page does not reconstruct the old stream.
 Record with `WORKBENCH_LESSONS=server-threads,public-endpoint npx nx workbench-demo www`
 and existing server-only OpenAI credentials/model. Four framework-specific
 recordings have both codecs, captions, poster, result and text walkthrough.
+
+
+### Canonical agent decisions, JSON parsing and forms
+
+Use `?lesson=agent-decisions`, `?lesson=json-parser`, or `?lesson=natural-forms`.
+Agent text chat calls server-owned TypeSafe routing and fixed read-only handlers;
+decisions arrive whole and handler text is application output. Parser and forms
+use actual text chat plus direct useJsonParser/injectJsonParser over raw OpenAI
+JSON. Source completion, parser completion and original JSON validation remain
+independent. Forms reviews a fresh valid draft into editable fields; explicit
+Apply validates current source, turn, revision and reviewed values once.
+
+Record `WORKBENCH_LESSONS=agent-decisions,json-parser,natural-forms npx nx workbench-demo www`
+with existing server-only OpenAI/TypeSafe credentials and exact models. Six
+framework-specific captures disclose unchanged-event pacing and half-speed footage.
+Replay is read-only. Legacy standalone examples and media remain independent.

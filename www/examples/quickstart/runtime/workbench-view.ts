@@ -1,3 +1,6 @@
+import { workbenchAuthoringInspection } from './workbench-authoring-view';
+import { workbenchAuthoringPrompts } from './workbench-authoring';
+import { workbenchAgentPrompts } from './workbench-agent';
 import { workbenchServerInspection } from './workbench-server-view';
 import {
   canSaveWorkbenchHistory,
@@ -368,13 +371,17 @@ export function mountWorkbench(
   const prompts =
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'history'
-      ? workbenchHistoryPrompts
-      : commands.lesson?.format === 'workflow'
-        ? workbenchWorkflowPrompts
-        : commands.lesson?.format === 'decision'
-          ? workbenchDecisionPrompts
-          : workbenchPrompts);
+    (commands.lesson?.id === 'agent-decisions'
+      ? workbenchAgentPrompts
+      : ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+        ? workbenchAuthoringPrompts
+        : commands.lesson?.format === 'history'
+          ? workbenchHistoryPrompts
+          : commands.lesson?.format === 'workflow'
+            ? workbenchWorkflowPrompts
+            : commands.lesson?.format === 'decision'
+              ? workbenchDecisionPrompts
+              : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -553,16 +560,27 @@ export function mountWorkbench(
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
-      ? commands.lesson?.id === 'magic-text'
-        ? 'Markdown'
-        : 'Text'
-      : 'JSON',
+    ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+      ? 'JSON'
+      : ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
+        ? commands.lesson?.id === 'magic-text'
+          ? 'Markdown'
+          : 'Text'
+        : 'JSON',
     'Requests',
     ...(commands.lesson?.format === 'history'
-      ? ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
-        ? ['History', 'Server', 'Access']
-        : ['History', 'Saved text']
+      ? commands.lesson.id === 'agent-decisions'
+        ? ['History', 'Agent']
+        : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
+          ? [
+              'History',
+              'Parser',
+              ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
+              'Schema',
+            ]
+          : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+            ? ['History', 'Server', 'Access']
+            : ['History', 'Saved text']
       : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
@@ -811,13 +829,17 @@ export function mountWorkbench(
         ? payload.source
         : undefined;
     provenance.textContent =
-      source === 'demo-failure'
-        ? 'Local demo failure'
-        : source === 'test-fixture'
-          ? 'Test fixture'
-          : source === 'provider'
-            ? 'Live model'
-            : 'Awaiting source';
+      commands.lesson?.id === 'agent-decisions' &&
+      frame?.history?.agent?.fallback === 'unavailable' &&
+      source === 'provider'
+        ? 'Classifier unavailable'
+        : source === 'demo-failure'
+          ? 'Local demo failure'
+          : source === 'test-fixture'
+            ? 'Test fixture'
+            : source === 'provider'
+              ? 'Live model'
+              : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy =
       snapshot.status === 'loading' ||
@@ -1099,6 +1121,7 @@ export function mountWorkbench(
                 }
         : undefined;
     const recipeView =
+      workbenchAuthoringInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchServerInspection(tab, history?.app.server) ??
       historyView ??
       workflowView ??

@@ -1,5 +1,8 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'agent-decisions'
+  | 'json-parser'
+  | 'natural-forms'
   | 'server-threads'
   | 'public-endpoint'
   | 'first-plan'
@@ -36,6 +39,9 @@ export interface WorkbenchLesson {
     | 'history';
   readonly protocol: 'chat' | 'decision';
   readonly inspector:
+    | 'Agent'
+    | 'Parser'
+    | 'Form'
     | 'Markdown'
     | 'JSON'
     | 'Requests'
@@ -96,7 +102,14 @@ export const workbenchLessonGroups: readonly {
   {
     id: 'recipes',
     title: 'Recipes',
-    lessons: ['magic-text', 'predictions', 'ui-selection'],
+    lessons: [
+      'magic-text',
+      'predictions',
+      'ui-selection',
+      'agent-decisions',
+      'json-parser',
+      'natural-forms',
+    ],
   },
 ];
 /** The allowlisted lesson catalog; browser input cannot select arbitrary endpoints. */
@@ -249,6 +262,25 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     protocol: 'chat' as const,
     endpoint: `/api/workbench/${id}`,
   })),
+  ...(['agent-decisions', 'json-parser', 'natural-forms'] as const).map(
+    (id) => ({
+      id,
+      title: {
+        'agent-decisions': 'Decisions in agents',
+        'json-parser': 'JSON parser',
+        'natural-forms': 'Natural language forms',
+      }[id],
+      format: 'history' as const,
+      protocol: 'chat' as const,
+      inspector:
+        id === 'agent-decisions'
+          ? ('Agent' as const)
+          : id === 'json-parser'
+            ? ('Parser' as const)
+            : ('Form' as const),
+      endpoint: `/api/workbench/${id}`,
+    }),
+  ),
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {

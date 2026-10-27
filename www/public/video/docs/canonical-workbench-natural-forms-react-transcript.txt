@@ -1,0 +1,29 @@
+REACT · natural-forms
+
+This is a real provider recording of the checked canonical workbench. Real OpenAI JSON arrives through actual Hashbrown text chat and direct framework parser APIs. No local timer invents model tokens. Source completion, parser completion and original-document validation are independent. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
+
+OpenAI reads current application context and generates a draft.
+
+Review copies a completed valid draft into editable fields.
+
+Edit the first step. The applied plan has not changed.
+
+Apply validates reviewed values and advances application revision.
+
+The next request uses readContext to read the applied plan.
+
+The model rewrote the first step. Review catches the change.
+
+Review the new draft before applying.
+
+Restore the first step. Applied state is unchanged.
+
+Apply explicitly replaces the accepted plan.
+
+Generated data, reviewed fields and applied state stay separate.
+
+Replay makes no requests, edits or application writes.
+
+Back live.
+
+Review copies a fresh successful valid draft into editable application fields. Edits do not apply state. Explicit Apply revalidates the fields, source identity, turn and application revision, and can run once per generation. The real readContext browser tool returns the applied plan and revision to the next request. Replay makes no requests or writes. Refresh clears these local sessions and captures.

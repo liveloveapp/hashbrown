@@ -41,7 +41,9 @@ test.each(SDKS)(
           ? `canonical-workbench-structured-${sdk}`
           : slug[1] === 'streaming'
             ? `canonical-workbench-streaming-${sdk}`
-            : demo,
+            : slug[1] === 'natural-language-to-structured-data'
+              ? `canonical-workbench-natural-forms-${sdk}`
+              : demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 

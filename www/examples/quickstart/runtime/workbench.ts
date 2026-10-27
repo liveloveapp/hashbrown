@@ -1,3 +1,13 @@
+import {
+  decodeWorkbenchAuthoringDocument,
+  normalizeWorkbenchAuthoringPlan,
+  type WorkbenchAuthoringObservation,
+  type WorkbenchAuthoringObservationInput,
+} from './workbench-authoring';
+import {
+  decodeWorkbenchAgentTrace,
+  type WorkbenchAgentTrace,
+} from './workbench-agent';
 import type { WorkbenchServerHistoryState } from './workbench-server-history';
 import {
   canMutateWorkbenchHistory,
@@ -119,6 +129,14 @@ export interface WorkbenchSnapshot {
 }
 /** The shared recording boundary used by the two real SDK clients. */
 export interface WorkbenchStore {
+  /** Captures actual parser values against the current SDK assistant identity. */
+  recordAuthoring(observation: WorkbenchAuthoringObservationInput): boolean;
+  /** Copies a fresh valid document for explicit review. */
+  reviewAuthoring(): boolean;
+  /** Changes only the reviewed application fields. */
+  editAuthoring(field: 'title' | 'step-0' | 'step-1', value: string): boolean;
+  /** Applies a fresh successful valid review once. */
+  applyAuthoring(): boolean;
   /** Captures actual SDK text history and lifecycle, including idle setter replacements. */
   recordHistory(observation: WorkbenchHistoryObservationInput): boolean;
   /** Captures explicit application text actions; replay and active SDK work are inert. */
@@ -333,7 +351,7 @@ export function wasWorkbenchDecisionApplied(
   );
 }
 
-/** Creates an isolated capture. Seeking changes only the selected frame, never live state. */
+/** Creates an isolated capture. Seeking changes only the selected frame, never live state. Authoring review and Apply require the explicit form mode. */
 export function createWorkbenchStore(
   format:
     | 'ui'
@@ -344,6 +362,7 @@ export function createWorkbenchStore(
     | 'selection'
     | 'workflow'
     | 'history' = 'ui',
+  options: { readonly authoringMode?: 'parser' | 'form' } = {},
 ): WorkbenchStore {
   const initialApplication = (): WorkbenchApplication =>
     freeze(
@@ -366,6 +385,9 @@ export function createWorkbenchStore(
     );
   let application = initialApplication();
   let history: WorkbenchHistoryFrame | undefined;
+  let authoring: WorkbenchAuthoringObservation | undefined;
+  let latestSentUserId: string | null = null;
+  let agent: WorkbenchAgentTrace | undefined;
   let historySuccess = false;
   let replacementBaseline = '';
   let replacementObservedBusy = false;
@@ -453,6 +475,12 @@ export function createWorkbenchStore(
           policy: workbenchInstructionsSystem,
         };
     }
+    if (
+      kind === 'event' &&
+      raw?.['type'] === 'CUSTOM' &&
+      raw['name'] === 'workbench.agent-decision'
+    )
+      agent = decodeWorkbenchAgentTrace(raw['value']) ?? undefined;
     if (kind === 'event' && raw?.['type'] === 'TEXT_MESSAGE_START') json = '';
     if (
       kind === 'event' &&
@@ -497,7 +525,14 @@ export function createWorkbenchStore(
         ...(instructions ? { instructions } : {}),
         messages,
         ...(history
-          ? { history: { ...history, successfulGeneration: historySuccess } }
+          ? {
+              history: {
+                ...history,
+                successfulGeneration: historySuccess,
+                ...(authoring ? { authoring } : {}),
+                ...(agent ? { agent } : {}),
+              },
+            }
           : {}),
         ...(workflow ? { workflow } : {}),
         json,
@@ -527,7 +562,183 @@ export function createWorkbenchStore(
     return true;
   };
   notify();
+  const currentAuthoringSource = () => {
+    if (!history || !authoring) return false;
+    const sdkMessages = history.sdk.messages;
+    const userIndex = sdkMessages.reduce(
+      (index, message, current) =>
+        message['role'] === 'user' ? current : index,
+      -1,
+    );
+    const requestUser = latestSentUserId;
+    const assistant = sdkMessages
+      .slice(userIndex + 1)
+      .filter((message) => message['role'] === 'assistant')
+      .at(-1);
+    return (
+      !!requestUser &&
+      sdkMessages[userIndex]?.['id'] === requestUser &&
+      !!authoring.origin.assistantId &&
+      assistant?.['id'] === authoring.origin.assistantId &&
+      assistant?.['content'] === authoring.json
+    );
+  };
+  const authoringReady = () =>
+    options.authoringMode === 'form' &&
+    cursor === null &&
+    status === 'complete' &&
+    finishReason === 'stop' &&
+    historySuccess &&
+    history?.sdk.finishReason === 'stop' &&
+    !history.sdk.error &&
+    !history.sdk.recoveryRequired &&
+    !history.sdk.pendingInterrupts &&
+    currentAuthoringSource() &&
+    !history?.replacement &&
+    !isWorkbenchHistoryBusy(history?.sdk) &&
+    authoring?.source === 'complete' &&
+    authoring.parser.complete &&
+    !authoring.parser.error &&
+    !!authoring.document &&
+    authoring.origin.turn === turn &&
+    authoring.origin.revision === application.revision &&
+    !authoring.applied;
   return {
+    recordAuthoring(input) {
+      if (
+        format !== 'history' ||
+        cursor !== null ||
+        !history ||
+        history.replacement
+      )
+        return false;
+      const sdkMessages = history.sdk.messages;
+      const currentUser = latestSentUserId;
+      const userIndex = sdkMessages.reduce(
+        (index, message, current) =>
+          message['role'] === 'user' ? current : index,
+        -1,
+      );
+      const assistant = sdkMessages
+        .slice(userIndex + 1)
+        .filter((message) => message['role'] === 'assistant')
+        .at(-1);
+      if (
+        turn > 0 &&
+        (sdkMessages[userIndex]?.['id'] !== currentUser ||
+          !input.assistantId ||
+          assistant?.['id'] !== input.assistantId ||
+          assistant?.['content'] !== input.json)
+      )
+        return false;
+      const source =
+        turn === 0
+          ? 'idle'
+          : status === 'cancelled'
+            ? 'stopped'
+            : history.sdk.error ||
+                history.sdk.recoveryRequired ||
+                status === 'error'
+              ? 'error'
+              : isWorkbenchHistoryBusy(history.sdk) || status === 'loading'
+                ? 'generating'
+                : historySuccess && history.sdk.finishReason === 'stop'
+                  ? 'complete'
+                  : 'stopped';
+      const error =
+        input.error == null
+          ? null
+          : input.error instanceof Error
+            ? input.error.message
+            : String(input.error);
+      const same =
+        authoring?.origin.turn === turn &&
+        authoring.origin.assistantId === input.assistantId &&
+        authoring.json === input.json;
+      const next: WorkbenchAuthoringObservation = {
+        origin: {
+          turn,
+          revision:
+            same && authoring
+              ? authoring.origin.revision
+              : application.revision,
+          assistantId: input.assistantId,
+        },
+        source,
+        json: input.json,
+        parser: {
+          value: error || source === 'error' ? null : input.value,
+          complete: input.complete,
+          error,
+        },
+        document:
+          source === 'complete' &&
+          input.complete &&
+          !error &&
+          normalizeWorkbenchAuthoringPlan(input.value)
+            ? decodeWorkbenchAuthoringDocument(input.json)
+            : null,
+        reviewed: same && authoring ? authoring.reviewed : null,
+        applied: same && authoring ? authoring.applied : false,
+        error: null,
+      };
+      if (JSON.stringify(next) === JSON.stringify(authoring)) return false;
+      authoring = copy(next);
+      record('history', { authoring });
+      return true;
+    },
+    reviewAuthoring() {
+      if (!authoringReady() || !authoring) return false;
+      authoring = {
+        ...authoring,
+        reviewed: copy(authoring.document),
+        error: null,
+      };
+      record('history-app', { action: 'review-authoring' });
+      return true;
+    },
+    editAuthoring(field, value) {
+      if (
+        !authoringReady() ||
+        !authoring?.reviewed ||
+        typeof value !== 'string' ||
+        !['title', 'step-0', 'step-1'].includes(field)
+      )
+        return false;
+      const reviewed =
+        field === 'title'
+          ? { ...authoring.reviewed, title: value }
+          : {
+              ...authoring.reviewed,
+              steps: authoring.reviewed.steps.map((step, index) =>
+                index === Number(field.slice(-1)) ? value : step,
+              ),
+            };
+      authoring = { ...authoring, reviewed, error: null };
+      record('history-app', { action: 'edit-authoring', field });
+      return true;
+    },
+    applyAuthoring() {
+      if (!authoringReady() || !authoring?.reviewed || appliedTurn === turn)
+        return false;
+      const plan = normalizeWorkbenchAuthoringPlan(authoring.reviewed);
+      if (!plan) {
+        authoring = {
+          ...authoring,
+          error:
+            'Use a title of 1–120 characters and exactly two steps of 1–200 characters each.',
+        };
+        record('history-app', { action: 'invalid-authoring' });
+        return false;
+      }
+      application = freeze(
+        copy({ ...application, revision: application.revision + 1, plan }),
+      );
+      appliedTurn = turn;
+      authoring = { ...authoring, applied: true, error: null };
+      record('history-app', { action: 'apply-authoring' });
+      return true;
+    },
     recordHistory(observation) {
       if (format !== 'history' || cursor !== null) return false;
       const sdk = normalizeWorkbenchHistoryObservation(observation);
@@ -719,11 +930,14 @@ export function createWorkbenchStore(
       json = '';
       finishReason = undefined;
       historySuccess = false;
+      authoring = undefined;
+      agent = undefined;
       const message = {
         id: `workbench-${generation}-${turn}`,
         role: 'user' as const,
         content: text,
       };
+      latestSentUserId = message.id;
       messages = [...messages, message];
       record('user', message);
       return message;
@@ -1030,6 +1244,9 @@ export function createWorkbenchStore(
     clear() {
       generation++;
       history = undefined;
+      authoring = undefined;
+      latestSentUserId = null;
+      agent = undefined;
       replacementBaseline = '';
       replacementObservedBusy = false;
       historySuccess = false;
