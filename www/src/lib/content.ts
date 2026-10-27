@@ -24,8 +24,10 @@ export interface BlogPost {
   description: string;
   date: string;
   tags: string[];
-  /** Absolute Open Graph image URL from frontmatter, if the post sets one. */
+  /** Open Graph image URL from frontmatter (absolute, or a site path), if the post sets one. */
   ogImage: string | undefined;
+  /** Alt text for the frontmatter `ogImage`. */
+  ogImageAlt: string | undefined;
   /** Team member ids for the byline; each maps to `/image/team/<id>.png`. */
   team: string[];
   /** YouTube URL for posts that embed a video (talks). */
@@ -43,6 +45,7 @@ interface PostAttributes {
   description: string;
   tags?: string[];
   ogImage?: string;
+  ogImageAlt?: string;
   team?: string[];
   youtube?: string;
 }
@@ -104,6 +107,7 @@ function toPost(file: string): BlogPost {
     date: slug.slice(0, 10),
     tags: attributes.tags ?? [],
     ogImage: attributes.ogImage,
+    ogImageAlt: attributes.ogImageAlt,
     team: attributes.team ?? [],
     youtube: attributes.youtube,
     body,

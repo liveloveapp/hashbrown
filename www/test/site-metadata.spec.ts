@@ -31,6 +31,19 @@ test('uses a custom image and published time when given', () => {
   });
 });
 
+test('describes a custom image with its alt text when given', () => {
+  const metadata = pageMetadata({
+    title: 'Post',
+    image: '/blog/image/og/x.png',
+    imageAlt: 'Decide, then generate.',
+    publishedTime: '2026-10-27',
+  });
+
+  expect(metadata.openGraph).toMatchObject({
+    images: [{ url: '/blog/image/og/x.png', alt: 'Decide, then generate.' }],
+  });
+});
+
 test('sets a canonical URL from the page path', () => {
   const metadata = pageMetadata({
     title: 'Post',
