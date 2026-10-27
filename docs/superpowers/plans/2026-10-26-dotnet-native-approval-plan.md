@@ -12,6 +12,10 @@
 
 Status: independently approved design/plan with reviewed isolated-execution amendment; no implementation performed at adoption. Spec: [2026-10-26-dotnet-native-approval-design.md](../specs/2026-10-26-dotnet-native-approval-design.md). Root may adopt the approved spec/plan in a separate managed worktree from the frozen qualified milestone-one commit. No milestone-two PR before verified milestone-one integration. All paths below are relative to the repository root; `D` in prose means `tools/conformance/dotnet`, not a shell variable.
 
+## Root-adopted Task 6 capacity clarification
+
+After independent specification review and actual Task 6 capacity evidence, root adopted the design's narrow capacity paragraph clarification on 2026-10-27. Known input, selector and new-payload-slot admission limits reject before model work; native-output call/descriptor limits can be discovered only after a genuine model response and reject before excess allocation or dependent approval admission, dispatch, effects or terminal publication. No further automatic model retry or irreversible safety-fence eviction is permitted; existing provably safe pre-grant cleanup remains unchanged. Numerical limits, aggregate accounting, fence protection and dispatch behavior do not change. Retained-call capacity is not a generation/model-turn quota. The exact acceptance wording is the capacity paragraph in the linked approved design; the initial oversized-output, later retained-call and pre-acquisition selector tests record their distinct actual request counts.
+
 ## Execution boundaries and prerequisites
 
 - The parent user authorized autonomous milestone specs/reviews/subagents and PR/green merge; root owns final adoption and provider qualification. No additional generic permission gate is needed. Do not infer approval for dependency changes or release work.
@@ -154,14 +158,16 @@ Evidence and exact hashes are recorded in the owned `milestone2-approval-design/
 
 ## Task 6: Cross-process adversarial lifecycle qualification
 
+Component completed after independent specification and concurrency/quality approval. The complete native-family run passed 130 tests / 13 suites (52 retained + 78 actual-client HTTP cases); full suite passed 389 tests / 41 suites with zero failures/skips. Four post-style-cleanup real-client mixed profiles and fresh build/C#/TypeScript lints passed with zero compiler/ESLint warnings. All nine final source hashes were independently verified. The only production correction distinguishes unknown native location groups; native model history remains untouched. Actual provider and browser/published-package qualification remain subsequent tasks.
+
 **Files:** fixture/browser unit; `tools/conformance/dotnet/tests/native-approval-durability.spec.ts`, `tools/conformance/dotnet/specs/native-approvals.spec.ts`; extend actual native wire assertions and gates.
 
-- [ ] Add strict aimock scenarios using actual native clients; no injected native approval protocol objects from the browser. Register protected fixture function through genuine ApprovalRequiredAIFunction with versioned catalog. Preserve existing nonapproval function fixture and old application confirmation flow.
-- [ ] Add durable PostgreSQL approval effect observations and deterministic gates before decision reservation, after reservation/no dispatch, after Started/before next, after effect/before completion, before session save, after save/before terminal authorization, after publication authorization/before finalize. Gates wait outside DB transactions.
-- [ ] Use independent loopback processes sharing one random fixture schema. Kill first worker only at observed gates, then send exact decision to second. Before reservation can retry unchanged Pending; after reservation cannot. Assert actual effect rows/call journal/batch state/model request counts, not guessed timing.
-- [ ] Race approve vs decline and approve vs cancelled on the same batch; only one decision generation and at most one approved effect. Race duplicate initial/resume HTTP requests, stale owner after lease takeover, renewal loss, outage/failed save and late callbacks after operator CAS.
-- [ ] Exercise expiry/tombstone/capacity and forged auth scope/agent/partition/config/catalog/parent/args/server result/raw descriptor/run ID. Wrong auth gets no state disclosure, wrong authority/input gets zero provider/effect work. Retired selector remains unusable after repeated maintenance.
-- [ ] Run new durability/host/store suites and existing native-session suites, then complete serialized dotnet-conformance build/test/lint. Request independent concurrency/safety review before enabling browser/live qualification. Commit.
+- [x] Add strict aimock scenarios using actual native clients; no injected native approval protocol objects from the browser. Register protected fixture function through genuine ApprovalRequiredAIFunction with versioned catalog. Preserve existing nonapproval function fixture and old application confirmation flow.
+- [x] Add durable PostgreSQL approval effect observations and deterministic gates before decision reservation, after reservation/no dispatch, after Started/before next, after effect/before completion, before session save, after save/before terminal authorization, after publication authorization/before finalize. Gates wait outside DB transactions.
+- [x] Use independent loopback processes sharing one random fixture schema. Kill first worker only at observed gates, then send exact decision to second. Before reservation can retry unchanged Pending; after reservation cannot. Assert actual effect rows/call journal/batch state/model request counts, not guessed timing.
+- [x] Race approve vs decline and approve vs cancelled on the same batch; only one decision generation and at most one approved effect. Race duplicate initial/resume HTTP requests, stale owner after lease takeover, renewal loss, outage/failed save and late callbacks after operator CAS.
+- [x] Exercise expiry/tombstone/capacity and forged auth scope/agent/partition/config/catalog/parent/args/server result/raw descriptor/run ID. Wrong auth gets no state disclosure, wrong authority/input gets zero provider/effect work. Retired selector remains unusable after repeated maintenance.
+- [x] Run new durability/host/store suites and existing native-session suites, then complete serialized dotnet-conformance build/test/lint. Request independent concurrency/safety review before enabling browser/live qualification. Commit.
 
 ## Task 7: Source and published browser interoperability matrix
 

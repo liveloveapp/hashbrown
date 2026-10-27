@@ -6,7 +6,7 @@ using Npgsql;
 namespace Hashbrown.Conformance.Testing;
 
 /// <summary>Deterministic server effects used only by the integration fixture.</summary>
-public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = null, string schema = "hashbrown", FixtureNativeGate? nativeGate = null)
+public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = null, string schema = "hashbrown", FixtureNativeGate? nativeGate = null, Func<HttpContext?>? nativeContext = null)
 {
     private int _server;
     private int _protected;
@@ -76,6 +76,31 @@ public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = nul
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         Interlocked.Increment(ref _server);
+        if (nativeGate is not null) await nativeGate.ReachAsync("effect-persisted", cancellationToken);
+        return new { code, name = "Portland International Airport" };
+    }
+
+    /// <summary>Appends every genuine protected executor entry without a uniqueness or idempotency mask.</summary>
+    [Description("Look up an airport by its IATA code.")]
+    public async Task<object> LookupProtectedNativeAirport(string code, CancellationToken cancellationToken = default)
+    {
+        if (source is null) throw new InvalidOperationException("Native fixture requires PostgreSQL.");
+        var context = NativeSessionContext.Get(nativeContext?.Invoke()) ?? throw new InvalidOperationException("Owned native fixture context required.");
+        var evidence = context.ApprovalEvidence ?? throw new InvalidOperationException("Admitted native fixture evidence required.");
+        // Fixture scripts use distinct codes, correlating an actual executor to an immutable trusted captured call.
+        var descriptor = evidence.Batch.Batch.ProtectedRequests.Single(item => item.Call.Name == "lookupAirport" && item.Call.Arguments.GetProperty("code").GetString() == code);
+        await using (var command = source.CreateCommand($"INSERT INTO \"{schema}\".fixture_native_approval_effects(session_id,call_id,request_id,batch_id,admitted_generation,admitted_revision,code) VALUES(@session,@call,@request,@batch,@generation,@revision,@code)"))
+        {
+            command.Parameters.AddWithValue("session", context.Lease.Key.Id);
+            command.Parameters.AddWithValue("call", descriptor.Call.Id);
+            command.Parameters.AddWithValue("request", descriptor.RequestId);
+            command.Parameters.AddWithValue("batch", evidence.Batch.Batch.BatchId);
+            command.Parameters.AddWithValue("generation", evidence.AdmittedGeneration!.Value);
+            command.Parameters.AddWithValue("revision", evidence.AdmittedRevision!.Value);
+            command.Parameters.AddWithValue("code", code);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        Interlocked.Increment(ref _protected);
         if (nativeGate is not null) await nativeGate.ReachAsync("effect-persisted", cancellationToken);
         return new { code, name = "Portland International Airport" };
     }

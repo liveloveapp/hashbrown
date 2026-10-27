@@ -135,7 +135,8 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
         for (var index = 1; index < ordered.Length; index++)
         {
             var previous = Location(ordered[index - 1].RequestId); var current = Location(ordered[index].RequestId);
-            if (previous.MessageId == current.MessageId && previous.MessageIndex == current.MessageIndex && previous.ContentIndex >= current.ContentIndex) throw new NativeSessionRequestException(409);
+            // Equal unknown parent identities do not prove that separately emitted native requests share a content group.
+            if ((previous.MessageId is not null || previous.MessageIndex is not null) && previous.MessageId == current.MessageId && previous.MessageIndex == current.MessageIndex && previous.ContentIndex >= current.ContentIndex) throw new NativeSessionRequestException(409);
         }
         NativeRequestLocation Location(string id) => bound.Batch.ProtectedRequests.FirstOrDefault(item => item.RequestId == id)?.NativeLocation ?? bound.Batch.BrowserBindings.Single(item => item.RequestId == id).NativeLocation;
         var replacements = new HashSet<string>(StringComparer.Ordinal); var decisions = new HashSet<string>(StringComparer.Ordinal); var result = new List<ChatMessage>();

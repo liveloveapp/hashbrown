@@ -115,6 +115,63 @@ foreach (var (value, limit) in new[] { ((object)new Dictionary<string, object?> 
 
     Check(rejected, "Native argument serialization must reject exact UTF-8 overflow before materializing a complete JSON document.");
 }
+// Pure lower-layer Restore qualification: no journal acquisition, model or executor is called.
+var restoreType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!;
+var restore = restoreType.GetMethod("Restore", BindingFlags.NonPublic | BindingFlags.Static)!;
+var registrationType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionRegistration")!;
+var contextType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionContext")!;
+await using var mappingSource = Npgsql.NpgsqlDataSource.Create("Host=127.0.0.1;Port=1;Username=fixture;Database=fixture");
+var mappingJournal = new PostgresNativeSessionJournal(mappingSource, registeredCatalog, "adapter", "adapter_native");
+var registration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
+    ["native", mappingJournal, registeredCatalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+string MappingSnapshot(IEnumerable<ChatMessage> messages) => JsonSerializer.Serialize(messages.Select(message => new { message.Role, message.MessageId, Contents = message.Contents.Select(content => new { Type = content.GetType().FullName, Json = JsonSerializer.Serialize(content, content.GetType()) }) }));
+foreach (var scenario in new[] { "unknown-separate", "known-parent", "known-index", "different-parents", "repeated-parent-index", "reversed-parent-index", "repeated-known-index", "unknown-moved-calls" })
+{
+    NativeRequestLocation First() => scenario switch
+    {
+        "unknown-separate" or "unknown-moved-calls" => new(null, null, 0),
+        "known-index" or "repeated-known-index" => new(null, 7, 0),
+        "reversed-parent-index" => new("parent", null, 1),
+        _ => new("parent", null, 0)
+    };
+    NativeRequestLocation Second() => scenario switch
+    {
+        "unknown-separate" or "unknown-moved-calls" => new(null, null, 0),
+        "known-index" => new(null, 7, 1),
+        "repeated-known-index" => new(null, 7, 0),
+        "different-parents" => new("other-parent", null, 0),
+        "repeated-parent-index" or "reversed-parent-index" => new("parent", null, 0),
+        _ => new("parent", null, 1)
+    };
+    var descriptors = new[] {
+        new NativeApprovalDescriptor("request-a", new("call-a", "backend", 1, JsonSerializer.SerializeToElement(new { code = "A" })), First()),
+        new NativeApprovalDescriptor("request-b", new("call-b", "backend", 1, JsonSerializer.SerializeToElement(new { code = "B" })), Second())
+    };
+    var batch = new NativeBoundApprovalBatch(new("batch", descriptors, []), new Dictionary<string, NativePublicCallLocation> { ["request-a"] = new("assistant-call-a", 0, 0), ["request-b"] = new("assistant-call-b", 1, 0) });
+    var ownedKey = new NativeSessionKey("native", "owned", "mapping", new Dictionary<string, string> { ["isolation"] = "owned" });
+    var decisions = descriptors.Select(item => new NativeApprovalDecision(item.RequestId, NativeApprovalDecisionKind.Approved)).ToArray();
+    var evidence = new NativeApprovalEvidence(ownedKey.Id, "adapter", registeredCatalog.Identity, new(ownedKey, "mapping-only", 2, 3), batch, 2, NativeApprovalState.DecisionAdmitted, decisions, 2, 3, DateTimeOffset.UtcNow.AddMinutes(1));
+    var publicMessages = new JsonArray(descriptors.Select(item => (JsonNode?)new JsonObject { ["id"] = "assistant-" + item.Call.Id, ["role"] = "assistant", ["content"] = "", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = item.Call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = "backend", ["arguments"] = item.Call.Arguments.GetRawText() } }) }).ToArray());
+    var raw = new JsonObject { ["threadId"] = "mapping", ["runId"] = "mapping", ["messages"] = publicMessages, ["tools"] = new JsonArray() }.ToJsonString();
+    var input = JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", raw, null, null], null)!;
+    contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, evidence);
+    var converted = descriptors.Select(item => new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(item.Call.Id, "backend", JsonSerializer.Deserialize<Dictionary<string, object?>>(item.Call.Arguments))]) { MessageId = "assistant-" + item.Call.Id }).ToList();
+    if (scenario == "unknown-moved-calls") converted.Reverse();
+    converted.Add(new ChatMessage(ChatRole.User, decisions.Select(item => (AIContent)new InterruptResponseContent(item.RequestId) { Payload = JsonSerializer.SerializeToElement(new { approved = true }) }).ToList()));
+    var before = MappingSnapshot(converted); var beforeLocations = JsonSerializer.Serialize(descriptors);
+    var rejected = false; IReadOnlyList<ChatMessage>? restored = null;
+
+    try { restored = (IReadOnlyList<ChatMessage>)restore.Invoke(null, [converted, context])!; }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    var valid = scenario is "unknown-separate" or "known-parent" or "known-index" or "different-parents";
+    Check(valid ? !rejected : rejected, "Restore distinguishes unknown separate native parents from proven same-group reversed/repeated positions and still rejects moved converted public calls: " + scenario);
+    Check(MappingSnapshot(converted) == before && JsonSerializer.Serialize(descriptors) == beforeLocations, "Native Restore must not mutate public converted history or captured native locations: " + scenario);
+    if (valid) Check(restored!.SelectMany(message => message.Contents).OfType<ToolApprovalRequestContent>().Select(item => ((FunctionCallContent)item.ToolCall).CallId).SequenceEqual(new[] { "call-a", "call-b" }), "Restoration replaces native approval requests in the original public sequence.");
+    await ((IAsyncDisposable)context).DisposeAsync();
+}
+
 var unleasedAgent = NativeSessionAgentFactory.Create(new NeverModel(), "native", [backend], registeredCatalog, new HttpContextAccessor());
 var unleasedCreateRejected = false;
 
