@@ -41,6 +41,8 @@ import {
 } from './workbench-player';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
 import { createWorkbenchSplit } from './workbench-split';
+import { attachWorkbenchScrub } from './workbench-scrub';
+import { createWorkbenchRequestsView } from './workbench-requests-view';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -153,6 +155,8 @@ export interface WorkbenchCommands {
     readonly title: string;
     readonly format: WorkbenchLesson['format'];
     readonly inspector: string;
+    /** The configured endpoint, shown for requests that carry no URL. */
+    readonly endpoint?: string;
   };
   readonly setDebugDenied?: (denied: boolean) => void;
   readonly send: (content: string) => void;
@@ -512,9 +516,21 @@ export function mountWorkbench(
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
   const selection = element('div', '', 'wb-selection');
+  // One tab panel holds either the captured/detail pair or the Requests view.
+  const tabPanel = element('div', '', 'wb-tabpanel');
+  tabPanel.id = `${instanceId}-inspection`;
+  tabPanel.setAttribute('role', 'tabpanel');
   const pair = element('div', '', 'wb-pair');
-  pair.id = `${instanceId}-inspection`;
-  pair.setAttribute('role', 'tabpanel');
+  tabPanel.append(pair);
+  const requestsView = createWorkbenchRequestsView({
+    instanceId,
+    seek: (index) => {
+      pause();
+      store.seek(index);
+    },
+  });
+  /** The Requests tab's failure alert, while the selected moment failed. */
+  let requestsIssue: HTMLElement | undefined;
   const captured = element('section', '', 'wb-section');
   captured.dataset.captured = '';
   const capturedHeading = element('h3');
@@ -562,7 +578,7 @@ export function mountWorkbench(
     });
     item.id = `${instanceId}-tab-${name.toLowerCase()}`;
     item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', pair.id);
+    item.setAttribute('aria-controls', tabPanel.id);
     return item;
   });
   tabs.append(...tabButtons);
@@ -570,7 +586,7 @@ export function mountWorkbench(
     element('h2', 'Inspector', 'wb-panel-head'),
     tabs,
     selection,
-    pair,
+    tabPanel,
   );
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
@@ -673,6 +689,24 @@ export function mountWorkbench(
   transport.append(previousTurn, previous, play, next, nextTurn);
   const scrubber = element('div', '', 'wb-scrubber');
   scrubber.append(segments, seek, events, flag);
+  const detachScrub = attachWorkbenchScrub({
+    track: scrubber,
+    tickSelector: '.wb-events button',
+    isDisabled: () => {
+      const snapshot = store.getSnapshot();
+      return snapshot.status === 'loading' || !snapshot.events.length;
+    },
+    indexAt: (fraction) => {
+      const total = store.getSnapshot().events.length;
+      return total ? Math.round(fraction * (total - 1)) : null;
+    },
+    onScrub: (index) => {
+      pause();
+      store.seek(index);
+      // The range is pointer-transparent; keep keyboard follow-up on it.
+      seek.focus({ preventScroll: true });
+    },
+  });
   const player = element('div', '', 'wb-player');
   player.append(
     transport,
@@ -869,8 +903,12 @@ export function mountWorkbench(
     tabButtons.forEach((item) => {
       item.setAttribute('aria-selected', String(item.textContent === tab));
       if (item.textContent === tab)
-        pair.setAttribute('aria-labelledby', item.id);
+        tabPanel.setAttribute('aria-labelledby', item.id);
     });
+    const onRequests = tab === 'Requests';
+    const panelContent = onRequests ? requestsView.element : pair;
+    if (tabPanel.firstElementChild !== panelContent)
+      tabPanel.replaceChildren(panelContent);
     const onboardingText =
       commands.lesson?.id === 'conversation' ||
       commands.lesson?.id === 'system-instructions';
@@ -1247,75 +1285,49 @@ export function mountWorkbench(
       : (frame?.status ?? snapshot.status) === 'loading'
         ? 'streaming'
         : 'captured';
-    rebuildKeepingFocus(inspection, 'data-sequence', () => {
-      inspection.replaceChildren();
-      if (rawFrame) {
-        inspection.append(
-          pre(
-            commands.lesson?.format === 'history'
-              ? {
-                  sdk: frame?.history?.sdk ?? null,
-                  event: {
-                    kind: frame?.kind,
-                    source: frame?.source,
-                    payload: frame?.payload,
-                  },
-                }
-              : commands.lesson?.format === 'workflow'
+    if (onRequests)
+      requestsView.update({
+        snapshot,
+        busy,
+        format: commands.lesson?.format,
+        endpoint: commands.lesson?.endpoint,
+        source: provenance.textContent ?? '',
+      });
+    // The pair is off-screen on the Requests tab; skip highlighting it.
+    if (!onRequests)
+      rebuildKeepingFocus(inspection, 'data-sequence', () => {
+        inspection.replaceChildren();
+        if (rawFrame) {
+          inspection.append(
+            pre(
+              commands.lesson?.format === 'history'
                 ? {
-                    sdk: frame?.workflow ?? null,
+                    sdk: frame?.history?.sdk ?? null,
                     event: {
                       kind: frame?.kind,
                       source: frame?.source,
                       payload: frame?.payload,
                     },
                   }
-                : tab === 'Transform' && transform
-                  ? transform
-                  : frame?.payload,
-            tab,
-          ),
-        );
-      } else if (tab === 'Requests') {
-        const list = element('div', '', 'wb-request-list');
-        for (const event of visibleEvents.filter(
-          (event) =>
-            event.kind === 'request' ||
-            event.kind === 'tool' ||
-            (event.kind === 'response' &&
-              event.payload &&
-              typeof event.payload === 'object' &&
-              'status' in event.payload &&
-              Number(event.payload.status) >= 400),
-        )) {
-          const item = button(
-            `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
-            () => {
-              pause();
-              store.seek(snapshot.events.indexOf(event));
-            },
+                : commands.lesson?.format === 'workflow'
+                  ? {
+                      sdk: frame?.workflow ?? null,
+                      event: {
+                        kind: frame?.kind,
+                        source: frame?.source,
+                        payload: frame?.payload,
+                      },
+                    }
+                  : tab === 'Transform' && transform
+                    ? transform
+                    : frame?.payload,
+              tab,
+            ),
           );
-          item.disabled = busy;
-          item.dataset.sequence = String(event.sequence);
-          item.setAttribute(
-            'aria-pressed',
-            String(frame?.sequence === event.sequence),
-          );
-          list.append(item);
+        } else {
+          inspection.append(pre(value, tab));
         }
-        inspection.append(
-          list.childElementCount
-            ? list
-            : element(
-                'p',
-                'Send a message to follow its requests.',
-                'wb-muted',
-              ),
-        );
-      } else {
-        inspection.append(pre(value, tab));
-      }
-    });
+      });
     const detailHeader = element('header', '', 'wb-section-head');
     detailHeader.append(
       element(
@@ -1347,45 +1359,59 @@ export function mountWorkbench(
         'wb-section-sub',
       ),
     );
-    detail.replaceChildren(
-      detailHeader,
-      pre(
-        recipeView
-          ? recipeView.detail
-          : tab === 'Transform'
-            ? (transform?.preserved ?? null)
-            : tab === 'Schema'
-              ? {
-                  preview: frame?.props ?? null,
-                  passesApplicationRules: isWorkbenchPlan(frame?.props),
-                  responseStatus: frame?.status ?? snapshot.status,
-                  note: 'Preview values do not authorize applying a plan.',
-                }
-              : tab === 'JSON' || tab === 'UI'
-                ? commands.lesson?.format === 'decision'
-                  ? (frame?.decision ?? null)
-                  : frame?.props
-                : tab === 'State'
-                  ? {
-                      turn: frame?.turn ?? snapshot.turn,
-                      status: frame?.status ?? snapshot.status,
-                      event: frame
-                        ? workbenchEventLabel(frame, commands.lesson?.format)
-                        : 'Ready',
-                      source: frame?.source ?? 'Application',
-                    }
-                  : requestContext?.payload,
-        tab,
-      ),
-    );
-    if ((frame?.status ?? snapshot.status) === 'error') {
-      const issue = element(
-        'p',
-        commands.lesson?.format === 'workflow' &&
-          frame?.workflow?.recoveryRequired
-          ? 'Resume failed after acknowledgement. Start a new conversation.'
-          : 'The request failed. Check the server, return to live, and send again.',
+    if (!onRequests)
+      detail.replaceChildren(
+        detailHeader,
+        pre(
+          recipeView
+            ? recipeView.detail
+            : tab === 'Transform'
+              ? (transform?.preserved ?? null)
+              : tab === 'Schema'
+                ? {
+                    preview: frame?.props ?? null,
+                    passesApplicationRules: isWorkbenchPlan(frame?.props),
+                    responseStatus: frame?.status ?? snapshot.status,
+                    note: 'Preview values do not authorize applying a plan.',
+                  }
+                : tab === 'JSON' || tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? (frame?.decision ?? null)
+                    : frame?.props
+                  : tab === 'State'
+                    ? {
+                        turn: frame?.turn ?? snapshot.turn,
+                        status: frame?.status ?? snapshot.status,
+                        event: frame
+                          ? workbenchEventLabel(frame, commands.lesson?.format)
+                          : 'Ready',
+                        source: frame?.source ?? 'Application',
+                      }
+                    : requestContext?.payload,
+          tab,
+        ),
       );
+    const failed = (frame?.status ?? snapshot.status) === 'error';
+    const issueText =
+      commands.lesson?.format === 'workflow' &&
+      frame?.workflow?.recoveryRequired
+        ? 'Resume failed after acknowledgement. Start a new conversation.'
+        : 'The request failed. Check the server, return to live, and send again.';
+    if (failed && onRequests) {
+      // The Requests view persists, so keep one alert node: inserting it again
+      // on every render could announce it again.
+      requestsIssue ??= element('p', issueText);
+      requestsIssue.setAttribute('role', 'alert');
+      if (requestsIssue.textContent !== issueText)
+        requestsIssue.textContent = issueText;
+      if (requestsIssue.parentElement !== requestsView.element)
+        requestsView.element.append(requestsIssue);
+    } else {
+      requestsIssue?.remove();
+      requestsIssue = undefined;
+    }
+    if (failed && !onRequests) {
+      const issue = element('p', issueText);
       issue.setAttribute('role', 'alert');
       inspection.append(issue);
     }
@@ -1480,6 +1506,8 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      detachScrub();
+      requestsView.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
       unsubscribe();

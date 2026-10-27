@@ -484,6 +484,7 @@ test('keeps the latest browser tool result legible in the live Requests context'
     reset: vi.fn(),
   });
   store.send('Plan');
+  store.record('request', { requestId: 'first-id', input: { messages: [] } });
   store.record('tool', {
     name: 'readContext',
     result: { revision: 1, plan: null },
@@ -493,6 +494,12 @@ test('keeps the latest browser tool result legible in the live Requests context'
     input: { messages: [] },
   });
   store.settle('complete', 'stop');
+  [...host.querySelectorAll<HTMLButtonElement>('.wb-requests-table button')]
+    .find((row) => row.textContent === 'readContext')
+    ?.click();
+  [...host.querySelectorAll<HTMLButtonElement>('[data-detail] [role=tab]')]
+    .find((tab) => tab.textContent === 'Result')
+    ?.click();
 
   const context = host.querySelector('[data-detail]');
 
@@ -524,11 +531,19 @@ test('does not label an earlier turn tool result as the current request context'
   });
   store.settle('complete', 'stop');
   store.send('Shorter');
-  expect(host.querySelector('[data-detail]')?.textContent).not.toContain(
+  expect(host.querySelector('[data-detail]')?.textContent ?? '').not.toContain(
     'first-request',
   );
   store.record('request', { requestId: 'second-turn' });
   store.record('event', { type: 'RUN_STARTED' });
+  host
+    .querySelector<HTMLButtonElement>(
+      '.wb-requests-table tbody[data-turn="2"] button[data-exchange]',
+    )
+    ?.click();
+  [...host.querySelectorAll<HTMLButtonElement>('[data-detail] [role=tab]')]
+    .find((tab) => tab.textContent === 'Raw request')
+    ?.click();
 
   const context = host.querySelector('[data-detail]');
 
@@ -667,6 +682,11 @@ test('historical provenance and HTTP evidence follow the selected failed turn', 
     reset: vi.fn(),
   });
   store.send('Denied');
+  store.record('request', {
+    url: '/api/workbench/debugging?demoDenied=1',
+    requestId: 'denied',
+    input: { messages: [] },
+  });
   store.record('source', { source: 'demo-failure' });
   store.record('response', {
     status: 403,
@@ -692,8 +712,8 @@ test('historical provenance and HTTP evidence follow the selected failed turn', 
   expect(host.querySelector('[data-source]')?.textContent).toBe(
     'Local demo failure',
   );
-  expect(host.querySelector('.wb-request-list')?.textContent).toContain(
-    'HTTP 403',
+  expect(host.querySelector('.wb-requests-table')?.textContent).toContain(
+    '403',
   );
   expect(host.querySelector('[data-detail]')?.textContent).toContain(
     'demo-context-denied',

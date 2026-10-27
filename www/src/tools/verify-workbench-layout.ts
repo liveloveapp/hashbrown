@@ -2,7 +2,8 @@ import { expect, type Page } from '@playwright/test';
 
 /**
  * Asserts the shell opens at its recording defaults: expanded sidebar, every
- * section open, a 44/56 split, and the inspector pair side by side.
+ * section open, a 44/56 split, and the inspector pair side by side (or, on the Requests tab, the
+ * overview slider above the table).
  */
 export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
   const root = page.locator('.wb:visible');
@@ -14,6 +15,16 @@ export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
   await expect(
     root.locator('.wb-nav-heading[aria-expanded=false]'),
   ).toHaveCount(0);
+  const requests = root.locator('.wb-inspector .wb-requests');
+  if ((await requests.count()) > 0) {
+    // The Requests tab shows an overview and a table; the pair does not exist.
+    await expect(
+      requests.getByRole('slider', { name: 'Seek request timeline' }),
+    ).toBeVisible();
+    // Before the first request the table has no rows, so it has no size.
+    await expect(requests.locator('table.wb-requests-table')).toBeAttached();
+    return;
+  }
   const captured = await root
     .locator('.wb-inspector [data-captured]')
     .boundingBox();
