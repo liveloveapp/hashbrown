@@ -854,7 +854,13 @@ function scrubberPointer(
 ) {
   target.dispatchEvent(
     Object.assign(
-      new MouseEvent(type, { clientX, bubbles: true, cancelable: true }),
+      new MouseEvent(type, {
+        clientX,
+        bubbles: true,
+        cancelable: true,
+        // A press and the moves of a drag hold the primary button.
+        buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0,
+      }),
       { pointerId: 1, ...init },
     ),
   );

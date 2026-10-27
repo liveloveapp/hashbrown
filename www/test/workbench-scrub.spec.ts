@@ -2,6 +2,10 @@
 import { expect, test, vi } from 'vitest';
 import { attachWorkbenchScrub } from '../examples/quickstart/runtime/workbench-scrub';
 
+/** A press and the moves of a drag hold the primary button; the rest do not. */
+const held = (type: string) =>
+  type === 'pointerdown' || type === 'pointermove' ? 1 : 0;
+
 const setup = (options: { disabled?: boolean } = {}) => {
   const state = { disabled: options.disabled === true };
   const track = document.createElement('div');
@@ -36,11 +40,13 @@ const setup = (options: { disabled?: boolean } = {}) => {
     clientX = 0,
     pointerId = 1,
     button = 0,
+    buttons = held(type),
   ) =>
     target.dispatchEvent(
-      Object.assign(new MouseEvent(type, { clientX, bubbles: true, button }), {
-        pointerId,
-      }),
+      Object.assign(
+        new MouseEvent(type, { clientX, bubbles: true, button, buttons }),
+        { pointerId },
+      ),
     );
   return { track, tick, onScrub, detach, fire, capture, state };
 };
@@ -185,4 +191,26 @@ test('stops scrubbing when it becomes disabled mid-drag', () => {
   fire(track, 'pointermove', 180);
 
   expect(onScrub.mock.calls).toEqual([[2]]);
+});
+
+test('ends a tick press released outside the track', () => {
+  const { tick, track, onScrub, fire } = setup();
+  const outside = document.createElement('div');
+  document.body.append(outside);
+
+  fire(tick, 'pointerdown', 150);
+  fire(outside, 'pointerup', 150);
+  fire(track, 'pointermove', 180, 1, 0, 0);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('ends the drag when a move arrives with no button held', () => {
+  const { tick, track, onScrub, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(track, 'pointermove', 180, 1, 0, 0);
+  fire(track, 'pointermove', 190, 1, 0, 1);
+
+  expect(onScrub).not.toHaveBeenCalled();
 });

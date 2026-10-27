@@ -18,7 +18,9 @@ const dragThreshold = 4;
  * and the drag follows the pointer. A press on a tick waits for more than 4px of
  * movement before it captures the pointer and scrubs, so a still press stays a
  * click on the tick; a drag that began on a tick swallows the click that follows.
- * Only the primary button scrubs.
+ * Only the primary button scrubs. A release anywhere in the document, or a move
+ * with the primary button no longer held, ends the drag, so an uncaptured tick
+ * press released outside the track never leaves hover movement scrubbing.
  *
  * @param options - The track, the position mapping and the scrub callback.
  * @returns A function that removes the listeners and ends any drag.
@@ -56,6 +58,7 @@ export function attachWorkbenchScrub(
       onScrub(index);
     };
 
+    const doc = track.ownerDocument;
     const own = (e: Event) => (e as PointerEvent).pointerId === pointerId;
     const swallowClick = (e: Event) => {
       e.stopPropagation();
@@ -63,7 +66,7 @@ export function attachWorkbenchScrub(
     };
     const move = (e: Event) => {
       if (!own(e)) return;
-      if (isDisabled?.()) {
+      if (isDisabled?.() || ((e as PointerEvent).buttons & 1) === 0) {
         end();
         return;
       }
@@ -87,6 +90,8 @@ export function attachWorkbenchScrub(
       track.removeEventListener('pointerup', end);
       track.removeEventListener('pointercancel', end);
       track.removeEventListener('lostpointercapture', end);
+      doc.removeEventListener('pointerup', end);
+      doc.removeEventListener('pointercancel', end);
       stopDrag = undefined;
       if (moved && onTick)
         // The click, if any, follows pointerup at once; drop the guard after.
@@ -100,6 +105,9 @@ export function attachWorkbenchScrub(
     track.addEventListener('pointerup', end);
     track.addEventListener('pointercancel', end);
     track.addEventListener('lostpointercapture', end);
+    // An uncaptured tick press can be released off the track.
+    doc.addEventListener('pointerup', end);
+    doc.addEventListener('pointercancel', end);
     stopDrag = end;
     if (!onTick) {
       track.setPointerCapture?.(pointerId);
