@@ -843,6 +843,78 @@ test('toggles the rail with Cmd+B and Ctrl+B', () => {
   shell.dispose();
 });
 
+function scrubberPointer(
+  target: EventTarget,
+  type: string,
+  clientX: number,
+  init: Record<string, unknown> = {},
+) {
+  target.dispatchEvent(
+    Object.assign(
+      new MouseEvent(type, { clientX, bubbles: true, cancelable: true }),
+      { pointerId: 1, ...init },
+    ),
+  );
+}
+
+test('drags the bottom scrubber from anywhere on the track, including a tick', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const scrubber = host.querySelector<HTMLElement>('.wb-scrubber');
+  vi.spyOn(scrubber as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 1000,
+    width: 1000,
+  } as DOMRect);
+  const total = store.getSnapshot().events.length;
+  playerButton(host, 'Play').click();
+  const playing = host.querySelector('.wb-player button[aria-label="Pause"]');
+
+  scrubberPointer(scrubber as HTMLElement, 'pointerdown', 0);
+  const atStart = store.getSnapshot().cursor;
+  scrubberPointer(scrubber as HTMLElement, 'pointermove', 1000);
+  const atEnd = store.getSnapshot().cursor;
+  scrubberPointer(scrubber as HTMLElement, 'pointerup', 1000);
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[1];
+  scrubberPointer(tick, 'pointerdown', 500);
+  scrubberPointer(tick, 'pointermove', 530);
+  scrubberPointer(tick, 'pointerup', 530);
+
+  expect(atStart).toBe(0);
+  expect(atEnd).toBe(total - 1);
+  expect(store.getSnapshot().cursor).toBe(Math.round(0.53 * (total - 1)));
+  expect(playing).not.toBeNull();
+  expect(playing).not.toBeNull();
+  expect(
+    host.querySelector('.wb-player button[aria-label="Pause"]'),
+  ).toBeNull();
+  shell.dispose();
+});
+
+test('still seeks to a tick on a plain click', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const scrubber = host.querySelector<HTMLElement>('.wb-scrubber');
+  vi.spyOn(scrubber as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 1000,
+    width: 1000,
+  } as DOMRect);
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[0];
+  const index = Number(tick.dataset.index);
+
+  scrubberPointer(tick, 'pointerdown', 10);
+  scrubberPointer(tick, 'pointerup', 10);
+  tick.click();
+
+  expect(store.getSnapshot().cursor).toBe(index);
+  shell.dispose();
+});
+
 test('history inspector pairs actual SDK and retained app text and Raw keeps the selected event', () => {
   const host = document.createElement('div');
   document.body.append(host);

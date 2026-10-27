@@ -41,6 +41,7 @@ import {
 } from './workbench-player';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
 import { createWorkbenchSplit } from './workbench-split';
+import { attachWorkbenchScrub } from './workbench-scrub';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -673,6 +674,24 @@ export function mountWorkbench(
   transport.append(previousTurn, previous, play, next, nextTurn);
   const scrubber = element('div', '', 'wb-scrubber');
   scrubber.append(segments, seek, events, flag);
+  const detachScrub = attachWorkbenchScrub({
+    track: scrubber,
+    tickSelector: '.wb-events button',
+    isDisabled: () => {
+      const snapshot = store.getSnapshot();
+      return snapshot.status === 'loading' || !snapshot.events.length;
+    },
+    indexAt: (fraction) => {
+      const total = store.getSnapshot().events.length;
+      return total ? Math.round(fraction * (total - 1)) : null;
+    },
+    onScrub: (index) => {
+      pause();
+      store.seek(index);
+      // The range is pointer-transparent; keep keyboard follow-up on it.
+      seek.focus({ preventScroll: true });
+    },
+  });
   const player = element('div', '', 'wb-player');
   player.append(
     transport,
@@ -1480,6 +1499,7 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      detachScrub();
       pause();
       document.removeEventListener('keydown', onShortcut);
       unsubscribe();

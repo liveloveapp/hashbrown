@@ -804,6 +804,8 @@ body {
   min-width: 0;
   height: 60px;
   margin: 0 8px;
+  /* The scrub controller owns pointer input; stop the browser panning or zooming under a drag. */
+  touch-action: none;
 }
 /* The base track, visible before any event is captured. */
 .wb-scrubber::before {
@@ -868,6 +870,8 @@ body {
   background: transparent;
   cursor: pointer;
   appearance: none;
+  /* The scrubber's pointer controller handles the track; the range stays the keyboard and screen reader control. */
+  pointer-events: none;
 }
 .wb-scrubber input[type='range']:disabled {
   cursor: default;
@@ -923,10 +927,11 @@ body {
   pointer-events: none;
 }
 .wb .wb-events button {
+  pointer-events: auto;
   position: absolute;
-  top: 22px;
+  top: 20px;
   width: 10px;
-  height: 20px;
+  height: 24px;
   min-height: 0;
   margin-left: -5px;
   padding: 0;
@@ -943,7 +948,7 @@ body {
 .wb .wb-events button::before {
   content: '';
   position: absolute;
-  top: 4px;
+  top: 6px;
   left: 4px;
   width: 2px;
   height: 12px;
