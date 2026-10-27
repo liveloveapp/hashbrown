@@ -92,6 +92,7 @@ export function mountAuthoringControls(
     const snapshot = store.getSnapshot();
     const history = snapshot.frame?.history;
     const authoring = history?.authoring;
+    const source = workbenchAuthoringSource(snapshot);
     const earlier = new Map<string, WorkbenchAuthoringObservation>();
     for (const event of snapshot.events.slice(
       0,
@@ -153,8 +154,11 @@ export function mountAuthoringControls(
         return [paragraph];
       }),
     );
-    status.textContent = `Source: ${authoring?.source ?? workbenchAuthoringSource(snapshot)} · Parser: ${authoring?.parser.complete ? 'complete' : 'incomplete'}${authoring?.document ? ' · Original document valid' : ''}${authoring?.applied ? ' · Plan applied' : ''}`;
-    const value = authoring?.parser.value;
+    status.textContent = `Source: ${source} · Parser: ${authoring?.parser.complete ? 'complete' : 'incomplete'}${source === 'complete' && authoring?.document ? ' · Original document valid' : ''}${authoring?.applied ? ' · Plan applied' : ''}`;
+    const value =
+      source !== 'error' && !authoring?.parser.error
+        ? authoring?.parser.value
+        : null;
     const object =
       value && typeof value === 'object'
         ? (value as Record<string, unknown>)
@@ -174,6 +178,7 @@ export function mountAuthoringControls(
       mountedActive() &&
       snapshot.cursor === null &&
       snapshot.status === 'complete' &&
+      source === 'complete' &&
       authoring?.source === 'complete' &&
       !!authoring.document &&
       !authoring.applied &&
@@ -194,7 +199,7 @@ export function mountAuthoringControls(
       authoring?.error ||
       authoring?.parser.error ||
       history?.sdk.error ||
-      (authoring?.source === 'complete' && !authoring.document
+      (source === 'complete' && !authoring?.document
         ? 'The complete source is not a valid two-step plan.'
         : '');
     error.hidden = !error.textContent;

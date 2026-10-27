@@ -199,3 +199,63 @@ test('two-turn feeds preserve earlier captured assistant drafts in order and exc
   expect(host.querySelector('[data-authoring-past]')).toBeNull();
   controls.dispose();
 });
+
+test('actual failed and cancelled sources override a cached generating parser observation', () => {
+  for (const outcome of ['error', 'cancelled'] as const) {
+    const store = createWorkbenchStore('history', { authoringMode: 'form' });
+    const host = document.createElement('div');
+    const controls = mountAuthoringControls(
+      host,
+      store,
+      'natural-forms',
+      () => true,
+    );
+    const user = store.send('Create a plan');
+    const json = '{"title":"Partial title","steps":["Outline';
+    const partial = { title: 'Partial title', steps: ['Outline'] };
+    observeHistory(store, { messages: [user], isLoading: true });
+    observeHistory(store, {
+      messages: [user, { id: 'answer', role: 'assistant', content: json }],
+      isLoading: true,
+    });
+    store.recordAuthoring({
+      assistantId: 'answer',
+      json,
+      value: partial,
+      complete: false,
+    });
+    expect(host.querySelector('[data-authoring-preview] h3')?.textContent).toBe(
+      'Partial title',
+    );
+
+    if (outcome === 'error')
+      observeHistory(store, {
+        messages: [user],
+        isLoading: false,
+        error: new Error('SDK removed failed assistant'),
+      });
+    else store.settle('cancelled');
+
+    expect(store.getSnapshot().frame?.history?.authoring?.source).toBe(
+      'generating',
+    );
+    expect(store.getSnapshot().frame?.history?.authoring?.parser.value).toEqual(
+      partial,
+    );
+    expect(
+      host.querySelector('[data-authoring-status]')?.textContent,
+    ).toContain(`Source: ${outcome === 'error' ? 'error' : 'stopped'}`);
+    expect(host.querySelector('[data-authoring-preview] h3')?.textContent).toBe(
+      outcome === 'error' ? '' : 'Partial title',
+    );
+    expect(host.querySelector('[data-authoring-preview] ol')?.textContent).toBe(
+      outcome === 'error' ? '' : 'Outline',
+    );
+    expect(
+      [...host.querySelectorAll('button')].find(
+        (node) => node.textContent === 'Review draft',
+      )?.disabled,
+    ).toBe(true);
+    controls.dispose();
+  }
+});
