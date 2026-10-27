@@ -247,6 +247,8 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'shared-state',
     'activities',
     'interrupts',
+    'message-history',
+    'save-text-conversations',
   ]);
 });
 

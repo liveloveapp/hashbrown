@@ -1,5 +1,37 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-message-history-react': {
+    title: 'React workbench: message history.',
+    caption:
+      'Keep completed text, clear and restore the SDK transcript, then inspect the next request.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Only validated completed text is retained; this is not a canonical agent checkpoint. Saving is explicit. No tools, generated UI, or executed plan steps. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or storage writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-save-text-conversations-react': {
+    title: 'React workbench: save text conversations.',
+    caption:
+      'Save Lighthouse and Harbor, refresh, then load completed text into a fresh chat.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Only validated completed text is retained; this is not a canonical agent checkpoint. Saving is explicit. No tools, generated UI, or executed plan steps. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or storage writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-message-history-angular': {
+    title: 'Angular workbench: message history.',
+    caption:
+      'Keep completed text, clear and restore the SDK transcript, then inspect the next request.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Only validated completed text is retained; this is not a canonical agent checkpoint. Saving is explicit. No tools, generated UI, or executed plan steps. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or storage writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-save-text-conversations-angular': {
+    title: 'Angular workbench: save text conversations.',
+    caption:
+      'Save Lighthouse and Harbor, refresh, then load completed text into a fresh chat.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Only validated completed text is retained; this is not a canonical agent checkpoint. Saving is explicit. No tools, generated UI, or executed plan steps. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or storage writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'canonical-workbench-shared-state-react': {
     title: 'React workbench: shared agent state.',
     caption:

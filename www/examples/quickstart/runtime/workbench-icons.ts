@@ -171,6 +171,8 @@ export const workbenchLessonIcons: Readonly<
   'shared-state': 'braces',
   activities: 'activity',
   interrupts: 'square-check',
+  'message-history': 'messages',
+  'save-text-conversations': 'scroll',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

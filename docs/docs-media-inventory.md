@@ -383,3 +383,20 @@ The shared state, activities and interrupt/resume recordings were refreshed afte
 the canonical shell redesign. They use the collapsible sidebar, resizable chat
 and paired inspector, with the icon player below. Earlier batch notes describe the original captures; the canonical media now
 matches the redesigned shell, including these six workflow recordings.
+
+## Canonical message history and browser-saved text
+
+The active Message history and Save text conversations guides use four separate
+Angular/React recordings: `canonical-workbench-{message-history,save-text-conversations}-{react,angular}`.
+The first makes two actual provider requests around explicit keep/clear/restore.
+The second makes three across independent runtimes, two saved slots, hard refresh
+and explicit load. The new trace starts after refresh; old requests are not
+reconstructed. Only successful completed text is saved, with version, role, size
+and lifecycle checks. Text does not recover canonical agent checkpoints.
+
+All nineteen workbench lessons have two framework paths (38 total). The new four
+recordings have both codecs, captions, poster, result and walkthrough. Actual
+OpenAI events are paced unchanged for filming and footage runs at half speed.
+Replay is inert. Legacy persistence assets and standalone fixture clients remain
+for bookmarks and independent tests. Originals/reports stay in unique ignored
+capture directories. No SDK release.
