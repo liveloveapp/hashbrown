@@ -29,8 +29,9 @@ export interface BlogPostingJsonLd {
 
 /**
  * Describe a blog post as a schema.org `BlogPosting`. The image is the post's
- * frontmatter `ogImage`, or else its `opengraph-image` card route, matching the
- * Open Graph image. Posts without a team are authored by the publisher.
+ * frontmatter `ogImage` (resolved against the site URL), or else its
+ * `opengraph-image` card route, matching the Open Graph image. Posts without
+ * a team are authored by the publisher.
  *
  * @param post - The post's metadata (the body is not needed).
  */
@@ -46,7 +47,9 @@ export function blogPostingJsonLd(
     datePublished: post.date,
     url,
     mainEntityOfPage: url,
-    image: post.ogImage ?? `${url}/opengraph-image`,
+    image: post.ogImage
+      ? new URL(post.ogImage, SITE_URL).href
+      : `${url}/opengraph-image`,
     author:
       post.team.length > 0
         ? post.team.map((id) => ({

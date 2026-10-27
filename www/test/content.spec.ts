@@ -51,6 +51,22 @@ test('reads a blog post by slug', () => {
   expect(post?.body).toContain('Today we are releasing Hashbrown v0.6.');
 });
 
+test('reads a share card and its alt text from post frontmatter', () => {
+  const post = readBlogPost('2026-10-27-decision-models-with-hashbrown');
+
+  expect(post?.ogImage).toBe(
+    '/blog/image/og/2026-10-27-decision-models-with-hashbrown.png',
+  );
+  expect(post?.ogImageAlt).toMatch(/^Decide, then generate\./);
+});
+
+test('leaves the alt text undefined for posts without their own card', () => {
+  const post = readBlogPost('2026-09-23-hashbrown-v-0-6-0');
+
+  expect(post?.ogImage).toBeUndefined();
+  expect(post?.ogImageAlt).toBeUndefined();
+});
+
 test('uses the file name as the post slug, like the Analog site', () => {
   const posts = listBlogPosts();
 
