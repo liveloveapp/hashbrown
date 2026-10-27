@@ -617,6 +617,7 @@ try {
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
             requests,
+            nativeRequests,
             outcome: (value) => {
               uiOutcome = value;
             },

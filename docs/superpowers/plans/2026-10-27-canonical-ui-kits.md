@@ -9,25 +9,25 @@
 ## Task 1: Shared UI lesson contract, store and server
 
 Files: create `www/examples/quickstart/runtime/workbench-ui-kits.ts`; modify `workbench.ts`, `workbench-lessons.ts`, `workbench-lessons.ts` (workbenchLessonGroups data; renderer is `workbench-sidebar.ts`), `workbench-icons.ts`, `server/workbench-app.ts`; add `www/test/workbench-ui-kits.spec.ts` and server tests.
-- [ ] Write top-level failing tests for closed component schemas, exact original JSON validation, immutable identity, read-only PlanReading, cancelled/error/truncated/unknown/multiple/stale/replay and once-only acceptance. Exercise server pinning and original older SummaryCard behavior.
-- [ ] Run `npx nx test www --excludeTaskDependencies --args=<focused test path>` with standard NX flags; verify intended failures.
-- [ ] Implement helpers, narrow optional `uiLesson` store mode, actual kit metadata registration, component identity on frames/messages, safe acceptance boundaries, catalog/sidebar and server schemas/system/tool pinning. Keep new reusable APIs TSDoc documented and old modes unchanged.
-- [ ] Run focused tests; spec review then quality review; commit reviewed shared contract.
+- [x] Write top-level failing tests for closed component schemas, exact original JSON validation, immutable identity, read-only PlanReading, cancelled/error/truncated/unknown/multiple/stale/replay and once-only acceptance. Exercise server pinning and original older SummaryCard behavior.
+- [x] Run `npx nx test www --excludeTaskDependencies --args=<focused test path>` with standard NX flags; verify intended failures.
+- [x] Implement helpers, narrow optional `uiLesson` store mode, actual kit metadata registration, component identity on frames/messages, safe acceptance boundaries, catalog/sidebar and server schemas/system/tool pinning. Keep new reusable APIs TSDoc documented and old modes unchanged.
+- [x] Run focused tests; spec review then quality review; commit reviewed shared contract.
 
 ## Task 2: Actual Angular and React kit clients
 
 Files: create `react/src/UiKitWorkbench.tsx` and `angular/src/app/ui-kit-workbench.ts`; modify root dispatch in respective Workbench files. Add framework regression tests. Reuse existing PlanCard/styles; narrowly add StepsCard/fallback/read-only appearance where needed.
-- [ ] Write failing tests for actual kit composition/normalized registry, trusted variants and fallback, immutable origins/once-only acceptance, inactive/disposed roots and StrictMode, read-only response and safe cancellation.
-- [ ] Implement dedicated UI chat clients, real readContext from store, actual `useUiKit`/`createUiKit`, real renderer/fallbacks and explicit current-source acceptance. Capture safe actual kit values once and SDK UI values/lifecycle with current origins; no synthetic parsed values.
-- [ ] Hook shell registration, disposal, navigation and replay using existing patterns. Avoid render side effects, classes for pure data, circular imports or public SDK changes.
-- [ ] Focused tests and `npx nx workbench-build www`; spec review then quality review; commit.
+- [x] Write failing tests for actual kit composition/normalized registry, trusted variants and fallback, immutable origins/once-only acceptance, inactive/disposed roots and StrictMode, read-only response and safe cancellation.
+- [x] Implement dedicated UI chat clients, real readContext from store, actual `useUiKit`/`createUiKit`, real renderer/fallbacks and explicit current-source acceptance. Capture safe actual kit values once and SDK UI values/lifecycle with current origins; no synthetic parsed values.
+- [x] Hook shell registration, disposal, navigation and replay using existing patterns. Avoid render side effects, classes for pure data, circular imports or public SDK changes.
+- [x] Focused tests and `npx nx workbench-build www`; spec review then quality review; commit.
 
 ## Task 3: Inspector, verification, media tools and guides
 
 Files: root owns `workbench-view.ts`, CSS, new inspector helper if needed; `www/src/tools/verify-workbench.ts`, new UI lesson verifier/fixture/cue helpers, `record-workbench.ts`; four guides at `{angular,react}/recipes/{ui-kits,ui-chatbot}.md`, start/workbench overviews, READMEs, media inventory/registry and related tests.
-- [ ] Failing tests for actual captured registry/schema/selected identity, truthful replay labels and caption phases. Implement projection/replay over immutable frames. Do not label a captured placeholder as a real SDK fallback.
-- [ ] Add provider-native fixtures exercising actual OpenAI mapping; verify both two-turn flows, actual tools, kit/component transitions, source completion, acceptance, read-only reading, replay, errors/truncation/unknown source, retry/cancel/navigation, responsive layout. Fixtures explicitly labelled and never published as live.
-- [ ] Rewrite guides in user voice and source-link examples. Consolidate inventory/current counts:26/52; keep old assets for bookmarks. Add four stable `canonical-workbench-{ui-kits,ui-chatbot}-{angular,react}` media IDs.
+- [x] Failing tests for actual captured registry/schema/selected identity, truthful replay labels and caption phases. Implement projection/replay over immutable frames. Do not label a captured placeholder as a real SDK fallback.
+- [x] Add provider-native fixtures exercising actual OpenAI mapping; verify both two-turn flows, actual tools, kit/component transitions, source completion, acceptance, read-only reading, replay, errors/truncation/unknown source, retry/cancel/navigation, responsive layout. Fixtures explicitly labelled and never published as live.
+- [x] Rewrite guides in user voice and source-link examples. Consolidate inventory/current counts:26/52; keep old assets for bookmarks. Add four stable `canonical-workbench-{ui-kits,ui-chatbot}-{angular,react}` media IDs.
 - [ ] Verify four deterministic paths before spending on model captures. Record four genuine OpenAI flows using existing quiet server env helper and unique masters; use ffmpeg, measured readable captions, posters/results/transcripts. Inspect all outputs and decode both codecs.
 - [ ] Independent docs/tooling and final reviews; commit sources and verified media.
 

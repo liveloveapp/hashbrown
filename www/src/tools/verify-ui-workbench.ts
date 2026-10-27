@@ -30,6 +30,7 @@ export async function verifyUiWorkbench(options: {
   readonly live: boolean;
   readonly recording: boolean;
   readonly requests: readonly RunAgentInput[];
+  readonly nativeRequests: readonly Record<string, unknown>[];
   readonly outcome: (value: UiFixtureOutcome) => void;
 }) {
   const { framework, lesson, work, live, recording } = options;
@@ -55,6 +56,7 @@ export async function verifyUiWorkbench(options: {
     if (new URL(request.url()).pathname.startsWith('/api/workbench/')) http++;
   });
   const start = options.requests.length;
+  const nativeStart = options.nativeRequests.length;
   let succeeded = false;
   const observations: { fallback: boolean; json: string }[] = [];
   try {
@@ -202,6 +204,19 @@ export async function verifyUiWorkbench(options: {
     }
     const captured = options.requests.slice(start);
     expect(captured).toHaveLength(4);
+    if (!live) {
+      const native = options.nativeRequests.slice(nativeStart);
+      expect(native).toHaveLength(4);
+      expect(native.map((request) => request['tool_choice'])).toEqual([
+        { type: 'function', name: 'readContext' },
+        'none',
+        { type: 'function', name: 'readContext' },
+        'none',
+      ]);
+      expect(
+        native.every((request) => request['parallel_tool_calls'] === false),
+      ).toBe(true);
+    }
     expect(new Set(captured.map((request) => request.threadId)).size).toBe(1);
     expect(new Set(captured.map((request) => request.runId)).size).toBe(4);
     expect(

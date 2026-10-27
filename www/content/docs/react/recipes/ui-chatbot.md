@@ -68,8 +68,15 @@ Use **Requests** to compare the two tool calls. Use **Kit** and **Schema** to in
 
 The bottom timeline keeps captured requests, JSON, components, and state together. Replay makes no provider requests or application writes. These local captures clear on refresh; this example does not save an agent checkpoint.
 
+## Require the context step
+
+An instruction alone does not guarantee that a model will call a tool. In this example, the server requires `readContext` before allowing a UI response. Once a successful context result belongs to the current turn, it disables further tool calls for that response.
+
+This is the example's server policy, implemented through the OpenAI adapter. It is not automatic behavior supplied by a kit or a chat hook.
+
 ## Read the checked source
 
+- [Server-enforced context sequence](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-ui-policy.ts).
 - [React conversation, trusted components, and lifecycle](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/UiKitWorkbench.tsx).
 - [Shared kit contracts and lesson policy](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-ui-kits.ts).
 - [Capture and explicit acceptance](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench.ts).

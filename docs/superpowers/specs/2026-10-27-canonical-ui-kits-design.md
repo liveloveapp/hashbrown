@@ -19,7 +19,7 @@ Add a narrow optional UI-lesson mode to the existing store; preserve all existin
 
 The original JSON must contain exactly one permitted component and a bounded valid two-step plan before acceptance. Actions must require current source success/stop, complete original values, current turn/revision, matching component and props, active mounted root, live cursor and once-per-turn application. Read-only PlanReading can never be accepted. Reject malformed, unknown, extra/multiple components and truncated/cancelled/error outputs. SDK props readiness and successful source completion remain separate. Keep disposal, navigation and stop stale-response guards. Replay uses captured values with no requests, component callbacks or writes; earlier cards retain their own component identity.
 
-The server pins each lesson's system, readContext catalog and exact trusted wrapper response schema, stripping browser system/developer overrides as today. Hosted and local paths share the same environment factory. No authorization or persistence is implied.
+The server pins each lesson's system, readContext catalog and exact trusted wrapper response schema, stripping browser system/developer overrides as today. A narrow OpenAI adapter policy requires a matching successful current-turn text readContext result before UI generation, then disables further tool calls; parallel tool calls are disabled. This responds to observed live model omission and remains application-owned policy, not automatic kit behavior. Hosted and local paths share the same environment factory. No authorization or persistence is implied.
 
 ## Presentation, guides and recordings
 

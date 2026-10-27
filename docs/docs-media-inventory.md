@@ -45,7 +45,7 @@ Canonical chat recordings use actual Hashbrown framework APIs, real OpenAI reque
 
 The normal workbench streams provider events as received. For filming, unchanged protocol events are paced at 20 ms, and footage is encoded at half speed for readability. Captions and walkthroughs disclose this. Recordings have no narration. Provider output is never replaced with a local fixture for publication. Separate deterministic browser suites are visibly labelled `test-fixture` and are not published as live recordings.
 
-The latest authoring recordings preserve actual outcomes: a 0.74 agent choice uses the unchanged 0.75 clarification gate; natural forms shows the model rewriting an edited field, then an explicit user correction in the reviewed form before Apply. The kit recordings distinguish actual registry/schema configuration, the selected trusted component and application-owned acceptance. A configured fallback does not establish successful source completion.
+The latest authoring recordings preserve actual outcomes: a 0.74 agent choice uses the unchanged 0.75 clarification gate; natural forms shows the model rewriting an edited field, then an explicit user correction in the reviewed form before Apply. The kit recordings distinguish actual registry/schema configuration, the selected trusted component and application-owned acceptance. Their server policy requires a fresh successful readContext result before UI generation, then disables further tool calls for that response. A configured fallback does not establish successful source completion.
 
 ## What each boundary demonstrates
 

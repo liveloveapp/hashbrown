@@ -55,10 +55,19 @@ A configured fallback can render while required props are unresolved. A visible 
 
 Replay displays captured values. It cannot run a generated component's callbacks, call a tool, or accept an old proposal. Returning to live restores the current conversation. Refresh clears this local example.
 
+## Require the context step
+
+An instruction alone does not guarantee that a model will call a tool. In this example, the server requires `readContext` before allowing a UI response. Once a successful context result belongs to the current turn, it disables further tool calls for that response.
+
+This is the example's server policy, implemented through the OpenAI adapter. It is not automatic behavior supplied by a kit or a chat hook.
+
 ## Read the checked source
 
+- [Server-enforced context sequence](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-ui-policy.ts).
 - [Angular kit and UI chat client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/ui-kit-workbench.ts).
 - [Shared component contract and pinned lesson policy](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-ui-kits.ts).
 - [Capture and acceptance guards](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench.ts).
 
 Start with [Exposing components](/docs/angular/concept/components) for a single trusted component. Continue with [the UI chatbot](/docs/angular/recipes/ui-chatbot) to connect a proposal, acceptance, and a read-only follow-up. [UI selection](/docs/angular/recipes/ui-selection) covers a separate decision boundary.
+
+See the [`createUiKit` API reference](/api/angular/createUiKit) for the full kit contract, composition, and selectability options.
