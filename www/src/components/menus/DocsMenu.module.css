@@ -1,5 +1,8 @@
 /* Ported from the Angular DocsMenu styles; squircles are plain radii. */
 .menu {
+  /* Row and control heights; a phone (the mobile menu) needs 44px targets. */
+  --menu-row: var(--control-sm);
+  --menu-control: var(--control-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
@@ -26,7 +29,7 @@
   > summary {
     display: flex;
     align-items: center;
-    min-height: var(--control-sm);
+    min-height: var(--menu-row);
     padding: 0 var(--space-3);
     color: var(--color-ink);
     font: 600 13px/18px var(--font-sans);
@@ -47,7 +50,7 @@
       > a {
         display: flex;
         align-items: center;
-        min-height: var(--control-sm);
+        min-height: var(--menu-row);
         color: var(--color-muted);
         padding: var(--space-1) var(--space-3);
         width: 100%;
@@ -117,7 +120,7 @@ details.section {
 .search {
   display: flex;
   flex-direction: row;
-  min-height: var(--control-md);
+  min-height: var(--menu-control);
   /* Less the 1px border, so the text lines up with the links below. */
   padding: 0 var(--space-1) 0 calc(var(--space-3) - 1px);
   justify-content: space-between;
@@ -154,7 +157,7 @@ details.section {
       border: 1px solid var(--color-rule);
       border-radius: 6px;
       background: var(--color-bg);
-      font: 500 11px/1 var(--font-code);
+      font: 500 12px/1 var(--font-code);
     }
   }
 }
@@ -172,7 +175,7 @@ details.section {
 /* Scoped under .sdk so it wins over DropdownMenu's .trigger reset. */
 .sdk .sdkTrigger {
   display: flex;
-  height: var(--control-md);
+  height: var(--menu-control);
   width: 100%;
   padding: 0 calc(var(--space-3) - 1px);
   border: 1px solid var(--color-rule);
@@ -205,7 +208,7 @@ details.section {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: var(--control-sm);
+  min-height: var(--menu-row);
   padding: var(--space-1) var(--space-3);
   width: 100%;
   border-radius: var(--radius-input);
@@ -223,6 +226,20 @@ details.section {
   }
 }
 
+@media screen and (max-width: 767px) {
+  .menu {
+    --menu-row: var(--control-lg);
+    --menu-control: var(--control-lg);
+  }
+}
+
+/* No keyboard shortcut to hint at on a touch screen. */
+@media (hover: none) {
+  .search > div {
+    display: none;
+  }
+}
+
 @media screen and (min-width: 1024px) {
   .menuItem {
     width: 192px;
@@ -237,7 +254,7 @@ details.section {
     display: flex;
     align-items: center;
     color: var(--color-muted);
-    min-height: var(--control-sm);
+    min-height: var(--menu-row);
     padding: var(--space-1) var(--space-3);
     width: 100%;
     border-radius: var(--radius-input);

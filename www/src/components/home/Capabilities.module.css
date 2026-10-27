@@ -41,8 +41,11 @@
 }
 
 .grid a {
-  display: inline-block;
-  margin-top: var(--space-4);
+  /* A 44px target; the smaller margin keeps the text where it sat. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-lg);
+  margin-top: var(--space-1);
   font:
     500 14px/1 var(--font-sans);
   color: var(--color-accent);

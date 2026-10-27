@@ -38,6 +38,20 @@
     500 12px/14px var(--font-sans);
 }
 
+/* 44px touch targets that overhang the header's padding instead of growing
+   it; the trailing one keeps its icon on the padding edge. */
+.header button,
+.header a {
+  justify-content: center;
+  min-width: var(--control-lg);
+  min-height: var(--control-lg);
+  margin-block: calc(var(--space-3) * -1);
+}
+
+.header > div:last-child > :last-child {
+  margin-right: calc((var(--control-lg) - 18px) / -2);
+}
+
 .active {
   position: relative;
 }

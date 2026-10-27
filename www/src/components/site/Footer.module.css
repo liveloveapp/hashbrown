@@ -75,12 +75,13 @@
     color: var(--color-muted);
     display: flex;
     flex-direction: column;
-    gap: 4px;
 
+    /* 24px rows keep the old 20px-plus-gap rhythm; 44px on a phone. */
     > li > a {
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      min-height: 24px;
     }
   }
 }
@@ -89,15 +90,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-bottom: var(--announcement-clearance, 0);
 
   > ul {
     display: flex;
-    gap: var(--space-4);
+    /* The 44px targets overlap their padding; the icons keep their spacing
+       and the last one stays on the column edge. */
+    gap: calc(var(--space-4) - (var(--control-lg) - 24px));
+    margin-right: calc((var(--control-lg) - 24px) / -2);
 
     > li > a {
-      display: block;
-      width: 24px;
-      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--control-lg);
+      height: var(--control-lg);
     }
   }
 }
@@ -151,5 +158,12 @@
 
   .team {
     grid-column: 11 / span 2;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .links ul > li > a {
+    min-width: var(--control-lg);
+    min-height: var(--control-lg);
   }
 }

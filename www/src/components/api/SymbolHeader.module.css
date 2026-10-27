@@ -30,5 +30,17 @@
 
 .meta {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
+}
+
+/* The source link: a 44px target around its icon, kept on the edge. */
+.meta > a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-lg);
+  min-height: var(--control-lg);
+  margin: calc((var(--control-lg) - 32px) / -2)
+    calc((var(--control-lg) - 24px) / -2) 0 0;
 }
