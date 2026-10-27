@@ -79,3 +79,16 @@ test('post metadata uses the post title, description, image and date', async () 
     readBlogPost(slug)?.ogImage ? [readBlogPost(slug)?.ogImage] : undefined,
   );
 });
+
+test('post metadata uses the post card and its alt text when the post sets one', async () => {
+  const slug = '2026-10-27-decision-models-with-hashbrown';
+
+  const meta = await generateMetadata({ params: Promise.resolve({ slug }) });
+
+  expect(meta.openGraph?.images).toEqual([
+    {
+      url: '/blog/image/og/2026-10-27-decision-models-with-hashbrown.png',
+      alt: readBlogPost(slug)?.ogImageAlt,
+    },
+  ]);
+});
