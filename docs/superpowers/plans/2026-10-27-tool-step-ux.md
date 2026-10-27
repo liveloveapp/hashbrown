@@ -60,15 +60,41 @@ API reports under each package root, and a local upstream-gap note under
 - [x] Add a meaningful public consumer/distribution check to existing compatibility coverage where appropriate; avoid tests that only mirror export statements. Verify the helper APIs accept the frameworks' existing UI message types.
 - [x] Document label/group overrides, status and timing inputs, live/settled derived state, separate per-answer attribution, and no-flash/tick policy. Keep file search deferred and add no release notes.
 - [x] Record verified upstream links/current gaps; no external issue or discussion writes.
-- [ ] Run `npx nx test core --runInBand`, `npx nx build core`, `npx nx lint core`, `npx nx e2e core`.
-- [ ] Run `npx nx test react --run`, `npx nx build react`, `npx nx eslint:lint react` (the inferred lint target), and `npx nx e2e react` for its distribution target.
-- [ ] Run `npx nx test angular --watch=false`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.
-- [ ] Run `npx nx build-api-report core`, `npx nx build-api-report react`, `npx nx build-api-report angular`; inspect reports for accidental API or dependency leaks.
-- [ ] Run `npx nx test www`, `npx nx lint www`, `npx nx build www` for changed docs. Scope/bound workers when required and report every failure/warning accurately.
-- [ ] Final independent review, commit, push, open and attach PR. Keep the feature worktree for review. No merge without authorization for this PR.
+- [x] Run `npx nx test core --runInBand`, `npx nx build core`, `npx nx lint core`, `npx nx e2e core`.
+- [x] Run `npx nx test react --run`, `npx nx build react`, `npx nx eslint:lint react` (the inferred lint target), and `npx nx e2e react` for its distribution target.
+- [x] Run `npx nx test angular --watch=false`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.
+- [x] Run `npx nx build-api-report core`, `npx nx build-api-report react`, `npx nx build-api-report angular`; inspect reports for accidental API or dependency leaks.
+- [x] Run `npx nx test www`, `npx nx lint www`, `npx nx build www` for changed docs. Scope/bound workers when required and report every failure/warning accurately.
+- [x] Final independent review: approved with no actionable findings.
+
+Delivery: commit and publish the branch, then open and attach the PR; record its
+URL in the chat. Keep the feature worktree for review. No merge without
+authorization for this PR.
 
 ## Scope decision
 
 On 2026-10-27 the user confirmed: UX helpers first; SUBAGENT_* lifecycle and
 output attribution next. Keep the subagent state model out of this PR, and keep
 file search deferred.
+
+## Verification results
+
+All required local checks passed on the final implementation:
+
+- Core: 101 unit suites / 2,333 tests; 2 distribution suites / 5 tests; build and lint.
+- React: 21 unit files / 213 tests; 2 distribution suites / 4 tests, including clean ESM/CJS consumers; build and inferred `eslint:lint` target.
+- Angular: 24 unit files / 281 tests; 2 clean-consumer tests; build and lint.
+- API reports for core, React and Angular generated successfully and were inspected. Reports and generated reference files remain ignored, following repository convention.
+- Docs: 187 test files / 1,374 tests; lint and production build.
+- Each implementation task passed independent specification then quality review; aggregate review found no actionable issues.
+
+Warnings remain:
+
+- Core lint: three existing unused destructuring warnings in `tool-step.ts`. React lint: ten existing hook dependency, overload/redeclaration and explicit-any warnings in unchanged files. No lint errors or warnings in the new helper files.
+- Nx executor/Vite plugin deprecations, native Vite configuration warnings, conflicting NO_COLOR/FORCE_COLOR settings, and a local pyenv shim permission warning.
+- Existing API documentation warnings (release tags, TSDoc and export/link references); first-run package API reports are created under ignored paths.
+- Docs extraction also reports four helper-related external type/namespace references per framework. Minimal experiments proved that qualified imports merely rename/coalesce warnings without fixing canonical targets. Public types are already available through core's Chat namespace, standalone package API reports and strict installed consumers pass, and no source change or warning suppression was made. Experiments were reverted and core rebuilt from restored sources.
+- Next.js reports the existing deprecated middleware file convention.
+
+No dependency, protocol, release-note, file-search or subagent lifecycle changes
+were made. No upstream issue/comment was posted.
