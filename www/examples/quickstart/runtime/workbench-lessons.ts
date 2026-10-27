@@ -16,7 +16,9 @@ export type WorkbenchLessonId =
   | 'request-transformation'
   | 'shared-state'
   | 'activities'
-  | 'interrupts';
+  | 'interrupts'
+  | 'message-history'
+  | 'save-text-conversations';
 /** Metadata shared by framework clients and their workbench shell. */
 export interface WorkbenchLesson {
   readonly id: WorkbenchLessonId;
@@ -28,7 +30,8 @@ export interface WorkbenchLesson {
     | 'text'
     | 'predictions'
     | 'selection'
-    | 'workflow';
+    | 'workflow'
+    | 'history';
   readonly protocol: 'chat' | 'decision';
   readonly inspector:
     | 'Markdown'
@@ -40,7 +43,9 @@ export interface WorkbenchLesson {
     | 'Interrupts'
     | 'Schema'
     | 'Transform'
-    | 'Instructions';
+    | 'Instructions'
+    | 'History'
+    | 'Saved text';
   readonly endpoint: string;
 }
 /** The sidebar sections; conversations are listed above the lesson groups. */
@@ -70,12 +75,13 @@ export const workbenchLessonGroups: readonly {
       'shared-state',
       'activities',
       'interrupts',
+      'message-history',
     ],
   },
   {
     id: 'production',
     title: 'Production',
-    lessons: ['debugging', 'request-transformation'],
+    lessons: ['debugging', 'request-transformation', 'save-text-conversations'],
   },
   {
     id: 'recipes',
@@ -211,6 +217,16 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
         : id === 'interrupts'
           ? ('Interrupts' as const)
           : ('State' as const),
+    protocol: 'chat' as const,
+    endpoint: `/api/workbench/${id}`,
+  })),
+  ...(['message-history', 'save-text-conversations'] as const).map((id) => ({
+    id,
+    title:
+      id === 'message-history' ? 'Message history' : 'Save text conversations',
+    format: 'history' as const,
+    inspector:
+      id === 'message-history' ? ('History' as const) : ('Saved text' as const),
     protocol: 'chat' as const,
     endpoint: `/api/workbench/${id}`,
   })),

@@ -43,3 +43,16 @@ Run `npx nx docs-agent-decisions-demo www` for both SDK checks and the `agent-ro
 `runtime/local-models.ts`, `LocalModels.tsx` and `local-models.ts` provide explicit Prepare model / Generate locally / Cancel actions around the real `experimental_chrome` transport. The small schema extracts a destination and day count; only a fresh, successful, complete, bounded response becomes a ready preview. Preparation owns and destroys its temporary download session, including late cancellation. Generation owns separate transport sessions and rejects implicit downloads. No backend, API key, hosted fallback or new dependency is needed.
 
 Run `npx nx docs-local-models-demo www` locally with an already available native Chrome model in the dedicated test profile. The recorder runs deterministic native-API contract checks in both clients, then real native inference in both frameworks before recording React. It never downloads weights. Mobile checks use the shim for layout/contracts, not native inference. `DOCS_SKIP_RECORDING=1` verifies without replacing assets; `DOCS_DEMO_MODES=local-models` selects the sole supported ID. Captures, masters, static builds and reports stay in ignored `dist/docs-local-models`. Run sequentially with other recorders and GPU suites.
+
+## Canonical text history
+
+`canonical-workbench-message-history-{react,angular}` shows two real OpenAI turns
+with explicit keep, clear and restore operations.
+`canonical-workbench-save-text-conversations-{react,angular}` shows three real
+turns, separate Lighthouse and Harbor saved slots, a hard refresh, and explicit
+load into a new SDK runtime. A refreshed timeline never invents the old trace.
+All four have MP4/WebM, measured captions, posters, result screenshots and text
+walkthroughs. Storage contains only validated completed text, not agent checkpoints.
+No model calls or storage writes occur during synchronized replay. Provider events
+are paced unchanged for filming and footage is shown at half speed. Originals
+and reports remain in unique ignored capture directories. No narration.
