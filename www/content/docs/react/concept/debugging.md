@@ -22,15 +22,15 @@ The **Deny requests for this demo** checkbox starts checked. Send the first prom
 
 This is an intentional local demo denial, not authentication or a provider outage. The checkbox only demonstrates the failure path. Your application still needs its own authentication and authorization.
 
-1. In **Requests**, select the failed HTTP response. Inspect its status and captured URL in **Details**; **Raw** shows the captured evidence.
+1. In **Requests**, select the failed HTTP response. Its status and captured URL appear in the inspector; the `{ }` toggle shows the raw frame.
 2. Choose **Return to live**, then clear **Deny requests for this demo**, then send the first prompt again in the same conversation. Changing the checkbox does not send a request or change the plan.
 3. Watch the real model call `readContext` and stream the trusted `SummaryCard`. After successful completion, choose **Accept plan**. Application state advances to revision 1.
 4. Send the follow-up to shorten the second step. The next tool call reads the accepted plan; the revised card remains a proposal.
-5. Select **HTTP 403** in the bottom timeline. The chat, request evidence, JSON, UI, and state follow that point in the conversation. Its source still reads **Local demo failure**, even after later successful provider requests. Choose **Return to live** to continue.
+5. Select **HTTP 403** in the bottom player. The chat, request evidence, JSON, UI, and state follow that point in the conversation. Its source still reads **Local demo failure**, even after later successful provider requests. Choose **Return to live** to continue.
 
 Playback does not send requests, execute tools, or apply a plan. The demo checkbox and acceptance control are disabled while inspecting historical frames.
 
-<img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The canonical workbench shows captured request evidence beside the conversation and synchronized timeline." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The canonical workbench shows captured request evidence beside the conversation and synchronized player." width="1600" height="1000" loading="lazy" />
 
 ## Inspect the request and response
 

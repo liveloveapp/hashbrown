@@ -91,7 +91,7 @@ export async function verifyRecipeWorkbench(options: {
           html: article.innerHTML,
         })),
         inspector: text('.wb-inspector .wb-inspection'),
-        context: text('.wb-detail .wb-inspection'),
+        context: text('.wb-inspector [data-detail]'),
       };
     });
     writeFileSync(
@@ -220,7 +220,7 @@ export async function verifyRecipeWorkbench(options: {
       const url = page.url();
       mark('citation');
       await citation.click();
-      await expect(root.locator('.wb-detail .wb-inspection')).toContainText(
+      await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
         'https://hashbrown.dev',
       );
       expect(page.url()).toBe(url);
@@ -293,7 +293,7 @@ export async function verifyRecipeWorkbench(options: {
         .first()
         .getByRole('button', { name: 'Use view', exact: true });
       const detail = JSON.parse(
-        await root.locator('.wb-detail .wb-inspection pre').innerText(),
+        await root.locator('.wb-inspector [data-detail] pre').innerText(),
       ) as { selected: string[]; confidence: number };
       expect(detail.confidence).toBe(firstConfidence);
       expect(detail.selected).toEqual(firstManualChoice ? [] : ['summary']);
@@ -374,7 +374,7 @@ export async function verifyRecipeWorkbench(options: {
         .last()
         .getByRole('button', { name: 'Use view', exact: true });
       const detail = JSON.parse(
-        await root.locator('.wb-detail .wb-inspection pre').innerText(),
+        await root.locator('.wb-inspector [data-detail] pre').innerText(),
       ) as { selected: string[]; confidence: number };
       expect(detail.confidence).toBe(secondChoiceConfidence);
       expect(detail.selected).toEqual(
@@ -537,11 +537,11 @@ export async function verifyRecipeWorkbench(options: {
           .last()
           .click();
         await tab('JSON');
-        await expect(root.locator('.wb-detail .wb-inspection')).toContainText(
+        await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
           `"confidence": ${secondChoiceConfidence}`,
         );
         const capturedSelection = JSON.parse(
-          await root.locator('.wb-detail .wb-inspection pre').innerText(),
+          await root.locator('.wb-inspector [data-detail] pre').innerText(),
         ) as { selected: string[]; confidence: number };
         expect(capturedSelection.selected).toEqual(
           lowConfidenceSecondChoice ? [] : ['steps'],
@@ -584,7 +584,7 @@ export async function verifyRecipeWorkbench(options: {
     if (lesson === 'magic-text') {
       const beforeCitation = requestCount();
       await text.last().locator('a[role="doc-noteref"]').first().click();
-      await expect(root.locator('.wb-detail .wb-inspection')).toContainText(
+      await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
         'https://hashbrown.dev',
       );
       expect(requestCount()).toBe(beforeCitation);
@@ -681,10 +681,10 @@ export async function verifyRecipeWorkbench(options: {
             await tab('Markdown');
             await expect(text.last()).toBeVisible();
             await expect(
-              root.locator('.wb-detail .wb-inspection'),
+              root.locator('.wb-inspector [data-detail]'),
             ).toContainText('"isComplete": true');
             await expect(
-              root.locator('.wb-detail .wb-inspection'),
+              root.locator('.wb-inspector [data-detail]'),
             ).toContainText('"outcome": "error"');
             if (outcome === 'error') {
               options.outcome('success');

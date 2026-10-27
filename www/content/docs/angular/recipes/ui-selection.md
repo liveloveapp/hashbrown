@@ -100,7 +100,7 @@ protected readonly resource = uiDecisionResource({
 
 ## Keep confidence and manual control explicit
 
-The threshold is 0.75. Treat confidence as a model score, not a calibrated probability of correctness. A complete response below the threshold remains inspectable, but it does not enable **Use view**. **Raw** shows the provider's choice; **Details** shows the SDK's confidence-filtered IDs. A choice can be present in Raw while no candidate renders.
+The threshold is 0.75. Treat confidence as a model score, not a calibrated probability of correctness. A complete response below the threshold remains inspectable, but it does not enable **Use view**. The `{ }` toggle on the captured side shows the provider's choice; **SDK selection and confidence** shows the SDK's confidence-filtered IDs. A choice can be present in the raw frame while no candidate renders.
 
 Use the manual **Show summary** and **Show steps** controls when you want to choose directly. Manual selection works without waiting for the model. It cancels pending selection work and prevents a late result from replacing your choice. It is an explicit application action, not a model response.
 
