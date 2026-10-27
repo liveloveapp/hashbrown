@@ -10,6 +10,7 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
+import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { createWorkbenchOpenAIStream } from '../../examples/quickstart/server/workbench-openai';
@@ -655,23 +656,7 @@ try {
       await expect(
         page.locator('.wb:visible .wb-inspector [data-detail]'),
       ).toBeVisible();
-      await expect(page.locator('.wb:visible')).not.toHaveClass(/\bwb-rail\b/);
-      await expect(page.locator('.wb:visible .wb-split')).toHaveAttribute(
-        'aria-valuenow',
-        '44',
-      );
-      await expect(
-        page.locator('.wb:visible .wb-nav-heading[aria-expanded=false]'),
-      ).toHaveCount(0);
-      const capturedBox = await page
-        .locator('.wb:visible .wb-inspector [data-captured]')
-        .boundingBox();
-      const detailBox = await page
-        .locator('.wb:visible .wb-inspector [data-detail]')
-        .boundingBox();
-      expect(capturedBox).not.toBeNull();
-      expect(detailBox).not.toBeNull();
-      expect(capturedBox?.y).toBe(detailBox?.y);
+      await expectWorkbenchDefaultLayout(page);
       await expect(
         page.getByRole('tab', { name: lesson.inspector, exact: true }),
       ).toHaveAttribute('aria-selected', 'true');
@@ -903,7 +888,7 @@ try {
       await page
         .getByRole('button', { name: /^Parsed output[.]/ })
         .first()
-        .click();
+        .press('Enter');
       await expect(page.locator('[data-replay] .wb-summary')).toHaveCount(1);
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(600);
@@ -911,7 +896,7 @@ try {
       await page
         .getByRole('button', { name: /^Plan accepted[.]/ })
         .first()
-        .click();
+        .press('Enter');
       await expect(
         page.locator('.wb:visible .wb-inspector .wb-inspection'),
       ).toContainText('"revision": 1');
@@ -919,7 +904,7 @@ try {
         await page.waitForTimeout(700);
       const slider = page.getByRole('slider', { name: 'Seek captured event' });
       if (lesson.id === 'debugging') {
-        await page.getByRole('button', { name: /^HTTP 403[.]/ }).click();
+        await page.getByRole('button', { name: /^HTTP 403[.]/ }).press('Enter');
         await expect(page.locator('.wb:visible [data-source]')).toHaveText(
           'Local demo failure',
         );
@@ -938,7 +923,7 @@ try {
         await page
           .getByRole('button', { name: /^Request transformed[.]/ })
           .first()
-          .click();
+          .press('Enter');
         await page.getByRole('tab', { name: 'Transform', exact: true }).click();
         await expect(
           page.locator('.wb:visible .wb-inspector .wb-inspection'),

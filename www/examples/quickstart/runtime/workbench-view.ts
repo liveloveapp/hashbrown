@@ -1311,6 +1311,7 @@ export function mountWorkbench(
           'aria-pressed',
           String(index === activeMilestone?.index),
         );
+        item.toggleAttribute('data-at-playhead', index === selectedIndex);
         events.append(item);
       });
     });

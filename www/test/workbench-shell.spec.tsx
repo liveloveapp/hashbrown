@@ -7,6 +7,7 @@ import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 function fakeStorage() {
   const map = new Map<string, string>();
   return {
+    map,
     getItem: (key: string) => map.get(key) ?? null,
     setItem: (key: string, value: string) => void map.set(key, value),
   };
@@ -308,6 +309,38 @@ test('drags the split relative to chat and inspector', () => {
   shell.dispose();
 });
 
+test('persists the split once when a drag ends', () => {
+  const storage = fakeStorage();
+  const setItem = vi.spyOn(storage, 'setItem');
+  const { host, shell } = mountShell(createWorkbenchLayoutStore(storage));
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(
+    host.querySelector('.wb-chat') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(0, 600));
+  vi.spyOn(
+    host.querySelector('.wb-inspector') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(600, 1000));
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  fire('pointermove', 550);
+  fire('pointermove', 600);
+  const writesWhileDragging = setItem.mock.calls.length;
+  fire('pointerup', 600);
+
+  expect(writesWhileDragging).toBe(0);
+  expect(setItem).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(storage.map.get('hashbrown.workbench.layout') as string).split,
+  ).toBe(60);
+  shell.dispose();
+});
+
 test('ends a split drag when pointer capture is lost', () => {
   const { host, shell, layout } = mountShell();
   const separator = host.querySelector<HTMLElement>('[role=separator]');
@@ -504,6 +537,39 @@ test('positions ticks and the flag on the scrubber', () => {
     segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
   ).toEqual(['100%', '0%']);
   expect(segments[1]?.textContent).toContain('Turn 2');
+  shell.dispose();
+});
+
+test('marks only the tick under the playhead so its mark yields to the thumb', () => {
+  const { host, store, shell } = mountShell();
+  store.send('Plan');
+  store.record('parsed', { title: 'Pl' });
+  store.record('parsed', { title: 'Plan' });
+  store.settle('complete', 'stop');
+  const atPlayhead = () =>
+    [
+      ...host.querySelectorAll<HTMLButtonElement>(
+        '.wb-scrubber .wb-events button[data-at-playhead]',
+      ),
+    ].map((tick) => tick.dataset.index);
+
+  const tickIndexes = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-scrubber .wb-events button',
+    ),
+  ].map((tick) => Number(tick.dataset.index));
+  const gap = store
+    .getSnapshot()
+    .events.findIndex((_, index) => !tickIndexes.includes(index));
+
+  store.seek(tickIndexes[0] ?? 0);
+  const onTick = atPlayhead();
+  store.seek(gap);
+  const betweenTicks = atPlayhead();
+
+  expect(gap).toBeGreaterThan(-1);
+  expect(onTick).toEqual([String(tickIndexes[0])]);
+  expect(betweenTicks).toEqual([]);
   shell.dispose();
 });
 
