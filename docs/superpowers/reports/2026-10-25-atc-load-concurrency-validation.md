@@ -1,6 +1,10 @@
 # ATC load and concurrent-run validation
 
-**Production gate: blocked.** Independent conversations passed the bounded load
+**Historical result (b4.run 0.15.4):** See the
+[0.15.5 follow-up](./2026-10-26-atc-b4run-0155-validation.md) for the successful
+bounded concurrency retest and remaining production gates.
+
+**Production gate at the time: blocked.** Independent conversations passed the bounded load
 check, but overlapping execution on one thread can omit accepted responses from
 its canonical history.
 Simultaneous logical browser-tool callbacks can also generate two continuations.

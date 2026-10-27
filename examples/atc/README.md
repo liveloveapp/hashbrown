@@ -82,7 +82,7 @@ The server reads these variables, from `.env` or the environment:
 
 | Variable                  | Default      | Notes                                                                                                                                                 |
 | ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATC_CHAT_BACKEND`       | `openai`     | Select `openai` or `b4run`; unknown or empty values fail startup. |
+| `ATC_CHAT_BACKEND`        | `openai`     | Select `openai` or `b4run`; unknown or empty values fail startup.                                                                                     |
 | `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                                                                 |
 | `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI model the Responses API serves.                                                                                                            |
 | `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                                                                    |
@@ -122,12 +122,20 @@ new conversation; no history restoration endpoint is exposed. Local signing
 keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
 
 **Package compatibility:** the optional agent backend uses the published
-[b4.run 0.15.4 package set](https://github.com/cacheplane/b4run/releases/tag/v0.15.4)
+[b4.run 0.15.5 package set](https://github.com/cacheplane/b4run/releases/tag/v0.15.5)
 for the output-token cap, browser-tool replay, and request-owned Postgres
 client-tool store. Keep the b4.run dependency pins aligned when updating them.
 The runtime guard rejects an SDK that drops `agent({ maxOutputTokens })`.
 Release and registry-validation evidence is recorded in the
 [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
+
+Both apps use the shared chat transport factory and core's opt-in HTTP response
+retry policy. It waits up to a 60-second retry budget for B4's pre-execution
+`run_in_flight` conflict, honoring `Retry-After` and replaying the exact request.
+Cancellation or reload stops waiting. Other errors, or an exhausted budget,
+retain the existing manual Retry UI. Filters and decisions keep their separate
+transports. See the [core transport API](../../packages/core/README.md#opt-in-http-response-retries)
+for response-classification safety and the separate generation retry budget.
 
 ### Optional hosted build
 
@@ -146,18 +154,18 @@ published. The build never deploys or releases anything.
 
 Set these variables on that deployment:
 
-| Variable | Purpose |
-| --- | --- |
-| `ATC_CHAT_BACKEND=b4run` | Must match the packaged backend. |
-| `ATC_B4RUN_COOKIE_SECRET` | A stable signing secret of at least 32 bytes, shared by every instance. |
-| `ATC_B4RUN_DATABASE_URL` | Shared Postgres storage for checkpoints, threads, and pending browser calls, using the `atc` table prefix. |
+| Variable                  | Purpose                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ATC_CHAT_BACKEND=b4run`  | Must match the packaged backend.                                                                           |
+| `ATC_B4RUN_COOKIE_SECRET` | A stable signing secret of at least 32 bytes, shared by every instance.                                    |
+| `ATC_B4RUN_DATABASE_URL`  | Shared Postgres storage for checkpoints, threads, and pending browser calls, using the `atc` table prefix. |
 
 The adapter maps the dedicated ATC state database into the generated runtime
 without changing the process's general `DATABASE_URL`. Hosted startup never
 falls back to ephemeral SQLite. Shared-store integration tests pass against a disposable local Postgres 17
 instance. They exercise separate pools, checkpoint/thread visibility, partial
 and duplicate results, failed tool-result persistence, and retryable cleanup.
-With the published 0.15.4 packages, complete agent continuation and ownership
+With the published 0.15.5 packages, complete agent continuation and ownership
 also pass across independent runtime pools. The generated Vercel artifact passes
 continuation across two isolated module copies sharing Postgres, signed visitor
 ownership, duplicate-result handling, pinned schema/output cap, and internal-route
@@ -165,8 +173,12 @@ denial. Two Vercel preview deployments sharing a dedicated hosted Postgres datab
 also pass continuation, ownership, duplicate-result, schema, and output-cap checks.
 The packaged function opts into Vercel request cancellation so a disconnected run
 cannot later replace a completed follow-up checkpoint. See the
-[hosted validation report](../../docs/superpowers/reports/2026-10-25-atc-hosted-postgres-validation.md)
-for the deployment evidence and cancellation check.
+[0.15.5 hosted validation report](../../docs/superpowers/reports/2026-10-26-atc-b4run-0155-validation.md)
+for the deployment, shared-admission, callback-race, load, browser and cancellation
+evidence. Bounded concurrency checks pass; production enablement still requires
+hosted failure recovery and sustained load. The
+[core HTTP retry follow-up](../../docs/superpowers/reports/2026-10-26-atc-http-conflict-recovery.md)
+records automatic conflict recovery after cancellation and the remaining gates.
 
 Run the opt-in store and runtime tests against a **disposable test database**:
 
