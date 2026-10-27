@@ -32,7 +32,7 @@ Open `http://127.0.0.1:4370/react.html?lesson=ui-selection`. This lesson uses th
 4. Choose **Show steps** manually. This explicit action saves the steps view and advances the revision to 2. It does not rewrite the plan's title or steps.
 5. Use the bottom timeline to compare the complete decisions, manual choice, and application state. Replay renders the same trusted views with no active handlers, requests, or writes.
 
-<img src="/video/docs/canonical-workbench-ui-selection-react-result.png" alt="The React workbench shows the application-owned ordered plan view beside candidate IDs, confidence, and captured state." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-ui-selection-react-result.png" alt="The React workbench shows the application-owned ordered plan view beside its candidate components and the SDK's selection and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Register known candidates
 
@@ -94,7 +94,7 @@ const selection = useUiDecision({
 
 ## Keep confidence and manual control explicit
 
-The threshold is 0.75. Treat confidence as a model score, not a calibrated probability of correctness. A complete response below the threshold remains inspectable, but it does not enable **Use view**. **Raw** shows the provider's choice; **Details** shows the SDK's confidence-filtered IDs. A choice can be present in Raw while no candidate renders.
+The threshold is 0.75. Treat confidence as a model score, not a calibrated probability of correctness. A complete response below the threshold remains inspectable, but it does not enable **Use view**. The `{ }` toggle on the captured side shows the provider's choice; **SDK selection and confidence** shows the SDK's confidence-filtered IDs. A choice can be present in the raw frame while no candidate renders.
 
 Use the manual **Show summary** and **Show steps** controls when you want to choose directly. Manual selection works without waiting for the model. It cancels pending selection work and prevents a late result from replacing your choice. It is an explicit application action, not a model response.
 

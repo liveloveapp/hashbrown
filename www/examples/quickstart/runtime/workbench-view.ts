@@ -1,4 +1,18 @@
 import {
+  canSaveWorkbenchHistory,
+  isWorkbenchHistoryBusy,
+  workbenchHistoryPrompts,
+} from './workbench-history';
+import {
+  renderWorkbenchCode,
+  workbenchCodeLanguage,
+} from './workbench-highlight';
+import {
+  isWorkbenchWorkflowProgress,
+  workbenchWorkflowPrompts,
+} from './workbench-workflows';
+import { readWorkflowForm } from './workbench-workflow-form';
+import {
   workbenchBrowserInstructions,
   workbenchOnboardingPrompts,
 } from './workbench-onboarding';
@@ -8,7 +22,25 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { type WorkbenchLesson, workbenchLessons } from './workbench-lessons';
+import { workbenchLayout, type WorkbenchLayoutStore } from './workbench-layout';
+import {
+  type WorkbenchLesson,
+  type WorkbenchLessonId,
+  workbenchLessons,
+} from './workbench-lessons';
+import { workbenchIcon, type WorkbenchIconName } from './workbench-icons';
+import {
+  adjacentTurnIndex,
+  formatPlaybackSeconds,
+  nextPlaybackSpeed,
+  workbenchFlagAnchor,
+  workbenchSegmentFill,
+  workbenchShortcut,
+  workbenchTickPercent,
+  workbenchTurnSegments,
+} from './workbench-player';
+import { renderWorkbenchSidebar } from './workbench-sidebar';
+import { createWorkbenchSplit } from './workbench-split';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -144,13 +176,51 @@ function button(text: string, action: () => void): HTMLButtonElement {
   node.onclick = action;
   return node;
 }
-function pre(value: unknown): HTMLPreElement {
-  return element(
-    'pre',
-    typeof value === 'string'
-      ? value
-      : (JSON.stringify(value, null, 2) ?? 'Waiting for captured data'),
+function iconButton(
+  label: string,
+  icon: WorkbenchIconName,
+  action: () => void,
+): HTMLButtonElement {
+  const node = button('', action);
+  node.setAttribute('aria-label', label);
+  node.title = label;
+  node.append(workbenchIcon(icon));
+  return node;
+}
+/**
+ * Rebuilds `container` and, when focus was on one of its keyed children,
+ * moves focus to the rebuilt child with the same key.
+ */
+function rebuildKeepingFocus(
+  container: HTMLElement,
+  key: string,
+  rebuild: () => void,
+): void {
+  const active = container.ownerDocument.activeElement;
+  const restore =
+    active instanceof HTMLElement && container.contains(active)
+      ? active.closest<HTMLElement>(`[${key}]`)?.getAttribute(key)
+      : null;
+  rebuild();
+  if (restore == null) return;
+  [...container.querySelectorAll<HTMLElement>(`[${key}]`)]
+    .find((node) => node.getAttribute(key) === restore)
+    ?.focus();
+}
+function playbackSpeedLabel(speed: number): string {
+  return speed === 0.5 ? '½×' : `${speed}×`;
+}
+function pre(value: unknown, tab: string): HTMLPreElement {
+  const source =
+    typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  const language =
+    source === undefined ? 'text' : workbenchCodeLanguage(value, tab);
+  const block = document.createElement('pre');
+  block.dataset.language = language;
+  block.append(
+    renderWorkbenchCode(source ?? 'Waiting for captured data', language),
   );
+  return block;
 }
 
 /** Names the captured teaching moment without hiding its original payload in Raw. */
@@ -186,14 +256,27 @@ export function workbenchEventLabel(
   ) {
     const names: Record<string, string> = {
       RUN_STARTED: 'Run started',
+      STATE_SNAPSHOT: 'Shared state snapshot',
+      STATE_DELTA: 'Shared state patch',
+      ACTIVITY_SNAPSHOT: 'Activity started',
+      ACTIVITY_DELTA: 'Activity updated',
       RUN_FINISHED: 'Run finished',
       RUN_ERROR: 'Run failed',
       TOOL_CALL_START: 'Call tool',
       TOOL_CALL_ARGS: 'Tool arguments',
       TOOL_CALL_END: 'Tool ready',
-      TEXT_MESSAGE_START: format === 'text' ? 'Text start' : 'JSON start',
-      TEXT_MESSAGE_CONTENT: format === 'text' ? 'Text chunk' : 'JSON chunk',
-      TEXT_MESSAGE_END: format === 'text' ? 'Text end' : 'JSON end',
+      TEXT_MESSAGE_START:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text start'
+          : 'JSON start',
+      TEXT_MESSAGE_CONTENT:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text chunk'
+          : 'JSON chunk',
+      TEXT_MESSAGE_END:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text end'
+          : 'JSON end',
       DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
@@ -214,6 +297,12 @@ export function workbenchEventLabel(
       decision: 'Decision',
       choose: 'Suggestion applied',
       dismiss: 'Suggestion dismissed',
+      workflow: 'SDK workflow observed',
+      form: 'Application form draft',
+      pause: 'Paused for decisions',
+      resume: 'Resume requested',
+      history: 'SDK history observed',
+      'history-app': `Text ${event.history?.app.action ?? 'action'}`,
     }[event.kind] ?? event.kind
   );
 }
@@ -229,11 +318,25 @@ export interface WorkbenchNavigation {
   readonly create: () => void;
 }
 
-/** Mounts a shared accessible shell, leaving live rendering entirely to the framework. */
+/** Optional collaborators for {@link mountWorkbench}. */
+export interface WorkbenchMountOptions {
+  /** The layout preference store; defaults to the shared `workbenchLayout`. */
+  readonly layout?: WorkbenchLayoutStore;
+}
+
+/**
+ * Mounts a shared accessible shell, leaving live rendering entirely to the framework.
+ *
+ * @param host - The element the shell is appended to.
+ * @param store - The workbench capture store.
+ * @param commands - Framework-owned live commands.
+ * @param options - Optional collaborators such as the layout store.
+ */
 export function mountWorkbench(
   host: HTMLElement,
   store: WorkbenchStore,
   commands: WorkbenchCommands,
+  options: WorkbenchMountOptions = {},
 ): {
   readonly live: HTMLElement;
   readonly dispose: () => void;
@@ -241,6 +344,7 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
+  const layoutStore = options.layout ?? workbenchLayout;
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
@@ -259,9 +363,13 @@ export function mountWorkbench(
   const prompts =
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'decision'
-      ? workbenchDecisionPrompts
-      : workbenchPrompts);
+    (commands.lesson?.format === 'history'
+      ? workbenchHistoryPrompts
+      : commands.lesson?.format === 'workflow'
+        ? workbenchWorkflowPrompts
+        : commands.lesson?.format === 'decision'
+          ? workbenchDecisionPrompts
+          : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -276,39 +384,34 @@ export function mountWorkbench(
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
-  function lessonLinks() {
-    const links = element('div', '', 'wb-lessons');
-    for (const { id, title } of workbenchLessons) {
-      const link = element('a', title);
-      link.href = `${commands.framework.toLowerCase()}.html?lesson=${id}`;
-      if (id === (commands.lesson?.id ?? 'generative-ui'))
-        link.setAttribute('aria-current', 'page');
-      links.append(link);
-    }
-    return links;
+  let sidebarKey: string | undefined;
+  function renderLayout() {
+    const current = layoutStore.get();
+    layout.style.setProperty('--wb-chat', `${current.split}fr`);
+    layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
+    const key = JSON.stringify([current.rail, current.collapsed]);
+    if (key !== sidebarKey) renderNavigation();
   }
   function renderNavigation() {
-    nav.replaceChildren(
-      element('h2', 'Examples'),
-      lessonLinks(),
-      element('h2', 'Conversations'),
-    );
-    for (const item of navigation?.conversations ?? [
-      { id: 'default', label: 'Two-step plan' },
-    ]) {
-      const select = button(item.label, () => {
+    const current = layoutStore.get();
+    sidebarKey = JSON.stringify([current.rail, current.collapsed]);
+    root.classList.toggle('wb-rail', current.rail);
+    renderWorkbenchSidebar(nav, {
+      framework: commands.framework,
+      currentLesson: (commands.lesson?.id ??
+        'generative-ui') as WorkbenchLessonId,
+      conversations: navigation?.conversations ?? [
+        { id: 'default', label: 'Two-step plan' },
+      ],
+      currentConversation: navigation?.currentId ?? 'default',
+      layout: current,
+      idPrefix: instanceId,
+      onSelect: (id) => {
         pause();
-        if (navigation) navigation.select(item.id);
+        if (navigation) navigation.select(id);
         else store.live();
-      });
-      select.setAttribute(
-        'aria-pressed',
-        String(item.id === (navigation?.currentId ?? 'default')),
-      );
-      nav.append(select);
-    }
-    nav.append(
-      button('New conversation', () => {
+      },
+      onCreate: () => {
         pause();
         if (navigation) navigation.create();
         else {
@@ -316,8 +419,17 @@ export function mountWorkbench(
           store.clear();
           prompt.value = prompts[0];
         }
-      }),
-    );
+      },
+      onToggleRail: () => layoutStore.set({ rail: !layoutStore.get().rail }),
+      onToggleSection: (section) => {
+        const { collapsed } = layoutStore.get();
+        layoutStore.set({
+          collapsed: collapsed.includes(section)
+            ? collapsed.filter((item) => item !== section)
+            : [...collapsed, section],
+        });
+      },
+    });
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
@@ -399,17 +511,38 @@ export function mountWorkbench(
   const tabs = element('div', '', 'wb-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
+  const selection = element('div', '', 'wb-selection');
+  const pair = element('div', '', 'wb-pair');
+  pair.id = `${instanceId}-inspection`;
+  pair.setAttribute('role', 'tabpanel');
+  const captured = element('section', '', 'wb-section');
+  captured.dataset.captured = '';
+  const capturedHeading = element('h3');
+  let rawFrame = false;
+  const rawFrameToggle = button('{ }', () => {
+    rawFrame = !rawFrame;
+    render();
+  });
+  rawFrameToggle.className = 'wb-raw';
+  rawFrameToggle.setAttribute('aria-label', 'Show captured frame');
+  rawFrameToggle.setAttribute('aria-pressed', 'false');
+  const capturedSub = element('span', '', 'wb-section-sub');
+  const capturedHeader = element('header', '', 'wb-section-head');
+  capturedHeader.append(capturedHeading, capturedSub, rawFrameToggle);
   const inspection = element('div', '', 'wb-inspection');
-  inspection.id = `${instanceId}-inspection`;
-  inspection.setAttribute('role', 'tabpanel');
+  captured.append(capturedHeader, inspection);
+  const detail = element('section', '', 'wb-section');
+  detail.dataset.detail = '';
+  pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    commands.lesson?.format === 'text'
-      ? commands.lesson.id === 'magic-text'
+    ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
+      ? commands.lesson?.id === 'magic-text'
         ? 'Markdown'
         : 'Text'
       : 'JSON',
     'Requests',
+    ...(commands.lesson?.format === 'history' ? ['History', 'Saved text'] : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
     )
@@ -419,32 +552,33 @@ export function mountWorkbench(
     ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
     'UI',
     'State',
+    ...(commands.lesson?.format === 'workflow'
+      ? ['Activities', 'Interrupts']
+      : []),
   ].map((name) => {
     const item = button(name, () => {
       tab = name;
       render();
     });
+    item.id = `${instanceId}-tab-${name.toLowerCase()}`;
     item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', inspection.id);
+    item.setAttribute('aria-controls', pair.id);
     return item;
   });
   tabs.append(...tabButtons);
   inspector.append(
     element('h2', 'Inspector', 'wb-panel-head'),
     tabs,
-    inspection,
+    selection,
+    pair,
   );
-  const detail = element('aside', '', 'wb-panel wb-detail');
-  detail.setAttribute('aria-label', 'Event details and console');
-  let drawer = 'Details';
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
-  const controls = element('div', '', 'wb-actions');
   let rawEvents = false;
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
-  const play = button('Play', () => {
+  const play = iconButton('Play', 'play', () => {
     if (playing) {
       pause();
       return;
@@ -459,22 +593,31 @@ export function mountWorkbench(
     schedule();
     render();
   });
-  const returnLive = button('Return to live', () => {
+  play.classList.add('wb-play');
+  const returnLive = button('', () => {
     pause();
     store.live();
   });
-  const rate = element('select');
-  rate.setAttribute('aria-label', 'Playback speed');
-  [0.5, 1, 2].forEach((value) => {
-    const option = element('option', `${value}×`);
-    option.value = String(value);
-    rate.append(option);
-  });
-  rate.value = '1';
-  rate.onchange = () => {
-    speed = Number(rate.value);
+  returnLive.className = 'wb-live';
+  returnLive.setAttribute('aria-label', 'Return to live');
+  returnLive.title = 'Return to live';
+  const liveLabel = document.createTextNode('LIVE');
+  returnLive.append(element('span', '', 'wb-live-dot'), liveLabel);
+  const speedValue = element(
+    'span',
+    playbackSpeedLabel(speed),
+    'wb-speed-value',
+  );
+  const speedButton = button('', () => {
+    speed = nextPlaybackSpeed(speed);
+    speedValue.textContent = playbackSpeedLabel(speed);
     if (playing) schedule();
-  };
+  });
+  speedButton.className = 'wb-speed';
+  speedButton.append(
+    element('span', 'Playback speed ', 'wb-visually-hidden'),
+    speedValue,
+  );
   const seek = element('input');
   seek.type = 'range';
   seek.min = '0';
@@ -483,16 +626,19 @@ export function mountWorkbench(
     pause();
     store.seek(Number(seek.value));
   };
-  const timing = element('span', 'No captured events', 'wb-mono');
+  const timing = element('span', 'No captured events', 'wb-time wb-mono');
+  const segments = element('div', '', 'wb-segments');
   const events = element('div', '', 'wb-events');
-  const previous = button('Previous event', () => {
+  const flag = element('span', '', 'wb-flag');
+  flag.setAttribute('aria-hidden', 'true');
+  const previous = iconButton('Previous event', 'previous-event', () => {
     pause();
     const snapshot = store.getSnapshot();
     store.seek(
       Math.max(0, (snapshot.cursor ?? snapshot.events.length - 1) - 1),
     );
   });
-  const next = button('Next event', () => {
+  const next = iconButton('Next event', 'next-event', () => {
     pause();
     const snapshot = store.getSnapshot();
     store.seek(
@@ -502,38 +648,80 @@ export function mountWorkbench(
       ),
     );
   });
-  const turns = element('select');
-  turns.setAttribute('aria-label', 'Conversation turn');
-  turns.onchange = () => {
+  const jumpTurn = (direction: -1 | 1) => () => {
     pause();
-    const index = store
-      .getSnapshot()
-      .events.findIndex((event) => event.turn === Number(turns.value));
-    if (index >= 0) store.seek(index);
+    const snapshot = store.getSnapshot();
+    const index = adjacentTurnIndex(
+      snapshot.events,
+      snapshot.cursor,
+      direction,
+    );
+    if (index !== null) store.seek(index);
   };
-  const rawToggle = button('Raw events', () => {
+  const previousTurn = iconButton(
+    'Previous turn',
+    'previous-turn',
+    jumpTurn(-1),
+  );
+  const nextTurn = iconButton('Next turn', 'next-turn', jumpTurn(1));
+  const rawToggle = iconButton('Raw events', 'raw-events', () => {
     rawEvents = !rawEvents;
     render();
   });
   rawToggle.setAttribute('aria-pressed', 'false');
-  controls.append(
-    play,
-    previous,
-    next,
-    returnLive,
-    turns,
-    rate,
-    rawToggle,
+  const transport = element('div', '', 'wb-transport');
+  transport.append(previousTurn, previous, play, next, nextTurn);
+  const scrubber = element('div', '', 'wb-scrubber');
+  scrubber.append(segments, seek, events, flag);
+  const player = element('div', '', 'wb-player');
+  player.append(
+    transport,
+    scrubber,
     timing,
+    speedButton,
+    rawToggle,
+    returnLive,
   );
-  footer.append(controls, events, seek);
-  layout.append(nav, chat, inspector, detail);
+  footer.append(player);
+  const shortcutTargets = {
+    'toggle-play': play,
+    'previous-event': previous,
+    'next-event': next,
+    'previous-turn': previousTurn,
+    'next-turn': nextTurn,
+    live: returnLive,
+  } as const;
+  function onShortcut(event: KeyboardEvent) {
+    if (event.defaultPrevented || !root.isConnected) return;
+    if (root.closest('[hidden]')) return;
+    const shortcut = workbenchShortcut(event, event.target);
+    if (!shortcut) return;
+    if (shortcut === 'toggle-sidebar') {
+      event.preventDefault();
+      layoutStore.set({ rail: !layoutStore.get().rail });
+      return;
+    }
+    const target = shortcutTargets[shortcut];
+    if (target.disabled) return;
+    event.preventDefault();
+    target.click();
+  }
+  document.addEventListener('keydown', onShortcut);
+  const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
+  layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
     playing = false;
     clearTimeout(timer);
-    play.textContent = 'Play';
+    syncPlayButton();
+  }
+  function syncPlayButton() {
+    const label = playing ? 'Pause' : 'Play';
+    if (play.getAttribute('aria-label') === label) return;
+    play.setAttribute('aria-label', label);
+    play.title = label;
+    play.replaceChildren(workbenchIcon(playing ? 'pause' : 'play'));
   }
   function schedule() {
     clearTimeout(timer);
@@ -592,11 +780,20 @@ export function mountWorkbench(
             ? 'Live model'
             : 'Awaiting source';
     const historical = snapshot.cursor !== null;
-    const busy = snapshot.status === 'loading';
+    const busy =
+      snapshot.status === 'loading' ||
+      isWorkbenchHistoryBusy(frame?.history?.sdk) ||
+      !!frame?.history?.replacement;
+    const blocked =
+      busy ||
+      snapshot.status === 'paused' ||
+      !!frame?.workflow?.recoveryRequired ||
+      !!frame?.history?.sdk.pendingInterrupts ||
+      !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
-    prompt.disabled = historical || busy;
-    send.disabled = historical || busy;
+    prompt.disabled = historical || blocked;
+    send.disabled = historical || blocked;
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -610,8 +807,8 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
-    first.disabled = historical || busy;
-    followup.disabled = historical || busy;
+    first.disabled = historical || blocked;
+    followup.disabled = historical || blocked;
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
@@ -669,56 +866,243 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
-    tabButtons.forEach((item) =>
-      item.setAttribute('aria-selected', String(item.textContent === tab)),
-    );
+    tabButtons.forEach((item) => {
+      item.setAttribute('aria-selected', String(item.textContent === tab));
+      if (item.textContent === tab)
+        pair.setAttribute('aria-labelledby', item.id);
+    });
     const onboardingText =
       commands.lesson?.id === 'conversation' ||
       commands.lesson?.id === 'system-instructions';
-    const recipeView = onboardingText
-      ? tab === 'UI'
+    const workflow = frame?.workflow;
+    const outcome = frame?.status ?? snapshot.status;
+    const applicationForm = readWorkflowForm(snapshot);
+    const workflowView =
+      commands.lesson?.format === 'workflow' && tab !== 'Requests'
         ? {
-            heading: 'Plain text renderer',
-            value: {
-              renderer: 'Plain text',
-              generatedProps: false,
-              exposedComponents: [],
-            },
-            detailHeading: 'Text rendering and request outcome',
-            detail: {
-              content: frame?.json ?? '',
-              outcome: frame?.status ?? snapshot.status,
-              note: 'Assistant text is rendered directly without a UI schema or exposed components.',
-            },
-          }
-        : undefined
-      : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab);
-    inspection.replaceChildren(
-      element(
-        'h3',
-        recipeView?.heading ??
-          (tab === 'Instructions'
-            ? 'Browser declaration and effective provider policy'
-            : tab === 'Text'
-              ? 'Streamed text'
-              : tab === 'JSON'
-                ? commands.lesson?.format === 'decision'
-                  ? 'Decision response'
-                  : 'Model output'
-                : tab === 'Schema'
-                  ? 'Response contract'
-                  : tab === 'Transform'
-                    ? 'Mapped provider request'
+            heading:
+              (
+                {
+                  Activities: 'SDK activities',
+                  Interrupts: 'SDK pending interrupt batch',
+                  State: 'Runtime shared state and SDK lifecycle',
+                  UI: 'Application-owned workflow controls',
+                  Text: 'Streamed text',
+                } as Readonly<Record<string, string>>
+              )[tab] ?? 'SDK workflow observation',
+            value:
+              tab === 'Activities'
+                ? (workflow?.activities ?? [])
+                : tab === 'Interrupts'
+                  ? {
+                      pending: workflow?.pendingInterrupts ?? null,
+                      isResuming: workflow?.isResuming ?? false,
+                      recoveryRequired: workflow?.recoveryRequired ?? false,
+                    }
+                  : tab === 'Text'
+                    ? (workflow?.messages.filter(
+                        (message) => message.role === 'assistant',
+                      ) ?? [])
                     : tab === 'UI'
-                      ? commands.lesson?.format === 'decision'
-                        ? 'Application-owned choice'
-                        : commands.lesson?.format === 'structured'
-                          ? 'Application-rendered plan'
-                          : 'Trusted component'
-                      : tab === 'State'
-                        ? 'Application state'
-                        : 'Requests and tools'),
+                      ? {
+                          renderer: 'Application-owned workflow controls',
+                          generatedComponents: false,
+                          sdkFields: ['state', 'messages', 'pendingInterrupts'],
+                        }
+                      : {
+                          state: workflow?.state ?? null,
+                          isLoading: workflow?.isLoading ?? false,
+                          isResuming: workflow?.isResuming ?? false,
+                          finishReason: workflow?.finishReason ?? null,
+                          error: workflow?.error ?? null,
+                          recoveryRequired: workflow?.recoveryRequired ?? false,
+                        },
+            detailHeading:
+              (
+                {
+                  Activities: 'Validated progress and linked messages',
+                  Interrupts: 'Application approval form and outcome',
+                  State: 'Application form and accepted plan',
+                  Text: 'Text rendering and request outcome',
+                  UI: 'Selected SDK values for application controls',
+                } as Readonly<Record<string, string>>
+              )[tab] ?? 'Application interpretation',
+            detail:
+              tab === 'Activities'
+                ? {
+                    progress:
+                      workflow?.activities.flatMap((message) =>
+                        isWorkbenchWorkflowProgress(message.content)
+                          ? [
+                              {
+                                id: message.id,
+                                stage: message.content.stage,
+                                label: message.content.label,
+                                links:
+                                  message.links ?? message.hashbrownLinks ?? {},
+                              },
+                            ]
+                          : [],
+                      ) ?? [],
+                    outcome,
+                  }
+                : tab === 'Interrupts'
+                  ? {
+                      batchId: workflow?.pendingInterrupts?.id ?? null,
+                      applicationForm,
+                      outcome,
+                      recoveryRequired: workflow?.recoveryRequired ?? false,
+                    }
+                  : tab === 'Text'
+                    ? {
+                        renderer: 'Plain text',
+                        generatedComponents: false,
+                        outcome,
+                      }
+                    : tab === 'UI'
+                      ? {
+                          state: workflow?.state ?? null,
+                          activityIds:
+                            workflow?.activities.map((message) => message.id) ??
+                            [],
+                          pendingBatchId:
+                            workflow?.pendingInterrupts?.id ?? null,
+                          outcome,
+                        }
+                      : {
+                          applicationForm,
+                          acceptedApplication:
+                            frame?.application ?? snapshot.application,
+                          outcome,
+                        },
+          }
+        : undefined;
+    const history = frame?.history;
+    const historyView =
+      commands.lesson?.format === 'history' &&
+      ['Text', 'UI', 'History', 'Saved text'].includes(tab)
+        ? tab === 'Text'
+          ? {
+              heading: 'Selected SDK assistant text',
+              value:
+                history?.sdk.messages
+                  .filter(
+                    (message) =>
+                      message['role'] === 'assistant' &&
+                      typeof message['content'] === 'string',
+                  )
+                  .map((message) => message['content'])
+                  .join('\n\n') ||
+                'No assistant text in the selected SDK history.',
+              detailHeading: 'Text rendering and request outcome',
+              detail: {
+                outcome,
+                generatedProps: false,
+                messageCount: history?.sdk.messages.length ?? 0,
+              },
+            }
+          : tab === 'UI'
+            ? {
+                heading: 'Plain text renderer',
+                value: {
+                  renderer: 'Plain text',
+                  generatedProps: false,
+                  exposedComponents: [],
+                },
+                detailHeading: 'Application rendering boundary',
+                detail: {
+                  outcome,
+                  note: 'Captured SDK text is rendered directly. This lesson exposes no generated UI components.',
+                },
+              }
+            : tab === 'History'
+              ? {
+                  heading: 'Actual SDK transcript and lifecycle',
+                  value: history?.sdk ?? null,
+                  detailHeading: 'Application-retained text copy',
+                  detail: {
+                    retained: history?.app.retained ?? null,
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                  },
+                }
+              : {
+                  heading: 'Last-read browser text document',
+                  value: {
+                    selectedSlot: history?.app.selectedSlot ?? null,
+                    cachedRead: history?.app.saved ?? null,
+                  },
+                  detailHeading: 'Current operation and save eligibility',
+                  detail: {
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                    canSave: canSaveWorkbenchHistory(snapshot),
+                    successfulGeneration:
+                      history?.successfulGeneration ?? false,
+                    note: 'Cached explicit read; browser storage is origin-local and unencrypted. Do not store secrets.',
+                  },
+                }
+        : undefined;
+    const recipeView =
+      historyView ??
+      workflowView ??
+      (onboardingText
+        ? tab === 'UI'
+          ? {
+              heading: 'Plain text renderer',
+              value: {
+                renderer: 'Plain text',
+                generatedProps: false,
+                exposedComponents: [],
+              },
+              detailHeading: 'Text rendering and request outcome',
+              detail: {
+                content: frame?.json ?? '',
+                outcome: frame?.status ?? snapshot.status,
+                note: 'Assistant text is rendered directly without a UI schema or exposed components.',
+              },
+            }
+          : undefined
+        : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab));
+    capturedHeading.textContent =
+      recipeView?.heading ??
+      (tab === 'Instructions'
+        ? 'Browser declaration and effective provider policy'
+        : tab === 'Text'
+          ? 'Streamed text'
+          : tab === 'JSON'
+            ? commands.lesson?.format === 'decision'
+              ? 'Decision response'
+              : 'Model output'
+            : tab === 'Schema'
+              ? 'Response contract'
+              : tab === 'Transform'
+                ? 'Mapped provider request'
+                : tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? 'Application-owned choice'
+                    : commands.lesson?.format === 'structured'
+                      ? 'Application-rendered plan'
+                      : 'Trusted component'
+                  : tab === 'State'
+                    ? 'Application state'
+                    : 'Requests and tools');
+    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    selection.replaceChildren(
+      element(
+        'span',
+        frame ? workbenchEventLabel(frame, commands.lesson?.format) : 'Live',
+        'wb-chip wb-chip-active',
       ),
+      element(
+        'span',
+        frame
+          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}${historical ? '' : ' · live'}`
+          : `Turn ${snapshot.turn} · live`,
+      ),
+      element('span', provenance.textContent, 'wb-chip'),
     );
     const requestContext =
       frame?.kind === 'request' ||
@@ -852,156 +1236,161 @@ export function mountWorkbench(
                           kind: event.kind,
                           payload: event.payload,
                         }));
-    if (tab === 'Requests') {
-      const list = element('div', '', 'wb-request-list');
-      for (const event of visibleEvents.filter(
-        (event) =>
-          event.kind === 'request' ||
-          event.kind === 'tool' ||
-          (event.kind === 'response' &&
-            event.payload &&
-            typeof event.payload === 'object' &&
-            'status' in event.payload &&
-            Number(event.payload.status) >= 400),
-      )) {
-        const item = button(
-          `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
-          () => {
-            pause();
-            store.seek(snapshot.events.indexOf(event));
-          },
+    rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
+    // In raw mode the section heading names the frame, so the body needs no second heading.
+    if (rawFrame)
+      capturedHeading.textContent = frame
+        ? `${frame.kind} · ${frame.source}`
+        : 'No selected event';
+    capturedSub.textContent = rawFrame
+      ? 'captured frame'
+      : (frame?.status ?? snapshot.status) === 'loading'
+        ? 'streaming'
+        : 'captured';
+    rebuildKeepingFocus(inspection, 'data-sequence', () => {
+      inspection.replaceChildren();
+      if (rawFrame) {
+        inspection.append(
+          pre(
+            commands.lesson?.format === 'history'
+              ? {
+                  sdk: frame?.history?.sdk ?? null,
+                  event: {
+                    kind: frame?.kind,
+                    source: frame?.source,
+                    payload: frame?.payload,
+                  },
+                }
+              : commands.lesson?.format === 'workflow'
+                ? {
+                    sdk: frame?.workflow ?? null,
+                    event: {
+                      kind: frame?.kind,
+                      source: frame?.source,
+                      payload: frame?.payload,
+                    },
+                  }
+                : tab === 'Transform' && transform
+                  ? transform
+                  : frame?.payload,
+            tab,
+          ),
         );
-        item.disabled = busy;
-        item.setAttribute(
-          'aria-pressed',
-          String(frame?.sequence === event.sequence),
-        );
-        list.append(item);
-      }
-      inspection.append(
-        list.childElementCount
-          ? list
-          : element('p', 'Send a message to follow its requests.', 'wb-muted'),
-      );
-    } else {
-      inspection.append(pre(value));
-    }
-    const drawerTabs = element('div', '', 'wb-tabs');
-    drawerTabs.setAttribute('role', 'tablist');
-    drawerTabs.setAttribute('aria-label', 'Context views');
-    const drawerBody = element('div', '', 'wb-inspection');
-    drawerBody.setAttribute('role', 'tabpanel');
-    ['Details', 'Raw', 'Console'].forEach((name) => {
-      const item = button(name, () => {
-        drawer = name;
-        render();
-      });
-      item.setAttribute('role', 'tab');
-      item.setAttribute('aria-selected', String(drawer === name));
-      drawerTabs.append(item);
-    });
-    detail.replaceChildren(
-      element('h2', 'Context', 'wb-panel-head'),
-      element(
-        'p',
-        `Turn ${frame?.turn ?? snapshot.turn} · ${historical ? 'selected event' : 'live'} · ${tab}`,
-        'wb-scope',
-      ),
-      drawerTabs,
-      drawerBody,
-    );
-    if (drawer === 'Console') {
-      const logs = element('ol', '', 'wb-logs');
-      visibleEvents.slice(-20).forEach((event) => {
-        const item = element('li');
-        item.append(
-          button(
-            `${event.elapsedMs} ms · ${workbenchEventLabel(event, commands.lesson?.format)}`,
+      } else if (tab === 'Requests') {
+        const list = element('div', '', 'wb-request-list');
+        for (const event of visibleEvents.filter(
+          (event) =>
+            event.kind === 'request' ||
+            event.kind === 'tool' ||
+            (event.kind === 'response' &&
+              event.payload &&
+              typeof event.payload === 'object' &&
+              'status' in event.payload &&
+              Number(event.payload.status) >= 400),
+        )) {
+          const item = button(
+            `${event.kind === 'response' ? workbenchEventLabel(event, commands.lesson?.format) : event.kind === 'tool' ? 'readContext' : ['decision', 'selection'].includes(commands.lesson?.format ?? '') ? 'Decision request' : 'Model request'} · turn ${event.turn}`,
             () => {
               pause();
               store.seek(snapshot.events.indexOf(event));
             },
-          ),
+          );
+          item.disabled = busy;
+          item.dataset.sequence = String(event.sequence);
+          item.setAttribute(
+            'aria-pressed',
+            String(frame?.sequence === event.sequence),
+          );
+          list.append(item);
+        }
+        inspection.append(
+          list.childElementCount
+            ? list
+            : element(
+                'p',
+                'Send a message to follow its requests.',
+                'wb-muted',
+              ),
         );
-        logs.append(item);
-      });
-      drawerBody.append(logs);
-    } else if (drawer === 'Raw') {
-      drawerBody.append(
-        element(
-          'h3',
-          frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
-        ),
-        pre(tab === 'Transform' && transform ? transform : frame?.payload),
-      );
-    } else {
-      drawerBody.append(
-        element(
-          'h3',
-          recipeView?.detailHeading ??
-            (tab === 'Transform'
-              ? 'Preserved mapped fields'
-              : tab === 'Schema'
-                ? 'Preview validation'
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? 'Typed choice and confidence'
-                    : commands.lesson?.format === 'structured'
-                      ? 'Typed plan'
-                      : 'Resolved props'
-                  : tab === 'State'
-                    ? 'Selected moment'
-                    : requestContext?.kind === 'tool'
-                      ? 'Browser tool result'
-                      : 'Request payload'),
-        ),
-        pre(
-          recipeView
-            ? recipeView.detail
-            : tab === 'Transform'
-              ? (transform?.preserved ?? null)
-              : tab === 'Schema'
-                ? {
-                    preview: frame?.props ?? null,
-                    passesApplicationRules: isWorkbenchPlan(frame?.props),
-                    responseStatus: frame?.status ?? snapshot.status,
-                    note: 'Preview values do not authorize applying a plan.',
-                  }
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? (frame?.decision ?? null)
-                    : frame?.props
-                  : tab === 'State'
-                    ? {
-                        turn: frame?.turn ?? snapshot.turn,
-                        status: frame?.status ?? snapshot.status,
-                        event: frame
-                          ? workbenchEventLabel(frame, commands.lesson?.format)
-                          : 'Ready',
-                        source: frame?.source ?? 'Application',
-                      }
-                    : requestContext?.payload,
-        ),
-        element(
-          'p',
-          frame
-            ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
-            : 'Waiting for captured data.',
-          'wb-muted',
-        ),
-      );
-    }
+      } else {
+        inspection.append(pre(value, tab));
+      }
+    });
+    const detailHeader = element('header', '', 'wb-section-head');
+    detailHeader.append(
+      element(
+        'h3',
+        recipeView?.detailHeading ??
+          (tab === 'Transform'
+            ? 'Preserved mapped fields'
+            : tab === 'Schema'
+              ? 'Preview validation'
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? 'Typed choice and confidence'
+                  : commands.lesson?.format === 'structured'
+                    ? 'Typed plan'
+                    : 'Resolved props'
+                : tab === 'State'
+                  ? 'Selected moment'
+                  : requestContext?.kind === 'tool'
+                    ? 'Browser tool result'
+                    : 'Request payload'),
+      ),
+      element(
+        'span',
+        frame
+          ? workflowView
+            ? 'Captured SDK observations and separately recorded application form drafts.'
+            : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          : 'Waiting for captured data.',
+        'wb-section-sub',
+      ),
+    );
+    detail.replaceChildren(
+      detailHeader,
+      pre(
+        recipeView
+          ? recipeView.detail
+          : tab === 'Transform'
+            ? (transform?.preserved ?? null)
+            : tab === 'Schema'
+              ? {
+                  preview: frame?.props ?? null,
+                  passesApplicationRules: isWorkbenchPlan(frame?.props),
+                  responseStatus: frame?.status ?? snapshot.status,
+                  note: 'Preview values do not authorize applying a plan.',
+                }
+              : tab === 'JSON' || tab === 'UI'
+                ? commands.lesson?.format === 'decision'
+                  ? (frame?.decision ?? null)
+                  : frame?.props
+                : tab === 'State'
+                  ? {
+                      turn: frame?.turn ?? snapshot.turn,
+                      status: frame?.status ?? snapshot.status,
+                      event: frame
+                        ? workbenchEventLabel(frame, commands.lesson?.format)
+                        : 'Ready',
+                      source: frame?.source ?? 'Application',
+                    }
+                  : requestContext?.payload,
+        tab,
+      ),
+    );
     if ((frame?.status ?? snapshot.status) === 'error') {
       const issue = element(
         'p',
-        'The request failed. Check the server, return to live, and send again.',
+        commands.lesson?.format === 'workflow' &&
+          frame?.workflow?.recoveryRequired
+          ? 'Resume failed after acknowledgement. Start a new conversation.'
+          : 'The request failed. Check the server, return to live, and send again.',
       );
       issue.setAttribute('role', 'alert');
       inspection.append(issue);
     }
-    events.replaceChildren();
-    const rows = new Map<number, HTMLElement>();
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
+    const total = snapshot.events.length;
     const milestones = rawEvents
       ? snapshot.events.map((event, index) => ({
           index,
@@ -1009,55 +1398,78 @@ export function mountWorkbench(
           label: workbenchEventLabel(event, commands.lesson?.format),
         }))
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
-    const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
-      .at(-1)?.index;
-    milestones.forEach(({ index, label }) => {
-      const event = snapshot.events[index];
-      let row = rows.get(event.turn);
-      if (!row) {
-        row = element('div', '', 'wb-timeline-row');
-        row.append(element('span', `Turn ${event.turn}`, 'wb-mono'));
-        rows.set(event.turn, row);
-        events.append(row);
-      }
-      const item = button(label, () => {
-        pause();
-        store.seek(index);
+      .at(-1);
+    rebuildKeepingFocus(events, 'data-index', () => {
+      events.replaceChildren();
+      milestones.forEach(({ index, label }) => {
+        const event = snapshot.events[index];
+        const item = button(label, () => {
+          pause();
+          store.seek(index);
+        });
+        item.disabled = busy;
+        item.dataset.index = String(index);
+        item.style.left = `${workbenchTickPercent(index, total)}%`;
+        item.setAttribute(
+          'aria-label',
+          `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
+        );
+        item.setAttribute(
+          'aria-pressed',
+          String(index === activeMilestone?.index),
+        );
+        item.toggleAttribute('data-at-playhead', index === selectedIndex);
+        events.append(item);
       });
-      item.disabled = busy;
-      item.setAttribute(
-        'aria-label',
-        `${label}. Turn ${event.turn}, event ${index + 1}: ${event.kind}, ${event.elapsedMs} milliseconds`,
-      );
-      item.setAttribute('aria-pressed', String(index === activeMilestone));
-      row.append(item);
     });
+    segments.replaceChildren(
+      ...workbenchTurnSegments(snapshot.events).map(({ turn, start, end }) => {
+        const segment = element('div', '', 'wb-segment');
+        const left = workbenchTickPercent(start, total);
+        segment.style.left = `${left}%`;
+        segment.style.width = `${workbenchTickPercent(end, total) - left}%`;
+        segment.style.setProperty(
+          '--wb-fill',
+          `${workbenchSegmentFill({ start, end }, selectedIndex, total)}%`,
+        );
+        segment.append(element('span', `Turn ${turn}`, 'wb-mono'));
+        return segment;
+      }),
+    );
+    flag.textContent = total ? (activeMilestone?.label ?? '') : '';
+    const flagPercent = workbenchTickPercent(selectedIndex, total);
+    flag.style.left = total ? `${flagPercent}%` : '';
+    const anchor = workbenchFlagAnchor(flagPercent);
+    if (total && anchor !== 'middle') flag.dataset.anchor = anchor;
+    else delete flag.dataset.anchor;
     previous.disabled = busy || selectedIndex <= 0;
-    next.disabled = busy || selectedIndex >= snapshot.events.length - 1;
-    turns.replaceChildren();
-    [...new Set(snapshot.events.map((event) => event.turn))].forEach((turn) => {
-      const option = element('option', `Turn ${turn}`);
-      option.value = String(turn);
-      turns.append(option);
-    });
-    turns.value = String(frame?.turn ?? snapshot.turn);
-    turns.disabled = busy || !snapshot.events.length;
-    seek.max = String(Math.max(0, snapshot.events.length - 1));
-    seek.value = String(snapshot.cursor ?? snapshot.events.length - 1);
-    seek.disabled = busy || !snapshot.events.length;
-    play.disabled = busy || snapshot.events.length < 2;
-    play.textContent = playing ? 'Pause' : 'Play';
-    timing.textContent = frame
-      ? `${frame.elapsedMs} ms · event ${(snapshot.cursor ?? snapshot.events.length - 1) + 1} / ${snapshot.events.length}`
-      : 'No captured events';
+    next.disabled = busy || selectedIndex >= total - 1;
+    previousTurn.disabled =
+      busy || adjacentTurnIndex(snapshot.events, snapshot.cursor, -1) === null;
+    nextTurn.disabled =
+      busy || adjacentTurnIndex(snapshot.events, snapshot.cursor, 1) === null;
+    seek.max = String(Math.max(0, total - 1));
+    seek.value = String(snapshot.cursor ?? total - 1);
+    seek.disabled = busy || !total;
+    play.disabled = busy || total < 2;
+    syncPlayButton();
+    returnLive.disabled = !historical;
+    returnLive.toggleAttribute('data-live', !historical);
+    liveLabel.data = historical ? 'Return to live' : 'LIVE';
+    const last = snapshot.events.at(-1);
+    timing.textContent =
+      frame && last
+        ? `${formatPlaybackSeconds(frame.elapsedMs)} / ${formatPlaybackSeconds(last.elapsedMs)}`
+        : 'No captured events';
     queueMicrotask(() => {
       if (historical) replay.scrollTop = replay.scrollHeight;
       else if (following) live.scrollTop = live.scrollHeight;
     });
   }
-  renderNavigation();
+  renderLayout();
+  const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
   render();
   return {
@@ -1069,7 +1481,10 @@ export function mountWorkbench(
     },
     dispose: () => {
       pause();
+      document.removeEventListener('keydown', onShortcut);
       unsubscribe();
+      unsubscribeLayout();
+      split.dispose();
       root.remove();
     },
   };

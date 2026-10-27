@@ -110,6 +110,6 @@ Changing application state does not silently apply or regenerate suggestions. A 
 
 Partial, malformed, stale, failed, early, or cancelled output cannot apply an action. **Stop** invalidates the current result. Return to live and send again to retry. When a replacement request starts, the earlier result is no longer actionable.
 
-The bottom timeline replays captured completion JSON, proposals, dismissal, and acceptance. Historical controls are inert. Replay makes no requests and performs no application writes.
+The bottom player replays captured completion JSON, proposals, dismissal, and acceptance. Historical controls are inert. Replay makes no requests and performs no application writes.
 
 Read the [framework client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/PredictionsWorkbench.tsx) and [shared recipe contracts](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-recipes.ts). Continue with [Structured output](/docs/react/concept/structured-output) for schema-driven responses and [UI selection](/docs/react/recipes/ui-selection) for choosing an application-owned view.

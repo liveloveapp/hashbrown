@@ -28,7 +28,9 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens fourteen lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The collapsible sidebar opens nineteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+
+The lessons are:
 
 | Lesson                                                                    | Local URL                                     | Follow                                                                     |
 | ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
@@ -46,30 +48,37 @@ The left navigation opens fourteen lessons. All use the same two-step plan and k
 | [Magic Text](/docs/angular/recipes/magic-text)                            | `/angular.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
 | [Predictive suggestions](/docs/angular/recipes/predictive-actions)        | `/angular.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/angular/recipes/ui-selection)                        | `/angular.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
+| [Shared agent state](/docs/angular/concept/shared-agent-state) | `/angular.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
+| [Activities](/docs/angular/concept/activities) | `/angular.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
+| [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
+| [Message history](/docs/angular/concept/message-history) | `/angular.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
+| [Save text conversations](/docs/angular/recipes/browser-history) | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
 
-Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
+Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
 The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
 
 The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
+
+The workflow lessons use real text chat wrapped by the checked local AG-UI agent. **Shared state** separates local form edits from SDK state and agent updates. **Activities** reports context validation and provider completion, rather than claiming the plan steps ran. **Interrupt and resume** asks two approval questions, continues the same user turn, and gives the next turn a fresh batch. Their State, Activities, and Interrupts inspectors follow actual SDK observations. The accepted application plan stays separate.
 
 ## Follow a Generative UI turn
 
 1. Send the first prompt. `uiChatResource` starts a real request.
 2. The `readContext` browser tool returns the current plan and revision. Reading context does not change it.
 3. Hashbrown sends the tool result in a continuation. The model selects the exposed `SummaryCard`.
-4. The JSON inspector shows the response text as it arrives. The Details view shows values resolved by the SDK, and Angular renders those values in the trusted component.
+4. The JSON inspector shows the response text as it arrives. Beside the captured response, the SDK's resolved values appear, and Angular renders those values in the trusted component.
 5. Accept the plan after a successful response. This explicit action updates application state and advances its revision.
 
 The next prompt stays in the conversation. Its tool call reads the accepted plan. A revised component is another proposal; rendering it does not apply it.
 
 ## Inspect and replay
 
-The bottom timeline records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Select an event, step backward or forward, choose a turn, or play the captured conversation.
+The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag the scrubber to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
 
-The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. Choose **Return to live** to continue the actual conversation.
+The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State views on light code surfaces. Select a request or tool row to inspect its captured payload. The far-right panel follows the selection, with Details, Raw, and Console views. **New conversation** starts an independent session; use the left navigation to return to another session. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 
@@ -83,3 +92,9 @@ Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTT
 Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
 
 Continue with [Exposing components](/docs/angular/concept/components), [Tool calling](/docs/angular/concept/functions), or [Streaming](/docs/angular/concept/streaming) to focus on one part of the conversation.
+
+## Keep and Restore Completed Text
+
+Open `/angular.html?lesson=message-history` to keep, clear, and restore a completed exchange. The History inspector distinguishes the SDK transcript from the app's in-memory text copy. Open `/angular.html?lesson=save-text-conversations` to save Lighthouse and Harbor explicitly, refresh, and load text into a new runtime.
+
+Only successful completed text is saved. Browser slots do not restore shared state, activities, tools, or pending interrupts. The timeline after refresh starts a new capture; replay never requests or writes storage. See [Message history](/docs/angular/concept/message-history) and [Save text conversations](/docs/angular/recipes/browser-history).

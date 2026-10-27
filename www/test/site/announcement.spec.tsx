@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { setImmediate } from 'node:timers/promises';
 import { act } from 'react';
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -174,12 +175,18 @@ test('renders nothing once the entry has expired', () => {
   expect(link()).toBeNull();
 });
 
-test('shows the release announcement after the previous release was dismissed', () => {
+test('shows the release announcement after the previous release was dismissed', async () => {
   reset();
   vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
   localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, '2026-10-08T18:00:00Z');
 
-  mount();
+  try {
+    mount();
 
-  expect(link()?.textContent).toBe('New: Hashbrown v0.8 adds decisions');
+    expect(link()?.textContent).toBe('New: Hashbrown v0.8 adds decisions');
+  } finally {
+    reset();
+    // Drain React's scheduled passive work before jsdom removes window.
+    await setImmediate();
+  }
 });

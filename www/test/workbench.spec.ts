@@ -244,6 +244,11 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'first-plan',
     'conversation',
     'system-instructions',
+    'shared-state',
+    'activities',
+    'interrupts',
+    'message-history',
+    'save-text-conversations',
   ]);
 });
 

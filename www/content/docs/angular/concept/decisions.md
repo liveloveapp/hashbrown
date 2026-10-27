@@ -86,13 +86,13 @@ Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob
 ## Follow the two requests
 
 1. Send “The outline is complete. What should I do next?” The decision returns `record` with confidence.
-2. Inspect **JSON** and **Details**. This is one complete response, not a stream of generated text.
+2. Inspect **JSON** and its **Typed choice and confidence** section. This is one complete response, not a stream of generated text.
 3. Select **State**, then **Use suggestion**. The explicit action saves `nextAction: record` and advances the revision to `1`.
 4. Send “The demo is recorded. What should I do next?” The new input includes the current application snapshot, and the decision returns `review`.
 
 Decisions evaluate the input snapshot supplied for each request. They do not automatically load a chat history. The workbench keeps both requests in one feed so we can inspect what changed.
 
-<img src="/video/docs/canonical-workbench-decisions-angular-result.png" alt="The app-owned plan appears beside a complete typed next-action decision, its confidence, and captured application state." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-decisions-angular-result.png" alt="The app-owned plan appears beside the complete decision response and the SDK's typed choice and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Treat confidence as application policy
 

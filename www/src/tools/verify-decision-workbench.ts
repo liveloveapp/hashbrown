@@ -1,3 +1,7 @@
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 import { type Browser, expect } from '@playwright/test';
 import type { Decision } from '@hashbrownai/core';
 import { resolve } from 'node:path';
@@ -32,6 +36,7 @@ export async function verifyDecisionWorkbench(options: {
   await page.goto(`${origin}/${framework}.html?lesson=decisions`);
   const send = page.locator('.wb:visible [data-send]');
   await expect(send).toBeEnabled();
+  await expectWorkbenchDefaultLayout(page);
   await expect(
     page.getByRole('article', { name: 'Application plan', exact: true }),
   ).toBeVisible();
@@ -97,7 +102,7 @@ export async function verifyDecisionWorkbench(options: {
   await page
     .getByRole('button', { name: /^Decision[.]/ })
     .first()
-    .click();
+    .press('Enter');
   await expect(
     page.locator('[data-replay] [aria-label="Captured decision"]'),
   ).toHaveCount(1);
@@ -107,7 +112,7 @@ export async function verifyDecisionWorkbench(options: {
   await page
     .getByRole('button', { name: /^Suggestion applied[.]/ })
     .first()
-    .click();
+    .press('Enter');
   await expect(inspection).toContainText('"revision": 1');
   if (recording) await page.waitForTimeout(600);
   await page.getByRole('slider', { name: 'Seek captured event' }).fill('0');
@@ -190,11 +195,7 @@ export async function verifyDecisionWorkbench(options: {
   }
   if (!recording) {
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+    await expectNoHorizontalOverflow(page);
   }
   expect(errors).toEqual([]);
   const video = page.video();

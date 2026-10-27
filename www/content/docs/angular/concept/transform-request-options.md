@@ -28,7 +28,7 @@ Send the first prompt. The model reads the current plan through `readContext`, t
 
 ## Inspect the actual callback
 
-The Transform view compares the mapped options before and after the actual callback. It shows the model, tool names, response format, storage setting, output limit, and added instructions. **Details** shows which mapped fields were preserved. **Raw** shows the sanitized trace.
+The Transform view compares the mapped options before and after the actual callback. It shows the model, tool names, response format, storage setting, output limit, and added instructions. **Preserved mapped fields** shows which mapped fields were preserved. The `{ }` toggle on the captured side shows the sanitized trace.
 
 These values are captured inside the server callback, not reconstructed from the browser request. Each provider continuation has its own trace. Select **Request transformed** in the bottom timeline to inspect that callback. A request frame before the callback shows a waiting message; replay changes only the captured view.
 

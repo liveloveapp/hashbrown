@@ -7,7 +7,9 @@ import * as stop from '../src/app/%5F/growth/stop/route';
 import * as unsubscribe from '../src/app/%5F/unsubscribe/route';
 import * as inbound from '../src/app/%5F/webhooks/resend-inbound/route';
 import * as webhook from '../src/app/%5F/webhooks/resend/route';
+import * as postSquareCard from '../src/app/blog/[slug]/square-card/route';
 import * as docsCard from '../src/app/og/docs/[sdk]/[...slug]/route';
+import * as squareCard from '../src/app/square-card/route';
 
 test.each([
   ['inbox recovery', recovery, ['GET', 'maxDuration']],
@@ -23,6 +25,12 @@ test.each([
     docsCard,
     ['GET', 'dynamic', 'dynamicParams', 'generateStaticParams'],
   ],
+  [
+    'post square card',
+    postSquareCard,
+    ['GET', 'dynamic', 'dynamicParams', 'generateStaticParams'],
+  ],
+  ['square card', squareCard, ['GET', 'dynamic']],
 ] as const)(
   '%s entry exports only its Next.js handlers and configuration',
   (_name, entry, expected) => {

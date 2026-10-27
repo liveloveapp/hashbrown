@@ -34,6 +34,18 @@ test('renders the GitHub card at 1280x640 with the install pill', async () => {
   expect(await pngSize(response)).toEqual({ width: 1280, height: 640 });
 });
 
+test('renders the square card at 1080x1080', async () => {
+  const card = {
+    title: 'AI chat and agents for React and Angular.',
+    subtitle: ['hashbrown.dev'],
+    size: 'square' as const,
+  };
+
+  const response = await renderCard(card);
+
+  expect(await pngSize(response)).toEqual({ width: 1080, height: 1080 });
+});
+
 function imageSources(node: unknown): string[] {
   if (!node || typeof node !== 'object') return [];
   if (Array.isArray(node)) return node.flatMap(imageSources);

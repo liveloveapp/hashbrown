@@ -2,80 +2,95 @@
 title: 'Interrupt and Resume: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Respond to AG-UI interrupt batches and resume agent workflows in React.'
+    content: 'Pause for a decision, then continue the same turn. Follow the canonical React workbench.'
 ---
 
 # Interrupt and Resume
 
-<p class="subtitle">Pause an agent workflow, collect answers, and resume from its committed checkpoint.</p>
+<p class="subtitle">Pause for a decision, then continue the same turn.</p>
 
-Some actions need a decision before the agent continues. This example pauses a trip plan, collects two approvals, and resumes once both answers are ready.
-
-<hb-docs-demo demo="interrupts">
+<hb-docs-demo demo="canonical-workbench-interrupts-react">
 </hb-docs-demo>
 
-Your endpoint must emit interrupt outcomes and accept resume requests. The Quickstart’s direct provider endpoint does not create this workflow by itself. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workflows.tsx).
+Let's explain the same two-step plan, pause for two approvals, and continue once both answers are ready. The chat keeps the original user turn. Resume sends decisions; it does not add a pretend user message.
 
-An AG-UI agent can finish a run with an interrupt outcome when it needs approval or structured input. Hashbrown commits the streamed state and message history, exposes the complete batch through `pendingInterrupts`, and stops automatic tool execution and continuation.
+Approval in this example permits another explanation. It does not execute either plan step, record a video, or write a file. A later user turn creates a fresh approval batch with fresh form choices.
 
-These APIs are available on text, structured, and UI chat and completion hooks. Your endpoint must implement the protocol-standard interrupt outcome and `resume` request array.
+<img src="/video/docs/canonical-workbench-interrupts-react-result.png" alt="React workbench showing interrupt and resume, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
 
-## Read a Batch
+Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=interrupts`](http://127.0.0.1:4370/react.html?lesson=interrupts). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
-<img src="/video/docs/interrupts-approval.png" alt="A paused trip plan asks for itinerary approval and destination confirmation before resuming." width="920" height="206" loading="lazy" />
+The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 
-`pendingInterrupts` is `undefined` when there is no pending batch. Otherwise, it contains an opaque local `id` and a readonly `interrupts` array. Each interrupt retains its protocol `id`, `reason`, and optional `message`, `toolCallId`, `responseSchema`, `expiresAt`, `metadata`, and `subagentRunId`.
+## Read the Whole Pending Batch
 
-`responseSchema` is the server's JSON Schema object, preserved as immutable data. Your application can use it to build a form and validate answers. Hashbrown checks JSON compatibility and batch ownership but does not compile a JSON Schema validator.
+The agent ends a run with an interrupt outcome. Hashbrown commits its message and state checkpoint, exposes `pendingInterrupts`, and stops automatic continuation. Read it from `chat.pendingInterrupts`. It is `undefined` when no batch is pending.
 
-For example, a server can ask for a boolean approval object:
+A pending batch has an opaque local `id` and an immutable `interrupts` array. Each interrupt preserves the server's ID, reason, message, `responseSchema`, expiry, and optional tool, metadata, and subagent fields. Our server asks two questions with the same boolean-object schema:
 
 ```json
 {
-  "id": "purchase",
-  "reason": "input_required",
-  "message": "Approve this purchase?",
-  "responseSchema": {
-    "type": "object",
-    "properties": { "approved": { "type": "boolean" } },
-    "required": ["approved"],
-    "additionalProperties": false
-  }
+  "type": "object",
+  "properties": { "approved": { "type": "boolean" } },
+  "required": ["approved"],
+  "additionalProperties": false
 }
 ```
 
-Hashbrown preserves that schema object. Your form validates an answer such as
-`{ "approved": true }`, and the server remains authoritative about accepting it.
+Hashbrown preserves `responseSchema` as data. Your form must validate answers; the server must validate them again. Hashbrown checks JSON compatibility and batch ownership rather than compiling a JSON Schema validator.
 
-Keep form drafts associated with the batch ID originally displayed. Do not substitute the newest batch ID when submitting an old form.
+## Submit Every Answer Together
 
-## Submit Every Response Together
+The paired inspector shows the SDK batch beside the application form and request outcome. Raw retains the full selected SDK observation.
 
-Pass `resume({ batchId, entries })` exactly one entry for each pending interrupt. One unanswered interrupt holds up the entire batch. Applications may collect answers across separate screens, but Hashbrown does not store partial answers.
+Keep form drafts attached to the original displayed `batchId`. Do not replace it with a newer batch ID when submitting an old form. One unanswered question holds up the whole batch.
 
-For example, a workflow with purchase approval and an address question can submit:
+The workbench builds a complete `resume` argument from the original batch:
+
+<hb-code-example header="runtime/workbench-workflow-form.ts">
 
 ```ts
-chat.resume({
-  batchId: displayedBatch.id,
-  entries: [
-    {
-      interruptId: 'purchase',
-      status: 'resolved',
-      payload: { approved: true },
-    },
-    {
-      interruptId: 'shipping-address',
-      status: 'resolved',
-      payload: { addressId: 'address-123' },
-    },
-  ],
-});
+  return {
+    batchId,
+    entries: batch.interrupts.map(({ id }) =>
+      cancel
+        ? { interruptId: id, status: 'cancelled' as const }
+        : {
+            interruptId: id,
+            status: 'resolved' as const,
+            payload: { approved: answers[id] === 'approve' },
+          },
+    ),
+  };
+}
 ```
 
-The interrupt IDs and payloads must match the actual batch and schemas supplied by your endpoint. A denial is a `resolved` response with the answer expected by the server, such as `{ approved: false }`. Use `cancelled` without a payload when abandoning an interrupt without an answer. Cancellation entries are still submitted with the entire batch; they do not mean calling `stop()`.
+</hb-code-example>
 
-Invalid, incomplete, duplicate, stale, or expired submissions throw synchronously without sending a request. Handle these API errors in your form submission handler. Execution errors appear in `chat.error`.
+A resolved answer with `{ approved: false }` is a denial. A cancelled entry has `status: 'cancelled'` and no payload. **Cancel approvals** submits cancellation for the whole batch; **Stop** aborts a running request. They have different meanings.
+
+The SDK rejects missing, partial, duplicate, stale, or foreign local batch entries synchronously. The local batch token is not sent over the wire: the endpoint receives the protocol interrupt IDs and decisions. The server independently checks IDs, expiry, payloads, and whether decisions were consumed.
+
+## Resume the Same Turn
+
+Call `resume` once with the complete batch. The SDK claims it synchronously and locks state before scheduling the request. `isResuming` distinguishes this continuation from an ordinary send. The workbench records resume intent before invoking the SDK, so even an immediate request stays in the original turn.
+
+Our server claims the decisions atomically before delegating. If both answers approve, it asks the model for another brief explanation. A denial or cancellation finishes without another provider call. A later ordinary user message starts a new run and creates a fresh approval batch.
+
+## Recover at the Acknowledgement Boundary
+
+Before a matching `RUN_STARTED` acknowledges resume, a failed attempt can release its claim and leave the batch available to retry. A synchronous validation error also leaves the pending form intact.
+
+After acknowledgement, an error or cancellation can require a new thread. Respect the SDK recovery state and offer **New conversation**. Clearing messages or reusing the same thread ID does not reset an acknowledged failure.
+
+Pending batches and form drafts are local runtime state, not durable persisted checkpoints. The example's server approval store is bounded, expires after five minutes, and exists only in that process. Production agents need authenticated ownership, durable checkpoints, and their own policy for retries and protected work. This example does not promise exactly-once execution.
+
+## Replay Without Resubmitting
+
+Select the paused frame to inspect its original batch and the form choices captured at that moment. The controls are disabled during replay. Return to Live to continue with the current batch; replay never submits another decision.
+
+Continue with [Shared Agent State](/docs/react/concept/shared-agent-state) and [Message History](/docs/react/concept/message-history).
+
 
 ## Show Resume Progress
 
@@ -102,12 +117,6 @@ After matching `RUN_STARTED`, Hashbrown does not automatically replay the resume
 Hashbrown checks expiration before claiming and immediately before each send. If any interrupt expires, the entire batch remains visible but cannot resume. Start a new thread to continue; this starts a new workflow rather than repairing the expired one.
 
 Changing to a different `threadId` retires local batch ownership and late callbacks, preserving committed messages/state. Setting the same ID does not reset a pause or recovery requirement. Changing threads does not cancel work on the server.
-
-## Runtime Lifetime
-
-Pending batches exist only within the live runtime. Page reloads and runtime recreation do not restore them. Saving the batch ID and form answers is not sufficient to restore the canonical checkpoint. Reusing an old thread ID does not recover its interrupt workflow.
-
-For shared checkpoint behavior, see [Shared Agent State](/docs/react/concept/shared-agent-state) and [Message History](/docs/react/concept/message-history).
 
 ## Restore server-owned history
 
