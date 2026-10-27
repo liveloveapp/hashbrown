@@ -40,6 +40,7 @@ function hasCurrentContext(input: RunAgentInput): boolean {
       message.role === 'tool' &&
       calls.has(message.toolCallId) &&
       message.error === undefined &&
+      typeof message.content === 'string' &&
       validContext(message.content)
     )
       return true;

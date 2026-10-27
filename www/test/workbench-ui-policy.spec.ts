@@ -237,3 +237,22 @@ test('actual adapter sends native readContext policy while retaining pinned sche
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('structured tool content cannot satisfy the text-only context result policy', () => {
+  const structuredResult: Message = {
+    id: 'structured',
+    role: 'tool',
+    toolCallId: 'c',
+    content: [{ type: 'text', text: JSON.stringify(snapshot) }],
+  };
+
+  for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
+    expect(
+      applyWorkbenchUiToolPolicy(
+        mapped,
+        input([user, call, structuredResult]),
+        lesson,
+      ).tool_choice,
+    ).toEqual({ type: 'function', name: 'readContext' });
+  }
+});
