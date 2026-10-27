@@ -7,7 +7,7 @@
 .example {
   display: flex;
   flex-direction: column;
-  background: #2b2622;
+  background: var(--color-code-frame);
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-shot);

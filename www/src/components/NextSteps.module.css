@@ -26,8 +26,8 @@
   align-items: center;
   padding: 8px;
   border-radius: 8px;
-  background: var(--sunshine-yellow-light, #fbe7b6);
-  border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+  background: var(--sunshine-yellow-light);
+  border: 1px solid var(--sunshine-yellow-dark);
 }
 
 .step h4 {
@@ -36,7 +36,7 @@
 
 .step p {
   margin: 0;
-  color: var(--gray, #5e5c5a);
+  color: var(--color-muted);
   font:
     350 13px/130% var(--font-code);
 }

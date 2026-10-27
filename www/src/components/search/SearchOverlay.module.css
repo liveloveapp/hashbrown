@@ -6,7 +6,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(28, 25, 23, 0.4);
+  background: var(--color-overlay);
 }
 
 .overlay {
@@ -100,7 +100,7 @@
 .panel > form > .loading > input {
   background: var(--color-highlight);
   animation: inputShimmer 3s ease infinite;
-  border-color: var(--sunshine-orange-dark, #e88c4d);
+  border-color: var(--color-accent);
 }
 
 .panel > form > .loading > button {
@@ -117,7 +117,7 @@
   border-radius: var(--radius-pill);
   cursor: pointer;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font-weight: 600;
   transition: background-color var(--duration-fast) var(--ease-out);
 }
