@@ -168,6 +168,9 @@ export const workbenchLessonIcons: Readonly<
   'first-plan': 'flag',
   conversation: 'messages',
   'system-instructions': 'scroll',
+  'shared-state': 'braces',
+  activities: 'activity',
+  interrupts: 'square-check',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

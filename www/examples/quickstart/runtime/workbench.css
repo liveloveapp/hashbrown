@@ -155,6 +155,7 @@ body {
 
 /* Sidebar */
 .wb-nav {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1049,7 +1050,8 @@ app-structured-workbench-conversation[hidden],
 app-decision-workbench-conversation[hidden],
 app-magic-text-workbench-conversation[hidden],
 app-predictions-workbench-conversation[hidden],
-app-selection-workbench-conversation[hidden] {
+app-selection-workbench-conversation[hidden],
+app-workflow-workbench-conversation[hidden] {
   display: none !important;
 }
 .wb-debug-controls {
@@ -1200,4 +1202,28 @@ app-selection-workbench-conversation[hidden] {
   .wb *::before {
     transition: none !important;
   }
+}
+
+/* Application workflow controls keep captured SDK identifiers within the chat. */
+.wb-workflow-state label,
+.wb-workflow-approvals label {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-state input,
+.wb-workflow-approvals select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+}
+.wb-workflow-activity pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-approvals button {
+  margin: 4px;
 }

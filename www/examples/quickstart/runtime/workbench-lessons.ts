@@ -13,13 +13,22 @@ export type WorkbenchLessonId =
   | 'schemas'
   | 'decisions'
   | 'debugging'
-  | 'request-transformation';
+  | 'request-transformation'
+  | 'shared-state'
+  | 'activities'
+  | 'interrupts';
 /** Metadata shared by framework clients and their workbench shell. */
 export interface WorkbenchLesson {
   readonly id: WorkbenchLessonId;
   readonly title: string;
   readonly format:
-    'ui' | 'structured' | 'decision' | 'text' | 'predictions' | 'selection';
+    | 'ui'
+    | 'structured'
+    | 'decision'
+    | 'text'
+    | 'predictions'
+    | 'selection'
+    | 'workflow';
   readonly protocol: 'chat' | 'decision';
   readonly inspector:
     | 'Markdown'
@@ -27,6 +36,8 @@ export interface WorkbenchLesson {
     | 'Requests'
     | 'UI'
     | 'State'
+    | 'Activities'
+    | 'Interrupts'
     | 'Schema'
     | 'Transform'
     | 'Instructions';
@@ -56,6 +67,9 @@ export const workbenchLessonGroups: readonly {
       'streaming',
       'schemas',
       'decisions',
+      'shared-state',
+      'activities',
+      'interrupts',
     ],
   },
   {
@@ -183,6 +197,23 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     inspector: 'Instructions',
     endpoint: '/api/workbench/system-instructions',
   },
+  ...(['shared-state', 'activities', 'interrupts'] as const).map((id) => ({
+    id,
+    title: {
+      'shared-state': 'Shared agent state',
+      activities: 'Activities',
+      interrupts: 'Interrupt and resume',
+    }[id],
+    format: 'workflow' as const,
+    inspector:
+      id === 'activities'
+        ? ('Activities' as const)
+        : id === 'interrupts'
+          ? ('Interrupts' as const)
+          : ('State' as const),
+    protocol: 'chat' as const,
+    endpoint: `/api/workbench/${id}`,
+  })),
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {

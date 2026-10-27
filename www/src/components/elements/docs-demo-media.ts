@@ -1,5 +1,54 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-shared-state-react': {
+    title: 'React workbench: shared agent state.',
+    caption:
+      'Set state without a request, then follow agent drafts, commit, and a second turn.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-activities-react': {
+    title: 'React workbench: activities.',
+    caption:
+      'Follow actual agent progress, stable activity links, and a new activity ID in the next turn.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-interrupts-react': {
+    title: 'React workbench: interrupt and resume.',
+    caption:
+      'Answer a complete approval batch, resume the same turn, and inspect a fresh batch on the next turn.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-shared-state-angular': {
+    title: 'Angular workbench: shared agent state.',
+    caption:
+      'Set state without a request, then follow agent drafts, commit, and a second turn.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-activities-angular': {
+    title: 'Angular workbench: activities.',
+    caption:
+      'Follow actual agent progress, stable activity links, and a new activity ID in the next turn.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-interrupts-angular': {
+    title: 'Angular workbench: interrupt and resume.',
+    caption:
+      'Answer a complete approval batch, resume the same turn, and inspect a fresh batch on the next turn.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and the actual Hashbrown SDK. The local AG-UI agent maps shared state into instructions and authors state, activity and approval events around unchanged provider text. No browser tools, generated UI schema or executed plan steps. Approval permits another explanation only. The approval store is bounded, expiring and process-local. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-first-plan-react': {
     title: 'React workbench: your first plan.',
     caption:

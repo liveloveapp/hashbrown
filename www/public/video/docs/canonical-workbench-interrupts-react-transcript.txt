@@ -1,0 +1,19 @@
+REACT · interrupts
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+A real reply pauses for two approval questions.
+
+Answer the complete batch before resuming.
+
+Resume sends both answers and continues the same turn.
+
+Resume complete.
+
+A new turn gets a new approval batch.
+
+Read-only replay.
+
+Back live. Paused.
+
+The source is real OpenAI text through the Hashbrown SDK, wrapped by the checked local AG-UI agent. The agent authors state, activity and approval protocol events around unchanged provider text. There are no browser tools, generated UI schemas or executed plan steps. Shared SDK state is separate from the accepted application plan. Approval permits another explanation only; the bounded expiring process-local store does not provide production authentication or durable recovery. Replay is read-only. Interrupt footage resumes the complete original batch in the same user turn, then pauses on a fresh batch in the next turn. Refresh clears local sessions.

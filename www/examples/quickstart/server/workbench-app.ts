@@ -1,4 +1,8 @@
 import {
+  isWorkbenchWorkflowState,
+  workbenchWorkflowSystem,
+} from '../runtime/workbench-workflows';
+import {
   workbenchConversationSystem,
   workbenchFirstPlanSystem,
   workbenchInstructionsSystem,
@@ -77,11 +81,17 @@ export function pinWorkbenchInput(
     )
   )
     throw new Error('Prompt too large');
+  const workflow =
+    workbenchLessons.find((entry) => entry.id === lesson)?.format ===
+    'workflow';
+  if (workflow && !isWorkbenchWorkflowState(input.state))
+    throw new Error('Invalid workflow state');
   const onboarding =
     lesson === 'first-plan' ||
     lesson === 'conversation' ||
     lesson === 'system-instructions';
   const plainText =
+    workflow ||
     lesson === 'magic-text' ||
     lesson === 'conversation' ||
     lesson === 'system-instructions';
@@ -91,8 +101,9 @@ export function pinWorkbenchInput(
       {
         id: 'workbench-system',
         role: 'system',
-        content:
-          lesson === 'first-plan'
+        content: workflow
+          ? workbenchWorkflowSystem
+          : lesson === 'first-plan'
             ? workbenchFirstPlanSystem
             : lesson === 'conversation'
               ? workbenchConversationSystem
@@ -109,7 +120,7 @@ export function pinWorkbenchInput(
       ...messages,
     ],
     tools:
-      onboarding || lesson === 'predictions'
+      workflow || onboarding || lesson === 'predictions'
         ? []
         : [
             {
