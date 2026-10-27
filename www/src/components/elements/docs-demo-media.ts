@@ -1,5 +1,54 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-agent-decisions-react': {
+    title: 'React workbench: decisions in agents.',
+    caption:
+      'Inspect real TypeSafe route decisions and fixed application handler replies across two turns.',
+    recording:
+      'Recorded with real TypeSafe route decisions and whole application-owned handler text in the checked React workbench. Decision confidence gates only known read-only handlers; handler prose is not generated model text. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-json-parser-react': {
+    title: 'React workbench: streaming JSON parser.',
+    caption:
+      'Follow actual OpenAI JSON into framework parser values and independent final validation.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked React workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-natural-forms-react': {
+    title: 'React workbench: natural language forms.',
+    caption:
+      'Generate, review, edit and explicitly apply a plan, then use the applied context in a follow-up.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked React workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Review and Apply are explicit; browser readContext returns the applied plan and revision. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-agent-decisions-angular': {
+    title: 'Angular workbench: decisions in agents.',
+    caption:
+      'Inspect real TypeSafe route decisions and fixed application handler replies across two turns.',
+    recording:
+      'Recorded with real TypeSafe route decisions and whole application-owned handler text in the checked Angular workbench. Decision confidence gates only known read-only handlers; handler prose is not generated model text. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-json-parser-angular': {
+    title: 'Angular workbench: streaming JSON parser.',
+    caption:
+      'Follow actual OpenAI JSON into framework parser values and independent final validation.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked Angular workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-natural-forms-angular': {
+    title: 'Angular workbench: natural language forms.',
+    caption:
+      'Generate, review, edit and explicitly apply a plan, then use the applied context in a follow-up.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked Angular workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Review and Apply are explicit; browser readContext returns the applied plan and revision. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-server-threads-react': {
     title: 'React workbench: server-owned threads.',
     caption:

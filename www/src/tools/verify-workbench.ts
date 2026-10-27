@@ -1,3 +1,11 @@
+import {
+  type AgentFixtureOutcome,
+  type AuthoringFixtureOutcome,
+  verifyAuthoringWorkbench,
+} from './verify-authoring-workbench';
+import { workbenchAuthoringFixtureText } from './workbench-authoring-fixture';
+import { createWorkbenchAgentStream } from '../../examples/quickstart/server/workbench-agent';
+import { DecisionError } from '@hashbrownai/typesafe';
 import { verifyServerWorkbench } from './verify-server-workbench';
 import { verifyHistoryWorkbench } from './verify-history-workbench';
 import { workbenchHistoryFixtureText } from './workbench-history-fixture';
@@ -43,6 +51,9 @@ async function* pacedProvider(
   }
 }
 const requests: RunAgentInput[] = [];
+const agentRequests: { state: string }[] = [];
+let agentOutcome: AgentFixtureOutcome = 'success';
+let authoringOutcome: AuthoringFixtureOutcome = 'success';
 const workflowProviderRequests: RunAgentInput[] = [];
 const transformations: WorkbenchTransformationTrace[] = [];
 const instructions: WorkbenchInstructionsTrace[] = [];
@@ -232,6 +243,50 @@ const workflowStream = createWorkbenchWorkflowStream({
       : fixture(input, signal, lesson);
   },
 });
+const agentStream = createWorkbenchAgentStream({
+  delegate: fixture,
+  classify: async ({ request, schema, signal }) => {
+    agentRequests.push(structuredClone(request));
+    if (live) {
+      const apiKey = process.env['TYPESAFE_API_KEY'],
+        model = process.env['TYPESAFE_MODEL'];
+      if (!apiKey || !model)
+        throw new Error(
+          'Live agent decisions require server-only TypeSafe configuration',
+        );
+      return HashbrownTypeSafe.decide({
+        apiKey,
+        model,
+        request,
+        schema,
+        signal,
+        maxRequestChars: 16000,
+      });
+    }
+    if (agentOutcome === 'delay') await new Promise((r) => setTimeout(r, 700));
+    if (agentOutcome === 'unavailable')
+      throw new DecisionError(
+        'upstream',
+        503,
+        'Fixture classifier unavailable',
+      );
+    if (agentOutcome === 'error')
+      throw new Error('Intentional classifier programming failure');
+    const route =
+      agentOutcome === 'invalid'
+        ? 'unknown'
+        : request.state.toLowerCase().includes('record')
+          ? 'record'
+          : 'outline';
+    const confidence = agentOutcome === 'low' ? 0.4 : 0.97;
+    return {
+      kind: 'hashbrown.decision',
+      version: 1,
+      value: { route },
+      meta: { route: { confidence, probabilities: { [route]: confidence } } },
+    };
+  },
+});
 const app = createWorkbenchApp({
   decide: async (request, signal, lessonId): Promise<Decision.Response> => {
     decisionRequests.push(structuredClone(request));
@@ -313,23 +368,26 @@ const app = createWorkbenchApp({
   source: live ? 'provider' : 'test-fixture',
   stream: (input, signal, lessonId) => {
     requests.push(structuredClone(input));
-    const events = ['shared-state', 'activities', 'interrupts'].includes(
-      lessonId ?? '',
-    )
-      ? workflowStream(input, signal, lessonId)
-      : live ||
-          lessonId === 'request-transformation' ||
-          lessonId === 'system-instructions' ||
-          lessonId === 'message-history' ||
-          lessonId === 'save-text-conversations' ||
-          lessonId === 'server-threads' ||
-          lessonId === 'public-endpoint'
-        ? createWorkbenchOpenAIStream({
-            apiKey: live ? (apiKey as string) : 'fixture-only',
-            model: live ? (model as string) : 'fixture-model',
-            ...(live ? {} : { baseURL: fixtureBaseURL }),
-          })(input, signal, lessonId)
-        : fixture(input, signal, lessonId);
+    const events =
+      lessonId === 'agent-decisions'
+        ? agentStream(input, signal, lessonId)
+        : ['shared-state', 'activities', 'interrupts'].includes(lessonId ?? '')
+          ? workflowStream(input, signal, lessonId)
+          : live ||
+              lessonId === 'request-transformation' ||
+              lessonId === 'system-instructions' ||
+              lessonId === 'message-history' ||
+              lessonId === 'save-text-conversations' ||
+              lessonId === 'server-threads' ||
+              lessonId === 'public-endpoint' ||
+              lessonId === 'json-parser' ||
+              lessonId === 'natural-forms'
+            ? createWorkbenchOpenAIStream({
+                apiKey: live ? (apiKey as string) : 'fixture-only',
+                model: live ? (model as string) : 'fixture-model',
+                ...(live ? {} : { baseURL: fixtureBaseURL }),
+              })(input, signal, lessonId)
+            : fixture(input, signal, lessonId);
     return (async function* () {
       for await (const event of pacedProvider(events, signal)) {
         if (
@@ -390,26 +448,55 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
   const onboarding =
     mapped['tools'] === undefined ||
     (Array.isArray(mapped['tools']) && mapped['tools'].length === 0);
-  const onboardingText = onboarding
-    ? (workbenchHistoryFixtureText(
-        JSON.stringify(mapped).includes('Remember the plan name supplied')
-          ? 'message-history'
-          : undefined,
-        input,
-      ) ?? workbenchOnboardingFixtureText('system-instructions', input))
-    : undefined;
+  const authoringLesson = JSON.stringify(mapped).includes(
+    'The user separately reviews, edits and applies',
+  )
+    ? 'natural-forms'
+    : JSON.stringify(mapped).includes(
+          'Return only a JSON object with title and steps',
+        )
+      ? 'json-parser'
+      : undefined;
+  let authoringText = workbenchAuthoringFixtureText(authoringLesson, input);
+  if (authoringText) {
+    if (authoringOutcome === 'malformed') authoringText += ' trailing';
+    if (authoringOutcome === 'missing')
+      authoringText = '{"title":"Missing steps"}';
+    if (authoringOutcome === 'wrong-type')
+      authoringText = '{"title":"Wrong type","steps":["Outline",42]}';
+    if (authoringOutcome === 'truncated')
+      authoringText = authoringText.slice(0, -8);
+  }
+  const onboardingText = authoringLesson
+    ? authoringLesson === 'json-parser' || hasContext
+      ? authoringText
+      : undefined
+    : onboarding
+      ? (workbenchHistoryFixtureText(
+          JSON.stringify(mapped).includes('Remember the plan name supplied')
+            ? 'message-history'
+            : undefined,
+          input,
+        ) ?? workbenchOnboardingFixtureText('system-instructions', input))
+      : undefined;
   const events =
     onboardingText !== undefined
       ? createSupportProviderEvents(onboardingText).map((event) =>
           event.type === 'response.completed' &&
-          (outcome === 'error' || outcome === 'length')
+          (outcome === 'error' ||
+            outcome === 'length' ||
+            (authoringLesson &&
+              (authoringOutcome === 'error' || authoringOutcome === 'length')))
             ? {
                 type:
-                  outcome === 'error'
+                  outcome === 'error' || authoringOutcome === 'error'
                     ? 'response.failed'
                     : 'response.incomplete',
                 response: {
-                  status: outcome === 'error' ? 'failed' : 'incomplete',
+                  status:
+                    outcome === 'error' || authoringOutcome === 'error'
+                      ? 'failed'
+                      : 'incomplete',
                   error: { message: 'Intentional test failure' },
                   incomplete_details: { reason: 'max_output_tokens' },
                   output: [],
@@ -479,6 +566,33 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (
+        lesson.id === 'agent-decisions' ||
+        lesson.id === 'json-parser' ||
+        lesson.id === 'natural-forms'
+      ) {
+        report.push(
+          await verifyAuthoringWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            agentRequests,
+            authoringOutcome: (value) => {
+              authoringOutcome = value;
+            },
+            agentOutcome: (value) => {
+              agentOutcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (lesson.id === 'server-threads' || lesson.id === 'public-endpoint') {
         report.push(
           await verifyServerWorkbench({

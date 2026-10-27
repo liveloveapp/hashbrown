@@ -427,3 +427,25 @@ Unchanged provider events are paced 20 ms for filming and footage is half speed.
 Replay is inert. Preserve legacy examples/media for independent fixtures and
 bookmarks. Unique ignored capture directories retain masters and reports.
 No SDK release.
+
+
+## Canonical agent decisions, JSON parsing and natural forms
+
+Updated 2026-10-27. The six Angular/React recipes use separate
+`canonical-workbench-{agent-decisions,json-parser,natural-forms}-{angular,react}`
+recordings. Agent decisions call real TypeSafe on the server, validate a closed
+route at confidence >=0.75 and invoke fixed read-only application handlers.
+Decisions arrive whole; handler text is not model-generated prose.
+
+Parser and forms use actual Hashbrown text chat and direct framework parsers over
+OpenAI JSON. Partial values, source completion, parser completion, original JSON
+validation and application rules are separate. Forms copies a fresh valid draft
+for review, preserves editable controls, and applies validated fields explicitly
+against the current source/turn/revision. Its actual readContext tool supplies the
+applied plan to the follow-up. Parser and agent lessons preserve application state.
+
+All twenty-four lessons have two framework paths (48 total). Each new ID has both
+codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
+protocol event pacing and half-speed footage are disclosed. Replay performs no
+requests or writes. Unique ignored capture directories retain masters/reports.
+Keep legacy assets and standalone fixtures for old bookmarks. No SDK release.
