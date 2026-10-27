@@ -219,3 +219,83 @@ test('completed authoring turns allow intentional SDK clear restore and load rep
     expect(store.send('Fresh generation').role).toBe('user');
   }
 });
+
+test('review edit and Apply recheck actual SDK assistant identity before the next parser observation', () => {
+  for (const replacement of [
+    { id: 'replacement', content: JSON.stringify(plan) },
+    { id: 'answer', content: JSON.stringify({ ...plan, title: 'New draft' }) },
+  ]) {
+    const store = createWorkbenchStore('history', { authoringMode: 'form' });
+    complete(store);
+    expect(store.reviewAuthoring()).toBe(true);
+    const user = store
+      .getSnapshot()
+      .frame?.history?.sdk.messages.find(
+        (message) => message['role'] === 'user',
+      );
+
+    expect(
+      store.recordHistory({
+        messages: [user, { ...replacement, role: 'assistant' }],
+        isLoading: false,
+        finishReason: 'stop',
+      }),
+    ).toBe(true);
+    expect(store.reviewAuthoring()).toBe(false);
+    expect(store.editAuthoring('title', 'Stale edit')).toBe(false);
+    expect(store.applyAuthoring()).toBe(false);
+    expect(store.getSnapshot().application.revision).toBe(0);
+  }
+});
+
+test('authoring actions require current actual SDK stop even if an idle setter retains older success', () => {
+  const store = createWorkbenchStore('history', { authoringMode: 'form' });
+  complete(store);
+  store.reviewAuthoring();
+  const messages = store.getSnapshot().frame?.history?.sdk.messages ?? [];
+
+  store.recordHistory({ messages, isLoading: false });
+
+  expect(store.reviewAuthoring()).toBe(false);
+  expect(store.editAuthoring('title', 'Stale edit')).toBe(false);
+  expect(store.applyAuthoring()).toBe(false);
+});
+
+test('old idle SDK and parser observations cannot adopt a newer completed turn identity', () => {
+  const store = createWorkbenchStore('history', { authoringMode: 'form' });
+  complete(store);
+  const oldMessages = store.getSnapshot().frame?.history?.sdk.messages ?? [];
+  const user = store.send('Create a new plan');
+  const newPlan = { ...plan, title: 'New plan' };
+  const newMessages = [
+    user,
+    { id: 'new-answer', role: 'assistant', content: JSON.stringify(newPlan) },
+  ];
+  observeHistory(store, { messages: [user], isLoading: true });
+  observeHistory(store, {
+    messages: newMessages,
+    isLoading: false,
+    finishReason: 'stop',
+  });
+  store.recordAuthoring({
+    assistantId: 'new-answer',
+    json: JSON.stringify(newPlan),
+    value: newPlan,
+    complete: true,
+  });
+  expect(store.reviewAuthoring()).toBe(true);
+
+  expect(
+    store.recordHistory({
+      messages: oldMessages,
+      isLoading: false,
+      finishReason: 'stop',
+    }),
+  ).toBe(true);
+
+  expect(store.recordAuthoring(input())).toBe(false);
+  expect(store.reviewAuthoring()).toBe(false);
+  expect(store.applyAuthoring()).toBe(false);
+  expect(store.getSnapshot().application.revision).toBe(0);
+  expect(newMessages).not.toEqual(oldMessages);
+});

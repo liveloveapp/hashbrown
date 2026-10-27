@@ -386,6 +386,7 @@ export function createWorkbenchStore(
   let application = initialApplication();
   let history: WorkbenchHistoryFrame | undefined;
   let authoring: WorkbenchAuthoringObservation | undefined;
+  let latestSentUserId: string | null = null;
   let agent: WorkbenchAgentTrace | undefined;
   let historySuccess = false;
   let replacementBaseline = '';
@@ -561,12 +562,38 @@ export function createWorkbenchStore(
     return true;
   };
   notify();
+  const currentAuthoringSource = () => {
+    if (!history || !authoring) return false;
+    const sdkMessages = history.sdk.messages;
+    const userIndex = sdkMessages.reduce(
+      (index, message, current) =>
+        message['role'] === 'user' ? current : index,
+      -1,
+    );
+    const requestUser = latestSentUserId;
+    const assistant = sdkMessages
+      .slice(userIndex + 1)
+      .filter((message) => message['role'] === 'assistant')
+      .at(-1);
+    return (
+      !!requestUser &&
+      sdkMessages[userIndex]?.['id'] === requestUser &&
+      !!authoring.origin.assistantId &&
+      assistant?.['id'] === authoring.origin.assistantId &&
+      assistant?.['content'] === authoring.json
+    );
+  };
   const authoringReady = () =>
     options.authoringMode === 'form' &&
     cursor === null &&
     status === 'complete' &&
     finishReason === 'stop' &&
     historySuccess &&
+    history?.sdk.finishReason === 'stop' &&
+    !history.sdk.error &&
+    !history.sdk.recoveryRequired &&
+    !history.sdk.pendingInterrupts &&
+    currentAuthoringSource() &&
     !history?.replacement &&
     !isWorkbenchHistoryBusy(history?.sdk) &&
     authoring?.source === 'complete' &&
@@ -586,9 +613,7 @@ export function createWorkbenchStore(
       )
         return false;
       const sdkMessages = history.sdk.messages;
-      const currentUser = messages
-        .filter((message) => message.role === 'user')
-        .at(-1)?.id;
+      const currentUser = latestSentUserId;
       const userIndex = sdkMessages.reduce(
         (index, message, current) =>
           message['role'] === 'user' ? current : index,
@@ -912,6 +937,7 @@ export function createWorkbenchStore(
         role: 'user' as const,
         content: text,
       };
+      latestSentUserId = message.id;
       messages = [...messages, message];
       record('user', message);
       return message;
@@ -1219,6 +1245,7 @@ export function createWorkbenchStore(
       generation++;
       history = undefined;
       authoring = undefined;
+      latestSentUserId = null;
       agent = undefined;
       replacementBaseline = '';
       replacementObservedBusy = false;
