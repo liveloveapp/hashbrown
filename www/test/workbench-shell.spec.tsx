@@ -1,0 +1,651 @@
+// @vitest-environment jsdom
+import { expect, test, vi } from 'vitest';
+import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+
+function fakeStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => void map.set(key, value),
+  };
+}
+
+function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: {
+        id: 'tools',
+        title: 'Tools',
+        format: 'ui',
+        inspector: 'Requests',
+      },
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout },
+  );
+  return { host, store, shell, layout };
+}
+
+test('renders New conversation first and five expanded sections by default', () => {
+  const { host, shell } = mountShell();
+
+  const firstButton = host.querySelector('.wb-nav button');
+  const sections = [...host.querySelectorAll<HTMLElement>('[data-section]')];
+  const headings = [...host.querySelectorAll('.wb-nav-heading')];
+
+  expect(firstButton?.getAttribute('aria-label')).toBe('New conversation');
+  expect(sections.map((section) => section.dataset.section)).toEqual([
+    'conversations',
+    'start',
+    'concepts',
+    'production',
+    'recipes',
+  ]);
+  expect(headings).toHaveLength(5);
+  expect(
+    headings.every(
+      (heading) => heading.getAttribute('aria-expanded') === 'true',
+    ),
+  ).toBe(true);
+  expect(
+    host.querySelector('a[aria-current=page]')?.getAttribute('href'),
+  ).toMatch(/lesson=tools$/);
+  expect(host.querySelector('.wb-nav [aria-pressed=true]')?.textContent).toBe(
+    'Two-step plan',
+  );
+  shell.dispose();
+});
+
+test('folds a section and persists it', () => {
+  const { host, shell, layout } = mountShell();
+  const heading = host.querySelector<HTMLButtonElement>(
+    '[data-section=recipes] .wb-nav-heading',
+  );
+
+  heading?.click();
+
+  const folded = host.querySelector<HTMLButtonElement>(
+    '[data-section=recipes] .wb-nav-heading',
+  );
+  const list = document.getElementById(
+    folded?.getAttribute('aria-controls') ?? '',
+  );
+  expect(list?.hasAttribute('inert')).toBe(true);
+  expect(list?.hasAttribute('data-collapsed')).toBe(true);
+  expect(folded?.getAttribute('aria-expanded')).toBe('false');
+  expect(layout.get().collapsed).toEqual(['recipes']);
+  shell.dispose();
+});
+
+test('collapses to an icon rail that keeps accessible names', () => {
+  const { host, shell } = mountShell(createWorkbenchLayoutStore(fakeStorage()));
+  host
+    .querySelector<HTMLButtonElement>('[data-section=recipes] .wb-nav-heading')
+    ?.click();
+
+  host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
+
+  const toggle = host.querySelector('.wb-rail-toggle');
+  const named = [
+    ...host.querySelectorAll('.wb-lessons a'),
+    host.querySelector('.wb-cta'),
+  ];
+  expect(host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(true);
+  expect(toggle?.getAttribute('aria-label')).toBe('Expand sidebar');
+  expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+  expect(named.length).toBeGreaterThan(1);
+  expect(named.every((node) => !!node?.getAttribute('aria-label'))).toBe(true);
+  expect(host.querySelectorAll('.wb-nav [inert]')).toHaveLength(0);
+  shell.dispose();
+});
+
+test('shares rail state across retained instances', () => {
+  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const first = mountShell(layout);
+  const second = mountShell(layout);
+
+  first.host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
+
+  expect(second.host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(
+    true,
+  );
+  first.shell.dispose();
+  second.shell.dispose();
+});
+
+test('stops following the layout store after dispose', () => {
+  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const { host, shell } = mountShell(layout);
+  const root = host.querySelector('.wb');
+  shell.dispose();
+
+  layout.set({ rail: true });
+
+  expect(root?.classList.contains('wb-rail')).toBe(false);
+});
+
+test('keeps sidebar elements across store updates', () => {
+  const { host, store, shell } = mountShell();
+  const cta = host.querySelector('.wb-cta');
+
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: null });
+
+  expect(host.querySelector('.wb-cta')).toBe(cta);
+  expect(cta?.isConnected).toBe(true);
+  shell.dispose();
+});
+
+test('uses unique heading list ids per mounted instance', () => {
+  const first = mountShell();
+  const second = mountShell();
+
+  const ids = [first.host, second.host].flatMap((host) =>
+    [...host.querySelectorAll('.wb-nav-heading')].map((heading) =>
+      heading.getAttribute('aria-controls'),
+    ),
+  );
+
+  expect(new Set(ids).size).toBe(10);
+  first.shell.dispose();
+  second.shell.dispose();
+});
+
+test('keeps keyboard focus on the activated heading and rail toggle', () => {
+  const { host, shell } = mountShell();
+  const heading = host.querySelector<HTMLButtonElement>(
+    '[data-section=concepts] .wb-nav-heading',
+  );
+  heading?.focus();
+
+  heading?.click();
+  const focusedHeading = document.activeElement;
+  host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.focus();
+  host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
+  const focusedToggle = document.activeElement;
+
+  expect(
+    focusedHeading?.closest('[data-section]')?.getAttribute('data-section'),
+  ).toBe('concepts');
+  expect(focusedHeading?.classList.contains('wb-nav-heading')).toBe(true);
+  expect(focusedToggle?.classList.contains('wb-rail-toggle')).toBe(true);
+  expect(focusedToggle?.isConnected).toBe(true);
+  shell.dispose();
+});
+
+test('keeps focus on a conversation after navigation re-renders', () => {
+  const { host, shell } = mountShell();
+  const navigation = {
+    currentId: 'one',
+    conversations: [
+      { id: 'one', label: 'Two-step plan' },
+      { id: 'two', label: 'Conversation 2' },
+    ],
+    select: vi.fn(),
+    create: vi.fn(),
+  };
+  shell.navigation(navigation);
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Conversation 2"]')
+    ?.focus();
+
+  shell.navigation({ ...navigation, currentId: 'two' });
+
+  expect(document.activeElement?.getAttribute('aria-label')).toBe(
+    'Conversation 2',
+  );
+  expect(document.activeElement?.getAttribute('aria-pressed')).toBe('true');
+  shell.dispose();
+});
+
+test('does not steal focus when the sidebar rebuilds while focus is elsewhere', () => {
+  const { host, shell, layout } = mountShell();
+  const prompt = host.querySelector('textarea');
+  prompt?.focus();
+
+  layout.set({ rail: true });
+
+  expect(document.activeElement).toBe(prompt);
+  shell.dispose();
+});
+
+test('labels each section by a heading button inside an h2', () => {
+  const { host, shell } = mountShell();
+
+  const sections = [...host.querySelectorAll('section.wb-nav-group')];
+
+  expect(
+    sections.every((section) => {
+      const heading = document.getElementById(
+        section.getAttribute('aria-labelledby') ?? '',
+      );
+      return (
+        heading?.classList.contains('wb-nav-heading') &&
+        heading.parentElement?.tagName === 'H2' &&
+        section.contains(heading)
+      );
+    }),
+  ).toBe(true);
+  shell.dispose();
+});
+
+test('steps, clamps and resets the split from the keyboard', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const grid = host.querySelector<HTMLElement>('.wb-layout');
+  const press = (key: string) =>
+    separator?.dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+    );
+
+  separator?.focus();
+  press('ArrowRight');
+  press('ArrowRight');
+
+  expect(separator?.getAttribute('aria-valuenow')).toBe('52');
+  expect(layout.get().split).toBe(52);
+  expect(grid?.style.getPropertyValue('--wb-split')).toBe('');
+  expect(grid?.style.getPropertyValue('--wb-chat')).toBe('52fr');
+  expect(grid?.style.getPropertyValue('--wb-inspector')).toBe('48fr');
+
+  press('Home');
+  expect(layout.get().split).toBe(44);
+
+  press('ArrowLeft');
+  separator?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(layout.get().split).toBe(44);
+  expect(separator?.getAttribute('aria-valuenow')).toBe('44');
+  shell.dispose();
+});
+
+test('drags the split relative to chat and inspector', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  const chat = host.querySelector<HTMLElement>('.wb-layout > :nth-child(2)');
+  const inspector = host.querySelector<HTMLElement>(
+    '.wb-layout > :nth-child(4)',
+  );
+  vi.spyOn(chat as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(0, 600),
+  );
+  vi.spyOn(inspector as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(600, 1000),
+  );
+  const capture = vi.fn();
+  (separator as HTMLElement).setPointerCapture = capture;
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  const focused = document.activeElement;
+  fire('pointermove', 700);
+  const middle = layout.get().split;
+  const dragging = separator?.classList.contains('wb-dragging');
+  fire('pointermove', 900);
+  const clamped = layout.get().split;
+  fire('pointerup', 900);
+  fire('pointermove', 300);
+
+  expect(capture).toHaveBeenCalled();
+  expect(focused).toBe(separator);
+  expect(middle).toBe(70);
+  expect(dragging).toBe(true);
+  expect(clamped).toBe(75);
+  expect(layout.get().split).toBe(75);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
+  shell.dispose();
+});
+
+test('ends a split drag when pointer capture is lost', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const chat = host.querySelector('.wb-chat');
+  const inspector = host.querySelector('.wb-inspector');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(chat as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(0, 600),
+  );
+  vi.spyOn(inspector as HTMLElement, 'getBoundingClientRect').mockReturnValue(
+    rect(600, 1000),
+  );
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  fire('pointermove', 600);
+  fire('lostpointercapture', 600);
+  fire('pointermove', 300);
+
+  expect(layout.get().split).toBe(60);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
+  shell.dispose();
+});
+
+test('keeps the handle across store updates', () => {
+  const { host, store, shell } = mountShell();
+  const before = host.querySelector('[role=separator]');
+
+  store.record('tool', { name: 'readContext', result: null });
+
+  expect(host.querySelector('[role=separator]')).toBe(before);
+  expect(before?.querySelectorAll('.wb-grip polyline')).toHaveLength(2);
+  shell.dispose();
+});
+
+function recordTwoTurns(store: ReturnType<typeof createWorkbenchStore>) {
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
+  const secondTurnStart = store.getSnapshot().events.length;
+  store.send('Shorter');
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
+  return secondTurnStart;
+}
+
+function playerButton(host: HTMLElement, label: string) {
+  const result = host.querySelector<HTMLButtonElement>(
+    `.wb-player button[aria-label="${label}"]`,
+  );
+  if (!result) throw new Error(`Missing ${label} button`);
+  return result;
+}
+
+function press(
+  target: EventTarget,
+  key: string,
+  init: KeyboardEventInit = {},
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+test('jumps turns and cycles speed from the player', () => {
+  const { host, store, shell } = mountShell();
+  const secondTurnStart = recordTwoTurns(store);
+  const speed = host.querySelector<HTMLButtonElement>('.wb-player .wb-speed');
+
+  playerButton(host, 'Previous turn').click();
+  const afterFirstPrevious = store.getSnapshot().cursor;
+  playerButton(host, 'Previous turn').click();
+  const afterSecondPrevious = store.getSnapshot().cursor;
+  playerButton(host, 'Next turn').click();
+  const afterNext = store.getSnapshot().cursor;
+  const value = () => speed?.querySelector('.wb-speed-value')?.textContent;
+  const speeds = [value()];
+  speed?.click();
+  speeds.push(value());
+  speed?.click();
+  speeds.push(value());
+
+  expect(secondTurnStart).toBeGreaterThan(0);
+  expect(afterFirstPrevious).toBe(secondTurnStart);
+  expect(afterSecondPrevious).toBe(0);
+  expect(afterNext).toBe(secondTurnStart);
+  expect(speed?.hasAttribute('aria-label')).toBe(false);
+  expect(speed?.textContent).toBe('Playback speed ½×');
+  expect(speed?.querySelector('.wb-visually-hidden')?.textContent).toBe(
+    'Playback speed ',
+  );
+  expect(speeds).toEqual(['1×', '2×', '½×']);
+  expect(host.querySelectorAll('.wb-scrubber .wb-segment')).toHaveLength(2);
+  expect(host.querySelector('select')).toBeNull();
+  shell.dispose();
+});
+
+test('shows LIVE at the head and Return to live in replay', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const live = host.querySelector<HTMLButtonElement>('.wb-player .wb-live');
+  const atHead = {
+    disabled: live?.disabled,
+    marked: live?.hasAttribute('data-live'),
+    text: live?.textContent?.trim(),
+    dot: !!live?.querySelector('.wb-live-dot'),
+  };
+
+  playerButton(host, 'Previous event').click();
+  const inReplay = {
+    disabled: live?.disabled,
+    marked: live?.hasAttribute('data-live'),
+    text: live?.textContent?.trim(),
+  };
+  live?.click();
+
+  expect(live?.getAttribute('aria-label')).toBe('Return to live');
+  expect(atHead).toEqual({
+    disabled: true,
+    marked: true,
+    text: 'LIVE',
+    dot: true,
+  });
+  expect(inReplay).toEqual({
+    disabled: false,
+    marked: false,
+    text: 'Return to live',
+  });
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('toggles the play label and icon and reports playback time', () => {
+  vi.useFakeTimers();
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const play = playerButton(host, 'Play');
+  const time = host.querySelector('.wb-player .wb-time');
+
+  play.click();
+  const playing = {
+    label: play.getAttribute('aria-label'),
+    playing: play.classList.contains('wb-play'),
+    text: play.textContent?.trim(),
+    icon: !!play.querySelector('svg'),
+  };
+  shell.pause();
+
+  expect(playing).toEqual({
+    label: 'Pause',
+    playing: true,
+    text: '',
+    icon: true,
+  });
+  expect(play.getAttribute('aria-label')).toBe('Play');
+  expect(time?.textContent).toMatch(/^\d+\.\d{2} s \/ \d+\.\d{2} s$/);
+  shell.dispose();
+  vi.useRealTimers();
+});
+
+test('positions ticks and the flag on the scrubber', () => {
+  const { host, store, shell } = mountShell();
+  const empty = host.querySelector('.wb-player .wb-time')?.textContent;
+  recordTwoTurns(store);
+
+  playerButton(host, 'Previous turn').click();
+
+  const ticks = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-scrubber .wb-events button',
+    ),
+  ];
+  const flag = host.querySelector<HTMLElement>('.wb-scrubber .wb-flag');
+  const pressed = ticks.find(
+    (tick) => tick.getAttribute('aria-pressed') === 'true',
+  );
+  const segments = [
+    ...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment'),
+  ];
+  expect(empty).toBe('No captured events');
+  expect(ticks.every((tick) => tick.style.left.endsWith('%'))).toBe(true);
+  expect(flag?.getAttribute('aria-hidden')).toBe('true');
+  expect(flag?.textContent).toBe(pressed?.textContent);
+  expect(flag?.style.left).toBe('60%');
+  expect(flag?.hasAttribute('data-anchor')).toBe(false);
+  expect(
+    segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
+  ).toEqual(['100%', '0%']);
+  expect(segments[1]?.textContent).toContain('Turn 2');
+  shell.dispose();
+});
+
+test('fills played portions of each turn up to the playhead', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const fills = () =>
+    [...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment')].map(
+      (segment) => segment.style.getPropertyValue('--wb-fill'),
+    );
+
+  store.seek(1);
+  const early = fills();
+  store.seek(4);
+  const late = fills();
+
+  expect(early).toEqual(['50%', '0%']);
+  expect(late).toEqual(['100%', '50%']);
+  expect(
+    host.querySelector('.wb-scrubber .wb-segment[data-played]'),
+  ).toBeNull();
+  shell.dispose();
+});
+
+test('keeps the flag inside the scrubber at either end', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const flag = host.querySelector<HTMLElement>('.wb-scrubber .wb-flag');
+
+  const atHead = flag?.dataset.anchor;
+  store.seek(0);
+  const atStart = flag?.dataset.anchor;
+
+  expect(atHead).toBe('end');
+  expect(atStart).toBe('start');
+  shell.dispose();
+});
+
+test('keeps focus on an activated request row and tick', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const row = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-request-list button',
+  )[0];
+  const rowText = row?.textContent;
+  row?.focus();
+
+  row?.click();
+  const focusedRow = document.activeElement;
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[0];
+  const label = tick?.getAttribute('aria-label');
+  tick?.focus();
+  tick?.click();
+  const focusedTick = document.activeElement;
+
+  expect(focusedRow?.closest('.wb-request-list')).not.toBeNull();
+  expect(focusedRow?.textContent).toBe(rowText);
+  expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
+  expect(focusedTick?.closest('.wb-events')).not.toBeNull();
+  expect(focusedTick?.getAttribute('aria-label')).toBe(label);
+  expect(focusedTick?.getAttribute('aria-pressed')).toBe('true');
+  shell.dispose();
+});
+
+test('labels player icon buttons and the rail toggle with a visible title', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const play = playerButton(host, 'Play');
+
+  play.click();
+  const controls = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-transport button, .wb-player .wb-live, .wb-player [aria-label="Raw events"], .wb-rail-toggle',
+    ),
+  ];
+  const titles = controls.map((node) => [
+    node.getAttribute('title'),
+    node.getAttribute('aria-label'),
+  ]);
+  shell.pause();
+
+  expect(controls).toHaveLength(8);
+  expect(titles.every(([title, label]) => !!title && title === label)).toBe(
+    true,
+  );
+  expect(play.getAttribute('title')).toBe('Play');
+  expect(titles).toContainEqual(['Pause', 'Pause']);
+  shell.dispose();
+});
+
+test('rebuilds the sidebar only when rail or sections change', () => {
+  const { host, shell, layout } = mountShell();
+  const grid = host.querySelector<HTMLElement>('.wb-layout');
+  const before = host.querySelector('.wb-cta');
+
+  layout.set({ split: 60 });
+  const afterSplit = host.querySelector('.wb-cta');
+  layout.set({ collapsed: ['recipes'] });
+  const afterCollapse = host.querySelector('.wb-cta');
+
+  expect(afterSplit).toBe(before);
+  expect(grid?.style.getPropertyValue('--wb-chat')).toBe('60fr');
+  expect(grid?.style.getPropertyValue('--wb-inspector')).toBe('40fr');
+  expect(afterCollapse).not.toBe(before);
+  shell.dispose();
+});
+
+test('drives playback from shortcuts only on the visible instance', () => {
+  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const first = mountShell(layout);
+  const second = mountShell(layout);
+  second.host.hidden = true;
+  recordTwoTurns(first.store);
+  recordTwoTurns(second.store);
+
+  const arrow = press(document.body, 'ArrowLeft');
+  const afterArrow = [
+    first.store.getSnapshot().cursor,
+    second.store.getSnapshot().cursor,
+  ];
+  const space = press(playerButton(first.host, 'Play'), ' ');
+  const afterSpace = first.store.getSnapshot().cursor;
+  first.shell.dispose();
+  press(document.body, 'ArrowLeft');
+  const afterDispose = first.store.getSnapshot().cursor;
+
+  expect(arrow.defaultPrevented).toBe(true);
+  expect(afterArrow).toEqual([4, null]);
+  expect(space.defaultPrevented).toBe(false);
+  expect(afterSpace).toBe(4);
+  expect(afterDispose).toBe(4);
+  expect(second.store.getSnapshot().cursor).toBeNull();
+  second.shell.dispose();
+});
+
+test('toggles the rail with Cmd+B', () => {
+  const { shell, layout } = mountShell();
+
+  press(document.body, 'b', { metaKey: true });
+
+  expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});

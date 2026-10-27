@@ -86,7 +86,7 @@ Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob
 ## Follow the two requests
 
 1. Send “The outline is complete. What should I do next?” The decision returns `record` with confidence.
-2. Inspect **JSON** and **Details**. This is one complete response, not a stream of generated text.
+2. Inspect **JSON** and its **Typed choice and confidence** section. This is one complete response, not a stream of generated text.
 3. Select **State**, then **Use suggestion**. The explicit action saves `nextAction: record` and advances the revision to `1`.
 4. Send “The demo is recorded. What should I do next?” The new input includes the current application snapshot, and the decision returns `review`.
 
