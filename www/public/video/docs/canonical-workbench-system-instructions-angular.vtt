@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:05.652
+00:00:00.000 --> 00:00:06.696
 The endpoint replaces browser policy before calling the provider.
 
-00:00:05.652 --> 00:00:07.534
+00:00:06.696 --> 00:00:08.538
 Mapped public policy.
 
-00:00:07.534 --> 00:00:12.904
+00:00:08.538 --> 00:00:12.848
 The next turn keeps this server policy. Prompts do not grant authorization.
 
-00:00:12.904 --> 00:00:16.472
+00:00:12.848 --> 00:00:16.480
 Replay retains the captured provider evidence without another request.
 
-00:00:16.472 --> 00:00:18.467
+00:00:16.480 --> 00:00:18.800
 Back live. No application writes.
