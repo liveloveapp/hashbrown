@@ -41,11 +41,11 @@ Files: new `packages/core/src/models/turn-annotations.ts`,
 Files: new `packages/core/src/models/summarize-turn.ts` and
 `summarize-turn.spec.ts`.
 
-- [ ] Write failing tests for text-only working status supplied by caller, open client/server calls, latest active label, explicit awaiting/cancelled/failed, synthetic errors overriding a still-pending client call, mixed completed outcomes, call/source counts, legacy rejected results, unknown and explicit timing, input immutability and no wall-clock access.
-- [ ] Run `npx nx test core --testFile=summarize-turn.spec.ts --runInBand`; confirm failure.
-- [ ] Implement the exact spec projection using Tasks 1/2 helpers. Do not infer turn duration from tool times or turn failure from one failed tool.
-- [ ] Run focused tests/scoped lint; independent spec then quality review.
-- [ ] Parent commits reviewed files.
+- [x] Write failing tests for text-only working status supplied by caller, open client/server calls, latest active label, explicit awaiting/cancelled/failed, synthetic errors overriding a still-pending client call, mixed completed outcomes, call/source counts, legacy rejected results, unknown and explicit timing, input immutability and no wall-clock access.
+- [x] Run `npx nx test core --testFile=summarize-turn.spec.ts --runInBand`; confirm failure.
+- [x] Implement the exact spec projection using Tasks 1/2 helpers. Do not infer turn duration from tool times or turn failure from one failed tool.
+- [x] Run focused tests/scoped lint; independent spec then quality review.
+- [x] Parent commits reviewed files.
 
 ## Task 4: Public integration, docs and delivery
 
