@@ -1,6 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
+import { docsComponents } from '../../src/components/docs-components';
+import { renderMarkdown } from '../../src/lib/markdown';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 const lessons = [
@@ -101,12 +104,6 @@ test.each(SDKS)(
 test.each(SDKS)(
   '%s workflow videos have accessible native playback and complete local media',
   async (sdk) => {
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { renderMarkdown } = await import('../../src/lib/markdown');
-    const { docsComponents } =
-      await import('../../src/components/docs-components');
-    const { existsSync } = await import('node:fs');
-
     for (const [, lesson] of lessons) {
       const id = `canonical-workbench-${lesson}-${sdk}`;
       const result = await renderMarkdown(
