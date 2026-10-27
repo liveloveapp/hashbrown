@@ -24,7 +24,7 @@
   margin-top: var(--space-3);
   font:
     400 16px/1.55 var(--font-sans);
-  color: var(--gray);
+  color: var(--color-muted);
 }
 
 .built {
@@ -52,13 +52,13 @@
 
 .tile strong {
   font: 600 17px/1.3 var(--font-heading);
-  color: var(--gray-dark);
+  color: var(--color-ink);
 }
 
 .tile span {
   font:
     400 13.5px/1.4 var(--font-sans);
-  color: var(--gray);
+  color: var(--color-muted);
 }
 
 .actions {

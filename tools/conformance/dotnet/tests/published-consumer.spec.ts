@@ -19,10 +19,10 @@ function probe(body: string): string {
 test('requires exact published SDK pins and rejects dependency overrides', () => {
   const body = `
 const good = {
-  dependencies: Object.fromEntries(v.SDK_NAMES.map((n) => [n, '0.8.2'])),
+  dependencies: Object.fromEntries(v.SDK_NAMES.map((n) => [n, '0.8.3'])),
 };
 v.validateManifest(good);
-for (const bad of ['^0.8.2', 'file:../core', 'workspace:*', 'link:../core']) {
+for (const bad of ['0.8.2', '^0.8.3', 'file:../core', 'workspace:*', 'link:../core']) {
   try {
     v.validateManifest({
       dependencies: { ...good.dependencies, '@hashbrownai/core': bad },
@@ -40,6 +40,20 @@ for (const extra of [{ overrides: {} }, { workspaces: [] }]) {
     if (e.message === 'accepted') throw e;
   }
 }
+console.log('passed');
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('rejects the former published SDK 0.8.2 baseline', () => {
+  const body = `
+const legacy = { dependencies: Object.fromEntries(v.SDK_NAMES.map((name) => [name, '0.8.2'])) };
+let rejected = false;
+try { v.validateManifest(legacy); } catch { rejected = true; }
+if (!rejected) throw Error('accepted former SDK baseline');
 console.log('passed');
 `;
 
@@ -142,17 +156,17 @@ console.log('passed');
 test('rejects tampered lock or installed package identity and integrity', () => {
   const body = `
 const name = '@hashbrownai/core',
-  version = '0.8.2';
+  version = '0.8.3';
 const pin = {
   version,
-  resolved: 'https://registry.npmjs.org/@hashbrownai/core/-/core-0.8.2.tgz',
+  resolved: 'https://registry.npmjs.org/@hashbrownai/core/-/core-0.8.3.tgz',
   integrity: 'sha512-YWJjZA==',
 };
 const pkg = { name, version };
 v.validateRegistryPackage(name, version, pkg, pin, pin);
 for (const [p, l, i] of [
-  [{ ...pkg, version: '0.8.3' }, pin, pin],
-  [pkg, { ...pin, version: '0.8.3' }, pin],
+  [{ ...pkg, version: '0.8.2' }, pin, pin],
+  [pkg, { ...pin, version: '0.8.2' }, pin],
   [pkg, { ...pin, resolved: 'file:../core' }, pin],
   [pkg, pin, { ...pin, integrity: 'sha512-bad' }],
   [pkg, pin, { ...pin, link: true }],
@@ -204,26 +218,26 @@ try {
   await fs.writeFile(repositoryFile, '');
   await fs.symlink(repositoryFile, root + '/external-alias.js');
   const dependencies = Object.fromEntries(
-    v.SDK_NAMES.map((name) => [name, '0.8.2']),
+    v.SDK_NAMES.map((name) => [name, '0.8.3']),
   );
   const packages = {};
   await fs.mkdir(root + '/node_modules', { recursive: true });
   for (const name of v.SDK_NAMES) {
     const location = 'node_modules/' + name;
     packages[location] = {
-      version: '0.8.2',
+      version: '0.8.3',
       resolved:
         'https://registry.npmjs.org/' +
         name +
         '/-/' +
         name.split('/').at(-1) +
-        '-0.8.2.tgz',
+        '-0.8.3.tgz',
       integrity: 'sha512-YWJjZA==',
     };
     await fs.mkdir(root + '/' + location, { recursive: true });
     await fs.writeFile(
       root + '/' + location + '/package.json',
-      JSON.stringify({ name, version: '0.8.2' }),
+      JSON.stringify({ name, version: '0.8.3' }),
     );
     await fs.writeFile(root + '/' + location + '/index.js', '');
   }

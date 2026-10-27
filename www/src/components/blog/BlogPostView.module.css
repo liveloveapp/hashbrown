@@ -22,7 +22,7 @@
 }
 
 .title > h1 {
-  color: var(--gray-dark);
+  color: var(--color-ink);
   /* Longhands: with the `font` shorthand, Next's CSS minifier drops
      font-variation-settings, and the variable font renders light. */
   font-family: var(--font-sans);
@@ -34,7 +34,7 @@
 
 /* The date isn't on the Angular post page; styled like the preview's date. */
 .title > time {
-  color: var(--gray-light, #a4a3a1);
+  color: var(--color-muted);
   font:
     400 normal 14px/18px var(--font-sans);
 }
@@ -69,14 +69,17 @@
 }
 
 .markdown a {
+  color: var(--color-accent);
+  font-weight: 500;
   text-decoration: underline;
-  text-decoration-color: #774625;
-  color: #774625;
-  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
 }
 
 .markdown a:hover {
-  text-decoration-color: #fbbb52;
+  text-decoration-color: currentColor;
 }
 
 .markdown ul,
@@ -86,7 +89,7 @@
 
 .markdown hr {
   border: 0;
-  border-top: 1px solid rgba(47, 47, 43, 0.24);
+  border-top: 1px solid var(--color-rule);
   margin: 40px 0;
 }
 
@@ -113,14 +116,16 @@
 .markdown > pre:global(.shiki.hashbrown) {
   padding: 16px;
   border-radius: 8px;
-  background: #2b2a29 !important;
+  background: var(--color-code-bg) !important;
   overflow-x: auto;
   margin-bottom: 16px;
 }
 
 .markdown code:not(pre code) {
-  font:
-    500 16px/24px var(--font-code);
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  background: var(--color-surface);
+  font: 400 0.875em/1.5 var(--font-code);
 }
 
 .markdown [data-component='code-example'] {
@@ -128,7 +133,7 @@
 }
 
 .markdown blockquote {
-  background: #faf9f0;
+  background: var(--color-surface);
   border-radius: var(--radius-shot);
   padding: 24px;
   margin: 32px 0;
@@ -217,6 +222,6 @@
     line-height: 44px;
     font-weight: 600;
     font-variation-settings: 'wght' 700;
-    color: var(--gray-dark);
+    color: var(--color-ink);
   }
 }

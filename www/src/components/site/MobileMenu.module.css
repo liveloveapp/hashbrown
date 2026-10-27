@@ -92,11 +92,11 @@
     text-decoration: none;
 
     &.active {
-      background: var(--sunshine-yellow-light, #fbd38e);
+      background: var(--sunshine-yellow-light);
     }
 
     &:hover {
-      color: var(--gray-dark, #3d3c3a);
+      color: var(--color-ink);
     }
   }
 }

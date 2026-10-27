@@ -1,6 +1,6 @@
 /* Port of the hb-markdown-symbol-link styles in MarkdownSymbolLink.ts. */
 .link {
-  color: var(--sky-blue-dark, #64afb5);
+  color: var(--sky-blue-dark);
   font:
     500 14px/21px var(--font-code);
   text-decoration: underline;
