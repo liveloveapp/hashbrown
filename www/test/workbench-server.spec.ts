@@ -453,6 +453,7 @@ test('hosted environment uses the agent clarification handler when the classifie
     .mockRejectedValue(new Error('Unexpected provider call'));
   const server = createServer(
     createWorkbenchAppFromEnv({
+      NODE_ENV: 'test',
       OPENAI_API_KEY: 'fixture-only',
       OPENAI_MODEL: 'fixture-model',
     }),
