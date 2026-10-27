@@ -12,6 +12,7 @@ public sealed partial class PostgresNativeSessionJournal
         if (!_catalog.Matches(call) || Encoding.UTF8.GetByteCount(call.Arguments.GetRawText()) > _options.ArgumentBytes) return false;
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State != "Owned") return false;
@@ -20,8 +21,7 @@ public sealed partial class PostgresNativeSessionJournal
         if (row.AdmittedRequest is null) return false;
         var admittedMessages = System.Text.Json.Nodes.JsonNode.Parse(row.AdmittedRequest)!["messages"]!.AsArray();
         if (admittedMessages.SelectMany(message => message!["toolCalls"] is System.Text.Json.Nodes.JsonArray calls ? calls : []).Any(recorded => recorded!["id"]!.GetValue<string>() == call.Id)) return false;
-        await using (var count = Command(connection, $"SELECT count(*) FROM {Calls} WHERE session_id=@id", ("id", lease.Key.Id)))
-            if ((long)(await count.ExecuteScalarAsync(cancellationToken))! >= _options.MaximumCalls) return false;
+        if (!await HasCallCapacity(connection, lease.Key, call.Id, cancellationToken)) return false;
         await Execute(connection, $"INSERT INTO {Calls}(session_id,call_id,name,version,descriptor,state,captured_generation) VALUES(@id,@call,@name,@version,@descriptor,'Captured',@generation); UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken,
             ("id", lease.Key.Id), ("call", call.Id), ("name", call.Name), ("version", call.Version), ("descriptor", Serialize(call)), ("generation", lease.Generation));
         await transaction.CommitAsync(cancellationToken);
@@ -33,6 +33,7 @@ public sealed partial class PostgresNativeSessionJournal
     {
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State != "Owned") return null;
@@ -51,6 +52,7 @@ public sealed partial class PostgresNativeSessionJournal
         if (!_catalog.Matches(call)) return false;
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State != "Owned") return false;

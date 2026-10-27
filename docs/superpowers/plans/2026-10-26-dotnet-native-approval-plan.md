@@ -72,16 +72,18 @@ A bool reservation succeeds only when ALL members move together; a false result 
 
 ## Task 2: Atomic native schema2 migration without safety metadata loss
 
+Component reviewed. All legacy, admission and schema tests pass; only the planned native-host bridge characterization remains red. Parent retention shrink rejects until child expiries are explicitly handled first. Fixed manifest checks reject conditional or column-filtered expiry guards. Approval allocation and pending saves remain gated for later tasks.
+
 **Files:** persistence unit; `tools/conformance/dotnet/tests/native-approval-store.spec.ts`, `tools/conformance/dotnet/tests/fixtures/native-approval-store.cs.txt`; existing native-store fixture for version compatibility regressions.
 
-- [ ] Add real PostgreSQL fixture setup for a genuine native-v1 schema containing Ready pending browser state, Completed/Started invocation markers, Blocked and Retired selector rows, schema-3 checkpoint rows and audit evidence. Seed through pinned v1 DDL/data fixtures or a frozen copied v1 initializer; do not ask the new v2 initializer to pretend it is v1.
-- [ ] Test upgrade twice, concurrent initializer advisory lock, future/partial versions and injected rollback before version update. Compare key/compatibility/revision/generation/state/call fences/tombstones/audit and schema-3 payload hashes before/after. Unknown/corrupt payloads cannot become virgin sessions.
-- [ ] Run focused `native-approval-store` test; expected red is missing v2 tables/constraint/migration behavior.
-- [ ] Implement native version2 DDL and additive `native_approvals`/`native_approval_batches`; extend invocation constraint for Declined/Cancelled. Use one short advisory-locked transaction, known-version validation and version update last. Preserve old safety rows/columns exactly; do not drop/recreate invocation/session/audit tables.
-- [ ] Migrate genuine v1 payloads with explicit empty approval state. Validate public/private structure and compatibility before use; never scan history or opaque session JSON for invented approval authority. Add a payload format discriminator so old payload absence is recognized only through a proven v1 migration.
-- [ ] Add bounded aggregate approval/bypass storage counts and bytes, unique request/call bindings and checked enum/state transitions. Approval DB expiry <= selector expiry. No new row allocation when selector/call capacity is full.
-- [ ] Document old-worker drain and guard new transactional entry points against unexpected metadata. Test v2 entry points fail closed after changing metadata to an unsupported value. Do not claim this stops already-running v1 binaries.
-- [ ] Run `npx nx test dotnet-conformance --testPathPatterns='/tests/native-(approval-store|session-store)' --output-style=static`, then serialized build/lint. Review migration independently and commit.
+- [x] Add real PostgreSQL fixture setup for a genuine native-v1 schema containing Ready pending browser state, Completed/Started invocation markers, Blocked and Retired selector rows, schema-3 checkpoint rows and audit evidence. Seed through pinned v1 DDL/data fixtures or a frozen copied v1 initializer; do not ask the new v2 initializer to pretend it is v1.
+- [x] Test upgrade twice, concurrent initializer advisory lock, future/partial versions and injected rollback before version update. Compare key/compatibility/revision/generation/state/call fences/tombstones/audit and schema-3 payload hashes before/after. Unknown/corrupt payloads cannot become virgin sessions.
+- [x] Run focused `native-approval-store` test; expected red is missing v2 tables/constraint/migration behavior.
+- [x] Implement native version2 DDL and additive `native_approvals`/`native_approval_batches`; extend invocation constraint for Declined/Cancelled. Use one short advisory-locked transaction, known-version validation and version update last. Preserve old safety rows/columns exactly; do not drop/recreate invocation/session/audit tables.
+- [x] Migrate genuine v1 payloads with explicit empty approval state. Validate public/private structure and compatibility before use; never scan history or opaque session JSON for invented approval authority. Add a payload format discriminator so old payload absence is recognized only through a proven v1 migration.
+- [x] Add bounded aggregate approval/bypass storage counts and bytes, unique request/call bindings and checked enum/state transitions. Approval DB expiry <= selector expiry. No new row allocation when selector/call capacity is full.
+- [x] Document old-worker drain and guard new transactional entry points against unexpected metadata. Test v2 entry points fail closed after changing metadata to an unsupported value. Do not claim this stops already-running v1 binaries.
+- [x] Run `npx nx test dotnet-conformance --testPathPatterns='/tests/native-(approval-store|session-store)' --output-style=static`, then serialized build/lint. Review migration independently and commit.
 
 ## Task 3: Whole-batch reservation and permanent zero-dispatch fences
 

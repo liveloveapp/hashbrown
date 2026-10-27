@@ -9,6 +9,7 @@ public sealed partial class PostgresNativeSessionJournal
     {
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var rows = new List<(string Id, string State)>();
         // Row locks precede the authoritative database clock check below. The predicate only bounds candidates.
         await using (var command = new NpgsqlCommand($"SELECT id,state FROM {Sessions} WHERE payload IS NOT NULL AND expires_at<=clock_timestamp() ORDER BY id LIMIT {_options.MaintenanceBatch} FOR UPDATE SKIP LOCKED", connection))

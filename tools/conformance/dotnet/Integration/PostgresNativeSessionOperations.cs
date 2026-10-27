@@ -16,12 +16,13 @@ public sealed partial class PostgresNativeSessionJournal
             ValidateNative(save.NativeJson);
             var canonical = NativeSessionHistory.Normalize(save.PublicRequest, lease.Key, _catalog, _options);
             // Serialization owns the mutable caller collections before the first asynchronous boundary.
-            snapshot = ValidatePayload(Serialize(new NativeSessionSnapshot(save.NativeJson, canonical, save.PendingCalls, save.ExpectedBrowserCallIds, save.TurnCompleted)), lease.Key);
+            snapshot = ValidatePayload(SerializePayload(new NativeSessionSnapshot(save.NativeJson, canonical, save.PendingCalls, save.ExpectedBrowserCallIds, save.TurnCompleted, save.Approvals)), lease.Key);
             if (!ValidPending(snapshot)) return null;
         }
         catch (Exception exception) when (BadInput(exception)) { return null; }
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State != "Owned" || row.AdmittedRequest is null || !Advances(row.AdmittedRequest, snapshot.PublicRequest)) return null;
@@ -55,7 +56,7 @@ public sealed partial class PostgresNativeSessionJournal
         // Completed calls must always appear with results, including all earlier turns.
         if (journalCalls.Any(entry => !represented.Contains(entry.Key) && (entry.Value.State != "Captured" || snapshot.TurnCompleted || snapshot.ExpectedBrowserCallIds.Count == 0))) return null;
         await Execute(connection, $"UPDATE {Sessions} SET state='Saved',payload=@payload,ever_saved=true,revision=revision+1,expires_at=@expires WHERE id=@id", cancellationToken,
-            ("payload", Serialize(snapshot)), ("expires", now + _options.Retention), ("id", lease.Key.Id));
+            ("payload", SerializePayload(snapshot)), ("expires", now + _options.Retention), ("id", lease.Key.Id));
         await transaction.CommitAsync(cancellationToken);
         return new(lease, row.Revision + 1);
     }
@@ -65,6 +66,7 @@ public sealed partial class PostgresNativeSessionJournal
     {
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, receipt.Lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, receipt.Lease, now) || row!.State != "Saved" || row.Revision != receipt.SavedRevision) return false;
@@ -79,6 +81,7 @@ public sealed partial class PostgresNativeSessionJournal
     {
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, receipt.Lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, receipt.Lease, now) || row!.State != "Publishing" || row.Revision != receipt.SavedRevision + 1) return false;
@@ -92,6 +95,7 @@ public sealed partial class PostgresNativeSessionJournal
     {
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State is not ("Owned" or "Saved" or "Publishing")) return false;
@@ -110,6 +114,7 @@ public sealed partial class PostgresNativeSessionJournal
         {
             await using var connection = await _source.OpenConnectionAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+            await RequireSchemaVersion(connection, cancellationToken);
             var row = await Read(connection, key, cancellationToken);
             if (row is null || row.KeyData != KeyData(key)) return new(410);
             if (row.Compatibility != _compatibility) return new(409);
@@ -134,6 +139,7 @@ public sealed partial class PostgresNativeSessionJournal
         if (!scopes.Contains(key.Scope) || limit is < 1 or > 100) return null;
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, key, cancellationToken);
         if (row is null || row.KeyData != KeyData(key)) return null;
         var invocations = new List<NativeInvocationStatus>();
@@ -158,6 +164,7 @@ public sealed partial class PostgresNativeSessionJournal
         if (!request.ExternalQuiescenceAcknowledged || string.IsNullOrWhiteSpace(actor) || actor.Length > 1024 || string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length > 2000 || string.IsNullOrWhiteSpace(request.EvidenceReference) || request.EvidenceReference.Length > 2048 || (retire ? request.Outcome != "Retired" : request.Outcome is not ("ConfirmedPerformed" or "ConfirmedNotPerformed" or "Unresolved"))) return 400;
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
         var row = await Read(connection, key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (row is null || row.KeyData != KeyData(key)) return 404;
