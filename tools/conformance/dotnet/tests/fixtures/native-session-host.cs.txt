@@ -642,6 +642,10 @@ sealed class GateJournal(INativeSessionJournal inner) : INativeSessionJournal
     { Interlocked.Increment(ref Acquisitions); var result = await inner.TryAcquireAsync(key, request, ct); if (result.Lease is not null) LastLease = result.Lease; return result; }
     public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CaptureModelCallAsync(lease,
         NormalizeNumericArguments && call.Name == "numeric" ? new NativeToolCall(call.Id, call.Name, call.Version, JsonSerializer.SerializeToElement(new { amount = 1 })) : call, ct);
+    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken ct = default) => inner.CaptureApprovalBatchAsync(lease, capture, ct);
+    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken ct = default) => inner.GetOwnedApprovalEvidenceAsync(lease, ct);
+    public ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken ct = default) => inner.TryAdmitApprovalBatchAsync(lease, batchId, admission, ct);
+    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken ct = default) => inner.SettleApprovalRejectionAsync(lease, rejection, ct);
     public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string id, CancellationToken ct = default) => inner.GetOwnedCallAsync(lease, id, ct);
     public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default)
     {

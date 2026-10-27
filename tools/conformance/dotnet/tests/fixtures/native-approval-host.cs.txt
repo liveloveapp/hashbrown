@@ -1,0 +1,69 @@
+#pragma warning disable MAAI001 // Genuine native approval characterization pins public MAF 1.26.0 APIs.
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+var effects = 0;
+var function = AIFunctionFactory.Create((string code) => { effects++; return code; }, "backend");
+var protectedFunction = new ApprovalRequiredAIFunction(function);
+var catalog = new NativeToolCatalog([new("backend", 1, function.JsonSchema, RequiresConfirmation: true)]);
+var model = new ApprovalModel();
+var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+builder.Logging.ClearProviders(); builder.Services.AddRouting();
+builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>("fixture", _ => { });
+builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture required."));
+var schema = "native_approval_host_" + Guid.NewGuid().ToString("N");
+var journal = new PostgresNativeSessionJournal(source, catalog, "approval-host-v1", schema);
+try
+{
+    await journal.InitializeAsync();
+    NativeSessionEndpointConfiguration.Configure(builder.Services, "native", journal, catalog, _ => "fixture-owned");
+    var agent = NativeSessionAgentFactory.Create(model, "native", [protectedFunction], catalog, accessor);
+    await using var app = builder.Build();
+    app.UseAuthentication(); app.UseAuthorization();
+    NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    await app.StartAsync();
+    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(15) };
+    using var response = await http.PostAsJsonAsync("/run", new { threadId = "approval", runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "run protected backend" } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } });
+    var body = await response.Content.ReadAsStringAsync();
+
+    Check(response.IsSuccessStatusCode && body.Contains("RUN_FINISHED") && body.Contains("ficc_back_1") && body.Contains("interrupt"), "A genuine protected native approval interrupt must reach the owned public terminal: " + body);
+    Check(effects == 0 && model.Calls == 1, "Pending protected approval must perform zero executor work and zero model continuation before a decision.");
+    Console.WriteLine("Native approval host contracts passed.");
+}
+finally
+{
+    await using var cleanup = source.CreateCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+    await cleanup.ExecuteNonQueryAsync();
+}
+sealed class ApprovalModel : IChatClient
+{
+    public int Calls { get; private set; }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Calls++;
+        if (Calls != 1) throw new Exception("Model continuation ran before an approval decision.");
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("back_1", "backend", new Dictionary<string, object?> { ["code"] = "protected" })]) { MessageId = "assistant-1" }) { ResponseId = "response-1" });
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    { foreach (var update in (await GetResponseAsync(messages, options, cancellationToken)).ToChatResponseUpdates()) yield return update; }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+sealed class FixtureAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "fixture-owned")], "fixture")), "fixture")));
+}

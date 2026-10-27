@@ -80,6 +80,10 @@ sealed class RegistrationJournal : INativeSessionJournal
     public ValueTask InitializeAsync(CancellationToken ct = default) => ValueTask.CompletedTask;
     public ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string request, CancellationToken ct = default) => ValueTask.FromResult(new NativeSessionAdmission(200, new(key, "token", 1, 1), IsNew: true));
     public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => throw new NotSupportedException();
+    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken ct = default) => throw new NotSupportedException("Registration-only journal has no approval authority.");
+    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken ct = default) => throw new NotSupportedException("Registration-only journal has no approval authority.");
+    public ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken ct = default) => throw new NotSupportedException("Registration-only journal has no approval authority.");
+    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken ct = default) => throw new NotSupportedException("Registration-only journal has no approval authority.");
     public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string id, CancellationToken ct = default) => throw new NotSupportedException();
     public ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => throw new NotSupportedException();
     public ValueTask<bool> CompleteDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => throw new NotSupportedException();

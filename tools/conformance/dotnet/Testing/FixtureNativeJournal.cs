@@ -12,6 +12,14 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     /// <inheritdoc />
     public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default) => inner.CaptureModelCallAsync(lease, call, cancellationToken);
     /// <inheritdoc />
+    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default) => inner.CaptureApprovalBatchAsync(lease, capture, cancellationToken);
+    /// <inheritdoc />
+    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default) => inner.GetOwnedApprovalEvidenceAsync(lease, cancellationToken);
+    /// <inheritdoc />
+    public ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default) => inner.TryAdmitApprovalBatchAsync(lease, batchId, admission, cancellationToken);
+    /// <inheritdoc />
+    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default) => inner.SettleApprovalRejectionAsync(lease, rejection, cancellationToken);
+    /// <inheritdoc />
     public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string callId, CancellationToken cancellationToken = default) => inner.GetOwnedCallAsync(lease, callId, cancellationToken);
     /// <inheritdoc />
     public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default)
