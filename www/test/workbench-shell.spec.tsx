@@ -577,9 +577,7 @@ test('labels the inspector panel by its selected tab', () => {
   expect(panel?.getAttribute('aria-labelledby')).toBe(selected()?.id);
   expect(selected()?.textContent).toBe('State');
   expect(
-    new Set(
-      [...host.querySelectorAll('[role=tab]')].map((tab) => tab.id),
-    ).size,
+    new Set([...host.querySelectorAll('[role=tab]')].map((tab) => tab.id)).size,
   ).toBe(host.querySelectorAll('[role=tab]').length);
   shell.dispose();
 });
@@ -842,5 +840,73 @@ test('toggles the rail with Cmd+B and Ctrl+B', () => {
 
   expect(afterCmd).toBe(true);
   expect(layout.get().rail).toBe(false);
+  shell.dispose();
+});
+
+test('history inspector pairs actual SDK and retained app text and Raw keeps the selected event', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore('history');
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'message-history',
+      title: 'Message history',
+      format: 'history',
+      inspector: 'History',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.recordHistory({
+    messages: [
+      { id: 'actual-user', role: 'user', content: 'Lighthouse' },
+      {
+        id: 'actual-assistant',
+        role: 'assistant',
+        content: 'Outline, record.',
+        toolCalls: [],
+      },
+    ],
+    isLoading: false,
+  });
+
+  const tabs = [...host.querySelectorAll('[role=tab]')].map(
+    (node) => node.textContent,
+  );
+
+  store.recordHistory({ messages: [], isLoading: false, isSending: true });
+  expect(
+    host.querySelector<HTMLInputElement>('[aria-label="Seek captured event"]')
+      ?.disabled,
+  ).toBe(true);
+  store.recordHistory({
+    messages: [
+      { id: 'actual-user', role: 'user', content: 'Lighthouse' },
+      {
+        id: 'actual-assistant',
+        role: 'assistant',
+        content: 'Outline, record.',
+        toolCalls: [],
+      },
+    ],
+    isLoading: false,
+  });
+  expect(tabs).toContain('History');
+  expect(tabs).toContain('Saved text');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    'actual-user',
+  );
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'retained',
+  );
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Show captured frame"]')
+    ?.click();
+  expect(host.querySelector('[data-captured]')?.textContent).toContain('"sdk"');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    '"event"',
+  );
   shell.dispose();
 });

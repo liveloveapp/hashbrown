@@ -1,4 +1,9 @@
 import {
+  canSaveWorkbenchHistory,
+  isWorkbenchHistoryBusy,
+  workbenchHistoryPrompts,
+} from './workbench-history';
+import {
   isWorkbenchWorkflowProgress,
   workbenchWorkflowPrompts,
 } from './workbench-workflows';
@@ -253,15 +258,17 @@ export function workbenchEventLabel(
       TOOL_CALL_ARGS: 'Tool arguments',
       TOOL_CALL_END: 'Tool ready',
       TEXT_MESSAGE_START:
-        format === 'text' || format === 'workflow'
+        format === 'text' || format === 'workflow' || format === 'history'
           ? 'Text start'
           : 'JSON start',
       TEXT_MESSAGE_CONTENT:
-        format === 'text' || format === 'workflow'
+        format === 'text' || format === 'workflow' || format === 'history'
           ? 'Text chunk'
           : 'JSON chunk',
       TEXT_MESSAGE_END:
-        format === 'text' || format === 'workflow' ? 'Text end' : 'JSON end',
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text end'
+          : 'JSON end',
       DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
@@ -286,6 +293,8 @@ export function workbenchEventLabel(
       form: 'Application form draft',
       pause: 'Paused for decisions',
       resume: 'Resume requested',
+      history: 'SDK history observed',
+      'history-app': `Text ${event.history?.app.action ?? 'action'}`,
     }[event.kind] ?? event.kind
   );
 }
@@ -346,11 +355,13 @@ export function mountWorkbench(
   const prompts =
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'workflow'
-      ? workbenchWorkflowPrompts
-      : commands.lesson?.format === 'decision'
-        ? workbenchDecisionPrompts
-        : workbenchPrompts);
+    (commands.lesson?.format === 'history'
+      ? workbenchHistoryPrompts
+      : commands.lesson?.format === 'workflow'
+        ? workbenchWorkflowPrompts
+        : commands.lesson?.format === 'decision'
+          ? workbenchDecisionPrompts
+          : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -517,12 +528,13 @@ export function mountWorkbench(
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    ['text', 'workflow'].includes(commands.lesson?.format ?? '')
+    ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
       ? commands.lesson?.id === 'magic-text'
         ? 'Markdown'
         : 'Text'
       : 'JSON',
     'Requests',
+    ...(commands.lesson?.format === 'history' ? ['History', 'Saved text'] : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
     )
@@ -760,11 +772,15 @@ export function mountWorkbench(
             ? 'Live model'
             : 'Awaiting source';
     const historical = snapshot.cursor !== null;
-    const busy = snapshot.status === 'loading';
+    const busy =
+      snapshot.status === 'loading' ||
+      isWorkbenchHistoryBusy(frame?.history?.sdk);
     const blocked =
       busy ||
       snapshot.status === 'paused' ||
-      !!frame?.workflow?.recoveryRequired;
+      !!frame?.workflow?.recoveryRequired ||
+      !!frame?.history?.sdk.pendingInterrupts ||
+      !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
@@ -952,7 +968,39 @@ export function mountWorkbench(
                         },
           }
         : undefined;
+    const history = frame?.history;
+    const historyView =
+      commands.lesson?.format === 'history' &&
+      (tab === 'History' || tab === 'Saved text')
+        ? tab === 'History'
+          ? {
+              heading: 'Actual SDK transcript and lifecycle',
+              value: history?.sdk ?? null,
+              detailHeading: 'Application-retained text copy',
+              detail: {
+                retained: history?.app.retained ?? null,
+                action: history?.app.action ?? null,
+                error: history?.app.error ?? null,
+              },
+            }
+          : {
+              heading: 'Last-read browser text document',
+              value: {
+                selectedSlot: history?.app.selectedSlot ?? null,
+                cachedRead: history?.app.saved ?? null,
+              },
+              detailHeading: 'Current operation and save eligibility',
+              detail: {
+                action: history?.app.action ?? null,
+                error: history?.app.error ?? null,
+                canSave: canSaveWorkbenchHistory(snapshot),
+                successfulGeneration: history?.successfulGeneration ?? false,
+                note: 'Cached explicit read; browser storage is origin-local and unencrypted. Do not store secrets.',
+              },
+            }
+        : undefined;
     const recipeView =
+      historyView ??
       workflowView ??
       (onboardingText
         ? tab === 'UI'
@@ -1158,18 +1206,27 @@ export function mountWorkbench(
       if (rawFrame) {
         inspection.append(
           pre(
-            commands.lesson?.format === 'workflow'
+            commands.lesson?.format === 'history'
               ? {
-                  sdk: frame?.workflow ?? null,
+                  sdk: frame?.history?.sdk ?? null,
                   event: {
                     kind: frame?.kind,
                     source: frame?.source,
                     payload: frame?.payload,
                   },
                 }
-              : tab === 'Transform' && transform
-                ? transform
-                : frame?.payload,
+              : commands.lesson?.format === 'workflow'
+                ? {
+                    sdk: frame?.workflow ?? null,
+                    event: {
+                      kind: frame?.kind,
+                      source: frame?.source,
+                      payload: frame?.payload,
+                    },
+                  }
+                : tab === 'Transform' && transform
+                  ? transform
+                  : frame?.payload,
           ),
         );
       } else if (tab === 'Requests') {
