@@ -22,7 +22,7 @@ The [Quickstart](/docs/react/start/quick) builds this same card in an ordinary R
 
 The recording adds the [conversation workbench](/docs/react/start/workbench) around that component. Its inspector and bottom timeline let us follow the request, streamed values, and rendered UI together. You can build your own interface around the same Hashbrown APIs.
 
-<img src="/video/docs/canonical-workbench-first-plan-react-result.png" alt="The React first-plan workbench shows a completed two-step plan beside its captured request and component values." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-first-plan-react-result.png" alt="The React first-plan workbench shows a completed two-step plan beside its trusted component contract and resolved props." width="1600" height="1000" loading="lazy" />
 
 ## Keep the same example as we learn
 

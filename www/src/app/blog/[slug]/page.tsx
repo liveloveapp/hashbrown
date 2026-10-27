@@ -30,6 +30,7 @@ export async function generateMetadata({
         title: post.title,
         description: post.description,
         image: post.ogImage,
+        imageAlt: post.ogImageAlt,
         publishedTime: post.date,
         path: `/blog/${post.slug}`,
       })

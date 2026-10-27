@@ -28,7 +28,9 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The left navigation opens fourteen lessons. All use the same two-step plan and keep the chat, inspector, contextual panel, and bottom timeline visible:
+The collapsible sidebar opens fourteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+
+The lessons are:
 
 | Lesson                                                                  | Local URL                                   | Follow                                                                     |
 | ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
@@ -47,7 +49,7 @@ The left navigation opens fourteen lessons. All use the same two-step plan and k
 | [Predictive suggestions](/docs/react/recipes/predictive-actions)        | `/react.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/react/recipes/ui-selection)                        | `/react.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
 
-Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The timeline shows meaningful milestones by default. Choose **Raw events** to inspect every captured stream frame.
+Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
 The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
 
@@ -58,18 +60,18 @@ The onboarding lessons keep the first steps small. **First plan** streams a trus
 1. Send the first prompt. `useUiChat` starts a real request.
 2. The `readContext` browser tool returns the current plan and revision. Reading context does not change it.
 3. Hashbrown sends the tool result in a continuation. The model selects the exposed `SummaryCard`.
-4. The JSON inspector shows the response text as it arrives. The Details view shows values resolved by the SDK, and React renders those values in the trusted component.
+4. The JSON inspector shows the response text as it arrives. Beside the captured response, the SDK's resolved values appear, and React renders those values in the trusted component.
 5. Accept the plan after a successful response. This explicit action updates application state and advances its revision.
 
 The next prompt stays in the conversation. Its tool call reads the accepted plan. A revised component is another proposal; rendering it does not apply it.
 
 ## Inspect and replay
 
-The bottom timeline records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Select an event, step backward or forward, choose a turn, or play the captured conversation.
+The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag the scrubber to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
 
-The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. Choose **Return to live** to continue the actual conversation.
+The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State views on light code surfaces. Select a request or tool row to inspect its captured payload. The far-right panel follows the selection, with Details, Raw, and Console views. **New conversation** starts an independent session; use the left navigation to return to another session. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

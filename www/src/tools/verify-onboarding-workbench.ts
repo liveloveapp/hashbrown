@@ -1,3 +1,4 @@
+import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -60,6 +61,8 @@ export async function verifyOnboardingWorkbench(options: {
     await page.goto(`${options.origin}/${framework}.html?lesson=${lesson}`);
     const root = page.locator('.wb:visible');
     const send = root.locator('[data-send]');
+    await expect(send).toBeEnabled();
+    await expectWorkbenchDefaultLayout(page);
     const inspection = root.locator('.wb-inspector .wb-inspection');
     const status = root.locator('.wb-chat .wb-panel-head');
     const cards = root.getByRole('article', {
@@ -181,14 +184,21 @@ export async function verifyOnboardingWorkbench(options: {
       await expect(cards).toHaveCount(1);
       await expect(cards.first().locator('li')).toHaveCount(2);
       const title = await cards.first().locator('h2').innerText();
-      expect(title.startsWith(partialTitle)).toBe(true);
       const finalSteps = await cards.first().locator('li').allTextContents();
+      const observed = JSON.stringify({
+        partialTitle,
+        partialSteps,
+        title,
+        finalSteps,
+      });
+      expect(title.startsWith(partialTitle), observed).toBe(true);
       expect(
         partialTitle.length < title.length ||
           partialSteps.length < finalSteps.length ||
           partialSteps.some(
             (step, index) => step.length < finalSteps[index].length,
           ),
+        observed,
       ).toBe(true);
       await expect(cards.locator('button')).toHaveCount(0);
     } else {
@@ -268,7 +278,7 @@ export async function verifyOnboardingWorkbench(options: {
     await root
       .getByRole('button', { name: /^Complete[.]/ })
       .first()
-      .click();
+      .press('Enter');
     await expect(
       lesson === 'first-plan'
         ? root.locator('[data-replay] .wb-summary').first()

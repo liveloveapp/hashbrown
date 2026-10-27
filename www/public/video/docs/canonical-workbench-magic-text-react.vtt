@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:11.392
+00:00:00.000 --> 00:00:09.422
 Real text chat streams Markdown. Magic Text renders headings, emphasis and list items as the reply arrives.
 
-00:00:11.392 --> 00:00:14.392
+00:00:09.422 --> 00:00:12.504
 Select the citation. A reference does not verify the reply.
 
-00:00:14.392 --> 00:00:22.516
+00:00:12.504 --> 00:00:20.638
 A follow-up shortens the same conversation. Explaining the plan does not change application state.
 
-00:00:22.516 --> 00:00:26.784
+00:00:20.638 --> 00:00:24.438
 Replay captured Markdown, source and state. No requests or writes.
 
-00:00:26.784 --> 00:00:31.000
+00:00:24.438 --> 00:00:28.600
 Back live. The plan remains at revision 0.
