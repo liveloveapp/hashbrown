@@ -259,3 +259,42 @@ test('actual failed and cancelled sources override a cached generating parser ob
     controls.dispose();
   }
 });
+
+test('completed agent handler text requires no authoring JSON document and still displays actual SDK failures', () => {
+  const store = createWorkbenchStore('history');
+  const host = document.createElement('div');
+  const controls = mountAuthoringControls(
+    host,
+    store,
+    'agent-decisions',
+    () => true,
+  );
+  const user = store.send('Help me outline the plan');
+  observeHistory(store, { messages: [user], isLoading: true });
+  const messages = [
+    user,
+    {
+      id: 'handler',
+      role: 'assistant',
+      content: 'Please clarify which step you want to discuss.',
+    },
+  ];
+
+  observeHistory(store, { messages, isLoading: false, finishReason: 'stop' });
+
+  expect(store.getSnapshot().frame?.history?.authoring).toBeUndefined();
+  expect(host.textContent).toContain(
+    'Please clarify which step you want to discuss.',
+  );
+  expect(host.textContent).not.toContain('not a valid two-step plan');
+  expect(host.querySelector('[role="alert"]')?.getAttribute('hidden')).toBe('');
+  observeHistory(store, {
+    messages,
+    isLoading: false,
+    error: new Error('Actual agent SDK failure'),
+  });
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe(
+    'Actual agent SDK failure',
+  );
+  controls.dispose();
+});

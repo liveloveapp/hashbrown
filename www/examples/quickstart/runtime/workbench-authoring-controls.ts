@@ -199,7 +199,9 @@ export function mountAuthoringControls(
       authoring?.error ||
       authoring?.parser.error ||
       history?.sdk.error ||
-      (source === 'complete' && !authoring?.document
+      (lesson !== 'agent-decisions' &&
+      source === 'complete' &&
+      !authoring?.document
         ? 'The complete source is not a valid two-step plan.'
         : '');
     error.hidden = !error.textContent;
