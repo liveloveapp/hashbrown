@@ -56,10 +56,10 @@ existing public-package compatibility checks under `packages/{react,angular}/e2e
 API reports under each package root, and a local upstream-gap note under
 `docs/superpowers/research/2026-10-27-tool-step-upstream.md`.
 
-- [ ] Export functions/types from core and both frameworks, including existing groupTurns/Turn. Public signatures must use neutral core types and no private ɵ types.
-- [ ] Add a meaningful public consumer/distribution check to existing compatibility coverage where appropriate; avoid tests that only mirror export statements. Verify the helper APIs accept the frameworks' existing UI message types.
-- [ ] Document label/group overrides, status and timing inputs, live/settled derived state, separate per-answer attribution, and no-flash/tick policy. Keep file search deferred and add no release notes.
-- [ ] Record verified upstream links/current gaps; no external issue or discussion writes.
+- [x] Export functions/types from core and both frameworks, including existing groupTurns/Turn. Public signatures must use neutral core types and no private ɵ types.
+- [x] Add a meaningful public consumer/distribution check to existing compatibility coverage where appropriate; avoid tests that only mirror export statements. Verify the helper APIs accept the frameworks' existing UI message types.
+- [x] Document label/group overrides, status and timing inputs, live/settled derived state, separate per-answer attribution, and no-flash/tick policy. Keep file search deferred and add no release notes.
+- [x] Record verified upstream links/current gaps; no external issue or discussion writes.
 - [ ] Run `npx nx test core --runInBand`, `npx nx build core`, `npx nx lint core`, `npx nx e2e core`.
 - [ ] Run `npx nx test react --run`, `npx nx build react`, `npx nx eslint:lint react` (the inferred lint target), and `npx nx e2e react` for its distribution target.
 - [ ] Run `npx nx test angular --watch=false`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.

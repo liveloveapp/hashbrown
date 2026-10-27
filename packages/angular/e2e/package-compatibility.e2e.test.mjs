@@ -130,6 +130,17 @@ test(
         join(sandboxPath, 'consumer.ts'),
         `
           import type {
+
+          Turn,
+          TurnAttribution,
+          TurnSummary,
+          TurnSummaryOptions,
+          ServerToolCallLabelOverride,
+          ServerToolCallLabelOverrides,
+          ServerToolCallGroup,
+          GroupedServerToolCall,
+          GroupServerToolCallsOptions,
+          UiChatMessage,
             ChatResourceOptions,
             ImperativeJsonParserRef,
             JsonParserRef,
@@ -140,6 +151,17 @@ test(
             UiCompletionResourceOptions,
           } from '@hashbrownai/angular';
           import {
+
+          groupTurns,
+          getServerToolCallLabel,
+          groupServerToolCalls,
+          collectTurnSources,
+          collectTurnAttributions,
+          summarizeTurn,
+          formatDuration,
+          noFlashRemaining,
+          NO_FLASH_MS,
+          ELAPSED_TICK_MS,
             chatResource,
             completionResource,
             structuredChatResource,
@@ -219,6 +241,35 @@ test(
             state: signal(state),
           };
           void invalidReactiveState;
+
+        function verifyTurnHelpers(messages: readonly UiChatMessage<never>[]) {
+          const turns: readonly Turn<UiChatMessage<never>>[] = groupTurns(messages);
+          const override: ServerToolCallLabelOverride = { label: () => 'Looked up context' };
+          const labels: ServerToolCallLabelOverrides = { lookup: override };
+          const grouping: GroupServerToolCallsOptions = { labels, exclude: ['task'] };
+          const options: TurnSummaryOptions = { status: 'working', labels };
+          for (const turn of turns) {
+            const summary: TurnSummary = summarizeTurn(turn, options);
+            const attributions: readonly TurnAttribution[] = collectTurnAttributions(turn);
+            const rows: readonly GroupedServerToolCall[] = groupServerToolCalls(
+              turn.assistants.flatMap(answer => answer.serverToolCalls ?? []), grouping,
+            );
+            for (const row of rows) {
+              if (row.kind === 'group') {
+                const group: ServerToolCallGroup = row;
+                void group;
+              } else {
+                getServerToolCallLabel(row, labels);
+              }
+            }
+            collectTurnSources(turn);
+            formatDuration(summary.durationMs);
+            noFlashRemaining(undefined, NO_FLASH_MS + ELAPSED_TICK_MS);
+            void attributions;
+          }
+        }
+        void verifyTurnHelpers;
+
         `,
       );
       const compileArgs = [
@@ -259,6 +310,39 @@ test(
             const angular = await import('@hashbrownai/angular');
             const cjsCore = require('@hashbrownai/core');
             const esmCore = await import('@hashbrownai/core');
+
+        for (const api of [angular]) {
+          for (const name of ['groupTurns', 'getServerToolCallLabel', 'groupServerToolCalls',
+            'collectTurnSources', 'collectTurnAttributions', 'summarizeTurn',
+            'formatDuration', 'noFlashRemaining']) {
+            if (api[name] !== esmCore[name]) throw new Error('Shared helper mismatch: ' + name);
+          }
+          const source = { id: 'source-1', kind: 'url', title: 'Original source' };
+          const attribution = { provider: 'google', kind: 'search-suggestions',
+            html: '<div>provider markup</div>', widgetToken: 'provider-token', mustRender: true };
+          const calls = [1, 2].map(id => ({ toolCallId: 'call-' + id,
+            name: 'lookup', status: 'complete', args: null, outcome: 'success', sources: [source] }));
+          const turn = api.groupTurns([
+            { id: 'user-1', role: 'user', content: 'Find context' },
+            { id: 'answer-1', role: 'assistant', toolCalls: [], serverToolCalls: calls,
+              sources: [source], attribution: [attribution] },
+          ])[0];
+          const rows = api.groupServerToolCalls(calls);
+          const summary = api.summarizeTurn(turn, { startedAt: 100, settledAt: 2100 });
+          const sources = api.collectTurnSources(turn);
+          const records = api.collectTurnAttributions(turn);
+          if (rows.length !== 1 || rows[0].kind !== 'group' || rows[0].calls.length !== 2 ||
+              rows[0].calls[0] !== calls[0] || api.getServerToolCallLabel(calls[0]) !== 'Used lookup' ||
+              summary.status !== 'complete' || summary.live || summary.toolCallCount !== 2 ||
+              summary.sourceCount !== 1 || summary.durationMs !== 2000 ||
+              sources.length !== 1 || sources[0] !== source || records.length !== 1 ||
+              records[0].assistantMessageId !== 'answer-1' || records[0].attribution !== attribution ||
+              api.formatDuration(summary.durationMs) !== '2s' ||
+              api.noFlashRemaining(100, 200) !== 200 || api.NO_FLASH_MS !== 300 || api.ELAPSED_TICK_MS !== 1000) {
+            throw new Error('Public turn helpers did not preserve display behavior');
+          }
+        }
+
 
             if (typeof angular.provideHashbrown !== 'function') {
               throw new Error('Angular entrypoint did not expose provideHashbrown');
