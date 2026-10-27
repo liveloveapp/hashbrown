@@ -1721,6 +1721,13 @@ app-workflow-workbench-conversation[hidden] {
   .wb-requests-table tr[data-current] td:first-child {
     border-left: 3px solid Highlight;
   }
+  .wb-requests-table tr[aria-selected='true'] > td:first-child {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .wb .wb-requests-tabs [aria-selected='true'] {
+    border-bottom-color: Highlight;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

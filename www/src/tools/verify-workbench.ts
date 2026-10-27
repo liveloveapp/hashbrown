@@ -781,7 +781,8 @@ try {
       const firstSteps = await card.locator('li').allTextContents();
       expect(firstSteps).toHaveLength(2);
       mark('firstComplete');
-      if (lesson.id === 'tools') {
+      // A verification step, not footage: recordings skip it.
+      if (lesson.id === 'tools' && process.env['WORKBENCH_RECORD'] !== '1') {
         const requestsDetail = page.locator(
           '.wb:visible .wb-inspector [data-detail]',
         );
