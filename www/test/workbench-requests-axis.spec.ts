@@ -58,3 +58,33 @@ test('handles one event and an empty run', () => {
   expect(empty.percentAt(10, 1)).toBe(0);
   expect(empty.nearestIndex(50)).toBeNull();
 });
+
+test('shrinks gaps so many turns stay within the axis', () => {
+  const events = Array.from({ length: 80 }, (_, turn) => [
+    frame(turn + 1, turn * 1000),
+    frame(turn + 1, turn * 1000 + 10),
+  ]).flat();
+
+  const axis = workbenchActiveAxis(events);
+
+  expect(axis.turns.at(-1)?.endPercent).toBeLessThanOrEqual(100.0001);
+  expect(axis.turns.every((turn) => turn.startPercent >= 0)).toBe(true);
+  expect(axis.percentAt(79010, 80)).toBeLessThanOrEqual(100.0001);
+});
+
+test('places a zero-span turn at its own start so later events stay reachable', () => {
+  const events = [
+    frame(1, 0),
+    frame(1, 1000),
+    frame(2, 5000),
+    frame(3, 9000),
+    frame(3, 10000),
+  ];
+
+  const axis = workbenchActiveAxis(events);
+
+  expect(axis.percentAt(5000, 2)).toBeCloseTo(axis.turns[1].startPercent);
+  expect(axis.percentAt(5000, 2)).toBeGreaterThan(0);
+  expect(axis.nearestIndex(axis.turns[2].endPercent)).toBe(4);
+  expect(axis.nearestIndex(axis.turns[1].startPercent)).toBe(2);
+});

@@ -31,7 +31,8 @@ export interface WorkbenchExchange {
   readonly eventIndexes: readonly number[];
   readonly startMs: number;
   readonly endMs: number;
-  readonly status: 'pending' | 'ok' | 'error';
+  /** `cancelled` marks a request the user stopped before it finished. */
+  readonly status: 'pending' | 'ok' | 'error' | 'cancelled';
   readonly httpStatus?: number;
   /** `POST` for requests, an empty string for tools. */
   readonly method: string;
@@ -66,27 +67,28 @@ export interface WorkbenchExchangeOptions {
   readonly format?: string;
   /** The configured endpoint, shown for requests that carry no URL. */
   readonly endpoint?: string;
-  /** The store's current status, used to fail the last exchange. */
+  /** The store's current status, used to fail or cancel the last exchange. */
   readonly settledStatus?: string;
 }
 
 interface Draft {
-  readonly kind: WorkbenchExchangeKind;
-  readonly name: string;
-  readonly turn: number;
-  readonly firstIndex: number;
-  readonly startMs: number;
-  readonly request?: Record<string, unknown>;
-  readonly parentIndex?: number;
+  kind: WorkbenchExchangeKind;
+  name: string;
+  turn: number;
+  firstIndex: number;
+  startMs: number;
+  request?: Record<string, unknown>;
+  parentIndex?: number;
   /** Event index of the continuation request. */
-  readonly answeredByIndex?: number;
-  readonly eventIndexes: readonly number[];
-  readonly endMs: number;
-  readonly response?: Record<string, unknown>;
-  readonly finished: boolean;
-  readonly failed: boolean;
-  readonly decided: boolean;
-  readonly tool?: WorkbenchExchange['tool'];
+  answeredByIndex?: number;
+  eventIndexes: number[];
+  endMs: number;
+  response?: Record<string, unknown>;
+  finished: boolean;
+  failed: boolean;
+  cancelled: boolean;
+  decided: boolean;
+  tool?: WorkbenchExchange['tool'];
 }
 
 type Marker = 'tool' | 'resume' | undefined;
@@ -104,9 +106,6 @@ const pathname = (url: unknown): string | undefined => {
     return undefined;
   }
 };
-
-const replaceAt = <T>(items: readonly T[], index: number, item: T) =>
-  items.map((existing, i) => (i === index ? item : existing));
 
 /**
  * Derives request and tool-call exchanges from the captured events.
@@ -129,11 +128,12 @@ export function workbenchExchanges(
     options.format === 'decision' || options.format === 'selection';
   const configuredPath = pathname(options.endpoint);
 
-  let drafts: readonly Draft[] = [];
-  let userTexts: ReadonlyMap<number, string> = new Map();
+  // Local accumulation only; the caller receives fresh readonly results.
+  const drafts: Draft[] = [];
+  const userTexts = new Map<number, string>();
   let current = -1; // index into drafts of the open request
   let marker: Marker;
-  let toolsSinceRequest: readonly number[] = [];
+  let toolsSinceRequest: number[] = [];
   let previousRequestId: unknown;
   let turnOfCurrent = -1;
 
@@ -141,8 +141,7 @@ export function workbenchExchanges(
     const payload = record(frame.payload);
     if (frame.kind === 'user') {
       const text = payload?.['content'] ?? payload?.['text'];
-      if (typeof text === 'string')
-        userTexts = new Map(userTexts).set(frame.turn, text);
+      if (typeof text === 'string') userTexts.set(frame.turn, text);
       return;
     }
     if (frame.kind === 'resume') {
@@ -167,27 +166,22 @@ export function workbenchExchanges(
               : 'Follow-up request';
       if (name === 'Continuation')
         toolsSinceRequest.forEach((toolIndex) => {
-          drafts = replaceAt(drafts, toolIndex, {
-            ...drafts[toolIndex],
-            answeredByIndex: index,
-          });
+          drafts[toolIndex].answeredByIndex = index;
         });
-      drafts = [
-        ...drafts,
-        {
-          kind: 'request',
-          name,
-          turn: frame.turn,
-          firstIndex: index,
-          startMs: frame.elapsedMs,
-          request: payload,
-          eventIndexes: [index],
-          endMs: frame.elapsedMs,
-          finished: false,
-          failed: false,
-          decided: false,
-        },
-      ];
+      drafts.push({
+        kind: 'request',
+        name,
+        turn: frame.turn,
+        firstIndex: index,
+        startMs: frame.elapsedMs,
+        request: payload,
+        eventIndexes: [index],
+        endMs: frame.elapsedMs,
+        finished: false,
+        failed: false,
+        cancelled: false,
+        decided: false,
+      });
       current = drafts.length - 1;
       turnOfCurrent = frame.turn;
       marker = undefined;
@@ -209,46 +203,44 @@ export function workbenchExchanges(
             earlier['toolCallName'] === name &&
             typeof earlier['toolCallId'] === 'string',
         )?.['toolCallId'] as string | undefined;
-      drafts = [
-        ...drafts,
-        {
-          kind: 'tool',
+      drafts.push({
+        kind: 'tool',
+        name,
+        turn: frame.turn,
+        firstIndex: index,
+        startMs: frame.elapsedMs,
+        parentIndex: current,
+        eventIndexes: [index],
+        endMs: frame.elapsedMs,
+        finished: true,
+        failed: false,
+        cancelled: false,
+        decided: false,
+        tool: {
           name,
-          turn: frame.turn,
-          firstIndex: index,
-          startMs: frame.elapsedMs,
-          parentIndex: current,
-          eventIndexes: [index],
-          endMs: frame.elapsedMs,
-          finished: true,
-          failed: false,
-          decided: false,
-          tool: {
-            name,
-            result: payload?.['result'],
-            ...(callId ? { callId } : {}),
-          },
+          result: payload?.['result'],
+          ...(callId ? { callId } : {}),
         },
-      ];
-      toolsSinceRequest = [...toolsSinceRequest, drafts.length - 1];
+      });
+      toolsSinceRequest.push(drafts.length - 1);
       marker = 'tool';
       return;
     }
     if (
-      !['response', 'event', 'source', 'error', 'parsed'].includes(frame.kind)
+      !['response', 'event', 'source', 'error', 'parsed', 'cancel'].includes(
+        frame.kind,
+      )
     )
       return;
     const open = drafts[current];
     const type = payload?.['type'];
-    drafts = replaceAt(drafts, current, {
-      ...open,
-      eventIndexes: [...open.eventIndexes, index],
-      endMs: frame.elapsedMs,
-      response: frame.kind === 'response' ? payload : open.response,
-      finished: open.finished || type === 'RUN_FINISHED',
-      failed: open.failed || frame.kind === 'error' || type === 'RUN_ERROR',
-      decided: open.decided || (decisionLesson && frame.kind === 'event'),
-    });
+    open.eventIndexes.push(index);
+    open.endMs = frame.elapsedMs;
+    if (frame.kind === 'response') open.response = payload;
+    if (type === 'RUN_FINISHED') open.finished = true;
+    if (frame.kind === 'error' || type === 'RUN_ERROR') open.failed = true;
+    if (frame.kind === 'cancel') open.cancelled = true;
+    if (decisionLesson && frame.kind === 'event') open.decided = true;
   });
 
   const lastRequest = drafts.findLastIndex((draft) => draft.kind === 'request');
@@ -290,19 +282,24 @@ export function workbenchExchanges(
       (other, i) =>
         i > position && other.kind === 'request' && other.turn === draft.turn,
     );
+    const isLast = position === lastRequest && draft.turn === lastTurn;
     const failed =
       (httpStatus !== undefined && httpStatus >= 400) ||
       draft.failed ||
-      (position === lastRequest &&
-        draft.turn === lastTurn &&
-        options.settledStatus === 'error');
+      (isLast && options.settledStatus === 'error');
+    const done = laterRequest || draft.finished || draft.decided;
+    const cancelled =
+      !done &&
+      (draft.cancelled || (isLast && options.settledStatus === 'cancelled'));
     return {
       ...base,
       status: failed
         ? 'error'
-        : laterRequest || draft.finished || draft.decided
+        : done
           ? 'ok'
-          : 'pending',
+          : cancelled
+            ? 'cancelled'
+            : 'pending',
       ...(httpStatus === undefined ? {} : { httpStatus }),
       method: 'POST',
       ...(path === undefined ? {} : { path }),

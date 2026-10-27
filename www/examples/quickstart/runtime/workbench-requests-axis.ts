@@ -53,13 +53,16 @@ export function workbenchActiveAxis(
     (sum, span) => sum + (span.last - span.first),
     0,
   );
-  const available = 100 - gapPercent * Math.max(0, spans.length - 1);
+  const gaps = Math.max(0, spans.length - 1);
+  // Many turns would push gaps past the axis, so shrink them to fit.
+  const gap = gaps > 0 ? Math.min(Math.max(0, gapPercent), 100 / gaps) : 0;
+  const available = Math.max(0, 100 - gap * gaps);
   const scale = totalSpan > 0 ? available / totalSpan : 0;
 
   const placed = spans.reduce<
     readonly (TurnSpan & { readonly start: number; readonly end: number })[]
   >((laid, span) => {
-    const start = laid.length ? laid[laid.length - 1].end + gapPercent : 0;
+    const start = laid.length ? laid[laid.length - 1].end + gap : 0;
     return [
       ...laid,
       { ...span, start, end: start + (span.last - span.first) * scale },
@@ -68,7 +71,7 @@ export function workbenchActiveAxis(
 
   const percentAt = (elapsedMs: number, turn: number) => {
     const found = placed.find((span) => span.turn === turn);
-    if (!found || scale === 0) return 0;
+    if (!found || scale === 0) return found?.start ?? 0;
     const clamped = Math.min(Math.max(elapsedMs, found.first), found.last);
     return found.start + (clamped - found.first) * scale;
   };

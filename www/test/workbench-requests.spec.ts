@@ -191,3 +191,89 @@ test("ignores events before a turn's first request", () => {
   expect(turn.exchanges).toHaveLength(1);
   expect(turn.exchanges[0].eventIndexes).not.toContain(0);
 });
+
+test('links every tool call in an exchange to its continuation', () => {
+  const store = createWorkbenchStore();
+  store.send('Two tools');
+  store.record('request', request('r1'));
+  store.record('tool', { name: 'readContext', result: 1 });
+  store.record('tool', { name: 'writePlan', result: 2 });
+  store.record('request', request('r2'));
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  const [first, one, two, continuation] = turn.exchanges;
+  expect(turn.exchanges.map((exchange) => exchange.name)).toEqual([
+    'Model request',
+    'readContext',
+    'writePlan',
+    'Continuation',
+  ]);
+  expect(one.parentId).toBe(first.id);
+  expect(two.parentId).toBe(first.id);
+  expect(one.answeredById).toBe(continuation.id);
+  expect(two.answeredById).toBe(continuation.id);
+});
+
+test('leaves the call id out when no tool call event matches', () => {
+  const store = createWorkbenchStore();
+  store.send('Tool');
+  store.record('request', request('r1'));
+  store.record('event', {
+    type: 'TOOL_CALL_START',
+    toolCallId: 'other',
+    toolCallName: 'somethingElse',
+  });
+  store.record('tool', { name: 'readContext', result: 1 });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  expect(turn.exchanges[1].tool).toEqual({ name: 'readContext', result: 1 });
+});
+
+test('marks a RUN_ERROR event as a failure', () => {
+  const store = createWorkbenchStore();
+  store.send('Fail');
+  store.record('request', request('r1'));
+  store.record('event', { type: 'RUN_ERROR', message: 'boom' });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  expect(turn.exchanges[0].status).toBe('error');
+});
+
+test('marks an error event as a failure', () => {
+  const store = createWorkbenchStore();
+  store.send('Fail');
+  store.record('request', request('r1'));
+  store.record('error', { message: 'boom' });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  expect(turn.exchanges[0].status).toBe('error');
+});
+
+test('marks the pending exchange cancelled when the store settled cancelled', () => {
+  const store = createWorkbenchStore();
+  store.send('Stop');
+  store.record('request', request('r1'));
+  store.record('event', { type: 'RUN_STARTED' });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {
+    settledStatus: 'cancelled',
+  });
+
+  expect(turn.exchanges[0].status).toBe('cancelled');
+});
+
+test('marks an exchange with a cancel event cancelled', () => {
+  const store = createWorkbenchStore();
+  store.send('Stop');
+  store.record('request', request('r1'));
+  store.record('cancel', { manual: true });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  expect(turn.exchanges[0].status).toBe('cancelled');
+  expect(turn.exchanges[0].eventIndexes).toHaveLength(2);
+});
