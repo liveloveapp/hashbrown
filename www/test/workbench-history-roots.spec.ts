@@ -18,6 +18,7 @@ function reactDispatch(format: string, id?: string) {
   }).outputText;
   const names = [
     'ServerWorkbenchConversation',
+    'AuthoringWorkbenchConversation',
     'HistoryWorkbenchConversation',
     'WorkflowWorkbenchConversation',
     'MagicTextWorkbenchConversation',
@@ -56,7 +57,7 @@ function reactDispatch(format: string, id?: string) {
   return exports['Workbench']().children[0][0].children[0].type;
 }
 
-test('React root dispatch preserves all seventeen prior lessons and binds both text-history lessons', () => {
+test('React root dispatch preserves all prior lessons and binds the three authoring lessons', () => {
   const expected: Record<string, string> = {
     workflow: 'WorkflowWorkbenchConversation',
     text: 'MagicTextWorkbenchConversation',
@@ -76,7 +77,11 @@ test('React root dispatch preserves all seventeen prior lessons and binds both t
     workbenchLessons.map((lesson) =>
       ['server-threads', 'public-endpoint'].includes(lesson.id)
         ? 'ServerWorkbenchConversation'
-        : expected[lesson.format],
+        : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
+              lesson.id,
+            )
+          ? 'AuthoringWorkbenchConversation'
+          : expected[lesson.format],
     ),
   );
   expect(selected).toHaveLength(workbenchLessons.length);
@@ -110,4 +115,17 @@ test('Angular root registers history independently and retains the previous disp
   ])
     expect(root).toContain(`format === '${format}'`);
   expect(root).toContain('<app-workbench-conversation');
+});
+
+test('authoring lesson IDs dispatch directly before broad format branches in both roots', () => {
+  const angular = readFileSync(
+    'www/examples/quickstart/angular/src/app/workbench.ts',
+    'utf8',
+  );
+
+  for (const id of ['agent-decisions', 'json-parser', 'natural-forms']) {
+    expect(reactDispatch('history', id)).toBe('AuthoringWorkbenchConversation');
+    expect(angular).toContain(`'${id}'`);
+  }
+  expect(angular).toContain('<app-authoring-workbench-conversation');
 });
