@@ -477,3 +477,137 @@ test('scrubs from the overview strip', () => {
   clock.mockRestore();
   shell.dispose();
 });
+
+test('auto-selects a repeat HTTP error after the conversation is cleared', () => {
+  const { host, store, shell } = mountRequests();
+  recordDeniedTurn(store);
+  const first = host.querySelector('[data-detail]')?.textContent;
+
+  store.clear();
+  const cleared = host.querySelector('[data-detail]');
+  recordDeniedTurn(store);
+
+  expect(first).toContain('Demo denial is enabled');
+  expect(cleared).toBeNull();
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'Demo denial is enabled',
+  );
+  expect(
+    host.querySelector('.wb-requests-table tr[aria-selected=true] button')
+      ?.textContent,
+  ).toBe('Model request');
+  shell.dispose();
+});
+
+test('drops a user selection when the conversation is cleared', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  rowButton(host, 'readContext').click();
+  store.live();
+  const inspectorTab = (name: string) =>
+    [...host.querySelectorAll<HTMLButtonElement>('.wb-tabs [role=tab]')]
+      .find((tab) => tab.textContent === name)
+      ?.click();
+
+  inspectorTab('State');
+  store.clear();
+  recordToolTurn(store);
+  inspectorTab('Requests');
+
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelectorAll('.wb-requests-table tr[aria-selected=true]'),
+  ).toHaveLength(0);
+  shell.dispose();
+});
+
+test('keeps focus on a detail tab and a response event across streamed events', () => {
+  const { host, store, shell } = mountRequests();
+  store.send('Plan');
+  store.record('request', requestPayload('r1'));
+  store.record('response', { status: 200, url, source: 'provider' });
+  rowButton(host, 'Model request').click();
+  detailTab(host, 'Response').focus();
+  detailTab(host, 'Response').click();
+
+  store.record('event', { type: 'RUN_STARTED' });
+  const tabFocus = (document.activeElement as HTMLElement | null)?.dataset
+    .focusKey;
+  host
+    .querySelector<HTMLButtonElement>('[data-detail] button[data-event-index]')
+    ?.focus();
+  store.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'm1',
+    delta: 'Hi',
+  });
+  const eventFocus = document.activeElement as HTMLElement | null;
+
+  expect(tabFocus).toBe('tab:Response');
+  expect(eventFocus?.dataset.focusKey).toMatch(/^event:\d+$/);
+  expect(eventFocus?.isConnected).toBe(true);
+  expect(
+    host.querySelectorAll('[data-detail] [data-event-index]'),
+  ).toHaveLength(3);
+  shell.dispose();
+});
+
+test('selects a row while busy without seeking, since loading ignores seeks', () => {
+  const { host, store, shell } = mountRequests();
+  store.send('Plan');
+  store.record('request', requestPayload('r1'));
+
+  rowButton(host, 'Model request').click();
+
+  expect(store.getSnapshot().status).toBe('loading');
+  expect(store.getSnapshot().cursor).toBeNull();
+  expect(host.querySelector('[data-detail]')).not.toBeNull();
+  expect(
+    host.querySelector('.wb-requests-table tr[aria-selected=true]'),
+  ).not.toBeNull();
+  shell.dispose();
+});
+
+test('stays live when ArrowRight or End is pressed at the live end', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const slider = host.querySelector<HTMLElement>(
+    '[role=slider][aria-label="Seek request timeline"]',
+  ) as HTMLElement;
+
+  press(slider, 'ArrowRight');
+  const afterRight = store.getSnapshot().cursor;
+  press(slider, 'End');
+
+  expect(afterRight).toBeNull();
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('labels each turn band with its start time on the axis', () => {
+  let now = 0;
+  const clock = vi
+    .spyOn(performance, 'now')
+    .mockImplementation(() => (now += 100));
+  const { host, store, shell } = mountRequests();
+
+  recordToolTurn(store);
+  recordDeniedTurn(store, 'Again');
+
+  const labels = [...host.querySelectorAll('.wb-requests-band > span')].map(
+    (label) => label.textContent,
+  );
+  const starts = [1, 2].map(
+    (turn) =>
+      store.getSnapshot().events.find((event) => event.turn === turn)
+        ?.elapsedMs ?? 0,
+  );
+  expect(labels).toEqual(
+    starts.map(
+      (ms, index) => `Turn ${index + 1} · ${(ms / 1000).toFixed(1)} s`,
+    ),
+  );
+  expect(starts[1]).toBeGreaterThan(starts[0]);
+  clock.mockRestore();
+  shell.dispose();
+});

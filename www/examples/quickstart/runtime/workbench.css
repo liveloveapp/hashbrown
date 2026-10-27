@@ -745,12 +745,13 @@ body {
 }
 .wb-requests-overview {
   flex: none;
-  padding: 28px 16px 8px;
+  /* Flag row above the strip, time axis labels below it: about 64px in all. */
+  padding: 20px 16px 16px;
   border-bottom: 1px solid var(--wb-line);
 }
 .wb-requests-track {
   position: relative;
-  height: 48px;
+  height: 28px;
   border-radius: 6px;
   background: var(--wb-code);
   box-shadow: inset 0 0 0 1px var(--wb-track);
@@ -780,31 +781,34 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  overflow: hidden;
   border-left: 1px dashed var(--wb-faint);
 }
+/* Axis labels sit below each band's start, clipped to the band's width. */
 .wb-requests-band > span {
   position: absolute;
-  top: 2px;
-  left: 4px;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  overflow: hidden;
   color: var(--wb-muted);
-  font: 10px/1.4 var(--wb-mono-font);
+  font: 10px/12px var(--wb-mono-font);
+  text-overflow: clip;
   white-space: nowrap;
 }
 .wb-requests-bar {
   position: absolute;
-  top: 18px;
+  top: 4px;
   min-width: 3px;
   height: 6px;
   border-radius: 3px;
   background: var(--wb-cobalt);
 }
 .wb-requests-bar[data-lane='stream'] {
-  top: 28px;
+  top: 11px;
   background: #a5b4e8;
 }
 .wb-requests-bar[data-lane='tool'] {
-  top: 38px;
+  top: 18px;
   background: var(--wb-tok-number);
 }
 .wb-requests-bar[data-lane='error'] {
@@ -812,8 +816,8 @@ body {
 }
 .wb-requests-playhead {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -2px;
+  bottom: -2px;
   width: 2px;
   margin-left: -1px;
   background: var(--wb-ink);
@@ -822,7 +826,8 @@ body {
 .wb-requests-playhead::before {
   content: '';
   position: absolute;
-  top: -6px;
+  /* Centred on the strip so it clears the flag above and the axis below. */
+  top: calc(50% - 6px);
   left: -5px;
   width: 12px;
   height: 12px;
@@ -832,7 +837,7 @@ body {
 }
 .wb-requests-flag {
   position: absolute;
-  top: -28px;
+  top: -20px;
   max-width: 200px;
   padding: 1px 8px;
   overflow: hidden;

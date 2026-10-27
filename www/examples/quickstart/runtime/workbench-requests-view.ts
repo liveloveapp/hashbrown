@@ -124,9 +124,10 @@ function code(value: unknown, className = ''): HTMLPreElement {
 }
 
 /**
- * Rebuilds `container` and, when focus was on one of its keyed children,
- * moves focus to the rebuilt child with the same key and tag (a row and its
- * button share a key; focus belongs on the button).
+ * Rebuilds `container` and, when focus was on one of its keyed children and
+ * the rebuild lost it (the node was replaced, or moved and blurred), moves
+ * focus back to the child with the same key and tag (a row and its button
+ * share a key; focus belongs on the button).
  */
 function rebuildKeepingFocus(
   container: HTMLElement,
@@ -140,13 +141,15 @@ function rebuildKeepingFocus(
       : null;
   const restore = keyed?.getAttribute(key);
   rebuild();
-  if (restore == null || !keyed || keyed.isConnected) return;
-  [...container.querySelectorAll<HTMLElement>(`[${key}]`)]
-    .find(
-      (node) =>
-        node.getAttribute(key) === restore && node.tagName === keyed.tagName,
-    )
-    ?.focus();
+  if (restore == null || !keyed) return;
+  if (container.ownerDocument.activeElement === keyed) return;
+  const target = keyed.isConnected
+    ? keyed
+    : [...container.querySelectorAll<HTMLElement>(`[${key}]`)].find(
+        (node) =>
+          node.getAttribute(key) === restore && node.tagName === keyed.tagName,
+      );
+  target?.focus();
 }
 
 /** Puts `nodes` in order under `parent`, moving only nodes out of place. */
@@ -340,6 +343,9 @@ export function createWorkbenchRequestsView(
   let selectedEvent: number | null = null;
   let rovingId: string | null = null;
   let detailKey = '';
+  /** The first captured frame; a different one means a new run. */
+  let runFirst: WorkbenchFrame | undefined;
+  let runLength = 0;
   let rows: ReadonlyMap<string, Row> = new Map();
   let groups: ReadonlyMap<number, Group> = new Map();
 
@@ -391,6 +397,10 @@ export function createWorkbenchRequestsView(
   const find = (id: string | null) =>
     exchanges.find((exchange) => exchange.id === id);
 
+  /**
+   * Selects a row and seeks to its first event. While a response is loading
+   * the store ignores seeks, so the row is selected but the cursor stays live.
+   */
   function select(id: string) {
     const exchange = find(id);
     if (!exchange) return;
@@ -845,11 +855,14 @@ export function createWorkbenchRequestsView(
     detailTab = active;
     detail.dataset.detail = '';
     if (!detail.isConnected) body.append(detail);
+    // Only Response greys rows by the playhead; other tabs ignore the cursor.
     const key = JSON.stringify([
-      exchange,
+      exchange.id,
+      exchange.status,
+      exchange.eventIndexes.length,
+      exchange.answeredById ?? null,
       active,
-      input.snapshot.cursor,
-      input.snapshot.events.length,
+      active === 'Response' ? input.snapshot.cursor : null,
       selectedEvent,
       input.source,
     ]);
@@ -918,6 +931,19 @@ export function createWorkbenchRequestsView(
     element: root,
     update(input) {
       latest = input;
+      const { events } = input.snapshot;
+      // Exchange ids are positional, so a cleared store reuses them: forget
+      // the previous run's selection and automatic picks.
+      if (events.length < runLength || events[0] !== runFirst) {
+        autoSeen = new Set();
+        selectedId = null;
+        userSelected = false;
+        selectedEvent = null;
+        detailTab = null;
+        detailKey = '';
+      }
+      runFirst = events[0];
+      runLength = events.length;
       turns = workbenchExchanges(input.snapshot.events, {
         format: input.format,
         endpoint: input.endpoint,

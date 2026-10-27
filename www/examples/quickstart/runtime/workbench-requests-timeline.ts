@@ -141,7 +141,8 @@ export function createWorkbenchRequestsTimeline(options: {
     // Claim the key so the shell's player shortcuts do not step twice.
     event.preventDefault();
     const clamped = Math.min(last, Math.max(0, target));
-    if (clamped !== cursor) options.seek(clamped);
+    // At the live end, ArrowRight and End have nowhere to go; stay live.
+    if (clamped !== at) options.seek(clamped);
   });
 
   return {
@@ -179,7 +180,10 @@ export function createWorkbenchRequestsTimeline(options: {
           band.style.left = `${startPercent}%`;
           band.style.width = `${endPercent - startPercent}%`;
           const label = document.createElement('span');
-          label.textContent = `Turn ${turn}`;
+          // The turn's first elapsed time, as in the table's Start column.
+          const startMs =
+            events.find((frame) => frame.turn === turn)?.elapsedMs ?? 0;
+          label.textContent = `Turn ${turn} · ${(startMs / 1000).toFixed(1)} s`;
           band.append(label);
           return band;
         }),
