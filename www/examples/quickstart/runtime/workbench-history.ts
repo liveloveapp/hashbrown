@@ -1,3 +1,5 @@
+import type { WorkbenchAuthoringObservation } from './workbench-authoring';
+import type { WorkbenchAgentTrace } from './workbench-agent';
 import type { WorkbenchServerHistoryState } from './workbench-server-history';
 import type { WorkbenchSnapshot } from './workbench';
 
@@ -56,6 +58,8 @@ export interface WorkbenchHistoryObservation {
 export type WorkbenchHistoryReplacement = 'clear' | 'restore' | 'load';
 /** Paired capture keeps application text and SDK lifecycle distinct. */
 export interface WorkbenchHistoryFrame {
+  readonly authoring?: WorkbenchAuthoringObservation;
+  readonly agent?: WorkbenchAgentTrace;
   readonly replacement: WorkbenchHistoryReplacement | null;
   readonly sdk: WorkbenchHistoryObservation;
   readonly app: WorkbenchHistoryApp;
