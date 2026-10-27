@@ -1,4 +1,7 @@
-import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 import type { RunAgentInput } from '@ag-ui/core';
 import type { Decision } from '@hashbrownai/core';
 import { workbenchSelectionMinConfidence } from '../../examples/quickstart/runtime/workbench-recipes';
@@ -737,11 +740,7 @@ export async function verifyRecipeWorkbench(options: {
       ).toHaveCount(lesson === 'predictions' ? 3 : 2);
       expect(requestCount()).toBe(count);
       await page.setViewportSize({ width: 390, height: 844 });
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true);
+      await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
     succeeded = true;

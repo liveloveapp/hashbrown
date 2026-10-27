@@ -770,24 +770,77 @@ test('drives playback from shortcuts only on the visible instance', () => {
   ];
   const space = press(playerButton(first.host, 'Play'), ' ');
   const afterSpace = first.store.getSnapshot().cursor;
-  first.shell.dispose();
-  press(document.body, 'ArrowLeft');
-  const afterDispose = first.store.getSnapshot().cursor;
 
   expect(arrow.defaultPrevented).toBe(true);
   expect(afterArrow).toEqual([4, null]);
   expect(space.defaultPrevented).toBe(false);
   expect(afterSpace).toBe(4);
-  expect(afterDispose).toBe(4);
   expect(second.store.getSnapshot().cursor).toBeNull();
+  first.shell.dispose();
   second.shell.dispose();
 });
 
-test('toggles the rail with Cmd+B', () => {
+test('removes its document shortcut listener on dispose', () => {
+  const add = vi.spyOn(document, 'addEventListener');
+  const remove = vi.spyOn(document, 'removeEventListener');
+  const { shell } = mountShell();
+  const added = add.mock.calls
+    .filter(([type]) => type === 'keydown')
+    .map(([, listener]) => listener);
+
+  shell.dispose();
+  const removed = remove.mock.calls
+    .filter(([type]) => type === 'keydown')
+    .map(([, listener]) => listener);
+
+  expect(added).toHaveLength(1);
+  expect(removed).toContain(added[0]);
+  add.mockRestore();
+  remove.mockRestore();
+});
+
+test('jumps turns and returns live from keyboard shortcuts', () => {
+  const { store, shell } = mountShell();
+  const secondTurnStart = recordTwoTurns(store);
+  store.seek(0);
+
+  const next = press(document.body, 'ArrowRight', { shiftKey: true });
+  const afterNextTurn = store.getSnapshot().cursor;
+  press(document.body, 'ArrowLeft', { shiftKey: true });
+  const afterPreviousTurn = store.getSnapshot().cursor;
+  press(document.body, 'ArrowRight');
+  const afterNextEvent = store.getSnapshot().cursor;
+  press(document.body, 'l');
+
+  expect(next.defaultPrevented).toBe(true);
+  expect(afterNextTurn).toBe(secondTurnStart);
+  expect(afterPreviousTurn).toBe(0);
+  expect(afterNextEvent).toBe(1);
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('ignores player shortcuts typed in the message field', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  store.seek(0);
+  const field = host.querySelector<HTMLTextAreaElement>('textarea');
+
+  const typed = press(field as HTMLTextAreaElement, 'l');
+
+  expect(typed.defaultPrevented).toBe(false);
+  expect(store.getSnapshot().cursor).toBe(0);
+  shell.dispose();
+});
+
+test('toggles the rail with Cmd+B and Ctrl+B', () => {
   const { shell, layout } = mountShell();
 
   press(document.body, 'b', { metaKey: true });
+  const afterCmd = layout.get().rail;
+  press(document.body, 'B', { ctrlKey: true });
 
-  expect(layout.get().rail).toBe(true);
+  expect(afterCmd).toBe(true);
+  expect(layout.get().rail).toBe(false);
   shell.dispose();
 });
