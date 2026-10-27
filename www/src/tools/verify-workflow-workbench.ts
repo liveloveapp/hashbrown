@@ -371,7 +371,9 @@ export async function verifyWorkflowWorkbench(options: {
       .innerText();
     await rawFrame.click();
     await expect(rawFrame).toHaveAttribute('aria-pressed', 'true');
-    await expect(capturedSection.locator(':scope > header h3')).toContainText('·');
+    await expect(capturedSection.locator(':scope > header h3')).toContainText(
+      '·',
+    );
     const rawCapture = JSON.parse(await inspection.locator('pre').innerText());
     expect(rawCapture.sdk.messages.length).toBeGreaterThan(0);
     expect(rawCapture.event).toEqual(
