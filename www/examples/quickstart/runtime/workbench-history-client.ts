@@ -38,7 +38,7 @@ export function observeHistory(
       sdk.error || sdk.recoveryRequired || sdk.finishReason !== 'stop'
         ? 'error'
         : 'complete',
-      sdk.finishReason,
+      sdk.finishReason ?? undefined,
     );
 }
 
