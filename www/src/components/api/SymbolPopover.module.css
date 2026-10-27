@@ -18,8 +18,8 @@
 .popover {
   display: block;
   overflow: hidden;
-  background: #fff;
-  border: 2px solid var(--sky-blue, #9ecfd7);
+  background: var(--color-bg);
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-shot);
 }
 
