@@ -205,3 +205,16 @@ test.each(SDKS)(
     expect(last[2]).toContain('Stuck? Ask Brian');
   },
 );
+
+test.each(SDKS)('makes LangGraph without B4 discoverable for %s', (sdk) => {
+  const sections = docsMenuSections(sdk);
+
+  const providers = sections.find(
+    (section) => section.title === 'Model providers',
+  );
+
+  expect(providers?.links).toContainEqual({
+    text: 'LangGraph without B4',
+    href: `/docs/${sdk}/platform/langgraph`,
+  });
+});
