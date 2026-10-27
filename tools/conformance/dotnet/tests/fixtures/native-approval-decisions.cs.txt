@@ -200,6 +200,41 @@ try
     Check(restored is not null && (await journal.GetOwnedApprovalEvidenceAsync(restored))?.State == NativeApprovalState.Pending, "Untouched published Pending batch stays reusable with old descriptors under a legitimate later owner.");
     Check(await journal.GetOwnedApprovalEvidenceAsync(controlLease) is null && !await journal.TryAdmitApprovalBatchAsync(controlLease, "batch", NativeApprovalAdmission.Parse(controlRaw, control.Key, catalog, new())), "Old owner token/generation/claim revision cannot read or mutate restored evidence.");
     Check(modelCount == 0 && await Scalar<long>("SELECT count(*) FROM {s}.effects") == 0, "Admission/rejection durability does no native/model/effect work.");
+    foreach (var failure in new[] { "cleanup", "takeover", "maintenance" })
+    {
+        var selector = "unpublished-" + failure;
+        var unpublishedKey = new NativeSessionKey("agent", "alice", selector, new Dictionary<string, string> { ["tenant"] = "trusted" });
+        var unpublishedInput = $$"""{"threadId":"{{selector}}","messages":[{"id":"user","role":"user","content":"hello"}],"tools":[]}""";
+        var unpublishedLease = (await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Lease!;
+        var unpublishedCall = catalog.CreateCall("unpublished-call", "server", Json("{}"));
+        Check(await journal.CaptureModelCallAsync(unpublishedLease, unpublishedCall) && await journal.CaptureApprovalBatchAsync(unpublishedLease, new("unpublished-batch", [new("unpublished-request", unpublishedCall, new(null, null, 0))], [])), "Unpublished capture arrangement has genuine trusted current model/request ownership.");
+
+        if (failure == "cleanup") Check(await journal.FailureCleanupAsync(unpublishedLease), "Capture-before-save cleanup must complete.");
+        else if (failure == "takeover")
+        {
+            await Sql("UPDATE {s}.native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", ("id", unpublishedKey.Id));
+            Check((await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Status == 409, "An abandoned unpublished capture cannot acquire a fresh owner/model run.");
+        }
+        else { await Expire(unpublishedKey); await journal.MaintainAsync(); }
+
+        Check((await journal.InspectAsync(new HashSet<string> { "alice" }, unpublishedKey))!.Status.State == "Blocked", "Unpublished capture failure must block instead of advertising reusable Ready: " + failure);
+        Check(await Scalar<long>("SELECT count(*) FROM {s}.native_approvals WHERE session_id='" + unpublishedKey.Id + "'") == 1 && (await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Lease is null, "Unpublished identities stay fenced with no replacement owner.");
+    }
+    foreach (var corruption in new[] { "declined-completed", "approved-declined", "settled-wrong-digest", "future-admission-revision" })
+    {
+        var item = await Published("corrupt-consumed-" + corruption, 1);
+        var raw = Resume(item.Prefix, item.Batch, [corruption == "approved-declined"]);
+        var owner = (await journal.TryAcquireAsync(item.Key, raw)).Lease!;
+        Check(await journal.TryAdmitApprovalBatchAsync(owner, "batch", NativeApprovalAdmission.Parse(raw, item.Key, catalog, new())), "Corrupt-consumed arrangement first uses a genuine complete atomic durable reservation.");
+        if (corruption == "declined-completed") await Sql("UPDATE {s}.native_invocations SET state='Completed',dispatch_generation=@generation WHERE session_id=@id", ("generation", owner.Generation), ("id", item.Key.Id));
+        if (corruption == "approved-declined") await Sql("UPDATE {s}.native_invocations SET state='Declined' WHERE session_id=@id", ("id", item.Key.Id));
+        if (corruption == "settled-wrong-digest") await Sql("BEGIN; UPDATE {s}.native_invocations SET state='Declined' WHERE session_id=@id; UPDATE {s}.native_approvals SET state='Settled',result_digest=repeat('A',64) WHERE session_id=@id; UPDATE {s}.native_approval_batches SET state='Settled' WHERE session_id=@id; COMMIT", ("id", item.Key.Id));
+        if (corruption == "future-admission-revision") await Sql("BEGIN; UPDATE {s}.native_approvals SET admitted_revision=admitted_revision+100 WHERE session_id=@id; UPDATE {s}.native_approval_batches SET admitted_revision=admitted_revision+100 WHERE session_id=@id; COMMIT", ("id", item.Key.Id));
+
+        var corrupt = await journal.GetOwnedApprovalEvidenceAsync(owner);
+
+        Check(corrupt is null, "Consumed durable reader must reject decision/invocation/result/admission provenance contradictions: " + corruption);
+    }
     Console.WriteLine("Native approval decision contracts passed.");
 }
 finally { await Sql("DROP SCHEMA IF EXISTS {s} CASCADE"); }

@@ -21,7 +21,7 @@ public sealed partial class PostgresNativeSessionJournal
             await Execute(connection, $"""
                 UPDATE {Sessions} AS session SET state=CASE
                     WHEN state IN ('Publishing','PublicationUnknown') THEN 'PublicationUnknown'
-                    WHEN state='Blocked' OR (state='Owned' AND (EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND dispatch_generation=session.generation) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND admitted_generation=session.generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND admitted_generation=session.generation))) THEN 'Blocked'
+                    WHEN state='Blocked' OR (state='Owned' AND (EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND dispatch_generation=session.generation) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND admitted_generation=session.generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND admitted_generation=session.generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} b JOIN {Approvals} a USING(session_id,batch_id) WHERE b.session_id=@id AND b.published_revision IS NULL AND b.state='Pending' AND a.captured_generation=session.generation))) THEN 'Blocked'
                     ELSE 'Retired' END,
                     payload=NULL,admitted_request=NULL,token=NULL,lease_until=NULL,generation=generation+1,revision=revision+1
                     WHERE id=@id AND expires_at<=@now;

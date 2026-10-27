@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hashbrown.Conformance.Integration;
 
 namespace Hashbrown.Conformance.Testing;
@@ -20,6 +21,8 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     /// <inheritdoc />
     public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default) => inner.SettleApprovalRejectionAsync(lease, rejection, cancellationToken);
     /// <inheritdoc />
+    public ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batchId, string requestId, string callId, JsonElement result, CancellationToken cancellationToken = default) => inner.SettleBrowserBypassResultAsync(lease, batchId, requestId, callId, result, cancellationToken);
+    /// <inheritdoc />
     public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string callId, CancellationToken cancellationToken = default) => inner.GetOwnedCallAsync(lease, callId, cancellationToken);
     /// <inheritdoc />
     public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default)
@@ -36,7 +39,7 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     /// <inheritdoc />
     public async ValueTask<NativeSavedReceipt?> SaveAsync(NativeSessionLease lease, NativeSessionSave save, CancellationToken cancellationToken = default)
     {
-        if (save.ExpectedBrowserCallIds.Count > 0) await gate.ReachAsync("before-pending-save", cancellationToken);
+        if (save.Approvals.PendingBatch is not null || save.ExpectedBrowserCallIds.Count > 0) await gate.ReachAsync("before-pending-save", cancellationToken);
         if (failSave) return null;
         var receipt = await inner.SaveAsync(lease, save, cancellationToken);
         if (receipt is not null) await gate.ReachAsync("after-save-before-publication", cancellationToken);
@@ -50,7 +53,11 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
         return authorized;
     }
     /// <inheritdoc />
-    public ValueTask<bool> FinalizePublicationAsync(NativeSavedReceipt receipt, CancellationToken cancellationToken = default) => inner.FinalizePublicationAsync(receipt, cancellationToken);
+    public async ValueTask<bool> FinalizePublicationAsync(NativeSavedReceipt receipt, CancellationToken cancellationToken = default)
+    {
+        await gate.ReachAsync("before-publication-finalization", cancellationToken);
+        return await inner.FinalizePublicationAsync(receipt, cancellationToken);
+    }
     /// <inheritdoc />
     public ValueTask<bool> FailureCleanupAsync(NativeSessionLease lease, CancellationToken cancellationToken = default) => inner.FailureCleanupAsync(lease, cancellationToken);
     /// <inheritdoc />

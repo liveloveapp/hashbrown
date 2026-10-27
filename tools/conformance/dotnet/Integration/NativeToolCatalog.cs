@@ -47,6 +47,9 @@ public sealed class NativeToolCatalog
         var actual = definitions.ToArray();
         return MatchesSchemas(actual.Select(item => new KeyValuePair<string, JsonElement>(item.Name, item.Schema))) && actual.All(item => _tools[item.Name].RequiresConfirmation == item.RequiresConfirmation);
     }
+    /// <summary>Checks one declaration against immutable server schema metadata without invoking application validators.</summary>
+    internal bool MatchesDefinition(string name, JsonElement schema) => _tools.TryGetValue(name, out var tool) &&
+        System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(schema.GetRawText()), System.Text.Json.Nodes.JsonNode.Parse(tool.Schema.GetRawText()));
     /// <summary>Checks whether the registered server call requires a protected native decision.</summary>
     public bool RequiresConfirmation(string name) => _tools.TryGetValue(name, out var tool) ? tool.RequiresConfirmation : throw new ArgumentException("The native server operation is not registered.");
     /// <summary>Tests whether a name belongs to a registered server operation.</summary>

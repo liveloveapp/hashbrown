@@ -57,7 +57,9 @@ public static class NativeSessionHistory
                 }
         }
         if (root["tools"] is JsonArray tools && (tools.Select(tool => tool!["name"]!.GetValue<string>()).Distinct(StringComparer.Ordinal).Count() != tools.Count || tools.Any(tool => catalog.Contains(tool!["name"]!.GetValue<string>())))) throw new ArgumentException("Browser and registered server tools must be disjoint and unique.");
-        return Canonical(JsonSerializer.SerializeToElement(root));
+        var canonical = Canonical(JsonSerializer.SerializeToElement(root));
+        if (Encoding.UTF8.GetByteCount(canonical) > options.PublicBytes) throw new ArgumentException("Canonical native public history exceeds its limit.");
+        return canonical;
     }
     private static void ValidateShape(JsonElement root, NativeSessionOptions options)
     {

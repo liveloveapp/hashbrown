@@ -88,7 +88,7 @@ public sealed partial class PostgresNativeSessionJournal
     }
     private async ValueTask<bool> HasDispatch(NpgsqlConnection connection, NativeSessionKey key, long generation, CancellationToken cancellationToken)
     {
-        await using var command = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND dispatch_generation=@generation) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND admitted_generation=@generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND admitted_generation=@generation)", ("id", key.Id), ("generation", generation));
+        await using var command = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND dispatch_generation=@generation) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND admitted_generation=@generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND admitted_generation=@generation) OR EXISTS(SELECT 1 FROM {ApprovalBatches} b JOIN {Approvals} a USING(session_id,batch_id) WHERE b.session_id=@id AND b.published_revision IS NULL AND b.state='Pending' AND a.captured_generation=@generation)", ("id", key.Id), ("generation", generation));
         return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
     private async ValueTask RemoveUncommittedCalls(NpgsqlConnection connection, NativeSessionKey key, NativeSessionSnapshot snapshot, CancellationToken cancellationToken)

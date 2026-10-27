@@ -76,7 +76,7 @@ public static class NativeApprovalAdmission
     }
     private static bool Pending(NativeApprovalEvidence owned) => owned.State == NativeApprovalState.Pending && owned.Decisions.Count == 0 && owned.AdmittedGeneration is null && owned.AdmittedRevision is null && owned.SessionKeyId == owned.CurrentOwner.Key.Id && owned.CurrentOwner.Generation > 0 && owned.CurrentOwner.Revision >= owned.PublishedRevision && !string.IsNullOrWhiteSpace(owned.CurrentOwner.Token);
     private static string RequiredString(JsonElement value, string name) => value.TryGetProperty(name, out var field) && field.ValueKind == JsonValueKind.String ? NativeSessionKey.Required(field.GetString()!) : throw new ArgumentException("Native decision identities and statuses must be strings.");
-    private static bool BoundCallsMatch(JsonArray prefix, NativeBoundApprovalBatch bound)
+    internal static bool BoundCallsMatch(JsonArray prefix, NativeBoundApprovalBatch bound)
     {
         foreach (var descriptor in bound.Batch.ProtectedRequests)
             if (!CallMatches(prefix, bound.PublicLocations[descriptor.RequestId], descriptor.Call.Id, descriptor.Call.Name, descriptor.Call.Arguments)) return false;

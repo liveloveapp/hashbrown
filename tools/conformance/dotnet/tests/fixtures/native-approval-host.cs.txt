@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Hashbrown.Conformance.Integration;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -17,6 +18,7 @@ var function = AIFunctionFactory.Create((string code) => { effects++; return cod
 var protectedFunction = new ApprovalRequiredAIFunction(function);
 var catalog = new NativeToolCatalog([new("backend", 1, function.JsonSchema, RequiresConfirmation: true)]);
 var model = new ApprovalModel();
+var recoveryEvidence = new JsonArray();
 var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders(); builder.Services.AddRouting();
@@ -34,13 +36,245 @@ try
     await using var app = builder.Build();
     app.UseAuthentication(); app.UseAuthorization();
     NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/recover/{threadId}", journal, "native", (_, thread) => new NativeSessionKey("native", "fixture-owned", thread, new Dictionary<string, string> { ["isolation"] = "fixture-owned" }));
     await app.StartAsync();
     using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(15) };
-    using var response = await http.PostAsJsonAsync("/run", new { threadId = "approval", runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "run protected backend" } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } });
-    var body = await response.Content.ReadAsStringAsync();
+    using var initialRequest = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(new { threadId = "approval", runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "run protected backend" } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } }) };
+    using var response = await http.SendAsync(initialRequest, HttpCompletionOption.ResponseHeadersRead);
+    using var initialStream = await response.Content.ReadAsStreamAsync(); using var initialBytes = new MemoryStream();
+    try { await initialStream.CopyToAsync(initialBytes); } catch (IOException) { }
+    var body = System.Text.Encoding.UTF8.GetString(initialBytes.ToArray());
 
-    Check(response.IsSuccessStatusCode && body.Contains("RUN_FINISHED") && body.Contains("ficc_back_1") && body.Contains("interrupt"), "A genuine protected native approval interrupt must reach the owned public terminal: " + body);
+    Check(response.IsSuccessStatusCode && body.Contains("RUN_FINISHED") && body.Contains("ficc_back_1") && body.Contains("interrupt"), "A genuine protected native approval interrupt must reach the owned public terminal: " + (int)response.StatusCode + "/model=" + model.Calls + "/effects=" + effects + "/" + body);
     Check(effects == 0 && model.Calls == 1, "Pending protected approval must perform zero executor work and zero model continuation before a decision.");
+    var key = new NativeSessionKey("native", "fixture-owned", "approval", new Dictionary<string, string> { ["isolation"] = "fixture-owned" });
+    await using var payloadCommand = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); payloadCommand.Parameters.AddWithValue("id", key.Id);
+    var persisted = JsonNode.Parse((string)(await payloadCommand.ExecuteScalarAsync())!)!;
+    var revisionBeforeRecovery = (await journal.InspectAsync(new HashSet<string> { "fixture-owned" }, key))!.Status.Revision;
+    using var nativeRecoveryResponse = await http.PostAsJsonAsync("/recover/approval", new { tools = Array.Empty<object>() });
+    var nativeRecoveryBody = await nativeRecoveryResponse.Content.ReadAsStringAsync();
+    var nativeRecovery = string.IsNullOrEmpty(nativeRecoveryBody) ? null : JsonNode.Parse(nativeRecoveryBody);
+
+    Check(nativeRecoveryResponse.IsSuccessStatusCode && nativeRecovery?["disposition"]?.GetValue<string>() == "Pending" && nativeRecovery["snapshot"]?["interrupts"] is JsonArray { Count: 1 }, "Published native-only pending recovery must return a genuine restorable interrupt snapshot without acquisition.");
+    var genuineInterrupts = body.Split('\n').Where(line => line.StartsWith("data: ")).Select(line => JsonNode.Parse(line[6..])!).Single(item => item["type"]?.GetValue<string>() == "RUN_FINISHED")["outcome"]!["interrupts"];
+    Check(JsonNode.DeepEquals(nativeRecovery!["snapshot"]!["interrupts"], genuineInterrupts), "Recovered public native descriptors must equal the genuine validated interrupt exactly.");
+    Check((await journal.InspectAsync(new HashSet<string> { "fixture-owned" }, key))!.Status.Revision == revisionBeforeRecovery && model.Calls == 1 && effects == 0, "Pending recovery must leave owner/revision/model/effects unchanged.");
+    recoveryEvidence.Add(new JsonObject { ["name"] = "native-pending", ["envelope"] = nativeRecovery!.DeepClone() });
+    var callback = JsonNode.Parse(persisted["publicRequest"]!.GetValue<string>())!.AsObject();
+    callback["runId"] = "approved";
+    callback["resume"] = new JsonArray(new JsonObject { ["interruptId"] = "ficc_back_1", ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } });
+
+    async Task RejectOriginal(string raw, NativeSessionKey ownedKey, string scenario)
+    {
+        var before = (await journal.InspectAsync(new HashSet<string> { "fixture-owned" }, ownedKey))!.Status;
+        var callsBefore = model.Calls; var effectsBefore = effects;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = new StringContent(raw, System.Text.Encoding.UTF8, "application/json") };
+
+        using var rejected = await http.SendAsync(request);
+        var rejectedBody = await rejected.Content.ReadAsStringAsync();
+
+        var after = (await journal.InspectAsync(new HashSet<string> { "fixture-owned" }, ownedKey))!.Status;
+        Check((int)rejected.StatusCode == 400 && !rejectedBody.Contains("RUN_STARTED") && model.Calls == callsBefore && effects == effectsBefore && before.State == "Ready" && after.State == "Ready" && after.Revision == before.Revision && after.Generation == before.Generation, "Invalid original native decision/history must fail before any acquisition/reservation/native/model work and leave published Pending unchanged: " + scenario);
+    }
+    foreach (var mutation in new[] { "unknown-decision", "duplicate-status", "duplicate-approved", "resume-alias", "status-alias", "caller-call-payload", "typed-payload", "missing-decision", "foreign-request", "changed-call", "changed-name", "changed-arguments", "changed-role", "changed-parent", "changed-metadata", "changed-position" })
+    {
+        var invalid = callback.DeepClone().AsObject();
+        if (mutation == "unknown-decision") invalid["resume"]![0]!["unknown"] = true;
+        if (mutation == "caller-call-payload") invalid["resume"]![0]!["payload"]!["toolCall"] = new JsonObject { ["callId"] = "back_1", ["name"] = "backend", ["arguments"] = new JsonObject { ["code"] = "forged" } };
+        if (mutation == "typed-payload") invalid["resume"]![0]!["payload"]!["$type"] = "toolApprovalResponse";
+        if (mutation == "missing-decision") invalid["resume"] = new JsonArray();
+        if (mutation == "foreign-request") invalid["resume"]![0]!["interruptId"] = "foreign";
+        var assistant = invalid["messages"]!.AsArray().Single(message => message!["role"]!.GetValue<string>() == "assistant")!;
+        var call = assistant["toolCalls"]![0]!;
+        if (mutation == "changed-call") call["id"] = "foreign";
+        if (mutation == "changed-name") call["function"]!["name"] = "foreign";
+        if (mutation == "changed-arguments") call["function"]!["arguments"] = "{\"code\":\"forged\"}";
+        if (mutation == "changed-role") assistant["role"] = "user";
+        if (mutation == "changed-parent") assistant["id"] = "foreign";
+        if (mutation == "changed-metadata") call["metadata"] = new JsonObject { ["b4.step"] = new JsonObject { ["v"] = 1, ["kind"] = "server", ["status"] = "cancelled", ["settledAt"] = 1 } };
+        if (mutation == "changed-position") { var messages = invalid["messages"]!.AsArray(); var first = messages[0]!.DeepClone(); messages[0] = messages[1]!.DeepClone(); messages[1] = first; }
+        var raw = invalid.ToJsonString();
+        if (mutation == "duplicate-status") raw = raw.Replace("\"status\":\"resolved\"", "\"status\":\"resolved\",\"status\":\"cancelled\"");
+        if (mutation == "duplicate-approved") raw = raw.Replace("\"approved\":true", "\"approved\":true,\"approved\":false");
+        if (mutation == "resume-alias") raw = raw.Replace("\"resume\":", "\"Resume\":");
+        if (mutation == "status-alias") raw = raw.Replace("\"status\":", "\"Status\":");
+
+        await RejectOriginal(raw, key, mutation);
+    }
+
+    using var approvalRequest = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(callback) };
+    using var approved = await http.SendAsync(approvalRequest, HttpCompletionOption.ResponseHeadersRead);
+    using var approvalStream = await approved.Content.ReadAsStreamAsync();
+    using var approvalBytes = new MemoryStream();
+    try { await approvalStream.CopyToAsync(approvalBytes); } catch (IOException) { }
+    var approvedBody = System.Text.Encoding.UTF8.GetString(approvalBytes.ToArray());
+
+    Check(approved.IsSuccessStatusCode && approvedBody.Contains("RUN_FINISHED"), "A real approved continuation must publish a completed genuine terminal: " + approvedBody);
+    Check(effects == 1 && model.Calls == 2, "An admitted approval must invoke exactly once and then continue the actual model once.");
+    var resumed = model.Seen[1].SelectMany(message => message.Contents).ToArray();
+    Check(resumed.OfType<FunctionCallContent>().Count(call => call.CallId == "back_1") == 1 && resumed.OfType<FunctionResultContent>().Count(result => result.CallId == "back_1") == 1 && !resumed.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent), "The first resumed native model history must contain one exact original call/result pair and no residual approval content.");
+    Check(!approvedBody.Contains("TOOL_CALL_START"), "An already public protected call must not gain a new parent or duplicate public start.");
+    foreach (var kind in new[] { "declined", "cancelled" })
+    {
+        var initial = new { threadId = kind, runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "run protected backend" } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } };
+        var beforeCalls = model.Calls; var beforeEffects = effects;
+        using var pendingResponse = await http.PostAsJsonAsync("/run", initial);
+        Check((await pendingResponse.Content.ReadAsStringAsync()).Contains("interrupt"), "Every rejection scenario starts with a genuine native protected interrupt.");
+        var rejectedKey = new NativeSessionKey("native", "fixture-owned", kind, new Dictionary<string, string> { ["isolation"] = "fixture-owned" });
+        await using var query = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); query.Parameters.AddWithValue("id", rejectedKey.Id);
+        var pendingPayload = JsonNode.Parse((string)(await query.ExecuteScalarAsync())!)!;
+        var rejectedCallback = JsonNode.Parse(pendingPayload["publicRequest"]!.GetValue<string>())!.AsObject(); rejectedCallback["runId"] = kind;
+        var decision = new JsonObject { ["interruptId"] = "ficc_back_1", ["status"] = kind == "cancelled" ? "cancelled" : "resolved" };
+        if (kind == "declined") decision["payload"] = new JsonObject { ["approved"] = false };
+        rejectedCallback["resume"] = new JsonArray(decision);
+        using var rejectionRequest = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(rejectedCallback) };
+
+        using var rejectedResponse = await http.SendAsync(rejectionRequest, HttpCompletionOption.ResponseHeadersRead);
+        using var rejectionStream = await rejectedResponse.Content.ReadAsStreamAsync(); using var rejectionBytes = new MemoryStream();
+        try { await rejectionStream.CopyToAsync(rejectionBytes); } catch (IOException) { }
+        var rejectionBody = System.Text.Encoding.UTF8.GetString(rejectionBytes.ToArray());
+
+        Check(rejectedResponse.IsSuccessStatusCode && rejectionBody.Contains("RUN_FINISHED"), "Genuine " + kind + " must settle without dispatch and publish completed history: " + rejectionBody);
+        Check(effects == beforeEffects && model.Calls == beforeCalls + 2, "Rejection must perform zero effects and exactly one genuine model continuation.");
+        var history = model.Seen[^1].SelectMany(message => message.Contents).ToArray();
+        Check(history.OfType<FunctionCallContent>().Count(call => call.CallId == "back_1") == 1 && history.OfType<FunctionResultContent>().Count(result => result.CallId == "back_1") == 1 && !history.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent), "Rejected first resumed model history must be one clean original call/result pair.");
+        Check(!rejectionBody.Contains("TOOL_CALL_START"), "Rejected history cannot duplicate public original tool starts.");
+        using var completedRecoveryResponse = await http.PostAsJsonAsync("/recover/" + kind, new { tools = Array.Empty<object>() });
+        var completedRecovery = JsonNode.Parse(await completedRecoveryResponse.Content.ReadAsStringAsync())!;
+        Check(completedRecoveryResponse.IsSuccessStatusCode && completedRecovery["disposition"]?.GetValue<string>() == "Completed" && completedRecovery["snapshot"] is not null, "Completed genuine native rejection history must remain recoverable.");
+        recoveryEvidence.Add(new JsonObject { ["name"] = kind + "-completed", ["envelope"] = completedRecovery });
+    }
+    foreach (var scenario in new[] { "batch", "browser-first", "server-first", "siblings" })
+    {
+        var isMixed = scenario != "batch";
+        var initial = new JsonObject { ["threadId"] = scenario, ["runId"] = "initial", ["messages"] = new JsonArray(new JsonObject { ["id"] = "u1", ["role"] = "user", ["content"] = scenario }), ["tools"] = isMixed ? JsonNode.Parse(ApprovalModel.BrowserTools) : new JsonArray(), ["context"] = new JsonArray(), ["state"] = new JsonObject() };
+        var beforeCalls = model.Calls; var beforeEffects = effects;
+        using var pendingResponse = await http.PostAsJsonAsync("/run", initial);
+        var initialBody = await pendingResponse.Content.ReadAsStringAsync();
+        Check(initialBody.Contains("interrupt") && initialBody.Contains("RUN_FINISHED"), "Every complete batch scenario needs a genuine first interrupt with browser declarations: " + scenario + initialBody);
+        Check(model.Calls == beforeCalls + 1 && effects == beforeEffects, "First mixed/protected interrupt cannot invoke any protected effect or continue the model.");
+        var scenarioKey = new NativeSessionKey("native", "fixture-owned", scenario, new Dictionary<string, string> { ["isolation"] = "fixture-owned" });
+        await using var query = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); query.Parameters.AddWithValue("id", scenarioKey.Id);
+        var pendingPayload = JsonNode.Parse((string)(await query.ExecuteScalarAsync())!)!;
+        if (isMixed)
+        {
+            using var recoveryResponse = await http.PostAsJsonAsync("/recover/" + scenario, new { tools = JsonSerializer.Deserialize<JsonElement>(ApprovalModel.BrowserTools) });
+            var recoveryBody = await recoveryResponse.Content.ReadAsStringAsync();
+            var recovery = string.IsNullOrEmpty(recoveryBody) ? null : JsonNode.Parse(recoveryBody);
+
+            Check(recoveryResponse.IsSuccessStatusCode && recovery?["disposition"]?.GetValue<string>() == "Pending" && recovery["reason"]?.GetValue<string>() == "PendingMixedBrowserResult" && recovery["snapshot"] is null && recovery["interrupts"] is null && recovery["batchId"] is null, "Mixed unresolved browser recovery must remain explicitly blocked with no resumable snapshot/batch.");
+            Check(model.Calls == beforeCalls + 1 && effects == beforeEffects, "Read-only mixed recovery cannot acquire native work.");
+            recoveryEvidence.Add(new JsonObject { ["name"] = scenario + "-mixed-pending", ["envelope"] = recovery!.DeepClone() });
+        }
+        var mixedCallback = JsonNode.Parse(pendingPayload["publicRequest"]!.GetValue<string>())!.AsObject(); mixedCallback["runId"] = "resume";
+        var requests = pendingPayload["approvals"]!["pendingBatch"]!["batch"]!["protectedRequests"]!.AsArray();
+        mixedCallback["resume"] = new JsonArray(requests.Select((request, index) =>
+        {
+            var decision = new JsonObject { ["interruptId"] = request!["requestId"]!.DeepClone(), ["status"] = scenario == "batch" && index == 2 ? "cancelled" : "resolved" };
+            if (!(scenario == "batch" && index == 2)) decision["payload"] = new JsonObject { ["approved"] = scenario != "batch" || index == 0 };
+            return (JsonNode?)decision;
+        }).ToArray());
+        foreach (var call in mixedCallback["messages"]!.AsArray().SelectMany(message => message!["toolCalls"] is JsonArray calls ? calls : []))
+            if (call!["function"]!["name"]!.GetValue<string>() == "frontend") call["metadata"] = new JsonObject { ["b4.step"] = new JsonObject { ["v"] = 1, ["kind"] = "server", ["status"] = "cancelled", ["settledAt"] = 1 } };
+        if (scenario == "batch")
+        {
+            var partial = mixedCallback.DeepClone().AsObject(); partial["resume"]!.AsArray().RemoveAt(2);
+            await RejectOriginal(partial.ToJsonString(), scenarioKey, "partial genuine protected batch");
+            var opposing = mixedCallback.DeepClone().AsObject(); opposing["resume"]!.AsArray().Add(opposing["resume"]![0]!.DeepClone());
+            await RejectOriginal(opposing.ToJsonString(), scenarioKey, "duplicate genuine protected batch member");
+        }
+        else
+        {
+            foreach (var mutation in new[] { "untimed", "extra-field", "wrong-kind", "out-of-range", "other-metadata" })
+            {
+                var invalid = mixedCallback.DeepClone().AsObject();
+                var browser = invalid["messages"]!.AsArray().SelectMany(message => message!["toolCalls"] is JsonArray calls ? calls : []).First(call => call!["function"]!["name"]!.GetValue<string>() == "frontend")!;
+                var step = browser["metadata"]!["b4.step"]!.AsObject();
+                if (mutation == "untimed") step.Remove("settledAt");
+                if (mutation == "extra-field") step["extra"] = true;
+                if (mutation == "wrong-kind") step["kind"] = "client";
+                if (mutation == "out-of-range") step["settledAt"] = 253402300800000L;
+                if (mutation == "other-metadata") browser["metadata"]!["foreign"] = true;
+
+                await RejectOriginal(invalid.ToJsonString(), scenarioKey, "browser cancellation annotation " + mutation);
+            }
+        }
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(mixedCallback) };
+
+        using var resumedResponse = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        using var stream = await resumedResponse.Content.ReadAsStreamAsync(); using var bytes = new MemoryStream();
+        try { await stream.CopyToAsync(bytes); } catch (IOException) { }
+        var resumedBody = System.Text.Encoding.UTF8.GetString(bytes.ToArray());
+
+        Check(resumedBody.Contains("RUN_FINISHED"), "Every genuine batch must finish its owned continuation: " + scenario + resumedBody);
+        Check(effects == beforeEffects + (scenario == "siblings" ? 2 : 1) && model.Calls == beforeCalls + 2, "Only explicitly approved protected members invoke: " + scenario);
+        var history = model.Seen[beforeCalls + 1].SelectMany(message => message.Contents).ToArray();
+        var calls = history.OfType<FunctionCallContent>().ToArray(); var results = history.OfType<FunctionResultContent>().ToArray();
+        Check(calls.Select(call => call.CallId).Distinct(StringComparer.Ordinal).Count() == calls.Length && calls.All(call => results.Count(result => result.CallId == call.CallId) == 1) && results.Length == calls.Length && !history.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent), "The FIRST resumed model history must contain each exact owned sibling once and its result once: " + scenario);
+        if (!isMixed) Check(!resumedBody.Contains("TOOL_CALL_START"), "No protected sibling may be repeated publicly under a fresh native parent.");
+        else
+        {
+            var starts = resumedBody.Split('\n').Where(line => line.StartsWith("data: ")).Select(line => JsonNode.Parse(line[6..])!).Where(item => item["type"]?.GetValue<string>() == "TOOL_CALL_START").ToArray();
+            Check(starts.Length == 1 && starts[0]["toolCallId"]?.GetValue<string>() == "front_fresh", "Only one genuine fresh browser ID may become actionable; cancelled old browser handlers stay uncalled.");
+            var browserHandlers = 0;
+            string BrowserHandler() { browserHandlers++; return "fresh browser result"; }
+            await using var freshQuery = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); freshQuery.Parameters.AddWithValue("id", scenarioKey.Id);
+            var freshPayload = JsonNode.Parse((string)(await freshQuery.ExecuteScalarAsync())!)!;
+            var freshCallback = JsonNode.Parse(freshPayload["publicRequest"]!.GetValue<string>())!.AsObject(); freshCallback["runId"] = "fresh-browser-result";
+            freshCallback["messages"]!.AsArray().Add(new JsonObject { ["id"] = "fresh-result", ["role"] = "tool", ["toolCallId"] = "front_fresh", ["content"] = BrowserHandler() });
+            using var freshResponse = await http.PostAsJsonAsync("/run", freshCallback);
+            var freshBody = await freshResponse.Content.ReadAsStringAsync();
+
+            Check(freshBody.Contains("RUN_FINISHED") && browserHandlers == 1 && effects == beforeEffects + (scenario == "siblings" ? 2 : 1), "Only the fresh browser handler executes once, with no replay of protected effects.");
+            var laterPayload = JsonNode.Parse((string)(await freshQuery.ExecuteScalarAsync())!)!;
+            var later = JsonNode.Parse(laterPayload["publicRequest"]!.GetValue<string>())!.AsObject(); later["runId"] = "later-user";
+            later["messages"]!.AsArray().Add(new JsonObject { ["id"] = "u2", ["role"] = "user", ["content"] = "later clean turn" });
+            using var laterResponse = await http.PostAsJsonAsync("/run", later);
+
+            Check((await laterResponse.Content.ReadAsStringAsync()).Contains("RUN_FINISHED") && browserHandlers == 1 && effects == beforeEffects + (scenario == "siblings" ? 2 : 1), "A later clean user turn must not reconstruct settled approvals or replay any browser/server call.");
+            foreach (var seen in model.Seen.Skip(beforeCalls + 1))
+            {
+                var seenContents = seen.SelectMany(message => message.Contents).ToArray(); var seenCalls = seenContents.OfType<FunctionCallContent>().ToArray(); var seenResults = seenContents.OfType<FunctionResultContent>().ToArray();
+                Check(seenCalls.Select(call => call.CallId).Distinct(StringComparer.Ordinal).Count() == seenCalls.Length && seenCalls.All(call => seenResults.Count(result => result.CallId == call.CallId) == 1) && seenResults.Length == seenCalls.Length && !seenContents.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent), "Every later actual native model history must retain unique call/result pairs without residual approval content.");
+            }
+        }
+    }
+    async Task<JsonObject> Prefix(string thread)
+    {
+        var ownedKey = new NativeSessionKey("native", "fixture-owned", thread, new Dictionary<string, string> { ["isolation"] = "fixture-owned" });
+        await using var query = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); query.Parameters.AddWithValue("id", ownedKey.Id);
+        var payload = JsonNode.Parse((string)(await query.ExecuteScalarAsync())!)!;
+        return JsonNode.Parse(payload["publicRequest"]!.GetValue<string>())!.AsObject();
+    }
+    async Task<string> Send(JsonObject input)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(input) };
+        using var received = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        using var stream = await received.Content.ReadAsStreamAsync(); using var bytes = new MemoryStream();
+        try { await stream.CopyToAsync(bytes); } catch (IOException) { }
+        return System.Text.Encoding.UTF8.GetString(bytes.ToArray());
+    }
+    var sequentialCalls = model.Calls; var sequentialEffects = effects; var sequentialBrowserHandlers = 0;
+    var sequential = new JsonObject { ["threadId"] = "sequential", ["runId"] = "initial", ["messages"] = new JsonArray(new JsonObject { ["id"] = "u1", ["role"] = "user", ["content"] = "sequential" }), ["tools"] = JsonNode.Parse(ApprovalModel.BrowserTools), ["context"] = new JsonArray(), ["state"] = new JsonObject() };
+
+    var sequentialBrowser = await Send(sequential);
+    Check(sequentialBrowser.Contains("RUN_FINISHED") && sequentialBrowser.Contains("front_initial") && !sequentialBrowser.Contains("interrupt"), "Browser-only work must continue through the same native tools-empty composition before a later protected request: " + sequentialBrowser);
+    var browserCallback = await Prefix("sequential"); browserCallback["runId"] = "browser-result";
+    string SequentialBrowserHandler() { sequentialBrowserHandlers++; return "actual browser result"; }
+    browserCallback["messages"]!.AsArray().Add(new JsonObject { ["id"] = "initial-browser-result", ["role"] = "tool", ["toolCallId"] = "front_initial", ["content"] = SequentialBrowserHandler() });
+    var sequentialPending = await Send(browserCallback);
+    Check(sequentialPending.Contains("RUN_FINISHED") && sequentialPending.Contains("ficc_back_1") && sequentialPending.Contains("interrupt") && effects == sequentialEffects, "A browser-result continuation must expose a genuine later native protected approval without synthetic grant: " + sequentialPending);
+    var sequentialDecision = await Prefix("sequential"); sequentialDecision["runId"] = "approved";
+    sequentialDecision["resume"] = new JsonArray(new JsonObject { ["interruptId"] = "ficc_back_1", ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } });
+    var sequentialDone = await Send(sequentialDecision);
+
+    Check(sequentialDone.Contains("RUN_FINISHED") && !sequentialDone.Contains("TOOL_CALL_START") && effects == sequentialEffects + 1 && sequentialBrowserHandlers == 1 && model.Calls == sequentialCalls + 3, "Browser then protected native approval must settle each original pair exactly once and never replay the completed browser call: " + sequentialDone);
+    foreach (var seen in model.Seen.Skip(sequentialCalls + 1))
+    {
+        var contents = seen.SelectMany(message => message.Contents).ToArray(); var calls = contents.OfType<FunctionCallContent>().ToArray(); var results = contents.OfType<FunctionResultContent>().ToArray();
+        Check(calls.Select(call => call.CallId).Distinct(StringComparer.Ordinal).Count() == calls.Length && calls.All(call => results.Count(result => result.CallId == call.CallId) == 1) && calls.Length == results.Length && !contents.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent), "Sequential native model histories preserve completed historical calls unchanged and reconstruct only the owned unresolved request.");
+    }
+    Console.WriteLine("Native approval recovery evidence: " + recoveryEvidence.ToJsonString());
     Console.WriteLine("Native approval host contracts passed.");
 }
 finally
@@ -50,15 +284,45 @@ finally
 }
 sealed class ApprovalModel : IChatClient
 {
+    public const string BrowserTools = """[{"name":"frontend","description":"browser","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}]""";
     public int Calls { get; private set; }
+    public List<ChatMessage[]> Seen { get; } = [];
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
-        Calls++;
-        if (Calls != 1) throw new Exception("Model continuation ran before an approval decision.");
-        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("back_1", "backend", new Dictionary<string, object?> { ["code"] = "protected" })]) { MessageId = "assistant-1" }) { ResponseId = "response-1" });
+        Calls++; Seen.Add(messages.Select(message => message.Clone()).ToArray());
+        CheckDeclarations(options);
+        var scenario = messages.First(message => message.Role == ChatRole.User).Text;
+        if (scenario is "browser-first" or "server-first" or "siblings" or "sequential")
+        {
+            var declarations = (options?.Tools ?? []).OfType<AIFunctionDeclaration>().Where(tool => tool.Name == "frontend").ToArray();
+            if (declarations.Length != 1 || !JsonNode.DeepEquals(JsonNode.Parse(declarations[0].JsonSchema.GetRawText()), JsonNode.Parse(BrowserTools)![0]!["parameters"])) throw new Exception("Every FIRST and resumed model declaration must preserve the exact original browser schema once.");
+        }
+        if (scenario == "sequential" && messages.SelectMany(message => message.Contents).OfType<FunctionResultContent>().Any() && !messages.SelectMany(message => message.Contents).OfType<FunctionCallContent>().Any(call => call.CallId == "back_1"))
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("back_1", "backend", new Dictionary<string, object?> { ["code"] = "protected" })]) { MessageId = "sequential-native" }) { ResponseId = "sequential-native", FinishReason = ChatFinishReason.ToolCalls });
+        if (messages.SelectMany(message => message.Contents).OfType<FunctionResultContent>().Any() && scenario is "browser-first" or "server-first" or "siblings" && !messages.SelectMany(message => message.Contents).OfType<FunctionCallContent>().Any(call => call.CallId == "front_fresh"))
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("front_fresh", "frontend", new Dictionary<string, object?> { ["city"] = "Fresh" })]) { MessageId = "fresh-provider" }) { ResponseId = "fresh-provider", FinishReason = ChatFinishReason.ToolCalls });
+        if (messages.SelectMany(message => message.Contents).OfType<FunctionResultContent>().Any())
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "done") { MessageId = "assistant-done-" + Calls }) { ResponseId = "assistant-done-" + Calls });
+        FunctionCallContent Backend(string id, string code) => new(id, "backend", new Dictionary<string, object?> { ["code"] = code });
+        FunctionCallContent Browser(string id) => new(id, "frontend", new Dictionary<string, object?> { ["city"] = "Paris" });
+        IList<AIContent> contents = scenario switch
+        {
+            "sequential" => [Browser("front_initial")],
+            "batch" => [Backend("back_approve", "APPROVE"), Backend("back_decline", "DECLINE"), Backend("back_cancel", "CANCEL")],
+            "browser-first" => [Browser("front_1"), Backend("back_1", "protected")],
+            "server-first" => [Backend("back_1", "protected"), Browser("front_1")],
+            "siblings" => [Browser("front_1"), Backend("back_1", "protected"), Browser("front_2"), Backend("back_2", "second")],
+            _ => [Backend("back_1", "protected")]
+        };
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, contents) { MessageId = "assistant-1" }) { ResponseId = scenario == "sequential" ? "assistant-1" : "response-1", FinishReason = scenario is "browser-first" or "batch" ? null : ChatFinishReason.ToolCalls });
     }
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     { foreach (var update in (await GetResponseAsync(messages, options, cancellationToken)).ToChatResponseUpdates()) yield return update; }
+    private static void CheckDeclarations(ChatOptions? options)
+    {
+        var names = (options?.Tools ?? []).Select(tool => tool.Name).ToArray();
+        if (names.Count(name => name == "backend") != 1 || names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw new Exception("Actual native model declarations must contain the registered backend once.");
+    }
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
     public void Dispose() { }
 }

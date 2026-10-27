@@ -11,6 +11,7 @@ import {
   recoveryBlocked,
   recoveryEndpoint,
   recoveryOrigin,
+  recoveryStatus,
   rememberThread,
   selectedThread,
 } from './recovery';
@@ -82,11 +83,7 @@ export function useRecoveryControls(
           expectedRevision,
           structuredHistory: 'preserve-diagnostics',
         });
-      setStatus(
-        envelope.reconciliationOutcome
-          ? `${envelope.disposition}: ${envelope.reconciliationOutcome}`
-          : envelope.disposition,
-      );
+      setStatus(recoveryStatus(envelope));
       setBlocked(recoveryBlocked(envelope));
     } catch (cause) {
       if (current())

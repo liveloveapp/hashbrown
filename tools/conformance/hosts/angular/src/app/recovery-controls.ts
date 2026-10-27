@@ -17,6 +17,7 @@ import {
   recoveryBlocked,
   recoveryEndpoint,
   recoveryOrigin,
+  recoveryStatus,
   rememberThread,
 } from '../recovery';
 
@@ -74,11 +75,7 @@ export function createRecoveryControls(
           expectedRevision,
           structuredHistory: 'preserve-diagnostics',
         });
-      status.set(
-        envelope.reconciliationOutcome
-          ? `${envelope.disposition}: ${envelope.reconciliationOutcome}`
-          : envelope.disposition,
-      );
+      status.set(recoveryStatus(envelope));
       blocked.set(recoveryBlocked(envelope));
     } catch (cause) {
       if (current())

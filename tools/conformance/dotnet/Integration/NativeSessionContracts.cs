@@ -136,7 +136,7 @@ public sealed record NativeSessionSave
 /// <summary>Private receipt binding publication to the successfully saved owner and revision.</summary>
 public sealed record NativeSavedReceipt(NativeSessionLease Lease, long SavedRevision);
 /// <summary>Bounded public status; private native JSON is never exposed.</summary>
-public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null, bool IsNew = false, bool TurnCompleted = false);
+public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null, bool IsNew = false, bool TurnCompleted = false, IReadOnlyList<RecoveryInterrupt>? PendingInterrupts = null, string? RecoveryReason = null);
 /// <summary>Scoped operator CAS requiring explicit quiescence and external evidence.</summary>
 public sealed record NativeSessionReconciliation(string ExpectedState, long ExpectedGeneration, long ExpectedRevision, string Outcome, string Reason, string EvidenceReference, bool ExternalQuiescenceAcknowledged);
 /// <summary>Immutable operator audit entry.</summary>
@@ -163,6 +163,8 @@ public interface INativeSessionJournal
     ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default);
     /// <summary>Settles only a genuine admitted decline or cancellation without dispatch.</summary>
     ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default);
+    /// <summary>Settles the exact genuine interrupted browser rejection without granting a decision or dispatch.</summary>
+    ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batchId, string requestId, string callId, JsonElement result, CancellationToken cancellationToken = default);
     /// <summary>Reads only a captured descriptor under the current owner.</summary>
     ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string callId, CancellationToken cancellationToken = default);
     /// <summary>Commits a permanent dispatch marker before executing.</summary>
