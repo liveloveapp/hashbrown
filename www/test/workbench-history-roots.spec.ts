@@ -3,7 +3,7 @@ import ts from 'typescript';
 import { expect, test } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 
-function reactDispatch(format: string) {
+function reactDispatch(format: string, id?: string) {
   const source = readFileSync(
     'www/examples/quickstart/react/src/Workbench.tsx',
     'utf8',
@@ -17,6 +17,7 @@ function reactDispatch(format: string) {
     },
   }).outputText;
   const names = [
+    'ServerWorkbenchConversation',
     'HistoryWorkbenchConversation',
     'WorkflowWorkbenchConversation',
     'MagicTextWorkbenchConversation',
@@ -48,7 +49,7 @@ function reactDispatch(format: string) {
       ) => ({ type, children }),
     },
     (initial: unknown) => [initial, () => undefined],
-    () => ({ format }),
+    () => ({ format, id }),
     { location: { search: '' } },
     ...names,
   );
@@ -68,13 +69,23 @@ test('React root dispatch preserves all seventeen prior lessons and binds both t
   };
 
   const selected = workbenchLessons.map((lesson) =>
-    reactDispatch(lesson.format),
+    reactDispatch(lesson.format, lesson.id),
   );
 
   expect(selected).toEqual(
-    workbenchLessons.map((lesson) => expected[lesson.format]),
+    workbenchLessons.map((lesson) =>
+      ['server-threads', 'public-endpoint'].includes(lesson.id)
+        ? 'ServerWorkbenchConversation'
+        : expected[lesson.format],
+    ),
   );
-  expect(selected).toHaveLength(19);
+  expect(selected).toHaveLength(workbenchLessons.length);
+  expect(reactDispatch('history', 'server-threads')).toBe(
+    'ServerWorkbenchConversation',
+  );
+  expect(reactDispatch('history', 'public-endpoint')).toBe(
+    'ServerWorkbenchConversation',
+  );
 });
 
 test('Angular root registers history independently and retains the previous dispatch branches', () => {
@@ -85,7 +96,9 @@ test('Angular root registers history independently and retains the previous disp
   const root = source.slice(source.indexOf("selector: 'app-workbench'"));
 
   expect(root).toContain('HistoryWorkbenchConversation,');
-  expect(root).toContain("@if (format === 'history')");
+  expect(root).toContain("format === 'history'");
+  expect(root).toContain('ServerWorkbenchConversation,');
+  expect(root).toContain('<app-server-workbench-conversation');
   expect(root).toContain('<app-history-workbench-conversation');
   for (const format of [
     'workflow',

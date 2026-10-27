@@ -27,13 +27,10 @@ test.each(SDKS)(
 );
 
 test.each(SDKS)(
-  '%s server-storage prerequisite links its checked text helper directly',
+  '%s server-storage guide links its checked canonical text codec directly',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'threads'])?.body ?? '';
-    const file =
-      sdk === 'react'
-        ? 'react/src/text-history.ts'
-        : 'angular/src/app/text-history.ts';
+    const file = 'runtime/workbench-history.ts';
 
     expect(body).toContain(
       `https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/${file}`,
@@ -44,7 +41,7 @@ test.each(SDKS)(
         resolve(import.meta.dirname, '../../examples/quickstart', file),
         'utf8',
       ),
-    ).toContain('export function restoreTextMessages');
+    ).toContain('export function decodeWorkbenchHistory');
   },
 );
 

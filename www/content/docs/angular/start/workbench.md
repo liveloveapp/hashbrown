@@ -28,7 +28,7 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens nineteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens twenty-one lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -53,6 +53,8 @@ The lessons are:
 | [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
 | [Message history](/docs/angular/concept/message-history) | `/angular.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
 | [Save text conversations](/docs/angular/recipes/browser-history) | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
+| [Server-owned threads](/docs/angular/recipes/threads) | `/angular.html?lesson=server-threads` | Explicit server saves, refresh and version conflicts. |
+| [Public endpoints](/docs/angular/recipes/public-endpoint) | `/angular.html?lesson=public-endpoint` | Identity and ownership checks before provider work. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 

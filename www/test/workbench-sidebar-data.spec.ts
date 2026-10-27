@@ -39,7 +39,13 @@ test('groups every lesson exactly once in sidebar order', () => {
     [
       'production',
       'Production',
-      ['debugging', 'request-transformation', 'save-text-conversations'],
+      [
+        'debugging',
+        'request-transformation',
+        'save-text-conversations',
+        'server-threads',
+        'public-endpoint',
+      ],
     ],
     ['recipes', 'Recipes', ['magic-text', 'predictions', 'ui-selection']],
   ]);

@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has nineteen allowlisted lessons in both framework hosts:
+The workbench now has twenty-one allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -273,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All nineteen lessons (38 framework paths) are covered by `npx nx workbench-e2e www`.
+All twenty-one lessons (42 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -329,3 +329,24 @@ runtimes and a hard refresh. The post-refresh timeline captures only the new pag
 Replay never calls a provider, replaces live messages or writes storage. Each
 recording has both codecs, captions, poster, result and walkthrough. Keep raw
 captures; no SDK release.
+
+
+### Canonical server conversations
+
+Open `?lesson=server-threads` or `?lesson=public-endpoint` in either framework host.
+Start a local demo session, load a provisioned Lighthouse/Harbor thread, and send
+through actual Hashbrown text chat. Saves are explicit successful completed text,
+with the strict shared codec and owner-scoped atomic version checks. A competing
+ordinary HTTP write produces a genuine stale-version 409 without overwriting
+unsaved client messages. Reload is explicit.
+
+The endpoint lesson records an anonymous 401, an authorized real stream, and a
+foreign-owner 404 before provider work. The HttpOnly local session and process
+memory repository are teaching integrations, not production authentication or
+agent checkpoints. They survive browser refresh only while the server lives.
+Replay follows immutable safe HTTP operations and SDK observations without
+requests or writes; a refreshed page does not reconstruct the old stream.
+
+Record with `WORKBENCH_LESSONS=server-threads,public-endpoint npx nx workbench-demo www`
+and existing server-only OpenAI credentials/model. Four framework-specific
+recordings have both codecs, captions, poster, result and text walkthrough.

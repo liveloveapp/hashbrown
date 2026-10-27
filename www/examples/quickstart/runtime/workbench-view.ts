@@ -1,3 +1,4 @@
+import { workbenchServerInspection } from './workbench-server-view';
 import {
   canSaveWorkbenchHistory,
   isWorkbenchHistoryBusy,
@@ -558,7 +559,11 @@ export function mountWorkbench(
         : 'Text'
       : 'JSON',
     'Requests',
-    ...(commands.lesson?.format === 'history' ? ['History', 'Saved text'] : []),
+    ...(commands.lesson?.format === 'history'
+      ? ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+        ? ['History', 'Server', 'Access']
+        : ['History', 'Saved text']
+      : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
     )
@@ -817,7 +822,8 @@ export function mountWorkbench(
     const busy =
       snapshot.status === 'loading' ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
-      !!frame?.history?.replacement;
+      !!frame?.history?.replacement ||
+      !!frame?.history?.app.server?.busy;
     const blocked =
       busy ||
       snapshot.status === 'paused' ||
@@ -827,7 +833,16 @@ export function mountWorkbench(
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
-    send.disabled = historical || blocked;
+    const server = frame?.history?.app.server;
+    const serverLesson = commands.lesson?.id;
+    const serverUnloaded =
+      (serverLesson === 'server-threads' ||
+        serverLesson === 'public-endpoint') &&
+      (!server?.threadId ||
+        server.access !== 'local-demo' ||
+        server.threadId !==
+          server.threads?.[serverLesson][server.selectedSlot]);
+    send.disabled = historical || blocked || serverUnloaded;
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -1084,6 +1099,7 @@ export function mountWorkbench(
                 }
         : undefined;
     const recipeView =
+      workbenchServerInspection(tab, history?.app.server) ??
       historyView ??
       workflowView ??
       (onboardingText

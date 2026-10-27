@@ -1,0 +1,31 @@
+REACT · server-threads
+
+Real OpenAI text through the actual Hashbrown SDK. Unchanged provider events are paced at 20 ms for filming. Footage is slowed to half speed; no narration. The loopback demo session and process-memory repository are application integrations, not production authentication or durable agent checkpoints.
+
+Start a local demo session. Identity stays on the server.
+
+Load Lighthouse before sending a request.
+
+OpenAI streams the named plan into text chat.
+
+Save completed text with the loaded server version.
+
+A browser refresh starts a fresh capture.
+
+Load the saved thread. No model request.
+
+The next request includes the saved conversation.
+
+Another client saves a newer server version.
+
+Save returns 409. Unsaved text stays visible.
+
+Reload explicitly adopts the newer server snapshot.
+
+Review the actual HTTP operations and SDK messages.
+
+Replay makes no requests or writes.
+
+Back live.
+
+Server saves are explicit completed-text snapshots with owner and version checks. No tools, generated UI, shared state or paused checkpoints are restored. The competing client makes a real independent HTTP write; a stale save returns 409. Anonymous and foreign-owner checks stop before provider invocation. Refresh clears SDK sessions and captures; loading server text starts no generation. Replay makes no requests or writes.
