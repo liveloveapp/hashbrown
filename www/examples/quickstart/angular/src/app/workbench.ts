@@ -1,3 +1,4 @@
+import { ServerWorkbenchConversation } from './server-workbench';
 import { HistoryWorkbenchConversation } from './history-workbench';
 import { WorkflowWorkbenchConversation } from './workflow-workbench';
 import { PlanCard } from './plan-card';
@@ -340,6 +341,7 @@ export class WorkbenchConversation implements AfterViewInit {
     WorkbenchConversation,
     WorkflowWorkbenchConversation,
     HistoryWorkbenchConversation,
+    ServerWorkbenchConversation,
     StructuredWorkbenchConversation,
     DecisionWorkbenchConversation,
     MagicTextWorkbenchConversation,
@@ -348,7 +350,13 @@ export class WorkbenchConversation implements AfterViewInit {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (format === 'history') {
+    @if (server) {
+      <app-server-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'history') {
       <app-history-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -400,6 +408,9 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly server = ['server-threads', 'public-endpoint'].includes(
+    getWorkbenchLesson(window.location.search).id,
+  );
   protected readonly format = getWorkbenchLesson(window.location.search).format;
   protected readonly decision =
     getWorkbenchLesson(window.location.search).format === 'decision';

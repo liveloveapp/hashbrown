@@ -6,7 +6,10 @@ export function createWorkbenchTransport(
   store: WorkbenchStore,
   delegate?: Transport,
   endpoint = '/api/workbench/chat',
-  options: { readonly getDebugDenied?: () => boolean } = {},
+  options: {
+    readonly getDebugDenied?: () => boolean;
+    readonly onResponse?: (response: Response) => void;
+  } = {},
 ): Transport {
   let nonce = 0;
   return {
@@ -36,6 +39,7 @@ export function createWorkbenchTransport(
           fetchImpl: async (...args) => {
             const response = await fetch(...args);
             if (current()) {
+              options.onResponse?.(response);
               const source =
                 response.headers.get('X-Workbench-Source') ?? 'unknown';
               let problem: string | undefined;
