@@ -1,5 +1,38 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-server-threads-react': {
+    title: 'React workbench: server-owned threads.',
+    caption:
+      'Load and save completed text, refresh, and recover from a genuine version conflict.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-public-endpoint-react': {
+    title: 'React workbench: public endpoints.',
+    caption:
+      'Compare anonymous and foreign-owner denials with an authorized streamed reply.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-server-threads-angular': {
+    title: 'Angular workbench: server-owned threads.',
+    caption:
+      'Load and save completed text, refresh, and recover from a genuine version conflict.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-public-endpoint-angular': {
+    title: 'Angular workbench: public endpoints.',
+    caption:
+      'Compare anonymous and foreign-owner denials with an authorized streamed reply.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-message-history-react': {
     title: 'React workbench: message history.',
     caption:
