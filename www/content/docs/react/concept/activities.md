@@ -2,246 +2,92 @@
 title: 'Activities: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Render AG-UI activities, display-only progress such as plans and workflow steps, in a React chat and send them from your server.'
+    content: 'Show the work your agent actually performed. Follow the canonical React workbench.'
 ---
 
 # Activities
 
-<p class="subtitle">Show plans, progress, and background work that the user should see and the model should not.</p>
+<p class="subtitle">Show the work your agent actually performed.</p>
 
-Show the work as it happens. This example updates a three-step itinerary through display-only activities.
-
-<hb-docs-demo demo="activities">
+<hb-docs-demo demo="canonical-workbench-activities-react">
 </hb-docs-demo>
 
-The recorded agent emits activity snapshots and deltas. The application renders them as progress; they are not sent back as model conversation. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workflows.tsx).
+Let's explain our two-step plan and show the work around the reply. The agent validates the plan context, creates an activity, and updates that activity when the provider finishes its explanation. A second turn gets a new activity ID.
 
-An activity is AG-UI's channel for display-only, structured progress: a plan, a progress bar, a workflow step, a background job. Activities are not part of the conversation. The model never sees them, and Hashbrown never sends them back to the agent.
+These stages describe work the agent performed. They do not mean the demo was outlined or recorded. The plan remains application data.
 
-Hashbrown is headless. It turns the activity events into typed messages in `chat.messages`, and your app renders them.
+<img src="/video/docs/canonical-workbench-activities-react-result.png" alt="React workbench showing activities, the chat, inspector, contextual drawer, and bottom timeline." width="1600" height="1000" loading="lazy" />
 
----
+Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=activities`](http://127.0.0.1:4370/react.html?lesson=activities). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
-## Activities, Tool Calls, and Server Tool Calls
+The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 
-| Kind             | Who asked for it             | Does the model continue from it? | Where it appears                  |
-| ---------------- | ---------------------------- | -------------------------------- | --------------------------------- |
-| Tool call        | The model                    | Yes, from the tool's result      | `toolCalls` on an assistant       |
-| Server tool call | The model, run by the server | Yes                              | `serverToolCalls` on an assistant |
-| Activity         | Your server or a third party | No                               | Its own `role: 'activity'` entry  |
+## Let the Agent Report Progress
 
-Use a tool call when the model needs the result. Use an activity when the user needs to see something. The two can describe the same piece of work. Hashbrown keeps them separate and records the link, which [links](#links) explains.
+An activity is structured, display-only information from your agent. Use it for progress the user needs to see. Use a tool when the model needs a result to continue its reasoning.
 
----
+Our agent creates one `plan-progress` activity after validating context:
 
-## The Activity Message
-
-Each activity is its own entry in `chat.messages`, positioned where it arrived.
+<hb-code-example header="server/workbench-workflows.ts">
 
 ```ts
-type ActivityMessage = {
-  role: 'activity';
-  id: string;
-  activityType: string;
-  content: Readonly<Record<string, unknown>>;
-  metadata?: Metadata;
-  links: ActivityLinks;
-};
+      if (lesson === 'activities')
+        yield {
+          type: EventType.ACTIVITY_SNAPSHOT,
+          messageId: activityId,
+          activityType: 'plan-progress',
+          content: {
+            stage: 'context-checked',
+            label: 'Shared plan context validated',
+          },
+          replace: true,
+        };
 ```
 
-- `id` is the AG-UI activity message id. Later events for the same id update the same message. Ids must be unique within the thread: reusing one, even in a later run, updates the earlier activity in place instead of adding a new one.
-- `activityType` is the producer's kind, for example `plan` or `progress`. Switch on it to choose a component.
-- `content` is untyped. Narrow it by `activityType` in your app. Hashbrown deeply freezes it and replaces it with a new object on every update, so memoizing over `chat.messages` sees each change.
+</hb-code-example>
 
-An activity arrives in one of two ways. An `ACTIVITY_SNAPSHOT` event creates the activity, or replaces its content when the id exists. A `replace: false` snapshot keeps the existing content and only merges metadata. An `ACTIVITY_DELTA` event applies an RFC 6902 JSON Patch to the content.
+The activity starts before the assistant message, so its `links` identify the run but need not include an assistant message ID. After a successful provider completion, the agent emits `ACTIVITY_DELTA` for the same message ID and changes its stage to `reply-complete`.
 
-Activities from earlier runs stay in history. A `MESSAGES_SNAPSHOT` that carries activities replaces the activity set. A snapshot that carries none keeps the activities you already have.
+## Render Actual Activity Messages
 
----
+Hashbrown exposes each activity as a `role: 'activity'` entry in `chat.messages`. Switch on `activityType` and validate `content` before rendering it. The workbench accepts only its two known progress stages and a bounded text label.
 
-## Links
+<hb-code-example header="runtime/workbench-workflows.ts">
 
-Each activity records what it belonged to when it first arrived.
-
-| Field                | Meaning                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `runId`              | The run that delivered it. Set for the current run only.   |
-| `assistantMessageId` | The last assistant message started in that run, if any.    |
-| `toolCallId`         | The most recent tool call of any kind in that run, if any. |
-| `subagentRunId`      | The subagent run that sent it, if the agent reports one.   |
-
-An activity sent after the model's answer links to that answer, including an answer that only calls tools. One sent before any assistant message has started has no `assistantMessageId`. Later snapshots and deltas keep the links, and incoming links are never trusted: activities restored with `setMessages` or a `MESSAGES_SNAPSHOT` get their links recomputed from their position. `subagentRunId` is the exception. It is kept on restore, not recomputed, because position cannot tell which subagent sent an activity.
-
-`reload` keeps the activities the reloaded turn sent before its answer and drops the ones that came after it. The kept activities are relinked from their position, like any restored activity.
-
-User and assistant messages expose a stable `id`, so a link always has something to point at. The streaming assistant message keeps the id it has once it is committed.
-
----
-
-## Render a Flat Timeline
-
-When activities should appear in the order they arrived, switch on `role` and render each one in place.
-
-<hb-code-example header="timeline.tsx">
-
-```tsx
-import { useChat } from '@hashbrownai/react';
-
-function planSteps(content: Readonly<Record<string, unknown>>): string[] {
-  const steps = content['steps'];
-
-  return Array.isArray(steps) ? steps.map(String) : [];
-}
-
-export function Timeline() {
-  const chat = useChat({ system: 'You are a helpful assistant.' });
-
-  return (
-    <>
-      {chat.messages.map((message, index) => {
-        switch (message.role) {
-          case 'user':
-            return (
-              <p key={index} className="user">
-                {message.content}
-              </p>
-            );
-          case 'assistant':
-            return (
-              <p key={index} className="assistant">
-                {message.content}
-              </p>
-            );
-          case 'activity':
-            return message.activityType === 'plan' ? (
-              <ul key={message.id} className="plan">
-                {planSteps(message.content).map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ul>
-            ) : null;
-          default:
-            return null;
-        }
-      })}
-    </>
-  );
+```ts
+export interface WorkbenchWorkflowProgress {
+  readonly stage: 'context-checked' | 'reply-complete';
+  readonly label: string;
 }
 ```
 
 </hb-code-example>
 
-Always handle `'activity'` in your `switch` on `role`, even if you ignore it. An activity message is a normal member of the list.
+The client renders the validated message ID, label, stage, and actual SDK `links`. It does not synthesize progress from a timer or from text the model happened to write.
 
-An activity that arrives mid-run shows up immediately, next to the streaming assistant message. It does not wait for the run to finish.
+## Keep IDs and Links Stable
 
----
+`ACTIVITY_SNAPSHOT` creates an activity or replaces the content for an existing ID. With `replace: false`, an existing activity keeps its content and merges metadata. `ACTIVITY_DELTA` applies an RFC 6902 JSON Patch. Hashbrown freezes the content and produces a new object for each update.
 
-## Render Nested Cards
+An ID must be unique within the thread. Reusing an ID in another run updates the old activity; it does not add a new one. Our agent creates a fresh ID for the follow-up request.
 
-When activities belong with the assistant answer or tool call they describe, use `groupTurns`. It groups the flat list into turns and buckets each turn's activities by their links.
+`links` capture the run, most recent assistant message, tool call, and subagent run when the activity first arrives. Later updates preserve those links. Restored activity links are recomputed from message order, except for `subagentRunId`, which cannot be inferred from position.
 
-<hb-code-example header="turns.tsx">
+Activities remain in local history but are omitted from outgoing model conversation. A `MESSAGES_SNAPSHOT` containing activities replaces the activity set; one containing none retains existing activities. `reload` keeps activities before the reloaded answer and removes those after it.
 
-```tsx
-import { useMemo } from 'react';
-import { groupTurns } from '@hashbrownai/core';
-import { useChat } from '@hashbrownai/react';
+## Inspect the Work Across Turns
 
-export function Turns() {
-  const chat = useChat({ system: 'You are a helpful assistant.' });
-  const turns = useMemo(() => groupTurns(chat.messages), [chat.messages]);
+Select an activity event in the bottom timeline. The chat, Activities inspector, and far-right drawer follow that captured frame. Replay is read-only and does not call the agent again.
 
-  return (
-    <>
-      {turns.map((turn, index) => (
-        <section key={turn.user?.id ?? index}>
-          {turn.user && <p className="user">{turn.user.content}</p>}
-          {turn.assistants.map((assistant) => (
-            <article key={assistant.id}>
-              <p>{assistant.content}</p>
-              {(turn.activitiesByAssistant.get(assistant.id) ?? []).map(
-                (activity) => (
-                  <aside key={activity.id}>{activity.activityType}</aside>
-                ),
-              )}
-            </article>
-          ))}
-          {turn.unlinkedActivities.map((activity) => (
-            <aside key={activity.id}>{activity.activityType}</aside>
-          ))}
-        </section>
-      ))}
-    </>
-  );
-}
-```
+An activity does not execute an action or prove an external task succeeded. Emit stages when the underlying work actually reaches them. Continue with [Tools](/docs/react/concept/functions) or [Shared Agent State](/docs/react/concept/shared-agent-state).
 
-</hb-code-example>
 
-Each `Turn` holds:
+## Group Activities by Turn
 
-- `user`: the user message that opened the turn, if any.
-- `assistants`: the assistant messages of the turn, in order.
-- `activitiesByAssistant`: activities linked to an assistant message, keyed by its `id`.
-- `activitiesByToolCall`: activities linked to a client or server tool call, keyed by `toolCallId`. Use this to render a card next to the tool call it belongs to.
-- `unlinkedActivities`: activities in the turn with neither link.
-- `errors`: the error messages of the turn.
+Use `groupTurns` from `@hashbrownai/core` when an activity belongs beside its assistant message or tool call. Each turn exposes `activitiesByAssistant`, `activitiesByToolCall`, and `unlinkedActivities`, alongside its user, assistants, and errors. The helper is pure and preserves input order in each group. Messages before the first user form a turn without a user.
 
-`groupTurns` is a pure function. It does not change its input and keeps the input order inside every bucket. Messages before the first user message form a turn without a `user`.
+## Receive or Produce Activity Events
 
----
+Any AG-UI backend can emit activity events. A delta for an unknown ID or a patch that cannot apply is dropped with a console warning rather than ending the run; valid metadata is retained. Trailing activities do not cause `reload` or continuation to treat them as an unanswered conversation message.
 
-## Receiving Activities from Third-Party Backends
-
-Any AG-UI backend can send `ACTIVITY_SNAPSHOT` and `ACTIVITY_DELTA` events, and Hashbrown handles them the same way. Your app needs no extra setup.
-
-Hashbrown is forgiving about malformed input from a backend you do not control:
-
-- A delta for an unknown id is dropped.
-- A delta whose patch fails to apply is dropped. Valid metadata on it is kept.
-- A dropped delta logs a warning to the console and never ends the run.
-
-Activities are display material, so Hashbrown removes them from the messages it sends back to the agent on later runs.
-
-`chat.reload()` and the logic that decides whether the last message needs an answer skip trailing activities. An activity never counts as the last user or assistant message.
-
----
-
-## Sending Activities from Your Server
-
-Hashbrown's own adapters can send activities too. See [Sending activities](/docs/react/platform/openai#sending-activities) for the `activities` option, available on every adapter.
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/message-history">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Message History</h4>
-      <p>Persist, restore, and prune chat messages.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="platform/openai">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>OpenAI</h4>
-      <p>Send activities from your server with the OpenAI adapter.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/functions">
-    <div>
-      <hb-functions />
-    </div>
-    <div>
-      <h4>Tool Calling</h4>
-      <p>Let the model call functions and continue from their results.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Hashbrown adapters also offer an explicit `activities` option. See [Sending activities](/docs/react/platform/openai#sending-activities). Use it when your server owns the progress; the model does not emit progress simply because the client renders an activity card.

@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has fourteen allowlisted lessons in both framework hosts:
+The workbench now has seventeen allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -195,6 +195,9 @@ The workbench now has fourteen allowlisted lessons in both framework hosts:
 - `?lesson=first-plan`: one tool-free UI request and a trusted preview, without an application write.
 - `?lesson=conversation`: two plain-text turns, retained messages, and request identities.
 - `?lesson=system-instructions`: browser declaration and public server policy observed at provider mapping.
+- `?lesson=shared-state`: explicit state replacement and actual agent state updates.
+- `?lesson=activities`: actual agent progress with SDK links and fresh activity IDs.
+- `?lesson=interrupts`: whole approval batches and same-turn resume.
 
 All panels remain visible. Light code surfaces and compact milestones reduce visual noise; Raw events reveals every frame. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
 
@@ -268,7 +271,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All fourteen lessons (28 framework paths) are covered by `npx nx workbench-e2e www`.
+All seventeen lessons (34 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -284,8 +287,25 @@ contracts in its inspector and capture timeline.
 
 Plain-text onboarding uses no tools or UI schema. The Instructions view compares
 captured browser configuration with the fixed public policy observed from actual
-mapped provider input. It is not an authorization mechanism. Fourteen lessons
-produce 28 Angular/React verification paths; recording only these three uses
+mapped provider input. It is not an authorization mechanism. Seventeen lessons
+produce 34 Angular/React verification paths; recording only these three uses
 `WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`.
 The six new canonical media IDs each have MP4/WebM, poster, result image, measured
 captions and walkthrough. Preserve unique capture reports; no SDK release.
+
+### Canonical workflow lessons
+
+`shared-state`, `activities`, and `interrupts` use text chat in both frameworks.
+The local agent explicitly maps validated shared state into provider context and
+wraps actual streamed model text with state, activity, and approval protocol events.
+`setState` is a full local replacement and does not generate. Activities report
+context validation and provider completion, not execution of the plan steps.
+Interrupts asks two boolean approvals. A whole batch resumes the same user turn;
+a later ordinary turn creates a fresh batch. Denial/cancellation does not delegate.
+The bounded, five-minute, process-local approval store is demo infrastructure,
+not production authentication or durable recovery. Replay captures SDK observations
+and application form drafts separately and never submits historical decisions.
+
+Record only this batch with `WORKBENCH_LESSONS=shared-state,activities,interrupts`
+and `npx nx workbench-demo www`. The six live recordings use OpenAI; they do not
+require TypeSafe. Fixture verification remains labelled `test-fixture`.

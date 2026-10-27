@@ -328,8 +328,37 @@ All six videos use real OpenAI requests and actual framework SDKs, with separate
 labelled deterministic tests. Measured captions, both codecs, posters, result
 images and walkthroughs accompany each capture. Presentation event pacing and
 half-speed footage are disclosed. Replay is inert. The full workbench suite now
-covers fourteen lessons and 28 framework paths. Run
+covers seventeen lessons and 34 framework paths. Run
 `WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`
 with existing server-only OpenAI credentials/model, sequentially with other
 builds/recorders. Keep raw captures and reports in a unique ignored directory.
 No SDK release or new dependencies.
+
+
+## Canonical shared state, activities, and interruption
+
+The six Angular/React guides now use
+`canonical-workbench-{shared-state,activities,interrupts}-{react,angular}`.
+The same two-step plan remains application-owned. Text chat uses actual SDKs
+and real OpenAI streaming. The checked local AG-UI agent explicitly maps state
+into provider context and authors state, activity, and approval events around
+unchanged provider text. Direct provider adapters do not invent those workflows.
+
+Shared state shows explicit local replacement without generation, draft updates,
+commit and a second request carrying state. Activities report actual context
+validation and successful provider completion, with stable SDK links and fresh
+IDs per run. Interrupts resumes a whole two-question batch in the same user turn,
+then pauses the next ordinary turn on a fresh batch. Approval permits an explanation
+only. No plan step is executed; the expiring process-local decision store supplies
+neither production authentication nor durable recovery.
+
+Each framework has MP4/WebM, a poster, result screenshot, measured VTT captions,
+and a text walkthrough. SDK observations and application form drafts are captured
+separately for inert replay. The deterministic suite covers denial/cancellation,
+rollback, pre-acknowledgement retry and post-acknowledgement recovery boundaries.
+Legacy workflow recordings remain for bookmarks and independent fixture tests.
+
+Run `WORKBENCH_LESSONS=shared-state,activities,interrupts npx nx workbench-demo www`
+with server-only OpenAI credentials/model. Filming-only 20 ms event pacing and
+half-speed footage are disclosed. Preserve unique masters and phase reports in
+ignored `dist/docs-workbench/captures/<run-id>`. No SDK release or new dependencies.

@@ -1,3 +1,5 @@
+import { workbenchWorkflowPrompts } from './workbench-workflows';
+import { readWorkflowForm } from './workbench-workflow-form';
 import {
   workbenchBrowserInstructions,
   workbenchOnboardingPrompts,
@@ -186,14 +188,25 @@ export function workbenchEventLabel(
   ) {
     const names: Record<string, string> = {
       RUN_STARTED: 'Run started',
+      STATE_SNAPSHOT: 'Shared state snapshot',
+      STATE_DELTA: 'Shared state patch',
+      ACTIVITY_SNAPSHOT: 'Activity started',
+      ACTIVITY_DELTA: 'Activity updated',
       RUN_FINISHED: 'Run finished',
       RUN_ERROR: 'Run failed',
       TOOL_CALL_START: 'Call tool',
       TOOL_CALL_ARGS: 'Tool arguments',
       TOOL_CALL_END: 'Tool ready',
-      TEXT_MESSAGE_START: format === 'text' ? 'Text start' : 'JSON start',
-      TEXT_MESSAGE_CONTENT: format === 'text' ? 'Text chunk' : 'JSON chunk',
-      TEXT_MESSAGE_END: format === 'text' ? 'Text end' : 'JSON end',
+      TEXT_MESSAGE_START:
+        format === 'text' || format === 'workflow'
+          ? 'Text start'
+          : 'JSON start',
+      TEXT_MESSAGE_CONTENT:
+        format === 'text' || format === 'workflow'
+          ? 'Text chunk'
+          : 'JSON chunk',
+      TEXT_MESSAGE_END:
+        format === 'text' || format === 'workflow' ? 'Text end' : 'JSON end',
       DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
@@ -214,6 +227,10 @@ export function workbenchEventLabel(
       decision: 'Decision',
       choose: 'Suggestion applied',
       dismiss: 'Suggestion dismissed',
+      workflow: 'SDK workflow observed',
+      form: 'Application form draft',
+      pause: 'Paused for decisions',
+      resume: 'Resume requested',
     }[event.kind] ?? event.kind
   );
 }
@@ -259,9 +276,11 @@ export function mountWorkbench(
   const prompts =
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'decision'
-      ? workbenchDecisionPrompts
-      : workbenchPrompts);
+    (commands.lesson?.format === 'workflow'
+      ? workbenchWorkflowPrompts
+      : commands.lesson?.format === 'decision'
+        ? workbenchDecisionPrompts
+        : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -404,8 +423,8 @@ export function mountWorkbench(
   inspection.setAttribute('role', 'tabpanel');
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    commands.lesson?.format === 'text'
-      ? commands.lesson.id === 'magic-text'
+    ['text', 'workflow'].includes(commands.lesson?.format ?? '')
+      ? commands.lesson?.id === 'magic-text'
         ? 'Markdown'
         : 'Text'
       : 'JSON',
@@ -419,6 +438,9 @@ export function mountWorkbench(
     ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
     'UI',
     'State',
+    ...(commands.lesson?.format === 'workflow'
+      ? ['Activities', 'Interrupts']
+      : []),
   ].map((name) => {
     const item = button(name, () => {
       tab = name;
@@ -593,10 +615,14 @@ export function mountWorkbench(
             : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy = snapshot.status === 'loading';
+    const blocked =
+      busy ||
+      snapshot.status === 'paused' ||
+      !!frame?.workflow?.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
-    prompt.disabled = historical || busy;
-    send.disabled = historical || busy;
+    prompt.disabled = historical || blocked;
+    send.disabled = historical || blocked;
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -610,8 +636,8 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
-    first.disabled = historical || busy;
-    followup.disabled = historical || busy;
+    first.disabled = historical || blocked;
+    followup.disabled = historical || blocked;
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
@@ -697,27 +723,35 @@ export function mountWorkbench(
       element(
         'h3',
         recipeView?.heading ??
-          (tab === 'Instructions'
-            ? 'Browser declaration and effective provider policy'
-            : tab === 'Text'
-              ? 'Streamed text'
-              : tab === 'JSON'
-                ? commands.lesson?.format === 'decision'
-                  ? 'Decision response'
-                  : 'Model output'
-                : tab === 'Schema'
-                  ? 'Response contract'
-                  : tab === 'Transform'
-                    ? 'Mapped provider request'
-                    : tab === 'UI'
-                      ? commands.lesson?.format === 'decision'
-                        ? 'Application-owned choice'
-                        : commands.lesson?.format === 'structured'
-                          ? 'Application-rendered plan'
-                          : 'Trusted component'
-                      : tab === 'State'
-                        ? 'Application state'
-                        : 'Requests and tools'),
+          (tab === 'Activities'
+            ? 'SDK activities'
+            : tab === 'Interrupts'
+              ? 'SDK pending interrupt batch'
+              : tab === 'Instructions'
+                ? 'Browser declaration and effective provider policy'
+                : tab === 'Text'
+                  ? 'Streamed text'
+                  : tab === 'JSON'
+                    ? commands.lesson?.format === 'decision'
+                      ? 'Decision response'
+                      : 'Model output'
+                    : tab === 'Schema'
+                      ? 'Response contract'
+                      : tab === 'Transform'
+                        ? 'Mapped provider request'
+                        : tab === 'UI'
+                          ? commands.lesson?.format === 'workflow'
+                            ? 'Application-owned workflow controls'
+                            : commands.lesson?.format === 'decision'
+                              ? 'Application-owned choice'
+                              : commands.lesson?.format === 'structured'
+                                ? 'Application-rendered plan'
+                                : 'Trusted component'
+                          : tab === 'State'
+                            ? commands.lesson?.format === 'workflow'
+                              ? 'Runtime shared state and SDK lifecycle'
+                              : 'Application state'
+                            : 'Requests and tools'),
       ),
     );
     const requestContext =
@@ -818,40 +852,73 @@ export function mountWorkbench(
                     )?.id ?? 'schemas',
                   ),
                 )
-              : tab === 'JSON'
-                ? frame?.json || 'Waiting for model output'
-                : tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? {
-                        renderer: 'Application-owned decision card',
-                        generatedProps: false,
-                      }
-                    : commands.lesson?.format === 'structured'
-                      ? {
-                          renderer: 'Application-owned plan card',
-                          fields: ['title', 'steps'],
-                        }
-                      : {
-                          component: 'SummaryCard',
-                          children: false,
-                          inputs: {
-                            title: 'string',
-                            steps: 'streaming string[]',
-                          },
-                        }
-                  : tab === 'State'
-                    ? (frame?.application ?? snapshot.application)
-                    : visibleEvents
-                        .filter(
-                          (event) =>
-                            event.kind === 'request' || event.kind === 'tool',
-                        )
-                        .map((event) => ({
-                          sequence: event.sequence,
-                          turn: event.turn,
-                          kind: event.kind,
-                          payload: event.payload,
-                        }));
+              : tab === 'Activities'
+                ? (frame?.workflow?.activities ?? [])
+                : tab === 'Interrupts'
+                  ? {
+                      pending: frame?.workflow?.pendingInterrupts ?? null,
+                      isResuming: frame?.workflow?.isResuming ?? false,
+                      recoveryRequired:
+                        frame?.workflow?.recoveryRequired ?? false,
+                      applicationForm: readWorkflowForm(snapshot),
+                    }
+                  : tab === 'Text' && commands.lesson?.format === 'workflow'
+                    ? (frame?.workflow?.messages.filter(
+                        (message) => message.role === 'assistant',
+                      ) ?? [])
+                    : tab === 'JSON'
+                      ? frame?.json || 'Waiting for model output'
+                      : tab === 'UI'
+                        ? commands.lesson?.format === 'workflow'
+                          ? {
+                              renderer: 'Application-owned workflow controls',
+                              generatedComponents: false,
+                              sdkFields: [
+                                'state',
+                                'messages',
+                                'pendingInterrupts',
+                              ],
+                              applicationForm: readWorkflowForm(snapshot),
+                            }
+                          : commands.lesson?.format === 'decision'
+                            ? {
+                                renderer: 'Application-owned decision card',
+                                generatedProps: false,
+                              }
+                            : commands.lesson?.format === 'structured'
+                              ? {
+                                  renderer: 'Application-owned plan card',
+                                  fields: ['title', 'steps'],
+                                }
+                              : {
+                                  component: 'SummaryCard',
+                                  children: false,
+                                  inputs: {
+                                    title: 'string',
+                                    steps: 'streaming string[]',
+                                  },
+                                }
+                        : tab === 'State'
+                          ? commands.lesson?.format === 'workflow'
+                            ? {
+                                sdk: frame?.workflow ?? null,
+                                applicationForm: readWorkflowForm(snapshot),
+                                acceptedApplication:
+                                  frame?.application ?? snapshot.application,
+                              }
+                            : (frame?.application ?? snapshot.application)
+                          : visibleEvents
+                              .filter(
+                                (event) =>
+                                  event.kind === 'request' ||
+                                  event.kind === 'tool',
+                              )
+                              .map((event) => ({
+                                sequence: event.sequence,
+                                turn: event.turn,
+                                kind: event.kind,
+                                payload: event.payload,
+                              }));
     if (tab === 'Requests') {
       const list = element('div', '', 'wb-request-list');
       for (const event of visibleEvents.filter(
@@ -939,53 +1006,66 @@ export function mountWorkbench(
         element(
           'h3',
           recipeView?.detailHeading ??
-            (tab === 'Transform'
-              ? 'Preserved mapped fields'
-              : tab === 'Schema'
-                ? 'Preview validation'
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? 'Typed choice and confidence'
-                    : commands.lesson?.format === 'structured'
-                      ? 'Typed plan'
-                      : 'Resolved props'
-                  : tab === 'State'
-                    ? 'Selected moment'
-                    : requestContext?.kind === 'tool'
-                      ? 'Browser tool result'
-                      : 'Request payload'),
+            (commands.lesson?.format === 'workflow'
+              ? 'Selected SDK frame and application form'
+              : tab === 'Transform'
+                ? 'Preserved mapped fields'
+                : tab === 'Schema'
+                  ? 'Preview validation'
+                  : tab === 'JSON' || tab === 'UI'
+                    ? commands.lesson?.format === 'decision'
+                      ? 'Typed choice and confidence'
+                      : commands.lesson?.format === 'structured'
+                        ? 'Typed plan'
+                        : 'Resolved props'
+                    : tab === 'State'
+                      ? 'Selected moment'
+                      : requestContext?.kind === 'tool'
+                        ? 'Browser tool result'
+                        : 'Request payload'),
         ),
         pre(
-          recipeView
-            ? recipeView.detail
-            : tab === 'Transform'
-              ? (transform?.preserved ?? null)
-              : tab === 'Schema'
-                ? {
-                    preview: frame?.props ?? null,
-                    passesApplicationRules: isWorkbenchPlan(frame?.props),
-                    responseStatus: frame?.status ?? snapshot.status,
-                    note: 'Preview values do not authorize applying a plan.',
-                  }
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? (frame?.decision ?? null)
-                    : frame?.props
-                  : tab === 'State'
-                    ? {
-                        turn: frame?.turn ?? snapshot.turn,
-                        status: frame?.status ?? snapshot.status,
-                        event: frame
-                          ? workbenchEventLabel(frame, commands.lesson?.format)
-                          : 'Ready',
-                        source: frame?.source ?? 'Application',
-                      }
-                    : requestContext?.payload,
+          commands.lesson?.format === 'workflow'
+            ? {
+                sdk: frame?.workflow ?? null,
+                applicationForm: readWorkflowForm(snapshot),
+                outcome: frame?.status ?? snapshot.status,
+              }
+            : recipeView
+              ? recipeView.detail
+              : tab === 'Transform'
+                ? (transform?.preserved ?? null)
+                : tab === 'Schema'
+                  ? {
+                      preview: frame?.props ?? null,
+                      passesApplicationRules: isWorkbenchPlan(frame?.props),
+                      responseStatus: frame?.status ?? snapshot.status,
+                      note: 'Preview values do not authorize applying a plan.',
+                    }
+                  : tab === 'JSON' || tab === 'UI'
+                    ? commands.lesson?.format === 'decision'
+                      ? (frame?.decision ?? null)
+                      : frame?.props
+                    : tab === 'State'
+                      ? {
+                          turn: frame?.turn ?? snapshot.turn,
+                          status: frame?.status ?? snapshot.status,
+                          event: frame
+                            ? workbenchEventLabel(
+                                frame,
+                                commands.lesson?.format,
+                              )
+                            : 'Ready',
+                          source: frame?.source ?? 'Application',
+                        }
+                      : requestContext?.payload,
         ),
         element(
           'p',
           frame
-            ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+            ? commands.lesson?.format === 'workflow'
+              ? 'Captured SDK observations and separately recorded application form drafts.'
+              : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
             : 'Waiting for captured data.',
           'wb-muted',
         ),

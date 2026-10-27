@@ -99,6 +99,8 @@ body {
   gap: 12px;
 }
 .wb-nav {
+  min-height: 0;
+  overflow-y: auto;
   padding: 16px 4px;
 }
 .wb-nav h2 {
@@ -436,7 +438,8 @@ app-structured-workbench-conversation[hidden],
 app-decision-workbench-conversation[hidden],
 app-magic-text-workbench-conversation[hidden],
 app-predictions-workbench-conversation[hidden],
-app-selection-workbench-conversation[hidden] {
+app-selection-workbench-conversation[hidden],
+app-workflow-workbench-conversation[hidden] {
   display: none !important;
 }
 
@@ -522,4 +525,28 @@ app-selection-workbench-conversation[hidden] {
   border: 0;
   padding: 0;
   margin: 12px 0;
+}
+
+/* Framework-owned workflow forms keep long SDK identifiers inside the panel. */
+.wb-workflow-state label,
+.wb-workflow-approvals label {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-state input,
+.wb-workflow-approvals select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+}
+.wb-workflow-activity pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-approvals button {
+  margin: 4px;
 }
