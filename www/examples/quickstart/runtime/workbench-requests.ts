@@ -192,16 +192,20 @@ export function workbenchExchanges(
     if (current < 0 || turnOfCurrent !== frame.turn) return;
     if (frame.kind === 'tool') {
       const name = typeof payload?.['name'] === 'string' ? payload['name'] : '';
+      // Two calls of one tool in a response take their ids in order.
+      const taken = new Set(
+        toolsSinceRequest.map((toolIndex) => drafts[toolIndex].tool?.callId),
+      );
       const callId = events
         .slice(drafts[current].firstIndex, index)
-        .reverse()
         .map((earlier) => record(earlier.payload))
         .find(
           (earlier) =>
             (earlier?.['type'] === 'TOOL_CALL_START' ||
               earlier?.['type'] === 'TOOL_CALL_END') &&
             earlier['toolCallName'] === name &&
-            typeof earlier['toolCallId'] === 'string',
+            typeof earlier['toolCallId'] === 'string' &&
+            !taken.has(earlier['toolCallId']),
         )?.['toolCallId'] as string | undefined;
       drafts.push({
         kind: 'tool',
@@ -247,7 +251,8 @@ export function workbenchExchanges(
     (last, draft, i) => (draft.kind === 'request' ? i : last),
     -1,
   );
-  const lastTurn = drafts.at(-1)?.turn;
+  // The settled status belongs to the latest turn, which may have no request.
+  const lastTurn = events.at(-1)?.turn;
 
   const exchanges = drafts.map((draft, position): WorkbenchExchange => {
     const lastIndex = draft.eventIndexes.at(-1) ?? draft.firstIndex;

@@ -277,3 +277,43 @@ test('marks an exchange with a cancel event cancelled', () => {
   expect(turn.exchanges[0].status).toBe('cancelled');
   expect(turn.exchanges[0].eventIndexes).toHaveLength(2);
 });
+
+test('gives two calls of the same tool their own call ids', () => {
+  const store = createWorkbenchStore();
+  store.send('Twice');
+  store.record('request', request('r1'));
+  ['call-1', 'call-2'].forEach((toolCallId) => {
+    store.record('event', {
+      type: 'TOOL_CALL_START',
+      toolCallId,
+      toolCallName: 'readContext',
+    });
+    store.record('event', { type: 'TOOL_CALL_END', toolCallId });
+  });
+  store.record('event', { type: 'RUN_FINISHED' });
+  store.record('tool', { name: 'readContext', result: 1 });
+  store.record('tool', { name: 'readContext', result: 2 });
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {});
+
+  expect(turn.exchanges.slice(1).map((exchange) => exchange.tool)).toEqual([
+    { name: 'readContext', result: 1, callId: 'call-1' },
+    { name: 'readContext', result: 2, callId: 'call-2' },
+  ]);
+});
+
+test('does not fail the previous turn when a request-less turn settles to error', () => {
+  const store = createWorkbenchStore();
+  store.send('First');
+  store.record('request', request('r1'));
+  store.record('event', { type: 'RUN_STARTED' });
+  store.settle('complete', 'stop');
+  store.send('Second');
+
+  const [turn] = workbenchExchanges(store.getSnapshot().events, {
+    settledStatus: 'error',
+  });
+
+  expect(turn.turn).toBe(1);
+  expect(turn.exchanges[0].status).not.toBe('error');
+});
