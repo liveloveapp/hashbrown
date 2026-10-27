@@ -972,35 +972,70 @@ export function mountWorkbench(
     const history = frame?.history;
     const historyView =
       commands.lesson?.format === 'history' &&
-      (tab === 'History' || tab === 'Saved text')
-        ? tab === 'History'
+      ['Text', 'UI', 'History', 'Saved text'].includes(tab)
+        ? tab === 'Text'
           ? {
-              heading: 'Actual SDK transcript and lifecycle',
-              value: history?.sdk ?? null,
-              detailHeading: 'Application-retained text copy',
+              heading: 'Selected SDK assistant text',
+              value:
+                history?.sdk.messages
+                  .filter(
+                    (message) =>
+                      message['role'] === 'assistant' &&
+                      typeof message['content'] === 'string',
+                  )
+                  .map((message) => message['content'])
+                  .join('\n\n') ||
+                'No assistant text in the selected SDK history.',
+              detailHeading: 'Text rendering and request outcome',
               detail: {
-                retained: history?.app.retained ?? null,
-                action: history?.app.action ?? null,
-                replacementIntent: history?.replacement ?? null,
-                error: history?.app.error ?? null,
+                outcome,
+                generatedProps: false,
+                messageCount: history?.sdk.messages.length ?? 0,
               },
             }
-          : {
-              heading: 'Last-read browser text document',
-              value: {
-                selectedSlot: history?.app.selectedSlot ?? null,
-                cachedRead: history?.app.saved ?? null,
-              },
-              detailHeading: 'Current operation and save eligibility',
-              detail: {
-                action: history?.app.action ?? null,
-                replacementIntent: history?.replacement ?? null,
-                error: history?.app.error ?? null,
-                canSave: canSaveWorkbenchHistory(snapshot),
-                successfulGeneration: history?.successfulGeneration ?? false,
-                note: 'Cached explicit read; browser storage is origin-local and unencrypted. Do not store secrets.',
-              },
-            }
+          : tab === 'UI'
+            ? {
+                heading: 'Plain text renderer',
+                value: {
+                  renderer: 'Plain text',
+                  generatedProps: false,
+                  exposedComponents: [],
+                },
+                detailHeading: 'Application rendering boundary',
+                detail: {
+                  outcome,
+                  note: 'Captured SDK text is rendered directly. This lesson exposes no generated UI components.',
+                },
+              }
+            : tab === 'History'
+              ? {
+                  heading: 'Actual SDK transcript and lifecycle',
+                  value: history?.sdk ?? null,
+                  detailHeading: 'Application-retained text copy',
+                  detail: {
+                    retained: history?.app.retained ?? null,
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                  },
+                }
+              : {
+                  heading: 'Last-read browser text document',
+                  value: {
+                    selectedSlot: history?.app.selectedSlot ?? null,
+                    cachedRead: history?.app.saved ?? null,
+                  },
+                  detailHeading: 'Current operation and save eligibility',
+                  detail: {
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                    canSave: canSaveWorkbenchHistory(snapshot),
+                    successfulGeneration:
+                      history?.successfulGeneration ?? false,
+                    note: 'Cached explicit read; browser storage is origin-local and unencrypted. Do not store secrets.',
+                  },
+                }
         : undefined;
     const recipeView =
       historyView ??
