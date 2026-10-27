@@ -1,3 +1,4 @@
+import { HistoryWorkbenchConversation } from './history-workbench';
 import { WorkflowWorkbenchConversation } from './workflow-workbench';
 import { PlanCard } from './plan-card';
 import { firstPlanComponents } from './first-plan-app';
@@ -338,6 +339,7 @@ export class WorkbenchConversation implements AfterViewInit {
   imports: [
     WorkbenchConversation,
     WorkflowWorkbenchConversation,
+    HistoryWorkbenchConversation,
     StructuredWorkbenchConversation,
     DecisionWorkbenchConversation,
     MagicTextWorkbenchConversation,
@@ -346,7 +348,13 @@ export class WorkbenchConversation implements AfterViewInit {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (format === 'workflow') {
+    @if (format === 'history') {
+      <app-history-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (format === 'workflow') {
       <app-workflow-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
