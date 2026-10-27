@@ -4,6 +4,7 @@ import type { ConversationSnapshot } from '@hashbrownai/core';
 export interface RecoveryEnvelope {
   readonly schemaVersion: 1;
   readonly disposition: string;
+  readonly serverRevision?: number;
   readonly reconciliationOutcome?: string;
   readonly snapshot?: ConversationSnapshot;
 }
@@ -14,6 +15,14 @@ export function recoveryOrigin(): string | undefined {
     new URL(globalThis.location.href).searchParams.get('recoveryUrl') ??
     undefined
   );
+}
+
+/** Selects the explicitly configured read-only recovery protocol. */
+export function recoveryEndpoint(threadId: string): string {
+  const native =
+    new URL(globalThis.location.href).searchParams.get('recoveryMode') ===
+    'native';
+  return `${recoveryOrigin()}/threads/${encodeURIComponent(threadId)}/${native ? 'native-session' : 'recovery'}`;
 }
 
 /** Returns a selector only; local interrupt ownership is never persisted. */
@@ -58,6 +67,7 @@ export function readRecovery(value: unknown): RecoveryEnvelope {
   const envelope = value as RecoveryEnvelope;
   const known = [
     'Pending',
+    'NativePendingBrowserResults',
     'Busy',
     'Expired',
     'UnknownEffect',
@@ -81,6 +91,9 @@ export function readRecovery(value: unknown): RecoveryEnvelope {
   ) {
     throw new Error('Unsupported recovery envelope');
   }
+  if (envelope.disposition === 'NativePendingBrowserResults') {
+    return { ...envelope, snapshot: undefined };
+  }
   return envelope;
 }
 
@@ -88,9 +101,12 @@ export function readRecovery(value: unknown): RecoveryEnvelope {
 export function recoveryBlocked(envelope: RecoveryEnvelope): boolean {
   return (
     !envelope.snapshot ||
-    ['Busy', 'UnknownEffect', 'AmbiguousEffect'].includes(
-      envelope.disposition,
-    ) ||
+    [
+      'Busy',
+      'UnknownEffect',
+      'AmbiguousEffect',
+      'NativePendingBrowserResults',
+    ].includes(envelope.disposition) ||
     envelope.reconciliationOutcome === 'Unresolved'
   );
 }

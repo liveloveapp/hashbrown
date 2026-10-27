@@ -213,3 +213,26 @@ test('diagnostic drops and persistence failures make qualification unhealthy', (
     dropped.record({ stage: 'completed' });
   expect(() => dropped.assertHealthy()).toThrow('LIVE_DIAGNOSTICS_FAILED');
 });
+
+test('native proof metadata is retained while fixture database secrets are excluded', () => {
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+
+  diagnostics.record({
+    nativeCoEmission: true,
+    nativeExactHistory: true,
+    nativeEffects: 1,
+    DOTNET_TEST_POSTGRES: 'postgres-secret-sentinel',
+    InterruptConnectionString: 'connection-secret-sentinel',
+    InterruptSchema: 'schema-secret-sentinel',
+  });
+
+  expect(JSON.parse(lines[0])).toEqual({
+    nativeCoEmission: true,
+    nativeExactHistory: true,
+    nativeEffects: 1,
+  });
+  expect(lines[0]).not.toContain('sentinel');
+});

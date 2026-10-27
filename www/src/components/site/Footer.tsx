@@ -70,6 +70,11 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
                 </Link>
               </li>
               <li>
+                <Link href="/brand" className="underline">
+                  Brand
+                </Link>
+              </li>
+              <li>
                 <Link href="/privacy" className="underline">
                   Privacy
                 </Link>

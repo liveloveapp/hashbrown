@@ -1,0 +1,708 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+
+static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+static string Frame(object item) => "data: " + System.Text.Json.JsonSerializer.Serialize(item) + "\r\n\r\n";
+static string Input() => """{"threadId":"thread","runId":"run","messages":[{"id":"user","role":"user","content":"Hello"}],"tools":[],"context":[],"state":{},"forwardedProps":{}}""";
+static string Terminal() => Frame(new { type = "RUN_FINISHED", threadId = "thread", runId = "run" });
+static string Call(string id, string name, string? parent = null) => Frame(new { type = "TOOL_CALL_START", toolCallId = id, toolCallName = name, parentMessageId = parent }) + Frame(new { type = "TOOL_CALL_ARGS", toolCallId = id, delta = "{}" }) + Frame(new { type = "TOOL_CALL_END", toolCallId = id });
+static NativeSessionProjection Projection(int bytes = 65536, int frame = 16384, int terminal = 4096) => new(Input(), new HashSet<string>(["browser"], StringComparer.Ordinal), bytes, 100, frame, terminal);
+static async Task<(NativeSessionProjection Projection, string Forwarded)> Observe(string wire, bool split = false)
+{
+    var projection = Projection();
+    var forwarded = new MemoryStream();
+    var bytes = Encoding.UTF8.GetBytes(wire);
+
+    if (split) foreach (var value in bytes) await projection.ObserveAsync(new byte[] { value }, chunk => forwarded.WriteAsync(chunk), default);
+    else await projection.ObserveAsync(bytes, chunk => forwarded.WriteAsync(chunk), default);
+    projection.Complete();
+
+    return (projection, Encoding.UTF8.GetString(forwarded.ToArray()));
+}
+
+var text = Frame(new { type = "TEXT_MESSAGE_START", messageId = "answer", role = "assistant" }) + Frame(new { type = "TEXT_MESSAGE_CONTENT", messageId = "answer", delta = "Hello 🌎" }) + Frame(new { type = "TEXT_MESSAGE_END", messageId = "answer" });
+var observed = await Observe(text + Terminal(), true);
+
+Check(observed.Forwarded == text, "Ordinary bytes must stream while genuine terminal is held, even at every UTF-8 boundary.");
+Check(observed.Projection.Result.Available && observed.Projection.Result.TurnCompleted, "Complete text must produce canonical available history.");
+Check(JsonNode.Parse(observed.Projection.Result.PublicRequestJson!)!["messages"]![1]!["content"]!.GetValue<string>() == "Hello 🌎", "Canonical streamed text differs.");
+var released = new MemoryStream();
+await observed.Projection.ReleaseTerminalAsync(chunk => released.WriteAsync(chunk), default);
+Check(Encoding.UTF8.GetString(released.ToArray()) == Terminal(), "Release must preserve exact genuine terminal bytes.");
+try { await observed.Projection.ReleaseTerminalAsync(chunk => released.WriteAsync(chunk), default); throw new Exception("Duplicate release accepted."); } catch (InvalidOperationException) { }
+
+var pending = await Observe(Call("client", "browser") + Terminal());
+
+Check(pending.Projection.Result.Available && !pending.Projection.Result.TurnCompleted, "Unanswered public browser call should remain continuable.");
+Check(pending.Projection.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "client" }), "Browser call IDs differ.");
+Check(JsonNode.Parse(pending.Projection.Result.PublicRequestJson!)!["messages"]![1]!["id"]!.GetValue<string>() == "assistant-client", "Missing parent must match SDK deterministic fallback.");
+Check(JsonNode.Parse(pending.Projection.Result.PublicRequestJson!)!["messages"]![1]!["content"]!.GetValue<string>() == "", "SDK tool assistant starts with empty content.");
+
+var mixed = await Observe(Call("client", "browser", "siblings") + Call("server", "backend", "siblings") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "server", messageId = "server-result", content = "actual" }) + Terminal());
+
+Check(mixed.Projection.Result.Available && mixed.Projection.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "client" }), "Actual server result and public browser sibling must fold.");
+Check(JsonNode.Parse(mixed.Projection.Result.PublicRequestJson!)!["messages"]![1]!["toolCalls"]!.AsArray().Count == 2, "Native parent grouping differs.");
+
+foreach (var (name, wire) in new (string, string)[] {
+    ("unanswered server", Call("server", "backend") + Terminal()),
+    ("unknown event", Frame(new { type = "CUSTOM", name = "unknown", value = new {} }) + Terminal()),
+    ("reasoning", Frame(new { type = "REASONING_MESSAGE_START", messageId = "reason" }) + Terminal()),
+    ("metadata", Frame(new { type = "TEXT_MESSAGE_START", messageId = "answer", role = "assistant", metadata = new { meaningful = true } }) + Terminal()),
+    ("incomplete text", Frame(new { type = "TEXT_MESSAGE_START", messageId = "answer", role = "assistant" }) + Terminal()),
+    ("duplicate call", Call("client", "browser") + Call("client", "browser") + Terminal()),
+    ("duplicate result", Call("server", "backend") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "server", messageId = "result", content = "actual" }) + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "server", messageId = "other-result", content = "actual" }) + Terminal()),
+    ("unknown result", Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "forged", messageId = "result", content = "forged" }) + Terminal()),
+    ("native approval", Frame(new { type = "RUN_FINISHED", threadId = "thread", runId = "run", outcome = new { type = "interrupt", interrupts = new[] { new { id = "approval", type = "approval" } } } })),
+    ("malformed arguments", Frame(new { type = "TOOL_CALL_START", toolCallId = "client", toolCallName = "browser" }) + Frame(new { type = "TOOL_CALL_ARGS", toolCallId = "client", delta = "bad-json" }) + Frame(new { type = "TOOL_CALL_END", toolCallId = "client" }) + Terminal()),
+}) {
+    var result = await Observe(wire);
+
+    Check(!result.Projection.Result.Available && result.Projection.Result.PublicRequestJson is null, name + " must fail closed.");
+    Check(!result.Forwarded.Contains("RUN_FINISHED", StringComparison.Ordinal), name + " leaked terminal.");
+}
+
+foreach (var (name, bytes) in new (string, byte[])[] {
+    ("duplicate terminal", Encoding.UTF8.GetBytes(Terminal() + Terminal())),
+    ("event after terminal", Encoding.UTF8.GetBytes(Terminal() + text)),
+    ("identity mismatch", Encoding.UTF8.GetBytes(Frame(new { type = "RUN_FINISHED", threadId = "other", runId = "run" }))),
+    ("invalid UTF8", new byte[] { 100,97,116,97,58,32,255,10,10 }),
+    ("malformed JSON", Encoding.UTF8.GetBytes("data: {oops}\n\n")),
+}) {
+    var projection = Projection();
+    var rejected = false;
+
+    try { await projection.ObserveAsync(bytes, _ => ValueTask.CompletedTask, default); projection.Complete(); } catch (Exception exception) when (exception is InvalidOperationException or IOException or System.Text.Json.JsonException) { rejected = true; }
+
+    Check(rejected && !projection.Result.Available, name + " must reject framing/identity.");
+}
+
+foreach (var (name, projection, wire) in new[] {
+    ("frame", Projection(frame: 128), Frame(new { type = "CUSTOM", name = new string('x', 256) })),
+    ("terminal", Projection(terminal: 128), Frame(new { type = "RUN_FINISHED", threadId = "thread", runId = "run", result = new string('x', 256) })),
+}) {
+    var rejected = false;
+
+    try { await projection.ObserveAsync(Encoding.UTF8.GetBytes(wire), _ => ValueTask.CompletedTask, default); } catch (IOException) { rejected = true; }
+
+    Check(rejected && !projection.Result.Available, name + " bound must reject before publication.");
+}
+
+var errorWire = Frame(new { type = "RUN_ERROR", message = "Actual upstream error", code = "native" });
+var failed = await Observe(errorWire);
+
+Check(failed.Forwarded == "" && failed.Projection.Result.TerminalType == "RUN_ERROR" && !failed.Projection.Result.TurnCompleted, "Genuine native failure must be held and identified.");
+
+var annotations = await Observe(Frame(new { type = "TEXT_MESSAGE_START", messageId = "answer", role = "assistant", annotations = new[] { new { type = "citation" } } }) + Frame(new { type = "TEXT_MESSAGE_END", messageId = "answer" }) + Terminal());
+
+Check(!annotations.Projection.Result.Available, "Unrepresentable event annotations must make history unavailable.");
+
+var wrongError = Projection();
+var errorRejected = false;
+
+try { await wrongError.ObserveAsync(Encoding.UTF8.GetBytes(Frame(new { type = "RUN_ERROR", message = "failure", threadId = "other", runId = "run" })), _ => ValueTask.CompletedTask, default); } catch (InvalidOperationException) { errorRejected = true; }
+
+Check(errorRejected, "Error terminal must not carry another request identity.");
+
+
+static JsonObject RawCall(bool anonymous = false) => new()
+{
+    ["authorName"] = "Native", ["role"] = "assistant", ["messageId"] = anonymous ? null : "parent", ["responseId"] = anonymous ? "response-native" : "parent",
+    ["finishReason"] = anonymous ? null : "tool_calls", ["modelId"] = "native-model", ["createdAt"] = "2026-01-01T00:00:00Z",
+    ["contents"] = new JsonArray(new JsonObject { ["$type"] = "functionCall", ["name"] = "browser", ["arguments"] = new JsonObject { ["code"] = "PDX" }, ["informationalOnly"] = false, ["callId"] = "raw-call" })
+};
+static string RawCallWire(JsonObject raw, bool anonymous = false, string args = "{\"code\":\"PDX\"}") =>
+    Frame(new JsonObject { ["type"] = "TOOL_CALL_START", ["toolCallId"] = "raw-call", ["toolCallName"] = "browser", ["parentMessageId"] = anonymous ? null : "parent", ["rawEvent"] = raw.DeepClone() }) +
+    Frame(new JsonObject { ["type"] = "TOOL_CALL_ARGS", ["toolCallId"] = "raw-call", ["delta"] = args, ["rawEvent"] = raw.DeepClone() }) +
+    Frame(new { type = "TOOL_CALL_END", toolCallId = "raw-call" });
+var witnessed = new NativeSessionProjectionEvidence((response, message) => response == "response-native" && message == "native-text", (response, call, name, args) => response == "response-native" && call == "raw-call" && name == "browser" && JsonNode.DeepEquals(args, new JsonObject { ["code"] = "PDX" }));
+foreach (var anonymous in new[] { false, true })
+{
+    var projection = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), evidence: witnessed);
+    var raw = RawCall(anonymous);
+
+    await projection.ObserveAsync(Encoding.UTF8.GetBytes(RawCallWire(raw, anonymous) + Terminal()), _ => ValueTask.CompletedTask, default);
+    projection.Complete();
+
+    Check(projection.Result.Available, "Exact redundant raw call diagnostics require native evidence only for provider identity aliases.");
+    Check(JsonNode.Parse(projection.Result.PublicRequestJson!)!["messages"]![1]!["id"]!.GetValue<string>() == (anonymous ? "assistant-raw-call" : "parent"), "Raw diagnostics must not select canonical parent identity.");
+    Check(JsonNode.Parse(projection.Result.PublicRequestJson!)!["messages"]![1]!["name"] is null, "Diagnostic authorName must not create a public name ignored by the SDK.");
+}
+foreach (var mismatch in new[] { "arguments", "annotations", "continuation", "unwitnessed-alias" })
+{
+    var raw = RawCall(mismatch == "unwitnessed-alias");
+    if (mismatch == "annotations") raw["contents"]![0]!["annotations"] = new JsonArray(new JsonObject { ["type"] = "citation" });
+    if (mismatch == "continuation") raw["continuationToken"] = "private";
+    var projection = Projection();
+    var arguments = mismatch == "arguments" ? "{\"code\":\"BAD\"}" : "{\"code\":\"PDX\"}";
+
+    await projection.ObserveAsync(Encoding.UTF8.GetBytes(RawCallWire(raw, mismatch == "unwitnessed-alias", arguments) + Terminal()), _ => ValueTask.CompletedTask, default);
+    projection.Complete();
+
+    Check(!projection.Result.Available, "Raw " + mismatch + " must make canonical history unavailable.");
+}
+
+var wrongResultRole = await Observe(Call("server", "backend") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "server", messageId = "server-result", content = "actual", role = "assistant" }) + Terminal());
+
+Check(!wrongResultRole.Projection.Result.Available, "Result role must agree with canonical tool role.");
+
+var dropped = Projection();
+try { await dropped.ObserveAsync(Encoding.UTF8.GetBytes(text), chunk => Encoding.UTF8.GetString(chunk.Span).Contains("TEXT_MESSAGE_END", StringComparison.Ordinal) ? ValueTask.FromException(new IOException("disconnected")) : ValueTask.CompletedTask, default); } catch (IOException) { }
+try { await dropped.ObserveAsync(Encoding.UTF8.GetBytes(Terminal()), _ => ValueTask.CompletedTask, default); dropped.Complete(); } catch (InvalidOperationException) { }
+
+Check(!dropped.Result.Available, "A failed ordinary write must prevent later successful terminal publication.");
+var started = await Observe(Frame(new { type = "RUN_STARTED", threadId = "thread", runId = "run", protocolVersion = "1.0" }) + text + Terminal());
+
+Check(started.Projection.Result.Available, "Pinned native RUN_STARTED protocolVersion must be supported.");
+var malformedRaw = RawCall();
+malformedRaw["modelId"] = new JsonObject { ["private"] = "meaningful" };
+var malformedDiagnostic = await Observe(RawCallWire(malformedRaw) + Terminal());
+
+Check(!malformedDiagnostic.Projection.Result.Available, "Malformed raw diagnostic types must fail closed.");
+var selfParent = await Observe(Call("client", "browser", "client") + Terminal());
+
+Check(!selfParent.Projection.Result.Available, "A tool call ID must not alias its assistant parent ID.");
+
+var nextInput = JsonNode.Parse(pending.Projection.Result.PublicRequestJson!)!.AsObject();
+nextInput["messages"]!.AsArray().Add(new JsonObject { ["id"] = "client-result", ["role"] = "tool", ["toolCallId"] = "client", ["content"] = "actual-browser-data" });
+var nextProjection = new NativeSessionProjection(nextInput.ToJsonString(), new HashSet<string>(["browser"]));
+var nextWire = Call("next-server", "backend") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "next-server", messageId = "next-server-result", content = "actual-server-data" }) + text + Terminal();
+
+await nextProjection.ObserveAsync(Encoding.UTF8.GetBytes(nextWire), _ => ValueTask.CompletedTask, default);
+nextProjection.Complete();
+
+Check(nextProjection.Result.Available && nextProjection.Result.TurnCompleted, "A subsequent native turn must advance the current prefix.");
+Check(JsonNode.Parse(nextProjection.Result.PublicRequestJson!)!["messages"]!.AsArray().Count == 6, "Subsequent prefix must contain each canonical input/output message once.");
+Check(JsonNode.Parse(nextProjection.Result.PublicRequestJson!)!["messages"]![1]!["toolCalls"]![0]!["id"]!.GetValue<string>() == "client", "Previously owned browser call must be retained exactly once.");
+
+var replay = new NativeSessionProjection(nextInput.ToJsonString(), new HashSet<string>(["browser"]));
+
+await replay.ObserveAsync(Encoding.UTF8.GetBytes(Call("client", "browser") + Terminal()), _ => ValueTask.CompletedTask, default);
+replay.Complete();
+
+Check(!replay.Result.Available, "Native output cannot duplicate a historical call ID.");
+
+var limitedPublic = Projection(bytes: 1024);
+var longText = Frame(new { type = "TEXT_MESSAGE_START", messageId = "long", role = "assistant" }) + string.Concat(Enumerable.Repeat(Frame(new { type = "TEXT_MESSAGE_CONTENT", messageId = "long", delta = new string('x', 100) }), 12)) + Frame(new { type = "TEXT_MESSAGE_END", messageId = "long" }) + Terminal();
+
+await limitedPublic.ObserveAsync(Encoding.UTF8.GetBytes(longText), _ => ValueTask.CompletedTask, default);
+limitedPublic.Complete();
+
+Check(!limitedPublic.Result.Available && limitedPublic.Result.PublicRequestJson is null, "Canonical public-history byte bound must discard retained content.");
+
+var limitedMessages = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), maximumMessages: 1);
+
+await limitedMessages.ObserveAsync(Encoding.UTF8.GetBytes(text + Terminal()), _ => ValueTask.CompletedTask, default);
+limitedMessages.Complete();
+
+Check(!limitedMessages.Result.Available, "Canonical public-history message bound must fail closed.");
+
+var missing = await Observe(text);
+
+Check(!missing.Projection.Result.Available && missing.Projection.Result.TerminalType is null, "Missing terminal cannot acknowledge completion.");
+
+var partial = Projection();
+var partialRejected = false;
+
+await partial.ObserveAsync(Encoding.UTF8.GetBytes(Terminal()[..^2]), _ => ValueTask.CompletedTask, default);
+try { partial.Complete(); } catch (IOException) { partialRejected = true; }
+
+Check(partialRejected && !partial.Result.Available, "A truncated terminal frame cannot acknowledge completion.");
+
+var noRelease = false;
+try { await selfParent.Projection.ReleaseTerminalAsync(_ => ValueTask.CompletedTask, default); } catch (InvalidOperationException) { noRelease = true; }
+
+Check(noRelease, "Unavailable canonical history cannot publish a successful terminal.");
+
+var multiline = "data: {\r\ndata: \"type\": \"STATE_SNAPSHOT\",\r\ndata: \"snapshot\": {\"count\": 2}\r\ndata: }\r\n\r\n";
+var multiple = await Observe(": keep-alive\r\n\r\n" + multiline + text + Terminal(), true);
+
+Check(multiple.Projection.Result.Available && JsonNode.Parse(multiple.Projection.Result.PublicRequestJson!)!["state"]!["count"]!.GetValue<int>() == 2, "Multiline JSON SSE and comments must preserve supported native state.");
+Check(multiple.Forwarded == ": keep-alive\r\n\r\n" + multiline + text, "Ordinary multiline/comment frames must preserve exact native bytes.");
+
+var malformedIdentity = Projection();
+try { await malformedIdentity.ObserveAsync(Encoding.UTF8.GetBytes(Frame(new { type = "RUN_ERROR", message = "failure", threadId = 42 })), _ => ValueTask.CompletedTask, default); } catch (InvalidOperationException) { }
+try { await malformedIdentity.ObserveAsync(Encoding.UTF8.GetBytes(Terminal()), _ => ValueTask.CompletedTask, default); malformedIdentity.Complete(); } catch (InvalidOperationException) { }
+
+Check(!malformedIdentity.Result.Available, "Malformed native event failure must permanently block subsequent successful publication.");
+var emptyParent = await Observe(Call("empty-parent-call", "browser", "") + Terminal());
+
+Check(!emptyParent.Projection.Result.Available, "An explicitly empty native parent identity must not replace SDK fallback.");
+var malformedErrorValue = await Observe(Call("error-result", "backend") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "error-result", messageId = "error-message", content = "actual", error = new { unexpected = true } }) + Terminal());
+
+Check(!malformedErrorValue.Projection.Result.Available, "An unsupported tool error value must make history unavailable.");
+
+static async Task<JsonObject> ProjectLifecycle(string name, string original, string wire, NativeSessionProjectionEvidence? evidence = null)
+{
+    var projection = new NativeSessionProjection(original, new HashSet<string>(["browser"]), evidence: evidence);
+    var events = new JsonArray(wire.Split("\r\n\r\n", StringSplitOptions.RemoveEmptyEntries).Select(frame => JsonNode.Parse(frame[6..])).ToArray());
+
+    await projection.ObserveAsync(Encoding.UTF8.GetBytes(wire), _ => ValueTask.CompletedTask, default);
+    projection.Complete();
+
+    Check(projection.Result.Available, "SDK lifecycle projection must remain available: " + name);
+    return new JsonObject { ["name"] = name, ["original"] = JsonNode.Parse(original), ["events"] = events, ["messages"] = JsonNode.Parse(projection.Result.PublicRequestJson!)!["messages"]!.DeepClone() };
+}
+var lifecycleCases = new JsonArray();
+var textThenCall = await ProjectLifecycle("ended text then parentless call", Input(), text + Call("after-text", "browser") + Terminal());
+
+Check(textThenCall["messages"]!.AsArray().Count == 2 && textThenCall["messages"]![1]!["id"]!.GetValue<string>() == "answer" && textThenCall["messages"]![1]!["toolCalls"]![0]!["id"]!.GetValue<string>() == "after-text", "Parentless tool call must reuse the active assistant after TEXT_MESSAGE_END, matching the SDK.");
+lifecycleCases.Add(textThenCall);
+lifecycleCases.Add(await ProjectLifecycle("intervening server result retains active assistant", Input(), text + Call("intervening-server", "backend") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "intervening-server", messageId = "intervening-result", content = "actual" }) + Call("after-result", "browser") + Terminal()));
+lifecycleCases.Add(await ProjectLifecycle("explicit parent does not change active assistant", Input(), text + Call("explicit-server", "backend", "other-parent") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "explicit-server", messageId = "explicit-result", content = "actual" }) + Call("after-explicit", "browser") + Terminal()));
+lifecycleCases.Add(await ProjectLifecycle("fallback after explicit tool parent without text", Input(), Call("fallback-server", "backend", "explicit-only-parent") + Frame(new { type = "TOOL_CALL_RESULT", toolCallId = "fallback-server", messageId = "fallback-result", content = "actual" }) + Call("true-fallback", "browser") + Terminal()));
+lifecycleCases.Add(await ProjectLifecycle("witnessed anonymous diagnostics retain active assistant", Input(), text + RawCallWire(RawCall(true), true) + Terminal(), witnessed));
+var subsequentInput = JsonNode.Parse(Input())!.AsObject();
+subsequentInput["runId"] = "next-run";
+subsequentInput["messages"] = textThenCall["messages"]!.DeepClone();
+subsequentInput["messages"]!.AsArray().Add(new JsonObject { ["id"] = "after-text-result", ["role"] = "tool", ["toolCallId"] = "after-text", ["content"] = "actual-browser" });
+lifecycleCases.Add(await ProjectLifecycle("subsequent attempt does not inherit previous assistant", subsequentInput.ToJsonString(), Frame(new { type = "RUN_STARTED", threadId = "thread", runId = "next-run", protocolVersion = "1.0" }) + Call("next-run-call", "browser") + Frame(new { type = "RUN_FINISHED", threadId = "thread", runId = "next-run" })));
+
+
+
+static JsonObject SharedTextRaw(string responseId = "message-1", string messageId = "message-1") => new()
+{
+    ["authorName"] = "native", ["role"] = "assistant", ["contents"] = new JsonArray(new JsonObject { ["$type"] = "text", ["text"] = "done", ["annotations"] = null, ["additionalProperties"] = null }),
+    ["additionalProperties"] = null, ["responseId"] = responseId, ["messageId"] = messageId, ["conversationId"] = null,
+    ["createdAt"] = null, ["finishReason"] = null, ["modelId"] = null, ["continuationToken"] = null,
+};
+static string SharedTextWire(JsonObject raw, string delta = "done", JsonObject? contentRaw = null, bool includeContentRaw = true) =>
+    Frame(new JsonObject { ["type"] = "TEXT_MESSAGE_START", ["messageId"] = "message-1", ["role"] = "assistant", ["name"] = "native", ["rawEvent"] = raw.DeepClone() }) +
+    Frame(new JsonObject { ["type"] = "TEXT_MESSAGE_CONTENT", ["messageId"] = "message-1", ["delta"] = delta, ["rawEvent"] = includeContentRaw ? (contentRaw ?? raw).DeepClone() : null }) +
+    Frame(new { type = "TEXT_MESSAGE_END", messageId = "message-1" });
+var sharedText = await Observe(SharedTextWire(SharedTextRaw()) + Terminal());
+
+Check(sharedText.Projection.Result.Available, "Actual pinned native shared nonempty START/CONTENT diagnostics with identical canonical IDs must be representable without alias evidence.");
+Check(JsonNode.Parse(sharedText.Projection.Result.PublicRequestJson!)!["messages"]![1]!["content"]!.GetValue<string>() == "done", "Shared raw START must not duplicate canonical text.");
+Check(JsonNode.Parse(sharedText.Projection.Result.PublicRequestJson!)!["messages"]![1]!["name"]!.GetValue<string>() == "native", "Public text name must come from the canonical START.");
+var changedTextRaw = SharedTextRaw();
+changedTextRaw["contents"]![0]!["text"] = "changed";
+var annotatedTextRaw = SharedTextRaw();
+annotatedTextRaw["contents"]![0]!["annotations"] = new JsonArray(new JsonObject { ["type"] = "citation" });
+foreach (var (name, wire) in new[] {
+    ("canonical text mismatch", SharedTextWire(SharedTextRaw(), delta: "changed")),
+    ("repeated raw mismatch", SharedTextWire(SharedTextRaw(), delta: "changed", contentRaw: changedTextRaw)),
+    ("missing matching CONTENT diagnostic", SharedTextWire(SharedTextRaw(), includeContentRaw: false)),
+    ("unwitnessed response alias", SharedTextWire(SharedTextRaw(responseId: "provider-response"))),
+    ("different raw message identity", SharedTextWire(SharedTextRaw(messageId: "different-message"))),
+    ("unsupported text annotations", SharedTextWire(annotatedTextRaw)),
+})
+{
+    var rejectedText = await Observe(wire + Terminal());
+
+    Check(!rejectedText.Projection.Result.Available && rejectedText.Projection.Result.PublicRequestJson is null, "Shared text " + name + " must still fail closed.");
+}
+var textAliasEvidence = new NativeSessionProjectionEvidence((response, message) => response == "provider-response" && message == "message-1", (_, _, _, _) => false);
+var witnessedTextAlias = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), evidence: textAliasEvidence);
+
+await witnessedTextAlias.ObserveAsync(Encoding.UTF8.GetBytes(SharedTextWire(SharedTextRaw(responseId: "provider-response")) + Terminal()), _ => ValueTask.CompletedTask, default);
+witnessedTextAlias.Complete();
+
+Check(witnessedTextAlias.Result.Available, "A distinct response alias still requires and accepts its trusted native evidence.");
+
+
+static JsonObject DeferredServerRaw(string callId = "back_1", string name = "backend", string code = "PDX") => new()
+{
+    ["authorName"] = "native", ["role"] = "assistant", ["contents"] = new JsonArray(new JsonObject { ["$type"] = "functionCall", ["name"] = name, ["arguments"] = new JsonObject { ["code"] = code }, ["informationalOnly"] = true, ["callId"] = callId, ["annotations"] = null, ["additionalProperties"] = null }),
+    ["additionalProperties"] = null, ["responseId"] = "generated-native-parent", ["messageId"] = "generated-native-parent", ["conversationId"] = null,
+    ["createdAt"] = "2026-10-27T03:29:22.01008+00:00", ["finishReason"] = null, ["modelId"] = null, ["continuationToken"] = null,
+};
+static string DeferredServerWire(JsonObject raw)
+{
+    var content = raw["contents"]![0]!;
+    var callId = content["callId"]!.GetValue<string>();
+    var resultRaw = new JsonObject
+    {
+        ["authorName"] = "native", ["role"] = "tool", ["contents"] = new JsonArray(new JsonObject { ["$type"] = "functionResult", ["result"] = "server-PDX", ["callId"] = callId, ["annotations"] = null, ["additionalProperties"] = null }),
+        ["additionalProperties"] = null, ["responseId"] = "generated-native-result", ["messageId"] = "generated-native-result", ["conversationId"] = null,
+        ["createdAt"] = "2026-10-27T03:29:22.052563+00:00", ["finishReason"] = null, ["modelId"] = null, ["continuationToken"] = null,
+    };
+    return Frame(new JsonObject { ["type"] = "TOOL_CALL_START", ["toolCallId"] = callId, ["toolCallName"] = content["name"]!.DeepClone(), ["parentMessageId"] = raw["messageId"]?.DeepClone(), ["rawEvent"] = raw.DeepClone() }) +
+        Frame(new JsonObject { ["type"] = "TOOL_CALL_ARGS", ["toolCallId"] = callId, ["delta"] = content["arguments"]!.ToJsonString(), ["rawEvent"] = raw.DeepClone() }) +
+        Frame(new JsonObject { ["type"] = "TOOL_CALL_END", ["toolCallId"] = callId, ["rawEvent"] = raw.DeepClone() }) +
+        Frame(new JsonObject { ["type"] = "TOOL_CALL_RESULT", ["toolCallId"] = callId, ["messageId"] = callId, ["content"] = "\"server-PDX\"", ["rawEvent"] = resultRaw });
+}
+static async Task<NativeSessionProjection> ObserveDeferred(JsonObject raw, NativeSessionProjectionEvidence evidence)
+{
+    var projection = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), evidence: evidence);
+
+    await projection.ObserveAsync(Encoding.UTF8.GetBytes(DeferredServerWire(raw) + Terminal()), _ => ValueTask.CompletedTask, default);
+    projection.Complete();
+
+    return projection;
+}
+static bool OwnsDeferredServer(string? callId, string? name, JsonNode? arguments) => callId == "back_1" && name == "backend" && JsonNode.DeepEquals(arguments, JsonNode.Parse("{ \"code\" : \"PDX\" }"));
+var ownedServerEvidence = new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false, ownedCall: OwnsDeferredServer);
+var deferredOwned = await ObserveDeferred(DeferredServerRaw(), ownedServerEvidence);
+
+Check(deferredOwned.Result.Available && deferredOwned.Result.TurnCompleted, "Actual native deferred informationalOnly=true/null-finish announcement requires an exact current owned registered server-call witness.");
+Check(JsonNode.Parse(deferredOwned.Result.PublicRequestJson!)!["messages"]![1]!["id"]!.GetValue<string>() == "generated-native-parent", "Owned diagnostic must preserve the canonical parent actually supplied by native events.");
+Check(JsonNode.Parse(deferredOwned.Result.PublicRequestJson!)!["messages"]![2]!["content"]!.GetValue<string>() == "\"server-PDX\"", "Owned announcement must retain the actual native result without synthesizing execution data.");
+var providerOnlyEvidence = new NativeSessionProjectionEvidence((_, _) => true, (_, _, _, _) => true);
+var unknownMetadataDeferred = DeferredServerRaw();
+unknownMetadataDeferred["additionalProperties"] = new JsonObject { ["meaningful"] = true };
+var aliasDeferred = DeferredServerRaw();
+aliasDeferred["responseId"] = "unwitnessed-provider-alias";
+var wrongFinishDeferred = DeferredServerRaw();
+wrongFinishDeferred["finishReason"] = "unknown-native-finish";
+var anonymousDeferred = DeferredServerRaw();
+anonymousDeferred["messageId"] = null;
+var ownedAndProviderEvidence = new NativeSessionProjectionEvidence((_, _) => true, (_, _, _, _) => true, ownedCall: OwnsDeferredServer);
+foreach (var (name, raw, proof) in new[] {
+    ("unowned", DeferredServerRaw(), new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false)),
+    ("provider-only", DeferredServerRaw(), providerOnlyEvidence),
+    ("wrong call ID", DeferredServerRaw(callId: "back_other"), ownedServerEvidence),
+    ("wrong registered name", DeferredServerRaw(name: "other"), ownedServerEvidence),
+    ("changed arguments", DeferredServerRaw(code: "ORD"), ownedServerEvidence),
+    ("unsupported raw metadata", unknownMetadataDeferred, ownedServerEvidence),
+    ("unwitnessed identity alias", aliasDeferred, ownedServerEvidence),
+    ("unsupported finish shape", wrongFinishDeferred, ownedServerEvidence),
+    ("anonymous informational announcement", anonymousDeferred, ownedAndProviderEvidence),
+})
+{
+    var rejectedDeferred = await ObserveDeferred(raw, proof);
+
+    Check(!rejectedDeferred.Result.Available && rejectedDeferred.Result.PublicRequestJson is null, "Deferred server " + name + " must fail closed.");
+}
+var ordinaryDeferredShape = DeferredServerRaw();
+ordinaryDeferredShape["contents"]![0]!["informationalOnly"] = false;
+ordinaryDeferredShape["finishReason"] = "tool_calls";
+var ordinaryServer = await ObserveDeferred(ordinaryDeferredShape, new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false));
+
+Check(ordinaryServer.Result.Available, "Existing non-informational same-ID native call/result diagnostics must remain supported.");
+
+
+static JsonObject ServerCallBatch(params string[] ids)
+{
+    var raw = DeferredServerRaw();
+    raw["contents"] = new JsonArray(ids.Select(id => DeferredServerRaw(callId: id)["contents"]![0]!.DeepClone()).ToArray());
+    return raw;
+}
+static JsonObject ServerResultBatch(params string[] ids)
+{
+    var raw = DeferredServerRaw();
+    raw["role"] = "tool"; raw["messageId"] = "batch-result"; raw["responseId"] = "batch-result";
+    raw["contents"] = new JsonArray(ids.Select(id => (JsonNode)new JsonObject { ["$type"] = "functionResult", ["callId"] = id, ["result"] = "server-PDX", ["annotations"] = null, ["additionalProperties"] = null }).ToArray());
+    return raw;
+}
+static string ServerBatchWire(JsonObject callRaw, JsonObject resultRaw, string[]? callIds = null, string[]? resultIds = null, JsonObject? secondResultRaw = null)
+{
+    var wire = "";
+    foreach (var id in callIds ?? ["back_1", "back_2"])
+        wire += Frame(new JsonObject { ["type"] = "TOOL_CALL_START", ["toolCallId"] = id, ["toolCallName"] = "backend", ["parentMessageId"] = callRaw["messageId"]!.DeepClone(), ["rawEvent"] = callRaw.DeepClone() }) +
+            Frame(new JsonObject { ["type"] = "TOOL_CALL_ARGS", ["toolCallId"] = id, ["delta"] = "{\"code\":\"PDX\"}", ["rawEvent"] = callRaw.DeepClone() }) +
+            Frame(new JsonObject { ["type"] = "TOOL_CALL_END", ["toolCallId"] = id, ["rawEvent"] = callRaw.DeepClone() });
+    var index = 0;
+    foreach (var id in resultIds ?? ["back_1", "back_2"])
+        wire += Frame(new JsonObject { ["type"] = "TOOL_CALL_RESULT", ["toolCallId"] = id, ["messageId"] = id, ["content"] = "\"server-PDX\"", ["rawEvent"] = (index++ == 1 ? secondResultRaw ?? resultRaw : resultRaw).DeepClone() });
+    return wire;
+}
+static bool OwnsServerBatch(string? id, string? name, JsonNode? arguments) => id is "back_1" or "back_2" && name == "backend" && JsonNode.DeepEquals(arguments, JsonNode.Parse("{\"code\":\"PDX\"}"));
+static async Task<(NativeSessionProjection Projection, string Forwarded)> ObserveServerBatch(string wire, NativeSessionProjectionEvidence proof, int maximumMessages = 1000, int maximumBytes = 1048576)
+{
+    var projection = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), maximumBytes: maximumBytes, maximumMessages: maximumMessages, evidence: proof);
+    var forwarded = new MemoryStream();
+
+    await projection.ObserveAsync(Encoding.UTF8.GetBytes(wire + Terminal()), chunk => forwarded.WriteAsync(chunk), default);
+    projection.Complete();
+
+    return (projection, Encoding.UTF8.GetString(forwarded.ToArray()));
+}
+var ownedBatchEvidence = new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false, ownedCall: OwnsServerBatch);
+var actualBatchWire = ServerBatchWire(ServerCallBatch("back_1", "back_2"), ServerResultBatch("back_1", "back_2"));
+var actualBatch = await ObserveServerBatch(actualBatchWire, ownedBatchEvidence);
+
+Check(actualBatch.Projection.Result.Available && actualBatch.Projection.Result.TurnCompleted, "Actual native two-sibling shared call/result diagnostics require bounded exact owned obligations.");
+Check(actualBatch.Forwarded == actualBatchWire, "Batch validation must preserve every ordinary frame byte and hold only the genuine terminal.");
+var actualBatchMessages = JsonNode.Parse(actualBatch.Projection.Result.PublicRequestJson!)!["messages"]!.AsArray();
+Check(actualBatchMessages.Count == 4 && actualBatchMessages[1]!["toolCalls"]!.AsArray().Count == 2, "Raw siblings must not duplicate or synthesize canonical calls/results.");
+var changedResultBatch = ServerResultBatch("back_1", "back_2");
+changedResultBatch["contents"]![0]!["result"] = "changed";
+var wrongArgumentsBatch = ServerCallBatch("back_1", "back_2");
+wrongArgumentsBatch["contents"]![1]!["arguments"]!["code"] = "ORD";
+var mixedCallBatch = ServerCallBatch("back_1", "back_2");
+mixedCallBatch["contents"]!.AsArray().Add(new JsonObject { ["$type"] = "text", ["text"] = "extra" });
+var mixedResultBatch = ServerResultBatch("back_1", "back_2");
+mixedResultBatch["contents"]!.AsArray().Add(DeferredServerRaw()["contents"]![0]!.DeepClone());
+var ordinaryCallBatch = ServerCallBatch("back_1", "back_2");
+foreach (var member in ordinaryCallBatch["contents"]!.AsArray()) member!["informationalOnly"] = false;
+ordinaryCallBatch["finishReason"] = "tool_calls";
+var metadataCallBatch = ServerCallBatch("back_1", "back_2");
+metadataCallBatch["contents"]![1]!["annotations"] = new JsonArray(new JsonObject { ["type"] = "citation" });
+var aliasCallBatch = ServerCallBatch("back_1", "back_2");
+aliasCallBatch["responseId"] = "unwitnessed-batch-alias";
+var ownsThreeServers = new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false, ownedCall: (id, name, arguments) => id is "back_1" or "back_2" or "back_3" && name == "backend" && JsonNode.DeepEquals(arguments, JsonNode.Parse("{\"code\":\"PDX\"}")));
+foreach (var (name, wire, proof) in new[] {
+    ("missing canonical sibling call", ServerBatchWire(ServerCallBatch("back_1", "back_2"), ServerResultBatch("back_1"), callIds: ["back_1"], resultIds: ["back_1"]), ownedBatchEvidence),
+    ("missing canonical sibling result", ServerBatchWire(ServerCallBatch("back_1", "back_2"), ServerResultBatch("back_1", "back_2"), resultIds: ["back_1"]), ownedBatchEvidence),
+    ("extra owned raw-only call", ServerBatchWire(ServerCallBatch("back_1", "back_2", "back_3"), ServerResultBatch("back_1", "back_2")), ownsThreeServers),
+    ("unowned sibling", ServerBatchWire(ServerCallBatch("back_1", "back_2", "back_3"), ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("provider-only batch", actualBatchWire, providerOnlyEvidence),
+    ("changed sibling arguments", ServerBatchWire(wrongArgumentsBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("changed repeated sibling result", ServerBatchWire(ServerCallBatch("back_1", "back_2"), ServerResultBatch("back_1", "back_2"), secondResultRaw: changedResultBatch), ownedBatchEvidence),
+    ("duplicate raw call IDs", ServerBatchWire(ServerCallBatch("back_1", "back_1"), ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("duplicate raw result IDs", ServerBatchWire(ServerCallBatch("back_1", "back_2"), ServerResultBatch("back_1", "back_1")), ownedBatchEvidence),
+    ("heterogeneous call batch", ServerBatchWire(mixedCallBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("heterogeneous result batch", ServerBatchWire(ServerCallBatch("back_1", "back_2"), mixedResultBatch), ownedBatchEvidence),
+    ("ordinary false batch remains unsupported", ServerBatchWire(ordinaryCallBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("unknown sibling metadata", ServerBatchWire(metadataCallBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+    ("unwitnessed batch alias", ServerBatchWire(aliasCallBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence),
+})
+{
+    var rejectedBatch = await ObserveServerBatch(wire, proof);
+
+    Check(!rejectedBatch.Projection.Result.Available && rejectedBatch.Projection.Result.PublicRequestJson is null, "Batch " + name + " must fail closed.");
+    Check(!rejectedBatch.Forwarded.Contains("RUN_FINISHED", StringComparison.Ordinal), "Batch " + name + " cannot publish a terminal.");
+}
+var boundedBatch = await ObserveServerBatch(actualBatchWire, ownedBatchEvidence, maximumMessages: 1);
+
+Check(!boundedBatch.Projection.Result.Available, "Raw sibling obligations must honor the configured item bound.");
+
+var completedPublicBytes = Encoding.UTF8.GetByteCount(actualBatch.Projection.Result.PublicRequestJson!);
+var retainedByteBudget = Math.Max(completedPublicBytes, (Encoding.UTF8.GetByteCount(actualBatchWire + Terminal()) + 7) / 8);
+var byteBoundedBatch = await ObserveServerBatch(actualBatchWire, ownedBatchEvidence, maximumBytes: retainedByteBudget);
+
+Check(!byteBoundedBatch.Projection.Result.Available && byteBoundedBatch.Forwarded == actualBatchWire, "Pending batch diagnostics and obligations must count against retained public bytes even when the completed public JSON alone fits.");
+static string RewriteBatchEvents(string wire, Action<JsonObject> edit) => string.Concat(wire.Split("\r\n\r\n", StringSplitOptions.RemoveEmptyEntries).Select(frame =>
+{
+    var item = JsonNode.Parse(frame[6..])!.AsObject();
+    edit(item);
+    return Frame(item);
+}));
+var changedCanonicalResult = RewriteBatchEvents(actualBatchWire, item =>
+{
+    if (item["type"]!.GetValue<string>() == "TOOL_CALL_RESULT" && item["toolCallId"]!.GetValue<string>() == "back_2")
+    { item.Remove("rawEvent"); item["content"] = "\"changed\""; }
+});
+var changedCanonicalArguments = RewriteBatchEvents(actualBatchWire, item =>
+{
+    if (item["toolCallId"]!.GetValue<string>() == "back_2" || item["type"]!.GetValue<string>() == "TOOL_CALL_RESULT") item.Remove("rawEvent");
+    if (item["type"]!.GetValue<string>() == "TOOL_CALL_ARGS" && item["toolCallId"]!.GetValue<string>() == "back_2") item["delta"] = "{\"code\":\"ORD\"}";
+});
+foreach (var wire in new[] { changedCanonicalResult, changedCanonicalArguments })
+{
+    var bypass = await ObserveServerBatch(wire, ownedBatchEvidence);
+
+    Check(!bypass.Projection.Result.Available, "Later canonical events without raw diagnostics must still resolve every retained sibling obligation exactly.");
+}
+var equivalentCanonicalResult = RewriteBatchEvents(actualBatchWire, item =>
+{
+    if (item["type"]!.GetValue<string>() == "TOOL_CALL_RESULT" && item["toolCallId"]!.GetValue<string>() == "back_2") item.Remove("rawEvent");
+});
+var resolvedWithoutRepeatedRaw = await ObserveServerBatch(equivalentCanonicalResult, ownedBatchEvidence);
+
+Check(resolvedWithoutRepeatedRaw.Projection.Result.Available, "Equivalent genuine canonical results can resolve sibling obligations without repeated diagnostics.");
+lifecycleCases.Add(await ProjectLifecycle("owned sibling call/result batches", Input(), actualBatchWire + Terminal(), ownedBatchEvidence));
+Console.WriteLine("Native projection lifecycle: " + lifecycleCases.ToJsonString());
+
+var immediateNumericWire = """
+data: {"type":"TOOL_CALL_START","toolCallId":"numeric-call","toolCallName":"numeric","parentMessageId":"numeric-1","rawEvent":{"authorName":"native","role":"assistant","contents":[{"$type":"functionCall","name":"numeric","arguments":{"amount":1.0},"informationalOnly":true,"callId":"numeric-call","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"numeric-1","messageId":"numeric-1","conversationId":null,"createdAt":null,"finishReason":"tool_calls","modelId":null,"continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"numeric-call","delta":"{\"amount\":1.0}","rawEvent":{"authorName":"native","role":"assistant","contents":[{"$type":"functionCall","name":"numeric","arguments":{"amount":1.0},"informationalOnly":true,"callId":"numeric-call","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"numeric-1","messageId":"numeric-1","conversationId":null,"createdAt":null,"finishReason":"tool_calls","modelId":null,"continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"numeric-call","rawEvent":{"authorName":"native","role":"assistant","contents":[{"$type":"functionCall","name":"numeric","arguments":{"amount":1.0},"informationalOnly":true,"callId":"numeric-call","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"numeric-1","messageId":"numeric-1","conversationId":null,"createdAt":null,"finishReason":"tool_calls","modelId":null,"continuationToken":null}}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"numeric-call","toolCallId":"numeric-call","content":"1","rawEvent":{"authorName":"native","role":"tool","contents":[{"$type":"functionResult","result":1,"callId":"numeric-call","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"5c7ee890737b4596aabea9971b6f44c5","messageId":"5c7ee890737b4596aabea9971b6f44c5","conversationId":null,"createdAt":"2026-10-27T03:46:05.234419+00:00","finishReason":null,"modelId":null,"continuationToken":null}}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"numeric-2","role":"assistant","name":"native","rawEvent":{"authorName":"native","role":"assistant","contents":[{"$type":"text","text":"done","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"numeric-2","messageId":"numeric-2","conversationId":null,"createdAt":null,"finishReason":null,"modelId":null,"continuationToken":null}}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"numeric-2","delta":"done","rawEvent":{"authorName":"native","role":"assistant","contents":[{"$type":"text","text":"done","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"numeric-2","messageId":"numeric-2","conversationId":null,"createdAt":null,"finishReason":null,"modelId":null,"continuationToken":null}}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"numeric-2"}
+""" + "\n\n";
+var numericOwnedEvidence = new NativeSessionProjectionEvidence((_, _) => false, (_, _, _, _) => false, ownedCall: (id, name, arguments) =>
+    id == "numeric-call" && name == "numeric" && arguments is JsonObject { Count: 1 } fields && fields["amount"] is JsonValue amount && amount.TryGetValue<decimal>(out var value) && value == 1m);
+var immediateNumeric = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), evidence: numericOwnedEvidence);
+
+await immediateNumeric.ObserveAsync(Encoding.UTF8.GetBytes(immediateNumericWire + Terminal()), _ => ValueTask.CompletedTask, default);
+immediateNumeric.Complete();
+
+Check(immediateNumeric.Result.Available && immediateNumeric.Result.TurnCompleted, "Actual immediate owned informational announcement with tool_calls finish and semantic numeric arguments must be representable.");
+var immediateProviderOnly = new NativeSessionProjection(Input(), new HashSet<string>(["browser"]), evidence: providerOnlyEvidence);
+
+await immediateProviderOnly.ObserveAsync(Encoding.UTF8.GetBytes(immediateNumericWire + Terminal()), _ => ValueTask.CompletedTask, default);
+immediateProviderOnly.Complete();
+
+Check(!immediateProviderOnly.Result.Available, "Immediate informational tool_calls cannot be permitted by generic provider evidence alone.");
+var immediateCallBatch = ServerCallBatch("back_1", "back_2");
+immediateCallBatch["finishReason"] = "tool_calls"; immediateCallBatch["createdAt"] = null;
+var immediateBatchWire = ServerBatchWire(immediateCallBatch, ServerResultBatch("back_1", "back_2"));
+var immediateBatch = await ObserveServerBatch(immediateBatchWire, ownedBatchEvidence);
+var immediateUnownedBatch = await ObserveServerBatch(immediateBatchWire, providerOnlyEvidence);
+
+Check(immediateBatch.Projection.Result.Available && !immediateUnownedBatch.Projection.Result.Available, "Immediate homogeneous informational batches require exact owned server evidence for every sibling.");
+var unknownFinishBatch = ServerCallBatch("back_1", "back_2");
+unknownFinishBatch["finishReason"] = "unknown-native-finish";
+var unknownFinish = await ObserveServerBatch(ServerBatchWire(unknownFinishBatch, ServerResultBatch("back_1", "back_2")), ownedBatchEvidence);
+
+Check(!unknownFinish.Projection.Result.Available, "Unknown informational finish reasons remain unsupported even with exact owned descriptors.");
+
+var relocatedSibling = RewriteBatchEvents(actualBatchWire, item =>
+{
+    if (item["toolCallId"]!.GetValue<string>() == "back_2")
+    {
+        item.Remove("rawEvent");
+        if (item["type"]!.GetValue<string>() == "TOOL_CALL_START") item["parentMessageId"] = "changed-native-parent";
+    }
+});
+var relocated = await ObserveServerBatch(relocatedSibling, ownedBatchEvidence);
+
+Check(!relocated.Projection.Result.Available && relocated.Projection.Result.PublicRequestJson is null, "A raw sibling obligation must retain its witnessed native parent even when later canonical sibling events omit diagnostics.");
+var sameParentWithoutDiagnostic = RewriteBatchEvents(actualBatchWire, item =>
+{
+    if (item["toolCallId"]!.GetValue<string>() == "back_2") item.Remove("rawEvent");
+});
+var sameParent = await ObserveServerBatch(sameParentWithoutDiagnostic, ownedBatchEvidence);
+
+Check(sameParent.Projection.Result.Available && JsonNode.Parse(sameParent.Projection.Result.PublicRequestJson!)!["messages"]!.AsArray().Count == 4, "A sibling without repeated diagnostics remains representable when its native parent and descriptor match the original obligation.");
+
+var actualAimockBrowserWire = """
+data: {"type":"TOOL_CALL_START","toolCallId":"native-browser","toolCallName":"getWeather","parentMessageId":"chatcmpl-KdGG3pvEkpqaA92Z","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"native-browser","delta":"{\"city\":\"Paris\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"native-browser","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"native-browser","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-KdGG3pvEkpqaA92Z","messageId":"chatcmpl-KdGG3pvEkpqaA92Z","conversationId":null,"createdAt":"2026-10-27T04:20:22+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+""" + "\n\n";
+var actualAimockBrowser = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+await actualAimockBrowser.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire + Terminal()), _ => ValueTask.CompletedTask, default);
+actualAimockBrowser.Complete();
+
+Check(actualAimockBrowser.Result.Available && actualAimockBrowser.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "native-browser" }), "Exact actual aimock browser frames with a nonnull offset timestamp must produce the owned public browser-call prefix.");
+var actualUsage = JsonNode.Parse("""[{"model":"fixture-openai-model","inputTokens":5,"outputTokens":14,"totalTokens":19}]""")!;
+var actualUsageTerminal = Frame(new JsonObject { ["type"] = "RUN_FINISHED", ["threadId"] = "thread", ["runId"] = "run", ["outcome"] = new JsonObject { ["type"] = "success" }, ["usage"] = actualUsage.DeepClone() });
+var withActualUsage = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+var usageForwarded = new MemoryStream();
+
+await withActualUsage.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire + actualUsageTerminal), chunk => usageForwarded.WriteAsync(chunk), default);
+withActualUsage.Complete();
+
+Check(withActualUsage.Result.Available && withActualUsage.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "native-browser" }), "Actual strict aimock RUN_FINISHED standard token usage must preserve the owned browser continuation.");
+Check(withActualUsage.Result.PublicRequestJson == actualAimockBrowser.Result.PublicRequestJson, "Terminal usage must not become public history or tool authority.");
+Check(Encoding.UTF8.GetString(usageForwarded.ToArray()) == actualAimockBrowserWire, "Standard usage must stay within the held genuine terminal.");
+var releasedUsage = new MemoryStream();
+
+await withActualUsage.ReleaseTerminalAsync(chunk => releasedUsage.WriteAsync(chunk), default);
+
+Check(Encoding.UTF8.GetString(releasedUsage.ToArray()) == actualUsageTerminal, "Standard usage terminal bytes must be released exactly as emitted by native hosting.");
+
+static string UsageTerminal(JsonNode? usage) => Frame(new JsonObject { ["type"] = "RUN_FINISHED", ["threadId"] = "thread", ["runId"] = "run", ["outcome"] = new JsonObject { ["type"] = "success" }, ["usage"] = usage?.DeepClone() });
+var allStandardUsage = JsonNode.Parse("""[{"provider":"openai","model":"fixture-openai-model","inputTokens":5,"outputTokens":14,"totalTokens":19,"reasoningTokens":3,"cachedInputTokens":2,"cacheWriteInputTokens":1}]""");
+var standardUsageProjection = new NativeSessionProjection(Input(), new HashSet<string>());
+
+await standardUsageProjection.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(allStandardUsage)), _ => ValueTask.CompletedTask, default);
+standardUsageProjection.Complete();
+
+Check(standardUsageProjection.Result.Available && standardUsageProjection.Result.TurnCompleted, "All pinned documented TokenUsage labels and counts are terminal metadata without history effects.");
+foreach (var (name, json) in new[] {
+    ("unknown usage field", """[{"inputTokens":5,"prompt":"private"}]"""),
+    ("unknown nullable field", """[{"inputTokens":5,"unknown":null}]"""),
+    ("count string", """[{"inputTokens":"5"}]"""),
+    ("negative count", """[{"inputTokens":-1}]"""),
+    ("fractional count", """[{"inputTokens":1.5}]"""),
+    ("unsafe integer", """[{"inputTokens":9007199254740992}]"""),
+    ("wrong label type", """[{"model":{"private":true},"inputTokens":5}]"""),
+    ("usage object", """{"inputTokens":5}"""),
+    ("nonobject entry", """["private"]"""),
+})
+{
+    var invalidUsage = new NativeSessionProjection(Input(), new HashSet<string>());
+
+    try { await invalidUsage.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(JsonNode.Parse(json))), _ => ValueTask.CompletedTask, default); invalidUsage.Complete(); }
+    catch (Exception exception) when (exception is IOException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException) { }
+
+    Check(!invalidUsage.Result.Available && invalidUsage.Result.PublicRequestJson is null, "Terminal usage " + name + " must fail closed.");
+}
+var tooManyUsage = new NativeSessionProjection(Input(), new HashSet<string>(), maximumMessages: 1);
+
+await tooManyUsage.ObserveAsync(Encoding.UTF8.GetBytes(UsageTerminal(JsonNode.Parse("""[{"inputTokens":1},{"outputTokens":1}]"""))), _ => ValueTask.CompletedTask, default);
+tooManyUsage.Complete();
+
+Check(!tooManyUsage.Result.Available, "Terminal usage collections honor the configured bounded item count.");
+var usageByteLimit = new NativeSessionProjection(Input(), new HashSet<string>(), maximumTerminalBytes: 128);
+var usageBytesRejected = false;
+
+try { await usageByteLimit.ObserveAsync(Encoding.UTF8.GetBytes(actualUsageTerminal), _ => ValueTask.CompletedTask, default); } catch (IOException) { usageBytesRejected = true; }
+
+Check(usageBytesRejected && !usageByteLimit.Result.Available, "Terminal usage bytes honor the existing held-terminal cap.");
+foreach (var date in new[] { "2026-10-27T04:20:22+00:00", "2026-10-27T04:20:22.1234567-07:00", "2026-10-27T04:20:22Z" })
+{
+    var timestampProjection = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+    await timestampProjection.ObserveAsync(Encoding.UTF8.GetBytes(actualAimockBrowserWire.Replace("2026-10-27T04:20:22+00:00", date, StringComparison.Ordinal) + Terminal()), _ => ValueTask.CompletedTask, default);
+    timestampProjection.Complete();
+
+    Check(timestampProjection.Result.Available, "Valid native timestamp is already supported: " + date);
+}
+foreach (var timestamp in new[] { "\"not-a-timestamp\"", "42", "{\"private\":true}" })
+{
+    var badTimestamp = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+    var malformedTimestampWire = actualAimockBrowserWire.Replace("\"createdAt\":\"2026-10-27T04:20:22+00:00\"", "\"createdAt\":" + timestamp, StringComparison.Ordinal);
+
+    await badTimestamp.ObserveAsync(Encoding.UTF8.GetBytes(malformedTimestampWire + Terminal()), _ => ValueTask.CompletedTask, default);
+    badTimestamp.Complete();
+
+    Check(!badTimestamp.Result.Available, "Malformed native timestamp types remain unsupported.");
+}
+
+var actualBrowserBatchWire = """
+data: {"type":"TOOL_CALL_START","toolCallId":"browser-one","toolCallName":"getWeather","parentMessageId":"chatcmpl-g6tBkXPcXU6WMuHn","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"browser-one","delta":"{\"city\":\"Paris\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"browser-one","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"browser-two","toolCallName":"getWeather","parentMessageId":"chatcmpl-g6tBkXPcXU6WMuHn","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"browser-two","delta":"{\"city\":\"Portland\"}","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"browser-two","rawEvent":{"authorName":"HashbrownNative","role":"assistant","contents":[{"$type":"functionCall","name":"getWeather","arguments":{"city":"Paris"},"informationalOnly":false,"callId":"browser-one","annotations":null,"additionalProperties":null},{"$type":"functionCall","name":"getWeather","arguments":{"city":"Portland"},"informationalOnly":false,"callId":"browser-two","annotations":null,"additionalProperties":null}],"additionalProperties":null,"responseId":"chatcmpl-g6tBkXPcXU6WMuHn","messageId":"chatcmpl-g6tBkXPcXU6WMuHn","conversationId":null,"createdAt":"2026-10-27T05:05:49+00:00","finishReason":"tool_calls","modelId":"fixture-openai-model","continuationToken":null}}
+""" + "\n\n";
+var actualBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+var browserBatchForwarded = new MemoryStream();
+
+await actualBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), chunk => browserBatchForwarded.WriteAsync(chunk), default);
+actualBrowserBatch.Complete();
+
+Check(actualBrowserBatch.Result.Available && actualBrowserBatch.Result.ExpectedBrowserCallIds.SequenceEqual(new[] { "browser-one", "browser-two" }), "Exact captured declared-browser false sibling diagnostics must preserve both canonical pending calls.");
+Check(Encoding.UTF8.GetString(browserBatchForwarded.ToArray()) == actualBrowserBatchWire, "Browser batch diagnostics must preserve ordinary frame bytes exactly.");
+var browserBatchEvents = actualBrowserBatchWire.Split("\n\n", StringSplitOptions.RemoveEmptyEntries).Select(frame => JsonNode.Parse(frame[6..])!.AsObject()).ToArray();
+Console.WriteLine("Native projection browser batch: " + new JsonObject { ["name"] = "actual browser siblings", ["original"] = JsonNode.Parse(Input()), ["events"] = new JsonArray(browserBatchEvents.Select(item => item.DeepClone()).ToArray()), ["messages"] = JsonNode.Parse(actualBrowserBatch.Result.PublicRequestJson!)!["messages"]!.DeepClone() }.ToJsonString());
+foreach (var mutation in new[] { "missing", "extra", "changed args", "changed name", "unknown browser", "mixed flags", "parent", "duplicate", "metadata", "alias" })
+{
+    var items = browserBatchEvents.Select(item => (JsonObject)item.DeepClone()).ToList();
+    if (mutation == "missing") items.RemoveAll(item => item["toolCallId"]!.GetValue<string>() == "browser-two");
+    else if (mutation == "extra") { foreach (var item in items) { var children = item["rawEvent"]!["contents"]!.AsArray(); var extra = children[1]!.DeepClone(); extra["callId"] = "raw-only"; children.Add(extra); } }
+    else if (mutation == "changed args") { foreach (var item in items.Where(item => item["toolCallId"]!.GetValue<string>() == "browser-two")) item.Remove("rawEvent"); items.Single(item => item["type"]!.GetValue<string>() == "TOOL_CALL_ARGS" && item["toolCallId"]!.GetValue<string>() == "browser-two")["delta"] = "{\"city\":\"Changed\"}"; }
+    else if (mutation == "changed name" || mutation == "parent") { foreach (var item in items.Where(item => item["toolCallId"]!.GetValue<string>() == "browser-two")) item.Remove("rawEvent"); items.Single(item => item["type"]!.GetValue<string>() == "TOOL_CALL_START" && item["toolCallId"]!.GetValue<string>() == "browser-two")[mutation == "parent" ? "parentMessageId" : "toolCallName"] = "changed"; }
+    else foreach (var item in items)
+    {
+        var raw = item["rawEvent"]!;
+        var children = raw["contents"]!.AsArray();
+        if (mutation == "unknown browser") children[1]!["name"] = "unknown";
+        if (mutation == "mixed flags") children[1]!["informationalOnly"] = true;
+        if (mutation == "duplicate") children[1]!["callId"] = "browser-one";
+        if (mutation == "metadata") children[1]!["additionalProperties"] = new JsonObject { ["hidden"] = true };
+        if (mutation == "alias") raw["responseId"] = "unwitnessed-alias";
+    }
+    var invalidBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]));
+
+    await invalidBatch.ObserveAsync(Encoding.UTF8.GetBytes(string.Concat(items.Select(Frame)) + Terminal()), _ => ValueTask.CompletedTask, default);
+    invalidBatch.Complete();
+
+    Check(!invalidBatch.Result.Available, "Browser batch " + mutation + " must fail closed without raw-created history.");
+}
+var byteCappedBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]), maximumBytes: 600);
+
+await byteCappedBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), _ => ValueTask.CompletedTask, default);
+byteCappedBrowserBatch.Complete();
+
+Check(!byteCappedBrowserBatch.Result.Available, "Browser sibling obligations participate in retained-byte accounting.");
+var cappedBrowserBatch = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"]), maximumMessages: 1);
+
+await cappedBrowserBatch.ObserveAsync(Encoding.UTF8.GetBytes(actualBrowserBatchWire + Terminal()), _ => ValueTask.CompletedTask, default);
+cappedBrowserBatch.Complete();
+
+Check(!cappedBrowserBatch.Result.Available, "Browser sibling obligations obey the bounded collection count.");
+
+Console.WriteLine("Native session projection passed.");

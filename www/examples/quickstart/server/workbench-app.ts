@@ -1,3 +1,4 @@
+import { workbenchHistorySystem } from '../runtime/workbench-history';
 import {
   isWorkbenchWorkflowState,
   workbenchWorkflowSystem,
@@ -86,11 +87,14 @@ export function pinWorkbenchInput(
     'workflow';
   if (workflow && !isWorkbenchWorkflowState(input.state))
     throw new Error('Invalid workflow state');
+  const history =
+    lesson === 'message-history' || lesson === 'save-text-conversations';
   const onboarding =
     lesson === 'first-plan' ||
     lesson === 'conversation' ||
     lesson === 'system-instructions';
   const plainText =
+    history ||
     workflow ||
     lesson === 'magic-text' ||
     lesson === 'conversation' ||
@@ -101,26 +105,28 @@ export function pinWorkbenchInput(
       {
         id: 'workbench-system',
         role: 'system',
-        content: workflow
-          ? workbenchWorkflowSystem
-          : lesson === 'first-plan'
-            ? workbenchFirstPlanSystem
-            : lesson === 'conversation'
-              ? workbenchConversationSystem
-              : lesson === 'system-instructions'
-                ? workbenchInstructionsSystem
-                : lesson === 'magic-text'
-                  ? workbenchTextSystem
-                  : lesson === 'predictions'
-                    ? workbenchPredictionsSystem
-                    : structured
-                      ? workbenchStructuredSystem
-                      : workbenchSystem,
+        content: history
+          ? workbenchHistorySystem
+          : workflow
+            ? workbenchWorkflowSystem
+            : lesson === 'first-plan'
+              ? workbenchFirstPlanSystem
+              : lesson === 'conversation'
+                ? workbenchConversationSystem
+                : lesson === 'system-instructions'
+                  ? workbenchInstructionsSystem
+                  : lesson === 'magic-text'
+                    ? workbenchTextSystem
+                    : lesson === 'predictions'
+                      ? workbenchPredictionsSystem
+                      : structured
+                        ? workbenchStructuredSystem
+                        : workbenchSystem,
       },
       ...messages,
     ],
     tools:
-      workflow || onboarding || lesson === 'predictions'
+      history || workflow || onboarding || lesson === 'predictions'
         ? []
         : [
             {

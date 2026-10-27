@@ -48,6 +48,7 @@ const numbers = [
   'reservedCalls',
   'dispatchedCalls',
   'cancelledCalls',
+  'nativeEffects',
 ];
 
 /** Projects and bounds metadata before invoking any caller-owned stdout/file/report sink. */
@@ -81,6 +82,8 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
         input['status'] <= 599
       )
         safe['status'] = input['status'];
+      for (const key of ['nativeCoEmission', 'nativeExactHistory'])
+        if (typeof input[key] === 'boolean') safe[key] = input[key];
       const line = `${JSON.stringify(safe)}\n`;
       const bytes = Buffer.byteLength(line);
       if (state.bytes + bytes > 2 * 1024 * 1024) {

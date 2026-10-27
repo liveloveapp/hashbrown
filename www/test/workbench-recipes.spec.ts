@@ -26,7 +26,7 @@ test('new lessons have explicit protocols and fixed initial application state', 
       createWorkbenchStore(format as 'text').getSnapshot().application.plan,
     ).toEqual(workbenchDecisionPlan);
   }
-  expect(workbenchLessons).toHaveLength(17);
+  expect(workbenchLessons).toHaveLength(19);
 });
 
 test('predictions validate unique known bounded actions and permit an empty result', () => {

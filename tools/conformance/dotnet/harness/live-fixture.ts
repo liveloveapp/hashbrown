@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
+import { publicChildEnvironment } from './live-configuration';
 import { createLiveOutputReader, safeLiveError } from './live-diagnostics';
 
 /** Owned native fixture; provider credentials never leave its selected child environment. */
@@ -19,6 +20,14 @@ export async function startNativeLiveFixture(
   if (
     group !== 'preflight' &&
     !LIVE_BUDGET_MANIFEST.groups.some((entry) => entry.name === group)
+  )
+    throw safeLiveError('LIVE_CHILD_START_FAILED');
+  if (
+    group === 'mixed-native-tools' &&
+    (environment['FixtureNativeSessions'] !== 'true' ||
+      !environment['InterruptConnectionString']?.trim() ||
+      environment['InterruptSchema']?.length !== 45 ||
+      !/^durable_live_[a-f0-9]{32}$/.test(environment['InterruptSchema'] ?? ''))
   )
     throw safeLiveError('LIVE_CHILD_START_FAILED');
   if (signal.aborted) throw safeLiveError('LIVE_CHILD_TIMEOUT');
@@ -92,6 +101,29 @@ export async function startNativeLiveFixture(
           await exit;
         } finally {
           clearTimeout(timer);
+        }
+      }
+      if (group === 'mixed-native-tools') {
+        const cleanupSignal = AbortSignal.timeout(15_000);
+        const cleanup = await startNativeLiveFixture(
+          {
+            ...publicChildEnvironment(environment),
+            FixtureDropSchemaOnly: 'true',
+            InterruptSchema: environment['InterruptSchema'],
+            InterruptConnectionString: environment['InterruptConnectionString'],
+          },
+          'preflight',
+          cleanupSignal,
+          [],
+        );
+        try {
+          const response = await fetch(`${cleanup.url}/__test/drop-schema`, {
+            method: 'POST',
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (!response.ok) throw safeLiveError('LIVE_CHILD_FAILED');
+        } finally {
+          await cleanup.stop();
         }
       }
     })());

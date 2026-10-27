@@ -30,7 +30,7 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens seventeen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens nineteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -53,6 +53,8 @@ The lessons are:
 | [Shared agent state](/docs/angular/concept/shared-agent-state) | `/angular.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
 | [Activities](/docs/angular/concept/activities) | `/angular.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
 | [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
+| [Message history](/docs/angular/concept/message-history) | `/angular.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
+| [Save text conversations](/docs/angular/recipes/browser-history) | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
@@ -74,11 +76,15 @@ The next prompt stays in the conversation. Its tool call reads the accepted plan
 
 ## Inspect and replay
 
-The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag the scrubber to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
+The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag anywhere on the track to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Every tab except Requests puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. The `{ }` toggle on the captured side shows the raw frame.
+
+The Requests tab opens with an overview timeline you can drag or click to seek, above a table of requests grouped by turn. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
+
+**New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 
@@ -92,3 +98,9 @@ Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTT
 Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
 
 Continue with [Exposing components](/docs/angular/concept/components), [Tool calling](/docs/angular/concept/functions), or [Streaming](/docs/angular/concept/streaming) to focus on one part of the conversation.
+
+## Keep and Restore Completed Text
+
+Open `/angular.html?lesson=message-history` to keep, clear, and restore a completed exchange. The History inspector distinguishes the SDK transcript from the app's in-memory text copy. Open `/angular.html?lesson=save-text-conversations` to save Lighthouse and Harbor explicitly, refresh, and load text into a new runtime.
+
+Only successful completed text is saved. Browser slots do not restore shared state, activities, tools, or pending interrupts. The timeline after refresh starts a new capture; replay never requests or writes storage. See [Message history](/docs/angular/concept/message-history) and [Save text conversations](/docs/angular/recipes/browser-history).

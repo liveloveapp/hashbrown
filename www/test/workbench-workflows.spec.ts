@@ -7,7 +7,7 @@ test('appends three chat workflow lessons and preserves the original fourteen an
 
   expect(
     lessons
-      .slice(14)
+      .slice(14, 17)
       .map(({ id, format, protocol }) => ({ id, format, protocol })),
   ).toEqual([
     { id: 'shared-state', format: 'workflow', protocol: 'chat' },

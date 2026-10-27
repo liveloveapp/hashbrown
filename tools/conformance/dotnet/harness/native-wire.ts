@@ -2,6 +2,34 @@ import { expect } from '@playwright/test';
 import type { ModelApi } from './browser-fixture';
 import type { ModelRequest } from './http-fixture';
 
+/** Requires a bounded complete successful SSE protocol run independently from HTTP EOF. */
+export function expectNativeRunCapture(capture: {
+  readonly body: string;
+  readonly truncated: boolean;
+}) {
+  expect(capture.truncated).toBe(false);
+  expect(capture.body).toMatch(/\r?\n\r?\n$/);
+  const events = capture.body
+    .split(/\r?\n\r?\n/)
+    .filter((frame) => frame.trim().length > 0)
+    .map((frame) => {
+      const data = frame
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trimStart())
+        .join('\n');
+      return JSON.parse(data) as Record<string, unknown>;
+    });
+  expect(events[0]?.type).toBe('RUN_STARTED');
+  const terminals = events.filter(
+    (event) => event.type === 'RUN_FINISHED' || event.type === 'RUN_ERROR',
+  );
+  expect(terminals).toHaveLength(1);
+  expect(events.at(-1)).toBe(terminals[0]);
+  expect(terminals[0]?.type).toBe('RUN_FINISHED');
+  return events;
+}
+
 /** Original function call and output expected in the native model transcript. */
 export interface NativeToolPair {
   readonly id: string;

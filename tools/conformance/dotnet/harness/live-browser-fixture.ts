@@ -27,6 +27,8 @@ export interface LiveNativeStats {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly stage: string;
+  readonly nativeCoEmission?: boolean;
+  readonly nativeExactHistory?: boolean;
   readonly wire: readonly LiveNativeWire[];
 }
 
@@ -162,6 +164,12 @@ function nativeStats(value: unknown): LiveNativeStats {
     inputTokens: counter(input['inputTokens']),
     outputTokens: counter(input['outputTokens']),
     stage: input['stage'],
+    ...(typeof input['nativeCoEmission'] === 'boolean'
+      ? { nativeCoEmission: input['nativeCoEmission'] }
+      : {}),
+    ...(typeof input['nativeExactHistory'] === 'boolean'
+      ? { nativeExactHistory: input['nativeExactHistory'] }
+      : {}),
     wire: Object.freeze(wire),
   });
 }

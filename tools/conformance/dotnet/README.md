@@ -40,6 +40,44 @@ traces are under `test-results/conformance/dotnet` and
 `playwright-report/conformance/dotnet`. Failed fixtures preserve bounded process
 logs and native model request evidence under the test-results diagnostics folder.
 
+## Native mixed-tool sessions
+
+The opt-in native composition is documented in the identical compiled
+[React](../../../www/content/docs/react/platform/dotnet-native-tools.md) and
+[Angular](../../../www/content/docs/angular/platform/dotnet-native-tools.md) recipes.
+It requires authenticated caller scope, the complete versioned function catalog,
+PostgreSQL ownership and `NativeSessionAgentFactory`/`NativeSessionEndpointConfiguration`
+together. Native same-response browser/server calls retain MAF pending work while
+empty MAF history filters preserve the SDK's full canonical transcript. Durable
+`Started` dispatch markers and the terminal publication barrier prevent automatic
+effect replay after ambiguity. Publication CAS cannot retract already-authorized
+or in-flight terminal bytes; `Publishing` blocks another owner until finalization
+or terminal retirement after independently verified publisher quiescence. Stop and
+drain older workers before changing the native format or compatible catalog
+versions; there is no rolling mixed-format guarantee. Native approvals remain a
+separate milestone.
+
+`check-docs` preserves the original four stateless/application-confirmation C#
+examples and all 16 combinations, then compiles the native startup with and without
+recovery for both OpenAI/Azure and Responses/Chat Completions (eight combinations).
+Both verifiers copy the locked actual project and Integration source into isolated
+temporary projects; they do not invoke providers. The native structural tests also
+check framework parity, complete dependency pins and authenticated initialization.
+
+Native recovery uses a complete trusted key, current configuration and server
+revision. Pending browser results return `NativePendingBrowserResults` without a
+snapshot: published `restoreConversation` rejects unresolved executable tools.
+Never rerun historical tools or invent results after reload. Only completed or
+known-safe snapshots restore; uncertainty remains blocked and a new thread is
+allowed. Scoped operator reconciliation requires evidence and external quiescence,
+and only terminally retires work. Maintenance retains selector tombstones and
+unknown fences; defaults are 128 live payloads and 4096 selectors per agent/scope.
+
+The original deterministic browser baseline remains 360 cases; native additions
+are counted separately after the coordinated full matrix run. The existing live
+baseline remains seven groups across six projects (42 results) until the native
+live group is qualified; documentation compilation alone makes no live claim.
+
 ## Native Azure authentication
 
 `ProviderFactory` accepts trusted `AzureAuthentication=api-key|azure-cli|managed-identity`.
@@ -71,9 +109,11 @@ header-based test identities, test controls, or localhost model setup into an
 application. Applications supply authentication, authorization, tool permissions,
 model configuration, and their own server-owned workflow checkpoint selector.
 
-`HashbrownRequestClient` enables strict native JSON schema output and fails a
-single model turn combining browser and server tool calls before server effects.
-Sequential mixed workflows use the upstream agent pipeline. `InterruptWorkflowClient`
+In the stateless composition, `HashbrownRequestClient` enables strict native JSON
+schema output and fails a single model turn combining browser and server tool calls
+before server effects. Sequential mixed workflows use the upstream agent pipeline.
+The [admitted native mode](#native-mixed-tool-sessions) supports same-response mixed
+calls through its complete authenticated durable composition. `InterruptWorkflowClient`
 handles explicit application confirmation; it does not claim automatic native
 MAF approval-tool compatibility. The native interrupt serializer registration is
 required by the pinned hosting baseline.

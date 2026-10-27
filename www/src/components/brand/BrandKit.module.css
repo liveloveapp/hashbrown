@@ -1,0 +1,246 @@
+/* Set on the page shell: the header and footer read it to line their edges
+   up with the brand kit's column, as on the home page. */
+.column {
+  --column-width: calc(var(--container) - 2 * var(--gutter));
+}
+
+.page {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  width: 100%;
+  max-width: var(--container);
+  padding: var(--space-12) var(--gutter) var(--section-gap);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 720px;
+}
+
+.title {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  color: var(--color-muted);
+  font: 400 18px/28px var(--font-sans);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.heading {
+  color: var(--color-ink);
+  font: 600 24px/32px var(--font-sans);
+}
+
+.logos,
+.cards,
+.fonts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.dark {
+  background: var(--color-code-bg);
+}
+
+.logo {
+  max-width: 100%;
+  height: 48px;
+}
+
+.cardPreview {
+  padding: var(--space-4);
+}
+
+.card {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-input);
+}
+
+.meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.metaText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.name {
+  color: var(--color-ink);
+  font: 600 16px/24px var(--font-sans);
+}
+
+.format {
+  color: var(--color-muted);
+  font: 400 13px/20px var(--font-code);
+}
+
+.use {
+  color: var(--color-muted);
+  font: 400 14px/20px var(--font-sans);
+}
+
+.download {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-md);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink);
+  font: 500 14px/20px var(--font-sans);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.download:hover {
+  background: var(--color-highlight);
+}
+
+.download:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.note {
+  color: var(--color-muted);
+  font: 400 14px/20px var(--font-sans);
+}
+
+.note code {
+  font: 400 13px/20px var(--font-code);
+}
+
+.colors {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.color {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.swatch {
+  flex: none;
+  width: var(--space-16);
+  height: var(--space-16);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+}
+
+.specimen {
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  font: 600 48px/56px var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font: 400 24px/56px var(--font-code);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media screen and (min-width: 768px) {
+  /* One preview height across the row, whatever each card's shape. */
+  .cardPreview {
+    height: 240px;
+  }
+
+  /* Fit the square card to the preview's height, less its padding. */
+  .square {
+    max-width: calc(240px - 2 * var(--space-4));
+  }
+
+  .logos {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cards,
+  .fonts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .colors {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .colors {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .title {
+    font-size: 48px;
+    line-height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .download {
+    transition: none;
+  }
+}

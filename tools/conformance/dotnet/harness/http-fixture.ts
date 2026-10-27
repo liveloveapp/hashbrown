@@ -270,7 +270,14 @@ export async function postRun(
     },
     body: JSON.stringify(input),
   });
-  const body = await response.text();
+  let body = '';
+  const decoder = new TextDecoder();
+  try {
+    for await (const bytes of response.body ?? []) body += decoder.decode(bytes, { stream: true });
+    body += decoder.decode();
+  } catch (error) {
+    throw new Error(`Native response read failed: ${String(error)}\n${body}\n${fixture.diagnostics()}\n${JSON.stringify(fixture.requests)}`);
+  }
   const events = body
     .split(/\r?\n/)
     .filter((line) => line.startsWith('data:'))

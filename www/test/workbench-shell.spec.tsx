@@ -577,9 +577,7 @@ test('labels the inspector panel by its selected tab', () => {
   expect(panel?.getAttribute('aria-labelledby')).toBe(selected()?.id);
   expect(selected()?.textContent).toBe('State');
   expect(
-    new Set(
-      [...host.querySelectorAll('[role=tab]')].map((tab) => tab.id),
-    ).size,
+    new Set([...host.querySelectorAll('[role=tab]')].map((tab) => tab.id)).size,
   ).toBe(host.querySelectorAll('[role=tab]').length);
   shell.dispose();
 });
@@ -686,9 +684,12 @@ test('keeps the flag inside the scrubber at either end', () => {
 
 test('keeps focus on an activated request row and tick', () => {
   const { host, store, shell } = mountShell();
-  recordTwoTurns(store);
+  store.send('Plan');
+  store.record('request', { requestId: 'r1', input: { messages: [] } });
+  store.record('tool', { name: 'readContext', result: null });
+  store.settle('complete', 'stop');
   const row = host.querySelectorAll<HTMLButtonElement>(
-    '.wb-request-list button',
+    '.wb-requests-table button[data-exchange]',
   )[0];
   const rowText = row?.textContent;
   row?.focus();
@@ -703,7 +704,7 @@ test('keeps focus on an activated request row and tick', () => {
   tick?.click();
   const focusedTick = document.activeElement;
 
-  expect(focusedRow?.closest('.wb-request-list')).not.toBeNull();
+  expect(focusedRow?.closest('.wb-requests-table')).not.toBeNull();
   expect(focusedRow?.textContent).toBe(rowText);
   expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
   expect(focusedTick?.closest('.wb-events')).not.toBeNull();
@@ -843,4 +844,213 @@ test('toggles the rail with Cmd+B and Ctrl+B', () => {
   expect(afterCmd).toBe(true);
   expect(layout.get().rail).toBe(false);
   shell.dispose();
+});
+
+function scrubberPointer(
+  target: EventTarget,
+  type: string,
+  clientX: number,
+  init: Record<string, unknown> = {},
+) {
+  target.dispatchEvent(
+    Object.assign(
+      new MouseEvent(type, {
+        clientX,
+        bubbles: true,
+        cancelable: true,
+        // A press and the moves of a drag hold the primary button.
+        buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0,
+      }),
+      { pointerId: 1, ...init },
+    ),
+  );
+}
+
+test('drags the bottom scrubber from anywhere on the track, including a tick', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const scrubber = host.querySelector<HTMLElement>('.wb-scrubber');
+  vi.spyOn(scrubber as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 1000,
+    width: 1000,
+  } as DOMRect);
+  const total = store.getSnapshot().events.length;
+  playerButton(host, 'Play').click();
+  const playing = host.querySelector('.wb-player button[aria-label="Pause"]');
+
+  scrubberPointer(scrubber as HTMLElement, 'pointerdown', 0);
+  const atStart = store.getSnapshot().cursor;
+  scrubberPointer(scrubber as HTMLElement, 'pointermove', 1000);
+  const atEnd = store.getSnapshot().cursor;
+  scrubberPointer(scrubber as HTMLElement, 'pointerup', 1000);
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[1];
+  scrubberPointer(tick, 'pointerdown', 500);
+  scrubberPointer(tick, 'pointermove', 530);
+  scrubberPointer(tick, 'pointerup', 530);
+  // The scrub rebuilt the ticks; the trailing click lands on the current one.
+  host
+    .querySelector<HTMLButtonElement>(
+      `.wb-scrubber .wb-events button[data-index="${tick.dataset.index}"]`,
+    )
+    ?.click();
+
+  expect(atStart).toBe(0);
+  expect(atEnd).toBe(total - 1);
+  expect(store.getSnapshot().cursor).toBe(Math.round(0.53 * (total - 1)));
+  expect(document.activeElement?.getAttribute('aria-label')).toBe(
+    'Seek captured event',
+  );
+  expect(playing).not.toBeNull();
+  expect(
+    host.querySelector('.wb-player button[aria-label="Pause"]'),
+  ).toBeNull();
+  shell.dispose();
+});
+
+test('still seeks to a tick on a plain click', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const scrubber = host.querySelector<HTMLElement>('.wb-scrubber');
+  vi.spyOn(scrubber as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 1000,
+    width: 1000,
+  } as DOMRect);
+  const tick = host.querySelectorAll<HTMLButtonElement>(
+    '.wb-scrubber .wb-events button',
+  )[0];
+  const index = Number(tick.dataset.index);
+
+  scrubberPointer(tick, 'pointerdown', 10);
+  scrubberPointer(tick, 'pointerup', 10);
+  tick.click();
+
+  expect(store.getSnapshot().cursor).toBe(index);
+  shell.dispose();
+});
+
+test('history inspector pairs actual SDK and retained app text and Raw keeps the selected event', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore('history');
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'message-history',
+      title: 'Message history',
+      format: 'history',
+      inspector: 'History',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.recordHistory({
+    messages: [
+      { id: 'actual-user', role: 'user', content: 'Lighthouse' },
+      {
+        id: 'actual-assistant',
+        role: 'assistant',
+        content: 'Outline, record.',
+        toolCalls: [],
+      },
+    ],
+    isLoading: false,
+  });
+
+  const tabs = [...host.querySelectorAll('[role=tab]')].map(
+    (node) => node.textContent,
+  );
+
+  store.recordHistory({ messages: [], isLoading: false, isSending: true });
+  expect(
+    host.querySelector<HTMLInputElement>('[aria-label="Seek captured event"]')
+      ?.disabled,
+  ).toBe(true);
+  store.recordHistory({
+    messages: [
+      { id: 'actual-user', role: 'user', content: 'Lighthouse' },
+      {
+        id: 'actual-assistant',
+        role: 'assistant',
+        content: 'Outline, record.',
+        toolCalls: [],
+      },
+    ],
+    isLoading: false,
+  });
+  expect(tabs).toContain('History');
+  expect(tabs).toContain('Saved text');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    'actual-user',
+  );
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'retained',
+  );
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Show captured frame"]')
+    ?.click();
+  expect(host.querySelector('[data-captured]')?.textContent).toContain('"sdk"');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    '"event"',
+  );
+  shell.dispose();
+});
+
+test('history Text and UI views describe the actual selected text without generated components', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore('history');
+  const shell = mountWorkbench(host, store, {
+    framework: 'React',
+    lesson: {
+      id: 'message-history',
+      title: 'Message history',
+      format: 'history',
+      inspector: 'History',
+    },
+    send: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  });
+  store.recordHistory({
+    messages: [
+      { id: 'u', role: 'user', content: 'Lighthouse' },
+      {
+        id: 'a',
+        role: 'assistant',
+        content: 'Lighthouse: outline, then record.',
+      },
+    ],
+    isLoading: false,
+  });
+  const tab = (name: string) =>
+    [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')]
+      .find((item) => item.textContent === name)
+      ?.click();
+
+  tab('Text');
+
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    'Lighthouse: outline, then record.',
+  );
+  store.recordHistory({ messages: [], isLoading: false });
+  expect(host.querySelector('[data-captured]')?.textContent).not.toContain(
+    'Lighthouse: outline, then record.',
+  );
+  tab('UI');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    'Plain text',
+  );
+  expect(host.querySelector('[data-captured]')?.textContent).not.toContain(
+    'SummaryCard',
+  );
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
+    '"generatedProps": false',
+  );
+  shell.dispose();
+  host.remove();
 });

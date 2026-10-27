@@ -171,3 +171,24 @@ export async function loadLiveConfiguration(
     },
   });
 }
+
+/** Adds server-only PostgreSQL context exclusively to an owned native-session child. */
+export function nativeLiveChildEnvironment(
+  provider: Readonly<Record<string, string>>,
+  parent: Readonly<Record<string, string | undefined>>,
+  group: string,
+  schema: string,
+): Readonly<Record<string, string>> {
+  if (group !== 'mixed-native-tools') return provider;
+  if (schema.length !== 45 || !/^durable_live_[a-f0-9]{32}$/.test(schema))
+    throw new Error('LIVE_SCHEMA_INVALID');
+  const connection = parent['DOTNET_TEST_POSTGRES'];
+  if (!connection?.trim()) throw new Error('LIVE_POSTGRES_REQUIRED');
+  return Object.freeze({
+    ...provider,
+    FixtureNativeSessions: 'true',
+    NativeGate: 'before-pending-save',
+    InterruptSchema: schema,
+    InterruptConnectionString: `${connection};Search Path=${schema}`,
+  });
+}

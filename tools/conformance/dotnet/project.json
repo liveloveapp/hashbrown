@@ -9,7 +9,9 @@
       "{workspaceRoot}/.github/workflows/pr-main.yml",
       "{workspaceRoot}/package-lock.json",
       "{workspaceRoot}/www/content/docs/react/platform/dotnet.md",
-      "{workspaceRoot}/www/content/docs/angular/platform/dotnet.md"
+      "{workspaceRoot}/www/content/docs/angular/platform/dotnet.md",
+      "{workspaceRoot}/www/content/docs/react/platform/dotnet-native-tools.md",
+      "{workspaceRoot}/www/content/docs/angular/platform/dotnet-native-tools.md"
     ]
   },
   "implicitDependencies": [
@@ -83,7 +85,12 @@
       "inputs": ["default", "^default"],
       "dependsOn": ["build"],
       "options": {
-        "command": "node tools/conformance/dotnet/verify-recipe.mjs"
+        "parallel": false,
+        "commands": [
+          "node --test tools/conformance/dotnet/native-recipe.test.mjs",
+          "node tools/conformance/dotnet/verify-recipe.mjs",
+          "node tools/conformance/dotnet/verify-native-recipe.mjs"
+        ]
       }
     },
     "prepare-live-consumer": {

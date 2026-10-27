@@ -4,7 +4,8 @@ using Hashbrown.Conformance.Testing;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
-HashbrownEndpointConfiguration.Configure(builder.Services);
+if (await FixtureLiveCleanup.TryRunAsync(builder)) return;
+if (builder.Configuration["FixtureNativeSessions"] != "true") HashbrownEndpointConfiguration.Configure(builder.Services);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins((builder.Configuration["FixtureOrigins"] ?? "http://127.0.0.1:4431,http://127.0.0.1:4432").Split(',', StringSplitOptions.RemoveEmptyEntries))
     .WithMethods("GET", "POST", "OPTIONS").AllowAnyHeader()));
@@ -14,6 +15,28 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("recovery", policy => policy.RequireAuthenticatedUser());
     options.AddPolicy("checkpoint-operator", policy => policy.RequireAuthenticatedUser().RequireRole("checkpoint-operator"));
 });
+var nativeEnabled = builder.Configuration["FixtureNativeSessions"] == "true";
+var connectionString = builder.Configuration["InterruptConnectionString"];
+await using var source = connectionString is null ? null : NpgsqlDataSource.Create(connectionString);
+var schema = builder.Configuration["InterruptSchema"] ?? "hashbrown";
+var nativeGate = new FixtureNativeGate(builder.Configuration["NativeGate"] ?? "");
+var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema, nativeGate);
+var nativeName = builder.Configuration["NativeAgentName"] ?? "HashbrownNative";
+var nativeFunction = AIFunctionFactory.Create(tools.LookupNativeAirport, "lookupAirport");
+var nativeCatalog = new NativeToolCatalog([new("lookupAirport", int.Parse(builder.Configuration["RegistryVersion"] ?? "1"), nativeFunction.JsonSchema)]);
+var nativeOptions = new NativeSessionOptions { Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
+INativeSessionJournal? nativeJournal = null;
+if (nativeEnabled)
+{
+    if (source is null || !string.IsNullOrEmpty(builder.Configuration["Workflow"])) throw new InvalidOperationException("Native fixture requires PostgreSQL and an empty workflow.");
+    nativeJournal = new FixtureNativeJournal(new PostgresNativeSessionJournal(source, nativeCatalog,
+        ServerConfigurationIdentity.Create(builder.Configuration), schema, nativeOptions), nativeGate, builder.Configuration["NativeFailSave"] == "true");
+    await nativeJournal.InitializeAsync();
+    await using var nativeEffects = source.CreateCommand($"CREATE TABLE IF NOT EXISTS \"{schema}\".fixture_native_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,code text NOT NULL)");
+    await nativeEffects.ExecuteNonQueryAsync();
+    NativeSessionEndpointConfiguration.Configure(builder.Services, nativeName, nativeJournal, nativeCatalog,
+        context => context.User.FindFirst("scope")?.Value, nativeOptions);
+}
 var app = builder.Build();
 app.UseCors();
 app.UseAuthentication();
@@ -22,9 +45,6 @@ if (builder.Configuration["FixtureAcknowledgement"] == "observe")
     new FixtureAcknowledgement().Map(app);
 app.MapGet("/health", () => Results.Ok());
 var clock = new FixtureClock();
-var connectionString = builder.Configuration["InterruptConnectionString"];
-await using var source = connectionString is null ? null : NpgsqlDataSource.Create(connectionString);
-var schema = builder.Configuration["InterruptSchema"] ?? "hashbrown";
 var options = new InterruptStoreOptions
 {
     CompatibilityIdentity = ServerConfigurationIdentity.Create(builder.Configuration),
@@ -32,7 +52,6 @@ var options = new InterruptStoreOptions
     PreparationLease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["PreparationLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)),
     ApprovalTtl = TimeSpan.FromSeconds(double.Parse(builder.Configuration["ApprovalTtlSeconds"] ?? "600", System.Globalization.CultureInfo.InvariantCulture))
 };
-var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema);
 var registry = tools.Registry(int.Parse(builder.Configuration["RegistryVersion"] ?? "1"));
 IInterruptStore underlying;
 if (source is not null)
@@ -151,9 +170,46 @@ app.MapGet("/__test/counters", async () =>
         durableProtected = reader.GetInt64(0);
         durableProtectedCode = reader.IsDBNull(1) ? null : reader.GetString(1);
     }
-    return Results.Ok(new { server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
+    long durableNative = 0; string? nativeCode = null;
+    if (nativeEnabled)
+    {
+        await using var command = source!.CreateCommand($"SELECT count(*),(SELECT code FROM \"{schema}\".fixture_native_effects ORDER BY id DESC LIMIT 1) FROM \"{schema}\".fixture_native_effects");
+        await using var reader = await command.ExecuteReaderAsync(); await reader.ReadAsync();
+        durableNative = reader.GetInt64(0); nativeCode = reader.IsDBNull(1) ? null : reader.GetString(1);
+    }
+    return Results.Ok(new { durableNative, nativeCode, server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
 });
-HashbrownEndpointConfiguration.Map(app, "/run",
+if (nativeJournal is not null)
+{
+    NativeSessionKey Key(string scope, string selector) => new(nativeName, scope, selector, new Dictionary<string, string> { ["isolation"] = scope });
+    NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", nativeJournal, "recovery",
+        (context, selector) => context.User.FindFirst("scope") is { } claim ? Key(claim.Value, selector) : null, nativeOptions);
+    NativeSessionRecoveryEndpointConfiguration.MapOperations(app, "/native-sessions", nativeJournal, "checkpoint-operator",
+        context => context.User.FindAll("operator-scope").Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal),
+        context => context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, Key);
+    app.MapGet("/__test/native-stage", () => Results.Json(new { stage = nativeGate.Stage }));
+    app.MapPost("/__test/release-native", () => { nativeGate.Release(); return Results.Ok(); });
+    app.MapPost("/__test/expire-native-lease", async () =>
+    {
+        await using var command = source!.CreateCommand($"UPDATE \"{schema}\".native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE state IN ('Owned','Saved','Publishing')");
+        await command.ExecuteNonQueryAsync(); return Results.Ok();
+    });
+    app.MapPost("/__test/native-database-unavailable", async (bool enabled) =>
+    {
+        await using var command = source!.CreateCommand(enabled ? $"ALTER TABLE \"{schema}\".native_sessions RENAME TO unavailable_native_sessions" : $"ALTER TABLE \"{schema}\".unavailable_native_sessions RENAME TO native_sessions");
+        await command.ExecuteNonQueryAsync(); return Results.Ok();
+    });
+    app.MapGet("/__test/native-effects", async () =>
+    {
+        await using var command = source!.CreateCommand($"SELECT id,code,count(*) OVER() FROM \"{schema}\".fixture_native_effects ORDER BY id LIMIT 100");
+        await using var reader = await command.ExecuteReaderAsync();
+        var rows = new List<object>(); long count = 0;
+        while (await reader.ReadAsync()) { count = reader.GetInt64(2); rows.Add(new { id = reader.GetInt64(0), code = reader.GetString(1) }); }
+        return Results.Json(new { count, rows });
+    });
+    NativeSessionEndpointConfiguration.Map(app, "/run", NativeSessionAgentFactory.Create(native, nativeName, [nativeFunction], nativeCatalog, accessor), "recovery");
+}
+else HashbrownEndpointConfiguration.Map(app, "/run",
     client.AsAIAgent(name: "Hashbrown", tools: [AIFunctionFactory.Create(tools.LookupAirport, "lookupAirport")]),
     pending, Scope, new HashSet<string>(["lookupAirport"], StringComparer.Ordinal));
 await app.RunAsync();

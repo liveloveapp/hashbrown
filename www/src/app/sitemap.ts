@@ -4,7 +4,7 @@ import { listBlogPosts, listDocs, SDKS } from '../lib/content';
 import { SITE_URL } from '../lib/site-metadata';
 
 /**
- * `/sitemap.xml`: the home page, blog, privacy page, every docs page for both
+ * `/sitemap.xml`: the home page, blog, brand and privacy pages, every docs page for both
  * SDKs, every blog post (dated by its publish date) and the API reference.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -15,6 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     page('/'),
     page('/blog'),
+    page('/brand'),
     page('/privacy'),
     page('/api'),
     ...listBlogPosts().map((post) => page(`/blog/${post.slug}`, post.date)),

@@ -9,6 +9,7 @@ import type { AddressInfo } from 'node:net';
 import {
   createLiveBudget,
   LIVE_BUDGET_MANIFEST,
+  LIVE_CASE_COUNT,
   type LiveScenarioBudget,
 } from './live-budget';
 import { createLiveDiagnostics, safeLiveError } from './live-diagnostics';
@@ -16,6 +17,7 @@ import {
   LIVE_PROJECTS,
   type LiveConfiguration,
   loadLiveConfiguration,
+  nativeLiveChildEnvironment,
   publicChildEnvironment,
 } from './live-configuration';
 import { startLiveStaticServer } from './live-static-server';
@@ -157,6 +159,7 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       ...context,
       effects: counters.protected,
       serverEffects: counters.server,
+      nativeEffects: counters.durableNative,
     });
     const valid =
       promoteEvidence &&
@@ -236,9 +239,14 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       active = true;
       const start = (async () => {
         const fixture = await options.startFixture(
-          options.configuration.providerEnvironment(
-            input.project,
+          nativeLiveChildEnvironment(
+            options.configuration.providerEnvironment(
+              input.project,
+              options.environment ?? process.env,
+            ),
             options.environment ?? process.env,
+            input.group,
+            `durable_live_${randomBytes(16).toString('hex')}`,
           ),
           input.group,
           AbortSignal.any([
@@ -360,8 +368,12 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       budget.dispose();
       server.closeAllConnections();
       await Promise.allSettled([...pendingStarts]);
-      await Promise.allSettled([...fixtures.keys()].map(stopFixture));
+      const stopped = await Promise.allSettled(
+        [...fixtures.keys()].map(stopFixture),
+      );
       await new Promise<void>((accept) => server.close(() => accept()));
+      if (stopped.some((entry) => entry.status === 'rejected'))
+        throw safeLiveError('LIVE_CHILD_FAILED');
     },
   });
 }
@@ -592,7 +604,7 @@ async function executeQualification(
   const actual = coordinator?.snapshot();
   return {
     exitCode,
-    plannedCases: 42,
+    plannedCases: LIVE_CASE_COUNT,
     actualPassedCases: actual?.actualPassedCases ?? 0,
     successfulPreflights: actual?.successfulPreflights ?? 0,
     reportDirectory: output,
@@ -615,7 +627,7 @@ export async function executeLiveRunner(
     return {
       exitCode: 0,
       projects: LIVE_PROJECTS.map((entry) => entry.name),
-      cases: 42,
+      cases: LIVE_CASE_COUNT,
     };
   if (environment['HASHBROWN_LIVE_OPT_IN'] !== '1')
     throw new Error('LIVE_OPT_IN_REQUIRED');

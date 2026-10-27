@@ -1,3 +1,5 @@
+import { verifyHistoryWorkbench } from './verify-history-workbench';
+import { workbenchHistoryFixtureText } from './workbench-history-fixture';
 import { verifyWorkflowWorkbench } from './verify-workflow-workbench';
 import { workbenchWorkflowFixtureText } from './workbench-workflow-fixture';
 import { createWorkbenchWorkflowStream } from '../../examples/quickstart/server/workbench-workflows';
@@ -61,7 +63,8 @@ let recipeOutcome:
   | 'error'
   | 'length'
   | 'schema' = 'success';
-let outcome: 'success' | 'error' | 'length' | 'schema' = 'success';
+let outcome: 'success' | 'error' | 'length' | 'schema' | 'no-finish' =
+  'success';
 async function* fixture(
   input: RunAgentInput,
   signal: AbortSignal,
@@ -315,7 +318,9 @@ const app = createWorkbenchApp({
       ? workflowStream(input, signal, lessonId)
       : live ||
           lessonId === 'request-transformation' ||
-          lessonId === 'system-instructions'
+          lessonId === 'system-instructions' ||
+          lessonId === 'message-history' ||
+          lessonId === 'save-text-conversations'
         ? createWorkbenchOpenAIStream({
             apiKey: live ? (apiKey as string) : 'fixture-only',
             model: live ? (model as string) : 'fixture-model',
@@ -383,12 +388,18 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     mapped['tools'] === undefined ||
     (Array.isArray(mapped['tools']) && mapped['tools'].length === 0);
   const onboardingText = onboarding
-    ? workbenchOnboardingFixtureText('system-instructions', input)
+    ? (workbenchHistoryFixtureText(
+        JSON.stringify(mapped).includes('Remember the plan name supplied')
+          ? 'message-history'
+          : undefined,
+        input,
+      ) ?? workbenchOnboardingFixtureText('system-instructions', input))
     : undefined;
   const events =
     onboardingText !== undefined
       ? createSupportProviderEvents(onboardingText).map((event) =>
-          event.type === 'response.completed' && outcome !== 'success'
+          event.type === 'response.completed' &&
+          (outcome === 'error' || outcome === 'length')
             ? {
                 type:
                   outcome === 'error'
@@ -422,6 +433,8 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     'Cache-Control': 'no-store',
   });
   for (const [sequence_number, event] of events.entries()) {
+    if (outcome === 'no-finish' && event.type === 'response.completed')
+      continue;
     if (res.destroyed) return;
     res.write(
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
@@ -463,6 +476,29 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (
+        lesson.id === 'message-history' ||
+        lesson.id === 'save-text-conversations'
+      ) {
+        report.push(
+          await verifyHistoryWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            nativeRequests,
+            outcome: (value) => {
+              outcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (['shared-state', 'activities', 'interrupts'].includes(lesson.id)) {
         report.push(
           await verifyWorkflowWorkbench({
@@ -656,9 +692,10 @@ try {
       }
 
       await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
-      await expect(
-        page.locator('.wb:visible .wb-inspector [data-detail]'),
-      ).toBeVisible();
+      if (lesson.inspector !== 'Requests')
+        await expect(
+          page.locator('.wb:visible .wb-inspector [data-detail]'),
+        ).toBeVisible();
       await expectWorkbenchDefaultLayout(page);
       await expect(
         page.getByRole('tab', { name: lesson.inspector, exact: true }),
@@ -744,6 +781,31 @@ try {
       const firstSteps = await card.locator('li').allTextContents();
       expect(firstSteps).toHaveLength(2);
       mark('firstComplete');
+      // A verification step, not footage: recordings skip it.
+      if (lesson.id === 'tools' && process.env['WORKBENCH_RECORD'] !== '1') {
+        const requestsDetail = page.locator(
+          '.wb:visible .wb-inspector [data-detail]',
+        );
+        await page.getByRole('tab', { name: 'Requests', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Model request', exact: true })
+          .first()
+          .click();
+        await expect(requestsDetail).toBeVisible();
+        await expect(
+          requestsDetail.getByRole('tab', { name: /^Response\b/ }),
+        ).toBeVisible();
+        await requestsDetail
+          .getByRole('tab', { name: /^Raw request\b/ })
+          .click();
+        await expect(requestsDetail).toContainText('"messages"');
+        await page.keyboard.press('Escape');
+        await expect(requestsDetail).toHaveCount(0);
+        // Selecting a request seeks the player to it; go back to the live end.
+        await page
+          .getByRole('button', { name: 'Return to live', exact: true })
+          .click();
+      }
       if (
         lesson.id === 'request-transformation' &&
         process.env['WORKBENCH_RECORD'] === '1'

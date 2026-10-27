@@ -43,6 +43,15 @@ export function workbenchMilestones(
               : undefined;
       return label ? [{ index, turn: event.turn, label }] : [];
     }
+    if (event.kind === 'history') return [];
+    if (event.kind === 'history-app')
+      return [
+        {
+          index,
+          turn: event.turn,
+          label: `Text ${event.history?.app.action ?? 'action'}`,
+        },
+      ];
     const payload = event.payload;
     const chunk =
       event.kind === 'event' &&
@@ -78,7 +87,7 @@ export function workbenchMilestones(
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
       label =
-        format === 'text' || format === 'workflow'
+        format === 'text' || format === 'workflow' || format === 'history'
           ? 'Streaming text'
           : 'Streaming JSON';
     } else if (

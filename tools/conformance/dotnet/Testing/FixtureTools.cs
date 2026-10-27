@@ -6,7 +6,7 @@ using Npgsql;
 namespace Hashbrown.Conformance.Testing;
 
 /// <summary>Deterministic server effects used only by the integration fixture.</summary>
-public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = null, string schema = "hashbrown")
+public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = null, string schema = "hashbrown", FixtureNativeGate? nativeGate = null)
 {
     private int _server;
     private int _protected;
@@ -63,6 +63,21 @@ public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = nul
     {
         try { await _release.Task.WaitAsync(cancellationToken); }
         catch (OperationCanceledException) { CheckpointCancelled = true; throw; }
+    }
+
+    /// <summary>Executes a real native fixture effect in PostgreSQL without a uniqueness mask.</summary>
+    [Description("Look up an airport by its IATA code.")]
+    public async Task<object> LookupNativeAirport(string code, CancellationToken cancellationToken = default)
+    {
+        if (source is null) throw new InvalidOperationException("Native fixture requires PostgreSQL.");
+        await using (var command = source.CreateCommand($"INSERT INTO \"{schema}\".fixture_native_effects(code) VALUES(@code)"))
+        {
+            command.Parameters.AddWithValue("code", code);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        Interlocked.Increment(ref _server);
+        if (nativeGate is not null) await nativeGate.ReachAsync("effect-persisted", cancellationToken);
+        return new { code, name = "Portland International Airport" };
     }
 
     /// <summary>Number of actual server tool executions.</summary>

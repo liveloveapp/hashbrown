@@ -13,6 +13,8 @@ The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream A
 
 The recovery examples below require Hashbrown SDK **0.8.1 or later**, which includes `getRecoveryConfiguration` and `restoreConversation`; SDK 0.8.0 does not include these APIs. Install matching core and framework SDK versions.
 
+This page uses the stateless tool mode and application workflow confirmations. For a single model response containing browser and server calls with durable native session ownership, use [native .NET mixed tools](/docs/react/platform/dotnet-native-tools).
+
 ## Server dependencies
 
 Use SDK `10.0.402`. Add these exact references to a `Microsoft.NET.Sdk.Web` project targeting `net10.0`, then restore and commit its NuGet lockfile:

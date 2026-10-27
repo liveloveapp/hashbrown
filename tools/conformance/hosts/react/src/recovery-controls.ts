@@ -9,6 +9,7 @@ import {
   fixtureCredential,
   readRecovery,
   recoveryBlocked,
+  recoveryEndpoint,
   recoveryOrigin,
   rememberThread,
   selectedThread,
@@ -65,7 +66,7 @@ export function useRecoveryControls(
     try {
       const configuration = chat.getRecoveryConfiguration();
       const response = await fetch(
-        `${recoveryOrigin()}/threads/${encodeURIComponent(threadId)}/recovery`,
+        recoveryEndpoint(threadId),
         fixtureCredential({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
