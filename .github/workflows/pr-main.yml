@@ -105,6 +105,44 @@ jobs:
         if: steps.dotnet.outputs.required == 'true'
         run: npx nx provider-e2e dotnet-conformance
 
+      - name: Run genuine native approval browser regression without a model provider
+        if: steps.dotnet.outputs.required == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export TMPDIR="$RUNNER_TEMP"
+          prepare_log="$RUNNER_TEMP/native-approval-consumer-prepare.log"
+          npx nx prepare-live-consumer dotnet-conformance --output-style=static 2>&1 | tee "$prepare_log"
+          consumer_metadata="$(node - "$prepare_log" "$RUNNER_TEMP" <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const lines = fs.readFileSync(process.argv[2], 'utf8').split(/\r?\n/);
+          const parent = fs.realpathSync(process.argv[3]);
+          let selected;
+          for (const line of lines.reverse()) {
+            let value;
+            try { value = JSON.parse(line); } catch { continue; }
+            if (value && typeof value === 'object' && typeof value.metadataPath === 'string') {
+              selected = value;
+              break;
+            }
+          }
+          if (!selected || !path.isAbsolute(selected.metadataPath) || /[\r\n]/.test(selected.metadataPath)) {
+            throw Error('No valid final consumer metadata record in prepare output');
+          }
+          const metadata = fs.realpathSync(selected.metadataPath);
+          if (!metadata.startsWith(parent + path.sep) || metadata !== path.join(fs.realpathSync(selected.directory), 'consumer-metadata.json')) {
+            throw Error('Consumer metadata escaped the runner temp installation');
+          }
+          const baseline = JSON.parse(fs.readFileSync(metadata, 'utf8'));
+          if (baseline.metadataPath !== selected.metadataPath || JSON.stringify(baseline.artifacts) !== JSON.stringify(selected.artifacts)) {
+            throw Error('Prepare output and persisted consumer metadata differ');
+          }
+          process.stdout.write(metadata);
+          NODE
+          )"
+          HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA="$consumer_metadata" npx nx local-native-approval-browser dotnet-conformance --output-style=static
+
       - name: Upload runtime smoke diagnostics
         if: failure()
         uses: actions/upload-artifact@v7

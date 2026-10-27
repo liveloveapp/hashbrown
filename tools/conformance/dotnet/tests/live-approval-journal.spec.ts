@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { nativeStats } from '../harness/live-browser-fixture';
 import { publicChildEnvironment } from '../harness/live-configuration';
 
 for (const fault of [
@@ -55,6 +56,27 @@ for (const fault of [
         const containers = result.stdout
           .split(/\r?\n/)
           .find((line) => line.startsWith('Native result containers: '));
+        const snapshots = result.stdout
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith('Live web stats: '))
+          .map((line) =>
+            nativeStats(JSON.parse(line.slice('Live web stats: '.length))),
+          );
+
+        expect(snapshots).toHaveLength(3);
+        for (const [index, snapshot] of snapshots.entries()) {
+          expect(snapshot.wire).toHaveLength(index + 1);
+          expect(snapshot.wire).toEqual(
+            Array.from({ length: index + 1 }, () => ({
+              method: 'POST',
+              path: '/v1/responses',
+              authentication: 'bearer',
+              maxOutputTokens: 384,
+              store: false,
+              status: 200,
+            })),
+          );
+        }
         expect(containers).toBeDefined();
         process.stdout.write(`${containers}\n`);
       }

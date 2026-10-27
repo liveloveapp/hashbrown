@@ -264,6 +264,24 @@ Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdent
 
 The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 54 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. Native MAF approval has separate deterministic coverage in the opt-in native composition above; its expanded live qualification is pending. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
 
+## Provider-free native approval browser regression
+
+The local regression runs the same native approval scenario as live qualification
+against genuine MAF, PostgreSQL and the pinned native SDK with an in-memory HTTP
+transport. It requires the existing fixture database and an explicitly prepared
+published consumer. CI runs it without model credentials or provider opt-in.
+
+```sh
+npx nx prepare-live-consumer dotnet-conformance --output-style=static
+HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA=/absolute/path/from/prepare/consumer-metadata.json npx nx local-native-approval-browser dotnet-conformance --output-style=static
+```
+
+Both frameworks complete all three phases while the HTTP connection remains open
+after each valid terminal event. Partial, truncated and error terminals are
+rejected. HTTP end-of-stream is a separate observation from complete AG-UI event
+framing. This regression establishes local protocol behavior; live results are
+recorded separately.
+
 ## Opt-in published-client live qualification
 
 The live runner is separate from deterministic CI. List the six projects and 54

@@ -15,11 +15,12 @@ using Npgsql;
 
 static void Check(bool value, string code) { if (!value) throw new Exception(code); }
 var fault = args.SingleOrDefault() ?? "none";
-Check(new[] { "none", "saved-receipt", "authorized-receipt", "public-content", "public-name", "public-arguments" }.Contains(fault), "LIVE_PROOF_UNKNOWN_TEST_FAULT");
+Check(new[] { "none", "saved-receipt", "authorized-receipt", "public-content", "public-name", "public-arguments", "browser-held" }.Contains(fault), "LIVE_PROOF_UNKNOWN_TEST_FAULT");
 var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders(); builder.Services.AddRouting();
 builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, LiveProofAuthentication>("fixture", _ => { });
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
 var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
 await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture required."));
@@ -53,9 +54,47 @@ try
       """)) await command.ExecuteNonQueryAsync();
     NativeSessionEndpointConfiguration.Configure(builder.Services, "native", journal, catalog, _ => "alice");
     var agent = NativeSessionAgentFactory.Create(client, "native", [function], catalog, accessor);
-    await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+    await using var app = builder.Build(); app.UseCors(); app.UseAuthentication(); app.UseAuthorization();
+    if (fault == "browser-held") app.Use(async (context, next) =>
+    {
+        await next(context);
+        if (context.Request.Path == "/run")
+        {
+            await context.Response.Body.FlushAsync();
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, context.RequestAborted); }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
+        }
+    });
     NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    app.MapGet("/__test/live-stats", async () => { await proof.ObserveDatabaseAsync(source, schema); return gate.Snapshot(); });
+    app.MapGet("/__test/counters", async () =>
+    {
+        async Task<long> Count(string table) { await using var command = source.CreateCommand($"SELECT count(*) FROM \"{schema}\".{table}"); return (long)(await command.ExecuteScalarAsync())!; }
+        return new { server = tools.Server, @protected = tools.Protected, durableNative = await Count("fixture_native_effects"), durableProtected = await Count("fixture_effects"), durableNativeProtected = await Count("fixture_native_approval_effects") };
+    });
+    app.MapGet("/__test/native-approval-state", async (string threadId) =>
+    {
+            await using var command = source.CreateCommand($"""
+                SELECT jsonb_build_object(
+                  'schemaVersion',(SELECT version FROM "{schema}".native_metadata WHERE id=1),
+                  'session',(SELECT jsonb_build_object('id',id,'state',state,'generation',generation,'revision',revision,'claim_revision',claim_revision,'payloadNull',payload IS NULL,'expires_at',expires_at) FROM "{schema}".native_sessions WHERE id=@id),
+                  'batches',COALESCE((SELECT jsonb_agg(to_jsonb(b) ORDER BY batch_id) FROM (SELECT batch_id,state,published_revision,member_count,member_digest,admitted_generation,admitted_revision,expires_at FROM "{schema}".native_approval_batches WHERE session_id=@id LIMIT 100) b),'[]'::jsonb),
+                  'members',COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY request_id) FROM (SELECT request_id,call_id,batch_id,kind,state,decision,captured_generation,admitted_generation,admitted_revision,result_digest IS NOT NULL AS "resultDigestPresent",private_descriptor IS NULL AS "privateDescriptorNull",expires_at FROM "{schema}".native_approvals WHERE session_id=@id LIMIT 100) a),'[]'::jsonb),
+                  'invocations',COALESCE((SELECT jsonb_agg(to_jsonb(c) ORDER BY call_id) FROM (SELECT call_id,name,version,state,captured_generation,dispatch_generation,descriptor IS NULL AS "descriptorNull" FROM "{schema}".native_invocations WHERE session_id=@id LIMIT 100) c),'[]'::jsonb),
+                  'effects',COALESCE((SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM (SELECT id,session_id,call_id,request_id,batch_id,admitted_generation,admitted_revision,code FROM "{schema}".fixture_native_approval_effects WHERE session_id=@id ORDER BY id LIMIT 100) e),'[]'::jsonb))::text
+                """);
+            command.Parameters.AddWithValue("id", new NativeSessionKey("native", "alice", threadId, new Dictionary<string,string> { ["isolation"] = "alice" }).Id);
+            return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
+    }).RequireAuthorization("native");
+    NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", journal, "native", (_, threadId) => new NativeSessionKey("native", "alice", threadId, new Dictionary<string,string> { ["isolation"] = "alice" }));
     await app.StartAsync();
+    if (fault == "browser-held")
+    {
+        Console.WriteLine("Local native approval browser URL: " + app.Urls.Single());
+        Console.Out.Flush();
+        await app.WaitForShutdownAsync();
+        return;
+    }
     using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(15) };
     var key = new NativeSessionKey("native", "alice", "live-proof", new Dictionary<string,string> { ["isolation"] = "alice" });
     async Task<JsonObject> Prefix()
@@ -70,6 +109,7 @@ try
         var body = await response.Content.ReadAsStringAsync();
         Check(response.IsSuccessStatusCode && body.Contains("RUN_FINISHED") && !body.Contains("RUN_ERROR"), "LIVE_PROOF_PUBLIC_TERMINAL_FAILED/status=" + (int)response.StatusCode + "/calls=" + gate.Calls + "/http=" + gate.HttpCalls + "/proof=" + JsonSerializer.Serialize(proof.Snapshot()));
         await proof.ObserveDatabaseAsync(source, schema);
+        if (fault == "none") Console.WriteLine("Live web stats: " + await http.GetStringAsync("/__test/live-stats"));
         return body;
     }
     var first = await Send(new { threadId = "live-proof", runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "Look up airport PDX once." } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } });

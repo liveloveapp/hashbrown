@@ -145,7 +145,7 @@ public sealed class FixtureLiveGate : IDisposable
         {
             var stats = new { calls = _calls, httpCalls = _wire.Count, cancelledCalls = _cancelledCalls, stage = _stage, wire = _wire.ToArray(), inputTokens = _inputTokens, outputTokens = _outputTokens, nativeCoEmission = _nativeCoEmission, nativeExactHistory = _nativeExactHistory };
             if (Group != "native-approval") return stats;
-            var projected = JsonSerializer.SerializeToElement(stats).EnumerateObject().ToDictionary(item => item.Name, item => (object)item.Value.Clone());
+            var projected = JsonSerializer.SerializeToElement(stats, JsonSerializerOptions.Web).EnumerateObject().ToDictionary(item => item.Name, item => (object)item.Value.Clone());
             projected["usageCompleteCalls"] = _usageCompleteCalls; projected["usageIncompleteCalls"] = _usageIncompleteCalls;
             if (Approval is not null) foreach (var item in Approval.Snapshot()) projected[item.Key] = item.Value;
             return projected;
