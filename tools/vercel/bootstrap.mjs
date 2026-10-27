@@ -2,7 +2,7 @@
 /**
  * One-time, re-runnable provisioning for Hashbrown's Vercel deployment.
  *
- *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--skip-token-secrets]
+ *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--skip-token-secrets] [--only <key>]
  *
  * Environment (from --env-file or the process):
  *   VERCEL_TOKEN or VERCEL_API_TOKEN   required
@@ -139,7 +139,39 @@ export const TARGETS = Object.freeze([
     requiredEnv: ['LIFECYCLE_SERVICE_SECRET', 'RESEND_API_KEY'],
     resources: { fluid: true, functionDefaultTimeout: 60 },
   }),
+  // The docs workbench (www/examples/quickstart), hosted. Without the
+  // TypeSafe keys its decision lessons answer 503 and the rest still work.
+  Object.freeze({
+    key: 'workbench',
+    project: 'hashbrown-workbench',
+    secret: 'VERCEL_PROJECT_ID_WORKBENCH',
+    domains: [{ name: `workbench.${DOMAIN}` }],
+    env: [
+      'OPENAI_API_KEY',
+      'OPENAI_MODEL',
+      'TYPESAFE_API_KEY',
+      'TYPESAFE_MODEL',
+    ],
+    requiredEnv: ['OPENAI_API_KEY', 'OPENAI_MODEL'],
+    resources: { fluid: true, functionDefaultTimeout: 60 },
+  }),
 ]);
+
+/**
+ * The targets one bootstrap run provisions: all of them, or only the one
+ * `--only` names, so a new project can be set up without upserting env vars
+ * on the others.
+ *
+ * @param targets - The known targets.
+ * @param only - A target key, or undefined for every target.
+ * @returns The targets to provision.
+ */
+export function selectTargets(targets, only) {
+  if (only === undefined) return targets;
+  const selected = targets.filter((target) => target.key === only);
+  if (selected.length === 0) throw new Error(`Unknown target: ${only}`);
+  return selected;
+}
 
 /**
  * Minimal Vercel REST client: bearer auth, JSON bodies, errors carry
@@ -253,7 +285,7 @@ export async function ensureResources(vercel, project, resources) {
   );
   if (wanted.length === 0) return 'exists';
   await vercel('PATCH', `/v9/projects/${project.id}`, {
-    resourceConfig: { ...current, ...Object.fromEntries(wanted) },
+    resourceConfig: Object.fromEntries(wanted),
   });
   return 'updated';
 }
@@ -587,6 +619,7 @@ async function main() {
       'dns-records': { type: 'string' },
       'skip-workflow': { type: 'boolean', default: false },
       'skip-token-secrets': { type: 'boolean', default: false },
+      only: { type: 'string' },
     },
   });
 
@@ -614,7 +647,7 @@ async function main() {
 
   let apexProjectId;
 
-  for (const target of TARGETS) {
+  for (const target of selectTargets(TARGETS, values.only)) {
     const { status, project } = await ensureProject(vercel, target.project);
     log(`project ${target.project}`, status, project.id);
     log('node version', await ensureNodeVersion(vercel, project));
@@ -735,6 +768,9 @@ async function main() {
       `https://github.com/${REPOSITORY}/actions/workflows/pr-main.yml`,
     );
   }
+
+  // A run with --only may not include the project that owns the apex.
+  if (apexProjectId === undefined) return;
 
   const {
     verified,

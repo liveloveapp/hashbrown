@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   TARGETS,
+  selectTargets,
   createVercelClient,
   ensureCertificate,
   ensureDnsZone,
@@ -115,19 +116,20 @@ test('ensureResources sets fluid and the function timeout once', async () => {
       vercel,
       {
         id: 'prj_1',
-        resourceConfig: { fluid: false, buildMachineType: 'basic' },
+        resourceConfig: {
+          fluid: false,
+          buildMachineType: 'basic',
+          elasticBuildMachine: { cores: 4, memory: 8192, label: 'standard' },
+        },
       },
       resources,
     ),
     'updated',
   );
-  // The existing config is carried through: a PATCH replaces resourceConfig.
+  // Only the changed keys are sent: Vercel merges a partial resourceConfig
+  // and rejects read-only fields such as elasticBuildMachine.
   assert.deepEqual(calls[0].body, {
-    resourceConfig: {
-      fluid: true,
-      buildMachineType: 'basic',
-      functionDefaultTimeout: 300,
-    },
+    resourceConfig: { fluid: true, functionDefaultTimeout: 300 },
   });
 
   // Vercel reports the effective timeout under defaultResourceConfig, so a
@@ -720,7 +722,7 @@ test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secr
   );
   assert.deepEqual(
     targets.map((t) => t.key),
-    ['www', 'atc', 'lifecycle'],
+    ['www', 'atc', 'lifecycle', 'workbench'],
   );
 });
 
@@ -728,4 +730,35 @@ test('bootstrap lists GROWTH_UNSTUCK_FORM_ENABLED for www', () => {
   const target = TARGETS.find((t) => t.key === 'www');
 
   assert.ok(target?.env.includes('GROWTH_UNSTUCK_FORM_ENABLED'));
+});
+
+test('TARGETS includes hashbrown-workbench on its own subdomain with model keys it needs', () => {
+  const target = TARGETS.find((t) => t.key === 'workbench');
+
+  assert.equal(target?.project, 'hashbrown-workbench');
+  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WORKBENCH');
+  assert.deepEqual(target?.domains, [{ name: 'workbench.hashbrown.dev' }]);
+  assert.deepEqual(target?.env, [
+    'OPENAI_API_KEY',
+    'OPENAI_MODEL',
+    'TYPESAFE_API_KEY',
+    'TYPESAFE_MODEL',
+  ]);
+  assert.deepEqual(target?.requiredEnv, ['OPENAI_API_KEY', 'OPENAI_MODEL']);
+  assert.deepEqual(target?.resources, {
+    fluid: true,
+    functionDefaultTimeout: 60,
+  });
+});
+
+test('selectTargets keeps every target by default and only the named ones with --only', () => {
+  const all = selectTargets(TARGETS, undefined);
+  const one = selectTargets(TARGETS, 'workbench');
+
+  assert.equal(all, TARGETS);
+  assert.deepEqual(
+    one.map((t) => t.key),
+    ['workbench'],
+  );
+  assert.throws(() => selectTargets(TARGETS, 'nope'), /Unknown target: nope/);
 });
