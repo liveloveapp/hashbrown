@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@hashbrownai/core": "0.8.2",
-    "@hashbrownai/react": "0.8.2",
-    "@hashbrownai/angular": "0.8.2",
+    "@hashbrownai/core": "0.8.3",
+    "@hashbrownai/react": "0.8.3",
+    "@hashbrownai/angular": "0.8.3",
     "@angular/core": "22.2.3",
     "@angular/common": "22.2.3",
     "@angular/forms": "22.2.3",

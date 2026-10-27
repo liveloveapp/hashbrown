@@ -17,7 +17,7 @@ export function validateManifest(manifest) {
   if ('overrides' in manifest || 'workspaces' in manifest)
     throw Error('Consumer overrides/workspaces are forbidden');
   for (const name of SDK_NAMES)
-    if (manifest.dependencies?.[name] !== '0.8.2')
+    if (manifest.dependencies?.[name] !== '0.8.3')
       throw Error(`Expected exact SDK pin: ${name}`);
   for (const version of Object.values({
     ...manifest.dependencies,
