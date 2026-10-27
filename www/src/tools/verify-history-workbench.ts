@@ -1,3 +1,4 @@
+import { assertWorkbenchSavedTextInspection } from './workbench-history-inspection';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
@@ -106,6 +107,24 @@ export async function verifyHistoryWorkbench(options: {
         (keys) => keys.map((key) => localStorage.getItem(key)),
         [workbenchHistoryKey('Lighthouse'), workbenchHistoryKey('Harbor')],
       );
+    const savedInspection = async (
+      slot: 'Lighthouse' | 'Harbor',
+      action: string,
+      canSave: boolean,
+      successfulGeneration = canSave,
+    ) => {
+      await tab('Saved text');
+      const bytes = (await storage())[slot === 'Lighthouse' ? 0 : 1];
+      assertWorkbenchSavedTextInspection(
+        JSON.parse(
+          await root.locator('.wb-inspector .wb-inspection pre').innerText(),
+        ),
+        JSON.parse(
+          await root.locator('.wb-inspector [data-detail] pre').innerText(),
+        ),
+        { slot, encoded: bytes, action, canSave, successfulGeneration },
+      );
+    };
     await expect(send).toBeEnabled();
     await expectWorkbenchDefaultLayout(page);
     expect((await observed()).messages).toEqual([]);
@@ -128,6 +147,7 @@ export async function verifyHistoryWorkbench(options: {
     let stored: (string | null)[] = [];
     if (saved) {
       await button('Save text').click();
+      await savedInspection('Lighthouse', 'save', true);
       await hold();
       mark('firstSave');
       stored = await storage();
@@ -151,6 +171,7 @@ export async function verifyHistoryWorkbench(options: {
         options.requests[start].threadId,
       );
       await button('Save text').click();
+      await savedInspection('Harbor', 'save', true);
       await hold();
       mark('secondSave');
       stored = await storage();
@@ -169,9 +190,11 @@ export async function verifyHistoryWorkbench(options: {
       expect(httpRequests).toBe(2);
       expect(await storage()).toEqual(stored);
       expect(storageEvents).toHaveLength(writes);
+      await savedInspection('Lighthouse', 'select-slot', false);
       await hold();
       await button('Load text').click();
       await expect.poll(async () => (await observed()).messages.length).toBe(2);
+      await savedInspection('Lighthouse', 'load', false);
       await hold();
       mark('load');
       await expect(button('Save text')).toBeDisabled();
@@ -204,6 +227,7 @@ export async function verifyHistoryWorkbench(options: {
     }
     expect(count()).toBe(saved ? 2 : 1);
     expect(httpRequests).toBe(saved ? 2 : 1);
+    if (saved) await savedInspection('Lighthouse', 'load', false);
     await hold();
     mark('followup');
     await button('Follow-up').click();
@@ -212,9 +236,11 @@ export async function verifyHistoryWorkbench(options: {
     mark('secondComplete');
     const final = await observed();
     expect(final.messages.at(-1)?.['content']).toContain('Lighthouse');
+    if (saved) await savedInspection('Lighthouse', 'load', true);
     await hold();
     if (saved) {
       await button('Save text').click();
+      await savedInspection('Lighthouse', 'save', true);
       await hold();
       mark('finalSave');
     }
@@ -264,6 +290,7 @@ export async function verifyHistoryWorkbench(options: {
         .innerText();
       expect(currentRequests).not.toContain(captured[0].runId);
       expect(currentRequests).not.toContain(captured[1].runId);
+      await savedInspection('Lighthouse', 'save', true);
     }
     await expect.poll(() => storageEvents.length).toBe(saved ? 3 : 0);
     const beforeReplay = {
@@ -292,6 +319,13 @@ export async function verifyHistoryWorkbench(options: {
       await expect(
         root.getByLabel('Saved text', { exact: true }),
       ).toBeDisabled();
+    if (saved) {
+      const lastEvent = await slider.getAttribute('max');
+      if (lastEvent === null)
+        throw new Error('Missing public captured-event range');
+      await slider.fill(lastEvent);
+      await savedInspection('Lighthouse', 'save', false, true);
+    }
     await hold();
     await button('Return to live').click();
     await hold();
@@ -301,6 +335,7 @@ export async function verifyHistoryWorkbench(options: {
     expect(storageEvents).toHaveLength(beforeReplay.writes);
     expect(await storage()).toEqual(beforeReplay.stored);
     await observed();
+    if (saved) await savedInspection('Lighthouse', 'save', true);
     await hold();
     await page.screenshot({
       path: resolve(work, `${base}.png`),
