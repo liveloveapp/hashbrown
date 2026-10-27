@@ -1,0 +1,75 @@
+# Headless tool-step UX implementation plan
+
+> **For agentic workers:** Use superpowers:subagent-driven-development task by task, with test-first implementation and independent spec then quality review. Tests are top-level test(...) with arrange/act/assert.
+
+**Goal:** Give Hashbrown apps pure, shared tool labels/grouping, turn summaries,
+source/attribution projections and timing utilities without adding UI or dependencies.
+
+**Architecture:** Small core model modules consume existing public calls/turns.
+React and Angular re-export the same implementations and neutral public types.
+No timer, wall-clock read, wire change or B4 runtime dependency.
+
+**Tech Stack:** Existing TypeScript, Nx, Jest, React and Angular tooling.
+
+**Spec:** `docs/superpowers/specs/2026-10-27-tool-step-ux-design.md` and the binding
+Rules of `2026-10-21-b4-tool-step-contract-design.md`.
+
+## Task 1: Call labels and grouping
+
+Files: new `packages/core/src/models/server-tool-call-display.ts` and
+`server-tool-call-display.spec.ts`.
+
+- [ ] Write failing tests for all status labels, client-first overrides, empty/throwing callbacks, own-key lookup, Unicode bounds, consecutive-success grouping, failure/denial/cancel/running barriers, exclusions, provider/kind/builtin/parent separation, phrase/fallback labels, frozen inputs and stable source ids.
+- [ ] Run `npx nx test core --testFile=server-tool-call-display.spec.ts --runInBand`; confirm the missing implementation failure.
+- [ ] Implement the public types/functions from the spec; keep phrase/source/provider readers private and documented. Do not modify exports yet.
+- [ ] Run the focused test and scoped lint; spec review first, then quality review. Fix findings and rerun before proceeding.
+- [ ] Parent commits reviewed files explicitly; no shared Git-index changes by subagents.
+
+## Task 2: Sources, attribution and timing
+
+Files: new `packages/core/src/models/turn-annotations.ts`,
+`turn-annotations.spec.ts`, `tool-step-timing.ts`, `tool-step-timing.spec.ts`.
+
+- [ ] Write failing tests: source ids/order across assistant and call sources; same URL/different ids; first occurrence; attribution remains per assistant, including duplicate HTML under different owners and widget tokens; all inputs frozen. Timing tests cover unknown/NaN/infinite/negative values, 0/999/1000/60000 ms, 300 ms boundaries and future clocks.
+- [ ] Run each focused core test with `--runInBand` and confirm failure.
+- [ ] Implement pure collection/formatting/constants/no-flash helpers with TSDoc. Preserve attribution references verbatim. No Date.now/setInterval.
+- [ ] Run focused tests/scoped lint; independent spec then quality review.
+- [ ] Parent commits reviewed files.
+
+## Task 3: Turn summary
+
+Files: new `packages/core/src/models/summarize-turn.ts` and
+`summarize-turn.spec.ts`.
+
+- [ ] Write failing tests for text-only working status supplied by caller, open client/server calls, latest active label, explicit awaiting/cancelled/failed, synthetic errors overriding a still-pending client call, mixed completed outcomes, call/source counts, legacy rejected results, unknown and explicit timing, input immutability and no wall-clock access.
+- [ ] Run `npx nx test core --testFile=summarize-turn.spec.ts --runInBand`; confirm failure.
+- [ ] Implement the exact spec projection using Tasks 1/2 helpers. Do not infer turn duration from tool times or turn failure from one failed tool.
+- [ ] Run focused tests/scoped lint; independent spec then quality review.
+- [ ] Parent commits reviewed files.
+
+## Task 4: Public integration, docs and delivery
+
+Files: `packages/core/src/models/index.ts`,
+`packages/react/src/public-api.ts`, `packages/angular/src/public_api.ts`, the
+existing public-package compatibility checks under `packages/{react,angular}/e2e`,
+`www/content/docs/{react,angular}/concept/{activities,functions}.md`, generated
+API reports under `etc/`, and a local upstream-gap note under
+`docs/superpowers/research/2026-10-27-tool-step-upstream.md`.
+
+- [ ] Export functions/types from core and both frameworks, including existing groupTurns/Turn. Public signatures must use neutral core types and no private ɵ types.
+- [ ] Add a meaningful public consumer/distribution check to existing compatibility coverage where appropriate; avoid tests that only mirror export statements. Verify the helper APIs accept the frameworks' existing UI message types.
+- [ ] Document label/group overrides, status and timing inputs, live/settled derived state, separate per-answer attribution, and no-flash/tick policy. Keep file search deferred and add no release notes.
+- [ ] Record verified upstream links/current gaps; no external issue or discussion writes.
+- [ ] Run `npx nx test core --runInBand`, `npx nx build core`, `npx nx lint core`, `npx nx e2e core`.
+- [ ] Run `npx nx test react`, `npx nx build react`, `npx nx lint react`, and `npx nx e2e react` for its distribution target.
+- [ ] Run `npx nx test angular --runInBand`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.
+- [ ] Run `npx nx build-api-report core`, `npx nx build-api-report react`, `npx nx build-api-report angular`; inspect reports for accidental API or dependency leaks.
+- [ ] Run `npx nx test www`, `npx nx lint www`, `npx nx build www` for changed docs. Scope/bound workers when required and report every failure/warning accurately.
+- [ ] Final independent review, commit, push, open and attach PR. Keep the feature worktree for review. No merge without authorization for this PR.
+
+## Scope decision pending
+
+The current user request explicitly selects UX helpers. A clarification asks
+whether SUBAGENT_* should be a separate follow-up or part of this effort. All
+four tasks above are common to either answer. Do not silently implement a new
+subagent state model as a helper-side detail.
