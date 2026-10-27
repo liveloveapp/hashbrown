@@ -216,7 +216,7 @@ HASHBROWN_LIVE_OPT_IN=1 npx nx live-provider-e2e dotnet-conformance --credential
 ```
 
 The runner prepares a fresh standalone consumer using the published React,
-Angular, and core packages pinned to 0.8.2. To reuse an already prepared consumer,
+Angular, and core packages pinned to 0.8.3. To reuse an already prepared consumer,
 pass `--consumer-metadata /absolute/path/to/consumer-metadata.json`; every source,
 template, bundle, installed package, and resolved module origin is revalidated
 without rewriting the trusted baseline. Provider credentials are excluded from
