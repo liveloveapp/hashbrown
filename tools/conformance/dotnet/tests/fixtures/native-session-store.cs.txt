@@ -1,0 +1,307 @@
+using System.Text.Json;
+using Hashbrown.Conformance.Integration;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+static string Request(string thread, string messages = "[{\"id\":\"u1\",\"role\":\"user\",\"content\":\"hello\"}]") => $"{{\"threadId\":\"{thread}\",\"runId\":\"untrusted\",\"messages\":{messages},\"tools\":[]}}";
+static JsonElement Json(string json) => JsonSerializer.Deserialize<JsonElement>(json);
+static NativeSessionKey Key(string selector, string scope = "alice", string agent = "agent", string partition = "value") => new(agent, scope, selector, new Dictionary<string,string> { ["tenant"] = partition });
+var mutableCalls = new List<NativeToolCall> { new("immutable", "server", 1, Json("{}")) };
+var immutableSnapshot = new NativeSessionSnapshot("{}", Request("immutable"), mutableCalls, new List<string> { "browser" }, false);
+mutableCalls.Clear();
+Check(immutableSnapshot.PendingCalls.Count == 1, "Snapshot must own immutable cloned collections.");
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture is required."));
+var schema = "native_probe_" + Guid.NewGuid().ToString("N");
+var catalog = new NativeToolCatalog([new("server", 1, Json("{\"type\":\"object\"}"))]);
+var journal = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema);
+try
+{
+    await journal.InitializeAsync();
+    foreach (var malformed in new[]
+    {
+        "null", "[]", "42", "true", "{",
+        """{"threadId":"malformed","messages":null}""",
+        """{"threadId":"malformed","messages":[null]}""",
+        """{"threadId":"malformed","messages":[{"id":"a","role":"assistant","toolCalls":[null]}]}""",
+        """{"threadId":"malformed","messages":[{"id":"u","role":"user","content":"hi"}],"tools":[null]}""",
+        """{"threadId":"malformed","messages":[{"id":"u","role":4,"content":"hi"}]}""",
+        """{"threadId":"malformed","messages":[{"id":"a","role":"assistant","toolCalls":[{"id":"c","function":null}]}]}"""
+    })
+        Check((await journal.TryAcquireAsync(Key("malformed"), malformed)).Status == 400, "Malformed public JSON must return bad input before storage or execution.");
+    var key = Key("thread");
+    var admitted = await journal.TryAcquireAsync(key, Request("thread"));
+    Check(admitted.Status == 200 && admitted.Lease is not null, "Initial owner must be created.");
+    var lease = admitted.Lease!;
+    var call = new NativeToolCall("call-1", "server", 1, Json("{\"value\":1}"));
+
+    Check(!await journal.TryStartDispatchAsync(lease, call), "Browser history must not mint server descriptors.");
+    Check(await journal.CaptureModelCallAsync(lease, call), "Model descriptor capture must succeed.");
+    Check(await journal.TryStartDispatchAsync(lease, call), "Started must commit before executor dispatch.");
+    Check(!await journal.TryStartDispatchAsync(lease, call), "Duplicate dispatch must fail.");
+    Check(await journal.CompleteDispatchAsync(lease, call), "Current completion must succeed.");
+    Check(await journal.SaveAsync(lease, new("{}", Request("thread"), [], [], true)) is null, "Completed server call/result history cannot be omitted from the public projection.");
+    var receipt = await journal.SaveAsync(lease, new("{}", Completed("thread"), [], [], true));
+    Check(receipt is not null, "Native and public snapshot must commit together.");
+    Check(await journal.SaveAsync(lease, new("{}", Completed("thread"), [], [], true)) is null, "Stale revision save must fail.");
+    Check(await journal.AuthorizePublicationAsync(receipt!), "Current saved receipt must authorize publication.");
+    Check((await journal.ReadStatusAsync(key)).Revision > receipt!.SavedRevision, "Publication reservation must advance the operator CAS revision.");
+    Check((await journal.TryAcquireAsync(key, Request("thread"))).Status == 409, "Publishing must block competing owners.");
+    Check(await journal.FinalizePublicationAsync(receipt!), "Current publication finalization must succeed.");
+    var numericKey = Key("numeric");
+    var numericPrefix = NativeSessionHistory.Normalize(Mixed("numeric", true, false), numericKey, catalog, new());
+    var numericIncoming = System.Text.Json.Nodes.JsonNode.Parse(Mixed("numeric", true, true))!;
+    numericIncoming["messages"]![1]!["toolCalls"]![0]!["function"]!["arguments"] = "{\"value\":1.0}";
+    Check(NativeSessionHistory.Admits(NativeSessionHistory.Normalize(numericIncoming.ToJsonString(), numericKey, catalog, new()), new("{}", numericPrefix, [call], ["browser-call"], false)), "Equivalent JSON number arguments must survive browser canonicalization.");
+
+    // Scope, agent and every native partition are independent authority boundaries.
+    foreach (var isolated in new[] { Key("thread", "bob"), Key("thread", agent: "other"), Key("thread", partition: "other") })
+        Check((await journal.TryAcquireAsync(isolated, Request("thread"))).Status == 200, "All native partitions must be preserved.");
+    var incompatible = new PostgresNativeSessionJournal(source, catalog, "model-v2", schema);
+    Check((await incompatible.TryAcquireAsync(key, Request("thread"))).Status == 409, "Model identity changes must conflict on the same selector.");
+    var changedCatalog = new PostgresNativeSessionJournal(source, new NativeToolCatalog([new("server", 2, Json("{\"type\":\"object\"}"))]), "model-v1", schema);
+    Check((await changedCatalog.TryAcquireAsync(key, Request("thread"))).Status == 409, "Catalog changes must not allocate fresh authority.");
+    await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => journal.InitializeAsync().AsTask()));
+
+    var simultaneous = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => journal.TryAcquireAsync(Key("race"), Request("race")).AsTask()));
+    Check(simultaneous.Count(result => result.Status == 200) == 1 && simultaneous.Count(result => result.Status == 409) == 7, "Concurrent first allocation must establish exactly one owner.");
+
+    // SQL expiry is deterministic: no elapsed sleeps are used to establish authority.
+    var takeoverKey = Key("takeover");
+    var before = (await journal.TryAcquireAsync(takeoverKey, Request("takeover"))).Lease!;
+    await Sql("UPDATE native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", takeoverKey.Id);
+    var afterAdmission = await journal.TryAcquireAsync(takeoverKey, Request("takeover"));
+    var after = afterAdmission.Lease!;
+    Check(afterAdmission.Status == 200 && after.Generation > before.Generation && afterAdmission.IsNew, "Pre-effect takeover may safely retry a known virgin.");
+    Check(!await journal.RenewAsync(before) && !await journal.CaptureModelCallAsync(before, call) && !await journal.TryStartDispatchAsync(before, call) && !await journal.CompleteDispatchAsync(before, call) && !await journal.FailureCleanupAsync(before), "Every callback must independently reject a stale generation.");
+    Check(await journal.SaveAsync(before, new("{}", Request("takeover"), [], [], true)) is null, "Stale save must fail after takeover.");
+    Check(await journal.FailureCleanupAsync(after), "Current pre-effect cleanup must release ownership.");
+
+    var unknownKey = Key("unknown");
+    var unknown = (await journal.TryAcquireAsync(unknownKey, Request("unknown"))).Lease!;
+    Check(await journal.CaptureModelCallAsync(unknown, call) && await journal.TryStartDispatchAsync(unknown, call), "Ambiguity setup must commit Started.");
+    await Sql("UPDATE native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", unknownKey.Id);
+    Check((await journal.TryAcquireAsync(unknownKey, Request("unknown"))).Status == 409, "Abandoned Started must never be taken over automatically.");
+    var inspection = (await journal.InspectAsync(new HashSet<string> { "alice" }, unknownKey))!;
+    Check(inspection.Status.State == "Blocked" && inspection.Invocations.Single().State == "Started", "Unknown dispatch must remain fenced.");
+    var reconcile = new NativeSessionReconciliation(inspection.Status.State!, inspection.Status.Generation, inspection.Status.Revision, "ConfirmedNotPerformed", "external executor inspected", "fixture-evidence", true);
+    Check(await journal.ReconcileAsync(new HashSet<string> { "bob" }, unknownKey, "operator", reconcile) == 404, "Operators must be scope-restricted.");
+    Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, unknownKey, "operator", reconcile with { ExternalQuiescenceAcknowledged = false }) == 400, "Operator evidence requires explicit quiescence.");
+    Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, unknownKey, "operator", reconcile with { ExpectedRevision = 0 }) == 409, "Reconciliation must compare exact revision.");
+    Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, unknownKey, "operator", reconcile) == 200, "Scoped reconciler must terminally retire authority.");
+    Check((await journal.TryAcquireAsync(unknownKey, Request("unknown"))).Status == 410 && !await journal.CompleteDispatchAsync(unknown, call), "Reconciliation never reopens the selector or accepts late completion.");
+    Check((await journal.InspectAsync(new HashSet<string> { "alice" }, unknownKey))!.Audit.Count == 1, "Reconciliation evidence must remain immutable.");
+
+    var savedKey = Key("saved");
+    var savedLease = (await journal.TryAcquireAsync(savedKey, Request("saved"))).Lease!;
+    var saved = (await journal.SaveAsync(savedLease, new("{}", Request("saved"), [], [], true)))!;
+    Check(await journal.RenewAsync(savedLease) && await journal.AuthorizePublicationAsync(saved), "Heartbeat after save must preserve the receipt.");
+    await Sql("UPDATE native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", savedKey.Id);
+    Check((await journal.TryAcquireAsync(savedKey, Request("saved"))).Status == 409 && !await journal.FinalizePublicationAsync(saved), "Expired Publishing must block all takeover and stale finalization.");
+    Check(await journal.RetireAsync(new HashSet<string> { "alice" }, savedKey, "operator", new("Publishing", savedLease.Generation, saved.SavedRevision + 1, "Retired", "publisher stopped", "fixture-evidence", true)) == 200, "Quiescent publication may be terminally retired.");
+    Check(!await journal.AuthorizePublicationAsync(saved) && !await journal.FailureCleanupAsync(savedLease), "Old publisher cannot overwrite retirement.");
+
+    var unpublishedKey = Key("unpublished");
+    var unpublishedOwner = (await journal.TryAcquireAsync(unpublishedKey, Request("unpublished"))).Lease!;
+    var unpublishedReceipt = (await journal.SaveAsync(unpublishedOwner, new("{}", Request("unpublished"), [], [], true)))!;
+    await Sql("UPDATE native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", unpublishedKey.Id);
+    var nextUser = Request("unpublished", "[{\"id\":\"u1\",\"role\":\"user\",\"content\":\"hello\"},{\"id\":\"u2\",\"role\":\"user\",\"content\":\"next\"}]");
+    var replacement = await journal.TryAcquireAsync(unpublishedKey, nextUser);
+    Check(replacement.Status == 200 && !replacement.IsNew, "Expired saved-but-unpublished owner may be replaced from valid durable state.");
+    Check(!await journal.AuthorizePublicationAsync(unpublishedReceipt) && !await journal.FailureCleanupAsync(unpublishedOwner), "Older saved receipt and cleanup must lose authority after replacement.");
+    Check(await journal.FailureCleanupAsync(replacement.Lease!), "Pre-dispatch replacement cleanup may release its request.");
+
+    var statusExpiredKey = Key("status-expired");
+    var statusExpiredOwner = (await journal.TryAcquireAsync(statusExpiredKey, Request("status-expired"))).Lease!;
+    var statusExpiredReceipt = (await journal.SaveAsync(statusExpiredOwner, new("{}", Request("status-expired"), [], [], true)))!;
+    Check(await journal.AuthorizePublicationAsync(statusExpiredReceipt) && await journal.FinalizePublicationAsync(statusExpiredReceipt), "Expiry status setup must publish.");
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", statusExpiredKey.Id);
+    Check((await journal.ReadStatusAsync(statusExpiredKey)).PublicRequest is null, "Expired private history must be unavailable even before maintenance.");
+
+    // Expiry/deletion preserve selector tombstones, including zero-effect sessions.
+    var expiredKey = Key("expired");
+    _ = await journal.TryAcquireAsync(expiredKey, Request("expired"));
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", expiredKey.Id);
+    Check(await journal.MaintainAsync() >= 1, "Maintenance must purge expired private state.");
+    await journal.MaintainAsync();
+    Check((await journal.TryAcquireAsync(expiredKey, Request("expired"))).Status == 410, "Repeated maintenance must never reopen a retired selector.");
+    Check((long)(await Scalar("SELECT count(*) FROM native_sessions WHERE id=@id AND payload IS NULL AND admitted_request IS NULL", expiredKey.Id))! == 1, "Retired selector must remain without private bytes.");
+
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", key.Id);
+    await journal.MaintainAsync();
+    Check((await journal.TryAcquireAsync(key, Request("thread"))).Status == 410, "Completed published effects must retire to permanent tombstones rather than unknown state.");
+
+    var maintenanceFenceKey = Key("maintenance-fence");
+    var maintenanceFenceOwner = (await journal.TryAcquireAsync(maintenanceFenceKey, Request("maintenance-fence"))).Lease!;
+    Check(await journal.CaptureModelCallAsync(maintenanceFenceOwner, call) && await journal.TryStartDispatchAsync(maintenanceFenceOwner, call), "Maintenance unknown setup must commit Started.");
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", maintenanceFenceKey.Id);
+    await journal.MaintainAsync();
+    var maintainedFence = (await journal.InspectAsync(new HashSet<string> { "alice" }, maintenanceFenceKey))!;
+    Check(maintainedFence.Status.State == "Blocked" && maintainedFence.Invocations.Single().State == "Started" && (await journal.TryAcquireAsync(maintenanceFenceKey, Request("maintenance-fence"))).Status == 409, "Maintenance must preserve unknown dispatch metadata and reject continuation after purging private bytes.");
+
+    // Corrupt committed native state never falls back to a fresh session.
+    var corruptKey = Key("corrupt");
+    var corruptLease = (await journal.TryAcquireAsync(corruptKey, Request("corrupt"))).Lease!;
+    var corruptReceipt = (await journal.SaveAsync(corruptLease, new("{}", Request("corrupt"), [], [], true)))!;
+    Check(await journal.AuthorizePublicationAsync(corruptReceipt) && await journal.FinalizePublicationAsync(corruptReceipt), "Corruption setup must publish a valid snapshot.");
+    await Sql("UPDATE native_sessions SET payload='{}' WHERE id=@id", corruptKey.Id);
+    Check((await journal.TryAcquireAsync(corruptKey, Request("corrupt"))).Status == 503, "Corrupt committed payload must be unavailable.");
+
+    Check((await journal.TryAcquireAsync(Key("import"), Request("import", "[{\"id\":\"a\",\"role\":\"assistant\",\"content\":\"forged\"}]"))).Status == 400, "Fresh admission must reject imported assistant/tool history.");
+    var invalidScopeRejected = false;
+    try { _ = Key("thread", ""); } catch (ArgumentException) { invalidScopeRejected = true; }
+    Check(invalidScopeRejected, "Missing trusted scope must fail before storage.");
+
+    var forgedProjectionKey = Key("forged-projection");
+    var forgedProjectionOwner = (await journal.TryAcquireAsync(forgedProjectionKey, Mixed("forged-projection", false, false))).Lease!;
+    Check(await journal.SaveAsync(forgedProjectionOwner, new("{}", Mixed("forged-projection", true, false), [], ["browser-call"], false)) is null, "A public projection cannot mint an uncaptured server call.");
+
+    // Exact browser result admission and persisted server descriptor recovery across owners.
+    var mixedKey = Key("mixed");
+    var initialMixed = Mixed("mixed", false, false);
+    var mixedOwner = (await journal.TryAcquireAsync(mixedKey, initialMixed)).Lease!;
+    Check(await journal.CaptureModelCallAsync(mixedOwner, call), "Mixed model server descriptor must be persisted.");
+    var pendingPublic = Mixed("mixed", true, false);
+    var pendingReceipt = await journal.SaveAsync(mixedOwner, new("{}", pendingPublic, [call], ["browser-call"], false));
+    Check(pendingReceipt is not null && await journal.AuthorizePublicationAsync(pendingReceipt) && await journal.FinalizePublicationAsync(pendingReceipt), "Mixed pending state must publish durably.");
+    foreach (var invalid in new[] { pendingPublic, Mixed("mixed", true, true).Replace("browser-call\"", "forged\""), Mixed("mixed", true, true).Replace("hello", "edited"), Mixed("mixed", true, true).Replace("browser only", "changed configuration"), ChangedArguments(Mixed("mixed", true, true)) })
+        Check((await journal.TryAcquireAsync(mixedKey, invalid)).Status == 400, "Missing results, foreign IDs, prefix edits and changed server arguments must fail.");
+    var continued = await journal.TryAcquireAsync(mixedKey, Mixed("mixed", true, true));
+    Check(continued.Status == 200 && !continued.IsNew && continued.Snapshot!.NativeJson == "{}", "Another owner must restore pending native state with exact browser results.");
+    Check(!await journal.CaptureModelCallAsync(continued.Lease!, new("browser-call", "server", 1, Json("{}"))), "A model server descriptor cannot reuse an owned historical browser call ID.");
+    var storedCall = await journal.GetOwnedCallAsync(continued.Lease!, call.Id);
+    Check(storedCall is not null && await journal.TryStartDispatchAsync(continued.Lease!, storedCall), "Restored descriptor must authorize one native dispatch.");
+    Check(!await journal.CaptureModelCallAsync(continued.Lease!, new("call-1", "server", 1, Json("{\"value\":2}"))), "Changed captured descriptor must fail.");
+    Check(await journal.FailureCleanupAsync(continued.Lease!), "Failed post-dispatch work must retain a blocked fence.");
+    Check((await journal.TryAcquireAsync(mixedKey, Mixed("mixed", true, true))).Status == 409, "Post-dispatch cleanup must never release authority for retry.");
+
+    // Pinned native bypass emits only the browser call first; backend descriptors stay private until continuation.
+    var hiddenKey = Key("hidden-native");
+    var hiddenOwner = (await journal.TryAcquireAsync(hiddenKey, Mixed("hidden-native", false, false))).Lease!;
+    Check(await journal.CaptureModelCallAsync(hiddenOwner, call), "Hidden native backend descriptor must be model-captured before bypass.");
+    Check(await journal.SaveAsync(hiddenOwner, new("{}", FrontendOnly("hidden-native", false), [], ["browser-call"], false)) is null, "Private pending descriptors cannot be omitted from durable save.");
+    var hiddenReceipt = await journal.SaveAsync(hiddenOwner, new("{}", FrontendOnly("hidden-native", false), [call], ["browser-call"], false));
+    Check(hiddenReceipt is not null && await journal.AuthorizePublicationAsync(hiddenReceipt) && await journal.FinalizePublicationAsync(hiddenReceipt), "Native frontend-only first response must durably retain its hidden server descriptor.");
+    var hiddenContinuation = await journal.TryAcquireAsync(hiddenKey, FrontendOnly("hidden-native", true));
+    Check(hiddenContinuation.Status == 200 && hiddenContinuation.Snapshot!.PendingCalls.Single().Id == call.Id, "Exact browser results must restore private native backend authority.");
+    var hiddenCall = (await journal.GetOwnedCallAsync(hiddenContinuation.Lease!, call.Id))!;
+    Check(await journal.TryStartDispatchAsync(hiddenContinuation.Lease!, hiddenCall) && await journal.CompleteDispatchAsync(hiddenContinuation.Lease!, hiddenCall), "Hidden descriptor may execute once through restored native invocation.");
+    Check(await journal.SaveAsync(hiddenContinuation.Lease!, new("{}", FrontendOnly("hidden-native", true), [], [], true)) is null, "Completed hidden backend must become visible with its result before durable completion.");
+    var hiddenCompleted = await journal.SaveAsync(hiddenContinuation.Lease!, new("{}", DeferredCompleted("hidden-native"), [], [], true));
+    Check(hiddenCompleted is not null && await journal.AuthorizePublicationAsync(hiddenCompleted) && await journal.FinalizePublicationAsync(hiddenCompleted), "Genuine deferred call/result history must publish after completion.");
+
+    var orphanKey = Key("orphan-hidden");
+    var orphanOwner = (await journal.TryAcquireAsync(orphanKey, Request("orphan-hidden"))).Lease!;
+    Check(await journal.CaptureModelCallAsync(orphanOwner, call), "Orphan hidden setup must capture a real model descriptor.");
+    Check(await journal.SaveAsync(orphanOwner, new("{}", Request("orphan-hidden"), [call], [], false)) is null, "Unexplained hidden backend state without visible browser work must fail closed.");
+    var collisionKey = Key("hidden-collision");
+    var collisionOwner = (await journal.TryAcquireAsync(collisionKey, Mixed("hidden-collision", false, false))).Lease!;
+    var collisionCall = new NativeToolCall("browser-call", "server", 1, Json("{}"));
+    Check(await journal.CaptureModelCallAsync(collisionOwner, collisionCall), "Same-response collision must be detected before publication or dispatch.");
+    Check(await journal.SaveAsync(collisionOwner, new("{}", FrontendOnly("hidden-collision", false), [collisionCall], ["browser-call"], false)) is null, "Private server IDs cannot alias visible browser call IDs.");
+
+    // Independent payload and selector capacity, including permanent tombstones.
+    var limited = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { PayloadCapacity = 1, SelectorCapacity = 2 });
+    var capOne = Key("cap-one", "capacity");
+    Check((await limited.TryAcquireAsync(capOne, Request("cap-one"))).Status == 200, "First payload must fit.");
+    Check((await limited.TryAcquireAsync(Key("cap-two", "capacity"), Request("cap-two"))).Status == 503, "Payload capacity must reject before work.");
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", capOne.Id);
+    await limited.MaintainAsync();
+    Check((await limited.TryAcquireAsync(Key("cap-two", "capacity"), Request("cap-two"))).Status == 200, "Private-byte purge frees only payload capacity.");
+    await Sql("UPDATE native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", Key("cap-two", "capacity").Id);
+    await limited.MaintainAsync();
+    Check((await limited.TryAcquireAsync(Key("cap-three", "capacity"), Request("cap-three"))).Status == 503 && (await limited.TryAcquireAsync(capOne, Request("cap-one"))).Status == 410, "Tombstones permanently consume metadata capacity and never reopen.");
+
+    var atomicCapacity = await Task.WhenAll(Enumerable.Range(0, 4).Select(index => limited.TryAcquireAsync(Key($"atomic-{index}", "atomic-capacity"), Request($"atomic-{index}")).AsTask()));
+    Check(atomicCapacity.Count(result => result.Status == 200) == 1 && atomicCapacity.Count(result => result.Status == 503) == 3, "Concurrent different selectors must atomically enforce per-scope capacity.");
+
+    var tiny = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { NativeBytes = 2, PublicBytes = 4096, ArgumentBytes = 2, MaximumCalls = 1 });
+    var tinyKey = Key("tiny");
+    var tinyOwner = (await tiny.TryAcquireAsync(tinyKey, Request("tiny"))).Lease!;
+    Check(await tiny.SaveAsync(tinyOwner, new("{\"oversized\":true}", Request("tiny"), [], [], true)) is null, "Oversized native state must fail without publication.");
+    Check(!await tiny.CaptureModelCallAsync(tinyOwner, call), "Oversized arguments must fail before marker.");
+    Check((await tiny.TryAcquireAsync(Key("oversized"), Request("oversized").Replace("hello", new string('x', 5000)))).Status == 400, "Oversized incoming transcript must fail before allocation.");
+
+    // Existing real schema-three checkpoint rows and metadata are never migrated or rewritten.
+    var checkpointRegistry = new WorkflowOperationRegistry([new("checkpoint", 1, _ => true, (_, _) => ValueTask.CompletedTask, (_, _, _) => ValueTask.CompletedTask)]);
+    var checkpoints = new PostgresInterruptStore(source, checkpointRegistry, schema);
+    await checkpoints.InitializeAsync();
+    var checkpointInput = JsonSerializer.Deserialize(Request("checkpoint"), AGUI.Abstractions.AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var checkpoint = await checkpoints.CreateAsync("checkpoint-scope", checkpointInput, new("checkpoint", 1, Json("{}")));
+    await journal.InitializeAsync();
+    await using (var connection = await source.OpenConnectionAsync())
+    {
+        await using var verify = new NpgsqlCommand($"SELECT version FROM \"{schema}\".interrupt_metadata WHERE id=1", connection);
+        Check((int)(await verify.ExecuteScalarAsync())! == 3, "Native initialization must preserve checkpoint version three.");
+        await using var row = new NpgsqlCommand($"SELECT count(*) FROM \"{schema}\".interrupt_batches WHERE id=@id AND state='Pending'", connection);
+        row.Parameters.AddWithValue("id", checkpoint.Id);
+        Check((long)(await row.ExecuteScalarAsync())! == 1, "Native initialization must preserve actual schema-three checkpoint rows.");
+        await using var future = new NpgsqlCommand($"UPDATE \"{schema}\".native_metadata SET version=2 WHERE id=1", connection);
+        await future.ExecuteNonQueryAsync();
+        var rejectedFuture = false;
+        try { await journal.InitializeAsync(); } catch (InvalidOperationException) { rejectedFuture = true; }
+        Check(rejectedFuture, "Unknown native schema versions must be rejected.");
+    }
+
+    Console.WriteLine("Native session PostgreSQL contracts passed.");
+}
+finally
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE", connection);
+    await command.ExecuteNonQueryAsync();
+}
+
+async Task Sql(string sql, string id)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("native_sessions", $"\"{schema}\".native_sessions"), connection);
+    command.Parameters.AddWithValue("id", id);
+    await command.ExecuteNonQueryAsync();
+}
+async Task<object?> Scalar(string sql, string id)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("native_sessions", $"\"{schema}\".native_sessions"), connection);
+    command.Parameters.AddWithValue("id", id);
+    return await command.ExecuteScalarAsync();
+}
+
+static string Mixed(string thread, bool calls, bool result)
+{
+    var messages = new List<object> { new { id = "u1", role = "user", content = "hello" } };
+    if (calls) messages.Add(new { id = "a1", role = "assistant", toolCalls = new object[] { new { id = "call-1", type = "function", function = new { name = "server", arguments = "{\"value\":1}" } }, new { id = "browser-call", type = "function", function = new { name = "browser", arguments = "{}" } } } });
+    if (result) messages.Add(new { id = "result", role = "tool", toolCallId = "browser-call", content = "browser-value" });
+    return JsonSerializer.Serialize(new { threadId = thread, runId = "browser-selected", messages, tools = new[] { new { name = "browser", description = "browser only", parameters = Json("{\"type\":\"object\"}") } } });
+}
+
+static string ChangedArguments(string request)
+{
+    var root = System.Text.Json.Nodes.JsonNode.Parse(request)!;
+    root["messages"]![1]!["toolCalls"]![0]!["function"]!["arguments"] = "{\"value\":2}";
+    return root.ToJsonString();
+}
+
+static string Completed(string thread) => JsonSerializer.Serialize(new
+{
+    threadId = thread, runId = "untrusted", tools = Array.Empty<object>(), messages = new object[]
+    {
+        new { id = "u1", role = "user", content = "hello" },
+        new { id = "server-message", role = "assistant", toolCalls = new[] { new { id = "call-1", type = "function", function = new { name = "server", arguments = "{\"value\":1}" } } } },
+        new { id = "server-result", role = "tool", toolCallId = "call-1", content = "server-value" }
+    }
+});
+
+static string FrontendOnly(string thread, bool result)
+{
+    var root = System.Text.Json.Nodes.JsonNode.Parse(Mixed(thread, true, result))!;
+    root["messages"]![1]!["toolCalls"]!.AsArray().RemoveAt(0);
+    return root.ToJsonString();
+}
+static string DeferredCompleted(string thread)
+{
+    var root = System.Text.Json.Nodes.JsonNode.Parse(FrontendOnly(thread, true))!;
+    var messages = root["messages"]!.AsArray();
+    messages.Add(JsonSerializer.SerializeToNode(new { id = "backend-message", role = "assistant", toolCalls = new[] { new { id = "call-1", type = "function", function = new { name = "server", arguments = "{\"value\":1}" } } } }));
+    messages.Add(JsonSerializer.SerializeToNode(new { id = "backend-result", role = "tool", toolCallId = "call-1", content = "server-value" }));
+    return root.ToJsonString();
+}
