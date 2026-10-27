@@ -216,9 +216,9 @@ Checks cover trusted instructions at the actual provider boundary, forged browse
 
 ## Canonical workbench shell re-record
 
-Updated 2026-10-26. Every `canonical-workbench-*` video, poster, result
-screenshot, caption file and walkthrough (all fourteen lessons, both frameworks,
-plus the two overview IDs) was re-recorded against the redesigned shell: a
+Updated 2026-10-26. The fourteen earlier lessons and two overview IDs had their
+`canonical-workbench-*` videos, posters, result screenshots, captions and
+walkthroughs re-recorded against the redesigned shell: a
 collapsible sectioned sidebar, a resizable chat and inspector split, one
 inspector that pairs captured and interpreted content, and an icon player bar.
 Recordings ran in fresh browser contexts, so they show the default layout
@@ -292,7 +292,7 @@ unique ignored `dist/docs-workbench/captures/<run-id>` directory.
 
 The six Angular and React recipe guides for Magic Text, predictive suggestions,
 and UI selection use `canonical-workbench-{magic-text,predictions,ui-selection}-{react,angular}`.
-Each lesson keeps the application-owned two-step plan, LLA four-panel layout,
+Each lesson keeps the application-owned two-step plan, LLA light shell,
 bottom milestone timeline, independent conversations and immutable captured
 history. Earlier packing/shopping media remains available for bookmarks and
 independent fixture checks; the active guides use the matching framework's new
@@ -381,5 +381,5 @@ ignored `dist/docs-workbench/captures/<run-id>`. No SDK release or new dependenc
 
 The shared state, activities and interrupt/resume recordings were refreshed after
 the canonical shell redesign. They use the collapsible sidebar, resizable chat
-and paired inspector, with the icon player below. Historical four-column captures
-remain associated with earlier batches; these six recordings match the current shell.
+and paired inspector, with the icon player below. Earlier batch notes describe the original captures; the canonical media now
+matches the redesigned shell, including these six workflow recordings.
