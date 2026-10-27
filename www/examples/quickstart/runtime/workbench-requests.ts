@@ -243,7 +243,10 @@ export function workbenchExchanges(
     if (decisionLesson && frame.kind === 'event') open.decided = true;
   });
 
-  const lastRequest = drafts.findLastIndex((draft) => draft.kind === 'request');
+  const lastRequest = drafts.reduce(
+    (last, draft, i) => (draft.kind === 'request' ? i : last),
+    -1,
+  );
   const lastTurn = drafts.at(-1)?.turn;
 
   const exchanges = drafts.map((draft, position): WorkbenchExchange => {
