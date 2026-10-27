@@ -28,7 +28,7 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens seventeen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens nineteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -51,6 +51,8 @@ The lessons are:
 | [Shared agent state](/docs/angular/concept/shared-agent-state) | `/angular.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
 | [Activities](/docs/angular/concept/activities) | `/angular.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
 | [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
+| [Message history](/docs/angular/concept/message-history) | `/angular.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
+| [Save text conversations](/docs/angular/recipes/browser-history) | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
@@ -90,3 +92,9 @@ Run `npx nx workbench-e2e www` to verify both SDK clients with deterministic HTT
 Set `WORKBENCH_LIVE=1` with your server credentials and model to verify the real provider path. Source provenance is shown in the workbench and written to the verification report.
 
 Continue with [Exposing components](/docs/angular/concept/components), [Tool calling](/docs/angular/concept/functions), or [Streaming](/docs/angular/concept/streaming) to focus on one part of the conversation.
+
+## Keep and Restore Completed Text
+
+Open `/angular.html?lesson=message-history` to keep, clear, and restore a completed exchange. The History inspector distinguishes the SDK transcript from the app's in-memory text copy. Open `/angular.html?lesson=save-text-conversations` to save Lighthouse and Harbor explicitly, refresh, and load text into a new runtime.
+
+Only successful completed text is saved. Browser slots do not restore shared state, activities, tools, or pending interrupts. The timeline after refresh starts a new capture; replay never requests or writes storage. See [Message history](/docs/angular/concept/message-history) and [Save text conversations](/docs/angular/recipes/browser-history).
