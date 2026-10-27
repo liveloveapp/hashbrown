@@ -12,6 +12,7 @@ test('lists the home page, blog, docs and API reference', () => {
   expect(urls).toContain('https://hashbrown.dev/');
   expect(urls).toContain('https://hashbrown.dev/blog');
   expect(urls).toContain('https://hashbrown.dev/api');
+  expect(urls).toContain('https://hashbrown.dev/brand');
   expect(urls).toContain('https://hashbrown.dev/docs/react/start/quick');
   expect(urls).toContain('https://hashbrown.dev/docs/angular/start/quick');
   expect(urls).toContain(`https://hashbrown.dev/blog/${posts[0].slug}`);
@@ -20,7 +21,7 @@ test('lists the home page, blog, docs and API reference', () => {
 
 test('has one entry per page and no duplicates', () => {
   const expected =
-    4 +
+    5 +
     listBlogPosts().length +
     listDocs('react').length +
     listDocs('angular').length +
