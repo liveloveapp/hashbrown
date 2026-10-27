@@ -12,9 +12,8 @@ reflect those completed slices.
 
 Hashbrown remains headless. Add no components, runtime dependency on B4, new
 dependencies, automatic timers, or release notes. Keep file search deferred.
-SUBAGENT_* lifecycle/output attribution is a separate protocol change; the user
-has been asked whether to include it in this effort. The helper work is useful
-and authorized independently of that decision.
+The user confirmed on 2026-10-27 that SUBAGENT_* lifecycle/output attribution
+is the next slice, after these UX helpers. It is not part of this PR.
 
 ## Public API
 
@@ -50,8 +49,8 @@ metadata; do not expose a private type. Do not hardcode B4 application tool
 names. Apps can exclude delegation/planning tools such as `task`/`writeTodos`.
 
 A group uses its app group override, else a conservative common-verb phrase
-from resolved member labels, else `Used X N times`. The common-verb form accepts
-only short distinct trailing subjects (at most four words/32 code points, no
+from resolved member labels, else `Used X N times`. The common-verb form uses the longest shared
+leading-word prefix and accepts only short distinct trailing subjects (at most four words/32 code points, no
 comma/semicolon/colon, not truncated), strips a trailing parenthetical, shows
 up to three subjects, and otherwise shows the first two and `N more`. Group
 labels obey the same length bound. Grouping preserves order, all original call

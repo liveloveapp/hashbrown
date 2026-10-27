@@ -19,11 +19,11 @@ Rules of `2026-10-21-b4-tool-step-contract-design.md`.
 Files: new `packages/core/src/models/server-tool-call-display.ts` and
 `server-tool-call-display.spec.ts`.
 
-- [ ] Write failing tests for all status labels, client-first overrides, empty/throwing callbacks, own-key lookup, Unicode bounds, consecutive-success grouping, failure/denial/cancel/running barriers, exclusions, provider/kind/builtin/parent separation, phrase/fallback labels, frozen inputs and stable source ids.
-- [ ] Run `npx nx test core --testFile=server-tool-call-display.spec.ts --runInBand`; confirm the missing implementation failure.
-- [ ] Implement the public types/functions from the spec; keep phrase/source/provider readers private and documented. Do not modify exports yet.
-- [ ] Run the focused test and scoped lint; spec review first, then quality review. Fix findings and rerun before proceeding.
-- [ ] Parent commits reviewed files explicitly; no shared Git-index changes by subagents.
+- [x] Write failing tests for all status labels, client-first overrides, empty/throwing callbacks, own-key lookup, Unicode bounds, consecutive-success grouping, failure/denial/cancel/running barriers, exclusions, provider/kind/builtin/parent separation, phrase/fallback labels, frozen inputs and stable source ids.
+- [x] Run `npx nx test core --testFile=server-tool-call-display.spec.ts --runInBand`; confirm the missing implementation failure.
+- [x] Implement the public types/functions from the spec; keep phrase/source/provider readers private and documented. Do not modify exports yet.
+- [x] Run the focused test and scoped lint; spec review first, then quality review. Fix findings and rerun before proceeding.
+- [x] Parent commits reviewed files explicitly; no shared Git-index changes by subagents.
 
 ## Task 2: Sources, attribution and timing
 
@@ -67,9 +67,8 @@ API reports under `etc/`, and a local upstream-gap note under
 - [ ] Run `npx nx test www`, `npx nx lint www`, `npx nx build www` for changed docs. Scope/bound workers when required and report every failure/warning accurately.
 - [ ] Final independent review, commit, push, open and attach PR. Keep the feature worktree for review. No merge without authorization for this PR.
 
-## Scope decision pending
+## Scope decision
 
-The current user request explicitly selects UX helpers. A clarification asks
-whether SUBAGENT_* should be a separate follow-up or part of this effort. All
-four tasks above are common to either answer. Do not silently implement a new
-subagent state model as a helper-side detail.
+On 2026-10-27 the user confirmed: UX helpers first; SUBAGENT_* lifecycle and
+output attribution next. Keep the subagent state model out of this PR, and keep
+file search deferred.
