@@ -1,0 +1,17 @@
+REACT · agent-decisions
+
+This is a real provider recording of the checked canonical workbench. Real TypeSafe decisions arrive whole and select fixed read-only application handlers. Handler text is application output, not streamed model prose. Confidence is not correctness or authorization. Actual confidence scores: 0.79, 0.94. Scores below 0.75 use the clarification handler. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
+
+TypeSafe returns a whole outline choice and confidence.
+
+Our outline handler replies. Application state stays unchanged.
+
+The next whole decision proposes the record route.
+
+Our record handler replies from fixed application code.
+
+Replay makes no classifier requests or application writes.
+
+Back live.
+
+Application state remains at revision zero. Replay makes no requests or writes. Refresh clears these local sessions and captures.

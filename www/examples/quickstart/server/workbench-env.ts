@@ -1,3 +1,4 @@
+import { createWorkbenchAgentStream } from './workbench-agent';
 import { createWorkbenchWorkflowStream } from './workbench-workflows';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
 import { workbenchSelectionSchema } from '../runtime/workbench-recipes';
@@ -44,8 +45,22 @@ export function createWorkbenchAppFromEnv(
               maxRequestChars: 16_000,
             })
         : undefined,
-    stream: createWorkbenchWorkflowStream({
-      delegate: createWorkbenchOpenAIStream({ apiKey, model }),
+    stream: createWorkbenchAgentStream({
+      classify:
+        decisionKey && decisionModel
+          ? ({ request, schema, signal }) =>
+              HashbrownTypeSafe.decide({
+                apiKey: decisionKey,
+                model: decisionModel,
+                request,
+                schema,
+                signal,
+                maxRequestChars: 16_000,
+              })
+          : undefined,
+      delegate: createWorkbenchWorkflowStream({
+        delegate: createWorkbenchOpenAIStream({ apiKey, model }),
+      }),
     }),
   });
 }

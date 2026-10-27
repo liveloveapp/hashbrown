@@ -30,7 +30,7 @@ const input = {
 };
 
 test('allowlists three onboarding modes while keeping the prior default', () => {
-  expect(workbenchLessons).toHaveLength(21);
+  expect(workbenchLessons).toHaveLength(24);
   expect(getWorkbenchLesson('')).toMatchObject({ id: 'generative-ui' });
   expect(getWorkbenchLesson('?lesson=first-plan')).toMatchObject({
     id: 'first-plan',

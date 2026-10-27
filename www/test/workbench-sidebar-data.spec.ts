@@ -47,7 +47,18 @@ test('groups every lesson exactly once in sidebar order', () => {
         'public-endpoint',
       ],
     ],
-    ['recipes', 'Recipes', ['magic-text', 'predictions', 'ui-selection']],
+    [
+      'recipes',
+      'Recipes',
+      [
+        'magic-text',
+        'predictions',
+        'ui-selection',
+        'agent-decisions',
+        'json-parser',
+        'natural-forms',
+      ],
+    ],
   ]);
   expect(flattened).toEqual(workbenchLessons.map((l) => l.id).sort());
 });

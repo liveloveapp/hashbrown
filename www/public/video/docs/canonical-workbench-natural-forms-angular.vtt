@@ -1,0 +1,37 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:14.774
+OpenAI reads current application context and generates a draft.
+
+00:00:14.774 --> 00:00:18.918
+Review copies a completed valid draft into editable fields.
+
+00:00:18.918 --> 00:00:22.992
+Edit the first step. The applied plan has not changed.
+
+00:00:22.992 --> 00:00:27.122
+Apply validates reviewed values and advances application revision.
+
+00:00:27.122 --> 00:00:31.164
+The next request uses readContext to read the applied plan.
+
+00:00:31.164 --> 00:00:41.030
+The model rewrote the first step. Review catches the change.
+
+00:00:41.030 --> 00:00:45.082
+Review the new draft before applying.
+
+00:00:45.082 --> 00:00:49.170
+Restore the first step. Applied state is unchanged.
+
+00:00:49.170 --> 00:00:53.342
+Apply explicitly replaces the accepted plan.
+
+00:00:53.342 --> 00:00:57.438
+Generated data, reviewed fields and applied state stay separate.
+
+00:00:57.438 --> 00:01:18.338
+Replay makes no requests, edits or application writes.
+
+00:01:18.338 --> 00:01:26.167
+Back live.

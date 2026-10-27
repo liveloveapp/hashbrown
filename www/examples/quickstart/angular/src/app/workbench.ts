@@ -1,3 +1,4 @@
+import { AuthoringWorkbenchConversation } from './authoring-workbench';
 import { ServerWorkbenchConversation } from './server-workbench';
 import { HistoryWorkbenchConversation } from './history-workbench';
 import { WorkflowWorkbenchConversation } from './workflow-workbench';
@@ -341,6 +342,7 @@ export class WorkbenchConversation implements AfterViewInit {
     WorkbenchConversation,
     WorkflowWorkbenchConversation,
     HistoryWorkbenchConversation,
+    AuthoringWorkbenchConversation,
     ServerWorkbenchConversation,
     StructuredWorkbenchConversation,
     DecisionWorkbenchConversation,
@@ -352,6 +354,12 @@ export class WorkbenchConversation implements AfterViewInit {
   template: `@for (conversation of conversations(); track conversation.id) {
     @if (server) {
       <app-server-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (authoring) {
+      <app-authoring-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
         [navigation]="navigation(conversation.id)"
@@ -408,6 +416,11 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly authoring = [
+    'agent-decisions',
+    'json-parser',
+    'natural-forms',
+  ].includes(getWorkbenchLesson(window.location.search).id);
   protected readonly server = ['server-threads', 'public-endpoint'].includes(
     getWorkbenchLesson(window.location.search).id,
   );

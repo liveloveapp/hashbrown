@@ -30,7 +30,7 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens twenty-one lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens twenty-four lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -57,6 +57,9 @@ The lessons are:
 | [Save text conversations](/docs/react/recipes/browser-history) | `/react.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
 | [Server-owned threads](/docs/react/recipes/threads) | `/react.html?lesson=server-threads` | Explicit server saves, refresh and version conflicts. |
 | [Public endpoints](/docs/react/recipes/public-endpoint) | `/react.html?lesson=public-endpoint` | Identity and ownership checks before provider work. |
+| [Decisions in agents](/docs/react/recipes/decisions-in-agents) | `/react.html?lesson=agent-decisions` | Server route decisions and fixed read-only handlers. |
+| [JSON parser](/docs/react/recipes/json-parser) | `/react.html?lesson=json-parser` | Raw JSON, real parser values and final document validation. |
+| [Natural language forms](/docs/react/recipes/natural-language-to-structured-data) | `/react.html?lesson=natural-forms` | Review, edit and explicitly apply a generated draft. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 

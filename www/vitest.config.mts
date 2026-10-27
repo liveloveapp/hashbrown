@@ -13,6 +13,10 @@ export default defineConfig({
         import.meta.dirname,
         '../packages/core/src/index.ts',
       ),
+      '@hashbrownai/angular': resolve(
+        import.meta.dirname,
+        '../packages/angular/src/public_api.ts',
+      ),
       '@hashbrownai/react': resolve(
         import.meta.dirname,
         '../packages/react/src/index.ts',
