@@ -1,3 +1,4 @@
+import type { WorkbenchServerHistoryState } from './workbench-server-history';
 import type { WorkbenchSnapshot } from './workbench';
 
 /** A deliberately narrow application copy; SDK identifiers are never persisted. */
@@ -18,6 +19,7 @@ export interface WorkbenchHistoryRead {
 }
 /** Separately captured application state; no field is an SDK checkpoint. */
 export interface WorkbenchHistoryApp {
+  readonly server?: WorkbenchServerHistoryState;
   readonly retained: WorkbenchTextDocument | null;
   readonly selectedSlot: WorkbenchHistorySlot;
   readonly saved: WorkbenchHistoryRead;

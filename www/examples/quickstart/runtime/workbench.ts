@@ -1,3 +1,4 @@
+import type { WorkbenchServerHistoryState } from './workbench-server-history';
 import {
   canMutateWorkbenchHistory,
   createWorkbenchHistoryApp,
@@ -122,6 +123,11 @@ export interface WorkbenchStore {
   recordHistory(observation: WorkbenchHistoryObservationInput): boolean;
   /** Captures explicit application text actions; replay and active SDK work are inert. */
   recordHistoryApp(app: WorkbenchHistoryApp, action: string): boolean;
+  /** Captures safe server observations during requests without changing SDK lifecycle or replacement intent. */
+  recordServerHistory(
+    server: WorkbenchServerHistoryState,
+    action: string,
+  ): boolean;
   /** Releases failed/cancelled replacement intent without claiming the SDK transcript changed. */
   failHistoryReplacement(error?: unknown): boolean;
   /** Captures actual SDK state, messages, activities, pending batch and lifecycle flags. */
@@ -575,6 +581,12 @@ export function createWorkbenchStore(
           : [],
       );
       record('history', sdk);
+      return true;
+    },
+    recordServerHistory(server, action) {
+      if (format !== 'history' || !history || cursor !== null) return false;
+      history = { ...history, app: copy({ ...history.app, server }) };
+      record('history-app', { action });
       return true;
     },
     recordHistoryApp(app, action) {
