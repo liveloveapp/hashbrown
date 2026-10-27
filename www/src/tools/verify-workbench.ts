@@ -692,9 +692,10 @@ try {
       }
 
       await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
-      await expect(
-        page.locator('.wb:visible .wb-inspector [data-detail]'),
-      ).toBeVisible();
+      if (lesson.inspector !== 'Requests')
+        await expect(
+          page.locator('.wb:visible .wb-inspector [data-detail]'),
+        ).toBeVisible();
       await expectWorkbenchDefaultLayout(page);
       await expect(
         page.getByRole('tab', { name: lesson.inspector, exact: true }),
@@ -780,6 +781,30 @@ try {
       const firstSteps = await card.locator('li').allTextContents();
       expect(firstSteps).toHaveLength(2);
       mark('firstComplete');
+      if (lesson.id === 'tools') {
+        const requestsDetail = page.locator(
+          '.wb:visible .wb-inspector [data-detail]',
+        );
+        await page.getByRole('tab', { name: 'Requests', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Model request', exact: true })
+          .first()
+          .click();
+        await expect(requestsDetail).toBeVisible();
+        await expect(
+          requestsDetail.getByRole('tab', { name: /^Response\b/ }),
+        ).toBeVisible();
+        await requestsDetail
+          .getByRole('tab', { name: /^Raw request\b/ })
+          .click();
+        await expect(requestsDetail).toContainText('"messages"');
+        await page.keyboard.press('Escape');
+        await expect(requestsDetail).toHaveCount(0);
+        // Selecting a request seeks the player to it; go back to the live end.
+        await page
+          .getByRole('button', { name: 'Return to live', exact: true })
+          .click();
+      }
       if (
         lesson.id === 'request-transformation' &&
         process.env['WORKBENCH_RECORD'] === '1'
