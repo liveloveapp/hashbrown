@@ -7,8 +7,12 @@ using Microsoft.Extensions.AI;
 namespace Hashbrown.Conformance.Integration;
 
 /// <summary>Applies Hashbrown output semantics without modifying upstream request options.</summary>
-public sealed class HashbrownRequestClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
+public sealed class HashbrownRequestClient : DelegatingChatClient
 {
+    private readonly Func<NativeSessionContext?>? _nativeContext;
+    /// <summary>Creates the existing stateless request adapter.</summary>
+    public HashbrownRequestClient(IChatClient innerClient) : base(innerClient) { }
+    internal HashbrownRequestClient(IChatClient innerClient, Func<NativeSessionContext?> nativeContext) : base(innerClient) => _nativeContext = nativeContext;
     /// <inheritdoc />
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages, ChatOptions? options = null,
@@ -44,8 +48,10 @@ public sealed class HashbrownRequestClient(IChatClient innerClient) : Delegating
             {
                 sawBrowser |= browserTools.Contains(call.Name);
                 sawServer |= !browserTools.Contains(call.Name);
+                if (!browserTools.Contains(call.Name) && _nativeContext?.Invoke() is { Bound: true } native)
+                    await native.CaptureAsync(call, cancellationToken);
             }
-            if (sawBrowser && sawServer)
+            if (sawBrowser && sawServer && _nativeContext?.Invoke() is not { Bound: true })
                 throw new NotSupportedException("Request browser and server tools in separate model turns.");
             yield return update;
         }

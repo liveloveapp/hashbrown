@@ -54,7 +54,7 @@ test('native projection bounds and folds genuine SSE while holding terminal publ
       events: AGUIEvent[];
       messages: Readonly<Message>[];
     }[];
-    expect(cases).toHaveLength(6);
+    expect(cases).toHaveLength(7);
     for (const subject of cases) {
       const active = reducer(
         {

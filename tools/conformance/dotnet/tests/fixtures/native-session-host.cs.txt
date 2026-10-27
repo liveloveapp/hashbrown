@@ -1,0 +1,543 @@
+#pragma warning disable MAAI001 // Tests pin native session/store and bypass compatibility to MAF 1.26.0.
+using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using System.IO.Pipelines;
+using Microsoft.AspNetCore.Http.Features;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using Microsoft.Extensions.AI;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture required."));
+var schema = "native_host_" + Guid.NewGuid().ToString("N");
+var probeFunction = AIFunctionFactory.Create((string code) => code, "backend");
+var probeAccessor = new HttpContextAccessor();
+static void Reject(Action action, string message)
+{
+    try { action(); } catch (ArgumentException) { return; }
+    throw new Exception(message);
+}
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject extra catalog names.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction], new NativeToolCatalog([]), probeAccessor), "Factory must reject missing catalog names.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction], new NativeToolCatalog([new("backend", 1, JsonSerializer.SerializeToElement(new { type = "object" }))]), probeAccessor), "Factory must reject schema drift.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction, probeFunction], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject duplicate functions.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [new ApprovalRequiredAIFunction(probeFunction)], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject native approval registrations in the first milestone.");
+var unsafeBuilder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production" });
+unsafeBuilder.WebHost.UseKestrel(); unsafeBuilder.Logging.ClearProviders();
+await using (var unsafeApp = unsafeBuilder.Build())
+    Reject(() => NativeSessionEndpointConfiguration.Map(unsafeApp, "/unsafe", new Model().AsAIAgent(name: "native"), "native"), "Arbitrary same-name agents cannot acquire native composition capability.");
+var catalog = new NativeToolCatalog([]);
+var durable = new PostgresNativeSessionJournal(source, catalog, "host-probe-v1", schema);
+await durable.InitializeAsync();
+try
+{
+    var journal = new GateJournal(durable) { HoldSave = true };
+    await using var host = await Host.Start(journal, catalog, new Model());
+    var pending = host.Send(Host.Input("barrier"));
+    if (await Task.WhenAny(journal.SaveEntered.Task, pending) == pending)
+        throw new Exception("Request completed before save: " + (await pending));
+    await journal.SaveEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+
+    Check(!host.TerminalSeen.Task.IsCompleted, "Genuine native terminal must remain withheld while durable save is gated.");
+    journal.SaveRelease.TrySetResult();
+    var result = await pending;
+    Check(result.Status == 200 && result.Body.Contains("RUN_FINISHED"), "Durable save must release genuine terminal.");
+    Check(journal.Trace.SequenceEqual(new[] { "save", "authorize", "finalize" }), "Publication must reserve exact saved receipt before terminal finalization.");
+    foreach (var browserFirst in new[] { true, false })
+    foreach (var siblings in new[] { 1, 2 })
+    {
+        var effects = new List<string>();
+        var function = AIFunctionFactory.Create((string code) => { effects.Add(code); return "server-" + code; }, "backend");
+        var mixedCatalog = new NativeToolCatalog([new("backend", 1, function.JsonSchema)]);
+        var mixedDurable = new PostgresNativeSessionJournal(source, mixedCatalog, "host-probe-v1", schema);
+        var mixedJournal = new GateJournal(mixedDurable);
+        var model = new MixedModel(browserFirst, siblings);
+        var thread = $"mixed-{browserFirst}-{siblings}";
+        await using (var firstHost = await Host.Start(mixedJournal, mixedCatalog, model, [function]))
+        {
+            var first = await firstHost.Send(Host.MixedInput(thread));
+            Check(first.Status == 200 && first.Body.Contains("RUN_FINISHED") && !first.Body.Contains("RUN_ERROR"), "Mixed first turn must durably publish browser work: " + first.Body);
+            Check(effects.Count == 0 && !first.Body.Contains("toolCallName\":\"backend"), "Deferred server calls remain private and unexecuted while browser results are pending.");
+            Check(mixedJournal.LastSave!.PendingCalls.Count == siblings && mixedJournal.LastSave.ExpectedBrowserCallIds.Count == siblings, "Opaque save must retain hidden captured backend descriptors and visible expected browser calls.");
+        }
+        var continuation = JsonNode.Parse(mixedJournal.LastSave!.PublicRequest)!.AsObject();
+        continuation["runId"] = Guid.NewGuid().ToString("N");
+        foreach (var id in mixedJournal.LastSave.ExpectedBrowserCallIds)
+            continuation["messages"]!.AsArray().Add(new JsonObject { ["id"] = "result-" + id, ["role"] = "tool", ["toolCallId"] = id, ["content"] = "browser-result" });
+        await using (var restarted = await Host.Start(mixedJournal, mixedCatalog, model, [function]))
+        {
+            var second = await restarted.Send(continuation);
+            Check(second.Status == 200 && second.Body.Contains("RUN_FINISHED") && !second.Body.Contains("RUN_ERROR"), "Restored native continuation must publish actual backend results: " + second.Body);
+            Check(effects.Count == siblings && model.Seen.Count == 2, "A restored native request must dispatch each backend exactly once.");
+            var seen = model.Seen[1];
+            for (var index = 1; index <= siblings; index++)
+            {
+                Check(seen.Count(item => item == "call:front_" + index) == 1 && seen.Count(item => item == "result:front_" + index) == 1 && seen.Count(item => item == "call:back_" + index) == 1 && seen.Count(item => item == "result:back_" + index) == 1, "Complete browser history and restored server calls/results must appear once: " + string.Join(',', seen));
+            }
+            var expected = new List<string> { "text:hello" };
+            expected.AddRange(Enumerable.Range(1, siblings).Select(index => "call:front_" + index));
+            expected.AddRange(Enumerable.Range(1, siblings).Select(index => "result:front_" + index));
+            expected.AddRange(Enumerable.Range(1, siblings).Select(index => "call:back_" + index));
+            expected.AddRange(Enumerable.Range(1, siblings).Select(index => "result:back_" + index));
+            Check(seen.Where(item => item != "text:").SequenceEqual(expected), "Native full browser history must preserve exact original call/result order once: " + string.Join(',', seen));
+            Check(model.Results[1].Where(pair => pair.Key.StartsWith("back_", StringComparison.Ordinal)).All(pair => pair.Value == JsonSerializer.Serialize("server-PDX")), "The next model request must contain genuine native backend results.");
+            var next = JsonNode.Parse(mixedJournal.LastSave!.PublicRequest)!.AsObject(); next["runId"] = Guid.NewGuid().ToString("N");
+            next["messages"]!.AsArray().Add(new JsonObject { ["id"] = "u2", ["role"] = "user", ["content"] = "next" });
+            var third = await restarted.Send(next);
+            Check(third.Body.Contains("RUN_FINISHED") && effects.Count == siblings, "Subsequent ordinary turns must never replay completed server work.");
+            expected.AddRange(["text:done", "text:next"]);
+            Check(model.Seen[2].Where(item => item != "text:").SequenceEqual(expected), "The next ordinary turn must preserve the complete canonical prefix exactly once.");
+        }
+    }
+    // Authentication, schema validation and name collisions must reject before native/model work.
+    var admissionJournal = new GateJournal(durable);
+    await using (var admissionHost = await Host.Start(admissionJournal, catalog, new Model()))
+    {
+        Check((await admissionHost.Send(Host.Input("anonymous"), caller: null)).Status == 401, "Native routes require authentication.");
+        Check((await admissionHost.Send(Host.Input("scope"), scope: "missing")).Status == 400, "Missing trusted scope must reject before admission.");
+        Check((await admissionHost.Send(Host.Input("identity"), caller: "missing", scope: "alice")).Status == 200, "Authenticated explicit scope resolution must work without a NameIdentifier claim.");
+        var invalidRun = Host.Input("run-id"); invalidRun["runId"] = "";
+        Check((await admissionHost.Send(invalidRun)).Status == 400, "An invalid diagnostic run ID must reject before acquiring owned resources.");
+        var invalidSchema = Host.Input("schema"); invalidSchema["forwardedProps"] = JsonNode.Parse("""{"hashbrown":{"responseSchema":false}}""");
+        Check((await admissionHost.Send(invalidSchema)).Status == 400, "Invalid output schema must fail before admission.");
+        var resume = Host.Input("resume"); resume["resume"] = JsonNode.Parse("""[{"interruptId":"forged","status":"resolved","payload":{"approved":true}}]""");
+        Check((await admissionHost.Send(resume)).Status == 400, "Native approval resumes must remain explicitly unsupported.");
+        Check(admissionJournal.Acquisitions == 1, "Only the valid explicit-scope request may acquire native/model authority.");
+    }
+    foreach (var failure in new[] { "save", "authorize", "retire", "publishing" })
+    {
+        var boundary = new GateJournal(durable) { FailSave = failure == "save", DenyAuthorization = failure == "authorize", HoldAuthorize = failure == "retire", HoldReserved = failure == "publishing" };
+        await using var boundaryHost = await Host.Start(boundary, catalog, new Model());
+        var boundaryInput = Host.Input("boundary-" + failure);
+        var boundaryRequest = boundaryHost.Send(boundaryInput);
+        if (failure == "retire")
+        {
+            await boundary.AuthorizeEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Check(!boundaryHost.TerminalSeen.Task.IsCompleted, "A saved receipt does not permit terminal publication before authorization.");
+            var current = (await durable.InspectAsync(new HashSet<string> { "alice" }, boundary.LastLease!.Key))!.Status;
+            Check(await durable.RetireAsync(new HashSet<string> { "alice" }, boundary.LastLease.Key, "operator", new(current.State!, current.Generation, current.Revision, "Retired", "publisher paused before authorization", "host-gate", true)) == 200, "Operator retirement must invalidate old receipt.");
+            boundary.AuthorizeRelease.TrySetResult();
+        }
+        if (failure == "publishing")
+        {
+            await boundary.ReservedEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Check(!boundaryHost.TerminalSeen.Task.IsCompleted, "Reserved publisher gate must retain its terminal.");
+            var competing = await boundaryHost.Send(boundaryInput);
+            Check(competing.Status == 409 && !competing.Body.Contains("RUN_STARTED"), "A competing publisher must fail before headers or model work.");
+            boundary.ReservedRelease.TrySetResult();
+        }
+        var boundaryResult = await boundaryRequest;
+        Check(boundaryResult.Body.Contains("RUN_FINISHED") == (failure == "publishing"), "Only the current authorized publisher can expose terminal bytes: " + failure);
+        await boundary.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(boundary.CleanupCount == 1, "Owned request cleanup must execute exactly once.");
+    }
+    var cancellationJournal = new GateJournal(durable) { HoldSave = true };
+    await using (var cancelledHost = await Host.Start(cancellationJournal, catalog, new Model()))
+    {
+        using var cancellation = new CancellationTokenSource();
+        var cancelled = cancelledHost.Send(Host.Input("cancelled"), cancellationToken: cancellation.Token);
+        await cancellationJournal.SaveEntered.Task.WaitAsync(TimeSpan.FromSeconds(10)); cancellation.Cancel();
+        try { await cancelled; } catch (OperationCanceledException) { }
+        await cancellationJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(!cancelledHost.TerminalSeen.Task.IsCompleted && cancellationJournal.CleanupCount == 1, "Cancellation must withhold terminal and drain owned cleanup.");
+    }
+    var shortOptions = new NativeSessionOptions { Lease = TimeSpan.FromMilliseconds(300) };
+    var renewalDurable = new PostgresNativeSessionJournal(source, catalog, "host-probe-v1", schema, shortOptions);
+    var renewalJournal = new GateJournal(renewalDurable);
+    var blockedModel = new WaitingModel();
+    await using (var renewalHost = await Host.Start(renewalJournal, catalog, blockedModel, options: shortOptions))
+    {
+        var request = renewalHost.Send(Host.Input("renewal"));
+        await blockedModel.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10)); renewalJournal.AllowRenewal = false;
+        await renewalJournal.RenewalRejected.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await renewalJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10)); await request;
+        Check(!renewalHost.TerminalSeen.Task.IsCompleted, "Renewal loss must cancel cooperative native work and withhold terminal.");
+    }
+    foreach (var failWriter in new[] { false, true })
+    {
+        var pipeJournal = new GateJournal(durable);
+        await using var pipeHost = await Host.Start(pipeJournal, catalog, new Model(), pipe: true, failWriter: failWriter);
+        var pipeResult = await pipeHost.Send(Host.Input("pipe-" + failWriter));
+        Check(pipeResult.Body.Contains("RUN_FINISHED") != failWriter, "PipeWriter path must retain terminal through save and writer-completion failure.");
+        await pipeJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(pipeJournal.CleanupCount == 1, "Failed PipeWriter completion must never skip owned heartbeat cleanup.");
+    }
+    var nativeErrorJournal = new GateJournal(durable);
+    await using (var errorHost = await Host.Start(nativeErrorJournal, catalog, new ThrowingModel()))
+    {
+        var error = await errorHost.Send(Host.Input("native-error"));
+        Check(!error.Body.Contains("RUN_FINISHED") && !error.Body.Contains("RUN_ERROR"), "Unpublishable native error must not become an acknowledgement from a released owner.");
+        await nativeErrorJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check((await durable.ReadStatusAsync(nativeErrorJournal.LastLease!.Key)).State == "Ready", "Provably pre-effect native failure may release its virgin request.");
+    }
+    await using (var retryHost = await Host.Start(nativeErrorJournal, catalog, new Model()))
+        Check((await retryHost.Send(Host.Input("native-error"))).Body.Contains("RUN_FINISHED"), "Pre-effect native failure may retry under a new owner.");
+    var thrownEffects = 0;
+    var throwingFunction = AIFunctionFactory.Create((Func<string, string>)(code => { thrownEffects++; throw new InvalidOperationException("effect outcome unavailable"); }), "backend");
+    var throwingCatalog = new NativeToolCatalog([new("backend", 1, throwingFunction.JsonSchema)]);
+    var throwingDurable = new PostgresNativeSessionJournal(source, throwingCatalog, "host-probe-v1", schema);
+    var throwingJournal = new GateJournal(throwingDurable);
+    var throwingModel = new MixedModel(true, 1);
+    await using (var effectErrorHost = await Host.Start(throwingJournal, throwingCatalog, throwingModel, [throwingFunction]))
+    {
+        Check((await effectErrorHost.Send(Host.MixedInput("effect-error"))).Body.Contains("RUN_FINISHED"), "Effect error setup must durably publish browser pending state.");
+        var continuation = JsonNode.Parse(throwingJournal.LastSave!.PublicRequest)!.AsObject(); continuation["runId"] = "effect-error-next";
+        continuation["messages"]!.AsArray().Add(new JsonObject { ["id"] = "browser-result", ["role"] = "tool", ["toolCallId"] = "front_1", ["content"] = "done" });
+        var effectError = await effectErrorHost.Send(continuation);
+        Check(thrownEffects == 1 && throwingModel.Seen.Count == 1 && !effectError.Body.Contains("RUN_FINISHED"), "Native function failure after Started must not publish a success acknowledgement.");
+        await throwingJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check((await throwingDurable.ReadStatusAsync(throwingJournal.LastLease!.Key)).State == "Blocked", "Unknown effect outcome must retain a blocked dispatch fence.");
+        Check((await effectErrorHost.Send(continuation)).Status == 409 && thrownEffects == 1, "A failed native effect must never replay automatically.");
+    }
+    var statelessEffects = 0;
+    var statelessFunction = AIFunctionFactory.Create((string code) => { statelessEffects++; return code; }, "backend");
+    await using (var statelessHost = await Host.Start(new GateJournal(durable), catalog, new MixedModel(true, 1), [statelessFunction], stateless: true))
+    {
+        var rejected = await statelessHost.Send(Host.MixedInput("stateless"), caller: null);
+        Check(!rejected.Body.Contains("RUN_FINISHED") && statelessEffects == 0, "The legacy stateless adapter must retain its mixed-tool rejection without native capability.");
+    }
+    var numericEffects = 0;
+    var numericFunction = AIFunctionFactory.Create((double amount) => { Check(amount == 1, "Native numeric binding must preserve value."); numericEffects++; return amount; }, "numeric");
+    var numericCatalog = new NativeToolCatalog([new("numeric", 1, numericFunction.JsonSchema)]);
+    var numericDurable = new PostgresNativeSessionJournal(source, numericCatalog, "host-probe-v1", schema);
+    var numericJournal = new GateJournal(numericDurable) { NormalizeNumericArguments = true };
+    await using (var numericHost = await Host.Start(numericJournal, numericCatalog, new NumericModel(), [numericFunction]))
+    {
+        var numericResult = await numericHost.Send(Host.Input("numeric"));
+        Check(numericResult.Body.Contains("RUN_FINISHED") && numericEffects == 1, "Native middleware must compare semantic arguments across 1.0/1 persistence normalization; effects=" + numericEffects + "; wire=" + numericResult.Body);
+    }
+    var deniedEffects = 0;
+    var deniedFunction = AIFunctionFactory.Create((string code) => { deniedEffects++; return code; }, "backend");
+    var deniedCatalog = new NativeToolCatalog([new("backend", 1, deniedFunction.JsonSchema)]);
+    var deniedJournal = new GateJournal(new PostgresNativeSessionJournal(source, deniedCatalog, "host-probe-v1", schema));
+    var deniedModel = new MixedModel(true, 1);
+    await using (var deniedHost = await Host.Start(deniedJournal, deniedCatalog, deniedModel, [deniedFunction]))
+    {
+        Check((await deniedHost.Send(Host.MixedInput("denied-dispatch"))).Body.Contains("RUN_FINISHED"), "Dispatch denial setup must persist native pending state.");
+        var callback = JsonNode.Parse(deniedJournal.LastSave!.PublicRequest)!.AsObject(); callback["runId"] = "denied-next";
+        callback["messages"]!.AsArray().Add(new JsonObject { ["id"] = "browser-result", ["role"] = "tool", ["toolCallId"] = "front_1", ["content"] = "done" });
+        deniedJournal.DenyDispatch = true;
+        var denied = await deniedHost.Send(callback);
+        await deniedJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(!denied.Body.Contains("RUN_FINISHED") && deniedEffects == 0 && deniedModel.Seen.Count == 1, "Rejected dispatch authority must stop native effect and subsequent model work.");
+        deniedJournal.DenyDispatch = false;
+        Check((await deniedHost.Send(callback)).Body.Contains("RUN_FINISHED") && deniedEffects == 1, "Known pre-dispatch failure may safely restore the last committed native state once.");
+    }
+    var markedEffects = 0;
+    var markedFunction = AIFunctionFactory.Create((string code) => { markedEffects++; return code; }, "backend");
+    var markedCatalog = new NativeToolCatalog([new("backend", 1, markedFunction.JsonSchema)]);
+    var markedDurable = new PostgresNativeSessionJournal(source, markedCatalog, "host-probe-v1", schema);
+    var markedJournal = new GateJournal(markedDurable);
+    await using (var markedHost = await Host.Start(markedJournal, markedCatalog, new MixedModel(true, 1), [markedFunction]))
+    {
+        Check((await markedHost.Send(Host.MixedInput("marked-cancelled"))).Body.Contains("RUN_FINISHED"), "Committed marker cancellation setup must save pending native state.");
+        var callback = JsonNode.Parse(markedJournal.LastSave!.PublicRequest)!.AsObject(); callback["runId"] = "marked-next";
+        callback["messages"]!.AsArray().Add(new JsonObject { ["id"] = "browser-result", ["role"] = "tool", ["toolCallId"] = "front_1", ["content"] = "done" });
+        markedJournal.HoldStarted = true;
+        using var cancellation = new CancellationTokenSource();
+        var request = markedHost.Send(callback, cancellationToken: cancellation.Token);
+        await markedJournal.StartedEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(markedEffects == 0, "Committed Started must precede the synchronous executor.");
+        cancellation.Cancel();
+        await markedJournal.StartedCancellation.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        markedJournal.StartedRelease.TrySetResult();
+        try { await request; } catch (OperationCanceledException) { }
+        await markedJournal.CleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Check(markedEffects == 0 && (await markedDurable.ReadStatusAsync(markedJournal.LastLease!.Key)).State == "Blocked", "Known cancellation after Started must prevent synchronous native next and retain the marker fence.");
+    }
+    Console.WriteLine("Native session host contracts passed.");
+}
+finally
+{
+    await using var command = source.CreateCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+    await command.ExecuteNonQueryAsync();
+}
+
+sealed class Model : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "done") { MessageId = "message-1" }) { ResponseId = "message-1" });
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var update in (await GetResponseAsync(messages, options, cancellationToken)).ToChatResponseUpdates()) yield return update;
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource terminalSeen) : IAsyncDisposable
+{
+    public TaskCompletionSource TerminalSeen => terminalSeen;
+    public static async Task<Host> Start(GateJournal journal, NativeToolCatalog catalog, IChatClient model, AIFunction[]? functions = null, NativeSessionOptions? options = null, bool pipe = false, bool failWriter = false, bool stateless = false)
+    {
+        var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+        builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+        builder.Logging.ClearProviders(); builder.Services.AddRouting(); builder.Services.AddAuthentication("test").AddScheme<AuthenticationSchemeOptions, TestAuthentication>("test", _ => { }); builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+        var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+        var endpoint = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionEndpointConfiguration");
+        var factory = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionAgentFactory");
+        AIAgent agent;
+        if (endpoint is null || factory is null || stateless)
+        {
+            builder.Services.AddAGUIServer();
+            builder.Services.AddKeyedSingleton<AgentSessionStore>("native", new BaselineStore(journal));
+            agent = (stateless ? new HashbrownRequestClient(model) : model).AsAIAgent(new ChatClientAgentOptions { Name = "native", EnableInvocableFunctionBypassing = !stateless, ChatOptions = new() { Tools = (functions ?? []).Cast<AITool>().ToList() } });
+        }
+        else
+        {
+            endpoint.GetMethod("Configure")!.Invoke(null, [builder.Services, "native", journal, catalog, (Func<HttpContext, string?>)(context => context.User.FindFirst("scope")?.Value), options]);
+            agent = (AIAgent)factory.GetMethod("Create")!.Invoke(null, [model, "native", functions ?? Array.Empty<AIFunction>(), catalog, accessor])!;
+        }
+        var app = builder.Build();
+        var terminalSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        app.Use(async (context, next) =>
+        {
+            context.Response.Body = new ObservedStream(context.Response.Body, bytes => { if (Encoding.UTF8.GetString(bytes.Span).Contains("RUN_FINISHED")) terminalSeen.TrySetResult(); });
+            await next(context);
+        });
+        app.UseAuthentication(); app.UseAuthorization();
+        var mapped = endpoint is null || stateless ? app.MapAGUIServer("/run", agent) : (IEndpointConventionBuilder)endpoint.GetMethod("Map")!.Invoke(null, [app, "/run", agent, "native"])!;
+        if (pipe) ((RouteHandlerBuilder)mapped).AddEndpointFilter(async (context, next) => new PipeTransportResult((IResult)(await next(context))!, failWriter));
+        await app.StartAsync();
+        return new Host(app, new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(20) }, terminalSeen);
+    }
+    public static JsonObject Input(string thread) => new() { ["threadId"] = thread, ["runId"] = Guid.NewGuid().ToString("N"), ["messages"] = new JsonArray(new JsonObject { ["id"] = "u1", ["role"] = "user", ["content"] = "hello" }), ["tools"] = new JsonArray(), ["context"] = new JsonArray(), ["state"] = new JsonObject() };
+    public static JsonObject MixedInput(string thread)
+    {
+        var input = Input(thread);
+        input["tools"] = JsonNode.Parse("""[{"name":"frontend","description":"browser","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}]""");
+        return input;
+    }
+    public async Task<(int Status, string Body)> Send(JsonObject input, string? caller = "alice", string? scope = null, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = JsonContent.Create(input) };
+        if (caller is not null) request.Headers.Add("X-Caller", caller);
+        if (scope is not null) request.Headers.Add("X-Scope", scope);
+        HttpResponseMessage received;
+        try { received = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
+        catch (HttpRequestException) { return (0, ""); }
+        using var response = received;
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var bytes = new MemoryStream();
+        try { await stream.CopyToAsync(bytes, cancellationToken); } catch (Exception exception) when (exception is IOException or HttpRequestException or OperationCanceledException) { }
+        return ((int)response.StatusCode, Encoding.UTF8.GetString(bytes.ToArray()));
+    }
+    public async ValueTask DisposeAsync() { client.Dispose(); await app.StopAsync(); await app.DisposeAsync(); }
+}
+
+sealed class BaselineStore(GateJournal journal) : AgentSessionStore
+{
+    public override ValueTask<AgentSession?> GetSessionAsync(AIAgent agent, AgentSessionStoreKey key, CancellationToken cancellationToken = default) => ValueTask.FromResult<AgentSession?>(null);
+    public override async ValueTask SaveSessionAsync(AIAgent agent, AgentSessionStoreKey key, AgentSession session, CancellationToken cancellationToken = default)
+    { journal.SaveEntered.TrySetResult(); if (journal.HoldSave) await journal.SaveRelease.Task.WaitAsync(cancellationToken); }
+    public override ValueTask DeleteSessionAsync(AIAgent agent, AgentSessionStoreKey key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+}
+
+sealed class GateJournal(INativeSessionJournal inner) : INativeSessionJournal
+{
+    public bool HoldSave;
+    public bool FailSave;
+    public bool DenyDispatch;
+    public bool HoldStarted;
+    public TaskCompletionSource StartedEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource StartedRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource StartedCancellation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public bool NormalizeNumericArguments;
+    public bool DenyAuthorization;
+    public bool HoldAuthorize;
+    public bool HoldReserved;
+    public bool AllowRenewal = true;
+    public int Acquisitions;
+    public int CleanupCount;
+    public NativeSessionLease? LastLease;
+    public TaskCompletionSource AuthorizeEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource AuthorizeRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ReservedEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ReservedRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource> _cleanups = new(StringComparer.Ordinal);
+    public TaskCompletionSource CleanupEntered => _cleanups.GetOrAdd(LastLease!.Token, _ => new(TaskCreationOptions.RunContinuationsAsynchronously));
+    public TaskCompletionSource RenewalRejected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public NativeSessionSave? LastSave;
+    public List<string> Trace = [];
+    public TaskCompletionSource SaveEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource SaveRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public ValueTask InitializeAsync(CancellationToken ct = default) => inner.InitializeAsync(ct);
+    public async ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string request, CancellationToken ct = default)
+    { Interlocked.Increment(ref Acquisitions); var result = await inner.TryAcquireAsync(key, request, ct); if (result.Lease is not null) LastLease = result.Lease; return result; }
+    public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CaptureModelCallAsync(lease,
+        NormalizeNumericArguments && call.Name == "numeric" ? new NativeToolCall(call.Id, call.Name, call.Version, JsonSerializer.SerializeToElement(new { amount = 1 })) : call, ct);
+    public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string id, CancellationToken ct = default) => inner.GetOwnedCallAsync(lease, id, ct);
+    public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default)
+    {
+        if (DenyDispatch) return false;
+        var started = await inner.TryStartDispatchAsync(lease, call, ct);
+        if (started && HoldStarted)
+        {
+            using var registration = ct.Register(() => StartedCancellation.TrySetResult());
+            StartedEntered.TrySetResult(); await StartedRelease.Task;
+        }
+        return started;
+    }
+    public ValueTask<bool> CompleteDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CompleteDispatchAsync(lease, call, ct);
+    public ValueTask<bool> RenewAsync(NativeSessionLease lease, CancellationToken ct = default)
+    { if (AllowRenewal) return inner.RenewAsync(lease, ct); RenewalRejected.TrySetResult(); return ValueTask.FromResult(false); }
+    public async ValueTask<NativeSavedReceipt?> SaveAsync(NativeSessionLease lease, NativeSessionSave save, CancellationToken ct = default)
+    { LastSave = save; Trace.Add("save"); SaveEntered.TrySetResult(); if (HoldSave) await SaveRelease.Task.WaitAsync(ct); return FailSave ? null : await inner.SaveAsync(lease, save, ct); }
+    public async ValueTask<bool> AuthorizePublicationAsync(NativeSavedReceipt receipt, CancellationToken ct = default)
+    {
+        Trace.Add("authorize"); AuthorizeEntered.TrySetResult(); if (HoldAuthorize) await AuthorizeRelease.Task.WaitAsync(ct);
+        if (DenyAuthorization) return false;
+        var allowed = await inner.AuthorizePublicationAsync(receipt, ct);
+        if (allowed && HoldReserved) { ReservedEntered.TrySetResult(); await ReservedRelease.Task.WaitAsync(ct); }
+        return allowed;
+    }
+    public ValueTask<bool> FinalizePublicationAsync(NativeSavedReceipt receipt, CancellationToken ct = default) { Trace.Add("finalize"); return inner.FinalizePublicationAsync(receipt, ct); }
+    public async ValueTask<bool> FailureCleanupAsync(NativeSessionLease lease, CancellationToken ct = default)
+    { Interlocked.Increment(ref CleanupCount); try { return await inner.FailureCleanupAsync(lease, ct); } finally { _cleanups.GetOrAdd(lease.Token, _ => new(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult(); } }
+    public ValueTask<NativeSessionStatus> ReadStatusAsync(NativeSessionKey key, CancellationToken ct = default) => inner.ReadStatusAsync(key, ct);
+    public ValueTask<NativeSessionInspection?> InspectAsync(IReadOnlySet<string> scopes, NativeSessionKey key, int limit = 50, CancellationToken ct = default) => inner.InspectAsync(scopes, key, limit, ct);
+    public ValueTask<int> ReconcileAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken ct = default) => inner.ReconcileAsync(scopes, key, actor, request, ct);
+    public ValueTask<int> RetireAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken ct = default) => inner.RetireAsync(scopes, key, actor, request, ct);
+    public ValueTask<int> MaintainAsync(CancellationToken ct = default) => inner.MaintainAsync(ct);
+}
+
+sealed class ObservedStream(Stream inner, Action<ReadOnlyMemory<byte>> observe) : Stream
+{
+    public override bool CanRead => false; public override bool CanWrite => true; public override bool CanSeek => false;
+    public override long Length => throw new NotSupportedException(); public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override void Flush() => inner.Flush(); public override Task FlushAsync(CancellationToken ct) => inner.FlushAsync(ct);
+    public override void Write(byte[] buffer, int offset, int count) { observe(buffer.AsMemory(offset, count)); inner.Write(buffer, offset, count); }
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default) { observe(buffer); await inner.WriteAsync(buffer, ct); }
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ct) => WriteAsync(buffer.AsMemory(offset, count), ct).AsTask();
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException(); public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException(); public override void SetLength(long value) => throw new NotSupportedException();
+}
+
+sealed class MixedModel(bool browserFirst, int siblings) : IChatClient
+{
+    private int _calls;
+    public List<string[]> Seen { get; } = [];
+    public List<IReadOnlyDictionary<string, string>> Results { get; } = [];
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var input = messages.ToArray();
+        Results.Add(input.SelectMany(message => message.Contents).OfType<FunctionResultContent>().ToDictionary(result => result.CallId, result => JsonSerializer.Serialize(result.Result), StringComparer.Ordinal));
+        Seen.Add(input.SelectMany(message => message.Contents).Select(content => content switch
+        {
+            TextContent text => "text:" + text.Text,
+            FunctionCallContent call => "call:" + call.CallId,
+            FunctionResultContent result => "result:" + result.CallId,
+            _ => content.GetType().Name
+        }).ToArray());
+        var call = ++_calls;
+        if (call == 1)
+        {
+            for (var index = 1; index <= siblings; index++)
+            {
+                AIContent browser = new FunctionCallContent("front_" + index, "frontend", new Dictionary<string, object?> { ["city"] = "Paris" });
+                AIContent server = new FunctionCallContent("back_" + index, "backend", new Dictionary<string, object?> { ["code"] = "PDX" });
+                foreach (var content in browserFirst ? new[] { browser, server } : new[] { server, browser })
+                {
+                    yield return new ChatResponseUpdate(ChatRole.Assistant, [content]) { MessageId = "model-1", ResponseId = "model-1", FinishReason = ChatFinishReason.ToolCalls };
+                    await Task.Yield();
+                }
+            }
+        }
+        else
+        {
+            var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, "done") { MessageId = "model-" + call }) { ResponseId = "model-" + call };
+            foreach (var update in response.ToChatResponseUpdates()) yield return update;
+        }
+    }
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+}
+
+sealed class TestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (Request.Headers["X-Caller"].FirstOrDefault() is not { Length: > 0 } caller) return Task.FromResult(AuthenticateResult.NoResult());
+        var claims = new List<Claim>();
+        if (caller != "missing") claims.Add(new Claim(ClaimTypes.NameIdentifier, caller));
+        var scope = Request.Headers["X-Scope"].FirstOrDefault() ?? caller;
+        if (scope != "missing") claims.Add(new Claim("scope", scope));
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
+    }
+}
+sealed class WaitingModel : IChatClient
+{
+    public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    { Entered.TrySetResult(); await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); yield break; }
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+}
+
+sealed class ThrowingModel : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new InvalidOperationException("native fixture failure");
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    { await Task.Yield(); await GetResponseAsync(messages, options, cancellationToken); yield break; }
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+}
+sealed class PipeTransportResult(IResult inner, bool failWriter) : IResult
+{
+    public async Task ExecuteAsync(HttpContext context)
+    {
+        var body = context.Features.Get<IHttpResponseBodyFeature>()!;
+        context.Features.Set<IHttpResponseBodyFeature>(new PipeTransportFeature(body));
+        try { await inner.ExecuteAsync(context); }
+        finally
+        {
+            context.Features.Set(body);
+            if (failWriter) await body.Writer.CompleteAsync(new IOException("fixture writer completion failure"));
+        }
+    }
+}
+sealed class PipeTransportFeature(IHttpResponseBodyFeature inner) : IHttpResponseBodyFeature
+{
+    public Stream Stream { get; } = new PipeTransportStream(inner.Writer);
+    public PipeWriter Writer => inner.Writer;
+    public void DisableBuffering() => inner.DisableBuffering();
+    public Task StartAsync(CancellationToken ct = default) => inner.StartAsync(ct);
+    public Task CompleteAsync() => inner.CompleteAsync();
+    public Task SendFileAsync(string path, long offset, long? count, CancellationToken ct = default) => throw new NotSupportedException();
+}
+sealed class PipeTransportStream(PipeWriter writer) : Stream
+{
+    public override bool CanRead => false; public override bool CanWrite => true; public override bool CanSeek => false;
+    public override long Length => throw new NotSupportedException(); public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override void Flush() => FlushAsync().GetAwaiter().GetResult();
+    public override async Task FlushAsync(CancellationToken ct) { await writer.FlushAsync(ct); }
+    public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken ct = default) { await writer.WriteAsync(bytes, ct); }
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ct) => WriteAsync(buffer.AsMemory(offset, count), ct).AsTask();
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException(); public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException(); public override void SetLength(long value) => throw new NotSupportedException();
+}
+
+sealed class NumericModel : IChatClient
+{
+    private int _calls;
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (++_calls == 1)
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [new FunctionCallContent("numeric-call", "numeric", new Dictionary<string, object?> { ["amount"] = JsonSerializer.Deserialize<JsonElement>("1.0") })]) { MessageId = "numeric-1", ResponseId = "numeric-1", FinishReason = ChatFinishReason.ToolCalls };
+        else
+            foreach (var update in new ChatResponse(new ChatMessage(ChatRole.Assistant, "done") { MessageId = "numeric-2" }) { ResponseId = "numeric-2" }.ToChatResponseUpdates()) yield return update;
+        await Task.Yield();
+    }
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+}

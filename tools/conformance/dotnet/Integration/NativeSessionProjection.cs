@@ -9,11 +9,14 @@ namespace Hashbrown.Conformance.Integration;
 internal sealed class NativeSessionProjectionEvidence(
     Func<string?, string?, bool> matchesMessage,
     Func<string?, string?, string?, JsonNode?, bool> matchesCall,
-    Func<bool>? available = null)
+    Func<bool>? available = null,
+    Func<string?, string?, JsonNode?, bool>? ownedCall = null)
 {
     internal bool Available => available?.Invoke() ?? true;
     internal bool Matches(string? responseId, string? messageId) => matchesMessage(responseId, messageId);
     internal bool MatchesCall(string? responseId, string? callId, string? name, JsonNode? arguments) => matchesCall(responseId, callId, name, arguments);
+    /// <summary>Matches only an exact current owned registered server descriptor, independently of provider/browser evidence.</summary>
+    internal bool OwnsCall(string? callId, string? name, JsonNode? arguments) => ownedCall?.Invoke(callId, name, arguments) == true;
 }
 
 /// <summary>A bounded current public prefix and the genuine terminal's continuation disposition.</summary>
@@ -43,6 +46,8 @@ internal sealed class NativeSessionProjection
     private readonly Dictionary<string, JsonObject> _rawTexts = new(StringComparer.Ordinal);
     private readonly Dictionary<string, JsonObject> _rawCalls = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _callParents = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, JsonObject> _rawBatchCalls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, JsonNode?> _rawBatchResults = new(StringComparer.Ordinal);
     private readonly HashSet<string> _messageIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _historicalCallIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _openTexts = new(StringComparer.Ordinal);
@@ -122,6 +127,8 @@ internal sealed class NativeSessionProjection
         _complete = true;
         if (_frame.Count > 0) { Invalidate(); throw new IOException("Native SSE ended inside a frame."); }
         if (_terminal is null || _invalid || _evidence?.Available == false || _openTexts.Count > 0 || _openCalls.Count > 0 || _rawTexts.Count > 0 || _rawCalls.Count > 0) Discard();
+        if (_available && !BatchObligationsAgree()) Discard();
+        _rawBatchCalls.Clear(); _rawBatchResults.Clear();
         var pending = _calls.Where(pair => !_answeredCalls.Contains(pair.Key)).ToArray();
         if (pending.Any(pair => !_browserTools.Contains(Required(pair.Value["function"]!, "name")))) Discard();
         if (_terminalType != "RUN_FINISHED" || _terminalOutcome != "success") Discard();
@@ -271,11 +278,13 @@ internal sealed class NativeSessionProjection
     private static void CopyName(JsonNode source, JsonObject target) { if (source["name"] is not null) target["name"] = source["name"]!.DeepClone(); }
     private void CheckBound()
     {
-        if (_messages.Count > _maximumMessages || _request is not null && Encoding.UTF8.GetByteCount(_request.ToJsonString()) + _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => Encoding.UTF8.GetByteCount(raw.ToJsonString())) > _maximumBytes) Discard();
+        if (_messages.Count > _maximumMessages || _request is not null && Encoding.UTF8.GetByteCount(_request.ToJsonString()) + _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => Encoding.UTF8.GetByteCount(raw.ToJsonString())) +
+            _rawBatchCalls.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value.ToJsonString())) +
+            _rawBatchResults.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value?.ToJsonString() ?? "null")) > _maximumBytes) Discard();
     }
     private void Discard()
     {
-        _available = false; _request = null; _messages = []; _texts.Clear(); _calls.Clear(); _rawTexts.Clear(); _rawCalls.Clear(); _callParents.Clear(); _messageIds.Clear(); _historicalCallIds.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear();
+        _available = false; _request = null; _messages = []; _texts.Clear(); _calls.Clear(); _rawTexts.Clear(); _rawCalls.Clear(); _callParents.Clear(); _rawBatchCalls.Clear(); _rawBatchResults.Clear(); _messageIds.Clear(); _historicalCallIds.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear();
         _activeAssistantMessageId = null; _result = null;
     }
     private void Invalidate() { Discard(); _invalid = true; _frame.Clear(); _terminal = null; }
@@ -319,8 +328,9 @@ internal sealed class NativeSessionProjection
         if (type == "TEXT_MESSAGE_START")
         {
             if (diagnosticText == "") return true;
-            if (string.IsNullOrEmpty(diagnosticText) || id is null || _evidence?.Matches(raw["responseId"]?.GetValue<string>(), id) != true || _rawTexts.ContainsKey(id)) return false;
-            // Responses reuses the first nonempty text update for START and CONTENT; require exact subsequent agreement.
+            if (string.IsNullOrEmpty(diagnosticText) || id is null || _rawTexts.ContainsKey(id)) return false;
+            // EquivalentResponseId already requires trusted evidence for aliases. Pinned hosting can reuse a nonempty update
+            // for START and CONTENT even with identical IDs; require exact subsequent diagnostic and canonical-text agreement.
             _rawTexts.Add(id, (JsonObject)raw.DeepClone());
             return true;
         }
@@ -333,6 +343,94 @@ internal sealed class NativeSessionProjection
     private bool SupportedNativeToolRaw(JsonNode item, string type)
     {
         if (type is not ("TOOL_CALL_START" or "TOOL_CALL_ARGS" or "TOOL_CALL_END" or "TOOL_CALL_RESULT") || item["rawEvent"] is not JsonObject raw) return false;
+        if (raw["contents"] is JsonArray { Count: > 1 } contents) return SupportedNativeToolBatchRaw(item, type, raw, contents);
+        return SupportedNativeSingleToolRaw(item, type, raw);
+    }
+
+    private bool SupportedNativeToolBatchRaw(JsonNode item, string type, JsonObject raw, JsonArray contents)
+    {
+        if (contents.Count > _maximumMessages) return false;
+        var resultBatch = type == "TOOL_CALL_RESULT";
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        JsonObject? selected = null;
+        foreach (var node in contents)
+        {
+            if (node is not JsonObject content || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
+            var id = Required(content, "callId");
+            if (!seen.Add(id)) return false;
+            if (resultBatch)
+            {
+                if (content["$type"]?.GetValue<string>() != "functionResult" ||
+                    content.Any(property => property.Key is not ("$type" or "result" or "callId" or "annotations" or "additionalProperties")) ||
+                    !_calls.TryGetValue(id, out var call) || _openCalls.Contains(id) ||
+                    _evidence?.OwnsCall(id, call["function"]!["name"]!.GetValue<string>(), JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>())) != true) return false;
+                if (_rawBatchResults.TryGetValue(id, out var expected))
+                {
+                    if (!JsonNode.DeepEquals(expected, content["result"])) return false;
+                }
+                else
+                {
+                    if (_rawBatchResults.Count >= _maximumMessages) return false;
+                    _rawBatchResults.Add(id, content["result"]?.DeepClone());
+                }
+            }
+            else
+            {
+                if (content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"]?.GetValue<bool>() != true || content["arguments"] is not JsonObject ||
+                    content.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties")) ||
+                    _evidence?.OwnsCall(id, Required(content, "name"), content["arguments"]) != true) return false;
+                var parent = Required(raw, "messageId");
+                if (_rawBatchCalls.TryGetValue(id, out var expected))
+                {
+                    if (Required(expected, "parentMessageId") != parent || !JsonNode.DeepEquals(expected["content"], content)) return false;
+                }
+                else
+                {
+                    if (_rawBatchCalls.Count >= _maximumMessages) return false;
+                    _rawBatchCalls.Add(id, new JsonObject { ["parentMessageId"] = parent, ["content"] = content.DeepClone() });
+                }
+            }
+            if (id == item["toolCallId"]?.GetValue<string>()) selected = content;
+        }
+        if (selected is null) return false;
+        // Retain only the selected diagnostic, never one full sibling batch for each canonical event.
+        var normalized = new JsonObject();
+        foreach (var property in raw)
+            if (property.Key != "contents") normalized.Add(property.Key, property.Value?.DeepClone());
+        normalized["contents"] = new JsonArray(selected.DeepClone());
+        return SupportedNativeSingleToolRaw(item, type, normalized);
+    }
+
+    private bool BatchObligationsAgree()
+    {
+        try
+        {
+            foreach (var (id, expected) in _rawBatchCalls)
+            {
+                if (!_calls.TryGetValue(id, out var call) || _openCalls.Contains(id) || !_callParents.TryGetValue(id, out var parent) || parent != Required(expected, "parentMessageId") ||
+                    call["function"]!["name"]!.GetValue<string>() != Required(expected["content"]!, "name") ||
+                    !JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), expected["content"]!["arguments"])) return false;
+            }
+            foreach (var (id, expected) in _rawBatchResults)
+            {
+                if (!_answeredCalls.Contains(id)) return false;
+                var result = _messages.OfType<JsonObject>().FirstOrDefault(message => message["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == id);
+                if (result?["content"] is not JsonValue content || !content.TryGetValue<string>(out var text) || !EquivalentResult(text, expected)) return false;
+            }
+            return true;
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException) { return false; }
+    }
+
+    private static bool EquivalentResult(string text, JsonNode? result)
+    {
+        if (result is JsonValue value && value.TryGetValue<string>(out var resultText) && resultText == text) return true;
+        try { return JsonNode.DeepEquals(JsonNode.Parse(text), result); }
+        catch (JsonException) { return false; }
+    }
+
+    private bool SupportedNativeSingleToolRaw(JsonNode item, string type, JsonObject raw)
+    {
         var allowed = new HashSet<string>(["authorName", "role", "contents", "additionalProperties", "responseId", "messageId", "conversationId", "createdAt", "finishReason", "modelId", "continuationToken"], StringComparer.Ordinal);
         if (raw.Any(property => !allowed.Contains(property.Key)) || raw["additionalProperties"] is not null || raw["conversationId"] is not null || raw["continuationToken"] is not null ||
             raw["contents"] is not JsonArray { Count: 1 } contents || contents[0] is not JsonObject content) return false;
@@ -346,12 +444,23 @@ internal sealed class NativeSessionProjection
         {
             if (!_calls.ContainsKey(callId) || raw["role"]?.GetValue<string>() != "tool" || raw["finishReason"] is not null || content["$type"]?.GetValue<string>() != "functionResult" || content.Any(property => property.Key is not ("$type" or "result" or "callId" or "annotations" or "additionalProperties"))) return false;
             if (item["content"] is not JsonValue canonical || !canonical.TryGetValue<string>(out var text)) return false;
-            if (content["result"] is JsonValue result && result.TryGetValue<string>(out var resultText) && resultText == text) return true;
-            try { return JsonNode.DeepEquals(JsonNode.Parse(text), content["result"]); }
-            catch (JsonException) { return false; }
+            return EquivalentResult(text, content["result"]);
         }
-        if (raw["role"]?.GetValue<string>() != "assistant" || (raw["finishReason"]?.GetValue<string>() != "tool_calls" && !(nativeCall && raw["finishReason"] is null)) || content["$type"]?.GetValue<string>() != "functionCall" || content["informationalOnly"]?.GetValue<bool>() != false || content["arguments"] is not JsonObject ||
+        if (raw["role"]?.GetValue<string>() != "assistant" || content["$type"]?.GetValue<string>() != "functionCall" || content["arguments"] is not JsonObject ||
             content.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties"))) return false;
+        var informationalOnly = content["informationalOnly"]?.GetValue<bool>();
+        if (informationalOnly == false)
+        {
+            if (raw["finishReason"]?.GetValue<string>() != "tool_calls" && !(nativeCall && raw["finishReason"] is null)) return false;
+        }
+        else
+        {
+            // Pinned MAF announces owned server calls with matching IDs: immediate tool_calls or deferred null finish.
+            // Provider evidence also covers browser calls, so only the separate current owned server descriptor permits this shape.
+            if (informationalOnly != true || raw["finishReason"] is not null && raw["finishReason"]!.GetValue<string>() != "tool_calls" || string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) ||
+                raw["responseId"]?.GetValue<string>() != raw["messageId"]?.GetValue<string>() ||
+                _evidence?.OwnsCall(callId, content["name"]?.GetValue<string>(), content["arguments"]) != true) return false;
+        }
         if (type == "TOOL_CALL_START")
         {
             if (content["name"]?.GetValue<string>() != item["toolCallName"]?.GetValue<string>() || (raw["messageId"]?.GetValue<string>() != item["parentMessageId"]?.GetValue<string>() && !(anonymousNativeCall && item["parentMessageId"] is null)) || _rawCalls.ContainsKey(callId)) return false;

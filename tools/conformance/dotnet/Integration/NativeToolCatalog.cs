@@ -27,6 +27,14 @@ public sealed class NativeToolCatalog
         if (!Matches(call)) throw new ArgumentException("The native server operation arguments are invalid.");
         return call;
     }
+    /// <summary>Checks the complete native function name set and structural schema identity without invoking application validators.</summary>
+    internal bool MatchesDefinitions(IEnumerable<KeyValuePair<string, JsonElement>> definitions)
+    {
+        var actual = definitions.ToArray();
+        return actual.Length == _tools.Count && actual.Select(pair => pair.Key).Distinct(StringComparer.Ordinal).Count() == actual.Length &&
+            actual.All(pair => _tools.TryGetValue(pair.Key, out var registered) &&
+                System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(pair.Value.GetRawText()), System.Text.Json.Nodes.JsonNode.Parse(registered.Schema.GetRawText())));
+    }
     /// <summary>Tests whether a name belongs to a registered server operation.</summary>
     public bool Contains(string name) => _tools.ContainsKey(name);
     /// <summary>Validates the stored descriptor against the exact registered version.</summary>
