@@ -1,0 +1,216 @@
+// @vitest-environment jsdom
+import { expect, test, vi } from 'vitest';
+import { attachWorkbenchScrub } from '../examples/quickstart/runtime/workbench-scrub';
+
+/** A press and the moves of a drag hold the primary button; the rest do not. */
+const held = (type: string) =>
+  type === 'pointerdown' || type === 'pointermove' ? 1 : 0;
+
+const setup = (options: { disabled?: boolean } = {}) => {
+  const state = { disabled: options.disabled === true };
+  const track = document.createElement('div');
+  const tick = document.createElement('button');
+  tick.dataset['index'] = '3';
+  track.append(tick);
+  document.body.append(track);
+  vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({
+    left: 100,
+    right: 200,
+    width: 100,
+    top: 0,
+    bottom: 10,
+    height: 10,
+    x: 100,
+    y: 0,
+    toJSON: () => ({}),
+  });
+  const onScrub = vi.fn();
+  const detach = attachWorkbenchScrub({
+    track,
+    indexAt: (fraction) => Math.round(fraction * 10),
+    onScrub,
+    isDisabled: () => state.disabled,
+    tickSelector: '[data-index]',
+  });
+  const capture = vi.fn();
+  track.setPointerCapture = capture;
+  const fire = (
+    target: HTMLElement,
+    type: string,
+    clientX = 0,
+    pointerId = 1,
+    button = 0,
+    buttons = held(type),
+  ) =>
+    target.dispatchEvent(
+      Object.assign(
+        new MouseEvent(type, { clientX, bubbles: true, button, buttons }),
+        { pointerId },
+      ),
+    );
+  return { track, tick, onScrub, detach, fire, capture, state };
+};
+
+test('scrubs on press and follows the pointer', () => {
+  const { track, onScrub, fire } = setup();
+
+  fire(track, 'pointerdown', 120);
+  fire(track, 'pointermove', 120);
+  fire(track, 'pointermove', 160);
+  fire(track, 'pointerup', 160);
+  fire(track, 'pointermove', 190);
+
+  expect(onScrub.mock.calls).toEqual([[2], [6]]);
+});
+
+test('treats a still press on a tick as a click, not a scrub', () => {
+  const { tick, onScrub, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(tick, 'pointermove', 153);
+  fire(tick, 'pointerup', 153);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('turns a press on a tick into a scrub after 4px', () => {
+  const { tick, track, onScrub, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(track, 'pointermove', 156);
+  fire(track, 'pointermove', 170);
+
+  expect(onScrub.mock.calls).toEqual([[6], [7]]);
+});
+
+test('ignores other pointers', () => {
+  const { track, onScrub, fire } = setup();
+
+  fire(track, 'pointerdown', 120, 1);
+  fire(track, 'pointermove', 180, 2);
+  fire(track, 'pointerup', 180, 2);
+  fire(track, 'pointermove', 150, 1);
+
+  expect(onScrub.mock.calls).toEqual([[2], [5]]);
+});
+
+test('stops after lostpointercapture', () => {
+  const { track, onScrub, fire } = setup();
+
+  fire(track, 'pointerdown', 120);
+  fire(track, 'lostpointercapture', 120);
+  fire(track, 'pointermove', 180);
+
+  expect(onScrub.mock.calls).toEqual([[2]]);
+});
+
+test('ignores presses while disabled', () => {
+  const { track, onScrub, fire } = setup({ disabled: true });
+
+  fire(track, 'pointerdown', 120);
+  fire(track, 'pointermove', 180);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('detach removes listeners', () => {
+  const { track, onScrub, detach, fire } = setup();
+
+  detach();
+  fire(track, 'pointerdown', 120);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('does not capture the pointer for a still press on a tick', () => {
+  const { tick, capture, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(tick, 'pointerup', 150);
+
+  expect(capture).not.toHaveBeenCalled();
+});
+
+test('captures the pointer once a tick press becomes a drag', () => {
+  const { tick, track, capture, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(track, 'pointermove', 156);
+  fire(track, 'pointermove', 170);
+
+  expect(capture).toHaveBeenCalledTimes(1);
+  expect(capture).toHaveBeenCalledWith(1);
+});
+
+test('captures the pointer on a press away from a tick', () => {
+  const { track, capture, fire } = setup();
+
+  fire(track, 'pointerdown', 120);
+
+  expect(capture).toHaveBeenCalledWith(1);
+});
+
+test('suppresses the click after a tick-originated drag', () => {
+  const { tick, track, fire } = setup();
+  const clicked = vi.fn();
+  tick.addEventListener('click', clicked);
+
+  fire(tick, 'pointerdown', 150);
+  fire(track, 'pointermove', 170);
+  fire(track, 'pointerup', 170);
+  tick.click();
+
+  expect(clicked).not.toHaveBeenCalled();
+});
+
+test('lets the click through after a still press on a tick', () => {
+  const { tick, fire } = setup();
+  const clicked = vi.fn();
+  tick.addEventListener('click', clicked);
+
+  fire(tick, 'pointerdown', 150);
+  fire(tick, 'pointerup', 150);
+  tick.click();
+
+  expect(clicked).toHaveBeenCalledTimes(1);
+});
+
+test('ignores non-primary buttons', () => {
+  const { track, onScrub, fire } = setup();
+
+  fire(track, 'pointerdown', 120, 1, 2);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('stops scrubbing when it becomes disabled mid-drag', () => {
+  const { track, onScrub, state, fire } = setup();
+
+  fire(track, 'pointerdown', 120);
+  state.disabled = true;
+  fire(track, 'pointermove', 180);
+
+  expect(onScrub.mock.calls).toEqual([[2]]);
+});
+
+test('ends a tick press released outside the track', () => {
+  const { tick, track, onScrub, fire } = setup();
+  const outside = document.createElement('div');
+  document.body.append(outside);
+
+  fire(tick, 'pointerdown', 150);
+  fire(outside, 'pointerup', 150);
+  fire(track, 'pointermove', 180, 1, 0, 0);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});
+
+test('ends the drag when a move arrives with no button held', () => {
+  const { tick, track, onScrub, fire } = setup();
+
+  fire(tick, 'pointerdown', 150);
+  fire(track, 'pointermove', 180, 1, 0, 0);
+  fire(track, 'pointermove', 190, 1, 0, 1);
+
+  expect(onScrub).not.toHaveBeenCalled();
+});

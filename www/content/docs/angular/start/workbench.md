@@ -74,11 +74,15 @@ The next prompt stays in the conversation. Its tool call reads the accepted plan
 
 ## Inspect and replay
 
-The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag the scrubber to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
+The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag anywhere on the track to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Each tab puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. Select a request or tool row to inspect its captured payload. The `{ }` toggle on the captured side shows the raw frame. **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
+The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Every tab except Requests puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. The `{ }` toggle on the captured side shows the raw frame.
+
+The Requests tab opens with an overview timeline you can drag or click to seek, above a table of requests grouped by turn. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
+
+**New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

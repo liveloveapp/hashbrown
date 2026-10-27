@@ -22,7 +22,7 @@ The **Deny requests for this demo** checkbox starts checked. Send the first prom
 
 This is an intentional local demo denial, not authentication or a provider outage. The checkbox only demonstrates the failure path. Your application still needs its own authentication and authorization.
 
-1. In **Requests**, select the failed HTTP response. Its status and captured URL appear in the inspector; the `{ }` toggle shows the raw frame.
+1. In **Requests**, find the failed row. Its status shows in the table, and the workbench opens its detail so you can read the HTTP response and the captured URL. **Raw** shows the request and response as captured.
 2. Choose **Return to live**, then clear **Deny requests for this demo**, then send the first prompt again in the same conversation. Changing the checkbox does not send a request or change the plan.
 3. Watch the real model call `readContext` and stream the trusted `SummaryCard`. After successful completion, choose **Accept plan**. Application state advances to revision 1.
 4. Send the follow-up to shorten the second step. The next tool call reads the accepted plan; the revised card remains a proposal.
@@ -34,7 +34,7 @@ Playback does not send requests, execute tools, or apply a plan. The demo checkb
 
 ## Inspect the request and response
 
-Use the workbench Requests view and the browser Network panel together. Select the request for the current turn, then inspect its HTTP response and decoded events. The browser panel also helps identify failures before a response reaches Hashbrown.
+Use the workbench Requests view and the browser Network panel together. Select the request for the current turn, then open **Response** to see its HTTP response and every streamed event. The browser panel also helps identify failures before a response reaches Hashbrown.
 
 - **404:** check the configured endpoint path and development proxy. Restart the frontend server after changing its proxy configuration.
 - **401 or 403:** inspect your endpoint's authentication response and server logs. If the endpoint rejected a provider request, check the server-side credentials and model access.
