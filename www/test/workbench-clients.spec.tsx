@@ -220,10 +220,14 @@ test('pairs captured and interpreted content under one selection strip', () => {
   const before = capturedSub();
   const capturedPre = host.querySelector('.wb-inspection pre')?.textContent;
 
+  const capturedTitle = () =>
+    host.querySelector('[data-captured] h3')?.textContent;
+  const titleBefore = capturedTitle();
   raw?.click();
   const rawSub = capturedSub();
   const rawPressed = raw?.getAttribute('aria-pressed');
-  const rawBody = host.querySelector('.wb-inspection')?.textContent;
+  const rawTitle = capturedTitle();
+  const rawHeadings = host.querySelectorAll('[data-captured] h3').length;
   raw?.click();
 
   expect(host.querySelector('.wb-detail')).toBeNull();
@@ -248,7 +252,9 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(before).toBe('captured');
   expect(rawPressed).toBe('true');
   expect(rawSub).toBe('captured frame');
-  expect(rawBody).toContain(`${frame?.kind} · ${frame?.source}`);
+  expect(rawTitle).toBe(`${frame?.kind} · ${frame?.source}`);
+  expect(rawHeadings).toBe(1);
+  expect(capturedTitle()).toBe(titleBefore);
   expect(raw?.getAttribute('aria-pressed')).toBe('false');
   expect(host.querySelector('button.wb-raw')).toBe(raw);
   expect(host.querySelector('.wb-inspection')?.textContent).not.toContain(
