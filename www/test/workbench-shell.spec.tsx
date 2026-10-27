@@ -36,7 +36,7 @@ function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
   return { host, store, shell, layout };
 }
 
-test('renders New conversation first and four expanded sections by default', () => {
+test('renders New conversation first and five expanded sections by default', () => {
   const { host, shell } = mountShell();
 
   const firstButton = host.querySelector('.wb-nav button');
@@ -156,7 +156,7 @@ test('uses unique heading list ids per mounted instance', () => {
     ),
   );
 
-  expect(new Set(ids).size).toBe(8);
+  expect(new Set(ids).size).toBe(10);
   first.shell.dispose();
   second.shell.dispose();
 });
