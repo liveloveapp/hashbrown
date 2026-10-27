@@ -647,3 +647,37 @@ test('keeps the tab buttons and a static panel in place while the selected reque
   );
   shell.dispose();
 });
+
+test('omits the turn-0 band that history frames would draw', () => {
+  const { host, store, shell } = mountRequests();
+  store.record('history', { messages: [] });
+
+  recordToolTurn(store);
+
+  const labels = [...host.querySelectorAll('.wb-requests-band > span')].map(
+    (label) => label.textContent,
+  );
+  expect(store.getSnapshot().events[0].turn).toBe(0);
+  expect(labels).toHaveLength(1);
+  expect(labels[0]).toMatch(/^Turn 1 · /);
+  shell.dispose();
+});
+
+test('keeps one failure alert in place across renders and clears it', () => {
+  const { host, store, shell } = mountRequests();
+  recordDeniedTurn(store);
+  const alert = host.querySelector('.wb-requests > [role=alert]');
+
+  store.live();
+  store.live();
+  const after = host.querySelector('.wb-requests > [role=alert]');
+  const count = host.querySelectorAll('[role=alert]').length;
+  store.seek(0);
+  const cleared = host.querySelector('.wb-requests > [role=alert]');
+
+  expect(alert).not.toBeNull();
+  expect(after).toBe(alert);
+  expect(count).toBe(1);
+  expect(cleared).toBeNull();
+  shell.dispose();
+});

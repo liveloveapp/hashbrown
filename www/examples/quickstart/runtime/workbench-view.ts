@@ -529,6 +529,8 @@ export function mountWorkbench(
       store.seek(index);
     },
   });
+  /** The Requests tab's failure alert, while the selected moment failed. */
+  let requestsIssue: HTMLElement | undefined;
   const captured = element('section', '', 'wb-section');
   captured.dataset.captured = '';
   const capturedHeading = element('h3');
@@ -1389,17 +1391,29 @@ export function mountWorkbench(
           tab,
         ),
       );
-    requestsView.element.querySelector(':scope > [role=alert]')?.remove();
-    if ((frame?.status ?? snapshot.status) === 'error') {
-      const issue = element(
-        'p',
-        commands.lesson?.format === 'workflow' &&
-          frame?.workflow?.recoveryRequired
-          ? 'Resume failed after acknowledgement. Start a new conversation.'
-          : 'The request failed. Check the server, return to live, and send again.',
-      );
+    const failed = (frame?.status ?? snapshot.status) === 'error';
+    const issueText =
+      commands.lesson?.format === 'workflow' &&
+      frame?.workflow?.recoveryRequired
+        ? 'Resume failed after acknowledgement. Start a new conversation.'
+        : 'The request failed. Check the server, return to live, and send again.';
+    if (failed && onRequests) {
+      // The Requests view persists, so keep one alert node: inserting it again
+      // on every render could announce it again.
+      requestsIssue ??= element('p', issueText);
+      requestsIssue.setAttribute('role', 'alert');
+      if (requestsIssue.textContent !== issueText)
+        requestsIssue.textContent = issueText;
+      if (requestsIssue.parentElement !== requestsView.element)
+        requestsView.element.append(requestsIssue);
+    } else {
+      requestsIssue?.remove();
+      requestsIssue = undefined;
+    }
+    if (failed && !onRequests) {
+      const issue = element('p', issueText);
       issue.setAttribute('role', 'alert');
-      (onRequests ? requestsView.element : inspection).append(issue);
+      inspection.append(issue);
     }
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;

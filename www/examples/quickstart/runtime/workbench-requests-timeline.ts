@@ -174,19 +174,22 @@ export function createWorkbenchRequestsTimeline(options: {
       ]);
       if (key === barsKey) return;
       barsKey = key;
+      // Turn 0 holds seeded history and workflow frames, not a user turn.
       bands.replaceChildren(
-        ...axis.turns.map(({ turn, startPercent, endPercent }) => {
-          const band = div('wb-requests-band');
-          band.style.left = `${startPercent}%`;
-          band.style.width = `${endPercent - startPercent}%`;
-          const label = document.createElement('span');
-          // The turn's first elapsed time, as in the table's Start column.
-          const startMs =
-            events.find((frame) => frame.turn === turn)?.elapsedMs ?? 0;
-          label.textContent = `Turn ${turn} · ${(startMs / 1000).toFixed(1)} s`;
-          band.append(label);
-          return band;
-        }),
+        ...axis.turns
+          .filter(({ turn }) => turn !== 0)
+          .map(({ turn, startPercent, endPercent }) => {
+            const band = div('wb-requests-band');
+            band.style.left = `${startPercent}%`;
+            band.style.width = `${endPercent - startPercent}%`;
+            const label = document.createElement('span');
+            // The turn's first elapsed time, as in the table's Start column.
+            const startMs =
+              events.find((frame) => frame.turn === turn)?.elapsedMs ?? 0;
+            label.textContent = `Turn ${turn} · ${(startMs / 1000).toFixed(1)} s`;
+            band.append(label);
+            return band;
+          }),
       );
       bars.replaceChildren(
         ...exchanges.flatMap((exchange) =>
