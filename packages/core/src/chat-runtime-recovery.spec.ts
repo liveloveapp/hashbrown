@@ -2,7 +2,8 @@ import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { s } from './schema';
 import { createChatRuntime } from './chat-runtime';
 import type { PendingInterruptBatch } from './models/interrupt';
-import type { TransportRequest } from './transport';
+import { HttpTransport, type TransportRequest } from './transport';
+import type { RunAgentInput } from '@ag-ui/core';
 
 function batchOf(runtime: {
   pendingInterrupts(): PendingInterruptBatch | undefined;
@@ -1189,4 +1190,130 @@ test('diagnostics permit native assistant attribution and ordinary application m
     },
   ]);
   expect(runtime.messages()).toEqual([]);
+});
+
+const encode = (events: unknown[]) =>
+  new TextEncoder().encode(
+    events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
+  );
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (predicate()) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error('Runtime did not settle');
+}
+
+test('cancelled HTTP generation yields admission conflicts then one stable follow-up answer', async () => {
+  const requests: { bytes: string; input: RunAgentInput }[] = [];
+  let oldController: ReadableStreamDefaultController<Uint8Array>;
+  const cancel = jest.fn();
+  const fetchImpl = jest.fn(async (_url, init?: RequestInit) => {
+    const bytes = init?.body as string;
+    const input = JSON.parse(bytes) as RunAgentInput;
+    requests.push({ bytes, input });
+    if (requests.length === 1) {
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            oldController = controller;
+            controller.enqueue(
+              encode([
+                {
+                  type: EventType.RUN_STARTED,
+                  threadId: input.threadId,
+                  runId: input.runId,
+                },
+              ]),
+            );
+          },
+          cancel,
+        }),
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      );
+    }
+    if (requests.length < 4) {
+      return new Response(
+        '{"error":{"kind":"request_error","details":{"code":"run_in_flight"}}}',
+        { status: 409, headers: { 'Retry-After': '0' } },
+      );
+    }
+    return new Response(
+      encode([
+        {
+          type: EventType.RUN_STARTED,
+          threadId: input.threadId,
+          runId: input.runId,
+        },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'final-answer',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'final-answer',
+          delta: 'Recovered once.',
+        },
+        { type: EventType.TEXT_MESSAGE_END, messageId: 'final-answer' },
+        {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+        },
+      ]),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+  });
+  const shouldRetry = jest.fn(
+    ({ status, bodyText }: { status: number; bodyText: string }) =>
+      status === 409 &&
+      JSON.parse(bodyText).error.details.code === 'run_in_flight',
+  );
+  const transport = new HttpTransport({
+    fetchImpl,
+    retry: { maxRetries: 2, maxElapsedMs: 1000, shouldRetry },
+  });
+  const runtime = createChatRuntime({
+    system: 'test',
+    transport,
+    debounce: 0,
+    retries: 0,
+  });
+  const teardown = runtime.start();
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Cancel this request.' });
+    await waitUntil(() => requests.length === 1);
+    runtime.stop();
+
+    runtime.sendMessage({ role: 'user', content: 'Follow up now.' });
+    await waitUntil(() => requests.length === 4 && !runtime.isLoading());
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(shouldRetry).toHaveBeenCalledTimes(2);
+    expect(requests.slice(1).map(({ bytes }) => bytes)).toEqual([
+      requests[1].bytes,
+      requests[1].bytes,
+      requests[1].bytes,
+    ]);
+    expect(requests[1].input.runId).not.toBe(requests[0].input.runId);
+    expect(requests[1].input.threadId).toBe(requests[0].input.threadId);
+    expect(runtime.error()).toBeUndefined();
+    expect(
+      runtime.messages().filter((message) => message.role === 'assistant'),
+    ).toMatchObject([{ id: 'final-answer', content: 'Recovered once.' }]);
+    expect(() =>
+      oldController.enqueue(
+        encode([
+          {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'stale',
+            delta: 'Stale answer',
+          },
+        ]),
+      ),
+    ).toThrow();
+  } finally {
+    teardown();
+  }
 });

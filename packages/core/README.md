@@ -73,3 +73,70 @@ Your server keeps the API key and streams from a Hashbrown adapter:
 Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent UI for React and Angular, built on Hashbrown: threads, approvals, and tool progress. Free and MIT, with enterprise support from the team behind Hashbrown.
 
 Stuck? Ask Brian at https://hashbrown.dev/unstuck.
+
+## Opt-in HTTP response retries
+
+`createHttpTransport` can wait and retry selected HTTP rejections before an
+AG-UI event stream starts. The policy is off by default. Configure it on a
+transport and pass that transport to `provideHashbrown` or `HashbrownProvider`.
+
+For example, ATC's b4.run backend rejects an overlapping run at admission with
+HTTP 409, `Retry-After`, and a `run_in_flight` error. Its shared transport selects
+that explicit rejection:
+
+```ts
+import { createHttpTransport } from '@hashbrownai/core';
+
+const transport = createHttpTransport({
+  baseUrl: '/api/run',
+  retry: {
+    maxRetries: 60,
+    maxElapsedMs: 60_000,
+    shouldRetry: ({ status, bodyText, bodyTruncated, retryAfterMs }) => {
+      if (
+        status !== 409 ||
+        bodyTruncated ||
+        !(retryAfterMs && retryAfterMs > 0)
+      ) {
+        return false;
+      }
+      try {
+        const { error } = JSON.parse(bodyText);
+        return (
+          error?.kind === 'request_error' &&
+          error?.details?.code === 'run_in_flight'
+        );
+      } catch {
+        return false;
+      }
+    },
+  },
+});
+```
+
+Only select responses your server guarantees rejected the request before
+execution. A status such as 409, 429 or 503 alone does not establish that safety.
+The context includes isolated headers and a body snapshot limited to 16 KiB,
+with `bodyTruncated` indicating whether more bytes were present. Failed or timed
+out body reads do not reach the predicate. Predicate failures stop retrying.
+
+`maxRetries` counts additional physical HTTP requests within one transport send.
+`maxElapsedMs` bounds retry decisions and waiting; it does not cut off an issued
+fetch or accepted stream. Valid [`Retry-After`](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3)
+delta-seconds or HTTP dates take precedence over `delayMs` (default 1000 ms). A server delay outside the remaining
+budget ends with the current HTTP error; it is never shortened. Invalid hints
+use the fallback, while overflow-sized hints stop retries.
+
+The transport serializes once and runs middleware once, then reuses the same
+request body, headers, run/thread IDs and abort signal. With retries enabled,
+post-middleware bodies must be strings. Authorization middleware is not rerun
+for each physical request. Cancellation or disposal stops waiting and prevents
+late retries. Successful streams, partial output, network errors and protocol
+errors are not replayed by this policy.
+
+This is separate from the chat runtime's `retries` setting, which governs other
+transport/protocol failures. Exhausted HTTP response retries produce a
+nonretryable HTTP error; subsequent network failures still follow the runtime's
+existing retry policy. Neither setting is a global wall-time limit across all
+generation attempts. Omitting the policy, or setting `maxRetries: 0`, preserves
+the existing HTTP behavior.
