@@ -898,6 +898,10 @@ body {
 .wb .wb-events [aria-pressed='true']::before {
   background: var(--wb-cobalt);
 }
+/* The thumb already marks the playhead; hide the tick mark beneath it so it never draws over the thumb. */
+.wb .wb-events [data-at-playhead]::before {
+  visibility: hidden;
+}
 .wb .wb-events button:focus-visible {
   outline-offset: 0;
 }

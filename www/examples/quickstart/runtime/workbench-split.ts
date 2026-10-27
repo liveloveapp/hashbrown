@@ -62,15 +62,22 @@ export function createWorkbenchSplit(options: WorkbenchSplitOptions): {
     handle.setPointerCapture?.(pointerId);
     handle.focus();
     handle.classList.add('wb-dragging');
+    let moved = false;
+    // Moves update memory only; the final split is saved once when the drag ends.
     const move = (e: Event) => {
       if (width <= 0) return;
-      layout.set({
-        split: clampWorkbenchSplit(
-          (((e as MouseEvent).clientX - left) / width) * 100,
-        ),
-      });
+      moved = true;
+      layout.set(
+        {
+          split: clampWorkbenchSplit(
+            (((e as MouseEvent).clientX - left) / width) * 100,
+          ),
+        },
+        { persist: false },
+      );
     };
     const end = () => {
+      if (moved) layout.set({ split: layout.get().split });
       handle.classList.remove('wb-dragging');
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', end);
