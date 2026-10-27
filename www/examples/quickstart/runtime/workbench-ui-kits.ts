@@ -77,7 +77,7 @@ export function getWorkbenchUiPrompts(
 /** Server-owned instructions keep rendering separate from application writes. */
 export function getWorkbenchUiSystem(lesson: WorkbenchUiLesson): string {
   return (
-    'Before every response call readContext exactly once to read the current application revision and accepted plan. Render exactly one allowed component with a short title (1–120 characters) and exactly two concise nonempty steps (1–200 characters each). Do not add fields or children. Rendering never changes application state. Only explicit user acceptance applies a proposal. ' +
+    'Before every response call readContext exactly once to read the current application revision and accepted plan. Render exactly one allowed component with a short title (1–120 characters) and exactly two concise nonempty steps (1–200 characters each). Do not add fields or children. Rendering never changes application state. Only explicit user acceptance applies a proposal. The initial proposal should outline the trusted UI demo as its first step and record that demo as its second step. ' +
     (lesson === 'ui-kits'
       ? 'Use SummaryCard for the first request, then StepsCard for the follow-up. Keep the first step verbatim and shorten the second step.'
       : 'Use SummaryCard to propose the first two-step plan. For the follow-up use PlanReading and copy the actual accepted plan title and both steps verbatim from readContext. PlanReading is a read-only model report and must never offer or claim acceptance.')
