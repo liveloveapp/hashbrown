@@ -1,3 +1,4 @@
+import { createWorkbenchWorkflowStream } from './workbench-workflows';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
 import { workbenchSelectionSchema } from '../runtime/workbench-recipes';
 import { workbenchDecisionSchema } from '../runtime/workbench';
@@ -31,7 +32,9 @@ const app = createWorkbenchApp({
           })
       : undefined,
   staticDirectory: resolve('dist/docs-workbench/browser'),
-  stream: createWorkbenchOpenAIStream({ apiKey, model }),
+  stream: createWorkbenchWorkflowStream({
+    delegate: createWorkbenchOpenAIStream({ apiKey, model }),
+  }),
 });
 app.listen(4370, '127.0.0.1', () =>
   console.log(

@@ -216,9 +216,9 @@ Checks cover trusted instructions at the actual provider boundary, forged browse
 
 ## Canonical workbench shell re-record
 
-Updated 2026-10-26. Every `canonical-workbench-*` video, poster, result
-screenshot, caption file and walkthrough (all fourteen lessons, both frameworks,
-plus the two overview IDs) was re-recorded against the redesigned shell: a
+Updated 2026-10-26. The fourteen earlier lessons and two overview IDs had their
+`canonical-workbench-*` videos, posters, result screenshots, captions and
+walkthroughs re-recorded against the redesigned shell: a
 collapsible sectioned sidebar, a resizable chat and inspector split, one
 inspector that pairs captured and interpreted content, and an icon player bar.
 Recordings ran in fresh browser contexts, so they show the default layout
@@ -292,7 +292,7 @@ unique ignored `dist/docs-workbench/captures/<run-id>` directory.
 
 The six Angular and React recipe guides for Magic Text, predictive suggestions,
 and UI selection use `canonical-workbench-{magic-text,predictions,ui-selection}-{react,angular}`.
-Each lesson keeps the application-owned two-step plan, LLA four-panel layout,
+Each lesson keeps the application-owned two-step plan, LLA light shell,
 bottom milestone timeline, independent conversations and immutable captured
 history. Earlier packing/shopping media remains available for bookmarks and
 independent fixture checks; the active guides use the matching framework's new
@@ -343,8 +343,60 @@ All six videos use real OpenAI requests and actual framework SDKs, with separate
 labelled deterministic tests. Measured captions, both codecs, posters, result
 images and walkthroughs accompany each capture. Presentation event pacing and
 half-speed footage are disclosed. Replay is inert. The full workbench suite now
-covers fourteen lessons and 28 framework paths. Run
+covers seventeen lessons and 34 framework paths. Run
 `WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`
 with existing server-only OpenAI credentials/model, sequentially with other
 builds/recorders. Keep raw captures and reports in a unique ignored directory.
 No SDK release or new dependencies.
+
+
+## Canonical shared state, activities, and interruption
+
+The six Angular/React guides now use
+`canonical-workbench-{shared-state,activities,interrupts}-{react,angular}`.
+The same two-step plan remains application-owned. Text chat uses actual SDKs
+and real OpenAI streaming. The checked local AG-UI agent explicitly maps state
+into provider context and authors state, activity, and approval events around
+unchanged provider text. Direct provider adapters do not invent those workflows.
+
+Shared state shows explicit local replacement without generation, draft updates,
+commit and a second request carrying state. Activities report actual context
+validation and successful provider completion, with stable SDK links and fresh
+IDs per run. Interrupts resumes a whole two-question batch in the same user turn,
+then pauses the next ordinary turn on a fresh batch. Approval permits an explanation
+only. No plan step is executed; the expiring process-local decision store supplies
+neither production authentication nor durable recovery.
+
+Each framework has MP4/WebM, a poster, result screenshot, measured VTT captions,
+and a text walkthrough. SDK observations and application form drafts are captured
+separately for inert replay. The deterministic suite covers denial/cancellation,
+rollback, pre-acknowledgement retry and post-acknowledgement recovery boundaries.
+Legacy workflow recordings remain for bookmarks and independent fixture tests.
+
+Run `WORKBENCH_LESSONS=shared-state,activities,interrupts npx nx workbench-demo www`
+with server-only OpenAI credentials/model. Filming-only 20 ms event pacing and
+half-speed footage are disclosed. Preserve unique masters and phase reports in
+ignored `dist/docs-workbench/captures/<run-id>`. No SDK release or new dependencies.
+
+
+The shared state, activities and interrupt/resume recordings were refreshed after
+the canonical shell redesign. They use the collapsible sidebar, resizable chat
+and paired inspector, with the icon player below. Earlier batch notes describe the original captures; the canonical media now
+matches the redesigned shell, including these six workflow recordings.
+
+## Canonical message history and browser-saved text
+
+The active Message history and Save text conversations guides use four separate
+Angular/React recordings: `canonical-workbench-{message-history,save-text-conversations}-{react,angular}`.
+The first makes two actual provider requests around explicit keep/clear/restore.
+The second makes three across independent runtimes, two saved slots, hard refresh
+and explicit load. The new trace starts after refresh; old requests are not
+reconstructed. Only successful completed text is saved, with version, role, size
+and lifecycle checks. Text does not recover canonical agent checkpoints.
+
+All nineteen workbench lessons have two framework paths (38 total). The new four
+recordings have both codecs, captions, poster, result and walkthrough. Actual
+OpenAI events are paced unchanged for filming and footage runs at half speed.
+Replay is inert. Legacy persistence assets and standalone fixture clients remain
+for bookmarks and independent tests. Originals/reports stay in unique ignored
+capture directories. No SDK release.

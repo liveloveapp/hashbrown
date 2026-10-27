@@ -29,6 +29,12 @@ body {
   --wb-cobalt: #002fa7;
   --wb-cobalt-soft: #e8edfb;
   --wb-code: #fafafa;
+  /* Syntax tokens; each keeps at least 7:1 contrast on --wb-code. */
+  --wb-tok-key: #002fa7;
+  --wb-tok-string: #116329;
+  --wb-tok-number: #953800;
+  --wb-tok-literal: #6639ba;
+  --wb-tok-punct: #52525b;
   --wb-live: #dc2626;
   --wb-mono-font: 'JetBrains Mono', ui-monospace, monospace;
   padding: 12px;
@@ -149,6 +155,7 @@ body {
 
 /* Sidebar */
 .wb-nav {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -162,6 +169,7 @@ body {
   outline-offset: -2px;
 }
 .wb-nav-top {
+  container: wb-nav-top / inline-size;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -191,6 +199,17 @@ body {
 .wb .wb-cta .wb-icon {
   width: 16px;
   height: 16px;
+}
+/* When the sidebar column is too narrow for the full label, New conversation becomes its plus icon (its accessible name stays). */
+@container wb-nav-top (max-width: 199px) {
+  .wb .wb-cta {
+    flex: none;
+    width: 36px;
+    padding: 0;
+  }
+  .wb-cta .wb-label {
+    display: none;
+  }
 }
 .wb .wb-rail-toggle {
   flex: none;
@@ -602,20 +621,25 @@ body {
 }
 .wb-section-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   gap: 4px 8px;
   padding: 12px 16px 8px;
 }
+/* A long heading wraps within its own column, so the sub-label and raw toggle stay on the first line. */
 .wb .wb-section-head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 13px;
 }
 .wb-section-sub {
-  margin-left: auto;
+  flex: 0 1 auto;
+  text-align: right;
   color: var(--wb-muted);
   font-size: 12px;
 }
 .wb .wb-raw {
+  flex: none;
+  white-space: nowrap;
   min-height: 22px;
   padding: 0 6px;
   border-radius: 6px;
@@ -651,6 +675,32 @@ body {
   border-radius: 10px;
   max-height: 55dvh;
   overflow: auto;
+}
+/* Highlighted JSON and Markdown in inspector blocks (see workbench-highlight.ts). */
+.wb-tok-key,
+.wb-tok-heading,
+.wb-tok-link {
+  color: var(--wb-tok-key);
+}
+.wb-tok-string,
+.wb-tok-code {
+  color: var(--wb-tok-string);
+}
+.wb-tok-number {
+  color: var(--wb-tok-number);
+}
+.wb-tok-literal {
+  color: var(--wb-tok-literal);
+}
+.wb-tok-punct,
+.wb-tok-marker {
+  color: var(--wb-tok-punct);
+}
+.wb-tok-heading {
+  font-weight: 700;
+}
+.wb-tok-emphasis {
+  font-style: italic;
 }
 .wb .wb-inspection > pre {
   flex: 1 0 auto;
@@ -796,6 +846,15 @@ body {
   left: 0;
   color: var(--wb-muted);
   white-space: nowrap;
+}
+/* Each turn segment is a size container, so a turn too short for its label hides it instead of colliding with the next. */
+.wb-segment {
+  container-type: inline-size;
+}
+@container (max-width: 47px) {
+  .wb-segment > span {
+    visibility: hidden;
+  }
 }
 /* The native range is the playhead: a transparent track with a cobalt thumb, centred on 0–100%. */
 .wb-scrubber input[type='range'] {
@@ -991,7 +1050,8 @@ app-structured-workbench-conversation[hidden],
 app-decision-workbench-conversation[hidden],
 app-magic-text-workbench-conversation[hidden],
 app-predictions-workbench-conversation[hidden],
-app-selection-workbench-conversation[hidden] {
+app-selection-workbench-conversation[hidden],
+app-workflow-workbench-conversation[hidden] {
   display: none !important;
 }
 .wb-debug-controls {
@@ -1142,4 +1202,28 @@ app-selection-workbench-conversation[hidden] {
   .wb *::before {
     transition: none !important;
   }
+}
+
+/* Application workflow controls keep captured SDK identifiers within the chat. */
+.wb-workflow-state label,
+.wb-workflow-approvals label {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-state input,
+.wb-workflow-approvals select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+}
+.wb-workflow-activity pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wb-workflow-approvals button {
+  margin: 4px;
 }

@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has fourteen allowlisted lessons in both framework hosts:
+The workbench now has nineteen allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -195,6 +195,11 @@ The workbench now has fourteen allowlisted lessons in both framework hosts:
 - `?lesson=first-plan`: one tool-free UI request and a trusted preview, without an application write.
 - `?lesson=conversation`: two plain-text turns, retained messages, and request identities.
 - `?lesson=system-instructions`: browser declaration and public server policy observed at provider mapping.
+- `?lesson=shared-state`: explicit state replacement and actual agent state updates.
+- `?lesson=activities`: actual agent progress with SDK links and fresh activity IDs.
+- `?lesson=interrupts`: whole approval batches and same-turn resume.
+- `?lesson=message-history`: keep completed text, clear/restore actual SDK messages, inspect follow-up context.
+- `?lesson=save-text-conversations`: explicit two-slot saves, refresh, load validated text into a new runtime.
 
 The sidebar collapses, the chat and inspector resize, and the inspector pairs each captured frame with what the SDK or app made of it. The player shows compact milestones; Raw events puts every frame on the scrubber. Selecting a lesson navigates to a fresh page without sending a model request. Existing conversations remain in memory only within their current page.
 
@@ -268,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All fourteen lessons (28 framework paths) are covered by `npx nx workbench-e2e www`.
+All nineteen lessons (38 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -284,8 +289,43 @@ contracts in its inspector and capture timeline.
 
 Plain-text onboarding uses no tools or UI schema. The Instructions view compares
 captured browser configuration with the fixed public policy observed from actual
-mapped provider input. It is not an authorization mechanism. Fourteen lessons
-produce 28 Angular/React verification paths; recording only these three uses
+mapped provider input. It is not an authorization mechanism. Nineteen lessons
+produce 38 Angular/React verification paths; recording only these three uses
 `WORKBENCH_LESSONS=first-plan,conversation,system-instructions npx nx workbench-demo www`.
 The six new canonical media IDs each have MP4/WebM, poster, result image, measured
 captions and walkthrough. Preserve unique capture reports; no SDK release.
+
+### Canonical workflow lessons
+
+`shared-state`, `activities`, and `interrupts` use text chat in both frameworks.
+The local agent explicitly maps validated shared state into provider context and
+wraps actual streamed model text with state, activity, and approval protocol events.
+`setState` is a full local replacement and does not generate. Activities report
+context validation and provider completion, not execution of the plan steps.
+Interrupts asks two boolean approvals. A whole batch resumes the same user turn;
+a later ordinary turn creates a fresh batch. Denial/cancellation does not delegate.
+The bounded, five-minute, process-local approval store is demo infrastructure,
+not production authentication or durable recovery. Replay captures SDK observations
+and application form drafts separately and never submits historical decisions.
+
+Record only this batch with `WORKBENCH_LESSONS=shared-state,activities,interrupts`
+and `npx nx workbench-demo www`. The six live recordings use OpenAI; they do not
+require TypeSafe. Fixture verification remains labelled `test-fixture`.
+
+### Canonical text history lessons
+
+`message-history` and `save-text-conversations` use actual text chat with no tools
+or UI schema. The first keeps a completed in-memory projection and replaces the
+SDK transcript explicitly. The second saves Lighthouse and Harbor to independent
+browser keys. Selecting a slot does not load or send; saving requires a successful
+completed stop. Invalid/unknown storage remains untouched until explicitly cleared.
+The format is bounded to 40 messages, 2,000 characters each and 64,000 UTF-8 bytes.
+It omits IDs and canonical checkpoint data. Storage failure preserves live chat.
+
+Record these four paths with
+`WORKBENCH_LESSONS=message-history,save-text-conversations npx nx workbench-demo www`.
+History makes two provider calls; saved text makes three across independent live
+runtimes and a hard refresh. The post-refresh timeline captures only the new page.
+Replay never calls a provider, replaces live messages or writes storage. Each
+recording has both codecs, captions, poster, result and walkthrough. Keep raw
+captures; no SDK release.

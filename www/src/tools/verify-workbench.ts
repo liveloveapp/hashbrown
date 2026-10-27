@@ -1,3 +1,8 @@
+import { verifyHistoryWorkbench } from './verify-history-workbench';
+import { workbenchHistoryFixtureText } from './workbench-history-fixture';
+import { verifyWorkflowWorkbench } from './verify-workflow-workbench';
+import { workbenchWorkflowFixtureText } from './workbench-workflow-fixture';
+import { createWorkbenchWorkflowStream } from '../../examples/quickstart/server/workbench-workflows';
 import { verifyOnboardingWorkbench } from './verify-onboarding-workbench';
 import { workbenchOnboardingFixtureText } from './workbench-onboarding-fixture';
 import type { WorkbenchInstructionsTrace } from '../../examples/quickstart/runtime/workbench-onboarding';
@@ -7,7 +12,10 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
-import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { createWorkbenchOpenAIStream } from '../../examples/quickstart/server/workbench-openai';
@@ -34,6 +42,7 @@ async function* pacedProvider(
   }
 }
 const requests: RunAgentInput[] = [];
+const workflowProviderRequests: RunAgentInput[] = [];
 const transformations: WorkbenchTransformationTrace[] = [];
 const instructions: WorkbenchInstructionsTrace[] = [];
 const nativeRequests: Record<string, unknown>[] = [];
@@ -54,7 +63,8 @@ let recipeOutcome:
   | 'error'
   | 'length'
   | 'schema' = 'success';
-let outcome: 'success' | 'error' | 'length' | 'schema' = 'success';
+let outcome: 'success' | 'error' | 'length' | 'schema' | 'no-finish' =
+  'success';
 async function* fixture(
   input: RunAgentInput,
   signal: AbortSignal,
@@ -66,10 +76,9 @@ async function* fixture(
     .reverse()
     .find((message) => message.role === 'user');
   const offset = input.messages.findIndex((message) => message.id === user?.id);
-  const onboardingText = workbenchOnboardingFixtureText(
-    lessonId,
-    input.messages,
-  );
+  const onboardingText =
+    workbenchWorkflowFixtureText(lessonId, input.messages) ??
+    workbenchOnboardingFixtureText(lessonId, input.messages);
   if (onboardingText !== undefined) {
     const messageId = `${input.runId}-answer`;
     yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
@@ -211,6 +220,17 @@ if (live && (!apiKey || !model))
   throw new Error(
     'Live verification requires OPENAI_API_KEY and OPENAI_MODEL.',
   );
+const workflowStream = createWorkbenchWorkflowStream({
+  delegate: (input, signal, lesson) => {
+    workflowProviderRequests.push(structuredClone(input));
+    return live
+      ? createWorkbenchOpenAIStream({
+          apiKey: apiKey as string,
+          model: model as string,
+        })(input, signal, lesson)
+      : fixture(input, signal, lesson);
+  },
+});
 const app = createWorkbenchApp({
   decide: async (request, signal, lessonId): Promise<Decision.Response> => {
     decisionRequests.push(structuredClone(request));
@@ -292,10 +312,15 @@ const app = createWorkbenchApp({
   source: live ? 'provider' : 'test-fixture',
   stream: (input, signal, lessonId) => {
     requests.push(structuredClone(input));
-    const events =
-      live ||
-      lessonId === 'request-transformation' ||
-      lessonId === 'system-instructions'
+    const events = ['shared-state', 'activities', 'interrupts'].includes(
+      lessonId ?? '',
+    )
+      ? workflowStream(input, signal, lessonId)
+      : live ||
+          lessonId === 'request-transformation' ||
+          lessonId === 'system-instructions' ||
+          lessonId === 'message-history' ||
+          lessonId === 'save-text-conversations'
         ? createWorkbenchOpenAIStream({
             apiKey: live ? (apiKey as string) : 'fixture-only',
             model: live ? (model as string) : 'fixture-model',
@@ -363,12 +388,18 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     mapped['tools'] === undefined ||
     (Array.isArray(mapped['tools']) && mapped['tools'].length === 0);
   const onboardingText = onboarding
-    ? workbenchOnboardingFixtureText('system-instructions', input)
+    ? (workbenchHistoryFixtureText(
+        JSON.stringify(mapped).includes('Remember the plan name supplied')
+          ? 'message-history'
+          : undefined,
+        input,
+      ) ?? workbenchOnboardingFixtureText('system-instructions', input))
     : undefined;
   const events =
     onboardingText !== undefined
       ? createSupportProviderEvents(onboardingText).map((event) =>
-          event.type === 'response.completed' && outcome !== 'success'
+          event.type === 'response.completed' &&
+          (outcome === 'error' || outcome === 'length')
             ? {
                 type:
                   outcome === 'error'
@@ -402,6 +433,8 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     'Cache-Control': 'no-store',
   });
   for (const [sequence_number, event] of events.entries()) {
+    if (outcome === 'no-finish' && event.type === 'response.completed')
+      continue;
     if (res.destroyed) return;
     res.write(
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
@@ -443,6 +476,49 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (
+        lesson.id === 'message-history' ||
+        lesson.id === 'save-text-conversations'
+      ) {
+        report.push(
+          await verifyHistoryWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            nativeRequests,
+            outcome: (value) => {
+              outcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
+      if (['shared-state', 'activities', 'interrupts'].includes(lesson.id)) {
+        report.push(
+          await verifyWorkflowWorkbench({
+            providerRequests: workflowProviderRequests,
+            browser,
+            framework,
+            lesson: lesson.id as 'shared-state' | 'activities' | 'interrupts',
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            outcome: (value) => {
+              outcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (
         ['first-plan', 'conversation', 'system-instructions'].includes(
           lesson.id,
@@ -1002,11 +1078,7 @@ try {
       }
       if (process.env['WORKBENCH_RECORD'] !== '1') {
         await page.setViewportSize({ width: 390, height: 844 });
-        expect(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= innerWidth,
-          ),
-        ).toBe(true);
+        await expectNoHorizontalOverflow(page);
       } else {
         await page.waitForTimeout(800);
       }

@@ -1,0 +1,25 @@
+REACT · save-text-conversations
+
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay.  There is no narration.
+
+OpenAI replies. Explicitly Save Lighthouse text.
+
+New conversation. Select Harbor.
+
+Name Harbor, then explicitly Save its reply.
+
+Two independent browser text documents.
+
+Reload clears SDK identity and captured events.
+
+Load Lighthouse text. No request or write.
+
+OpenAI remembers Lighthouse. Explicitly Save.
+
+Only this page’s captured events are replayed.
+
+Replay is read-only. No requests or writes.
+
+Back live.
+
+The source is real OpenAI plain text through the Hashbrown SDK. No browser tools or generated UI are registered. The fixed application plan stays unchanged. Application text copies omit SDK IDs and do not restore checkpoints. Restored text gets fresh SDK message IDs. Only a subsequent successful generation enables saving again. Saved Lighthouse and Harbor are independent origin-local browser documents, separate from SDK identity. This demonstration uses a hard page reload; only events from the current page appear in replay. Explicit storage actions and replay make no provider requests. These documents are unencrypted; do not store secrets. Refresh clears local SDK sessions and captures but preserves explicitly saved browser text.

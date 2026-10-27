@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
 import { SearchOverlay } from '../../src/components/search/SearchOverlay';
+// Keep panel compilation outside the deadlines for dialog interaction tests.
+import '../../src/components/search/SearchPanel';
 import { SEARCH_OVERLAY_OPEN_EVENT } from '../../src/components/site/links';
 
 (
@@ -16,7 +18,7 @@ const INDEX = {
     '|url|symbol|kind|package|\n|---|---|---|---|\n|/api/react/useUiChat|useUiChat|Function|@hashbrownai/react|',
 };
 
-/** The first open imports the lazy panel, which can be slow in a busy run. */
+/** Allow React's lazy boundary to resolve when the dialog opens. */
 const LAZY_LOAD = { timeout: 10_000 };
 
 const mounted: Root[] = [];

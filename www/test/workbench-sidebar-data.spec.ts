@@ -30,9 +30,17 @@ test('groups every lesson exactly once in sidebar order', () => {
         'streaming',
         'schemas',
         'decisions',
+        'shared-state',
+        'activities',
+        'interrupts',
+        'message-history',
       ],
     ],
-    ['production', 'Production', ['debugging', 'request-transformation']],
+    [
+      'production',
+      'Production',
+      ['debugging', 'request-transformation', 'save-text-conversations'],
+    ],
     ['recipes', 'Recipes', ['magic-text', 'predictions', 'ui-selection']],
   ]);
   expect(flattened).toEqual(workbenchLessons.map((l) => l.id).sort());

@@ -1,4 +1,18 @@
 import {
+  canSaveWorkbenchHistory,
+  isWorkbenchHistoryBusy,
+  workbenchHistoryPrompts,
+} from './workbench-history';
+import {
+  renderWorkbenchCode,
+  workbenchCodeLanguage,
+} from './workbench-highlight';
+import {
+  isWorkbenchWorkflowProgress,
+  workbenchWorkflowPrompts,
+} from './workbench-workflows';
+import { readWorkflowForm } from './workbench-workflow-form';
+import {
   workbenchBrowserInstructions,
   workbenchOnboardingPrompts,
 } from './workbench-onboarding';
@@ -196,13 +210,17 @@ function rebuildKeepingFocus(
 function playbackSpeedLabel(speed: number): string {
   return speed === 0.5 ? '½×' : `${speed}×`;
 }
-function pre(value: unknown): HTMLPreElement {
-  return element(
-    'pre',
-    typeof value === 'string'
-      ? value
-      : (JSON.stringify(value, null, 2) ?? 'Waiting for captured data'),
+function pre(value: unknown, tab: string): HTMLPreElement {
+  const source =
+    typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  const language =
+    source === undefined ? 'text' : workbenchCodeLanguage(value, tab);
+  const block = document.createElement('pre');
+  block.dataset.language = language;
+  block.append(
+    renderWorkbenchCode(source ?? 'Waiting for captured data', language),
   );
+  return block;
 }
 
 /** Names the captured teaching moment without hiding its original payload in Raw. */
@@ -238,14 +256,27 @@ export function workbenchEventLabel(
   ) {
     const names: Record<string, string> = {
       RUN_STARTED: 'Run started',
+      STATE_SNAPSHOT: 'Shared state snapshot',
+      STATE_DELTA: 'Shared state patch',
+      ACTIVITY_SNAPSHOT: 'Activity started',
+      ACTIVITY_DELTA: 'Activity updated',
       RUN_FINISHED: 'Run finished',
       RUN_ERROR: 'Run failed',
       TOOL_CALL_START: 'Call tool',
       TOOL_CALL_ARGS: 'Tool arguments',
       TOOL_CALL_END: 'Tool ready',
-      TEXT_MESSAGE_START: format === 'text' ? 'Text start' : 'JSON start',
-      TEXT_MESSAGE_CONTENT: format === 'text' ? 'Text chunk' : 'JSON chunk',
-      TEXT_MESSAGE_END: format === 'text' ? 'Text end' : 'JSON end',
+      TEXT_MESSAGE_START:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text start'
+          : 'JSON start',
+      TEXT_MESSAGE_CONTENT:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text chunk'
+          : 'JSON chunk',
+      TEXT_MESSAGE_END:
+        format === 'text' || format === 'workflow' || format === 'history'
+          ? 'Text end'
+          : 'JSON end',
       DECISION_RESPONSE: 'Decision response',
     };
     return names[String(event.payload.type)] ?? String(event.payload.type);
@@ -266,6 +297,12 @@ export function workbenchEventLabel(
       decision: 'Decision',
       choose: 'Suggestion applied',
       dismiss: 'Suggestion dismissed',
+      workflow: 'SDK workflow observed',
+      form: 'Application form draft',
+      pause: 'Paused for decisions',
+      resume: 'Resume requested',
+      history: 'SDK history observed',
+      'history-app': `Text ${event.history?.app.action ?? 'action'}`,
     }[event.kind] ?? event.kind
   );
 }
@@ -326,9 +363,13 @@ export function mountWorkbench(
   const prompts =
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'decision'
-      ? workbenchDecisionPrompts
-      : workbenchPrompts);
+    (commands.lesson?.format === 'history'
+      ? workbenchHistoryPrompts
+      : commands.lesson?.format === 'workflow'
+        ? workbenchWorkflowPrompts
+        : commands.lesson?.format === 'decision'
+          ? workbenchDecisionPrompts
+          : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -495,12 +536,13 @@ export function mountWorkbench(
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    commands.lesson?.format === 'text'
-      ? commands.lesson.id === 'magic-text'
+    ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
+      ? commands.lesson?.id === 'magic-text'
         ? 'Markdown'
         : 'Text'
       : 'JSON',
     'Requests',
+    ...(commands.lesson?.format === 'history' ? ['History', 'Saved text'] : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
     )
@@ -510,11 +552,15 @@ export function mountWorkbench(
     ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
     'UI',
     'State',
+    ...(commands.lesson?.format === 'workflow'
+      ? ['Activities', 'Interrupts']
+      : []),
   ].map((name) => {
     const item = button(name, () => {
       tab = name;
       render();
     });
+    item.id = `${instanceId}-tab-${name.toLowerCase()}`;
     item.setAttribute('role', 'tab');
     item.setAttribute('aria-controls', pair.id);
     return item;
@@ -734,11 +780,20 @@ export function mountWorkbench(
             ? 'Live model'
             : 'Awaiting source';
     const historical = snapshot.cursor !== null;
-    const busy = snapshot.status === 'loading';
+    const busy =
+      snapshot.status === 'loading' ||
+      isWorkbenchHistoryBusy(frame?.history?.sdk) ||
+      !!frame?.history?.replacement;
+    const blocked =
+      busy ||
+      snapshot.status === 'paused' ||
+      !!frame?.workflow?.recoveryRequired ||
+      !!frame?.history?.sdk.pendingInterrupts ||
+      !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
-    prompt.disabled = historical || busy;
-    send.disabled = historical || busy;
+    prompt.disabled = historical || blocked;
+    send.disabled = historical || blocked;
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -752,8 +807,8 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
-    first.disabled = historical || busy;
-    followup.disabled = historical || busy;
+    first.disabled = historical || blocked;
+    followup.disabled = historical || blocked;
     status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
@@ -811,30 +866,206 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
-    tabButtons.forEach((item) =>
-      item.setAttribute('aria-selected', String(item.textContent === tab)),
-    );
+    tabButtons.forEach((item) => {
+      item.setAttribute('aria-selected', String(item.textContent === tab));
+      if (item.textContent === tab)
+        pair.setAttribute('aria-labelledby', item.id);
+    });
     const onboardingText =
       commands.lesson?.id === 'conversation' ||
       commands.lesson?.id === 'system-instructions';
-    const recipeView = onboardingText
-      ? tab === 'UI'
+    const workflow = frame?.workflow;
+    const outcome = frame?.status ?? snapshot.status;
+    const applicationForm = readWorkflowForm(snapshot);
+    const workflowView =
+      commands.lesson?.format === 'workflow' && tab !== 'Requests'
         ? {
-            heading: 'Plain text renderer',
-            value: {
-              renderer: 'Plain text',
-              generatedProps: false,
-              exposedComponents: [],
-            },
-            detailHeading: 'Text rendering and request outcome',
-            detail: {
-              content: frame?.json ?? '',
-              outcome: frame?.status ?? snapshot.status,
-              note: 'Assistant text is rendered directly without a UI schema or exposed components.',
-            },
+            heading:
+              (
+                {
+                  Activities: 'SDK activities',
+                  Interrupts: 'SDK pending interrupt batch',
+                  State: 'Runtime shared state and SDK lifecycle',
+                  UI: 'Application-owned workflow controls',
+                  Text: 'Streamed text',
+                } as Readonly<Record<string, string>>
+              )[tab] ?? 'SDK workflow observation',
+            value:
+              tab === 'Activities'
+                ? (workflow?.activities ?? [])
+                : tab === 'Interrupts'
+                  ? {
+                      pending: workflow?.pendingInterrupts ?? null,
+                      isResuming: workflow?.isResuming ?? false,
+                      recoveryRequired: workflow?.recoveryRequired ?? false,
+                    }
+                  : tab === 'Text'
+                    ? (workflow?.messages.filter(
+                        (message) => message.role === 'assistant',
+                      ) ?? [])
+                    : tab === 'UI'
+                      ? {
+                          renderer: 'Application-owned workflow controls',
+                          generatedComponents: false,
+                          sdkFields: ['state', 'messages', 'pendingInterrupts'],
+                        }
+                      : {
+                          state: workflow?.state ?? null,
+                          isLoading: workflow?.isLoading ?? false,
+                          isResuming: workflow?.isResuming ?? false,
+                          finishReason: workflow?.finishReason ?? null,
+                          error: workflow?.error ?? null,
+                          recoveryRequired: workflow?.recoveryRequired ?? false,
+                        },
+            detailHeading:
+              (
+                {
+                  Activities: 'Validated progress and linked messages',
+                  Interrupts: 'Application approval form and outcome',
+                  State: 'Application form and accepted plan',
+                  Text: 'Text rendering and request outcome',
+                  UI: 'Selected SDK values for application controls',
+                } as Readonly<Record<string, string>>
+              )[tab] ?? 'Application interpretation',
+            detail:
+              tab === 'Activities'
+                ? {
+                    progress:
+                      workflow?.activities.flatMap((message) =>
+                        isWorkbenchWorkflowProgress(message.content)
+                          ? [
+                              {
+                                id: message.id,
+                                stage: message.content.stage,
+                                label: message.content.label,
+                                links:
+                                  message.links ?? message.hashbrownLinks ?? {},
+                              },
+                            ]
+                          : [],
+                      ) ?? [],
+                    outcome,
+                  }
+                : tab === 'Interrupts'
+                  ? {
+                      batchId: workflow?.pendingInterrupts?.id ?? null,
+                      applicationForm,
+                      outcome,
+                      recoveryRequired: workflow?.recoveryRequired ?? false,
+                    }
+                  : tab === 'Text'
+                    ? {
+                        renderer: 'Plain text',
+                        generatedComponents: false,
+                        outcome,
+                      }
+                    : tab === 'UI'
+                      ? {
+                          state: workflow?.state ?? null,
+                          activityIds:
+                            workflow?.activities.map((message) => message.id) ??
+                            [],
+                          pendingBatchId:
+                            workflow?.pendingInterrupts?.id ?? null,
+                          outcome,
+                        }
+                      : {
+                          applicationForm,
+                          acceptedApplication:
+                            frame?.application ?? snapshot.application,
+                          outcome,
+                        },
           }
-        : undefined
-      : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab);
+        : undefined;
+    const history = frame?.history;
+    const historyView =
+      commands.lesson?.format === 'history' &&
+      ['Text', 'UI', 'History', 'Saved text'].includes(tab)
+        ? tab === 'Text'
+          ? {
+              heading: 'Selected SDK assistant text',
+              value:
+                history?.sdk.messages
+                  .filter(
+                    (message) =>
+                      message['role'] === 'assistant' &&
+                      typeof message['content'] === 'string',
+                  )
+                  .map((message) => message['content'])
+                  .join('\n\n') ||
+                'No assistant text in the selected SDK history.',
+              detailHeading: 'Text rendering and request outcome',
+              detail: {
+                outcome,
+                generatedProps: false,
+                messageCount: history?.sdk.messages.length ?? 0,
+              },
+            }
+          : tab === 'UI'
+            ? {
+                heading: 'Plain text renderer',
+                value: {
+                  renderer: 'Plain text',
+                  generatedProps: false,
+                  exposedComponents: [],
+                },
+                detailHeading: 'Application rendering boundary',
+                detail: {
+                  outcome,
+                  note: 'Captured SDK text is rendered directly. This lesson exposes no generated UI components.',
+                },
+              }
+            : tab === 'History'
+              ? {
+                  heading: 'Actual SDK transcript and lifecycle',
+                  value: history?.sdk ?? null,
+                  detailHeading: 'Application-retained text copy',
+                  detail: {
+                    retained: history?.app.retained ?? null,
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                  },
+                }
+              : {
+                  heading: 'Last-read browser text document',
+                  value: {
+                    selectedSlot: history?.app.selectedSlot ?? null,
+                    cachedRead: history?.app.saved ?? null,
+                  },
+                  detailHeading: 'Current operation and save eligibility',
+                  detail: {
+                    action: history?.app.action ?? null,
+                    replacementIntent: history?.replacement ?? null,
+                    error: history?.app.error ?? null,
+                    canSave: canSaveWorkbenchHistory(snapshot),
+                    successfulGeneration:
+                      history?.successfulGeneration ?? false,
+                    note: 'Cached explicit read; browser storage is origin-local and unencrypted. Do not store secrets.',
+                  },
+                }
+        : undefined;
+    const recipeView =
+      historyView ??
+      workflowView ??
+      (onboardingText
+        ? tab === 'UI'
+          ? {
+              heading: 'Plain text renderer',
+              value: {
+                renderer: 'Plain text',
+                generatedProps: false,
+                exposedComponents: [],
+              },
+              detailHeading: 'Text rendering and request outcome',
+              detail: {
+                content: frame?.json ?? '',
+                outcome: frame?.status ?? snapshot.status,
+                note: 'Assistant text is rendered directly without a UI schema or exposed components.',
+              },
+            }
+          : undefined
+        : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab));
     capturedHeading.textContent =
       recipeView?.heading ??
       (tab === 'Instructions'
@@ -868,7 +1099,7 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}`
+          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}${historical ? '' : ' · live'}`
           : `Turn ${snapshot.turn} · live`,
       ),
       element('span', provenance.textContent, 'wb-chip'),
@@ -1006,6 +1237,11 @@ export function mountWorkbench(
                           payload: event.payload,
                         }));
     rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
+    // In raw mode the section heading names the frame, so the body needs no second heading.
+    if (rawFrame)
+      capturedHeading.textContent = frame
+        ? `${frame.kind} · ${frame.source}`
+        : 'No selected event';
     capturedSub.textContent = rawFrame
       ? 'captured frame'
       : (frame?.status ?? snapshot.status) === 'loading'
@@ -1015,11 +1251,30 @@ export function mountWorkbench(
       inspection.replaceChildren();
       if (rawFrame) {
         inspection.append(
-          element(
-            'h3',
-            frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
+          pre(
+            commands.lesson?.format === 'history'
+              ? {
+                  sdk: frame?.history?.sdk ?? null,
+                  event: {
+                    kind: frame?.kind,
+                    source: frame?.source,
+                    payload: frame?.payload,
+                  },
+                }
+              : commands.lesson?.format === 'workflow'
+                ? {
+                    sdk: frame?.workflow ?? null,
+                    event: {
+                      kind: frame?.kind,
+                      source: frame?.source,
+                      payload: frame?.payload,
+                    },
+                  }
+                : tab === 'Transform' && transform
+                  ? transform
+                  : frame?.payload,
+            tab,
           ),
-          pre(tab === 'Transform' && transform ? transform : frame?.payload),
         );
       } else if (tab === 'Requests') {
         const list = element('div', '', 'wb-request-list');
@@ -1058,7 +1313,7 @@ export function mountWorkbench(
               ),
         );
       } else {
-        inspection.append(pre(value));
+        inspection.append(pre(value, tab));
       }
     });
     const detailHeader = element('header', '', 'wb-section-head');
@@ -1085,7 +1340,9 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? workflowView
+            ? 'Captured SDK observations and separately recorded application form drafts.'
+            : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),
@@ -1118,12 +1375,16 @@ export function mountWorkbench(
                       source: frame?.source ?? 'Application',
                     }
                   : requestContext?.payload,
+        tab,
       ),
     );
     if ((frame?.status ?? snapshot.status) === 'error') {
       const issue = element(
         'p',
-        'The request failed. Check the server, return to live, and send again.',
+        commands.lesson?.format === 'workflow' &&
+          frame?.workflow?.recoveryRequired
+          ? 'Resume failed after acknowledgement. Start a new conversation.'
+          : 'The request failed. Check the server, return to live, and send again.',
       );
       issue.setAttribute('role', 'alert');
       inspection.append(issue);

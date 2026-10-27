@@ -19,29 +19,52 @@ export const OG_SIZE = { width: 1200, height: 630 } as const;
 /** GitHub's documented social preview size. */
 export const GITHUB_SIZE = { width: 1280, height: 640 } as const;
 
+/** The 1:1 card for LinkedIn, Instagram and other square feeds. */
+export const SQUARE_SIZE = { width: 1080, height: 1080 } as const;
+
+/** Which card to render: `og` (default), `github` or `square`. */
+export type CardSize = 'og' | 'github' | 'square';
+
 /**
  * The title's type size: 64px up to 60 characters, 52px beyond, so the
- * longest titles still fit in three lines.
+ * longest titles still fit in three lines. The square card has the height for
+ * two steps larger: 96px, then 76px.
  *
  * @param title - The card title.
+ * @param size - The card being rendered.
  */
-export function titleSize(title: string): {
+export function titleSize(
+  title: string,
+  size: CardSize = 'og',
+): {
   fontSize: number;
   lineHeight: number;
 } {
-  return title.length <= 60
+  const short = title.length <= 60;
+  if (size === 'square') {
+    return short
+      ? { fontSize: 96, lineHeight: 1.04 }
+      : { fontSize: 76, lineHeight: 1.06 };
+  }
+  return short
     ? { fontSize: 64, lineHeight: 1.08 }
     : { fontSize: 52, lineHeight: 1.1 };
 }
 
+const CARD_SIZES = {
+  og: OG_SIZE,
+  github: GITHUB_SIZE,
+  square: SQUARE_SIZE,
+} as const;
+
 /**
  * The pixel size of a card.
  *
- * @param size - `og` (default) or `github`.
+ * @param size - `og` (default), `github` or `square`.
  */
-export function cardSize(size: 'og' | 'github' = 'og'): {
+export function cardSize(size: CardSize = 'og'): {
   width: number;
   height: number;
 } {
-  return size === 'github' ? GITHUB_SIZE : OG_SIZE;
+  return CARD_SIZES[size];
 }

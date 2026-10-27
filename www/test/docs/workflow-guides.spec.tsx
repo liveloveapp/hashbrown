@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
@@ -41,7 +39,13 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const media = body.indexOf(`<hb-docs-demo demo="${demo}">`);
+      const id =
+        demo === 'persistence'
+          ? `canonical-workbench-message-history-${sdk}`
+          : ['interrupts', 'shared-state', 'activities'].includes(demo)
+            ? `canonical-workbench-${demo}-${sdk}`
+            : demo;
+      const media = body.indexOf(`<hb-docs-demo demo="${id}">`);
 
       expect(media, demo).toBeGreaterThan(-1);
       expect(media, demo).toBeLessThan(body.indexOf('\n## '));
@@ -50,30 +54,18 @@ test.each(SDKS)(
 );
 
 test.each(SDKS)(
-  '%s browser-storage recipe publishes the checked complete files',
+  '%s browser-storage recipe links the checked canonical client and bounded format',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'browser-history'])?.body ?? '';
-    const files =
+    const file =
       sdk === 'react'
-        ? ['src/text-history.ts', 'src/SavedConversations.tsx']
-        : ['src/app/text-history.ts', 'src/app/saved-conversations.ts'];
+        ? 'react/src/HistoryWorkbench.tsx'
+        : 'angular/src/app/history-workbench.ts';
 
-    for (const file of files) {
-      const section = body.slice(
-        body.indexOf(`<hb-code-example header="${file}">`),
-      );
-      const snippet = section.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1];
-
-      expect(snippet?.trim(), file).toBe(
-        readFileSync(
-          resolve(
-            import.meta.dirname,
-            `../../examples/quickstart/${sdk}/${file}`,
-          ),
-          'utf8',
-        ).trim(),
-      );
-    }
+    expect(body).toContain(file);
+    expect(body).toContain('40 messages');
+    expect(body).toContain('lastRunFinishReason');
+    expect(body).toContain('canonical-workbench-save-text-conversations-');
   },
 );
 

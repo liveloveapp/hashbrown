@@ -158,7 +158,7 @@ This repository is in memory. A page refresh keeps the server's data, while a se
 
 ## Validate responses at the client boundary
 
-The complete files use the text format and `restoreTextMessages()` from [Save text conversations](/docs/react/recipes/browser-history). Keep that guide's `text-history.ts` beside the following files, or use the [complete checked example](https://github.com/liveloveapp/hashbrown/tree/main/www/examples/quickstart).
+Use the [checked `text-history.ts`](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/text-history.ts) for this example's completed-text format and `restoreTextMessages()`. Keep that file beside the following files, or start with the [complete checked example](https://github.com/liveloveapp/hashbrown/tree/main/www/examples/quickstart).
 
 The transport helper verifies the selected thread ID, message format, and version before a server response reaches the chat. A successful save must return exactly the next expected version. A 409 remains a conflict; it does not become a saved status.
 
