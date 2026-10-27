@@ -30,11 +30,11 @@ Files: new `packages/core/src/models/server-tool-call-display.ts` and
 Files: new `packages/core/src/models/turn-annotations.ts`,
 `turn-annotations.spec.ts`, `tool-step-timing.ts`, `tool-step-timing.spec.ts`.
 
-- [ ] Write failing tests: source ids/order across assistant and call sources; same URL/different ids; first occurrence; attribution remains per assistant, including duplicate HTML under different owners and widget tokens; all inputs frozen. Timing tests cover unknown/NaN/infinite/negative values, 0/999/1000/60000 ms, 300 ms boundaries and future clocks.
-- [ ] Run each focused core test with `--runInBand` and confirm failure.
-- [ ] Implement pure collection/formatting/constants/no-flash helpers with TSDoc. Preserve attribution references verbatim. No Date.now/setInterval.
-- [ ] Run focused tests/scoped lint; independent spec then quality review.
-- [ ] Parent commits reviewed files.
+- [x] Write failing tests: source ids/order across assistant and call sources; same URL/different ids; first occurrence; attribution remains per assistant, including duplicate HTML under different owners and widget tokens; all inputs frozen. Timing tests cover unknown/NaN/infinite/negative values, 0/999/1000/60000 ms, 300 ms boundaries and future clocks.
+- [x] Run each focused core test with `--runInBand` and confirm failure.
+- [x] Implement pure collection/formatting/constants/no-flash helpers with TSDoc. Preserve attribution references verbatim. No Date.now/setInterval.
+- [x] Run focused tests/scoped lint; independent spec then quality review.
+- [x] Parent commits reviewed files.
 
 ## Task 3: Turn summary
 
@@ -53,7 +53,7 @@ Files: `packages/core/src/models/index.ts`,
 `packages/react/src/public-api.ts`, `packages/angular/src/public_api.ts`, the
 existing public-package compatibility checks under `packages/{react,angular}/e2e`,
 `www/content/docs/{react,angular}/concept/{activities,functions}.md`, generated
-API reports under `etc/`, and a local upstream-gap note under
+API reports under each package root, and a local upstream-gap note under
 `docs/superpowers/research/2026-10-27-tool-step-upstream.md`.
 
 - [ ] Export functions/types from core and both frameworks, including existing groupTurns/Turn. Public signatures must use neutral core types and no private ɵ types.
@@ -61,8 +61,8 @@ API reports under `etc/`, and a local upstream-gap note under
 - [ ] Document label/group overrides, status and timing inputs, live/settled derived state, separate per-answer attribution, and no-flash/tick policy. Keep file search deferred and add no release notes.
 - [ ] Record verified upstream links/current gaps; no external issue or discussion writes.
 - [ ] Run `npx nx test core --runInBand`, `npx nx build core`, `npx nx lint core`, `npx nx e2e core`.
-- [ ] Run `npx nx test react`, `npx nx build react`, `npx nx lint react`, and `npx nx e2e react` for its distribution target.
-- [ ] Run `npx nx test angular --runInBand`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.
+- [ ] Run `npx nx test react --run`, `npx nx build react`, `npx nx eslint:lint react` (the inferred lint target), and `npx nx e2e react` for its distribution target.
+- [ ] Run `npx nx test angular --watch=false`, `npx nx build angular`, `npx nx lint angular`, `npx nx e2e angular`.
 - [ ] Run `npx nx build-api-report core`, `npx nx build-api-report react`, `npx nx build-api-report angular`; inspect reports for accidental API or dependency leaks.
 - [ ] Run `npx nx test www`, `npx nx lint www`, `npx nx build www` for changed docs. Scope/bound workers when required and report every failure/warning accurately.
 - [ ] Final independent review, commit, push, open and attach PR. Keep the feature worktree for review. No merge without authorization for this PR.
