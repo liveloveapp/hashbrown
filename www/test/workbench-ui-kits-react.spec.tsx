@@ -163,6 +163,9 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
     await act(render);
 
     expect(accept(host).disabled).toBe(true);
+    expect(
+      host.querySelector('[data-ui-component="SummaryCard"]')?.textContent,
+    ).toContain('Streaming preview · awaiting completion.');
     chat.isLoading = false;
     chat.lastRunFinishReason = 'stop';
     await act(render);
@@ -234,3 +237,56 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
     host.remove();
   });
 }
+
+test('React leaves an older unaccepted card unavailable while a new turn is loading', async () => {
+  window.history.replaceState(null, '', '?lesson=ui-kits');
+  const chat = runtime();
+  sdk.chat.mockReturnValue(chat);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const render = () =>
+    root.render(
+      <UiKitWorkbenchConversation active navigation={{ ...navigation }} />,
+    );
+  await act(render);
+  const store = required(sdk.store);
+  const kit = required(sdk.chat.mock.calls.at(-1))[0].components[0];
+  await send(host);
+  const user = chat.sendMessage.mock.calls[0][0];
+  const props = { title: 'Unaccepted preview', steps: ['Outline', 'Record'] };
+  const value = {
+    ui: [
+      {
+        SummaryCard: {
+          props: { complete: true, partialValue: props, value: props },
+        },
+      },
+    ],
+  };
+  chat.lastAssistantMessage = {
+    id: 'old-answer',
+    role: 'assistant',
+    content: value,
+    ui: kit.render(value),
+  };
+  chat.messages = [user, chat.lastAssistantMessage];
+  chat.isLoading = true;
+  await act(render);
+  expect(
+    host.querySelector('[data-ui-component="SummaryCard"]')?.textContent,
+  ).toContain('Streaming preview · awaiting completion.');
+  await act(() => store.settle('cancelled'));
+  expect(
+    host.querySelector('[data-ui-component="SummaryCard"]')?.textContent,
+  ).toContain('Preview · unavailable for this run.');
+  await send(host);
+  chat.messages = [...chat.messages, chat.sendMessage.mock.calls[1][0]];
+  await act(render);
+  const oldCard = host.querySelector('[data-ui-component="SummaryCard"]');
+  expect(store.getSnapshot().status).toBe('loading');
+  expect(oldCard?.textContent).toContain('Preview · unavailable for this run.');
+  expect(oldCard?.textContent).not.toContain('Streaming preview');
+  await act(() => root.unmount());
+  host.remove();
+});

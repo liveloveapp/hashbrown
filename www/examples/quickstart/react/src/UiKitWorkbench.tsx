@@ -106,7 +106,12 @@ function ProposalCard(
           ? 'Saved to application state.'
           : allowed
             ? 'Ready for your review.'
-            : 'Preview · unavailable for this run.'}
+            : session.active &&
+                snapshot.cursor === null &&
+                snapshot.status === 'loading' &&
+                snapshot.turn === origin.turn
+              ? 'Streaming preview · awaiting completion.'
+              : 'Preview · unavailable for this run.'}
       </p>
     </article>
   );

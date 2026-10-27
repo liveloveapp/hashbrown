@@ -267,13 +267,7 @@ export class UiKitWorkbenchAnswer {
       {{ used() ? 'Plan accepted' : 'Accept plan' }}
     </button>
     <p class="wb-muted">
-      {{
-        used()
-          ? 'Saved to application state.'
-          : allowed()
-            ? 'Ready for your review.'
-            : 'Preview · unavailable for this run.'
-      }}
+      {{ footer() }}
     </p>
   </article>`,
 })
@@ -294,6 +288,17 @@ export class KitSummaryCard {
         this.used(),
       ),
   );
+  protected readonly footer = computed(() => {
+    if (this.used()) return 'Saved to application state.';
+    if (this.allowed()) return 'Ready for your review.';
+    const snapshot = this.session.snapshot();
+    return this.session.isActive() &&
+      snapshot.cursor === null &&
+      snapshot.status === 'loading' &&
+      snapshot.turn === this.origin.turn
+      ? 'Streaming preview · awaiting completion.'
+      : 'Preview · unavailable for this run.';
+  });
   protected accept(): void {
     const proposal: SummaryProps = { title: this.title(), steps: this.steps() };
     const snapshot = this.session.store.getSnapshot();
@@ -331,13 +336,7 @@ export class KitSummaryCard {
       {{ used() ? 'Plan accepted' : 'Accept plan' }}
     </button>
     <p class="wb-muted">
-      {{
-        used()
-          ? 'Saved to application state.'
-          : allowed()
-            ? 'Ready for your review.'
-            : 'Preview · unavailable for this run.'
-      }}
+      {{ footer() }}
     </p>
   </article>`,
 })
@@ -358,6 +357,17 @@ export class StepsCard {
         this.used(),
       ),
   );
+  protected readonly footer = computed(() => {
+    if (this.used()) return 'Saved to application state.';
+    if (this.allowed()) return 'Ready for your review.';
+    const snapshot = this.session.snapshot();
+    return this.session.isActive() &&
+      snapshot.cursor === null &&
+      snapshot.status === 'loading' &&
+      snapshot.turn === this.origin.turn
+      ? 'Streaming preview · awaiting completion.'
+      : 'Preview · unavailable for this run.';
+  });
   protected accept(): void {
     const proposal: SummaryProps = { title: this.title(), steps: this.steps() };
     const snapshot = this.session.store.getSnapshot();

@@ -20,6 +20,7 @@ interface Card {
   readonly title: WritableSignal<string>;
   readonly steps: WritableSignal<string[]>;
   allowed(): boolean;
+  footer(): string;
   accept(): void;
 }
 
@@ -192,12 +193,16 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
     const card = new exports.KitSummaryCard();
     card.title.set(props.title);
     card.steps.set(props.steps);
+    expect(card.footer()).toBe('Streaming preview · awaiting completion.');
     card.accept();
     expect(store.getSnapshot().application.revision).toBe(0);
     chat.isLoading.set(false);
     chat.lastRunFinishReason.set('stop');
     flush();
     expect(card.allowed()).toBe(true);
+    const unaccepted = new exports.KitSummaryCard();
+    unaccepted.title.set(props.title);
+    unaccepted.steps.set(props.steps);
     store.seek(0);
     card.accept();
     expect(store.getSnapshot().application.revision).toBe(0);
@@ -214,6 +219,7 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
       plan: props,
     });
     session.send('Next');
+    expect(unaccepted.footer()).toBe('Preview · unavailable for this run.');
     const before = store.getSnapshot();
     flush();
     expect(store.getSnapshot()).toBe(before);
