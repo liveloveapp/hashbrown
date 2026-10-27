@@ -130,12 +130,13 @@ test('forms captions disclose an actual rewritten step and the user correction',
   };
 
   const text = workbenchAuthoringRecordingCues(report, 96)
-    ?.map((cue) => cue[2]).join(' ');
+    ?.map((cue) => cue[2])
+    .join(' ');
 
   expect(text).toContain('rewrote');
   expect(text).toContain('Restore');
   expect(text).not.toContain('preserves the edited first step');
-  expect(() => workbenchAuthoringRecordingCues(
-    { lesson: 'natural-forms', phases }, 96,
-  )).toThrow();
+  expect(() =>
+    workbenchAuthoringRecordingCues({ lesson: 'natural-forms', phases }, 96),
+  ).toThrow();
 });

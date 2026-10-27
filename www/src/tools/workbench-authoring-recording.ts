@@ -33,7 +33,10 @@ export function workbenchAuthoringRecordingCues(
         'Missing or inconsistent actual agent confidence policy evidence',
       );
   }
-  if (report.lesson === 'natural-forms' && typeof report.formFirstStepPreserved !== 'boolean') {
+  if (
+    report.lesson === 'natural-forms' &&
+    typeof report.formFirstStepPreserved !== 'boolean'
+  ) {
     throw new Error('Missing actual form draft comparison evidence');
   }
   const steps =
@@ -115,9 +118,12 @@ export function workbenchAuthoringRecordingCues(
                 : 'The model rewrote the first step. Review catches the change.',
             ],
             ['secondReviewed', 'Review the new draft before applying.'],
-            ['secondCorrected', report.formFirstStepPreserved
-              ? 'Keep the first step. Applied state is unchanged.'
-              : 'Restore the first step. Applied state is unchanged.'],
+            [
+              'secondCorrected',
+              report.formFirstStepPreserved
+                ? 'Keep the first step. Applied state is unchanged.'
+                : 'Restore the first step. Applied state is unchanged.',
+            ],
             ['secondApplied', 'Apply explicitly replaces the accepted plan.'],
             [
               'replay',

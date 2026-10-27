@@ -1,4 +1,5 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { createWorkbenchAppFromEnv } from '../examples/quickstart/server/workbench-env';
 import { pinWorkbenchInput } from '../examples/quickstart/server/workbench-app';
 import { createWorkbenchApp } from '../examples/quickstart/server/workbench-app';
 import { createServer } from 'node:http';
@@ -383,6 +384,110 @@ test('selection endpoint pins the whole candidate decision and passes the truste
     expect(await response.json()).toMatchObject({ value: { pick: 'steps' } });
     expect(calls).toBe(1);
   } finally {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('accepts a same-host HTTPS origin, as a hosted deployment sends, and caps concurrent runs at maxActive', async () => {
+  let release = () => undefined as void;
+  const held = new Promise<void>((done) => (release = done));
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      maxActive: 1,
+      stream: async function* (input) {
+        yield {
+          type: EventType.RUN_STARTED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+        await held;
+        yield {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const url = `http://127.0.0.1:${address.port}/api/workbench/chat`;
+  const request = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: `https://127.0.0.1:${address.port}`,
+    },
+    body: JSON.stringify({
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+      context: [],
+      tools: [],
+      state: {},
+    }),
+  };
+
+  try {
+    const first = await fetch(url, request);
+    const second = await fetch(url, request);
+    release();
+    const events = await first.text();
+
+    expect(first.status).toBe(200);
+    expect(events).toContain('RUN_FINISHED');
+    expect(second.status).toBe(429);
+  } finally {
+    release();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('hosted environment uses the agent clarification handler when the classifier is unavailable', async () => {
+  const localFetch = globalThis.fetch;
+  const outbound = vi
+    .spyOn(globalThis, 'fetch')
+    .mockRejectedValue(new Error('Unexpected provider call'));
+  const server = createServer(
+    createWorkbenchAppFromEnv({
+      OPENAI_API_KEY: 'fixture-only',
+      OPENAI_MODEL: 'fixture-model',
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+
+  try {
+    const response = await localFetch(
+      `http://127.0.0.1:${address.port}/api/workbench/agent-decisions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadId: 't',
+          runId: 'r',
+          messages: [
+            { id: 'u', role: 'user', content: 'Help me outline the demo.' },
+          ],
+          context: [],
+          tools: [],
+          state: {},
+        }),
+      },
+    );
+    const events = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(events).toContain('workbench.agent-decision');
+    expect(events).toContain('unavailable');
+    expect(events).toContain('Please clarify');
+    expect(outbound).not.toHaveBeenCalled();
+  } finally {
+    outbound.mockRestore();
     server.closeAllConnections();
     await new Promise<void>((done) => server.close(() => done()));
   }

@@ -198,11 +198,24 @@ export interface WorkbenchServerOptions {
     lessonId?: WorkbenchLessonId,
   ) => Promise<Decision.Response>;
   readonly staticDirectory?: string;
+  /** The most runs and decisions this process serves at once; later requests get 429. Defaults to 2. */
+  readonly maxActive?: number;
   readonly source?: 'provider' | 'test-fixture';
 }
 
-/** A loopback development host with bounded input, single-run admission and disconnect cancellation. */
+/** Whether a request's Origin, when present, names the host it was sent to, under either scheme. */
+function isSameHost(origin: string | undefined, host: string | undefined) {
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+/** A development or hosted demo server with bounded input, capped admission and disconnect cancellation. */
 export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
+  const maxActive = options.maxActive ?? 2;
   const app = express();
   app.disable('x-powered-by');
   app.use('/api/workbench/server', createWorkbenchThreads(options));
@@ -211,9 +224,8 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   app.post(
     ['/api/workbench/decisions', '/api/workbench/ui-selection'],
     async (req, res) => {
-      const origin = req.get('origin');
-      if (origin && origin !== `http://${req.get('host')}`) {
-        res.status(403).json({ error: 'Use the local same-origin demo' });
+      if (!isSameHost(req.get('origin'), req.get('host'))) {
+        res.status(403).json({ error: 'Use the same-origin demo' });
         return;
       }
       let request: Decision.Request;
@@ -237,7 +249,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
         });
         return;
       }
-      if (active >= 2) {
+      if (active >= maxActive) {
         res
           .status(429)
           .json({ error: 'Wait for another conversation to finish' });
@@ -287,9 +299,8 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
         .map((lesson) => lesson.endpoint),
     ],
     async (req, res) => {
-      const origin = req.get('origin');
-      if (origin && origin !== `http://${req.get('host')}`) {
-        res.status(403).json({ error: 'Use the local same-origin demo' });
+      if (!isSameHost(req.get('origin'), req.get('host'))) {
+        res.status(403).json({ error: 'Use the same-origin demo' });
         return;
       }
       const lesson = workbenchLessons.find(
@@ -317,7 +328,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
           .json({ error: 'Invalid or oversized workbench conversation' });
         return;
       }
-      if (active >= 2) {
+      if (active >= maxActive) {
         res
           .status(429)
           .json({ error: 'Wait for another conversation to finish' });

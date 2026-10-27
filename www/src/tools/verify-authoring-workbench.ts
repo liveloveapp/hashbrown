@@ -247,11 +247,15 @@ export async function verifyAuthoringWorkbench(options: {
     }
     await complete();
     if (forms) {
-      const latestTool = options.requests.slice(start)
+      const latestTool = options.requests
+        .slice(start)
         .flatMap((request) => request.messages)
-        .filter((message) => message.role === 'tool').at(-1);
-      const context = typeof latestTool?.content === 'string'
-        ? latestTool.content : JSON.stringify(latestTool?.content);
+        .filter((message) => message.role === 'tool')
+        .at(-1);
+      const context =
+        typeof latestTool?.content === 'string'
+          ? latestTool.content
+          : JSON.stringify(latestTool?.content);
       expect(context).toContain('Outline the demo');
       expect(context).toContain('"revision":1');
     }
@@ -291,13 +295,19 @@ export async function verifyAuthoringWorkbench(options: {
     mark('secondComplete');
     if (forms) {
       await button('Review draft').click();
-      await expect(root.getByLabel('First step', { exact: true })).toBeEnabled();
+      await expect(
+        root.getByLabel('First step', { exact: true }),
+      ).toBeEnabled();
       await hold();
       mark('secondReviewed');
       if (!formFirstStepPreserved) {
-        await root.getByLabel('First step', { exact: true }).fill('Outline the demo');
+        await root
+          .getByLabel('First step', { exact: true })
+          .fill('Outline the demo');
       }
-      await expect(root.getByLabel('First step', { exact: true })).toHaveValue('Outline the demo');
+      await expect(root.getByLabel('First step', { exact: true })).toHaveValue(
+        'Outline the demo',
+      );
       expect((await form()).revision).toBe(1);
       await hold();
       mark('secondCorrected');
