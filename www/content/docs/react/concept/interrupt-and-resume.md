@@ -16,7 +16,7 @@ Let's explain the same two-step plan, pause for two approvals, and continue once
 
 Approval in this example permits another explanation. It does not execute either plan step, record a video, or write a file. A later user turn creates a fresh approval batch with fresh form choices.
 
-<img src="/video/docs/canonical-workbench-interrupts-react-result.png" alt="React workbench showing interrupt and resume, the chat, inspector, contextual drawer, and bottom timeline." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-interrupts-react-result.png" alt="React workbench showing interrupt and resume, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
 
 Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=interrupts`](http://127.0.0.1:4370/react.html?lesson=interrupts). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
@@ -40,6 +40,8 @@ A pending batch has an opaque local `id` and an immutable `interrupts` array. Ea
 Hashbrown preserves `responseSchema` as data. Your form must validate answers; the server must validate them again. Hashbrown checks JSON compatibility and batch ownership rather than compiling a JSON Schema validator.
 
 ## Submit Every Answer Together
+
+The paired inspector shows the SDK batch beside the application form and request outcome. Raw retains the full selected SDK observation.
 
 Keep form drafts attached to the original displayed `batchId`. Do not replace it with a newer batch ID when submitting an old form. One unanswered question holds up the whole batch.
 

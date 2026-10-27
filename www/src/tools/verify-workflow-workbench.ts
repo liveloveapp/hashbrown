@@ -54,9 +54,62 @@ export async function verifyWorkflowWorkbench(options: {
     const state = root.locator('.wb-workflow-state');
     const approvals = root.locator('.wb-workflow-approvals');
     const activities = root.locator('.wb-workflow-activity');
-    const inspection = root.locator('.wb-inspector .wb-inspection');
+    const capturedSection = root.locator('.wb-inspector [data-captured]');
+    const interpretedSection = root.locator('.wb-inspector [data-detail]');
+    const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
       await root.getByRole('tab', { name, exact: true }).click();
+    };
+    const pairedWorkflowEvidence = async (
+      name: 'State' | 'Activities' | 'Interrupts',
+    ) => {
+      await tab(name);
+      const capturedValue = JSON.parse(
+        await inspection.locator('pre').innerText(),
+      );
+      const interpreted = JSON.parse(
+        await interpretedSection.locator('pre').innerText(),
+      );
+      const headings = {
+        State: 'Application form and accepted plan',
+        Activities: 'Validated progress and linked messages',
+        Interrupts: 'Application approval form and outcome',
+      };
+      await expect(interpretedSection).toContainText(headings[name]);
+      await expect(interpretedSection).toContainText(
+        'Captured SDK observations',
+      );
+      expect(interpreted).not.toHaveProperty('sdk');
+      if (name === 'State') {
+        expect(capturedValue).not.toHaveProperty('messages');
+        expect(capturedValue).not.toHaveProperty('applicationForm');
+        expect(capturedValue.state.status).toBe('ready');
+        expect(interpreted.acceptedApplication.revision).toBe(0);
+      } else if (name === 'Activities') {
+        expect(interpreted.progress).toEqual(
+          capturedValue.map(
+            (activity: {
+              id: string;
+              content: { stage: string; label: string };
+              links?: unknown;
+              hashbrownLinks?: unknown;
+            }) => ({
+              id: activity.id,
+              stage: activity.content.stage,
+              label: activity.content.label,
+              links: activity.links ?? activity.hashbrownLinks ?? {},
+            }),
+          ),
+        );
+      } else {
+        expect(capturedValue).not.toHaveProperty('applicationForm');
+        expect(interpreted.batchId).toBe(capturedValue.pending?.id ?? null);
+        expect(interpreted.recoveryRequired).toBe(
+          capturedValue.recoveryRequired,
+        );
+        expect(interpreted.applicationForm.answers).toBeDefined();
+      }
+      return { captured: capturedValue, interpreted };
     };
     const complete = async () => {
       await expect(status).toContainText('complete', { timeout: 90_000 });
@@ -88,7 +141,26 @@ export async function verifyWorkflowWorkbench(options: {
     };
     await expect(send).toBeEnabled();
     await expect(root.locator('.wb-inspector')).toBeVisible();
-    await expect(root.locator('.wb-detail')).toBeVisible();
+    await expect(root.locator('.wb-detail')).toHaveCount(0);
+    await expect(root.getByRole('tablist')).toHaveCount(1);
+    await expect(capturedSection).toBeVisible();
+    await expect(interpretedSection).toBeVisible();
+    await expect(root).not.toHaveClass(/\bwb-rail\b/);
+    await expect(root.locator('.wb-split')).toHaveAttribute(
+      'aria-valuenow',
+      '44',
+    );
+    await expect(
+      root.locator('.wb-nav-heading[aria-expanded=false]'),
+    ).toHaveCount(0);
+    const capturedBox = await capturedSection.boundingBox();
+    const interpretedBox = await interpretedSection.boundingBox();
+    expect(capturedBox).not.toBeNull();
+    expect(interpretedBox).not.toBeNull();
+    expect(capturedBox?.y).toBe(interpretedBox?.y);
+    await expect(
+      root.getByRole('button', { name: 'Play', exact: true }).locator('svg'),
+    ).toHaveCount(1);
     await expect(
       root.getByRole('button', { name: 'Accept plan', exact: true }),
     ).toHaveCount(0);
@@ -118,6 +190,8 @@ export async function verifyWorkflowWorkbench(options: {
       mark('paused');
       mark('firstComplete');
       await expect(send).toBeDisabled();
+      const pausedEvidence = await pairedWorkflowEvidence('Interrupts');
+      expect(pausedEvidence.interpreted.outcome).toBe('paused');
       const originalBatch = await approvals.getAttribute('data-batch-id');
       await expect(
         root.getByRole('button', { name: 'Submit answers', exact: true }),
@@ -132,6 +206,9 @@ export async function verifyWorkflowWorkbench(options: {
       await complete();
       mark('resumedComplete');
       await expect(approvals).toHaveCount(0);
+      const resumedEvidence = await pairedWorkflowEvidence('Interrupts');
+      expect(resumedEvidence.interpreted.outcome).toBe('complete');
+      expect(resumedEvidence.interpreted.batchId).toBeNull();
       const initialAndResume = options.requests.slice(start);
       expect(initialAndResume).toHaveLength(2);
       expect(initialAndResume[1].resume).toHaveLength(2);
@@ -196,6 +273,16 @@ export async function verifyWorkflowWorkbench(options: {
       }
     }
     mark('secondComplete');
+    const finalEvidence = await pairedWorkflowEvidence(
+      lesson === 'activities'
+        ? 'Activities'
+        : lesson === 'interrupts'
+          ? 'Interrupts'
+          : 'State',
+    );
+    expect(finalEvidence.interpreted.outcome).toBe(
+      lesson === 'interrupts' ? 'paused' : 'complete',
+    );
     await hold();
     const captured = options.requests.slice(start);
     expect(captured).toHaveLength(lesson === 'interrupts' ? 3 : 2);
@@ -232,13 +319,24 @@ export async function verifyWorkflowWorkbench(options: {
     await hold(1500);
     const pause = root.getByRole('button', { name: 'Pause', exact: true });
     if (await pause.count()) await pause.click();
-    await root
+    const selectedMilestone = root
       .getByRole('button', {
         name:
           lesson === 'interrupts' ? /^Paused for decisions[.]/ : /^Complete[.]/,
       })
-      .first()
-      .click();
+      .first();
+    const milestoneIndex = await selectedMilestone.getAttribute('data-index');
+    if (
+      milestoneIndex === null ||
+      !/^\d+$/.test(milestoneIndex) ||
+      !Number.isSafeInteger(Number(milestoneIndex))
+    )
+      throw new Error('The replay milestone has no valid captured event index');
+    // Dense adjacent ticks can overlap; the public scrubber selects the exact frame.
+    const scrubber = root.getByRole('slider', { name: 'Seek captured event' });
+    await scrubber.fill(milestoneIndex);
+    await expect(scrubber).toHaveValue(milestoneIndex);
+    await expect(selectedMilestone).toHaveAttribute('aria-pressed', 'true');
     await expect(
       root.getByRole('button', { name: 'Set shared state', exact: true }),
     ).toBeDisabled();
@@ -254,6 +352,57 @@ export async function verifyWorkflowWorkbench(options: {
         '',
       );
     } else await expect(state).toContainText('Committed SDK state');
+    const replayEvidence = await pairedWorkflowEvidence(
+      lesson === 'activities'
+        ? 'Activities'
+        : lesson === 'interrupts'
+          ? 'Interrupts'
+          : 'State',
+    );
+    expect(replayEvidence.interpreted.outcome).toBe(
+      lesson === 'interrupts' ? 'paused' : 'complete',
+    );
+    const rawFrame = root.getByRole('button', {
+      name: 'Show captured frame',
+      exact: true,
+    });
+    const interpretedBeforeRaw = await interpretedSection
+      .locator('pre')
+      .innerText();
+    await rawFrame.click();
+    await expect(rawFrame).toHaveAttribute('aria-pressed', 'true');
+    await expect(inspection.locator('h3')).toContainText('·');
+    const rawCapture = JSON.parse(await inspection.locator('pre').innerText());
+    expect(rawCapture.sdk.messages.length).toBeGreaterThan(0);
+    expect(rawCapture.event).toEqual(
+      expect.objectContaining({
+        kind: expect.any(String),
+        source: expect.any(String),
+      }),
+    );
+    if (lesson === 'shared-state') {
+      expect(replayEvidence.captured).toEqual({
+        state: rawCapture.sdk.state,
+        isLoading: rawCapture.sdk.isLoading,
+        isResuming: rawCapture.sdk.isResuming,
+        finishReason: rawCapture.sdk.finishReason ?? null,
+        error: rawCapture.sdk.error ?? null,
+        recoveryRequired: rawCapture.sdk.recoveryRequired ?? false,
+      });
+    } else if (lesson === 'activities') {
+      expect(replayEvidence.captured).toEqual(rawCapture.sdk.activities);
+    } else {
+      expect(replayEvidence.captured).toEqual({
+        pending: rawCapture.sdk.pendingInterrupts ?? null,
+        isResuming: rawCapture.sdk.isResuming,
+        recoveryRequired: rawCapture.sdk.recoveryRequired ?? false,
+      });
+    }
+    expect(await interpretedSection.locator('pre').innerText()).toBe(
+      interpretedBeforeRaw,
+    );
+    await rawFrame.click();
+    await expect(rawFrame).toHaveAttribute('aria-pressed', 'false');
     await hold();
     await root.getByRole('slider', { name: 'Seek captured event' }).fill('0');
     await expect(root.locator('.wb-workflow-reply')).toHaveCount(0);
@@ -273,6 +422,14 @@ export async function verifyWorkflowWorkbench(options: {
           ? 'Interrupts'
           : 'State',
     );
+    const restoredEvidence = await pairedWorkflowEvidence(
+      lesson === 'activities'
+        ? 'Activities'
+        : lesson === 'interrupts'
+          ? 'Interrupts'
+          : 'State',
+    );
+    expect(restoredEvidence).toEqual(finalEvidence);
     await hold();
     await page.screenshot({
       path: resolve(work, `${base}.png`),
@@ -288,6 +445,17 @@ export async function verifyWorkflowWorkbench(options: {
       ).toBe(true);
       await expect(state).toBeVisible();
       if (lesson === 'interrupts') await expect(approvals).toBeVisible();
+      const narrowCaptured = await capturedSection.boundingBox();
+      const narrowInterpreted = await interpretedSection.boundingBox();
+      expect(narrowCaptured).not.toBeNull();
+      expect(narrowInterpreted).not.toBeNull();
+      if (!narrowCaptured || !narrowInterpreted)
+        throw new Error(
+          'Missing workflow inspector sections on narrow viewport',
+        );
+      expect(narrowInterpreted.y).toBeGreaterThanOrEqual(
+        narrowCaptured.y + narrowCaptured.height,
+      );
       await page.setViewportSize({ width: 1600, height: 1000 });
     }
     if (!live) {
@@ -383,9 +551,14 @@ export async function verifyWorkflowWorkbench(options: {
           .click();
         await expect(
           root
+            .locator('.wb-chat')
             .getByRole('alert')
             .filter({ hasText: 'Start a new conversation' }),
         ).toBeVisible({ timeout: 30_000 });
+        const recoveryEvidence = await pairedWorkflowEvidence('Interrupts');
+        expect(recoveryEvidence.captured.recoveryRequired).toBe(true);
+        expect(recoveryEvidence.interpreted.recoveryRequired).toBe(true);
+        expect(recoveryEvidence.interpreted.outcome).toBe('error');
         await expect(send).toBeDisabled();
         options.outcome('success');
       }

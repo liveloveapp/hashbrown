@@ -14,9 +14,9 @@ meta:
 
 Let's keep the same two-step plan: outline a trusted UI demo, then record it. Change its title in the app and select **Set shared state**. Nothing runs yet. Send a message, and watch the agent read that value, stream its reply, and update the shared state.
 
-The State inspector follows the selected timeline frame. The title field is an application form draft; the SDK state is a separate value. You can see exactly when the app replaces it and when the agent updates it.
+The State inspector follows the selected timeline frame. The title field is an application form draft; the SDK state is a separate value. You can see exactly when the app replaces it and when the agent updates it. The captured side shows SDK state and request flags. The other side shows the local form and accepted application plan. Choose Raw for the full selected SDK observation.
 
-<img src="/video/docs/canonical-workbench-shared-state-angular-result.png" alt="Angular workbench showing shared agent state, the chat, inspector, contextual drawer, and bottom timeline." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-shared-state-angular-result.png" alt="Angular workbench showing shared agent state, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
 
 Run the [canonical workbench](/docs/angular/start/workbench), then open [`/angular.html?lesson=shared-state`](http://127.0.0.1:4370/angular.html?lesson=shared-state). The recording uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 

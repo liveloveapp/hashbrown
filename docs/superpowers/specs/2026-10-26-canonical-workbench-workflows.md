@@ -99,3 +99,13 @@ Final checks include www build/test/lint, all 34 framework paths and route repor
 both codecs and caption bounds/readability, source/media review and green CI.
 Verify deployed six guides, all 36 new media files and native playback/captions.
 Update both overviews, README and media inventory to seventeen lessons.
+
+## Integration with the canonical shell redesign
+
+The shell redesign merged while these workflow lessons were in review. Its
+collapsible sidebar, resizable chat and paired inspector, and bottom icon player
+supersede this document's earlier four-panel preservation requirement. Keep the
+workflow capture and SDK behavior unchanged. State, Activities and Interrupts
+must each retain captured SDK evidence and its interpretation in the paired
+inspector, and all seventeen lessons must remain discoverable. Refresh this
+batch's six recordings against the integrated shell before publication.

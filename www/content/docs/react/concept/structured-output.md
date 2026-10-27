@@ -65,7 +65,7 @@ The latest assistant message exposes its parsed plan in `content`. The applicati
 
 ## Watch the preview become a result
 
-Send the first prompt. Keep **JSON** selected to see response text arrive beside the plan. The **Details** view shows values resolved by the SDK. Select **State** before accepting: the application still has revision `0` and no accepted plan.
+Send the first prompt. Keep **JSON** selected to see response text arrive beside the plan. The **Typed plan** section beside it shows values resolved by the SDK. Select **State** before accepting: the application still has revision `0` and no accepted plan.
 
 <img src="/video/docs/canonical-workbench-structured-react-result.png" alt="The model streams a plain title and steps while the application renders a plan preview beside the typed data." width="1600" height="1000" loading="lazy" />
 

@@ -362,3 +362,9 @@ Run `WORKBENCH_LESSONS=shared-state,activities,interrupts npx nx workbench-demo 
 with server-only OpenAI credentials/model. Filming-only 20 ms event pacing and
 half-speed footage are disclosed. Preserve unique masters and phase reports in
 ignored `dist/docs-workbench/captures/<run-id>`. No SDK release or new dependencies.
+
+
+The shared state, activities and interrupt/resume recordings were refreshed after
+the canonical shell redesign. They use the collapsible sidebar, resizable chat
+and paired inspector, with the icon player below. Historical four-column captures
+remain associated with earlier batches; these six recordings match the current shell.

@@ -102,3 +102,12 @@ docs/docs-media-inventory.md and matching docs/media tests.
 - [ ] Commit/push, create and attach PR; require green checks for the current
       tested head, merge without bypass, follow production and verify six guides,
       36 new media hashes, overviews and browser playback/captions. No SDK release.
+
+## Shell integration follow-up
+
+Integrate the concurrently merged canonical shell redesign rather than restoring
+the earlier Context drawer. Preserve workflow metadata, grouped navigation for
+all seventeen lessons, and inert replay in the paired inspector. Adapt browser
+selectors, rerun strict builds and all 34 paths, and rerecord this batch's six
+provider demos against the integrated shell. Revalidate media, guides, production
+build and route report before pushing the resolved PR head.

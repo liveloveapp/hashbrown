@@ -1,22 +1,22 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:08.956
+00:00:00.000 --> 00:00:08.230
 A real reply pauses for two approval questions.
 
-00:00:08.956 --> 00:00:12.202
+00:00:08.230 --> 00:00:11.618
 Answer the complete batch before resuming.
 
-00:00:12.202 --> 00:00:17.858
+00:00:11.618 --> 00:00:16.300
 Resume sends both answers and continues the same turn.
 
-00:00:17.858 --> 00:00:19.494
+00:00:16.300 --> 00:00:18.012
 Resume complete.
 
-00:00:19.494 --> 00:00:24.826
+00:00:18.012 --> 00:00:23.470
 A new turn gets a new approval batch.
 
-00:00:24.826 --> 00:00:29.684
+00:00:23.470 --> 00:00:28.634
 Read-only replay.
 
-00:00:29.684 --> 00:00:32.000
+00:00:28.634 --> 00:00:30.867
 Back live. Paused.

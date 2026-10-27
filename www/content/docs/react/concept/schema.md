@@ -42,7 +42,7 @@ The array is streaming, while its step strings are ordinary strings. Resolved it
 
 ## Inspect the contract and the preview
 
-The **Schema** view shows the response contract selected for this lesson. **Details** keeps the parsed preview, application-rule check, and response status separate. A preview can match the plan rules while the response is still in progress; **Accept plan** remains disabled.
+The **Schema** view shows the response contract selected for this lesson. Beside it, **Preview validation** keeps the parsed preview, application-rule check, and response status separate. A preview can match the plan rules while the response is still in progress; **Accept plan** remains disabled.
 
 Send the first prompt, review the completed plan, and accept it. Then send the follow-up. The response uses the same contract while the data changes. A schema describes fields; it does not grant permission to change application state.
 

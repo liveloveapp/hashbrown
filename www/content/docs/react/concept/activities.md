@@ -16,7 +16,7 @@ Let's explain our two-step plan and show the work around the reply. The agent va
 
 These stages describe work the agent performed. They do not mean the demo was outlined or recorded. The plan remains application data.
 
-<img src="/video/docs/canonical-workbench-activities-react-result.png" alt="React workbench showing activities, the chat, inspector, contextual drawer, and bottom timeline." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-activities-react-result.png" alt="React workbench showing activities, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
 
 Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=activities`](http://127.0.0.1:4370/react.html?lesson=activities). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
@@ -77,7 +77,7 @@ Activities remain in local history but are omitted from outgoing model conversat
 
 ## Inspect the Work Across Turns
 
-Select an activity event in the bottom timeline. The chat, Activities inspector, and far-right drawer follow that captured frame. Replay is read-only and does not call the agent again.
+Select an activity event in the bottom timeline. The chat and the paired Activities inspector follow that captured frame. Compare the actual activity messages with their validated stages and links. Raw keeps the full selected SDK observation available. Replay is read-only and does not call the agent again.
 
 An activity does not execute an action or prove an external task succeeded. Emit stages when the underlying work actually reaches them. Continue with [Tools](/docs/react/concept/functions) or [Shared Agent State](/docs/react/concept/shared-agent-state).
 
