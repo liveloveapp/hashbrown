@@ -12,6 +12,8 @@ public sealed partial class PostgresNativeSessionJournal
         NativeSessionSnapshot snapshot;
         try
         {
+            // Initial interrupt publication stays closed until the genuine producer/projection gate is composed.
+            if (save.Approvals.PendingBatch is not null) return null;
             if (save.PendingCalls.Count > _options.MaximumCalls || save.ExpectedBrowserCallIds.Count > _options.MaximumCalls || save.PendingCalls.Any(call => System.Text.Encoding.UTF8.GetByteCount(call.Arguments.GetRawText()) > _options.ArgumentBytes)) return null;
             ValidateNative(save.NativeJson);
             var canonical = NativeSessionHistory.Normalize(save.PublicRequest, lease.Key, _catalog, _options);
@@ -26,6 +28,8 @@ public sealed partial class PostgresNativeSessionJournal
         var row = await Read(connection, lease.Key, cancellationToken);
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State != "Owned" || row.AdmittedRequest is null || !Advances(row.AdmittedRequest, snapshot.PublicRequest)) return null;
+        // This milestone admits only Empty approvals; a future pending producer must count its prospective payload copies here.
+        if (!await HasApprovalCapacity(connection, lease.Key, 0, 0, cancellationToken, prospectivePayloadBytes: 0)) return null;
         var journalCalls = new Dictionary<string, (NativeToolCall Call, string State)>(StringComparer.Ordinal);
         await using (var command = Command(connection, $"SELECT call_id,descriptor,state FROM {Calls} WHERE session_id=@id", ("id", lease.Key.Id)))
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
@@ -36,6 +40,8 @@ public sealed partial class PostgresNativeSessionJournal
                 if (descriptor.Id != reader.GetString(0) || !_catalog.HasVersion(descriptor)) return null;
                 journalCalls.Add(descriptor.Id, (descriptor, reader.GetString(2)));
             }
+        await using (var unsettled = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND state IN ('Pending','DecisionAdmitted')) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND state IN ('Pending','DecisionAdmitted'))", ("id", lease.Key.Id)))
+            if ((bool)(await unsettled.ExecuteScalarAsync(cancellationToken))!) return null;
         var captured = journalCalls.Values.Where(entry => entry.State == "Captured").Select(entry => entry.Call).ToArray();
         if (captured.Length != snapshot.PendingCalls.Count || captured.Any(call => !snapshot.PendingCalls.Any(pending => Same(call, pending)))) return null;
         var publicMessages = JsonNode.Parse(snapshot.PublicRequest)!["messages"]!.AsArray();
@@ -49,12 +55,22 @@ public sealed partial class PostgresNativeSessionJournal
             var id = item["id"]!.GetValue<string>();
             if (!journalCalls.TryGetValue(id, out var stored)) return null;
             var call = new NativeToolCall(id, name, stored.Call.Version, JsonSerializer.Deserialize<JsonElement>(function["arguments"]!.GetValue<string>()));
-            if (!Same(stored.Call, call) || stored.State != (answered.Contains(id) ? "Completed" : "Captured")) return null;
+            if (!Same(stored.Call, call)) return null;
+            if (answered.Contains(id) && stored.State is "Declined" or "Cancelled")
+            {
+                var result = publicMessages.Single(message => message!["role"]!.GetValue<string>() == "tool" && message["toolCallId"]!.GetValue<string>() == id)!;
+                if (result["content"] is not JsonValue content || !content.TryGetValue<string>(out var text)) return null;
+                await using var rejected = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {Approvals} a JOIN {Calls} c USING(session_id,call_id) JOIN {ApprovalBatches} b USING(session_id,batch_id) WHERE a.session_id=@id AND a.call_id=@call AND a.kind='Protected' AND a.state='Settled' AND a.decision=@decision AND a.result_digest=@digest AND a.admitted_generation IS NOT NULL AND c.dispatch_generation IS NULL AND b.state='Settled')", ("id", lease.Key.Id), ("call", id), ("decision", stored.State), ("digest", ApprovalResultDigest(JsonSerializer.SerializeToElement(text))));
+                if (!(bool)(await rejected.ExecuteScalarAsync(cancellationToken))!) return null;
+            }
+            else if (stored.State != (answered.Contains(id) ? "Completed" : "Captured")) return null;
             represented.Add(id);
         }
         // Native bypass may keep Captured backend calls private until browser results arrive.
         // Completed calls must always appear with results, including all earlier turns.
         if (journalCalls.Any(entry => !represented.Contains(entry.Key) && (entry.Value.State != "Captured" || snapshot.TurnCompleted || snapshot.ExpectedBrowserCallIds.Count == 0))) return null;
+        // Retention is an explicit child-first rewrite; the parent expiry trigger never clamps safety rows.
+        await Execute(connection, $"UPDATE {Approvals} SET expires_at=@expires WHERE session_id=@id AND expires_at>@expires; UPDATE {ApprovalBatches} SET expires_at=@expires WHERE session_id=@id AND expires_at>@expires", cancellationToken, ("expires", now + _options.Retention), ("id", lease.Key.Id));
         await Execute(connection, $"UPDATE {Sessions} SET state='Saved',payload=@payload,ever_saved=true,revision=revision+1,expires_at=@expires WHERE id=@id", cancellationToken,
             ("payload", SerializePayload(snapshot)), ("expires", now + _options.Retention), ("id", lease.Key.Id));
         await transaction.CommitAsync(cancellationToken);
@@ -100,7 +116,11 @@ public sealed partial class PostgresNativeSessionJournal
         var now = await Now(connection, cancellationToken);
         if (!Owns(row, lease, now) || row!.State is not ("Owned" or "Saved" or "Publishing")) return false;
         var blocked = row.State != "Owned" || await HasDispatch(connection, lease.Key, lease.Generation, cancellationToken);
-        if (!blocked) await RemoveUncommittedCalls(connection, lease.Key, ValidatePayload(row.Payload, lease.Key), cancellationToken);
+        if (!blocked)
+        {
+            var previous = await ReadApprovalSnapshot(connection, row, lease, now, cancellationToken);
+            await RemoveUncommittedCalls(connection, lease.Key, previous.Snapshot, cancellationToken);
+        }
         await Execute(connection, $"UPDATE {Sessions} SET state=@state,token=NULL,lease_until=NULL,admitted_request=NULL,generation=generation+1,revision=revision+1 WHERE id=@id", cancellationToken,
             ("state", row.State == "Publishing" ? "PublicationUnknown" : blocked ? "Blocked" : "Ready"), ("id", lease.Key.Id));
         await transaction.CommitAsync(cancellationToken);

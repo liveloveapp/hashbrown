@@ -8,13 +8,172 @@ namespace Hashbrown.Conformance.Integration;
 public sealed partial class PostgresNativeSessionJournal
 {
     /// <inheritdoc />
-    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default) => throw new NotSupportedException("Native approval persistence is not enabled.");
+    public async ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default)
+    {
+        // Own bounded caller data before opening a transaction; validators never run while a row is locked.
+        if (capture.ProtectedRequests.Count + capture.BrowserBindings.Count > _options.MaximumCalls || capture.ProtectedRequests.Any(item => !_catalog.Matches(item.Call) || !_catalog.RequiresConfirmation(item.Call.Name) || Encoding.UTF8.GetByteCount(item.Call.Arguments.GetRawText()) > _options.ArgumentBytes) || capture.BrowserBindings.Any(item => _catalog.Contains(item.Name) || Encoding.UTF8.GetByteCount(item.Arguments.GetRawText()) > _options.ArgumentBytes)) return false;
+        // Count exact serialized bytes without materializing descriptor strings or their aggregate first.
+        long bytes;
+        try { bytes = CountApprovalDescriptors(capture); }
+        catch (ApprovalBudgetExceededException) { return false; }
+        var requestIds = capture.ProtectedRequests.Select(item => item.RequestId).Concat(capture.BrowserBindings.Select(item => item.RequestId)).ToArray();
+        var callIds = capture.ProtectedRequests.Select(item => item.Call.Id).Concat(capture.BrowserBindings.Select(item => item.CallId)).ToArray();
+        await using var connection = await _source.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
+        var row = await Read(connection, lease.Key, cancellationToken);
+        var now = await Now(connection, cancellationToken);
+        if (!Owns(row, lease, now) || row!.State != "Owned" || row.AdmittedRequest is null) return false;
+        foreach (var item in capture.ProtectedRequests)
+        {
+            var call = await ReadCall(connection, lease.Key, item.Call.Id, cancellationToken);
+            if (call is not { State: "Captured" } || call.CapturedGeneration != lease.Generation || !Same(call.Call, item.Call)) return false;
+        }
+        var original = System.Text.Json.Nodes.JsonNode.Parse(row.AdmittedRequest)!;
+        var browserNames = original["tools"]?.AsArray().Select(item => item!["name"]!.GetValue<string>()).ToHashSet(StringComparer.Ordinal) ?? [];
+        if (capture.BrowserBindings.Any(item => !browserNames.Contains(item.Name))) return false;
+        await using (var exists = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {ApprovalBatches} WHERE session_id=@id AND (batch_id=@batch OR state IN ('Pending','DecisionAdmitted'))) OR EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND (request_id=ANY(@requests) OR call_id=ANY(@calls))) OR EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND call_id=ANY(@browser))", ("id", lease.Key.Id), ("batch", capture.BatchId), ("requests", requestIds), ("calls", callIds), ("browser", capture.BrowserBindings.Select(item => item.CallId).ToArray())))
+            if ((bool)(await exists.ExecuteScalarAsync(cancellationToken))!) return false;
+        if (!await HasApprovalCapacity(connection, lease.Key, requestIds.Length, bytes, cancellationToken, capture.ProtectedRequests.Select(item => item.Call.Id).ToArray())) return false;
+        await using (var count = Command(connection, $"SELECT count(*) FROM (SELECT call_id FROM {Calls} WHERE session_id=@id UNION SELECT call_id FROM {Approvals} WHERE session_id=@id UNION SELECT unnest(@calls::text[])) retained", ("id", lease.Key.Id), ("calls", callIds)))
+            if ((long)(await count.ExecuteScalarAsync(cancellationToken))! > _options.MaximumCalls) return false;
+        var members = capture.ProtectedRequests.Select(item => new ApprovalMember(item.RequestId, item.Call.Id, "Protected", Serialize(new { formatVersion = 1, protectedRequest = item })))
+            .Concat(capture.BrowserBindings.Select(item => new ApprovalMember(item.RequestId, item.CallId, "BrowserBypass", Serialize(new { formatVersion = 1, browserBinding = item })))).ToArray();
+        await Execute(connection, $"INSERT INTO {ApprovalBatches}(session_id,batch_id,member_digest,member_count,state,expires_at) VALUES(@id,@batch,@digest,@count,'Pending',@expires)", cancellationToken,
+            ("id", lease.Key.Id), ("batch", capture.BatchId), ("digest", ApprovalDigest(capture)), ("count", members.Length), ("expires", row.Expires));
+        foreach (var member in members)
+            await Execute(connection, $"INSERT INTO {Approvals}(session_id,request_id,call_id,batch_id,kind,private_descriptor,state,captured_generation,expires_at) VALUES(@id,@request,@call,@batch,@kind,@descriptor,'Pending',@generation,@expires)", cancellationToken,
+                ("id", lease.Key.Id), ("request", member.RequestId), ("call", member.CallId), ("batch", capture.BatchId), ("kind", member.Kind), ("descriptor", member.Descriptor), ("generation", lease.Generation), ("expires", row.Expires));
+        await Execute(connection, $"UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken, ("id", lease.Key.Id));
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     /// <inheritdoc />
-    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default) => throw new NotSupportedException("Native approval persistence is not enabled.");
+    public async ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _source.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
+        var row = await Read(connection, lease.Key, cancellationToken);
+        var now = await Now(connection, cancellationToken);
+        if (!Owns(row, lease, now) || row!.State != "Owned") return null;
+        try { return (await ReadApprovalSnapshot(connection, row, lease, now, cancellationToken)).Evidence; }
+        catch (Exception exception) when (BadInput(exception)) { return null; }
+    }
+
     /// <inheritdoc />
-    public ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default) => throw new NotSupportedException("Native approval persistence is not enabled.");
+    public async ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default)
+    {
+        if (Encoding.UTF8.GetByteCount(admission.CanonicalPublicRequest) > _options.PublicBytes) return false;
+        await using var connection = await _source.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
+        var row = await Read(connection, lease.Key, cancellationToken);
+        var now = await Now(connection, cancellationToken);
+        if (!Owns(row, lease, now) || row!.State != "Owned") return false;
+        NativeSessionSnapshot snapshot; NativeApprovalEvidence? evidence;
+        try { (snapshot, evidence) = await ReadApprovalSnapshot(connection, row, lease, now, cancellationToken); }
+        catch (Exception exception) when (BadInput(exception)) { return false; }
+        if (evidence is null || evidence.Batch.Batch.BatchId != batchId || !NativeApprovalAdmission.MatchesPublishedBatch(admission, evidence) || !NativeApprovalAdmission.AdmitsOwnedPrefix(admission.CanonicalPublicRequest, snapshot, evidence) || row.AdmittedRequest != admission.CanonicalPublicRequest) return false;
+        var revision = row.Revision + 1;
+        foreach (var decision in admission.Decisions)
+            await Execute(connection, $"UPDATE {Approvals} SET state='DecisionAdmitted',decision=@decision,admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch AND request_id=@request AND kind='Protected' AND state='Pending'", cancellationToken,
+                ("id", lease.Key.Id), ("batch", batchId), ("request", decision.RequestId), ("decision", decision.Kind.ToString()), ("generation", lease.Generation), ("revision", revision));
+        await Execute(connection, $"UPDATE {ApprovalBatches} SET state='DecisionAdmitted',admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch; UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken,
+            ("id", lease.Key.Id), ("batch", batchId), ("generation", lease.Generation), ("revision", revision));
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     /// <inheritdoc />
-    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default) => throw new NotSupportedException("Native approval persistence is not enabled.");
+    public async ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default)
+    {
+        if (!GenuineRejection(rejection.Decision, rejection.Result) || Encoding.UTF8.GetByteCount(rejection.Result.GetRawText()) > _options.ArgumentBytes) return false;
+        await using var connection = await _source.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RequireSchemaVersion(connection, cancellationToken);
+        var row = await Read(connection, lease.Key, cancellationToken);
+        var now = await Now(connection, cancellationToken);
+        if (!Owns(row, lease, now) || row!.State != "Owned") return false;
+        NativeApprovalEvidence? evidence;
+        try { evidence = (await ReadApprovalSnapshot(connection, row, lease, now, cancellationToken)).Evidence; }
+        catch (Exception exception) when (BadInput(exception)) { return false; }
+        if (evidence is not { State: NativeApprovalState.DecisionAdmitted } || evidence.Batch.Batch.BatchId != rejection.BatchId || evidence.AdmittedGeneration != lease.Generation || !evidence.Decisions.Any(item => item.RequestId == rejection.RequestId && item.Kind == rejection.Decision)) return false;
+        var descriptor = evidence.Batch.Batch.ProtectedRequests.SingleOrDefault(item => item.RequestId == rejection.RequestId && item.Call.Id == rejection.CallId);
+        var call = await ReadCall(connection, lease.Key, rejection.CallId, cancellationToken);
+        if (descriptor is null || call is not { State: "Captured", Generation: 0 } || !Same(call.Call, descriptor.Call)) return false;
+        var changed = await Execute(connection, $"UPDATE {Approvals} SET state='Settled',result_digest=@digest WHERE session_id=@id AND batch_id=@batch AND request_id=@request AND call_id=@call AND kind='Protected' AND state='DecisionAdmitted' AND decision=@decision AND admitted_generation=@generation", cancellationToken,
+            ("id", lease.Key.Id), ("batch", rejection.BatchId), ("request", rejection.RequestId), ("call", rejection.CallId), ("decision", rejection.Decision.ToString()), ("generation", lease.Generation), ("digest", ApprovalResultDigest(rejection.Result)));
+        if (changed != 1) return false;
+        await Execute(connection, $"UPDATE {Calls} SET state=@state WHERE session_id=@id AND call_id=@call; UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken,
+            ("id", lease.Key.Id), ("call", rejection.CallId), ("state", rejection.Decision.ToString()));
+        await SettleApprovalBatch(connection, lease.Key, rejection.BatchId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
+    // Codec v1 holds exactly one original typed native descriptor. Membership is SHA256 of canonical complete batch JSON.
+    private sealed record ApprovalMember(string RequestId, string CallId, string Kind, string Descriptor);
+    private static string ApprovalDigest(NativeApprovalBatch batch) => ApprovalResultDigest(JsonSerializer.SerializeToElement(batch, JsonOptions));
+    private static string ApprovalResultDigest(JsonElement result) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(result))));
+    private static bool GenuineRejection(NativeApprovalDecisionKind decision, JsonElement result) => result.ValueKind == JsonValueKind.String && result.GetString() == (decision == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : decision == NativeApprovalDecisionKind.Cancelled ? "Tool call invocation rejected. Cancelled by caller." : null);
+
+    private async ValueTask SettleApprovalBatch(NpgsqlConnection connection, NativeSessionKey key, string batchId, CancellationToken cancellationToken) =>
+        await Execute(connection, $"UPDATE {ApprovalBatches} SET state='Settled' WHERE session_id=@id AND batch_id=@batch AND state='DecisionAdmitted' AND NOT EXISTS(SELECT 1 FROM {Approvals} WHERE session_id=@id AND batch_id=@batch AND kind='Protected' AND state<>'Settled')", cancellationToken, ("id", key.Id), ("batch", batchId));
+
+    // The only reader allowed to materialize pending JSON. Callers hold the selector row lock and validate authority separately.
+    private async ValueTask<(NativeSessionSnapshot Snapshot, NativeApprovalEvidence? Evidence)> ReadApprovalSnapshot(NpgsqlConnection connection, Row row, NativeSessionLease lease, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (!await HasApprovalCapacity(connection, lease.Key, 0, 0, cancellationToken)) throw new ArgumentException("Aggregate approval descriptor budget exceeded.");
+        var snapshot = ValidatePayload(row.Payload, lease.Key, true);
+        if (snapshot.Approvals.PendingBatch is not { } bound) return (snapshot, null);
+        var batch = bound.Batch;
+        if (snapshot.TurnCompleted || !row.EverSaved || batch.ProtectedRequests.Count + batch.BrowserBindings.Count > _options.MaximumCalls) throw new ArgumentException("Invalid pending approval snapshot.");
+        long published; string state; long? admittedGeneration; long? admittedRevision; DateTimeOffset expiry;
+        await using (var command = Command(connection, $"SELECT published_revision,member_digest,member_count,state,admitted_generation,admitted_revision,expires_at FROM {ApprovalBatches} WHERE session_id=@id AND batch_id=@batch", ("id", lease.Key.Id), ("batch", batch.BatchId)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken) || reader.IsDBNull(0) || reader.GetString(1) != ApprovalDigest(batch) || reader.GetInt32(2) != batch.ProtectedRequests.Count + batch.BrowserBindings.Count) throw new ArgumentException("Unpublished or inconsistent approval batch.");
+            published = reader.GetInt64(0); state = reader.GetString(3); admittedGeneration = reader.IsDBNull(4) ? null : reader.GetInt64(4); admittedRevision = reader.IsDBNull(5) ? null : reader.GetInt64(5); expiry = reader.GetFieldValue<DateTimeOffset>(6);
+        }
+        if (published + 2 > row.Revision || expiry <= now || expiry > row.Expires || state is not ("Pending" or "DecisionAdmitted" or "Settled") || (state == "Pending" ? admittedGeneration is not null || admittedRevision is not null : admittedGeneration is null || admittedRevision is null)) throw new ArgumentException("Unavailable approval publication.");
+        var expected = batch.ProtectedRequests.Select(item => new ApprovalMember(item.RequestId, item.Call.Id, "Protected", Serialize(new { formatVersion = 1, protectedRequest = item })))
+            .Concat(batch.BrowserBindings.Select(item => new ApprovalMember(item.RequestId, item.CallId, "BrowserBypass", Serialize(new { formatVersion = 1, browserBinding = item })))).ToDictionary(item => item.RequestId, StringComparer.Ordinal);
+        var decisions = new List<NativeApprovalDecision>(); var captures = new Dictionary<string, long>(StringComparer.Ordinal); long privateBytes = 0; var count = 0;
+        await using (var command = Command(connection, $"SELECT request_id,call_id,kind,private_descriptor,state,decision,captured_generation,admitted_generation,admitted_revision,expires_at FROM {Approvals} WHERE session_id=@id AND batch_id=@batch ORDER BY request_id LIMIT @limit", ("id", lease.Key.Id), ("batch", batch.BatchId), ("limit", Math.Min(256, _options.MaximumCalls) + 1)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                count++;
+                if (!expected.TryGetValue(reader.GetString(0), out var member) || reader.IsDBNull(3)) throw new ArgumentException("Missing durable approval descriptor.");
+                var descriptor = reader.GetString(3); privateBytes += Encoding.UTF8.GetByteCount(descriptor);
+                if (privateBytes > _options.NativeBytes || member.CallId != reader.GetString(1) || member.Kind != reader.GetString(2) || NativeSessionHistory.Canonical(JsonSerializer.Deserialize<JsonElement>(descriptor)) != NativeSessionHistory.Canonical(JsonSerializer.Deserialize<JsonElement>(member.Descriptor)) || reader.GetFieldValue<DateTimeOffset>(9) != expiry || reader.GetInt64(6) > lease.Generation) throw new ArgumentException("Inconsistent durable approval member.");
+                captures.Add(member.CallId, reader.GetInt64(6));
+                if (member.Kind == "Protected")
+                {
+                    if (state == "Pending") { if (reader.GetString(4) != "Pending" || !reader.IsDBNull(5) || !reader.IsDBNull(7) || !reader.IsDBNull(8)) throw new ArgumentException("Consumed pending member."); }
+                    else
+                    {
+                        if (reader.GetString(4) is not ("DecisionAdmitted" or "Settled") || reader.IsDBNull(5) || reader.IsDBNull(7) || reader.IsDBNull(8) || reader.GetInt64(7) != admittedGeneration || reader.GetInt64(8) != admittedRevision || !Enum.TryParse<NativeApprovalDecisionKind>(reader.GetString(5), out var decision)) throw new ArgumentException("Inconsistent consumed member.");
+                        decisions.Add(new(member.RequestId, decision));
+                    }
+                }
+                else if (reader.GetString(4) != "Pending" || !reader.IsDBNull(5) || !reader.IsDBNull(7) || !reader.IsDBNull(8)) throw new ArgumentException("Invalid browser bypass authority.");
+            }
+        if (count != expected.Count) throw new ArgumentException("Incomplete approval membership.");
+        foreach (var item in batch.ProtectedRequests)
+        {
+            var call = await ReadCall(connection, lease.Key, item.Call.Id, cancellationToken);
+            if (!_catalog.HasVersion(item.Call) || !_catalog.RequiresConfirmation(item.Call.Name) || call is null || !Same(call.Call, item.Call) || call.CapturedGeneration != captures[item.Call.Id] || state == "Pending" && (call.State != "Captured" || call.Generation != 0) || !snapshot.PendingCalls.Any(pending => Same(pending, item.Call))) throw new ArgumentException("Unbound protected model call.");
+        }
+        if (batch.BrowserBindings.Any(item => _catalog.Contains(item.Name) || !snapshot.ExpectedBrowserCallIds.Contains(item.CallId, StringComparer.Ordinal))) throw new ArgumentException("Unbound browser request.");
+        var evidence = new NativeApprovalEvidence(lease.Key.Id, _compatibility, _catalog.Identity, lease, bound, published, Enum.Parse<NativeApprovalState>(state), decisions, admittedGeneration, admittedRevision, expiry);
+        // Use a Pending view solely for exact public/native position comparison; never as reservation authority.
+        var pendingView = new NativeApprovalEvidence(lease.Key.Id, _compatibility, _catalog.Identity, lease, bound, published, NativeApprovalState.Pending, [], null, null, expiry);
+        if (!NativeApprovalAdmission.AdmitsOwnedPrefix(snapshot.PublicRequest, snapshot, pendingView)) throw new ArgumentException("Unbound public approval positions.");
+        return (snapshot, evidence);
+    }
     private string Approvals => $"{_schema}.native_approvals";
     private string ApprovalBatches => $"{_schema}.native_approval_batches";
 
@@ -101,13 +260,89 @@ public sealed partial class PostgresNativeSessionJournal
         return await HasApprovalCapacity(connection, key, 0, 0, cancellationToken);
     }
 
-    // Future approval allocation must call this under the same session row lock before inserting any members.
-    private async ValueTask<bool> HasApprovalCapacity(NpgsqlConnection connection, NativeSessionKey key, int additionalBindings, int additionalPrivateBytes, CancellationToken cancellationToken)
+    // Count all retained request fences and every approval-associated private copy under the selector lock.
+    private async ValueTask<bool> HasApprovalCapacity(NpgsqlConnection connection, NativeSessionKey key, int additionalBindings, long additionalPrivateBytes, CancellationToken cancellationToken, string[]? additionalProtectedCalls = null, long? prospectivePayloadBytes = null)
     {
-        await using var command = Command(connection, $"SELECT count(*),COALESCE(sum(octet_length(private_descriptor)),0)::bigint FROM {Approvals} WHERE session_id=@id", ("id", key.Id));
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        await reader.ReadAsync(cancellationToken);
-        return additionalBindings >= 0 && additionalPrivateBytes >= 0 && reader.GetInt64(0) + additionalBindings <= _options.MaximumCalls && reader.GetInt64(1) + additionalPrivateBytes <= _options.NativeBytes;
+        if (prospectivePayloadBytes is < 0) return false;
+        if (additionalBindings < 0 || additionalPrivateBytes < 0 || additionalPrivateBytes > _options.NativeBytes) return false;
+        long bindings; long storedBytes; string? payload;
+        await using (var command = Command(connection, $"SELECT count(*),COALESCE(sum(octet_length(private_descriptor)),0)::bigint FROM {Approvals} WHERE session_id=@id", ("id", key.Id)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            await reader.ReadAsync(cancellationToken);
+            bindings = reader.GetInt64(0); storedBytes = reader.GetInt64(1);
+        }
+        if (bindings + additionalBindings > _options.MaximumCalls || storedBytes + additionalPrivateBytes > _options.NativeBytes) return false;
+        await using (var command = Command(connection, $"SELECT COALESCE(sum(octet_length(c.descriptor)),0)::bigint FROM {Calls} c WHERE c.session_id=@id AND (c.call_id=ANY(@newcalls) OR EXISTS(SELECT 1 FROM {Approvals} a WHERE a.session_id=@id AND a.call_id=c.call_id AND a.kind='Protected'))", ("id", key.Id), ("newcalls", additionalProtectedCalls ?? [])))
+            storedBytes += (long)(await command.ExecuteScalarAsync(cancellationToken))!;
+        if (storedBytes + additionalPrivateBytes > _options.NativeBytes) return false;
+        if (prospectivePayloadBytes is long replacementBytes) return storedBytes + additionalPrivateBytes + replacementBytes <= _options.NativeBytes;
+        await using (var command = Command(connection, $"SELECT payload FROM {Sessions} WHERE id=@id", ("id", key.Id)))
+            payload = await command.ExecuteScalarAsync(cancellationToken) as string;
+        try { return storedBytes + additionalPrivateBytes + ApprovalPayloadBytes(payload) <= _options.NativeBytes; }
+        catch (Exception exception) when (BadInput(exception)) { return false; }
+    }
+
+    // Opaque NativeJson and ordinary calls retain their separate M1 budgets. Only approval-associated copies count here.
+    private long ApprovalPayloadBytes(string? payload)
+    {
+        if (payload is null) return 0;
+        if (Encoding.UTF8.GetByteCount(payload) > _options.NativeBytes * 6L + _options.PublicBytes * 6L + (long)_options.MaximumCalls * _options.ArgumentBytes * 6L) throw new ArgumentException("Oversized native payload.");
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        var approvals = root.GetProperty("approvals");
+        var pending = approvals.GetProperty("pendingBatch");
+        if (pending.ValueKind == JsonValueKind.Null) return 0;
+        var batch = pending.GetProperty("batch");
+        var protectedRequests = batch.GetProperty("protectedRequests");
+        var browserBindings = batch.GetProperty("browserBindings");
+        if (protectedRequests.ValueKind != JsonValueKind.Array || browserBindings.ValueKind != JsonValueKind.Array || protectedRequests.GetArrayLength() + browserBindings.GetArrayLength() > Math.Min(256, _options.MaximumCalls)) throw new ArgumentException("Oversized approval bindings.");
+        long bytes = Encoding.UTF8.GetByteCount(approvals.GetRawText());
+        if (bytes > _options.NativeBytes) return bytes;
+        var protectedCalls = protectedRequests.EnumerateArray().Select(item => item.GetProperty("call").GetProperty("id").GetString()).ToHashSet(StringComparer.Ordinal);
+        var calls = root.GetProperty("pendingCalls");
+        if (calls.ValueKind != JsonValueKind.Array || calls.GetArrayLength() > _options.MaximumCalls) throw new ArgumentException("Oversized pending descriptors.");
+        foreach (var call in calls.EnumerateArray())
+            if (protectedCalls.Contains(call.GetProperty("id").GetString())) bytes += Encoding.UTF8.GetByteCount(call.GetRawText());
+        return bytes;
+    }
+
+    private long CountApprovalDescriptors(NativeApprovalBatch capture)
+    {
+        using var counter = new ApprovalByteCounter(_options.NativeBytes);
+        foreach (var item in capture.ProtectedRequests)
+        {
+            var before = counter.Length;
+            JsonSerializer.Serialize(counter, new { formatVersion = 1, protectedRequest = item }, JsonOptions);
+            if (counter.Length - before > 1048576) throw new ApprovalBudgetExceededException();
+        }
+        foreach (var item in capture.BrowserBindings)
+        {
+            var before = counter.Length;
+            JsonSerializer.Serialize(counter, new { formatVersion = 1, browserBinding = item }, JsonOptions);
+            if (counter.Length - before > 1048576) throw new ApprovalBudgetExceededException();
+        }
+        return counter.Length;
+    }
+    private sealed class ApprovalBudgetExceededException : InvalidOperationException;
+    private sealed class ApprovalByteCounter(long limit) : Stream
+    {
+        private long _length;
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => _length;
+        public override long Position { get => _length; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.Length > limit - _length) throw new ApprovalBudgetExceededException();
+            _length += buffer.Length;
+        }
     }
 
     private async ValueTask MigrateNativePayloads(NpgsqlConnection connection, CancellationToken cancellationToken)

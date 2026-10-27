@@ -93,7 +93,18 @@ public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
     public async ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string publicRequestJson, CancellationToken cancellationToken = default)
     {
         string incoming;
-        try { incoming = NativeSessionHistory.Normalize(publicRequestJson, key, _catalog, _options); }
+        NativeApprovalAdmissionEnvelope? decisions = null;
+        try
+        {
+            if (Encoding.UTF8.GetByteCount(publicRequestJson) > _options.PublicBytes) return new(400);
+            using var input = JsonDocument.Parse(publicRequestJson);
+            if (input.RootElement.TryGetProperty("resume", out var resume) && resume.ValueKind != JsonValueKind.Null && (resume.ValueKind != JsonValueKind.Array || resume.GetArrayLength() != 0))
+            {
+                decisions = NativeApprovalAdmission.Parse(publicRequestJson, key, _catalog, _options);
+                incoming = decisions.CanonicalPublicRequest;
+            }
+            else incoming = NativeSessionHistory.Normalize(publicRequestJson, key, _catalog, _options);
+        }
         catch (Exception exception) when (BadInput(exception)) { return new(400); }
         try
         {
@@ -105,7 +116,7 @@ public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
             var now = await Now(connection, cancellationToken);
             if (row is null)
             {
-                if (!NativeSessionHistory.Admits(incoming, null)) return new(400);
+                if (decisions is not null || !NativeSessionHistory.Admits(incoming, null)) return new(400);
                 await using var count = Command(connection, $"SELECT count(*),count(*) FILTER(WHERE payload IS NOT NULL) FROM {Sessions} WHERE agent=@agent AND scope=@scope", ("agent", key.Agent), ("scope", key.Scope));
                 await using (var reader = await count.ExecuteReaderAsync(cancellationToken))
                 {
@@ -137,16 +148,26 @@ public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
                 return new(409);
             }
             NativeSessionSnapshot previous;
-            try { previous = ValidatePayload(row.Payload, key); if (row.EverSaved && previous.NativeJson is null) throw new ArgumentException("Previously saved native state is missing."); }
+            NativeApprovalEvidence? approval;
+            var nextToken = Guid.NewGuid().ToString("N");
+            var nextLease = new NativeSessionLease(key, nextToken, row.Generation + 1, row.Revision + 1);
+            try
+            {
+                (previous, approval) = await ReadApprovalSnapshot(connection, row, nextLease, now, cancellationToken);
+                if (row.EverSaved && previous.NativeJson is null) throw new ArgumentException("Previously saved native state is missing.");
+            }
             catch (Exception exception) when (BadInput(exception))
             {
                 await RetireRow(connection, row, key, "Blocked", cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return new(503);
             }
-            if (!NativeSessionHistory.Admits(incoming, previous.NativeJson is null ? null : previous)) return new(400);
+            if (approval is not null)
+            {
+                if (decisions is null || !NativeApprovalAdmission.MatchesPublishedBatch(decisions, approval) || !NativeApprovalAdmission.AdmitsOwnedPrefix(incoming, previous, approval)) return new(400);
+            }
+            else if (decisions is not null || !NativeSessionHistory.Admits(incoming, previous.NativeJson is null ? null : previous)) return new(400);
             await RemoveUncommittedCalls(connection, key, previous, cancellationToken);
-            var nextToken = Guid.NewGuid().ToString("N");
             await Execute(connection, $"UPDATE {Sessions} SET state='Owned',token=@token,generation=generation+1,revision=revision+1,claim_revision=revision+1,lease_until=@lease,admitted_request=@incoming WHERE id=@id", cancellationToken, ("id", key.Id), ("token", nextToken), ("lease", now + _options.Lease), ("incoming", incoming));
             await transaction.CommitAsync(cancellationToken);
             return new(200, new(key, nextToken, row.Generation + 1, row.Revision + 1), previous, !row.EverSaved);
@@ -168,7 +189,7 @@ public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
         return true;
     }
 
-    private NativeSessionSnapshot ValidatePayload(string? payload, NativeSessionKey key)
+    private NativeSessionSnapshot ValidatePayload(string? payload, NativeSessionKey key, bool durablePendingReader = false)
     {
         if (payload is null || Encoding.UTF8.GetByteCount(payload) > _options.NativeBytes * 6L + _options.PublicBytes * 6L + (long)_options.MaximumCalls * _options.ArgumentBytes * 6L) throw new ArgumentException("Native payload unavailable or oversized.");
         using var document = JsonDocument.Parse(payload);
@@ -177,7 +198,18 @@ public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
         string[] fields = ["formatVersion", "nativeJson", "publicRequest", "pendingCalls", "expectedBrowserCallIds", "turnCompleted", "approvals"];
         if (!root.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal).SequenceEqual(fields.Order(StringComparer.Ordinal)) || root.GetProperty("turnCompleted").ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw new JsonException("Unknown or incomplete native payload format two.");
         if (!approvals.EnumerateObject().Select(property => property.Name).SequenceEqual(["pendingBatch"])) throw new JsonException("Explicit pending approval state is required.");
-        if (approvals.GetProperty("pendingBatch").ValueKind != JsonValueKind.Null) throw new NotSupportedException("Native approval capture and publication are not enabled.");
+        if (approvals.GetProperty("pendingBatch").ValueKind != JsonValueKind.Null)
+        {
+            if (!durablePendingReader) throw new NotSupportedException("Native approval capture and publication are not enabled.");
+            var pending = approvals.GetProperty("pendingBatch");
+            var batch = pending.GetProperty("batch");
+            var protectedRequests = batch.GetProperty("protectedRequests"); var browserBindings = batch.GetProperty("browserBindings");
+            if (protectedRequests.ValueKind != JsonValueKind.Array || browserBindings.ValueKind != JsonValueKind.Array || protectedRequests.GetArrayLength() < 1 || protectedRequests.GetArrayLength() + browserBindings.GetArrayLength() > Math.Min(256, _options.MaximumCalls) || Encoding.UTF8.GetByteCount(batch.GetRawText()) > _options.NativeBytes || pending.GetProperty("publicLocations").EnumerateObject().Count() != protectedRequests.GetArrayLength() + browserBindings.GetArrayLength()) throw new JsonException("Oversized or incomplete approval payload.");
+            foreach (var member in protectedRequests.EnumerateArray())
+                if (Encoding.UTF8.GetByteCount(member.GetProperty("call").GetProperty("arguments").GetRawText()) > _options.ArgumentBytes) throw new JsonException("Oversized protected arguments.");
+            foreach (var member in browserBindings.EnumerateArray())
+                if (Encoding.UTF8.GetByteCount(member.GetProperty("arguments").GetRawText()) > _options.ArgumentBytes) throw new JsonException("Oversized browser arguments.");
+        }
         var snapshot = JsonSerializer.Deserialize<NativeSessionSnapshot>(payload, JsonOptions) ?? throw new JsonException();
         if (snapshot.PublicRequest != NativeSessionHistory.Normalize(snapshot.PublicRequest, key, _catalog, _options)) throw new ArgumentException("The persisted public prefix is not canonical.");
         if (snapshot.NativeJson is not null) ValidateNative(snapshot.NativeJson);
