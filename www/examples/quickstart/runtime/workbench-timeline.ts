@@ -26,6 +26,23 @@ export function workbenchMilestones(
       return [];
     if (event.kind === 'error' && lastError.get(event.turn) !== index)
       return [];
+    if (event.kind === 'workflow') {
+      const previous = events
+        .slice(0, index)
+        .reverse()
+        .find((frame) => frame.workflow)?.workflow;
+      const current = event.workflow;
+      const label =
+        current?.isResuming && !previous?.isResuming
+          ? 'SDK resuming'
+          : JSON.stringify(current?.state) !== JSON.stringify(previous?.state)
+            ? 'Shared state observed'
+            : JSON.stringify(current?.activities) !==
+                JSON.stringify(previous?.activities)
+              ? 'Activity observed'
+              : undefined;
+      return label ? [{ index, turn: event.turn, label }] : [];
+    }
     const payload = event.payload;
     const chunk =
       event.kind === 'event' &&
@@ -60,7 +77,10 @@ export function workbenchMilestones(
       return [{ index, turn: event.turn, label: 'Policy observed' }];
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
-      label = format === 'text' ? 'Streaming text' : 'Streaming JSON';
+      label =
+        format === 'text' || format === 'workflow'
+          ? 'Streaming text'
+          : 'Streaming JSON';
     } else if (
       event.kind === 'parsed' &&
       lastParsed.get(event.turn) === index
@@ -69,6 +89,9 @@ export function workbenchMilestones(
     } else {
       const names: Partial<Record<WorkbenchEvent['kind'], string>> = {
         user: 'Prompt',
+        form: 'Application form draft',
+        pause: 'Paused for decisions',
+        resume: 'Resume requested',
         request: 'Request',
         tool: 'Tool result',
         complete: 'Complete',

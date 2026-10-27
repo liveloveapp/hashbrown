@@ -41,7 +41,10 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const media = body.indexOf(`<hb-docs-demo demo="${demo}">`);
+      const id = ['interrupts', 'shared-state', 'activities'].includes(demo)
+        ? `canonical-workbench-${demo}-${sdk}`
+        : demo;
+      const media = body.indexOf(`<hb-docs-demo demo="${id}">`);
 
       expect(media, demo).toBeGreaterThan(-1);
       expect(media, demo).toBeLessThan(body.indexOf('\n## '));

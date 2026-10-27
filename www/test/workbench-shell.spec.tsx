@@ -254,6 +254,9 @@ test('steps, clamps and resets the split from the keyboard', () => {
   press('ArrowRight');
 
   expect(separator?.getAttribute('aria-valuenow')).toBe('52');
+  expect(separator?.getAttribute('aria-valuetext')).toBe(
+    'Chat 52%, inspector 48%',
+  );
   expect(layout.get().split).toBe(52);
   expect(grid?.style.getPropertyValue('--wb-split')).toBe('');
   expect(grid?.style.getPropertyValue('--wb-chat')).toBe('52fr');
@@ -338,6 +341,41 @@ test('persists the split once when a drag ends', () => {
   expect(
     JSON.parse(storage.map.get('hashbrown.workbench.layout') as string).split,
   ).toBe(60);
+  shell.dispose();
+});
+
+test('ignores pointer moves from a different pointer during a drag', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(
+    host.querySelector('.wb-chat') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(0, 600));
+  vi.spyOn(
+    host.querySelector('.wb-inspector') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(600, 1000));
+  const fire = (type: string, clientX: number, pointerId: number) =>
+    separator?.dispatchEvent(
+      Object.assign(new MouseEvent(type, { clientX, bubbles: true }), {
+        pointerId,
+      }),
+    );
+
+  fire('pointerdown', 500, 1);
+  fire('pointermove', 300, 2);
+  fire('pointerup', 300, 2);
+  const afterOtherPointer = layout.get().split;
+  const stillDragging = separator?.classList.contains('wb-dragging');
+  fire('pointermove', 600, 1);
+  fire('pointerup', 600, 1);
+
+  expect(afterOtherPointer).toBe(44);
+  expect(stillDragging).toBe(true);
+  expect(layout.get().split).toBe(60);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
   shell.dispose();
 });
 
@@ -506,6 +544,44 @@ test('toggles the play label and icon and reports playback time', () => {
   expect(time?.textContent).toMatch(/^\d+\.\d{2} s \/ \d+\.\d{2} s$/);
   shell.dispose();
   vi.useRealTimers();
+});
+
+test('marks the selection strip live at the newest event only', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const strip = () => host.querySelector('.wb-selection')?.textContent ?? '';
+
+  const atHead = strip();
+  store.seek(0);
+  const inReplay = strip();
+
+  expect(atHead).toMatch(/event (\d+)\/\1 · live/);
+  expect(inReplay).not.toContain('live');
+  shell.dispose();
+});
+
+test('labels the inspector panel by its selected tab', () => {
+  const { host, shell } = mountShell();
+  const panel = host.querySelector('[role=tabpanel]');
+  const selected = () =>
+    host.querySelector<HTMLElement>('[role=tab][aria-selected=true]');
+
+  const initial = panel?.getAttribute('aria-labelledby');
+  const initialTab = selected()?.id;
+  [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')]
+    .find((tab) => tab.textContent === 'State')
+    ?.click();
+
+  expect(initialTab).toBeTruthy();
+  expect(initial).toBe(initialTab);
+  expect(panel?.getAttribute('aria-labelledby')).toBe(selected()?.id);
+  expect(selected()?.textContent).toBe('State');
+  expect(
+    new Set(
+      [...host.querySelectorAll('[role=tab]')].map((tab) => tab.id),
+    ).size,
+  ).toBe(host.querySelectorAll('[role=tab]').length);
+  shell.dispose();
 });
 
 test('positions ticks and the flag on the scrubber', () => {
@@ -694,24 +770,77 @@ test('drives playback from shortcuts only on the visible instance', () => {
   ];
   const space = press(playerButton(first.host, 'Play'), ' ');
   const afterSpace = first.store.getSnapshot().cursor;
-  first.shell.dispose();
-  press(document.body, 'ArrowLeft');
-  const afterDispose = first.store.getSnapshot().cursor;
 
   expect(arrow.defaultPrevented).toBe(true);
   expect(afterArrow).toEqual([4, null]);
   expect(space.defaultPrevented).toBe(false);
   expect(afterSpace).toBe(4);
-  expect(afterDispose).toBe(4);
   expect(second.store.getSnapshot().cursor).toBeNull();
+  first.shell.dispose();
   second.shell.dispose();
 });
 
-test('toggles the rail with Cmd+B', () => {
+test('removes its document shortcut listener on dispose', () => {
+  const add = vi.spyOn(document, 'addEventListener');
+  const remove = vi.spyOn(document, 'removeEventListener');
+  const { shell } = mountShell();
+  const added = add.mock.calls
+    .filter(([type]) => type === 'keydown')
+    .map(([, listener]) => listener);
+
+  shell.dispose();
+  const removed = remove.mock.calls
+    .filter(([type]) => type === 'keydown')
+    .map(([, listener]) => listener);
+
+  expect(added).toHaveLength(1);
+  expect(removed).toContain(added[0]);
+  add.mockRestore();
+  remove.mockRestore();
+});
+
+test('jumps turns and returns live from keyboard shortcuts', () => {
+  const { store, shell } = mountShell();
+  const secondTurnStart = recordTwoTurns(store);
+  store.seek(0);
+
+  const next = press(document.body, 'ArrowRight', { shiftKey: true });
+  const afterNextTurn = store.getSnapshot().cursor;
+  press(document.body, 'ArrowLeft', { shiftKey: true });
+  const afterPreviousTurn = store.getSnapshot().cursor;
+  press(document.body, 'ArrowRight');
+  const afterNextEvent = store.getSnapshot().cursor;
+  press(document.body, 'l');
+
+  expect(next.defaultPrevented).toBe(true);
+  expect(afterNextTurn).toBe(secondTurnStart);
+  expect(afterPreviousTurn).toBe(0);
+  expect(afterNextEvent).toBe(1);
+  expect(store.getSnapshot().cursor).toBeNull();
+  shell.dispose();
+});
+
+test('ignores player shortcuts typed in the message field', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  store.seek(0);
+  const field = host.querySelector<HTMLTextAreaElement>('textarea');
+
+  const typed = press(field as HTMLTextAreaElement, 'l');
+
+  expect(typed.defaultPrevented).toBe(false);
+  expect(store.getSnapshot().cursor).toBe(0);
+  shell.dispose();
+});
+
+test('toggles the rail with Cmd+B and Ctrl+B', () => {
   const { shell, layout } = mountShell();
 
   press(document.body, 'b', { metaKey: true });
+  const afterCmd = layout.get().rail;
+  press(document.body, 'B', { ctrlKey: true });
 
-  expect(layout.get().rail).toBe(true);
+  expect(afterCmd).toBe(true);
+  expect(layout.get().rail).toBe(false);
   shell.dispose();
 });

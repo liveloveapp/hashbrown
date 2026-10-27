@@ -28,7 +28,7 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens fourteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens seventeen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -48,12 +48,17 @@ The lessons are:
 | [Magic Text](/docs/angular/recipes/magic-text)                            | `/angular.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
 | [Predictive suggestions](/docs/angular/recipes/predictive-actions)        | `/angular.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/angular/recipes/ui-selection)                        | `/angular.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
+| [Shared agent state](/docs/angular/concept/shared-agent-state) | `/angular.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
+| [Activities](/docs/angular/concept/activities) | `/angular.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
+| [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
 The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
 
 The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
+
+The workflow lessons use real text chat wrapped by the checked local AG-UI agent. **Shared state** separates local form edits from SDK state and agent updates. **Activities** reports context validation and provider completion, rather than claiming the plan steps ran. **Interrupt and resume** asks two approval questions, continues the same user turn, and gives the next turn a fresh batch. Their State, Activities, and Interrupts inspectors follow actual SDK observations. The accepted application plan stays separate.
 
 ## Follow a Generative UI turn
 
