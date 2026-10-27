@@ -342,7 +342,11 @@ export function createWorkbenchRequestsView(
   let detailTab: string | null = null;
   let selectedEvent: number | null = null;
   let rovingId: string | null = null;
-  let detailKey = '';
+  /** What the tab row was built for; counts update in place between builds. */
+  let tabsKey = '';
+  /** What the panel was built for; tabs key only on the data they show. */
+  let panelKey = '';
+  let tabCounts: ReadonlyMap<string, HTMLElement> = new Map();
   /** The first captured frame; a different one means a new run. */
   let runFirst: WorkbenchFrame | undefined;
   let runLength = 0;
@@ -845,7 +849,8 @@ export function createWorkbenchRequestsView(
     if (!exchange) {
       detail.remove();
       delete detail.dataset.detail;
-      detailKey = '';
+      tabsKey = '';
+      panelKey = '';
       return;
     }
     const tabs = detailTabsFor(exchange);
@@ -855,43 +860,90 @@ export function createWorkbenchRequestsView(
     detailTab = active;
     detail.dataset.detail = '';
     if (!detail.isConnected) body.append(detail);
-    // Only Response greys rows by the playhead; other tabs ignore the cursor.
-    const key = JSON.stringify([
+    const nextTabsKey = JSON.stringify([
       exchange.id,
-      exchange.status,
-      exchange.eventIndexes.length,
-      exchange.answeredById ?? null,
+      tabs.map((tab) => tab.key),
       active,
-      active === 'Response' ? input.snapshot.cursor : null,
-      selectedEvent,
-      input.source,
     ]);
-    if (key === detailKey) return;
-    detailKey = key;
+    const nextPanelKey = JSON.stringify([
+      exchange.id,
+      active,
+      ...panelDeps(exchange, active, input),
+    ]);
+    if (nextTabsKey === tabsKey && nextPanelKey === panelKey) {
+      updateCounts(tabs);
+      return;
+    }
     rebuildKeepingFocus(detail, 'data-focus-key', () => {
-      tablist.replaceChildren(
-        ...tabs.map(({ key: tabKey, label, count }) => {
-          const tab = button(label, '', () => {
-            detailTab = tabKey;
-            selectedEvent = null;
-            draw();
-          });
-          if (count !== undefined)
-            tab.append(
-              ' ',
-              element('span', String(count), 'wb-requests-count'),
-            );
-          tab.setAttribute('role', 'tab');
-          tab.id = `${instanceId}-request-tab-${tabKey.replace(/\s+/g, '-').toLowerCase()}`;
-          tab.setAttribute('aria-selected', String(tabKey === active));
-          tab.setAttribute('aria-controls', panel.id);
-          tab.dataset.focusKey = `tab:${tabKey}`;
-          if (tabKey === active) panel.setAttribute('aria-labelledby', tab.id);
-          return tab;
-        }),
-      );
-      panel.replaceChildren(...panelBody(exchange, active, input));
+      if (nextTabsKey !== tabsKey) buildTabs(tabs, active);
+      else updateCounts(tabs);
+      if (nextPanelKey !== panelKey)
+        panel.replaceChildren(...panelBody(exchange, active, input));
     });
+    tabsKey = nextTabsKey;
+    panelKey = nextPanelKey;
+  }
+
+  /**
+   * The data a tab's panel shows beyond the exchange id. Streamed events only
+   * change Overview and Response; Response also greys rows by the playhead.
+   */
+  function panelDeps(
+    exchange: WorkbenchExchange,
+    tab: string,
+    input: WorkbenchRequestsViewInput,
+  ): readonly unknown[] {
+    if (tab === 'Overview')
+      return [
+        exchange.status,
+        exchange.eventIndexes.length,
+        exchange.response === undefined,
+        input.source,
+      ];
+    if (tab === 'Response')
+      return [
+        exchange.status,
+        exchange.eventIndexes.length,
+        input.snapshot.cursor,
+        selectedEvent,
+      ];
+    if (tab === 'Call') return [exchange.answeredById ?? null];
+    if (tab === 'Raw') return [exchange.response === undefined];
+    return [];
+  }
+
+  function updateCounts(tabs: readonly DetailTab[]) {
+    tabs.forEach(({ key, count }) => {
+      const span = tabCounts.get(key);
+      if (span && count !== undefined && span.textContent !== String(count))
+        span.textContent = String(count);
+    });
+  }
+
+  function buildTabs(tabs: readonly DetailTab[], active: string) {
+    const counts = new Map<string, HTMLElement>();
+    tablist.replaceChildren(
+      ...tabs.map(({ key: tabKey, label, count }) => {
+        const tab = button(label, '', () => {
+          detailTab = tabKey;
+          selectedEvent = null;
+          draw();
+        });
+        if (count !== undefined) {
+          const span = element('span', String(count), 'wb-requests-count');
+          counts.set(tabKey, span);
+          tab.append(' ', span);
+        }
+        tab.setAttribute('role', 'tab');
+        tab.id = `${instanceId}-request-tab-${tabKey.replace(/\s+/g, '-').toLowerCase()}`;
+        tab.setAttribute('aria-selected', String(tabKey === active));
+        tab.setAttribute('aria-controls', panel.id);
+        tab.dataset.focusKey = `tab:${tabKey}`;
+        if (tabKey === active) panel.setAttribute('aria-labelledby', tab.id);
+        return tab;
+      }),
+    );
+    tabCounts = counts;
   }
 
   function draw() {
@@ -940,7 +992,8 @@ export function createWorkbenchRequestsView(
         userSelected = false;
         selectedEvent = null;
         detailTab = null;
-        detailKey = '';
+        tabsKey = '';
+        panelKey = '';
       }
       runFirst = events[0];
       runLength = events.length;

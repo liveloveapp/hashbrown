@@ -141,7 +141,13 @@ function press(target: EventTarget, key: string, init: KeyboardEventInit = {}) {
 function pointer(target: EventTarget, type: string, clientX: number) {
   target.dispatchEvent(
     Object.assign(
-      new MouseEvent(type, { clientX, bubbles: true, cancelable: true }),
+      new MouseEvent(type, {
+        clientX,
+        bubbles: true,
+        cancelable: true,
+        // A press and the moves of a drag hold the primary button.
+        buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0,
+      }),
       { pointerId: 1 },
     ),
   );
@@ -609,5 +615,35 @@ test('labels each turn band with its start time on the axis', () => {
   );
   expect(starts[1]).toBeGreaterThan(starts[0]);
   clock.mockRestore();
+  shell.dispose();
+});
+
+test('keeps the tab buttons and a static panel in place while the selected request streams', () => {
+  const { host, store, shell } = mountRequests();
+  store.send('Plan');
+  store.record('request', requestPayload('r1'));
+  store.record('response', { status: 200, url, source: 'provider' });
+  rowButton(host, 'Model request').click();
+  detailTab(host, 'Raw request').click();
+  const tabsBefore = detailTabs(host);
+  const rawBefore = host.querySelector('[data-detail] pre');
+  const copyBefore = host.querySelector('[aria-label="Copy raw request"]');
+
+  store.record('event', { type: 'RUN_STARTED' });
+  store.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'm1',
+    delta: 'Hi',
+  });
+
+  expect(detailTabs(host)).toEqual(tabsBefore);
+  expect(host.querySelector('[data-detail] pre')).toBe(rawBefore);
+  expect(host.querySelector('[aria-label="Copy raw request"]')).toBe(
+    copyBefore,
+  );
+  expect(detailTab(host, 'Response').textContent).toBe('Response 3');
+  expect(detailTab(host, 'Raw request').getAttribute('aria-selected')).toBe(
+    'true',
+  );
   shell.dispose();
 });
