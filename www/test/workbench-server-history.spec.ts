@@ -160,3 +160,141 @@ test('failed switch load preserves loaded identity and version while disabling s
   expect(s.replace).toHaveBeenCalledTimes(1);
   expect(s.controller.state().error).toContain('Storage');
 });
+
+test('cancels pending work without disposal, rejects stale responses and allows reactivation', async () => {
+  const s = setup();
+  s.fetcher
+    .mockResolvedValueOnce(Response.json(s.session))
+    .mockResolvedValueOnce(
+      Response.json({ id: 'light', version: 2, messages: [] }),
+    );
+  await s.controller.startSession();
+  await s.controller.load();
+  s.observation.messages = [
+    { id: 'unsaved', role: 'user', content: 'Keep this text' },
+  ];
+  let respond: ((response: Response) => void) | undefined;
+  let signal: AbortSignal | null | undefined;
+  s.fetcher.mockImplementationOnce((_url, init) => {
+    signal = init?.signal;
+    return new Promise((resolve) => {
+      respond = resolve;
+    });
+  });
+  const pending = s.controller.load();
+  expect(s.controller.state().busy).toBe(true);
+
+  s.controller.cancelPending();
+  const cancelled = s.controller.state();
+  respond?.(Response.json({ id: 'light', version: 99, messages: [] }));
+  await pending;
+
+  expect(signal?.aborted).toBe(true);
+  expect(s.controller.state()).toEqual(cancelled);
+  expect(s.controller.state().busy).toBe(false);
+  expect(s.controller.state().version).toBe(2);
+  expect(s.observation.messages[0]).toMatchObject({
+    content: 'Keep this text',
+  });
+  expect(s.replace).toHaveBeenCalledTimes(1);
+  s.fetcher.mockResolvedValueOnce(
+    Response.json({ id: 'light', version: 3, messages: [] }),
+  );
+  await s.controller.load();
+  expect(s.controller.state().version).toBe(3);
+  expect(s.replace).toHaveBeenCalledTimes(2);
+});
+
+test('cancelled async SDK replacement cannot publish a later rejection', async () => {
+  const s = setup();
+  s.fetcher
+    .mockResolvedValueOnce(Response.json(s.session))
+    .mockResolvedValueOnce(
+      Response.json({ id: 'light', version: 0, messages: [] }),
+    );
+  let rejectReplacement: ((error: Error) => void) | undefined;
+  s.replace.mockImplementationOnce(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectReplacement = reject;
+      }),
+  );
+  await s.controller.startSession();
+  const loading = s.controller.load();
+  await vi.waitFor(() => expect(s.replace).toHaveBeenCalledTimes(1));
+
+  s.controller.cancelPending();
+  const cancelled = s.controller.state();
+  rejectReplacement?.(new Error('Late setter rejection'));
+  await loading;
+
+  expect(s.controller.state()).toEqual(cancelled);
+  expect(s.controller.state().busy).toBe(false);
+  expect(s.controller.state().error).toBeNull();
+});
+
+test('session results cannot commit after a subscriber disposes at request completion', async () => {
+  const s = setup();
+  s.fetcher.mockResolvedValueOnce(
+    Response.json({
+      access: 'anonymous',
+      threads: null,
+      foreignThreadId: null,
+    }),
+  );
+  await s.controller.initialize();
+  s.fetcher.mockResolvedValueOnce(Response.json(s.session));
+  s.controller.subscribe(() => {
+    if (!s.controller.state().busy) s.controller.dispose();
+  });
+
+  await s.controller.startSession();
+
+  expect(s.controller.state().access).toBe('anonymous');
+});
+
+test('save results cannot commit after completion subscribers cancel or supersede the request', async () => {
+  const s = setup();
+  s.fetcher
+    .mockResolvedValueOnce(Response.json(s.session))
+    .mockResolvedValueOnce(
+      Response.json({ id: 'light', version: 0, messages: [] }),
+    );
+  await s.controller.startSession();
+  await s.controller.load();
+  const user = s.store.send('Lighthouse');
+  s.observation.messages = [user];
+  s.observation.isLoading = true;
+  observeHistory(s.store, s.observation);
+  s.observation.messages = [
+    user,
+    {
+      id: 'a',
+      role: 'assistant',
+      content: 'Outline then record.',
+      toolCalls: [],
+    },
+  ];
+  s.observation.isLoading = false;
+  s.observation.finishReason = 'stop';
+  observeHistory(s.store, s.observation);
+  s.fetcher.mockResolvedValueOnce(
+    Response.json({
+      id: 'light',
+      version: 1,
+      messages: [
+        { role: 'user', content: 'Lighthouse' },
+        { role: 'assistant', content: 'Outline then record.' },
+      ],
+    }),
+  );
+  s.controller.subscribe(() => {
+    if (!s.controller.state().busy) s.controller.cancelPending();
+  });
+
+  await s.controller.save();
+
+  expect(s.controller.state().version).toBe(0);
+  expect(s.controller.state().snapshot?.messages).toEqual([]);
+  expect(s.observation.messages).toHaveLength(2);
+});

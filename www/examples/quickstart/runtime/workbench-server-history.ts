@@ -160,7 +160,7 @@ export function createWorkbenchServerHistory(
             ? String(value.error)
             : `HTTP ${response.status}`,
         );
-      return value;
+      return { value, ticket };
     } catch (error) {
       if (ticket === generation && !disposed && options.active())
         publish(
@@ -175,11 +175,18 @@ export function createWorkbenchServerHistory(
       }
     }
   };
+  const current = (ticket: number) =>
+    ticket === generation &&
+    !disposed &&
+    options.active() &&
+    options.store.getSnapshot().cursor === null;
   const session = async (method: 'GET' | 'POST' | 'DELETE') => {
-    const value = (await request('session', `${root}/session`, method)) as Pick<
+    const result = await request('session', `${root}/session`, method);
+    if (!result || !current(result.ticket)) return;
+    const value = result.value as Pick<
       WorkbenchServerHistoryState,
       'access' | 'threads' | 'foreignThreadId'
-    > | null;
+    >;
     if (value)
       publish(
         { ...value, threadId: null, version: null, snapshot: null },
@@ -226,11 +233,9 @@ export function createWorkbenchServerHistory(
     async load() {
       const id = state.threads?.[options.lesson][state.selectedSlot];
       if (!id) return;
-      const value = (await request(
-        'load-server',
-        threadPath(id),
-        'GET',
-      )) as WorkbenchServerSnapshot | null;
+      const result = await request('load-server', threadPath(id), 'GET');
+      if (!result || !current(result.ticket)) return;
+      const value = result.value as WorkbenchServerSnapshot | null;
       const document =
         value &&
         decodeWorkbenchHistory(
@@ -275,7 +280,7 @@ export function createWorkbenchServerHistory(
             'loaded-server',
           );
       } catch (error) {
-        if (!disposed) {
+        if (ticket === generation && !disposed && options.active()) {
           options.store.failHistoryReplacement(error);
           publish({ error: String(error) }, 'load-server-failed');
         }
@@ -299,7 +304,7 @@ export function createWorkbenchServerHistory(
       if (!encoded) return;
       const id = state.threadId;
       const expectedVersion = state.version;
-      const value = (await request(
+      const result = await request(
         'save-server',
         threadPath(state.threadId),
         'PUT',
@@ -307,7 +312,9 @@ export function createWorkbenchServerHistory(
           expectedVersion: state.version,
           messages: JSON.parse(encoded).messages,
         },
-      )) as WorkbenchServerSnapshot | null;
+      );
+      if (!result || !current(result.ticket)) return;
+      const value = result.value as WorkbenchServerSnapshot | null;
       if (
         value &&
         value.id === id &&
@@ -356,6 +363,17 @@ export function createWorkbenchServerHistory(
           )
         : Promise.resolve(null),
     captureResponse,
+    /** Aborts deactivated conversation work and rejects late responses while retaining loaded identity and unsaved SDK text. */
+    cancelPending() {
+      if (disposed) return;
+      generation++;
+      pending?.abort();
+      pending = null;
+      if (state.busy) {
+        options.store.failHistoryReplacement();
+        publish({ busy: false }, 'server-cancelled');
+      }
+    },
     dispose() {
       disposed = true;
       generation++;
