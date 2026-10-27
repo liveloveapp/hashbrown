@@ -7,6 +7,7 @@ import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 function fakeStorage() {
   const map = new Map<string, string>();
   return {
+    map,
     getItem: (key: string) => map.get(key) ?? null,
     setItem: (key: string, value: string) => void map.set(key, value),
   };
@@ -253,6 +254,9 @@ test('steps, clamps and resets the split from the keyboard', () => {
   press('ArrowRight');
 
   expect(separator?.getAttribute('aria-valuenow')).toBe('52');
+  expect(separator?.getAttribute('aria-valuetext')).toBe(
+    'Chat 52%, inspector 48%',
+  );
   expect(layout.get().split).toBe(52);
   expect(grid?.style.getPropertyValue('--wb-split')).toBe('');
   expect(grid?.style.getPropertyValue('--wb-chat')).toBe('52fr');
@@ -304,6 +308,73 @@ test('drags the split relative to chat and inspector', () => {
   expect(dragging).toBe(true);
   expect(clamped).toBe(75);
   expect(layout.get().split).toBe(75);
+  expect(separator?.classList.contains('wb-dragging')).toBe(false);
+  shell.dispose();
+});
+
+test('persists the split once when a drag ends', () => {
+  const storage = fakeStorage();
+  const setItem = vi.spyOn(storage, 'setItem');
+  const { host, shell } = mountShell(createWorkbenchLayoutStore(storage));
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(
+    host.querySelector('.wb-chat') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(0, 600));
+  vi.spyOn(
+    host.querySelector('.wb-inspector') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(600, 1000));
+  const fire = (type: string, clientX: number) =>
+    separator?.dispatchEvent(new MouseEvent(type, { clientX, bubbles: true }));
+
+  fire('pointerdown', 500);
+  fire('pointermove', 550);
+  fire('pointermove', 600);
+  const writesWhileDragging = setItem.mock.calls.length;
+  fire('pointerup', 600);
+
+  expect(writesWhileDragging).toBe(0);
+  expect(setItem).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(storage.map.get('hashbrown.workbench.layout') as string).split,
+  ).toBe(60);
+  shell.dispose();
+});
+
+test('ignores pointer moves from a different pointer during a drag', () => {
+  const { host, shell, layout } = mountShell();
+  const separator = host.querySelector<HTMLElement>('[role=separator]');
+  const rect = (left: number, right: number) =>
+    ({ left, right, width: right - left }) as DOMRect;
+  vi.spyOn(
+    host.querySelector('.wb-chat') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(0, 600));
+  vi.spyOn(
+    host.querySelector('.wb-inspector') as HTMLElement,
+    'getBoundingClientRect',
+  ).mockReturnValue(rect(600, 1000));
+  const fire = (type: string, clientX: number, pointerId: number) =>
+    separator?.dispatchEvent(
+      Object.assign(new MouseEvent(type, { clientX, bubbles: true }), {
+        pointerId,
+      }),
+    );
+
+  fire('pointerdown', 500, 1);
+  fire('pointermove', 300, 2);
+  fire('pointerup', 300, 2);
+  const afterOtherPointer = layout.get().split;
+  const stillDragging = separator?.classList.contains('wb-dragging');
+  fire('pointermove', 600, 1);
+  fire('pointerup', 600, 1);
+
+  expect(afterOtherPointer).toBe(44);
+  expect(stillDragging).toBe(true);
+  expect(layout.get().split).toBe(60);
   expect(separator?.classList.contains('wb-dragging')).toBe(false);
   shell.dispose();
 });
@@ -475,6 +546,44 @@ test('toggles the play label and icon and reports playback time', () => {
   vi.useRealTimers();
 });
 
+test('marks the selection strip live at the newest event only', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+  const strip = () => host.querySelector('.wb-selection')?.textContent ?? '';
+
+  const atHead = strip();
+  store.seek(0);
+  const inReplay = strip();
+
+  expect(atHead).toMatch(/event (\d+)\/\1 · live/);
+  expect(inReplay).not.toContain('live');
+  shell.dispose();
+});
+
+test('labels the inspector panel by its selected tab', () => {
+  const { host, shell } = mountShell();
+  const panel = host.querySelector('[role=tabpanel]');
+  const selected = () =>
+    host.querySelector<HTMLElement>('[role=tab][aria-selected=true]');
+
+  const initial = panel?.getAttribute('aria-labelledby');
+  const initialTab = selected()?.id;
+  [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')]
+    .find((tab) => tab.textContent === 'State')
+    ?.click();
+
+  expect(initialTab).toBeTruthy();
+  expect(initial).toBe(initialTab);
+  expect(panel?.getAttribute('aria-labelledby')).toBe(selected()?.id);
+  expect(selected()?.textContent).toBe('State');
+  expect(
+    new Set(
+      [...host.querySelectorAll('[role=tab]')].map((tab) => tab.id),
+    ).size,
+  ).toBe(host.querySelectorAll('[role=tab]').length);
+  shell.dispose();
+});
+
 test('positions ticks and the flag on the scrubber', () => {
   const { host, store, shell } = mountShell();
   const empty = host.querySelector('.wb-player .wb-time')?.textContent;
@@ -504,6 +613,39 @@ test('positions ticks and the flag on the scrubber', () => {
     segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
   ).toEqual(['100%', '0%']);
   expect(segments[1]?.textContent).toContain('Turn 2');
+  shell.dispose();
+});
+
+test('marks only the tick under the playhead so its mark yields to the thumb', () => {
+  const { host, store, shell } = mountShell();
+  store.send('Plan');
+  store.record('parsed', { title: 'Pl' });
+  store.record('parsed', { title: 'Plan' });
+  store.settle('complete', 'stop');
+  const atPlayhead = () =>
+    [
+      ...host.querySelectorAll<HTMLButtonElement>(
+        '.wb-scrubber .wb-events button[data-at-playhead]',
+      ),
+    ].map((tick) => tick.dataset.index);
+
+  const tickIndexes = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '.wb-scrubber .wb-events button',
+    ),
+  ].map((tick) => Number(tick.dataset.index));
+  const gap = store
+    .getSnapshot()
+    .events.findIndex((_, index) => !tickIndexes.includes(index));
+
+  store.seek(tickIndexes[0] ?? 0);
+  const onTick = atPlayhead();
+  store.seek(gap);
+  const betweenTicks = atPlayhead();
+
+  expect(gap).toBeGreaterThan(-1);
+  expect(onTick).toEqual([String(tickIndexes[0])]);
+  expect(betweenTicks).toEqual([]);
   shell.dispose();
 });
 

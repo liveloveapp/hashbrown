@@ -32,7 +32,7 @@ Open `http://127.0.0.1:4370/angular.html?lesson=ui-selection`. This lesson uses 
 4. Choose **Show steps** manually. This explicit action saves the steps view and advances the revision to 2. It does not rewrite the plan's title or steps.
 5. Use the bottom timeline to compare the complete decisions, manual choice, and application state. Replay renders the same trusted views with no active handlers, requests, or writes.
 
-<img src="/video/docs/canonical-workbench-ui-selection-angular-result.png" alt="The Angular workbench shows the application-owned ordered plan view beside candidate IDs, confidence, and captured state." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-ui-selection-angular-result.png" alt="The Angular workbench shows the application-owned ordered plan view beside its candidate components and the SDK's selection and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Register known candidates
 

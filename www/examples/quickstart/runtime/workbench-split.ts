@@ -48,8 +48,14 @@ export function createWorkbenchSplit(options: WorkbenchSplitOptions): {
   }
   handle.append(grip);
 
-  const sync = () =>
-    handle.setAttribute('aria-valuenow', String(layout.get().split));
+  const sync = () => {
+    const { split } = layout.get();
+    handle.setAttribute('aria-valuenow', String(split));
+    handle.setAttribute(
+      'aria-valuetext',
+      `Chat ${split}%, inspector ${100 - split}%`,
+    );
+  };
   sync();
   const unsubscribe = layout.subscribe(sync);
 
@@ -62,15 +68,25 @@ export function createWorkbenchSplit(options: WorkbenchSplitOptions): {
     handle.setPointerCapture?.(pointerId);
     handle.focus();
     handle.classList.add('wb-dragging');
+    let moved = false;
+    // Moves update memory only; the final split is saved once when the drag ends.
+    // Only the pointer that started the drag moves or ends it.
+    const own = (e: Event) => (e as PointerEvent).pointerId === pointerId;
     const move = (e: Event) => {
-      if (width <= 0) return;
-      layout.set({
-        split: clampWorkbenchSplit(
-          (((e as MouseEvent).clientX - left) / width) * 100,
-        ),
-      });
+      if (width <= 0 || !own(e)) return;
+      moved = true;
+      layout.set(
+        {
+          split: clampWorkbenchSplit(
+            (((e as MouseEvent).clientX - left) / width) * 100,
+          ),
+        },
+        { persist: false },
+      );
     };
-    const end = () => {
+    const end = (e?: Event) => {
+      if (e && !own(e)) return;
+      if (moved) layout.set({ split: layout.get().split });
       handle.classList.remove('wb-dragging');
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', end);

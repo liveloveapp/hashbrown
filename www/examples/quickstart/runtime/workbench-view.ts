@@ -515,6 +515,7 @@ export function mountWorkbench(
       tab = name;
       render();
     });
+    item.id = `${instanceId}-tab-${name.toLowerCase()}`;
     item.setAttribute('role', 'tab');
     item.setAttribute('aria-controls', pair.id);
     return item;
@@ -811,9 +812,11 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
-    tabButtons.forEach((item) =>
-      item.setAttribute('aria-selected', String(item.textContent === tab)),
-    );
+    tabButtons.forEach((item) => {
+      item.setAttribute('aria-selected', String(item.textContent === tab));
+      if (item.textContent === tab)
+        pair.setAttribute('aria-labelledby', item.id);
+    });
     const onboardingText =
       commands.lesson?.id === 'conversation' ||
       commands.lesson?.id === 'system-instructions';
@@ -868,7 +871,7 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}`
+          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}${historical ? '' : ' · live'}`
           : `Turn ${snapshot.turn} · live`,
       ),
       element('span', provenance.textContent, 'wb-chip'),
@@ -1006,6 +1009,11 @@ export function mountWorkbench(
                           payload: event.payload,
                         }));
     rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
+    // In raw mode the section heading names the frame, so the body needs no second heading.
+    if (rawFrame)
+      capturedHeading.textContent = frame
+        ? `${frame.kind} · ${frame.source}`
+        : 'No selected event';
     capturedSub.textContent = rawFrame
       ? 'captured frame'
       : (frame?.status ?? snapshot.status) === 'loading'
@@ -1015,10 +1023,6 @@ export function mountWorkbench(
       inspection.replaceChildren();
       if (rawFrame) {
         inspection.append(
-          element(
-            'h3',
-            frame ? `${frame.kind} · ${frame.source}` : 'No selected event',
-          ),
           pre(tab === 'Transform' && transform ? transform : frame?.payload),
         );
       } else if (tab === 'Requests') {
@@ -1159,6 +1163,7 @@ export function mountWorkbench(
           'aria-pressed',
           String(index === activeMilestone?.index),
         );
+        item.toggleAttribute('data-at-playhead', index === selectedIndex);
         events.append(item);
       });
     });
