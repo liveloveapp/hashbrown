@@ -16,7 +16,7 @@ The Angular and React versions use the same example, styles, and capture model. 
 
 ## Run the example
 
-Try it without installing anything at [workbench.hashbrown.dev/angular.html](https://workbench.hashbrown.dev/angular.html). Each lesson's local URL in the table below works there too, for example `/angular.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor.
+Try it without installing anything at [workbench.hashbrown.dev/angular.html](https://workbench.hashbrown.dev/angular.html). Each lesson's local URL in the table below works there too, for example `/angular.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor. Server-owned threads and Public endpoints run only on the local server, because their demo sessions live in one process.
 
 To run it yourself, clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
 
