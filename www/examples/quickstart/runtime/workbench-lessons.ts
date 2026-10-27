@@ -1,5 +1,7 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'ui-kits'
+  | 'ui-chatbot'
   | 'agent-decisions'
   | 'json-parser'
   | 'natural-forms'
@@ -106,6 +108,8 @@ export const workbenchLessonGroups: readonly {
       'magic-text',
       'predictions',
       'ui-selection',
+      'ui-kits',
+      'ui-chatbot',
       'agent-decisions',
       'json-parser',
       'natural-forms',
@@ -226,6 +230,14 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     inspector: 'Instructions',
     endpoint: '/api/workbench/system-instructions',
   },
+  ...(['ui-kits', 'ui-chatbot'] as const).map((id) => ({
+    id,
+    title: id === 'ui-kits' ? 'UI kits' : 'UI chatbot',
+    format: 'ui' as const,
+    inspector: 'UI' as const,
+    protocol: 'chat' as const,
+    endpoint: `/api/workbench/${id}`,
+  })),
   ...(['shared-state', 'activities', 'interrupts'] as const).map((id) => ({
     id,
     title: {

@@ -1,4 +1,8 @@
 import {
+  getWorkbenchUiResponseSchema,
+  getWorkbenchUiSystem,
+} from '../runtime/workbench-ui-kits';
+import {
   workbenchAuthoringSchema,
   workbenchFormsSystem,
   workbenchParserSystem,
@@ -65,6 +69,8 @@ export function pinWorkbenchInput(
     'decision'
   )
     throw new Error('Use the decision endpoint');
+  const uiLesson =
+    lesson === 'ui-kits' || lesson === 'ui-chatbot' ? lesson : null;
   const structured =
     workbenchLessons.find((entry) => entry.id === lesson)?.format ===
     'structured';
@@ -118,8 +124,9 @@ export function pinWorkbenchInput(
       {
         id: 'workbench-system',
         role: 'system',
-        content:
-          lesson === 'json-parser'
+        content: uiLesson
+          ? getWorkbenchUiSystem(uiLesson)
+          : lesson === 'json-parser'
             ? workbenchParserSystem
             : lesson === 'natural-forms'
               ? workbenchFormsSystem
@@ -172,13 +179,15 @@ export function pinWorkbenchInput(
         ...(plainText && !authoring
           ? {}
           : {
-              responseSchema: authoring
-                ? s.toJsonSchema(workbenchAuthoringSchema)
-                : lesson === 'predictions'
-                  ? s.toJsonSchema(workbenchPredictionsSchema)
-                  : structured
-                    ? s.toJsonSchema(getWorkbenchPlanSchema(lesson))
-                    : responseSchema,
+              responseSchema: uiLesson
+                ? getWorkbenchUiResponseSchema(uiLesson)
+                : authoring
+                  ? s.toJsonSchema(workbenchAuthoringSchema)
+                  : lesson === 'predictions'
+                    ? s.toJsonSchema(workbenchPredictionsSchema)
+                    : structured
+                      ? s.toJsonSchema(getWorkbenchPlanSchema(lesson))
+                      : responseSchema,
             }),
       },
     },
