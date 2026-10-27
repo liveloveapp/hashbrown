@@ -375,3 +375,79 @@ test('actual stats HTTP parser preserves pending wire status through acquiring a
     await new Promise<void>((done) => server.close(() => done()));
   }
 }, 20_000);
+
+test('native parser retains only complete bounded proof and explicit per-call usage facts', async () => {
+  const { nativeStats } = await import('../harness/live-browser-fixture');
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
+  const { stats } = nativeApprovalUnitEvidence();
+
+  const parsed = nativeStats({
+    ...stats,
+    requestId: 'PRIVATE_CANARY',
+    arguments: 'PRIVATE_CANARY',
+  });
+
+  expect(parsed).toMatchObject({
+    nativeApprovalStage: 'followup',
+    nativeApprovalPublications: 3,
+    usageCompleteCalls: 3,
+    usageIncompleteCalls: 0,
+  });
+  expect(JSON.stringify(parsed)).not.toContain('PRIVATE_CANARY');
+  for (const mutation of [
+    { usageCompleteCalls: undefined },
+    { usageIncompleteCalls: undefined },
+    { usageCompleteCalls: -1 },
+    { usageCompleteCalls: 2 },
+    { usageIncompleteCalls: 1 },
+    { nativeApprovalPublications: 4 },
+    { nativeApprovalBindingMatched: 'yes' },
+  ])
+    expect(() => nativeStats({ ...stats, ...mutation })).toThrow();
+});
+
+test('native completion waits for the fresh later-user phase rather than an old completed answer', async () => {
+  const { nativeStats, waitForLiveApprovalPhase } =
+    await import('../harness/live-browser-fixture');
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
+  const { stats } = nativeApprovalUnitEvidence();
+  const old = nativeStats({
+    ...stats,
+    calls: 2,
+    httpCalls: 2,
+    usageCompleteCalls: 2,
+    wire: stats.wire.slice(0, 2),
+    nativeApprovalStage: 'approved',
+    nativeApprovalModelPhase: 2,
+    nativeApprovalWirePhase: 2,
+    nativeApprovalPublications: 2,
+  });
+  const fresh = nativeStats(stats);
+  const fixture = {
+    stats: jest
+      .fn()
+      .mockResolvedValueOnce(old)
+      .mockResolvedValueOnce(old)
+      .mockResolvedValue(fresh),
+  };
+
+  const completed = await waitForLiveApprovalPhase(fixture, 3);
+
+  expect(completed.calls).toBe(3);
+  expect(fixture.stats).toHaveBeenCalledTimes(3);
+  for (const mutation of [
+    { calls: 4 },
+    { stage: 'failed' },
+    { nativeApprovalStage: 'invalid' },
+    { calls: 5 },
+    { usageCompleteCalls: 2, usageIncompleteCalls: 1 },
+  ])
+    await expect(
+      waitForLiveApprovalPhase(
+        { stats: async () => ({ ...fresh, ...mutation }) as typeof fresh },
+        3,
+      ),
+    ).rejects.toThrow();
+});

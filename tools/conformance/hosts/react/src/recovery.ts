@@ -6,6 +6,7 @@ export interface RecoveryEnvelope {
   readonly disposition: string;
   readonly serverRevision?: number;
   readonly reconciliationOutcome?: string;
+  readonly reason?: 'PendingMixedBrowserResult';
   readonly snapshot?: ConversationSnapshot;
 }
 
@@ -85,13 +86,19 @@ export function readRecovery(value: unknown): RecoveryEnvelope {
   ];
   if (
     !known.includes(envelope.disposition) ||
+    (envelope.reason != null &&
+      (envelope.reason !== 'PendingMixedBrowserResult' ||
+        envelope.disposition !== 'Pending')) ||
     (envelope.disposition === 'Reconciled'
       ? !outcomes.includes(envelope.reconciliationOutcome ?? '')
       : envelope.reconciliationOutcome != null)
   ) {
     throw new Error('Unsupported recovery envelope');
   }
-  if (envelope.disposition === 'NativePendingBrowserResults') {
+  if (
+    envelope.disposition === 'NativePendingBrowserResults' ||
+    envelope.reason === 'PendingMixedBrowserResult'
+  ) {
     return { ...envelope, snapshot: undefined };
   }
   return envelope;
@@ -109,4 +116,13 @@ export function recoveryBlocked(envelope: RecoveryEnvelope): boolean {
     ].includes(envelope.disposition) ||
     envelope.reconciliationOutcome === 'Unresolved'
   );
+}
+
+/** Explains blocked native browser recovery while retaining the existing fresh-thread action. */
+export function recoveryStatus(envelope: RecoveryEnvelope): string {
+  if (envelope.reason === 'PendingMixedBrowserResult')
+    return 'Pending browser work cannot be restored. Start a new thread.';
+  return envelope.reconciliationOutcome
+    ? `${envelope.disposition}: ${envelope.reconciliationOutcome}`
+    : envelope.disposition;
 }

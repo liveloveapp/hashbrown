@@ -1,0 +1,206 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Extensions.AI;
+
+static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+static void Reject(Action action, string message)
+{ try { action(); } catch (ArgumentException) { return; } throw new Exception(message); }
+var key = new NativeSessionKey("native", "alice", "thread", new Dictionary<string, string> { ["tenant"] = "one" });
+var schema = JsonSerializer.SerializeToElement(new { type = "object", properties = new { code = new { type = "string" } } });
+var catalog = new NativeToolCatalog([new("backend", 1, schema)]);
+var options = new NativeSessionOptions();
+var ordinaryFunction = AIFunctionFactory.Create((string code) => code, "backend");
+Reject(() => NativeSessionAgentFactory.Create(new NoModel(), "native", [ordinaryFunction], new NativeToolCatalog([new("backend", 1, ordinaryFunction.JsonSchema, RequiresConfirmation: true)]), new HttpContextAccessor()), "Actual ordinary wrapper must not match a protected catalog registration.");
+var input = JsonNode.Parse("""{"threadId":"thread","runId":"r1","messages":[{"id":"u1","role":"user","content":"hello"}],"tools":[],"context":[],"state":{},"resume":[{"interruptId":"request-a","status":"resolved","payload":{"approved":true}},{"interruptId":"request-b","status":"resolved","payload":{"approved":false}},{"interruptId":"request-c","status":"cancelled"}]}""")!.AsObject();
+for (var index = 0; index < 3; index++)
+    input["messages"]!.AsArray().Add(new JsonObject { ["id"] = "assistant-" + index, ["role"] = "assistant", ["content"] = "", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = "call-" + index, ["type"] = "function", ["function"] = new JsonObject { ["name"] = "backend", ["arguments"] = JsonSerializer.Serialize(new { code = index.ToString() }) } }) });
+var original = input.ToJsonString();
+Reject(() => NativeApprovalAdmission.Parse(original.Replace("\"resume\":[", "\"resume\":[],\"discarded\":["), key, catalog, options), "Empty resume must be rejected by native admission before materialization.");
+var parsed = NativeApprovalAdmission.Parse(original, key, catalog, options);
+
+Check(input.ToJsonString() == original, "Parsing must not mutate original raw public input.");
+Check(parsed.Decisions.Select(item => item.Kind).SequenceEqual(new[] { NativeApprovalDecisionKind.Approved, NativeApprovalDecisionKind.Declined, NativeApprovalDecisionKind.Cancelled }), "Resolved booleans and cancelled absence map to exact decisions.");
+Check(!parsed.CanonicalPublicRequest.Contains("resume"), "Canonical public prefix never retains request-local decisions.");
+Reject(() => NativeSessionHistory.Normalize(original, key, catalog, options), "Ordinary normalization must still reject resume.");
+
+var negatives = new Dictionary<string, Action<JsonObject>>
+{
+    ["missing resume"] = root => root.Remove("resume"),
+    ["empty resume"] = root => root["resume"] = new JsonArray(),
+    ["null resume"] = root => root["resume"] = null,
+    ["object resume"] = root => root["resume"] = new JsonObject(),
+    ["missing id"] = root => root["resume"]![0]!.AsObject().Remove("interruptId"),
+    ["empty id"] = root => root["resume"]![0]!["interruptId"] = "",
+    ["oversized id"] = root => root["resume"]![0]!["interruptId"] = new string('x', 1025),
+    ["duplicate id"] = root => root["resume"]![1]!["interruptId"] = "request-a",
+    ["unknown status"] = root => root["resume"]![0]!["status"] = "approved",
+    ["missing status"] = root => root["resume"]![0]!.AsObject().Remove("status"),
+    ["missing payload"] = root => root["resume"]![0]!.AsObject().Remove("payload"),
+    ["null payload"] = root => root["resume"]![0]!["payload"] = null,
+    ["missing approved"] = root => root["resume"]![0]!["payload"] = new JsonObject(),
+    ["null approved"] = root => root["resume"]![0]!["payload"]!["approved"] = null,
+    ["string approved"] = root => root["resume"]![0]!["payload"]!["approved"] = "true",
+    ["number approved"] = root => root["resume"]![0]!["payload"]!["approved"] = 1,
+    ["extra payload"] = root => root["resume"]![0]!["payload"]!["reason"] = "yes",
+    ["cancel payload"] = root => root["resume"]![2]!["payload"] = new JsonObject(),
+    ["cancel null payload"] = root => root["resume"]![2]!["payload"] = null,
+    ["toolCall forgery"] = root => root["resume"]![0]!["toolCall"] = new JsonObject(),
+    ["metadata forgery"] = root => root["resume"]![0]!["metadata"] = new JsonObject(),
+    ["batch forgery"] = root => root["resume"]![0]!["batchId"] = "caller",
+    ["revision forgery"] = root => root["resume"]![0]!["revision"] = 99,
+};
+foreach (var (name, change) in negatives)
+{
+    var candidate = input.DeepClone().AsObject(); change(candidate);
+    var before = candidate.ToJsonString();
+
+    Reject(() => NativeApprovalAdmission.Parse(before, key, catalog, options), "Malformed native decision accepted: " + name);
+    Check(candidate.ToJsonString() == before, "Rejected input was mutated: " + name);
+}
+Reject(() => NativeApprovalAdmission.Parse(original, key, catalog, options with { PublicBytes = 10 }), "Oversized original bytes must fail before materialization.");
+Reject(() => NativeApprovalAdmission.Parse(original, key, catalog, options with { MaximumCalls = 2 }), "Complete decision count must be bounded.");
+Reject(() => NativeApprovalAdmission.Parse(original.Replace("\"approved\":true", "\"approved\":true,\"approved\":false"), key, catalog, options), "Duplicate payload fields must fail before typed conversion.");
+Reject(() => NativeApprovalAdmission.Parse(original.Replace("\"status\":\"resolved\"", "\"status\":\"resolved\",\"status\":\"cancelled\""), key, catalog, options), "Duplicate decision fields must fail before typed conversion.");
+
+var descriptors = new List<NativeApprovalDescriptor>();
+var locations = new Dictionary<string, NativePublicCallLocation>();
+for (var index = 0; index < 3; index++)
+{
+    var id = "request-" + (char)('a' + index);
+    descriptors.Add(new(id, new("call-" + index, "backend", 1, JsonSerializer.SerializeToElement(new { code = index.ToString() })), new(null, null, index)));
+    locations.Add(id, new("assistant-" + index, index + 1, 0));
+}
+var batch = new NativeApprovalBatch("batch-owned", descriptors, []);
+var oversizedLocations = new OversizedLocations();
+
+Reject(() => new NativeBoundApprovalBatch(batch, oversizedLocations), "Oversized public position maps must be rejected before enumeration/materialization.");
+Check(oversizedLocations.Enumerations == 0, "An oversized public position map cannot be enumerated before bounds validation.");
+var bound = new NativeBoundApprovalBatch(batch, locations);
+var lease = new NativeSessionLease(key, "token-current", 2, 9);
+NativeApprovalEvidence Evidence(NativeApprovalState state = NativeApprovalState.Pending, long revision = 5) => new(key.Id, "compatibility", catalog.Identity, lease, bound, revision, state, [], null, null, DateTimeOffset.UtcNow.AddMinutes(1));
+var evidence = Evidence();
+var permutation = new NativeApprovalAdmissionEnvelope(parsed.CanonicalPublicRequest, parsed.Decisions.Reverse().ToArray());
+
+Check(NativeApprovalAdmission.MatchesPublishedBatch(permutation, evidence), "The complete three-decision set is order independent.");
+Check(!NativeApprovalAdmission.MatchesPublishedBatch(new(parsed.CanonicalPublicRequest, parsed.Decisions.Take(2).ToArray()), evidence), "Missing current request must fail.");
+Check(!NativeApprovalAdmission.MatchesPublishedBatch(new(parsed.CanonicalPublicRequest, [.. parsed.Decisions.Take(2), new("stale", NativeApprovalDecisionKind.Approved)]), evidence), "Stale or extra request must fail.");
+foreach (var state in new[] { NativeApprovalState.DecisionAdmitted, NativeApprovalState.Settled, NativeApprovalState.Retired })
+    Check(!NativeApprovalAdmission.MatchesPublishedBatch(parsed, Evidence(state)), "Consumed or retired batch must fail preliminary admission.");
+Check(!NativeApprovalAdmission.MatchesPublishedBatch(parsed, Evidence(revision: 10)), "Future publication relative to current acquisition must fail.");
+var snapshot = new NativeSessionSnapshot("{}", parsed.CanonicalPublicRequest, [], [], false, new(bound));
+Check(NativeApprovalAdmission.AdmitsOwnedPrefix(parsed.CanonicalPublicRequest, snapshot, evidence), "Exact owned prefix is admissible without new messages.");
+Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(parsed.CanonicalPublicRequest.Replace("hello", "forged"), snapshot, evidence), "Caller history cannot change an owned prefix.");
+Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(parsed.CanonicalPublicRequest, new("{}", parsed.CanonicalPublicRequest, [], [], false), evidence), "An explicit ordinary snapshot cannot invent a pending batch.");
+
+// Only the exact SDK cancellation annotation on the exact interrupted browser binding is admissible.
+var mixed = JsonNode.Parse(parsed.CanonicalPublicRequest)!.AsObject();
+mixed["messages"]!.AsArray().Add(new JsonObject { ["id"] = "assistant-browser", ["role"] = "assistant", ["content"] = "", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = "browser-call", ["type"] = "function", ["function"] = new JsonObject { ["name"] = "frontend", ["arguments"] = "{\"city\":\"Paris\"}" } }) });
+var browser = new NativeBrowserRequestBinding("request-browser", "browser-call", "frontend", JsonSerializer.SerializeToElement(new { city = "Paris" }), new(null, null, 3));
+var mixedLocations = bound.PublicLocations.ToDictionary(pair => pair.Key, pair => pair.Value);
+mixedLocations.Add(browser.RequestId, new("assistant-browser", 4, 0));
+var mixedBound = new NativeBoundApprovalBatch(new("mixed-batch", batch.ProtectedRequests, [browser]), mixedLocations);
+var mixedEvidence = new NativeApprovalEvidence(key.Id, "compatibility", catalog.Identity, lease, mixedBound, 5, NativeApprovalState.Pending, [], null, null, evidence.ExpiresAt);
+var mixedSnapshot = new NativeSessionSnapshot("{}", NativeSessionHistory.Normalize(mixed.ToJsonString(), key, catalog, options), [], ["browser-call"], false, new(mixedBound));
+var annotated = mixed.DeepClone().AsObject();
+annotated["messages"]![4]!["toolCalls"]![0]!["metadata"] = JsonNode.Parse("""{"b4.step":{"v":1,"kind":"server","status":"cancelled","settledAt":1793072013314}}""");
+var annotatedBefore = annotated.ToJsonString();
+
+Check(NativeApprovalAdmission.AdmitsOwnedPrefix(annotatedBefore, mixedSnapshot, mixedEvidence), "Exact owned interrupted-browser cancellation annotation is admissible.");
+Check(annotated.ToJsonString() == annotatedBefore, "Owned prefix comparison cannot mutate incoming history.");
+var rawAnnotated = annotated.DeepClone().AsObject(); rawAnnotated["resume"] = input["resume"]!.DeepClone();
+var throughParser = NativeApprovalAdmission.Parse(rawAnnotated.ToJsonString(), key, catalog, options);
+Check(throughParser.CanonicalPublicRequest.Contains("b4.step") && NativeApprovalAdmission.AdmitsOwnedPrefix(throughParser.CanonicalPublicRequest, mixedSnapshot, mixedEvidence), "Actual typed AGUI normalization must preserve genuine cancellation metadata for owned comparison.");
+foreach (var version in new[] { "1.5", "2147483648", "1e30" })
+{
+    var forged = rawAnnotated.DeepClone().AsObject();
+    forged["messages"]![4]!["toolCalls"]![0]!["metadata"]!["b4.step"]!["v"] = JsonNode.Parse(version);
+    var envelope = NativeApprovalAdmission.Parse(forged.ToJsonString(), key, catalog, options);
+
+    var canonicalVersion = JsonNode.Parse(envelope.CanonicalPublicRequest)!["messages"]![4]!["toolCalls"]![0]!["metadata"]!["b4.step"]!["v"]!;
+    Check(canonicalVersion.ToJsonString() == version, "Canonicalization must preserve the actual malformed numeric version.");
+    Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(envelope.CanonicalPublicRequest, mixedSnapshot, mixedEvidence), "Fractional and out-of-range raw cancellation versions must reject without throwing: " + version);
+}
+foreach (var field in new[] { "v", "kind", "status", "settledAt" })
+{
+    var forged = annotated.DeepClone().AsObject();
+    forged["messages"]![4]!["toolCalls"]![0]!["metadata"]!["b4.step"]!.AsObject().Remove(field);
+
+    Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(forged.ToJsonString(), mixedSnapshot, mixedEvidence), "Incomplete cancellation annotation must fail: " + field);
+}
+foreach (var replacement in new[] { "-1", "253402300800000", "\"forged\"", "null" })
+{
+    var forged = annotated.DeepClone().AsObject();
+    forged["messages"]![4]!["toolCalls"]![0]!["metadata"]!["b4.step"]!["settledAt"] = JsonNode.Parse(replacement);
+
+    Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(forged.ToJsonString(), mixedSnapshot, mixedEvidence), "Unbounded cancellation timestamp must fail.");
+}
+var changes = new Dictionary<string, Action<JsonObject>>
+{
+    ["parent"] = root => root["messages"]![4]!["id"] = "forged-parent",
+    ["name"] = root => root["messages"]![4]!["toolCalls"]![0]!["function"]!["name"] = "backend",
+    ["arguments"] = root => root["messages"]![4]!["toolCalls"]![0]!["function"]!["arguments"] = "{}",
+    ["extra annotation"] = root => root["messages"]![4]!["toolCalls"]![0]!["metadata"]!["b4.step"]!["extra"] = true,
+    ["extra metadata"] = root => root["messages"]![4]!["toolCalls"]![0]!["metadata"]!["caller"] = true,
+    ["protected annotation"] = root => root["messages"]![1]!["toolCalls"]![0]!["metadata"] = root["messages"]![4]!["toolCalls"]![0]!["metadata"]!.DeepClone(),
+    ["configuration"] = root => root["state"] = new JsonObject { ["forged"] = true },
+};
+foreach (var (name, change) in changes)
+{
+    var forged = annotated.DeepClone().AsObject(); change(forged);
+
+    Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(forged.ToJsonString(), mixedSnapshot, mixedEvidence), "Owned prefix forgery must fail: " + name);
+    forged["resume"] = input["resume"]!.DeepClone();
+    var envelope = NativeApprovalAdmission.Parse(forged.ToJsonString(), key, catalog, options);
+    Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(envelope.CanonicalPublicRequest, mixedSnapshot, mixedEvidence), "Raw to typed canonicalization must not erase a forbidden history/metadata delta: " + name);
+}
+Check(!NativeApprovalAdmission.AdmitsOwnedPrefix(annotatedBefore, new("{}", mixedSnapshot.PublicRequest, [], [], false, new(mixedBound)), mixedEvidence), "A binding without an expected unresolved browser result cannot permit annotation changes.");
+
+// Mutation/disposal after construction cannot change protected storage values.
+using (var arguments = JsonDocument.Parse("{\"code\":\"original\"}"))
+{
+    var protectedCall = new NativeApprovalDescriptor("owned", new("call-owned", "backend", 1, arguments.RootElement), new(null, null, 0));
+    var list = new List<NativeApprovalDescriptor> { protectedCall };
+    var immutable = new NativeApprovalBatch("immutable", list, []);
+    list.Clear();
+
+    Check(immutable.ProtectedRequests.Count == 1 && immutable.ProtectedRequests[0].Call.Arguments.GetProperty("code").GetString() == "original", "Captured collections and JSON must be independently owned.");
+}
+descriptors.Clear(); locations.Clear();
+Check(batch.ProtectedRequests.Count == 3 && bound.PublicLocations.Count == 3, "Bound capture must not retain mutable caller collections.");
+var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+var restored = JsonSerializer.Deserialize<NativeSessionSnapshot>(JsonSerializer.Serialize(snapshot, jsonOptions), jsonOptions)!;
+Check(restored.Approvals.PendingBatch!.Batch.BatchId == "batch-owned" && restored.Approvals.PendingBatch.Batch.ProtectedRequests[0].NativeLocation.MessageId is null, "Explicit approval snapshot and absent native parent roundtrip.");
+var legacy = new NativeSessionSnapshot("{}", parsed.CanonicalPublicRequest, [], [], false);
+Check(legacy.Approvals.PendingBatch is null, "Existing five-argument source constructor explicitly selects empty state.");
+var missingState = JsonSerializer.SerializeToNode(legacy, jsonOptions)!.AsObject(); missingState.Remove("approvals");
+Reject(() => JsonSerializer.Deserialize<NativeSessionSnapshot>(missingState.ToJsonString(), jsonOptions), "Missing serialized approval state requires proven v1 migration.");
+var oldHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(new[] { new { Name = "backend", Version = 1, Schema = schema } })))));
+Check(catalog.Identity == oldHash, "All-false catalog identity must retain the exact v1 hash input.");
+var protectedCatalog = new NativeToolCatalog([new("backend", 1, schema, RequiresConfirmation: true)]);
+Check(protectedCatalog.Identity != catalog.Identity, "A protected requirement changes compatibility.");
+Console.WriteLine("Native approval admission contracts passed.");
+
+sealed class NoModel : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new Exception("Catalog validation cannot invoke a model.");
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new Exception("Catalog validation cannot invoke a model.");
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+sealed class OversizedLocations : IReadOnlyDictionary<string, NativePublicCallLocation>
+{
+    public int Enumerations { get; private set; }
+    public int Count => 257;
+    public IEnumerable<string> Keys => throw new Exception("Oversized keys cannot be materialized.");
+    public IEnumerable<NativePublicCallLocation> Values => throw new Exception("Oversized values cannot be materialized.");
+    public NativePublicCallLocation this[string key] => throw new Exception("Oversized map cannot be read.");
+    public bool ContainsKey(string key) => throw new Exception("Oversized map cannot be read.");
+    public bool TryGetValue(string key, out NativePublicCallLocation value) => throw new Exception("Oversized map cannot be read.");
+    public IEnumerator<KeyValuePair<string, NativePublicCallLocation>> GetEnumerator()
+    { Enumerations++; throw new Exception("Oversized public position map was enumerated before count validation."); }
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}

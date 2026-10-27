@@ -1,0 +1,271 @@
+#pragma warning disable MAAI001 // Actual pinned native session entry points and complete-key store boundary are exercised.
+using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Agents.AI;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+var accessor = new HttpContextAccessor();
+var traces = new List<(string Request, string Stage, string? Value)>(); var traceLock = new object();
+void Observe(string value)
+{
+    var item = JsonNode.Parse(value)!;
+    var request = accessor.HttpContext?.Request.Headers["X-Trace"].ToString() ?? "outside";
+    lock (traceLock) traces.Add((request, item["stage"]!.GetValue<string>(), item["value"]?.GetValue<string>()));
+}
+void Record(string stage, string? value = null) => Observe(JsonSerializer.Serialize(new { stage, value }));
+(string Request, string Stage, string? Value)[] Events(string request) { lock (traceLock) return traces.Where(item => item.Request == request).ToArray(); }
+void NoExecution(string request)
+{
+    var forbidden = new[] { "Create.Guard", "Create.Forward", "Deserialize.Guard", "Deserialize.Forward", "Run.Guard", "Run.Forward", "Model", "Journal.Dispatch", "Function.Effect", "Serialize.Guard", "Serialize.Forward", "Journal.Save", "Journal.Authorize", "Journal.Finalize" };
+    Check(!Events(request).Any(item => forbidden.Contains(item.Stage, StringComparer.Ordinal)), "Refused or unreserved preparation must have zero actual native session/run/model/function/save/publication entries: " + request);
+}
+void Originals(string request, string raw)
+{
+    var events = Events(request);
+    string Value(string stage) => events.Single(item => item.Stage == stage).Value!;
+    Check(Value("Original.Raw.Before") == raw && Value("Original.Raw.After") == raw, "Original raw bytes decoded as strict UTF8 remain exact before and after preparation/execution: " + request);
+    var original = JsonNode.Parse(Value("Original.Typed.Before"))!;
+    Check(JsonNode.DeepEquals(original, JsonNode.Parse(Value("Original.Typed.AfterPrepare"))) && JsonNode.DeepEquals(original, JsonNode.Parse(Value("Original.Typed.After"))), "Original typed nested messages/metadata/schema/configuration/resume must remain unchanged: " + request);
+    var expected = original.DeepClone().AsObject(); expected["tools"] = new JsonArray();
+    Check(Value("Transport.Independent") == "True" && JsonNode.DeepEquals(expected, JsonNode.Parse(Value("Transport.Typed.Before"))) && JsonNode.DeepEquals(expected, JsonNode.Parse(Value("Transport.Typed.After"))), "A separately allocated upstream graph changes only Tools, including through the pinned thread-ID setter: " + request);
+}
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL required."));
+var schema = "approval_order_" + Guid.NewGuid().ToString("N");
+var effects = 0;
+var function = AIFunctionFactory.Create((string code) => { Record("Function.Effect"); effects++; return code; }, "backend");
+var protectedFunction = new ApprovalRequiredAIFunction(function);
+var catalog = new NativeToolCatalog([new("backend", 1, function.JsonSchema, RequiresConfirmation: true)]);
+var durable = new PostgresNativeSessionJournal(source, catalog, "order-v1", schema);
+var journal = new OrderJournal(durable, Record);
+var model = new OrderModel(Record);
+PartitionStore? partitioned = null;
+try
+{
+    await durable.InitializeAsync();
+    var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+    builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0"); builder.Logging.ClearProviders(); builder.Services.AddRouting(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+    builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>("fixture", _ => { });
+    builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+    NativeSessionEndpointConfiguration.Configure(builder.Services, "native", journal, catalog, _ => { Record("Scope"); return "owned"; }, new NativeSessionOptions { PublicBytes = 8192 });
+    var actualStore = builder.Services.Last(item => item.IsKeyedService && item.ServiceType == typeof(AgentSessionStore) && Equals(item.ServiceKey, "native"));
+    builder.Services.AddKeyedSingleton<AgentSessionStore>("native", (services, key) => partitioned = new PartitionStore((AgentSessionStore)actualStore.KeyedImplementationFactory!(services, key), accessor, Record));
+    var observed = typeof(NativeSessionAgentFactory).GetMethod("CreateObservedForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+    var agent = (AIAgent)observed.Invoke(null, [model, "native", new[] { protectedFunction }, catalog, accessor, (Action<string>)Observe])!;
+    await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+    NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native"); await app.StartAsync();
+    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(15) };
+    var input = JsonNode.Parse("""{"threadId":"order","runId":"initial","messages":[{"id":"u1","role":"user","content":"run","metadata":{"nested":{"Case":"upper","case":"lower"}}}],"tools":[{"name":"frontend","description":"original browser","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}],"context":[{"description":"original context","value":"original value"}],"state":{"Case":"upper","case":"lower"},"forwardedProps":{"nested":{"Case":"upper","case":"lower"}}}""")!.AsObject();
+    var raw = " \n" + input.ToJsonString() + "\n ";
+
+    var initial = await Send("initial", raw);
+
+    Check(initial.Status == 200 && initial.Body.Contains("RUN_FINISHED") && initial.Body.Contains("ficc_back_1") && model.Calls == 1 && effects == 0, "Actual observed initial native request must publish one genuine pending interrupt.");
+    var first = Events("initial");
+    Check(Array.FindIndex(first, item => item.Stage == "Acquire.Completed") < Array.FindIndex(first, item => item.Stage == "Create.Forward") && Array.FindIndex(first, item => item.Stage == "Create.Forward") < Array.FindIndex(first, item => item.Stage == "Run.Forward") && first.Count(item => item.Stage == "Create.Forward") == 1 && first.All(item => item.Stage != "Deserialize.Forward"), "Actual-key acquisition precedes actual inner native Create and Run; no deserialize occurs for a virgin.");
+    var key = Key("alpha");
+    var actual = JsonNode.Parse(first.Single(item => item.Stage == "Journal.Acquire.Key").Value!)!;
+    Check(actual["partitions"]!.AsObject().Count == 2 && actual["partitions"]!["isolation"]?.GetValue<string>() == "owned" && actual["partitions"]!["tenant"]?.GetValue<string>() == "alpha" && actual["id"]?.GetValue<string>() == key.Id, "The real native store receives every actual ordinal partition added beneath genuine isolation; no guessed key acquires authority.");
+    Originals("initial", raw);
+    var privatePayload = await Payload(key);
+    var nativeJson = privatePayload["nativeJson"]!.GetValue<string>();
+    var callback = JsonNode.Parse(privatePayload["publicRequest"]!.GetValue<string>())!.AsObject(); callback["runId"] = "resume";
+    callback["resume"] = new JsonArray(new JsonObject { ["interruptId"] = "ficc_back_1", ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } });
+    var before = (await durable.InspectAsync(new HashSet<string> { "owned" }, key))!.Status;
+    var wrong = callback.DeepClone().AsObject(); wrong["context"]![0]!["value"] = "changed but syntactically valid";
+    var wrongRaw = wrong.ToJsonString();
+
+    var refused = await Send("wrong-prefix", wrongRaw);
+
+    Check(refused.Status == 400 && !refused.Body.Contains("RUN_STARTED") && Events("wrong-prefix").Any(item => item.Stage == "Journal.Acquire.Key"), "A valid raw exact-ID request with a wrong owned prefix reaches actual-key journal admission and is refused.");
+    NoExecution("wrong-prefix"); Originals("wrong-prefix", wrongRaw);
+    var unchanged = (await durable.InspectAsync(new HashSet<string> { "owned" }, key))!.Status;
+    Check(unchanged.State == "Ready" && unchanged.Revision == before.Revision && unchanged.Generation == before.Generation, "Wrong-prefix preparation leaves the genuine published pending batch unconsumed.");
+    var betaRaw = callback.ToJsonString();
+
+    var crossed = await Send("wrong-partition", betaRaw, tenant: "beta");
+
+    Check(crossed.Status == 400 && Events("wrong-partition").Single(item => item.Stage == "Journal.Acquire.Key").Value!.Contains(Key("beta").Id, StringComparison.Ordinal) && (await durable.ReadStatusAsync(Key("beta"))).Status == 410, "Different actual trusted partition cannot acquire/consume the original pending batch or allocate a resumed selector.");
+    NoExecution("wrong-partition"); Originals("wrong-partition", betaRaw);
+    foreach (var fail in new[] { true, false })
+    {
+        var label = fail ? "reservation-failed" : "reservation-success";
+        journal.Reservation = new ReservationGate(fail);
+        var decisionRaw = callback.ToJsonString();
+        var pending = Send(label, decisionRaw);
+        await journal.Reservation.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        NoExecution(label);
+        Check(model.Calls == 1 && effects == 0 && !pending.IsCompleted, "Blocking complete reservation cannot enter actual native Create/Deserialize/Run or public streaming.");
+        journal.Reservation.Release.TrySetResult();
+        var result = await pending;
+
+        if (fail)
+        {
+            Check(result.Status == 409 && !result.Body.Contains("RUN_STARTED"), "Failed reservation is a bounded pre-native refusal.");
+            NoExecution(label);
+            Check((await durable.ReadStatusAsync(key)).PendingInterrupts is { Count: 1 }, "A reservation that never committed preserves the original published pending batch.");
+        }
+        else
+        {
+            Check(result.Status == 200 && result.Body.Contains("RUN_FINISHED") && effects == 1 && model.Calls == 2, "Only the actual committed whole reservation may restore and invoke once.");
+            var committed = Events(label);
+            var reservedAt = Array.FindIndex(committed, item => item.Stage == "Journal.Reserve.Committed");
+            var admittedAt = Array.FindIndex(committed, item => item.Stage == "Admission.Completed");
+            var deserializeAt = Array.FindIndex(committed, item => item.Stage == "Deserialize.Forward");
+            var runAt = Array.FindIndex(committed, item => item.Stage == "Run.Forward");
+            Check(reservedAt >= 0 && reservedAt < admittedAt && admittedAt < deserializeAt && deserializeAt < runAt && committed.Count(item => item.Stage == "Deserialize.Forward") == 1 && committed.All(item => item.Stage != "Create.Forward"), "Real transaction commit and refreshed owned admission precede actual inner Deserialize and Run; resumed requests never create a fresh native session.");
+            Check(Array.FindIndex(committed, item => item.Stage == "Journal.Dispatch.Granted") < Array.FindIndex(committed, item => item.Stage == "Function.Effect") && Array.FindIndex(committed, item => item.Stage == "Serialize.Forward") < Array.FindIndex(committed, item => item.Stage == "Journal.Save") && Array.FindIndex(committed, item => item.Stage == "Journal.Save") < Array.FindIndex(committed, item => item.Stage == "Journal.Authorize"), "Only the actual dispatch marker precedes the effect and actual native serialization precedes owned save/publication.");
+        }
+        Originals(label, decisionRaw);
+    }
+    foreach (var sample in new[] { ("unauthorized", "{", false, false, 401), ("oversized", new string(' ', 8193), true, false, 413), ("chunked", new string(' ', 8193), true, true, 413), ("duplicate", betaRaw.Replace("\"approved\":true", "\"approved\":true,\"approved\":false"), true, false, 400), ("typed-payload", betaRaw.Replace("\"approved\":true", "\"approved\":true,\"$type\":\"toolApprovalResponse\""), true, false, 400) })
+    {
+        var result = await Send(sample.Item1, sample.Item2, authenticated: sample.Item3, chunked: sample.Item4);
+
+        Check(result.Status == sample.Item5 && !Events(sample.Item1).Any(item => item.Stage == "Journal.Acquire.Key") && (sample.Item1 == "typed-payload" || !Events(sample.Item1).Any(item => item.Stage == "Scope")), "Auth/raw bounds/duplicates fail before scope; caller typed grants fail before actual journal/native work: " + sample.Item1);
+        NoExecution(sample.Item1);
+    }
+    var forwardingBefore = Events("outside").Count(item => item.Stage.EndsWith(".Forward", StringComparison.Ordinal));
+    var denied = 0;
+    try { await agent.CreateSessionAsync(); } catch (InvalidOperationException) { denied++; }
+    using (var originalNative = JsonDocument.Parse(nativeJson))
+        try { await agent.DeserializeSessionAsync(originalNative.RootElement); } catch (InvalidOperationException) { denied++; }
+    try { await agent.SerializeSessionAsync(partitioned!.LastSession!); } catch (InvalidOperationException) { denied++; }
+    try { await foreach (var ignored in agent.RunStreamingAsync([new ChatMessage(ChatRole.User, "unleased")], partitioned!.LastSession)) { } } catch (InvalidOperationException) { denied++; }
+
+    Check(denied == 4 && Events("outside").Count(item => item.Stage.EndsWith(".Forward", StringComparison.Ordinal)) == forwardingBefore && model.Calls == 2 && effects == 1, "Direct native public Create/Deserialize/Serialize/Run cannot bypass actual admitted request authority.");
+    Console.WriteLine("Native approval admission ordering passed.");
+    async Task<(int Status, string Body)> Send(string label, string body, string tenant = "alpha", bool authenticated = true, bool chunked = false)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        request.Headers.Add("X-Trace", label); request.Headers.Add("X-Tenant", tenant);
+        if (authenticated) request.Headers.Add("X-Authenticated", "fixture");
+        if (chunked) request.Headers.TransferEncodingChunked = true;
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        using var stream = await response.Content.ReadAsStreamAsync(); using var bytes = new MemoryStream();
+        try { await stream.CopyToAsync(bytes); } catch (IOException) { }
+        await Wait(() => !authenticated || Events(label).Any(item => item.Stage == "Context.Disposed") || !Events(label).Any(item => item.Stage == "Original.Raw.Before"));
+        return ((int)response.StatusCode, Encoding.UTF8.GetString(bytes.ToArray()));
+    }
+    NativeSessionKey Key(string tenant) => new("native", "owned", "order", new Dictionary<string, string> { ["isolation"] = "owned", ["tenant"] = tenant });
+    async Task<JsonNode> Payload(NativeSessionKey ownedKey)
+    {
+        await using var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); command.Parameters.AddWithValue("id", ownedKey.Id);
+        return JsonNode.Parse((string)(await command.ExecuteScalarAsync())!)!;
+    }
+}
+finally
+{
+    await using var cleanup = source.CreateCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE"); await cleanup.ExecuteNonQueryAsync();
+}
+static async Task Wait(Func<bool> condition)
+{
+    using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    while (!condition()) await Task.Delay(10, budget.Token);
+}
+sealed class PartitionStore(AgentSessionStore inner, IHttpContextAccessor accessor, Action<string, string?> record) : AgentSessionStore
+{
+    public AgentSession? LastSession { get; private set; }
+    private AgentSessionStoreKey Partition(AgentSessionStoreKey key)
+    {
+        var value = accessor.HttpContext?.User.FindFirst("tenant")?.Value ?? throw new Exception("Trusted fixture tenant required.");
+        var actual = key.WithPartition("tenant", value);
+        if (key.Partitions?.ContainsKey("tenant") == true) throw new Exception("Upstream actual key must not be mutated by the decorator.");
+        record("Store.ActualPartition", JsonSerializer.Serialize(actual));
+        return actual;
+    }
+    public override ValueTask<AgentSession?> GetSessionAsync(AIAgent agent, AgentSessionStoreKey key, CancellationToken ct = default) => inner.GetSessionAsync(agent, Partition(key), ct);
+    public override ValueTask<AgentSession> GetOrCreateSessionAsync(AIAgent agent, AgentSessionStoreKey key, CancellationToken ct = default) => inner.GetOrCreateSessionAsync(agent, Partition(key), ct);
+    public override ValueTask SaveSessionAsync(AIAgent agent, AgentSessionStoreKey key, AgentSession session, CancellationToken ct = default) { LastSession = session; return inner.SaveSessionAsync(agent, Partition(key), session, ct); }
+    public override ValueTask DeleteSessionAsync(AIAgent agent, AgentSessionStoreKey key, CancellationToken ct = default) => inner.DeleteSessionAsync(agent, Partition(key), ct);
+}
+sealed class ReservationGate(bool fail)
+{
+    public bool Fail { get; } = fail;
+    public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
+sealed class OrderModel(Action<string, string?> record) : IChatClient
+{
+    public int Calls { get; private set; }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
+    {
+        record("Model", null); Calls++;
+        var tools = (options?.Tools ?? []).OfType<AIFunctionDeclaration>().ToArray();
+        if (tools.Length != 2 || tools.Count(tool => tool.Name == "backend") != 1 || tools.Count(tool => tool.Name == "frontend") != 1) throw new Exception("Actual native final tools must be the exact disjoint browser/server union once.");
+        if (Calls == 1) return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("back_1", "backend", new Dictionary<string, object?> { ["code"] = "protected" })]) { MessageId = "native-parent" }) { ResponseId = "native-parent", FinishReason = ChatFinishReason.ToolCalls });
+        var contents = messages.SelectMany(message => message.Contents).ToArray();
+        if (contents.OfType<FunctionCallContent>().Count() != 1 || contents.OfType<FunctionResultContent>().Count() != 1 || contents.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent or AGUI.Abstractions.InterruptResponseContent)) throw new Exception("Actual first resumed model history must be one clean original pair.");
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "done") { MessageId = "done" }) { ResponseId = "done" });
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    { foreach (var update in (await GetResponseAsync(messages, options, cancellationToken)).ToChatResponseUpdates()) yield return update; }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+sealed class FixtureAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var tenant = Request.Headers["X-Tenant"].ToString();
+        if (Request.Headers["X-Authenticated"] != "fixture" || tenant != "alpha" && tenant != "beta") return Task.FromResult(AuthenticateResult.NoResult());
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "owned"), new Claim("tenant", tenant.ToString())], "fixture")), "fixture")));
+    }
+}
+
+sealed class OrderJournal(INativeSessionJournal inner, Action<string, string?> record) : INativeSessionJournal
+{
+    public ReservationGate? Reservation { get; set; }
+    public ValueTask InitializeAsync(CancellationToken ct = default) => inner.InitializeAsync(ct);
+    public async ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string input, CancellationToken ct = default)
+    {
+        record("Journal.Acquire.Key", JsonSerializer.Serialize(key, JsonSerializerOptions.Web));
+        record("Journal.Acquire.Raw", input);
+        return await inner.TryAcquireAsync(key, input, ct);
+    }
+    public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CaptureModelCallAsync(lease, call, ct);
+    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch batch, CancellationToken ct = default) => inner.CaptureApprovalBatchAsync(lease, batch, ct);
+    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken ct = default) => inner.GetOwnedApprovalEvidenceAsync(lease, ct);
+    public async ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batch, NativeApprovalAdmissionEnvelope admission, CancellationToken ct = default)
+    {
+        record("Journal.Reserve.Entry", null);
+        var gate = Reservation;
+        if (gate is not null)
+        {
+            gate.Entered.TrySetResult(); await gate.Release.Task.WaitAsync(ct);
+            if (gate.Fail) { record("Journal.Reserve.Failed", null); return false; }
+        }
+        var result = await inner.TryAdmitApprovalBatchAsync(lease, batch, admission, ct);
+        record(result ? "Journal.Reserve.Committed" : "Journal.Reserve.Failed", null);
+        return result;
+    }
+    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken ct = default) => inner.SettleApprovalRejectionAsync(lease, rejection, ct);
+    public ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batch, string request, string call, JsonElement result, CancellationToken ct = default) => inner.SettleBrowserBypassResultAsync(lease, batch, request, call, result, ct);
+    public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string call, CancellationToken ct = default) => inner.GetOwnedCallAsync(lease, call, ct);
+    public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default)
+    {
+        record("Journal.Dispatch", null); var result = await inner.TryStartDispatchAsync(lease, call, ct);
+        if (result) record("Journal.Dispatch.Granted", null); return result;
+    }
+    public ValueTask<bool> CompleteDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CompleteDispatchAsync(lease, call, ct);
+    public ValueTask<bool> RenewAsync(NativeSessionLease lease, CancellationToken ct = default) => inner.RenewAsync(lease, ct);
+    public ValueTask<NativeSavedReceipt?> SaveAsync(NativeSessionLease lease, NativeSessionSave value, CancellationToken ct = default) { record("Journal.Save", null); return inner.SaveAsync(lease, value, ct); }
+    public ValueTask<bool> AuthorizePublicationAsync(NativeSavedReceipt receipt, CancellationToken ct = default) { record("Journal.Authorize", null); return inner.AuthorizePublicationAsync(receipt, ct); }
+    public ValueTask<bool> FinalizePublicationAsync(NativeSavedReceipt receipt, CancellationToken ct = default) { record("Journal.Finalize", null); return inner.FinalizePublicationAsync(receipt, ct); }
+    public ValueTask<bool> FailureCleanupAsync(NativeSessionLease lease, CancellationToken ct = default) => inner.FailureCleanupAsync(lease, ct);
+    public ValueTask<NativeSessionStatus> ReadStatusAsync(NativeSessionKey key, CancellationToken ct = default) => inner.ReadStatusAsync(key, ct);
+    public ValueTask<NativeSessionInspection?> InspectAsync(IReadOnlySet<string> scopes, NativeSessionKey key, int limit = 50, CancellationToken ct = default) => inner.InspectAsync(scopes, key, limit, ct);
+    public ValueTask<int> ReconcileAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken ct = default) => inner.ReconcileAsync(scopes, key, actor, request, ct);
+    public ValueTask<int> RetireAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken ct = default) => inner.RetireAsync(scopes, key, actor, request, ct);
+    public ValueTask<int> MaintainAsync(CancellationToken ct = default) => inner.MaintainAsync(ct);
+}

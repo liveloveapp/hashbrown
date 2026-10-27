@@ -1,3 +1,4 @@
+import { validLiveNativeApproval } from './live-native-approval';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST, LIVE_CASE_COUNT } from './live-budget';
 
@@ -144,8 +145,19 @@ export function createLiveQualificationLedger() {
           minimum,
           path,
           ['server-tool', 'mixed-native-tools'].includes(groupName) ? 1 : 0,
-          groupName === 'approval-resume-decline' ? 1 : 0,
+          ['approval-resume-decline', 'native-approval'].includes(groupName)
+            ? 1
+            : 0,
           groupName === 'cancellation-recovery',
+        )
+      )
+        return reject();
+      if (
+        groupName === 'native-approval' &&
+        !validLiveNativeApproval(
+          stats as Record<string, unknown>,
+          counters as Record<string, unknown>,
+          'bearer',
         )
       )
         return reject();

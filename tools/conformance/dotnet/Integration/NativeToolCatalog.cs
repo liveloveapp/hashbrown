@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace Hashbrown.Conformance.Integration;
 
 /// <summary>Immutable registered operation version and schema identity. Invocation permissions remain application-owned.</summary>
-public sealed record NativeToolDefinition(string Name, int Version, JsonElement Schema, Func<JsonElement, bool>? Validate = null);
+public sealed record NativeToolDefinition(string Name, int Version, JsonElement Schema, Func<JsonElement, bool>? Validate = null, bool RequiresConfirmation = false);
 
 /// <summary>Immutable server catalog binding native descriptors and rejecting browser name collisions.</summary>
 public sealed class NativeToolCatalog
@@ -14,8 +14,12 @@ public sealed class NativeToolCatalog
     /// <summary>Clones and validates versioned server definitions.</summary>
     public NativeToolCatalog(IEnumerable<NativeToolDefinition> tools)
     {
-        _tools = tools.Select(tool => new NativeToolDefinition(NativeSessionKey.Required(tool.Name), tool.Version > 0 ? tool.Version : throw new ArgumentException("Operation versions must be positive."), tool.Schema.ValueKind == JsonValueKind.Object ? tool.Schema.Clone() : throw new ArgumentException("Operation schema must be an object."), tool.Validate)).ToFrozenDictionary(tool => tool.Name, StringComparer.Ordinal);
-        Identity = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(_tools.Values.OrderBy(tool => tool.Name, StringComparer.Ordinal).Select(tool => new { tool.Name, tool.Version, tool.Schema }))))));
+        _tools = tools.Select(tool => new NativeToolDefinition(NativeSessionKey.Required(tool.Name), tool.Version > 0 ? tool.Version : throw new ArgumentException("Operation versions must be positive."), tool.Schema.ValueKind == JsonValueKind.Object ? tool.Schema.Clone() : throw new ArgumentException("Operation schema must be an object."), tool.Validate, tool.RequiresConfirmation)).ToFrozenDictionary(tool => tool.Name, StringComparer.Ordinal);
+        var ordered = _tools.Values.OrderBy(tool => tool.Name, StringComparer.Ordinal).ToArray();
+        var identity = ordered.Any(tool => tool.RequiresConfirmation)
+            ? JsonSerializer.SerializeToElement(ordered.Select(tool => new { tool.Name, tool.Version, tool.Schema, tool.RequiresConfirmation }))
+            : JsonSerializer.SerializeToElement(ordered.Select(tool => new { tool.Name, tool.Version, tool.Schema }));
+        Identity = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(identity))));
     }
     /// <summary>Stable canonical catalog identity, including explicit versions and schemas.</summary>
     public string Identity { get; }
@@ -28,13 +32,26 @@ public sealed class NativeToolCatalog
         return call;
     }
     /// <summary>Checks the complete native function name set and structural schema identity without invoking application validators.</summary>
-    internal bool MatchesDefinitions(IEnumerable<KeyValuePair<string, JsonElement>> definitions)
+    internal bool MatchesDefinitions(IEnumerable<KeyValuePair<string, JsonElement>> definitions) =>
+        MatchesDefinitions(definitions.Select(item => (item.Key, item.Value, false)));
+    private bool MatchesSchemas(IEnumerable<KeyValuePair<string, JsonElement>> definitions)
     {
         var actual = definitions.ToArray();
         return actual.Length == _tools.Count && actual.Select(pair => pair.Key).Distinct(StringComparer.Ordinal).Count() == actual.Length &&
             actual.All(pair => _tools.TryGetValue(pair.Key, out var registered) &&
                 System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(pair.Value.GetRawText()), System.Text.Json.Nodes.JsonNode.Parse(registered.Schema.GetRawText())));
     }
+    /// <summary>Checks actual native wrapper requirements against immutable server registration.</summary>
+    internal bool MatchesDefinitions(IEnumerable<(string Name, JsonElement Schema, bool RequiresConfirmation)> definitions)
+    {
+        var actual = definitions.ToArray();
+        return MatchesSchemas(actual.Select(item => new KeyValuePair<string, JsonElement>(item.Name, item.Schema))) && actual.All(item => _tools[item.Name].RequiresConfirmation == item.RequiresConfirmation);
+    }
+    /// <summary>Checks one declaration against immutable server schema metadata without invoking application validators.</summary>
+    internal bool MatchesDefinition(string name, JsonElement schema) => _tools.TryGetValue(name, out var tool) &&
+        System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(schema.GetRawText()), System.Text.Json.Nodes.JsonNode.Parse(tool.Schema.GetRawText()));
+    /// <summary>Checks whether the registered server call requires a protected native decision.</summary>
+    public bool RequiresConfirmation(string name) => _tools.TryGetValue(name, out var tool) ? tool.RequiresConfirmation : throw new ArgumentException("The native server operation is not registered.");
     /// <summary>Tests whether a name belongs to a registered server operation.</summary>
     public bool Contains(string name) => _tools.ContainsKey(name);
     /// <summary>Validates the stored descriptor against the exact registered version.</summary>

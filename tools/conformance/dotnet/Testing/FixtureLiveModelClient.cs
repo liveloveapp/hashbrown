@@ -1,5 +1,10 @@
+#pragma warning disable MAAI001 // Live-only history guard checks genuine pinned native approval content types.
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text;
+using Microsoft.Agents.AI;
+using AGUI.Abstractions;
 using Microsoft.Extensions.AI;
 
 namespace Hashbrown.Conformance.Testing;
@@ -8,6 +13,13 @@ namespace Hashbrown.Conformance.Testing;
 public sealed class FixtureLiveModelClient(IChatClient inner, FixtureLiveGate state) : DelegatingChatClient(inner)
 {
     private FunctionCallContent[] _nativeCalls = [];
+    private string? _approvalCallId;
+    private JsonElement _approvalArguments;
+    private string? _initialApprovalHistory;
+    private string? _postResultHistory;
+    private int _postResultMessages;
+    private readonly StringBuilder _approvalAnswer = new();
+    private readonly StringBuilder _approvalInitialText = new();
 
     /// <inheritdoc />
     public override Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
@@ -24,10 +36,18 @@ public sealed class FixtureLiveModelClient(IChatClient inner, FixtureLiveGate st
         var history = messages.ToArray();
         var tool = state.Group switch { "browser-tool" => "getWeather", "server-tool" => "lookupAirport", _ => null };
         var mixed = state.Group == "mixed-native-tools";
-        var hasResult = mixed ? ValidateNativeHistory(history) : ValidateHistory(history, tool);
+        var approval = state.Group == "native-approval";
+        var approvalPhase = approval ? ValidateApprovalHistory(history) : 0;
+        if (approval) tool = "lookupAirport";
+        var hasResult = approval ? approvalPhase > 1 : mixed ? ValidateNativeHistory(history) : ValidateHistory(history, tool);
         configured.ToolMode = mixed && !hasResult ? ChatToolMode.RequireAny
             : tool is not null && !hasResult ? ChatToolMode.RequireSpecific(tool) : ChatToolMode.None;
         if (mixed) configured.AllowMultipleToolCalls = true;
+        if (approval)
+        {
+            if (configured.Tools is null || configured.Tools.Count != 1 || configured.Tools[0].Name != "lookupAirport") throw new InvalidOperationException("LIVE_TOOL_INVALID");
+            configured.AllowMultipleToolCalls = false;
+        }
         if (tool is null && !mixed) configured.Tools = [];
         var emitted = new List<FunctionCallContent>();
         state.Dispatch();
@@ -53,6 +73,17 @@ public sealed class FixtureLiveModelClient(IChatClient inner, FixtureLiveGate st
                         _nativeCalls = emitted.ToArray();
                         state.NativeCoEmission();
                     }
+                    if (approval)
+                    {
+                        if (approvalPhase == 1)
+                        {
+                            if (emitted.Count != 1 || string.IsNullOrEmpty(emitted[0].CallId)) throw new InvalidOperationException("LIVE_TOOL_INVALID");
+                            _approvalCallId = emitted[0].CallId;
+                            _approvalArguments = JsonSerializer.SerializeToElement(emitted[0].Arguments).Clone();
+                            state.Approval?.ModelCall(emitted[0]);
+                        }
+                        state.Approval?.ModelPhase(approvalPhase);
+                    }
                     completed = true; break;
                 }
                 var update = iterator.Current;
@@ -66,7 +97,12 @@ public sealed class FixtureLiveModelClient(IChatClient inner, FixtureLiveGate st
                         emitted.Add(call);
                     }
                 }
-                else ValidateTool(update, hasResult ? null : tool);
+                else
+                {
+                    ValidateTool(update, hasResult ? null : tool);
+                    if (approval && approvalPhase == 1) { emitted.AddRange(update.Contents.OfType<FunctionCallContent>()); _approvalInitialText.Append(update.Text); }
+                    if (approval && approvalPhase == 2) { _approvalAnswer.Append(update.Text); state.Approval?.ModelText(update.Text); }
+                }
                 state.Observe(update);
                 yield return update;
                 try { await state.AfterYieldAsync(update, linked.Token); }
@@ -84,6 +120,57 @@ public sealed class FixtureLiveModelClient(IChatClient inner, FixtureLiveGate st
             state.Finished(linked.IsCancellationRequested, failed || !completed || disposeFailed);
             if (disposeFailed) throw new InvalidOperationException(linked.IsCancellationRequested ? "LIVE_CANCELLED" : "LIVE_PROVIDER_FAILED");
         }
+    }
+
+    // This policy validates observations only. Native MAF still binds/approves/invokes the actual function.
+    private int ValidateApprovalHistory(ChatMessage[] history)
+    {
+        var contents = history.SelectMany(message => message.Contents).ToArray();
+        if (contents.Any(content => content is not (TextContent or FunctionCallContent or FunctionResultContent) || content is ToolApprovalRequestContent or ToolApprovalResponseContent or InterruptResponseContent)) throw new InvalidOperationException("LIVE_TOOL_INVALID");
+        var calls = contents.OfType<FunctionCallContent>().ToArray();
+        var results = contents.OfType<FunctionResultContent>().ToArray();
+        if (state.Calls == 0)
+        {
+            if (calls.Length != 0 || results.Length != 0) throw new InvalidOperationException("LIVE_TOOL_INVALID");
+            _initialApprovalHistory = ApprovalHistory(history);
+            return 1;
+        }
+        if (state.Calls is not (1 or 2) || _approvalCallId is null || calls.Length != 1 || results.Length != 1 ||
+            calls[0].CallId != _approvalCallId || calls[0].Name != "lookupAirport" || results[0].CallId != _approvalCallId ||
+            !JsonNode.DeepEquals(JsonSerializer.SerializeToNode(calls[0].Arguments), JsonNode.Parse(_approvalArguments.GetRawText())))
+            throw new InvalidOperationException("LIVE_TOOL_INVALID");
+        ValidateNativeResult(results[0], "lookupAirport");
+        if (state.Calls == 1)
+        {
+            if (history.Length < 3 || ApprovalHistory(history[..^2]) != _initialApprovalHistory ||
+                history[^2].Role != ChatRole.Assistant || history[^2].Contents.Any(content => content is not (FunctionCallContent or TextContent)) || history[^2].Text != _approvalInitialText.ToString() ||
+                history[^1].Role != ChatRole.Tool || history[^1].Contents.Any(content => content is not FunctionResultContent)) throw new InvalidOperationException("LIVE_TOOL_INVALID");
+            _postResultHistory = ApprovalHistory(history); _postResultMessages = history.Length;
+            return 2;
+        }
+        if (history.Length != _postResultMessages + 2 || ApprovalHistory(history[..^2]) != _postResultHistory ||
+            history[^2].Role != ChatRole.Assistant || history[^2].Contents.Any(content => content is not TextContent) ||
+            string.IsNullOrWhiteSpace(_approvalAnswer.ToString()) || history[^2].Text != _approvalAnswer.ToString() ||
+            history[^1].Role != ChatRole.User || history[^1].Contents.Any(content => content is not TextContent) || string.IsNullOrWhiteSpace(history[^1].Text))
+            throw new InvalidOperationException("LIVE_TOOL_INVALID");
+        return 3;
+    }
+
+    private static string ApprovalHistory(IEnumerable<ChatMessage> messages) => JsonSerializer.Serialize(messages.Select(message => new
+    {
+        role = message.Role.Value,
+        text = message.Text,
+        calls = message.Contents.OfType<FunctionCallContent>().Select(call => new { call.CallId, call.Name, call.Arguments }),
+        results = message.Contents.OfType<FunctionResultContent>().Select(result => new { result.CallId, Result = ApprovalResult(result.Result) }),
+        unsupported = message.Contents.Count(content => content is not (TextContent or FunctionCallContent or FunctionResultContent))
+    }));
+
+    // Native persistence may materialize the same JSON result as a string or JsonElement; preserve its semantic value.
+    private static JsonNode? ApprovalResult(object? result)
+    {
+        var node = JsonSerializer.SerializeToNode(result);
+        if (node is JsonValue value && value.TryGetValue<string>(out var text)) node = JsonNode.Parse(text);
+        return node is JsonObject resultObject ? new JsonObject(resultObject.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => new KeyValuePair<string, JsonNode?>(pair.Key, pair.Value?.DeepClone()))) : node;
     }
 
     private bool ValidateNativeHistory(ChatMessage[] messages)

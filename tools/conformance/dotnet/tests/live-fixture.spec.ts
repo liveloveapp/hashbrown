@@ -52,7 +52,13 @@ test('live native fixture enforces dispatch, options, gate, cancellation, and wi
         timeout: 50_000,
         env: { ...process.env, LIVE_REDIRECT_LOOPBACK: redirectOrigin },
       },
-    );
+    ).catch((error: { stdout?: string }) => {
+      const compiler = (error.stdout ?? '')
+        .split(/\r?\n/)
+        .filter((line) => /error CS\d+:/.test(line));
+      if (compiler.length) throw new Error(compiler.join('\n'));
+      throw error;
+    });
 
     expect(redirectRequests).toBe(1);
     expect(redirectedRequests).toBe(0);
@@ -277,3 +283,122 @@ server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:
     await rm(directory, { recursive: true, force: true });
   }
 }, 10_000);
+
+test('native approval native live cleanup drains its worker before a separate credential-free schema owner starts', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-cleanup-'));
+  const executable = join(directory, 'worker');
+  const observation = join(directory, 'observation.json');
+  const owner = join(directory, 'owner.pid');
+  await writeFile(
+    executable,
+    `#!${process.execPath}
+const fs=require('node:fs'), http=require('node:http');
+if(process.env.FixtureDropSchemaOnly==='true') {
+  let alive=true; try { process.kill(Number(fs.readFileSync(${JSON.stringify(owner)},'utf8')),0); } catch { alive=false; }
+  fs.writeFileSync(${JSON.stringify(observation)},JSON.stringify({alive,key:process.env.ApiKey,profile:process.env.AZURE_CONFIG_DIR,pg:process.env.InterruptConnectionString,schema:process.env.InterruptSchema}));
+} else fs.writeFileSync(${JSON.stringify(owner)},String(process.pid));
+const server=http.createServer((req,res)=>{ req.resume(); res.end('ok'); });
+server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:'+server.address().port));
+`,
+  );
+  await chmod(executable, 0o755);
+  const controller = new AbortController();
+  const schema = 'durable_live_0123456789abcdef0123456789abcdef';
+  const fixture = await startNativeLiveFixture(
+    {
+      DOTNET_HOST_PATH: executable,
+      FixtureNativeSessions: 'true',
+      FixtureNativeApprovals: 'true',
+      NativeGate: '',
+      InterruptConnectionString: 'postgres-secret-sentinel',
+      InterruptSchema: schema,
+      ApiKey: 'provider-secret-sentinel',
+      AZURE_CONFIG_DIR: 'profile-secret-sentinel',
+    },
+    'native-approval',
+    controller.signal,
+    [],
+  );
+
+  try {
+    controller.abort();
+    await fixture.stop();
+
+    expect(JSON.parse(await readFile(observation, 'utf8'))).toEqual({
+      alive: false,
+      pg: 'postgres-secret-sentinel',
+      schema,
+    });
+    await fixture.stop();
+  } finally {
+    await fixture.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 10_000);
+
+test('native approval native live cleanup failure is retained after all owned children stop', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const directory = await mkdtemp(
+    join(tmpdir(), 'hashbrown-live-cleanup-failed-'),
+  );
+  const executable = join(directory, 'worker');
+  await writeFile(
+    executable,
+    `#!${process.execPath}
+const http=require('node:http');
+const server=http.createServer((req,res)=>{req.resume();res.writeHead(process.env.FixtureDropSchemaOnly==='true'?500:200);res.end();});
+server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:'+server.address().port));
+`,
+  );
+  await chmod(executable, 0o755);
+  const fixture = await startNativeLiveFixture(
+    {
+      DOTNET_HOST_PATH: executable,
+      FixtureNativeSessions: 'true',
+      FixtureNativeApprovals: 'true',
+      NativeGate: '',
+      InterruptConnectionString: 'postgres-secret-sentinel',
+      InterruptSchema: 'durable_live_0123456789abcdef0123456789abcdef',
+    },
+    'native-approval',
+    new AbortController().signal,
+    [],
+  );
+
+  try {
+    await expect(fixture.stop()).rejects.toThrow('LIVE_CHILD_FAILED');
+    await expect(fixture.stop()).rejects.toThrow('LIVE_CHILD_FAILED');
+    await expect(fetch(`${fixture.url}/health`)).rejects.toThrow();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 10_000);
+
+test('native approval launcher rejects missing protected mode or owned context before creating a child', async () => {
+  const { startNativeLiveFixture } = await import('../harness/live-fixture');
+  const environment = {
+    FixtureNativeSessions: 'true',
+    FixtureNativeApprovals: 'true',
+    NativeGate: '',
+    InterruptConnectionString: 'DB_CANARY',
+    InterruptSchema: 'durable_live_0123456789abcdef0123456789abcdef',
+    DOTNET_HOST_PATH: '/unit/must-not-spawn',
+  };
+
+  for (const mutation of [
+    { FixtureNativeApprovals: '' },
+    { FixtureNativeSessions: '' },
+    { NativeGate: 'before-pending-save' },
+    { InterruptSchema: 'public' },
+    { InterruptConnectionString: '' },
+  ])
+    await expect(
+      startNativeLiveFixture(
+        { ...environment, ...mutation },
+        'native-approval',
+        new AbortController().signal,
+        [],
+      ),
+    ).rejects.toThrow('LIVE_CHILD_START_FAILED');
+});

@@ -1,5 +1,4 @@
 #pragma warning disable MAAI001 // Pinned MAF 1.26.0 native bypass and public session APIs require this narrow compatibility opt-in.
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -10,13 +9,28 @@ namespace Hashbrown.Conformance.Integration;
 public static class NativeSessionAgentFactory
 {
     /// <summary>Creates an agent for the authenticated durable endpoint recipe. Tool permissions remain application-owned.</summary>
-    public static AIAgent Create(IChatClient client, string name, IEnumerable<AIFunction> functions, NativeToolCatalog catalog, IHttpContextAccessor accessor)
+    public static AIAgent Create(IChatClient client, string name, IEnumerable<AIFunction> functions, NativeToolCatalog catalog, IHttpContextAccessor accessor) =>
+        CreateValidated(client, name, functions, catalog, accessor, observer: null);
+
+    /// <summary>Observes the public composition policy using immutable passive diagnostic strings only.</summary>
+    internal static AIAgent CreateObservedForTests(IChatClient client, string name, IEnumerable<AIFunction> functions, NativeToolCatalog catalog, IHttpContextAccessor accessor, Action<string> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        return CreateValidated(client, name, functions, catalog, accessor, observer);
+    }
+
+    private static AIAgent CreateValidated(IChatClient client, string name, IEnumerable<AIFunction> functions, NativeToolCatalog catalog, IHttpContextAccessor accessor, Action<string>? observer)
     {
         ArgumentNullException.ThrowIfNull(client); ArgumentNullException.ThrowIfNull(functions); ArgumentNullException.ThrowIfNull(catalog); ArgumentNullException.ThrowIfNull(accessor);
         name = NativeSessionKey.Required(name);
         var registered = functions.ToArray();
-        if (!catalog.MatchesDefinitions(registered.Select(function => new KeyValuePair<string, JsonElement>(function.Name, function.JsonSchema))) || registered.Any(function => function is ApprovalRequiredAIFunction))
-            throw new ArgumentException("Every native function must be unique, catalogued and free of native approval requirements.");
+        if (!catalog.MatchesDefinitions(registered.Select(function => (function.Name, function.JsonSchema, function is ApprovalRequiredAIFunction))))
+            throw new ArgumentException("Every native wrapper must match its unique registered schema and confirmation requirement.");
+        return CreateCore(client, name, registered, catalog, accessor, observer);
+    }
+
+    private static AIAgent CreateCore(IChatClient client, string name, AIFunction[] registered, NativeToolCatalog catalog, IHttpContextAccessor accessor, Action<string>? observer)
+    {
         NativeSessionContext Context() => NativeSessionContext.Get(accessor.HttpContext) ?? throw new NativeSessionRequestException(409);
         var agent = new HashbrownRequestClient(client, () => NativeSessionContext.Get(accessor.HttpContext)).AsAIAgent(new ChatClientAgentOptions
         {
@@ -43,24 +57,7 @@ public static class NativeSessionAgentFactory
             }
             catch { await context.CancelWorkAsync(); throw; }
         }).Build();
-        return new NativeGuardAgent(agent, catalog, accessor);
-    }
-    private sealed class NativeGuardAgent(AIAgent inner, NativeToolCatalog catalog, IHttpContextAccessor accessor) : DelegatingAIAgent(inner), INativeSessionAgent
-    {
-        NativeToolCatalog INativeSessionAgent.Catalog => catalog;
-        protected override async IAsyncEnumerable<AgentResponseUpdate> RunCoreStreamingAsync(IEnumerable<ChatMessage> messages, AgentSession? session, AgentRunOptions? options, [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            var context = NativeSessionContext.Get(accessor.HttpContext) ?? throw new NativeSessionRequestException(409);
-            context.RequireSession(session);
-            if (!ReferenceEquals(context.Registration.Catalog, catalog)) throw new NativeSessionRequestException(409);
-            await foreach (var update in InnerAgent.RunStreamingAsync(messages, session, options, context.Cancellation))
-            {
-                if (update.Contents.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent)) throw new NotSupportedException("Native approval transport is not enabled by this composition.");
-                yield return update;
-            }
-        }
-        protected override Task<AgentResponse> RunCoreAsync(IEnumerable<ChatMessage> messages, AgentSession? session, AgentRunOptions? options, CancellationToken cancellationToken) =>
-            throw new NotSupportedException("The native Hashbrown endpoint requires streaming execution.");
+        return new NativeApprovalAgent(agent, catalog, accessor, registered, observer);
     }
 }
 
@@ -68,4 +65,6 @@ public static class NativeSessionAgentFactory
 internal interface INativeSessionAgent
 {
     NativeToolCatalog Catalog { get; }
+    bool SupportsApprovals { get; }
+    Action<string>? Observer { get; }
 }

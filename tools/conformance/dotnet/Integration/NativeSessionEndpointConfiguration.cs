@@ -29,7 +29,9 @@ public static class NativeSessionEndpointConfiguration
         if (agent is not INativeSessionAgent composed) throw new ArgumentException("Native routes require the matching native factory composition.", nameof(agent));
         authorizationPolicy = NativeSessionKey.Required(authorizationPolicy);
         var name = NativeSessionKey.Required(agent.Name ?? "");
-        return routes.MapAGUIServer(pattern, agent).RequireAuthorization(authorizationPolicy).AddEndpointFilter(async (filter, next) =>
+        var endpoint = routes.MapAGUIServer(pattern, agent).RequireAuthorization(authorizationPolicy);
+        endpoint.Finally(builder => builder.RequestDelegate = NativeSessionRawRequest.Wrap(builder.RequestDelegate ?? throw new InvalidOperationException("Native endpoint delegate is unavailable."), name));
+        return endpoint.AddEndpointFilter(async (filter, next) =>
         {
             var http = filter.HttpContext;
             if (http.User.Identity?.IsAuthenticated != true) return Results.Unauthorized();
@@ -40,14 +42,31 @@ public static class NativeSessionEndpointConfiguration
             NativeSessionContext context;
             try
             {
+                NativeSessionRawRequest.RequireEquivalentBinding(http, input);
                 var scope = NativeSessionKey.Required(registration.Scope(http) ?? "");
                 var isolation = scope;
-                if (input.Resume is { Count: > 0 }) return Results.BadRequest(new { error = "Native approvals are not enabled." });
+                if (!composed.SupportsApprovals && input.Resume is { Count: > 0 }) return Results.BadRequest(new { error = "Native approvals are not enabled." });
                 _ = NativeSessionKey.Required(input.RunId);
                 _ = HashbrownRequestClient.ReadSchema(input);
                 var key = new NativeSessionKey(name, scope, input.ThreadId, new Dictionary<string, string> { ["isolation"] = isolation });
-                _ = NativeSessionHistory.Normalize(JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput), key, registration.Catalog, registration.Options);
-                context = new NativeSessionContext(registration, http, input, scope, isolation);
+                var raw = NativeSessionRawRequest.Get(http);
+                NativeApprovalAdmissionEnvelope? decisions = input.Resume is { Count: > 0 } ? NativeApprovalAdmission.Parse(raw, key, registration.Catalog, registration.Options) : null;
+                _ = decisions?.CanonicalPublicRequest ?? NativeSessionHistory.Normalize(raw, key, registration.Catalog, registration.Options);
+                context = new NativeSessionContext(registration, http, input, scope, isolation, raw, decisions, composed.Observer);
+                context.Observe("Original.Raw.Before", raw);
+                context.ObserveInput("Original.Typed.Before", input);
+                if (composed.SupportsApprovals)
+                {
+                    var clone = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput))!.AsObject();
+                    clone["tools"] = new System.Text.Json.Nodes.JsonArray();
+                    var upstream = JsonSerializer.Deserialize(clone.ToJsonString(), AGUIJsonSerializerContext.Default.RunAgentInput)!;
+                    var index = filter.Arguments.IndexOf(input);
+                    filter.Arguments[index] = upstream;
+                    context.Observe("Transport.Independent", (!ReferenceEquals(input, upstream) && !ReferenceEquals(input.Messages, upstream.Messages) && input.Messages.Zip(upstream.Messages).All(pair => !ReferenceEquals(pair.First, pair.Second)) && !ReferenceEquals(input.Tools, upstream.Tools)).ToString());
+                    context.TransportInput = upstream;
+                    context.ObserveInput("Transport.Typed.Before", upstream);
+                    context.ObserveInput("Original.Typed.AfterPrepare", input);
+                }
                 http.Items[typeof(NativeSessionContext)] = context;
             }
             catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException)

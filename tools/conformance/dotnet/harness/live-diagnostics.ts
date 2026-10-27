@@ -1,3 +1,5 @@
+import { selectLiveFailurePhase } from './live-failure-phase';
+import { LIVE_NATIVE_APPROVAL_FIELDS } from './live-native-approval';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 
@@ -7,9 +9,17 @@ export interface LiveDiagnosticSink {
 }
 
 const enums: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  nativeApprovalStage: [
+    'starting',
+    'pending',
+    'approved',
+    'followup',
+    'invalid',
+  ],
   project: LIVE_PROJECTS.map((entry) => entry.name),
   group: LIVE_BUDGET_MANIFEST.groups.map((entry) => entry.name),
   outcome: ['passed', 'failed'],
+  failureCode: ['LIVE_ASSERTION_FAILED'],
   preflight: LIVE_BUDGET_MANIFEST.preflights,
   provider: ['openai', 'azure'],
   api: ['responses', 'chat-completions'],
@@ -49,6 +59,10 @@ const numbers = [
   'dispatchedCalls',
   'cancelledCalls',
   'nativeEffects',
+  'nativeProtectedEffects',
+  'durableProtectedEffects',
+  'usageCompleteCalls',
+  'usageIncompleteCalls',
 ];
 
 /** Projects and bounds metadata before invoking any caller-owned stdout/file/report sink. */
@@ -60,6 +74,18 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
   let failed = false;
   return Object.freeze({
     record: (input: Readonly<Record<string, unknown>>) => {
+      const phase = Object.hasOwn(input, 'failurePhase')
+        ? selectLiveFailurePhase(input['group'], [
+            { type: 'live-phase', description: input['failurePhase'] },
+          ])
+        : undefined;
+      if (
+        phase &&
+        (!phase.valid || !phase.phase || input['outcome'] !== 'failed')
+      ) {
+        failed = true;
+        return false;
+      }
       const safe: Record<string, unknown> = Object.fromEntries(
         Object.entries(enums).flatMap(([key, allowed]) =>
           typeof input[key] === 'string' &&
@@ -68,6 +94,7 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
             : [],
         ),
       );
+      if (phase?.phase) safe['failurePhase'] = phase.phase;
       for (const key of numbers)
         if (
           typeof input[key] === 'number' &&
@@ -82,7 +109,29 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
         input['status'] <= 599
       )
         safe['status'] = input['status'];
-      for (const key of ['nativeCoEmission', 'nativeExactHistory'])
+      for (const [key, maximum] of Object.entries(LIVE_NATIVE_APPROVAL_FIELDS))
+        if (
+          typeof input[key] === 'number' &&
+          Number.isSafeInteger(input[key]) &&
+          (input[key] as number) >= 0 &&
+          (input[key] as number) <= maximum
+        )
+          safe[key] = input[key];
+      if (
+        typeof input['wireIndex'] === 'number' &&
+        Number.isInteger(input['wireIndex']) &&
+        input['wireIndex'] >= 1 &&
+        input['wireIndex'] <= 4
+      )
+        safe['wireIndex'] = input['wireIndex'];
+      for (const key of [
+        'store',
+        'nativeCoEmission',
+        'nativeExactHistory',
+        'nativeApprovalPendingObserved',
+        'nativeApprovalBindingMatched',
+        'nativeApprovalJournalMatched',
+      ])
         if (typeof input[key] === 'boolean') safe[key] = input[key];
       const line = `${JSON.stringify(safe)}\n`;
       const bytes = Buffer.byteLength(line);

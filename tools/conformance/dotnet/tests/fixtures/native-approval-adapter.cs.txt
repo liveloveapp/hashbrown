@@ -1,0 +1,190 @@
+#pragma warning disable MAAI001, MEAI001 // Pinned public native approval/update properties are characterized without private SDK inspection.
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using AGUI.Abstractions;
+using Hashbrown.Conformance.Integration;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+var project = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("Project", BindingFlags.NonPublic | BindingFlags.Static)!;
+AgentResponseUpdate Project(AgentResponseUpdate source, IList<AIContent> contents) => (AgentResponseUpdate)project.Invoke(null, [source, contents])!;
+static (AgentResponseUpdate Outer, ChatResponseUpdate Raw, FunctionCallContent Call) Source()
+{
+    var call = new FunctionCallContent("front", "frontend", new Dictionary<string, object?> { ["city"] = "Paris" });
+    var native = new ToolApprovalRequestContent("ficc_front", call) { RequiresConfirmation = false };
+    var raw = new ChatResponseUpdate(ChatRole.Assistant, [native, new TextContent("preserved"), new FunctionResultContent("earlier", "actual")]) { ResponseId = "response", MessageId = "parent", AuthorName = "native", CreatedAt = DateTimeOffset.UnixEpoch, FinishReason = ChatFinishReason.ToolCalls, ModelId = "model" };
+    return (new AgentResponseUpdate(raw) { AgentId = "agent" }, raw, call);
+}
+var source = Source();
+var beforeOuter = JsonSerializer.Serialize(source.Outer); var beforeRaw = JsonSerializer.Serialize(source.Raw);
+var expected = new List<AIContent> { source.Call, source.Raw.Contents[1], source.Raw.Contents[2] };
+
+var result = Project(source.Outer, expected);
+
+Check(!ReferenceEquals(result, source.Outer) && result.Contents.SequenceEqual(expected) && !ReferenceEquals(result.Contents, source.Outer.Contents), "Public contents must be owned by a new outer update.");
+Check(result.RawRepresentation is ChatResponseUpdate rawResult && !ReferenceEquals(rawResult, source.Raw) && rawResult.Contents.SequenceEqual(expected) && !ReferenceEquals(rawResult.Contents, source.Raw.Contents) && rawResult.ModelId == "model", "Pinned raw projection must independently clone and synchronize its contents while preserving raw-only properties.");
+Check(JsonSerializer.Serialize(source.Outer) == beforeOuter && JsonSerializer.Serialize(source.Raw) == beforeRaw && source.Raw.Contents[0] is ToolApprovalRequestContent { RequiresConfirmation: false }, "Original inner update, raw representation, contents and native request must remain unchanged.");
+Check(result.AuthorName == source.Outer.AuthorName && result.AgentId == source.Outer.AgentId && result.ResponseId == source.Outer.ResponseId && result.MessageId == source.Outer.MessageId && result.CreatedAt == source.Outer.CreatedAt && result.FinishReason == source.Outer.FinishReason && result.ContinuationToken == source.Outer.ContinuationToken, "Every supported outer property must survive projection.");
+foreach (var mutation in new[] { "unknown", "contents", "role", "parent", "response", "finish", "author", "created", "continuation" })
+{
+    var subject = Source();
+    if (mutation == "unknown") subject.Outer.RawRepresentation = new object();
+    if (mutation == "contents") subject.Raw.Contents = [new TextContent("foreign"), subject.Raw.Contents[1], subject.Raw.Contents[2]];
+    if (mutation == "role") subject.Raw.Role = ChatRole.Tool;
+    if (mutation == "parent") subject.Raw.MessageId = "foreign";
+    if (mutation == "response") subject.Raw.ResponseId = "foreign";
+    if (mutation == "finish") subject.Raw.FinishReason = ChatFinishReason.Stop;
+    if (mutation == "author") subject.Raw.AuthorName = "foreign";
+    if (mutation == "created") subject.Raw.CreatedAt = DateTimeOffset.UnixEpoch.AddSeconds(1);
+    if (mutation == "continuation") subject.Raw.ContinuationToken = ResponseContinuationToken.FromBytes(new byte[] { 1 });
+    var rejected = false;
+
+    try { Project(subject.Outer, [subject.Call]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    Check(rejected, "Unknown or inconsistent native raw update must fail representability: " + mutation);
+}
+var publicBoundary = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("ProjectForPublic", BindingFlags.NonPublic | BindingFlags.Static)!;
+foreach (var mutation in new[] { "valid", "unknown", "contents", "role" })
+{
+    var call = new FunctionCallContent("owned-echo", "backend", new Dictionary<string, object?> { ["code"] = "original" }) { InformationalOnly = true };
+    var raw = new ChatResponseUpdate(ChatRole.Assistant, [call]) { MessageId = "native-echo-parent", ResponseId = "native-echo-parent" };
+    var outer = new AgentResponseUpdate(raw);
+    if (mutation == "unknown") outer.RawRepresentation = new object();
+    if (mutation == "contents") raw.Contents = [new FunctionCallContent("foreign", "backend", new Dictionary<string, object?> { ["code"] = "foreign" })];
+    if (mutation == "role") raw.Role = ChatRole.Tool;
+    var rejected = false; AgentResponseUpdate? projected = null;
+
+    try { projected = (AgentResponseUpdate?)publicBoundary.Invoke(null, [outer, new List<AIContent>()]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    Check(mutation == "valid" ? !rejected && projected is null : rejected, "The actual all-owned-echo suppression boundary must validate raw data before dropping an empty projection: " + mutation);
+}
+var configureOptions = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("ConfigureOptions", BindingFlags.NonPublic | BindingFlags.Static)!;
+var backend = new ApprovalRequiredAIFunction(AIFunctionFactory.Create((string code) => code, "backend"));
+var registeredCatalog = new NativeToolCatalog([new("backend", 1, backend.JsonSchema, RequiresConfirmation: true)]);
+var originalBrowserSchema = JsonSerializer.SerializeToElement(new { type = "object", properties = new { city = new { type = "string" } }, required = new[] { "city" } });
+var browserDeclaration = AIFunctionFactory.CreateDeclaration("frontend", "browser", originalBrowserSchema, null);
+var originalInput = new RunAgentInput { ThreadId = "thread", RunId = "run", Messages = [], Tools = [new AGUITool { Name = "frontend", Description = "browser", Parameters = originalBrowserSchema }] };
+foreach (var mutation in new[] { "valid", "unknown", "duplicate-browser", "duplicate-server", "browser-schema", "server-schema", "foreign-server-handler", "browser-handler" })
+{
+    var tools = new List<AITool> { backend, browserDeclaration };
+    if (mutation == "unknown") tools.Add(AIFunctionFactory.CreateDeclaration("foreign", "foreign", originalBrowserSchema, null));
+    if (mutation == "duplicate-browser") tools.Add(browserDeclaration);
+    if (mutation == "duplicate-server") tools.Add(backend);
+    if (mutation == "browser-schema") tools[1] = AIFunctionFactory.CreateDeclaration("frontend", "browser", JsonSerializer.SerializeToElement(new { type = "object" }), null);
+    if (mutation == "server-schema") tools[0] = AIFunctionFactory.CreateDeclaration("backend", "server", JsonSerializer.SerializeToElement(new { type = "object" }), null);
+    if (mutation == "foreign-server-handler") tools[0] = new ApprovalRequiredAIFunction(AIFunctionFactory.Create((string code) => "foreign", "backend"));
+    if (mutation == "browser-handler") tools[1] = AIFunctionFactory.Create((string city) => "foreign", "frontend");
+    var original = new ChatClientAgentRunOptions { ChatOptions = new ChatOptions { Tools = tools, Temperature = 0.25f, TopP = 0.8f, AdditionalProperties = new() { ["supported"] = true } }, AdditionalProperties = new() { ["request"] = "original" } };
+    var before = JsonSerializer.Serialize(originalInput, AGUIJsonSerializerContext.Default.RunAgentInput);
+    var rejected = false; ChatClientAgentRunOptions? configured = null;
+
+    try { configured = (ChatClientAgentRunOptions)configureOptions.Invoke(null, [original, originalInput, registeredCatalog, new[] { backend }])!; }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException or ArgumentException) { rejected = true; }
+
+    Check(mutation == "valid" ? !rejected : rejected, "Preexisting native options may not introduce unregistered, duplicate, changed-schema, or foreign invocable tools: " + mutation);
+    Check(JsonSerializer.Serialize(originalInput, AGUIJsonSerializerContext.Default.RunAgentInput) == before && ReferenceEquals(original.ChatOptions.Tools, tools), "Original browser input and source options remain unchanged.");
+    if (mutation == "valid")
+    {
+        var cloned = configured ?? throw new Exception("Expected cloned native run options.");
+        var chat = cloned.ChatOptions ?? throw new Exception("Expected cloned chat options.");
+        Check(!ReferenceEquals(cloned, original) && !ReferenceEquals(chat, original.ChatOptions) && chat.Temperature == original.ChatOptions.Temperature && chat.TopP == original.ChatOptions.TopP && chat.AdditionalProperties!["supported"] is true && cloned.AdditionalProperties!["request"] as string == "original", "Unrelated supported native/chat settings survive independent options cloning.");
+        var declarations = chat.Tools!.OfType<AIFunctionDeclaration>().ToArray();
+        Check(declarations.Length == 1 && declarations[0].Name == "frontend" && JsonNode.DeepEquals(JsonNode.Parse(declarations[0].JsonSchema.GetRawText()), JsonNode.Parse(originalBrowserSchema.GetRawText())), "Run options add exactly the original browser schema; registered server defaults participate once in the genuine native union.");
+    }
+}
+var boundedJsonType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionJson");
+Check(boundedJsonType is not null, "Actual native argument capture requires a bounded serialization boundary before JSON materialization.");
+var boundedJson = boundedJsonType!.GetMethod("SerializeArguments", BindingFlags.NonPublic | BindingFlags.Static)!;
+var arguments = new Dictionary<string, object?> { ["value"] = "é\"\\" };
+var exactBytes = System.Text.Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(arguments));
+
+var boundedArguments = (JsonElement)boundedJson.Invoke(null, [arguments, exactBytes])!;
+arguments["value"] = "changed";
+
+Check(boundedArguments.GetProperty("value").GetString() == "é\"\\", "Bounded native arguments must be owned independently of source model objects.");
+foreach (var (value, limit) in new[] { ((object)new Dictionary<string, object?> { ["value"] = "é\"\\" }, exactBytes - 1), ((object)new Dictionary<string, object?> { ["value"] = new string('x', 1000000) }, 128) })
+{
+    var rejected = false;
+
+    try { boundedJson.Invoke(null, [value, limit]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is ArgumentException) { rejected = true; }
+
+    Check(rejected, "Native argument serialization must reject exact UTF-8 overflow before materializing a complete JSON document.");
+}
+// Pure lower-layer Restore qualification: no journal acquisition, model or executor is called.
+var restoreType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!;
+var restore = restoreType.GetMethod("Restore", BindingFlags.NonPublic | BindingFlags.Static)!;
+var registrationType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionRegistration")!;
+var contextType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionContext")!;
+await using var mappingSource = Npgsql.NpgsqlDataSource.Create("Host=127.0.0.1;Port=1;Username=fixture;Database=fixture");
+var mappingJournal = new PostgresNativeSessionJournal(mappingSource, registeredCatalog, "adapter", "adapter_native");
+var registration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
+    ["native", mappingJournal, registeredCatalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+string MappingSnapshot(IEnumerable<ChatMessage> messages) => JsonSerializer.Serialize(messages.Select(message => new { message.Role, message.MessageId, Contents = message.Contents.Select(content => new { Type = content.GetType().FullName, Json = JsonSerializer.Serialize(content, content.GetType()) }) }));
+foreach (var scenario in new[] { "unknown-separate", "known-parent", "known-index", "different-parents", "repeated-parent-index", "reversed-parent-index", "repeated-known-index", "unknown-moved-calls" })
+{
+    NativeRequestLocation First() => scenario switch
+    {
+        "unknown-separate" or "unknown-moved-calls" => new(null, null, 0),
+        "known-index" or "repeated-known-index" => new(null, 7, 0),
+        "reversed-parent-index" => new("parent", null, 1),
+        _ => new("parent", null, 0)
+    };
+    NativeRequestLocation Second() => scenario switch
+    {
+        "unknown-separate" or "unknown-moved-calls" => new(null, null, 0),
+        "known-index" => new(null, 7, 1),
+        "repeated-known-index" => new(null, 7, 0),
+        "different-parents" => new("other-parent", null, 0),
+        "repeated-parent-index" or "reversed-parent-index" => new("parent", null, 0),
+        _ => new("parent", null, 1)
+    };
+    var descriptors = new[] {
+        new NativeApprovalDescriptor("request-a", new("call-a", "backend", 1, JsonSerializer.SerializeToElement(new { code = "A" })), First()),
+        new NativeApprovalDescriptor("request-b", new("call-b", "backend", 1, JsonSerializer.SerializeToElement(new { code = "B" })), Second())
+    };
+    var batch = new NativeBoundApprovalBatch(new("batch", descriptors, []), new Dictionary<string, NativePublicCallLocation> { ["request-a"] = new("assistant-call-a", 0, 0), ["request-b"] = new("assistant-call-b", 1, 0) });
+    var ownedKey = new NativeSessionKey("native", "owned", "mapping", new Dictionary<string, string> { ["isolation"] = "owned" });
+    var decisions = descriptors.Select(item => new NativeApprovalDecision(item.RequestId, NativeApprovalDecisionKind.Approved)).ToArray();
+    var evidence = new NativeApprovalEvidence(ownedKey.Id, "adapter", registeredCatalog.Identity, new(ownedKey, "mapping-only", 2, 3), batch, 2, NativeApprovalState.DecisionAdmitted, decisions, 2, 3, DateTimeOffset.UtcNow.AddMinutes(1));
+    var publicMessages = new JsonArray(descriptors.Select(item => (JsonNode?)new JsonObject { ["id"] = "assistant-" + item.Call.Id, ["role"] = "assistant", ["content"] = "", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = item.Call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = "backend", ["arguments"] = item.Call.Arguments.GetRawText() } }) }).ToArray());
+    var raw = new JsonObject { ["threadId"] = "mapping", ["runId"] = "mapping", ["messages"] = publicMessages, ["tools"] = new JsonArray() }.ToJsonString();
+    var input = JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", raw, null, null], null)!;
+    contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, evidence);
+    var converted = descriptors.Select(item => new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(item.Call.Id, "backend", JsonSerializer.Deserialize<Dictionary<string, object?>>(item.Call.Arguments))]) { MessageId = "assistant-" + item.Call.Id }).ToList();
+    if (scenario == "unknown-moved-calls") converted.Reverse();
+    converted.Add(new ChatMessage(ChatRole.User, decisions.Select(item => (AIContent)new InterruptResponseContent(item.RequestId) { Payload = JsonSerializer.SerializeToElement(new { approved = true }) }).ToList()));
+    var before = MappingSnapshot(converted); var beforeLocations = JsonSerializer.Serialize(descriptors);
+    var rejected = false; IReadOnlyList<ChatMessage>? restored = null;
+
+    try { restored = (IReadOnlyList<ChatMessage>)restore.Invoke(null, [converted, context])!; }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    var valid = scenario is "unknown-separate" or "known-parent" or "known-index" or "different-parents";
+    Check(valid ? !rejected : rejected, "Restore distinguishes unknown separate native parents from proven same-group reversed/repeated positions and still rejects moved converted public calls: " + scenario);
+    Check(MappingSnapshot(converted) == before && JsonSerializer.Serialize(descriptors) == beforeLocations, "Native Restore must not mutate public converted history or captured native locations: " + scenario);
+    if (valid) Check(restored!.SelectMany(message => message.Contents).OfType<ToolApprovalRequestContent>().Select(item => ((FunctionCallContent)item.ToolCall).CallId).SequenceEqual(new[] { "call-a", "call-b" }), "Restoration replaces native approval requests in the original public sequence.");
+    await ((IAsyncDisposable)context).DisposeAsync();
+}
+
+var unleasedAgent = NativeSessionAgentFactory.Create(new NeverModel(), "native", [backend], registeredCatalog, new HttpContextAccessor());
+var unleasedCreateRejected = false;
+
+try { await unleasedAgent.CreateSessionAsync(); }
+catch (InvalidOperationException) { unleasedCreateRejected = true; }
+
+Check(unleasedCreateRejected, "Actual native session creation must not bypass successful actual-key journal admission.");
+Console.WriteLine("Native approval adapter projection passed.");
+
+sealed class NeverModel : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new Exception("Preparation cannot invoke the model.");
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new Exception("Preparation cannot invoke the model.");
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}

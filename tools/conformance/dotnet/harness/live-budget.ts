@@ -1,25 +1,32 @@
 import { LIVE_PROJECTS } from './live-configuration';
 
+const liveGroups = Object.freeze(
+  [
+    { name: 'streaming-plain', calls: 1 },
+    { name: 'structured-schema', calls: 1 },
+    { name: 'trusted-ui-action', calls: 2 },
+    { name: 'browser-tool', calls: 2 },
+    { name: 'server-tool', calls: 2 },
+    { name: 'approval-resume-decline', calls: 3 },
+    { name: 'cancellation-recovery', calls: 3 },
+    { name: 'mixed-native-tools', calls: 2 },
+    { name: 'native-approval', calls: 4 },
+  ].map((group) => Object.freeze(group)),
+);
+const livePreflights = Object.freeze([
+  'openai-responses',
+  'azure-responses',
+  'azure-cli-chat',
+]);
+
 /** Immutable upfront reservations; unused scenario allowance cannot fund another scenario. */
 export const LIVE_BUDGET_MANIFEST = Object.freeze({
-  groups: Object.freeze(
-    [
-      { name: 'streaming-plain', calls: 1 },
-      { name: 'structured-schema', calls: 1 },
-      { name: 'trusted-ui-action', calls: 2 },
-      { name: 'browser-tool', calls: 2 },
-      { name: 'server-tool', calls: 2 },
-      { name: 'approval-resume-decline', calls: 3 },
-      { name: 'cancellation-recovery', calls: 3 },
-      { name: 'mixed-native-tools', calls: 2 },
-    ].map((group) => Object.freeze(group)),
-  ),
-  preflights: Object.freeze([
-    'openai-responses',
-    'azure-responses',
-    'azure-cli-chat',
-  ]),
-  reservedCalls: 99,
+  groups: liveGroups,
+  preflights: livePreflights,
+  reservedCalls:
+    LIVE_PROJECTS.length *
+      liveGroups.reduce((sum, group) => sum + group.calls, 0) +
+    livePreflights.length,
   maxRunCalls: 128,
   maxScenarioCalls: 4,
   maxOutputTokens: 384,
@@ -113,6 +120,15 @@ export async function withLiveDeadline<T>(
 export function createLiveBudget(
   options: { readonly now?: () => number } = {},
 ): LiveBudget {
+  const reserved =
+    LIVE_PROJECTS.length *
+      LIVE_BUDGET_MANIFEST.groups.reduce((sum, group) => sum + group.calls, 0) +
+    LIVE_BUDGET_MANIFEST.preflights.length;
+  if (
+    reserved !== LIVE_BUDGET_MANIFEST.reservedCalls ||
+    reserved > LIVE_BUDGET_MANIFEST.maxRunCalls
+  )
+    throw new Error('LIVE_RESERVATION_INVALID');
   const now = options.now ?? Date.now;
   const started = now();
   const run = deadline(undefined, LIVE_BUDGET_MANIFEST.runTimeoutMs);

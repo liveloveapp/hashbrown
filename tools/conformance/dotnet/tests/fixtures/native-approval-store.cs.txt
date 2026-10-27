@@ -1,0 +1,246 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+static JsonElement Json(string value) => JsonSerializer.Deserialize<JsonElement>(value);
+static NativeSessionKey Key(string selector) => new("agent", "alice", selector, new Dictionary<string, string> { ["tenant"] = "trusted" });
+static string Request(string selector) => $$"""{"threadId":"{{selector}}","messages":[{"id":"user","role":"user","content":"hello"}],"tools":[]}""";
+static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture is required."));
+var catalog = new NativeToolCatalog([new("server", 1, Json("{\"type\":\"object\"}"))]);
+var schemas = new List<string>();
+var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+var frozenDdl = await File.ReadAllTextAsync(Environment.GetEnvironmentVariable("NATIVE_V1_DDL")!);
+try
+{
+    var schema = await Legacy();
+    var key = Key("pending");
+    var pending = JsonNode.Parse(Request("pending"))!;
+    pending["tools"] = JsonNode.Parse("""[{"name":"browser","description":"Read browser","parameters":{"type":"object"}}]""");
+    pending["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"assistant","role":"assistant","toolCalls":[{"id":"browser-call","type":"function","function":{"name":"browser","arguments":"{}"}}]}"""));
+    var prefix = NativeSessionHistory.Normalize(pending.ToJsonString(), key, catalog, new());
+    var privateJson = """{"opaque":"must survive byte for byte","StateBag":{"unknown":"private, never inspected"}}""";
+    var hidden = new NativeToolCall("hidden-server", "server", 1, Json("{\"value\":1}"));
+    await Seed(schema, key, "Ready", LegacyPayload(privateJson, prefix, [hidden], ["browser-call"], false));
+    await Sql(schema, "INSERT INTO {s}.native_invocations VALUES(@id,'hidden-server','server',1,@descriptor,'Captured',7,NULL)", ("id", key.Id), ("descriptor", JsonSerializer.Serialize(hidden, jsonOptions)));
+    foreach (var state in new[] { "Blocked", "Retired", "Owned", "Saved", "Publishing", "PublicationUnknown" })
+    {
+        var selector = Key(state.ToLowerInvariant());
+        await Seed(schema, selector, state, state == "Retired" ? null : LegacyPayload("{}", NativeSessionHistory.Normalize(Request(selector.Selector), selector, catalog, new()), [], [], true));
+        await Sql(schema, "INSERT INTO {s}.native_invocations VALUES(@id,'completed','server',1,NULL,'Completed',3,4),(@id,'started','server',1,NULL,'Started',5,6); INSERT INTO {s}.native_audit(session_id,scope,actor,prior_state,prior_generation,prior_revision,outcome,reason,evidence_reference,recorded_at) VALUES(@id,'alice','operator','Blocked',6,10,'Unresolved','evidence retained','fixture',now())", ("id", selector.Id));
+    }
+    var incompatibleKey = Key("old-catalog");
+    await Seed(schema, incompatibleKey, "Ready", LegacyPayload("{}", NativeSessionHistory.Normalize(Request(incompatibleKey.Selector), incompatibleKey, catalog, new()), [], [], true), "[\"hashbrown-native-v1\",\"old-model\",\"old-catalog-hash\"]");
+    var checkpointRegistry = new WorkflowOperationRegistry([new("checkpoint", 1, _ => true, (_, _) => ValueTask.CompletedTask, (_, _, _) => ValueTask.CompletedTask)]);
+    var checkpointStore = new PostgresInterruptStore(source, checkpointRegistry, schema);
+    await checkpointStore.InitializeAsync();
+    var checkpoint = await checkpointStore.CreateAsync("checkpoint-scope", JsonSerializer.Deserialize(Request("checkpoint"), AGUI.Abstractions.AGUIJsonSerializerContext.Default.RunAgentInput)!, new("checkpoint", 1, Json("{}")));
+    await Sql(schema, "INSERT INTO {s}.interrupt_reconciliation_audit VALUES('audit',@id,'checkpoint-scope','operator',now(),'EffectStarted',2,3,'Unresolved','retained','fixture',true)", ("id", checkpoint.Id));
+    var safetyBefore = await Safety(schema);
+    var checkpointBefore = await CheckpointHash(schema);
+    var payloadBefore = await PayloadHash(schema);
+    var journal = Journal(schema);
+
+    await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => Journal(schema).InitializeAsync().AsTask()));
+    await journal.InitializeAsync();
+    await journal.InitializeAsync();
+
+    Check(await Scalar<long>(schema, "SELECT version::bigint FROM {s}.native_metadata") == 2, "Genuine v1 native metadata must upgrade to schema2.");
+    Check(await Safety(schema) == safetyBefore, "Migration must preserve every native key, compatibility, owner/revision/generation/state, call fence, tombstone and audit byte.");
+    Check(await PayloadHash(schema) == payloadBefore, "Every v1 payload field must be preserved exactly apart from the explicit added format/approval fields.");
+    Check(await CheckpointHash(schema) == checkpointBefore, "Migration must preserve actual workflow checkpoint schema3 payload and audit hashes.");
+    var upgraded = JsonNode.Parse(await Scalar<string>(schema, "SELECT payload FROM {s}.native_sessions WHERE selector='pending'"))!;
+    Check(upgraded["formatVersion"]!.GetValue<int>() == 2 && upgraded["approvals"] is JsonObject && upgraded["approvals"]!["pendingBatch"] is null, "Only genuine v1 migration fills explicit empty schema2 approvals and format.");
+    Check(upgraded["nativeJson"]!.GetValue<string>() == privateJson, "Opaque native JSON must stay byte-identical without inspection.");
+    Check((await journal.TryAcquireAsync(incompatibleKey, Request(incompatibleKey.Selector))).Status == 409, "Migration must preserve the incompatible old-catalog fence.");
+    var incoming = JsonNode.Parse(prefix)!;
+    incoming["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"result","role":"tool","toolCallId":"browser-call","content":"actual browser result"}"""));
+    var owner = await journal.TryAcquireAsync(key, incoming.ToJsonString());
+    Check(owner.Status == 200 && !owner.IsNew && owner.Snapshot!.NativeJson == privateJson && owner.Snapshot.PendingCalls.Single().Id == hidden.Id, "A genuine v1 pending browser acquisition must restore private native authority.");
+    var restoredCall = await journal.GetOwnedCallAsync(owner.Lease!, hidden.Id);
+    Check(restoredCall is not null && restoredCall.Arguments.GetRawText() == hidden.Arguments.GetRawText(), "Migrated hidden server descriptor must remain private and authoritative.");
+    Check(await journal.FailureCleanupAsync(owner.Lease!), "Ordinary restored owner cleanup remains supported.");
+    Console.WriteLine("migration: v1 safety rows, workflow3 hashes, repeated/concurrent initialization and ordinary pending acquisition passed");
+
+    var fresh = NewSchema();
+    await Journal(fresh).InitializeAsync();
+    Check(await Scalar<long>(fresh, "SELECT version::bigint FROM {s}.native_metadata") == 2, "Fresh initialization must create native schema2.");
+    await Journal(fresh).TryAcquireAsync(Key("fresh"), Request("fresh"));
+    Check(JsonNode.Parse(await Scalar<string>(fresh, "SELECT payload FROM {s}.native_sessions"))!["formatVersion"]!.GetValue<int>() == 2, "Fresh saved payloads must use explicit schema2 format.");
+    await using var searchPathSource = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") + ";Search Path=" + fresh);
+    await new PostgresNativeSessionJournal(searchPathSource, catalog, "model-v1", fresh).InitializeAsync();
+    foreach (var corruption in new[] { "DROP TABLE {s}.native_approvals", "ALTER TABLE {s}.native_approval_batches DROP COLUMN member_digest", "ALTER TABLE {s}.native_invocations DROP CONSTRAINT native_invocations_state_check", "ALTER TABLE {s}.native_approvals DROP CONSTRAINT native_approvals_check; ALTER TABLE {s}.native_approvals ADD CONSTRAINT native_approvals_check CHECK(true)", "CREATE OR REPLACE FUNCTION {s}.native_approval_expiry() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RETURN NEW; END'", "DROP TRIGGER native_session_approval_expiry ON {s}.native_sessions" })
+    {
+        var broken = NewSchema();
+        await Journal(broken).InitializeAsync();
+        await Sql(broken, corruption);
+        Check(await Rejected(Journal(broken)), "Known schema2 with missing or corrupt safety schema must fail closed instead of repair/recreate.");
+    }
+    var admittedCorruptTriggers = new List<string>();
+    foreach (var expiryGuard in new[]
+    {
+        (Table: "native_sessions", Name: "native_session_approval_expiry", Events: "UPDATE OF expires_at", Predicate: "WHEN (false)", Function: "native_session_approval_expiry"),
+        (Table: "native_approvals", Name: "native_approval_expiry", Events: "INSERT OR UPDATE", Predicate: "WHEN (false)", Function: "native_approval_expiry"),
+        (Table: "native_approval_batches", Name: "native_batch_expiry", Events: "INSERT OR UPDATE", Predicate: "WHEN (false)", Function: "native_approval_expiry"),
+        (Table: "native_approvals", Name: "native_approval_expiry", Events: "INSERT OR UPDATE OF state", Predicate: "", Function: "native_approval_expiry"),
+        (Table: "native_approval_batches", Name: "native_batch_expiry", Events: "INSERT OR UPDATE OF state", Predicate: "", Function: "native_approval_expiry")
+    })
+    {
+        var broken = NewSchema();
+        await Journal(broken).InitializeAsync();
+        await Sql(broken, $"DROP TRIGGER {expiryGuard.Name} ON {{s}}.{expiryGuard.Table}; CREATE TRIGGER {expiryGuard.Name} BEFORE {expiryGuard.Events} ON {{s}}.{expiryGuard.Table} FOR EACH ROW {expiryGuard.Predicate} EXECUTE FUNCTION {{s}}.{expiryGuard.Function}()");
+
+        if (!await Rejected(Journal(broken))) admittedCorruptTriggers.Add(expiryGuard.Name + ": " + expiryGuard.Events + " " + expiryGuard.Predicate);
+    }
+
+    Check(admittedCorruptTriggers.Count == 0, "Required expiry guard predicates/column filters must fail closed: " + string.Join("; ", admittedCorruptTriggers));
+    foreach (var badVersion in new[] { 0, 3, 99 })
+    {
+        var future = await Legacy();
+        await Sql(future, "UPDATE {s}.native_metadata SET version=@version", ("version", badVersion));
+        Check(await Rejected(Journal(future)), "Unknown/future native versions must fail closed.");
+    }
+    var partial = await Legacy();
+    await Sql(partial, "DROP TABLE {s}.native_audit");
+    Check(await Rejected(Journal(partial)), "Partial v1 schemas must not recreate missing safety tables.");
+    var missingMetadata = await Legacy();
+    await Sql(missingMetadata, "DROP TABLE {s}.native_metadata");
+    Check(await Rejected(Journal(missingMetadata)), "Existing native tables without metadata cannot be treated as a fresh schema.");
+    foreach (var payload in new[] { LegacyPayload(privateJson, prefix, [hidden], ["foreign-browser"], false), "{}", "null", "{", LegacyPayload("[]", prefix, [hidden], ["browser-call"], false), LegacyPayload(privateJson, prefix, [hidden], ["browser-call"], false).Replace("\"turnCompleted\":false", "\"turnCompleted\":null"), LegacyPayload(privateJson, prefix, [hidden], ["browser-call"], false).TrimEnd('}') + ",\"formatVersion\":99}" })
+    {
+        var corrupt = await Legacy();
+        await Seed(corrupt, key, "Ready", payload);
+        var before = await Scalar<string>(corrupt, "SELECT payload FROM {s}.native_sessions");
+        Check(await Rejected(Journal(corrupt)), "Corrupt or unknown v1 payload must reject migration without becoming a virgin.");
+        Check(await Scalar<long>(corrupt, "SELECT version::bigint FROM {s}.native_metadata") == 1 && await Scalar<string>(corrupt, "SELECT payload FROM {s}.native_sessions") == before, "Rejected migration must leave version and corrupt payload untouched.");
+    }
+    var rollback = await Legacy();
+    await Seed(rollback, key, "Ready", LegacyPayload(privateJson, prefix, [hidden], ["browser-call"], false));
+    var rollbackPayload = await Scalar<string>(rollback, "SELECT payload FROM {s}.native_sessions");
+    await Sql(rollback, "CREATE FUNCTION {s}.reject_upgrade() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN IF NEW.version=2 THEN RAISE EXCEPTION ''injected before version update''; END IF; RETURN NEW; END'; CREATE TRIGGER reject_upgrade BEFORE UPDATE ON {s}.native_metadata FOR EACH ROW EXECUTE FUNCTION {s}.reject_upgrade()");
+    Check(await Rejected(Journal(rollback)), "Injected failure at metadata-last update must abort migration.");
+    Check(await Scalar<long>(rollback, "SELECT version::bigint FROM {s}.native_metadata") == 1 && await Scalar<string>(rollback, "SELECT payload FROM {s}.native_sessions") == rollbackPayload && !await Scalar<bool>(rollback, "SELECT to_regclass('{s}.native_approvals') IS NOT NULL"), "Atomic rollback must preserve v1 payload/version and undo approval DDL.");
+    await Sql(rollback, "DROP TRIGGER reject_upgrade ON {s}.native_metadata; DROP FUNCTION {s}.reject_upgrade()");
+    await Journal(rollback).InitializeAsync();
+    Console.WriteLine("schema: fresh, partial/future/corrupt schema and metadata-last rollback passed");
+
+    var capacitySchema = NewSchema();
+    var capacityJournal = new PostgresNativeSessionJournal(source, catalog, "model-v1", capacitySchema, new() { MaximumCalls = 2 });
+    await capacityJournal.InitializeAsync();
+    var capacityOwner = (await capacityJournal.TryAcquireAsync(Key("capacity"), Request("capacity"))).Lease!;
+    await Sql(capacitySchema, "INSERT INTO {s}.native_approval_batches(session_id,batch_id,member_digest,member_count,state,expires_at) SELECT id,'batch',repeat('A',64),1,'Pending',expires_at FROM {s}.native_sessions");
+    await Sql(capacitySchema, "INSERT INTO {s}.native_approvals(session_id,request_id,call_id,batch_id,kind,private_descriptor,state,captured_generation,expires_at) SELECT id,'r1','browser1','batch','BrowserBypass','{}','Pending',generation,expires_at FROM {s}.native_sessions");
+    async Task Constraint(string sql)
+    {
+        var rejected = false;
+        try { await Sql(capacitySchema, sql); } catch (PostgresException exception) when (exception.SqlState is "23514" or "23505" or "23503") { rejected = true; }
+        Check(rejected, "Approval schema must reject invalid identity/kind/state/bounds/expiry: " + sql);
+    }
+    await Constraint("UPDATE {s}.native_approvals SET kind='Unknown'");
+    await Constraint("UPDATE {s}.native_approvals SET decision='Approved'");
+    await Constraint("UPDATE {s}.native_approvals SET state='DecisionAdmitted'");
+    await Constraint("UPDATE {s}.native_approvals SET request_id=repeat('x',1025)");
+    await Constraint("UPDATE {s}.native_approvals SET private_descriptor=repeat('x',1048577)");
+    await Constraint("UPDATE {s}.native_approvals SET private_descriptor='[]'");
+    await Constraint("UPDATE {s}.native_approvals SET expires_at=expires_at+interval '1 second'");
+    await Constraint("UPDATE {s}.native_approval_batches SET expires_at=expires_at+interval '1 second'");
+    await Constraint("UPDATE {s}.native_sessions SET expires_at=expires_at-interval '1 second'");
+    await Constraint("UPDATE {s}.native_approval_batches SET member_count=257");
+    await Constraint("UPDATE {s}.native_approval_batches SET member_digest='unbounded-or-unknown'");
+    await Constraint("UPDATE {s}.native_approval_batches SET state='DecisionAdmitted'");
+    await Constraint("INSERT INTO {s}.native_approvals SELECT session_id,'r2',call_id,batch_id,kind,private_descriptor,state,decision,captured_generation,admitted_generation,admitted_revision,expires_at,result_digest FROM {s}.native_approvals");
+    await Sql(capacitySchema, "INSERT INTO {s}.native_approvals SELECT session_id,'r2','browser2',batch_id,kind,private_descriptor,'Retired',decision,captured_generation,admitted_generation,admitted_revision,expires_at,result_digest FROM {s}.native_approvals; UPDATE {s}.native_approvals SET private_descriptor=NULL,state='Retired'");
+    Check(!await capacityJournal.CaptureModelCallAsync(capacityOwner, hidden), "Purged browser request/call fences must still consume aggregate call capacity before allocation.");
+    Check(await Scalar<long>(capacitySchema, "SELECT count(*) FROM {s}.native_invocations") == 0, "Full retained request capacity cannot allocate an invocation.");
+    var byteJournal = new PostgresNativeSessionJournal(source, catalog, "model-v1", capacitySchema, new() { NativeBytes = 20 });
+    await Sql(capacitySchema, "UPDATE {s}.native_approvals SET private_descriptor='{\"padding\":\"x\"}'");
+    Check(!await byteJournal.CaptureModelCallAsync(capacityOwner, hidden), "Combined private protected/browser descriptor bytes must remain within NativeBytes before allocation.");
+    Console.WriteLine("storage: kind/state/decision, request/call uniqueness, private bounds, database expiry and purged-fence capacity passed");
+
+    foreach (var missing in new[] { "formatVersion", "approvals", "turnCompleted", "pendingCalls", "expectedBrowserCallIds", "nested-approvals" })
+    {
+        var corruptKey = Key("missing-" + missing.ToLowerInvariant());
+        var corruptOwner = (await Journal(fresh).TryAcquireAsync(corruptKey, Request(corruptKey.Selector))).Lease!;
+        Check(await Journal(fresh).FailureCleanupAsync(corruptOwner), "Corrupt payload setup releases a virgin owner.");
+        var payload = JsonNode.Parse(await Scalar<string>(fresh, $"SELECT payload FROM {{s}}.native_sessions WHERE id='{corruptKey.Id}'"))!.AsObject();
+        if (missing == "nested-approvals") payload["approvals"] = new JsonObject(); else payload.Remove(missing);
+        await Sql(fresh, "UPDATE {s}.native_sessions SET payload=@payload WHERE id=@id", ("payload", payload.ToJsonString()), ("id", corruptKey.Id));
+        var corruptAdmission = await Journal(fresh).TryAcquireAsync(corruptKey, Request(corruptKey.Selector));
+        Check(corruptAdmission.Status == 503 && corruptAdmission.Lease is null && corruptAdmission.Snapshot is null, "Missing v2 payload fields cannot be interpreted as a virgin: " + missing);
+    }
+
+    var unsupportedKey = Key("unsupported-save");
+    var unsupportedOwner = (await Journal(fresh).TryAcquireAsync(unsupportedKey, Request(unsupportedKey.Selector))).Lease!;
+    var unboundBatch = new NativeBoundApprovalBatch(new("unbound", [new("unbound-request", hidden, new("native-parent", 0, 0))], []), new Dictionary<string, NativePublicCallLocation> { ["unbound-request"] = new("public-parent", 0, 0) });
+    Check(await Journal(fresh).SaveAsync(unsupportedOwner, new("{}", Request(unsupportedKey.Selector), [], [], true, new(unboundBatch))) is null, "Schema support cannot save an unjournaled approval batch before the later durable capture/publication gate.");
+
+    var guard = Journal(fresh);
+    var guardOwner = (await guard.TryAcquireAsync(Key("guard"), Request("guard"))).Lease!;
+    var beforeGuard = await Safety(fresh);
+    await Sql(fresh, "UPDATE {s}.native_metadata SET version=99");
+    Check(await Rejected(guard), "Initialize must reject changed metadata.");
+    var blocked = 0;
+    async Task Blocked(Func<Task> action) { try { await action(); } catch (InvalidOperationException) { blocked++; } }
+    await Blocked(async () => { var admission = await guard.TryAcquireAsync(Key("never"), Request("never")); Check(admission.Status != 200, "Changed metadata cannot allocate new authority."); blocked++; });
+    await Blocked(async () => { Check(!await guard.RenewAsync(guardOwner), "Changed metadata cannot renew authority."); blocked++; });
+    await Blocked(async () => { Check(!await guard.CaptureModelCallAsync(guardOwner, hidden), "Changed metadata cannot capture calls."); blocked++; });
+    await Blocked(async () => { Check(await guard.GetOwnedCallAsync(guardOwner, hidden.Id) is null, "Changed metadata cannot materialize authority."); blocked++; });
+    await Blocked(async () => { Check(!await guard.TryStartDispatchAsync(guardOwner, hidden), "Changed metadata cannot grant dispatch."); blocked++; });
+    await Blocked(async () => { Check(!await guard.CompleteDispatchAsync(guardOwner, hidden), "Changed metadata cannot complete dispatch."); blocked++; });
+    await Blocked(async () => { Check(await guard.SaveAsync(guardOwner, new("{}", Request("guard"), [], [], true)) is null, "Changed metadata cannot save."); blocked++; });
+    await Blocked(async () => { Check(!await guard.AuthorizePublicationAsync(new(guardOwner, 1)), "Changed metadata cannot reserve publication."); blocked++; });
+    await Blocked(async () => { Check(!await guard.FinalizePublicationAsync(new(guardOwner, 1)), "Changed metadata cannot finalize publication."); blocked++; });
+    await Blocked(async () => { Check(!await guard.FailureCleanupAsync(guardOwner), "Changed metadata cannot clean up."); blocked++; });
+    await Blocked(async () => { Check((await guard.ReadStatusAsync(guardOwner.Key)).Status != 200, "Changed metadata cannot serve usable state."); blocked++; });
+    await Blocked(async () => { Check(await guard.InspectAsync(new HashSet<string> { "alice" }, guardOwner.Key) is null, "Changed metadata cannot inspect."); blocked++; });
+    await Blocked(async () => { Check(await guard.RetireAsync(new HashSet<string> { "alice" }, guardOwner.Key, "operator", new("Owned", 1, 1, "Retired", "fixture", "fixture", true)) != 200, "Changed metadata cannot retire."); blocked++; });
+    await Blocked(async () => { Check(await guard.MaintainAsync() == 0, "Changed metadata cannot maintain."); blocked++; });
+    Check(blocked == 14 && await Safety(fresh) == beforeGuard, "Every current-worker transaction must fail closed without mutation after unsupported metadata.");
+    Console.WriteLine("Native approval schema contracts passed.");
+}
+finally
+{
+    foreach (var schema in schemas) await Sql(schema, "DROP SCHEMA IF EXISTS {s} CASCADE");
+}
+
+string NewSchema() { var schema = "native_approval_probe_" + Guid.NewGuid().ToString("N"); schemas.Add(schema); return schema; }
+PostgresNativeSessionJournal Journal(string schema) => new(source, catalog, "model-v1", schema);
+async Task<string> Legacy()
+{
+    var schema = NewSchema();
+    await Sql(schema, "CREATE SCHEMA {s}");
+    await Sql(schema, frozenDdl.Replace("{Metadata}", "{s}.native_metadata").Replace("{Sessions}", "{s}.native_sessions").Replace("{Calls}", "{s}.native_invocations").Replace("{Audit}", "{s}.native_audit"));
+    return schema;
+}
+// Genuine v1 five-field JSON layout; deliberately never uses the v2 snapshot initializer.
+string LegacyPayload(string nativeJson, string publicRequest, NativeToolCall[] calls, string[] browser, bool completed) => JsonSerializer.Serialize(new { nativeJson, publicRequest, pendingCalls = calls, expectedBrowserCallIds = browser, turnCompleted = completed }, jsonOptions);
+async Task Seed(string schema, NativeSessionKey key, string state, string? payload, string? compatibility = null)
+{
+    await Sql(schema, "INSERT INTO {s}.native_sessions(id,agent,scope,selector,key_data,compatibility,state,token,generation,revision,claim_revision,ever_saved,lease_until,expires_at,payload) VALUES(@id,@agent,@scope,@selector,@key,@compatibility,@state,'v1-owner',7,11,8,true,now()+interval '1 hour',now()+interval '1 day',@payload)",
+        ("id", key.Id), ("agent", key.Agent), ("scope", key.Scope), ("selector", key.Selector), ("key", NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(key, jsonOptions))), ("compatibility", compatibility ?? JsonSerializer.Serialize(new[] { "hashbrown-native-v1", "model-v1", catalog.Identity })), ("state", state), ("payload", payload is null ? DBNull.Value : payload));
+}
+async Task Sql(string schema, string sql, params (string Name, object Value)[] parameters)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("{s}", schema), connection);
+    foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
+    await command.ExecuteNonQueryAsync();
+}
+async Task<T> Scalar<T>(string schema, string sql)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("{s}", schema), connection);
+    return (T)(await command.ExecuteScalarAsync())!;
+}
+async Task<bool> Rejected(PostgresNativeSessionJournal journal)
+{
+    try { await journal.InitializeAsync(); return false; } catch (Exception exception) when (exception is InvalidOperationException or NpgsqlException or ArgumentException or JsonException) { return true; }
+}
+async Task<string> Safety(string schema) => await Scalar<string>(schema, "SELECT jsonb_build_object('sessions',(SELECT jsonb_agg(to_jsonb(s)-'payload' ORDER BY id) FROM {s}.native_sessions s),'calls',(SELECT jsonb_agg(to_jsonb(c) ORDER BY session_id,call_id) FROM {s}.native_invocations c),'audit',(SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM {s}.native_audit a))::text");
+async Task<string> CheckpointHash(string schema) => Hash(await Scalar<string>(schema, "SELECT jsonb_build_object('metadata',(SELECT jsonb_agg(to_jsonb(m)) FROM {s}.interrupt_metadata m),'batches',(SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM {s}.interrupt_batches b),'audit',(SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM {s}.interrupt_reconciliation_audit a))::text"));
+
+async Task<string> PayloadHash(string schema) => Hash(await Scalar<string>(schema, "SELECT jsonb_agg(jsonb_build_object('id',id,'payload',payload::jsonb-'formatVersion'-'approvals') ORDER BY id)::text FROM {s}.native_sessions"));

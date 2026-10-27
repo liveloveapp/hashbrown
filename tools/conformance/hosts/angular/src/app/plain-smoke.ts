@@ -70,6 +70,23 @@ function errorText(error: unknown): string {
           Refresh recovery
         </button>
       }
+      @if (recovery.enabled) {
+        <button
+          data-testid="replay-last-restore"
+          type="button"
+          [disabled]="
+            recovery.fetching() ||
+            chat.isLoading() ||
+            !recovery.canReplayRestore()
+          "
+          (click)="recovery.replayLastRestore()"
+        >
+          Replay last restore command
+        </button>
+      }
+      <div data-testid="recovery-command-error">
+        {{ recovery.commandError() }}
+      </div>
       <div data-testid="recovery-status">{{ recovery.status() }}</div>
       <div data-testid="recovery-fetching">{{ recovery.fetching() }}</div>
       <div data-testid="recovery-required">{{ chat.recovery().required }}</div>
@@ -107,6 +124,9 @@ function errorText(error: unknown): string {
         [textContent]="toErrorText(chat.generatingError())"
       ></div>
       <div data-testid="tool-count">{{ toolCount() }}</div>
+      <div data-testid="tool-observations">
+        {{ serializedToolObservations() }}
+      </div>
       <div data-testid="reasoning" [textContent]="reasoningText()"></div>
       <div
         data-testid="reasoning-detail-count"
@@ -124,7 +144,11 @@ export class PlainSmoke {
   protected readonly threadId = signal(selectedThread());
   protected readonly commandError = signal('');
   protected readonly submitted = signal('');
-  protected readonly toolCount = signal(0);
+  protected readonly toolObservations = signal<readonly string[]>([]);
+  protected readonly toolCount = computed(() => this.toolObservations().length);
+  protected readonly serializedToolObservations = computed(() =>
+    JSON.stringify(this.toolObservations()),
+  );
   protected readonly toErrorText = errorText;
 
   private readonly getWeather = createTool({
@@ -134,7 +158,11 @@ export class PlainSmoke {
       city: s.string('The city to get weather for'),
     }),
     handler: async ({ city }) => {
-      this.toolCount.update((count) => count + 1);
+      this.toolObservations.update((entries) => {
+        if (entries.length >= 128)
+          throw new Error('Fixture tool observation capacity exceeded');
+        return [...entries, city];
+      });
 
       return { city, temperatureC: 21, condition: 'sunny' };
     },

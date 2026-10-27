@@ -4,6 +4,7 @@ import type {
   TestCase,
   TestResult,
 } from '@playwright/test/reporter';
+import { selectLiveFailurePhase } from './live-failure-phase';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 
@@ -58,10 +59,24 @@ export default class LiveReporter implements Reporter {
       this.failed = true;
       return;
     }
+    const phase = selectLiveFailurePhase(
+      group,
+      result.annotations ?? test.annotations ?? [],
+    );
+    if (!phase.valid) {
+      this.failed = true;
+      return;
+    }
     const record = {
       project,
       group,
       outcome: result.status === 'passed' ? 'passed' : 'failed',
+      ...(result.status === 'passed'
+        ? {}
+        : {
+            failureCode: 'LIVE_ASSERTION_FAILED',
+            ...(phase.phase ? { failurePhase: phase.phase } : {}),
+          }),
       stage: result.status === 'passed' ? 'completed' : 'failed',
       durationMs: Math.max(0, Math.round(result.duration)),
     };

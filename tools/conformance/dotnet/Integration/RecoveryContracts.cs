@@ -10,7 +10,9 @@ namespace Hashbrown.Conformance.Integration;
 public sealed record ConversationRecoveryConfiguration(string? System = null, IReadOnlyList<AGUITool>? Tools = null, JsonElement? ForwardedProps = null);
 
 /// <summary>Public confirmation fields, carrying no server claim authority.</summary>
-public sealed record RecoveryInterrupt(string Id, string Reason, string Message, JsonElement ResponseSchema, string ExpiresAt);
+public sealed record RecoveryInterrupt(string Id, string Reason, string Message, JsonElement ResponseSchema,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ExpiresAt = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ToolCallId = null);
 
 /// <summary>Owned canonical native conversation that can be installed without replaying events.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
