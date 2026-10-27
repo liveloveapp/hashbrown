@@ -5,7 +5,10 @@ import {
 import { setTimeout as pollDelay } from 'node:timers/promises';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 import { LIVE_PROJECTS } from './live-configuration';
-import { LIVE_ASSERTION_TIMEOUT_MS } from './live-wait-policy';
+import {
+  LIVE_ASSERTION_TIMEOUT_MS,
+  LIVE_CASE_TIMEOUT_MS,
+} from './live-wait-policy';
 
 /** Fixed metadata allowed to reach the live Playwright reporter. */
 export interface LiveFailureAnnotation {
@@ -41,6 +44,8 @@ export interface LiveNativeStats extends Partial<LiveNativeApprovalProof> {
 
 /** Node-owned fixture capability; no provider credentials enter the browser worker. */
 export interface LiveBrowserFixture {
+  /** Trusted case cancellation for Node-owned metadata requests. */
+  readonly signal?: AbortSignal;
   readonly url: string;
   readonly stats: (requestSignal?: AbortSignal) => Promise<LiveNativeStats>;
   readonly release: () => Promise<void>;
@@ -86,7 +91,7 @@ export function readLiveCoordinator(
 export async function withSafeLiveCase<T>(
   operation: (signal: AbortSignal) => Promise<T>,
   annotate: (annotation: LiveFailureAnnotation) => void,
-  timeoutMs = 55_000,
+  timeoutMs = LIVE_CASE_TIMEOUT_MS,
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -202,6 +207,20 @@ export function nativeStats(value: unknown): LiveNativeStats {
   });
 }
 
+/** Reads the actual selected native gate without retaining any other endpoint fields. */
+export async function readLiveNativeStage(
+  fixture: Pick<LiveBrowserFixture, 'url' | 'signal'>,
+): Promise<unknown> {
+  const response = await fetch(`${fixture.url}/__test/native-stage`, {
+    signal: AbortSignal.any([
+      AbortSignal.timeout(5_000),
+      ...(fixture.signal ? [fixture.signal] : []),
+    ]),
+  });
+  if (!response.ok) throw new Error('LIVE_NATIVE_STAGE_FAILED');
+  return ((await response.json()) as { stage?: unknown }).stage;
+}
+
 /** Waits within the existing assertion bound for the exact fresh native invocation to finish enumeration. */
 export async function waitForLiveNativeCompletion(
   fixture: Pick<LiveBrowserFixture, 'stats'>,
@@ -287,6 +306,7 @@ export async function withLiveBrowserFixture<T>(
     const url = loopbackOrigin(selected.url);
     const fixture = Object.freeze({
       url,
+      signal,
       stats: async (requestSignal?: AbortSignal) => {
         const response = await fetch(`${url}/__test/live-stats`, {
           signal: AbortSignal.any([

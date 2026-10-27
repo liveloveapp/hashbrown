@@ -4,17 +4,20 @@ import {
   waitForLiveApprovalPhase,
   waitForLiveNativeCompletion,
 } from '../harness/live-browser-fixture';
-import { LIVE_ASSERTION_TIMEOUT_MS } from '../harness/live-wait-policy';
+import {
+  LIVE_ASSERTION_TIMEOUT_MS,
+  LIVE_CASE_TIMEOUT_MS,
+} from '../harness/live-wait-policy';
 import { LIVE_BUDGET_MANIFEST } from '../harness/live-budget';
 import { nativeApprovalUnitEvidence } from './fixtures/live-native-approval';
 
 for (const kind of ['native', 'approval'] as const) {
-  test(`${kind} completion accepts legitimate eleven second acquisition within the hard scenario cap`, async () => {
+  test(`${kind} completion accepts legitimate thirty-one second acquisition within the hard scenario cap`, async () => {
     const stats = nativeStats(nativeApprovalUnitEvidence().stats);
     const start = performance.now();
     const fixture = {
       stats: async () =>
-        performance.now() - start < 11_000
+        performance.now() - start < 31_000
           ? {
               ...stats,
               stage: 'acquiring',
@@ -29,7 +32,7 @@ for (const kind of ['native', 'approval'] as const) {
         : await waitForLiveApprovalPhase(fixture, 3);
 
     expect(completed).toEqual(stats);
-  }, 20_000);
+  }, 40_000);
 
   test(`${kind} completion retains a finite linked deadline for a hung stats operation`, async () => {
     const realTimeout = AbortSignal.timeout.bind(AbortSignal);
@@ -50,7 +53,7 @@ for (const kind of ['native', 'approval'] as const) {
           : waitForLiveApprovalPhase(fixture, 3);
 
       await expect(outcome).rejects.toThrow();
-      expect(timeout).toHaveBeenCalledWith(30_000);
+      expect(timeout).toHaveBeenCalledWith(55_000);
     } finally {
       timeout.mockRestore();
     }
@@ -75,7 +78,9 @@ for (const kind of ['native', 'approval'] as const) {
 }
 
 test('shared assertion deadline remains inside unchanged hard scenario, call, token and run caps', () => {
-  expect(LIVE_ASSERTION_TIMEOUT_MS).toBe(30_000);
+  expect(LIVE_ASSERTION_TIMEOUT_MS).toBe(55_000);
+  expect(LIVE_CASE_TIMEOUT_MS).toBe(55_000);
+  expect(LIVE_ASSERTION_TIMEOUT_MS).toBe(LIVE_CASE_TIMEOUT_MS);
   expect(LIVE_ASSERTION_TIMEOUT_MS).toBeLessThan(
     LIVE_BUDGET_MANIFEST.scenarioTimeoutMs,
   );

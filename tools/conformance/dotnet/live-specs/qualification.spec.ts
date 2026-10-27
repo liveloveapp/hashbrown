@@ -5,6 +5,7 @@ import { runLiveNativeApprovalScenario } from '../harness/live-native-approval-s
 import { withRoutedEndpoint } from '../harness/routed-endpoint';
 import {
   type LiveBrowserFixture,
+  readLiveNativeStage,
   waitForLiveNativeCompletion,
   withLiveBrowserFixture,
   withSafeLiveCase,
@@ -298,12 +299,12 @@ test('mixed-native-tools', async ({ page }, info) => {
       await driver.send(
         'In your first response, call BOTH getWeather for city Paris AND lookupAirport for code PDX together in the SAME response, exactly once each. Do not call them sequentially. After both results, give one short sentence about the weather and airport.',
       );
+      info.annotations.push({
+        type: 'live-phase',
+        description: 'mixed-before-pending-save',
+      });
       await expect
-        .poll(
-          async () =>
-            (await (await fetch(`${fixture.url}/__test/native-stage`)).json())
-              .stage,
-        )
+        .poll(() => readLiveNativeStage(fixture))
         .toBe('before-pending-save');
 
       expect((await fixture.stats()).calls).toBe(1);
@@ -314,6 +315,10 @@ test('mixed-native-tools', async ({ page }, info) => {
         protected: 0,
         durableNative: 0,
       });
+      info.annotations.push({
+        type: 'live-phase',
+        description: 'mixed-continuation',
+      });
       const released = await fetch(`${fixture.url}/__test/release-native`, {
         method: 'POST',
         signal: AbortSignal.timeout(5_000),
@@ -322,6 +327,10 @@ test('mixed-native-tools', async ({ page }, info) => {
       await expect(driver.toolCount()).toHaveText('1');
       await driver.expectIdle();
       await expect(driver.assistant()).not.toBeEmpty();
+      info.annotations.push({
+        type: 'live-phase',
+        description: 'mixed-completion',
+      });
       await expectWire(page, fixture, 2);
       expect(await fixture.stats()).toMatchObject({
         nativeCoEmission: true,
@@ -371,7 +380,9 @@ test('mixed-native-tools', async ({ page }, info) => {
 test('native-approval', async ({ page }, info) => {
   await qualify(page, info, 'native-approval', async (fixture) => {
     await withRoutedEndpoint(fixture.url, (endpoint) =>
-      runLiveNativeApprovalScenario(page, fixture, endpoint),
+      runLiveNativeApprovalScenario(page, fixture, endpoint, (phase) => {
+        info.annotations.push({ type: 'live-phase', description: phase });
+      }),
     );
   });
 });

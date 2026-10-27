@@ -4,6 +4,7 @@ import {
   type LiveBrowserFixture,
   waitForLiveApprovalPhase,
 } from './live-browser-fixture';
+import type { LiveFailurePhase } from './live-failure-phase';
 import { validLivePublicApprovalResult } from './live-native-approval';
 import { expectNativeRunCapture } from './native-wire';
 import type { RoutedEndpoint } from './routed-endpoint';
@@ -79,11 +80,13 @@ export async function runLiveNativeApprovalScenario(
   page: Page,
   fixture: LiveBrowserFixture,
   endpoint: RoutedEndpoint,
+  markPhase: (phase: LiveFailurePhase) => void = () => undefined,
 ): Promise<void> {
   const errors: string[] = [];
   const onError = (error: Error) => errors.push(error.message);
   page.on('pageerror', onError);
   try {
+    markPhase('native-pending');
     const driver = createAppDriver(page);
     await page.goto(
       `/?${new URLSearchParams({ scenario: 'plain', runUrl: endpoint.url, recoveryUrl: new URL(endpoint.url).origin, recoveryMode: 'native', fixturePrincipal: 'alice', retries: '0' })}`,
@@ -129,6 +132,7 @@ export async function runLiveNativeApprovalScenario(
       terminal.outcome.interrupts.map((interrupt) => interrupt.id),
     ).toEqual([before.members[0].request_id]);
 
+    markPhase('native-continuation');
     await page.getByTestId('resume').click();
     const approved = await waitForLiveApprovalPhase(fixture, 2);
     await expect(page.getByTestId('resume-error')).toBeEmpty();
@@ -170,11 +174,13 @@ export async function runLiveNativeApprovalScenario(
 
     const followup =
       'Reply with one short plain sentence about a quiet sky. Do not call any tools.';
+    markPhase('native-followup');
     await driver.send(followup);
     const final = await waitForLiveApprovalPhase(fixture, 3);
     await driver.expectIdle();
     await expect(driver.userMessage()).toHaveText(followup);
     await expect(driver.assistant()).not.toBeEmpty();
+    markPhase('native-final-proof');
     expect(final.nativeApprovalJournalMatched).toBe(true);
     expect(final.nativeApprovalCompletions).toBe(1);
     expect(final.nativeApprovalDispatches).toBe(1);

@@ -1,3 +1,4 @@
+import { selectLiveFailurePhase } from './live-failure-phase';
 import { LIVE_NATIVE_APPROVAL_FIELDS } from './live-native-approval';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
@@ -73,6 +74,18 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
   let failed = false;
   return Object.freeze({
     record: (input: Readonly<Record<string, unknown>>) => {
+      const phase = Object.hasOwn(input, 'failurePhase')
+        ? selectLiveFailurePhase(input['group'], [
+            { type: 'live-phase', description: input['failurePhase'] },
+          ])
+        : undefined;
+      if (
+        phase &&
+        (!phase.valid || !phase.phase || input['outcome'] !== 'failed')
+      ) {
+        failed = true;
+        return false;
+      }
       const safe: Record<string, unknown> = Object.fromEntries(
         Object.entries(enums).flatMap(([key, allowed]) =>
           typeof input[key] === 'string' &&
@@ -81,6 +94,7 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
             : [],
         ),
       );
+      if (phase?.phase) safe['failurePhase'] = phase.phase;
       for (const key of numbers)
         if (
           typeof input[key] === 'number' &&

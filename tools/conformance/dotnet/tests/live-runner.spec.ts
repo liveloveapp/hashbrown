@@ -197,6 +197,7 @@ test('native-approval', async ({page}, info) => {
   await page.setContent('<main>'+secret+'</main>');
   const child=spawnSync(process.execPath,['-e','process.stdout.write(process.env.CANARY_VALUE)'],{encoding:'utf8'});
   const output=child.stdout;console.log(output.slice(0,Math.floor(output.length/2)));console.log(output.slice(Math.floor(output.length/2)));
+  info.annotations.push({type:'live-phase',description:'native-pending'});
   writeFileSync(${JSON.stringify(witness)},'canary-body-reached-forced-assertion');
   try { expect(secret).toBe('public'); } catch (error) { throw new Error(secret,{cause:error}); }
  }, annotation=>info.annotations.push(annotation));
@@ -274,6 +275,7 @@ test('native-approval', async ({page}, info) => {
       group: 'native-approval',
       outcome: 'failed',
       failureCode: 'LIVE_ASSERTION_FAILED',
+      failurePhase: 'native-pending',
     });
     expect(() => sink.assertHealthy()).not.toThrow();
   } finally {

@@ -15,7 +15,7 @@ using Npgsql;
 
 static void Check(bool value, string code) { if (!value) throw new Exception(code); }
 var fault = args.SingleOrDefault() ?? "none";
-Check(new[] { "none", "saved-receipt", "authorized-receipt", "public-content", "public-name", "public-arguments", "browser-held", "browser-held-slow" }.Contains(fault), "LIVE_PROOF_UNKNOWN_TEST_FAULT");
+Check(new[] { "none", "saved-receipt", "authorized-receipt", "public-content", "public-name", "public-arguments", "browser-held", "browser-held-slow", "browser-held-hung" }.Contains(fault), "LIVE_PROOF_UNKNOWN_TEST_FAULT");
 var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders(); builder.Services.AddRouting();
@@ -36,7 +36,7 @@ var journal = System.Reflection.DispatchProxy.Create<INativeSessionJournal, Live
 var recorder = (LiveProofFaultJournal)(object)journal;
 recorder.Target = observedJournal; recorder.Real = realJournal; recorder.Proof = proof; recorder.Fault = fault;
 using var gate = new FixtureLiveGate("native-approval", approval: proof);
-using var transport = new GenuineApprovalTransport(fault == "browser-held-slow" ? 11_000 : 0);
+using var transport = new GenuineApprovalTransport(fault == "browser-held-hung" ? Timeout.Infinite : fault == "browser-held-slow" ? 31_000 : 0, fault == "browser-held-slow" ? 5_000 : 0);
 using var nativeHttp = new HttpClient(new FixtureLiveHttpHandler(gate, "gpt-4.1-mini", "responses", transport));
 var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
     ["Provider"] = "openai", ["ModelApi"] = "responses", ["Model"] = "gpt-4.1-mini", ["ModelEndpoint"] = "https://api.openai.com/v1/", ["ApiKey"] = "unit-only-no-service-key"
@@ -55,7 +55,7 @@ try
     NativeSessionEndpointConfiguration.Configure(builder.Services, "native", journal, catalog, _ => "alice");
     var agent = NativeSessionAgentFactory.Create(client, "native", [function], catalog, accessor);
     await using var app = builder.Build(); app.UseCors(); app.UseAuthentication(); app.UseAuthorization();
-    if (fault is "browser-held" or "browser-held-slow") app.Use(async (context, next) =>
+    if (fault is "browser-held" or "browser-held-slow" or "browser-held-hung") app.Use(async (context, next) =>
     {
         await next(context);
         if (context.Request.Path == "/run")
@@ -66,6 +66,7 @@ try
         }
     });
     NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    app.MapGet("/__test/local-transport-calls", () => new { calls = transport.Calls });
     app.MapGet("/__test/live-stats", async () => { await proof.ObserveDatabaseAsync(source, schema); return gate.Snapshot(); });
     app.MapGet("/__test/counters", async () =>
     {
@@ -88,7 +89,7 @@ try
     }).RequireAuthorization("native");
     NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", journal, "native", (_, threadId) => new NativeSessionKey("native", "alice", threadId, new Dictionary<string,string> { ["isolation"] = "alice" }));
     await app.StartAsync();
-    if (fault is "browser-held" or "browser-held-slow")
+    if (fault is "browser-held" or "browser-held-slow" or "browser-held-hung")
     {
         Console.WriteLine("Local native approval browser URL: " + app.Urls.Single());
         Console.Out.Flush();
@@ -159,13 +160,13 @@ finally
 }
 
 /// <summary>In-memory native Responses wire fixture; it emits only tool call/text SSE, so real MAF creates every approval object.</summary>
-sealed class GenuineApprovalTransport(int delayMilliseconds = 0) : HttpMessageHandler
+sealed class GenuineApprovalTransport(int initialDelayMilliseconds = 0, int laterDelayMilliseconds = 0) : HttpMessageHandler
 {
     public int Calls;
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested(); Calls++;
-        await Task.Delay(delayMilliseconds, cancellationToken);
+        await Task.Delay(Calls == 1 ? initialDelayMilliseconds : laterDelayMilliseconds, cancellationToken);
         var responseId = "resp_approval_" + Calls; var messageId = "msg_approval_" + Calls;
         var arguments = "{\"code\":\"PDX\"}";
         var output = Calls == 1 ? JsonSerializer.SerializeToElement(new { type = "function_call", id = "fc_original", call_id = "original-live-proof", name = "lookupAirport", arguments, status = "completed" })

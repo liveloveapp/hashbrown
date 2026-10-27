@@ -9,14 +9,15 @@ import {
   waitForLocalNativeApprovalServer,
   withLocalNativeApprovalResources,
 } from '../harness/local-native-approval-browser';
+import { withSafeLiveCase } from '../harness/live-browser-fixture';
 import { publicChildEnvironment } from '../harness/live-configuration';
 import { runLiveNativeApprovalScenario } from '../harness/live-native-approval-scenario';
 import { startLiveStaticServer } from '../harness/live-static-server';
 import { expectNativeRunCapture } from '../harness/native-wire';
 import { withRoutedEndpoint } from '../harness/routed-endpoint';
 
-for (const mode of ['browser-held', 'browser-held-slow'])
-  test(`genuine native approval browser ${mode} accepts successful terminal before HTTP EOF and rejects damaged captures`, async ({
+for (const mode of ['browser-held', 'browser-held-slow', 'browser-held-hung'])
+  test(`genuine native approval browser ${mode} ${mode === 'browser-held-hung' ? 'aborts at the authoritative deadline without a successful terminal' : 'accepts successful terminal before HTTP EOF and rejects damaged captures'}`, async ({
     browser,
   }, info) => {
     const metadataPath =
@@ -111,40 +112,131 @@ for (const mode of ['browser-held', 'browser-held-slow'])
         },
       };
 
-      await withRoutedEndpoint(url, async (endpoint) => {
-        await runLiveNativeApprovalScenario(page, fixture, endpoint);
+      const phases: string[] = [];
+      const annotations: Array<{ type: string; description: string }> = [];
+      let requests: readonly string[] = [];
+      let captures: readonly {
+        body: string;
+        truncated: boolean;
+        complete: boolean;
+      }[] = [];
+      const started = performance.now();
+      const run = withSafeLiveCase(
+        async (signal) => {
+          const close = () => void page.close().catch(() => undefined);
+          signal.addEventListener('abort', close, { once: true });
+          try {
+            await withRoutedEndpoint(url, async (endpoint) => {
+              captures = endpoint.responses;
+              requests = endpoint.requests;
+              await runLiveNativeApprovalScenario(
+                page,
+                {
+                  ...fixture,
+                  stats: (requestSignal?: AbortSignal) =>
+                    fixture.stats(
+                      AbortSignal.any([
+                        signal,
+                        ...(requestSignal ? [requestSignal] : []),
+                      ]),
+                    ),
+                },
+                endpoint,
+                (phase) => phases.push(phase),
+              );
 
-        expect(endpoint.responses).toHaveLength(3);
-        for (const capture of endpoint.responses) {
-          expect(capture.complete).toBe(false);
-          expectNativeRunCapture(capture);
-          expect(() =>
-            expectNativeRunCapture({
-              ...capture,
-              body: capture.body.slice(0, -1),
-            }),
-          ).toThrow();
-          expect(() =>
-            expectNativeRunCapture({ ...capture, truncated: true }),
-          ).toThrow();
-          expect(() =>
-            expectNativeRunCapture({
-              ...capture,
-              body: capture.body.replace('"RUN_FINISHED"', '"RUN_ERROR"'),
-            }),
-          ).toThrow();
-        }
-        expect(await fixture.stats()).toMatchObject({
-          calls: 3,
-          httpCalls: 3,
-          nativeApprovalCaptures: 1,
-          nativeApprovalDispatches: 1,
-          nativeApprovalCompletions: 1,
-          nativeApprovalPublications: 3,
-          usageCompleteCalls: 3,
-          usageIncompleteCalls: 0,
+              expect(endpoint.responses).toHaveLength(3);
+              for (const capture of endpoint.responses) {
+                expect(capture.complete).toBe(false);
+                expectNativeRunCapture(capture);
+                expect(() =>
+                  expectNativeRunCapture({
+                    ...capture,
+                    body: capture.body.slice(0, -1),
+                  }),
+                ).toThrow();
+                expect(() =>
+                  expectNativeRunCapture({ ...capture, truncated: true }),
+                ).toThrow();
+                expect(() =>
+                  expectNativeRunCapture({
+                    ...capture,
+                    body: capture.body.replace('"RUN_FINISHED"', '"RUN_ERROR"'),
+                  }),
+                ).toThrow();
+              }
+              expect(await fixture.stats()).toMatchObject({
+                calls: 3,
+                httpCalls: 3,
+                nativeApprovalCaptures: 1,
+                nativeApprovalDispatches: 1,
+                nativeApprovalCompletions: 1,
+                nativeApprovalPublications: 3,
+                usageCompleteCalls: 3,
+                usageIncompleteCalls: 0,
+              });
+            });
+          } finally {
+            signal.removeEventListener('abort', close);
+          }
+        },
+        (annotation) => annotations.push(annotation),
+      );
+      if (mode === 'browser-held-hung') {
+        await expect(run).rejects.toMatchObject({
+          name: '',
+          message: '',
+          stack: '',
         });
-      });
+        expect(performance.now() - started).toBeGreaterThanOrEqual(55_000);
+        expect(page.isClosed()).toBe(true);
+        await expect
+          .poll(async () => (await fixture.stats()).cancelledCalls, {
+            timeout: 5_000,
+          })
+          .toBe(1);
+        expect(await fixture.stats()).toMatchObject({
+          calls: 1,
+          httpCalls: 1,
+          stage: 'cancelled',
+          usageCompleteCalls: 0,
+          usageIncompleteCalls: 1,
+          nativeApprovalCaptures: 0,
+          nativeApprovalAdmissions: 0,
+          nativeApprovalDispatches: 0,
+          nativeApprovalCompletions: 0,
+          nativeApprovalPublications: 0,
+        });
+        const counters = await fetch(`${url}/__test/counters`, {
+          signal: AbortSignal.timeout(5_000),
+        });
+        expect(await counters.json()).toMatchObject({
+          server: 0,
+          protected: 0,
+          durableNative: 0,
+          durableProtected: 0,
+          durableNativeProtected: 0,
+        });
+        const transport = await fetch(`${url}/__test/local-transport-calls`, {
+          signal: AbortSignal.timeout(5_000),
+        });
+        expect(await transport.json()).toEqual({ calls: 1 });
+        expect(requests).toHaveLength(1);
+        expect(captures).toHaveLength(0);
+        expect(annotations).toEqual([
+          { type: 'live-failure', description: 'LIVE_ASSERTION_FAILED' },
+        ]);
+        expect(phases).toEqual(['native-pending']);
+      } else {
+        await run;
+        expect(annotations).toEqual([]);
+        expect(phases).toEqual([
+          'native-pending',
+          'native-continuation',
+          'native-followup',
+          'native-final-proof',
+        ]);
+      }
       expect(await qualify()).toEqual(metadata);
     });
   });
