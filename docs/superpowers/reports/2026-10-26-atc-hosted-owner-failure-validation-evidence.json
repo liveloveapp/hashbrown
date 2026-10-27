@@ -1,0 +1,740 @@
+{
+  "validationDate": "2026-10-26",
+  "b4Version": "0.15.5",
+  "storage": {
+    "startedAt": "2026-10-26T21:02:27.276Z",
+    "b4Version": "0.15.5",
+    "tablePrefix": "atcfence_18c2aa3d98f94174",
+    "topology": "Owned Node worker processes using published Postgres APIs against dedicated hosted ATC preview database",
+    "cases": [
+      {
+        "kind": "natural-heartbeat-renewal",
+        "threadId": "renew-4ea9b5bb-7aa5-417a-9dbb-4f615cc6a391",
+        "initial": {
+          "ownerSha256": "9399a3578ee823657710677ca320bef0e421ece5af9c2f88a8139a332ac84454",
+          "expiresAt": "2026-10-26T21:02:37.260Z",
+          "databaseNow": "2026-10-26T21:02:31.337Z"
+        },
+        "renewed": {
+          "ownerSha256": "9399a3578ee823657710677ca320bef0e421ece5af9c2f88a8139a332ac84454",
+          "expiresAt": "2026-10-26T21:02:43.686Z",
+          "databaseNow": "2026-10-26T21:02:38.413Z"
+        },
+        "successorAcquiredAfterRelease": true,
+        "safe": true
+      },
+      {
+        "kind": "sigkill-natural-expiry-takeover",
+        "threadId": "killed-37530d20-cdeb-45a1-bc6e-b813d1b28653",
+        "signal": "SIGKILL",
+        "before": {
+          "ownerSha256": "29b64b98d34b98dc9fa64109657e0f8a6d9a2b49710fcc282f80a8ef85414501",
+          "expiresAt": "2026-10-26T21:02:48.505Z",
+          "databaseNow": "2026-10-26T21:02:43.265Z"
+        },
+        "finalLease": {
+          "ownerSha256": "29b64b98d34b98dc9fa64109657e0f8a6d9a2b49710fcc282f80a8ef85414501",
+          "expiresAt": "2026-10-26T21:02:48.505Z",
+          "databaseNow": "2026-10-26T21:02:43.357Z"
+        },
+        "after": {
+          "ownerSha256": "7c863cce66849890411485614279c047015feb3c5ecbff464e661b2b02d888bf",
+          "expiresAt": "2026-10-26T21:02:54.678Z",
+          "databaseNow": "2026-10-26T21:02:48.751Z"
+        },
+        "takeover": {
+          "conflicts": 21,
+          "elapsedMs": 4814
+        },
+        "safe": true
+      },
+      {
+        "kind": "sigstop-expiry-takeover-sigcont-stale-write",
+        "threadId": "paused-e2be7c6e-4a3b-4c63-8b92-05f4a62679bb",
+        "before": {
+          "ownerSha256": "9e6b6d14fe471f1c12fb31b6619e974bc2d69dcaa36aac5475b6fd9d3bffe6e6",
+          "expiresAt": "2026-10-26T21:02:57.273Z",
+          "databaseNow": "2026-10-26T21:02:52.006Z"
+        },
+        "winner": {
+          "ownerSha256": "d3e6b80ac3f183258f06a809d9872f91106697e9bcc35d67805fb97a5611bcd6",
+          "expiresAt": "2026-10-26T21:03:03.391Z",
+          "databaseNow": "2026-10-26T21:02:58.159Z"
+        },
+        "takeover": {
+          "conflicts": 21,
+          "elapsedMs": 4859
+        },
+        "stale": {
+          "id": 3,
+          "ok": false,
+          "error": "postgres-storage: run admission ownership lost or released",
+          "beforeAborted": false,
+          "afterAborted": true
+        },
+        "safe": true
+      },
+      {
+        "kind": "injected-expiry-active-owner-db-fence",
+        "threadId": "fence-ebaee81b-5339-4dfb-b510-070ea66e7b03",
+        "before": {
+          "ownerSha256": "1224b0f01962e40b716651291b720ed1a525cbd338b54515a4f0777dc323c0c1",
+          "expiresAt": "2026-10-26T21:13:01.062Z",
+          "databaseNow": "2026-10-26T21:03:01.806Z"
+        },
+        "winner": {
+          "ownerSha256": "23ded919137b7db3e7c2d60ff414dd3e8a04a7b63857e116af07c0d0c7d75565",
+          "expiresAt": "2026-10-26T21:03:08.398Z",
+          "databaseNow": "2026-10-26T21:03:03.162Z"
+        },
+        "oldSignalActiveBeforeWrite": true,
+        "oldSignalAbortedAfterFence": true,
+        "staleReleasePreservesSuccessor": true,
+        "safe": true
+      },
+      {
+        "kind": "late-commit-rolls-back-and-unblocks-successor",
+        "threadId": "commit-89aed98c-553a-4929-876f-1f944e3af8a6",
+        "commit": {
+          "id": 3,
+          "ok": false,
+          "error": "postgres-storage: run admission lease expired or replaced",
+          "beforeAborted": false,
+          "afterAborted": true
+        },
+        "databaseBlockers": [
+          {
+            "pid": 750,
+            "wait_event_type": "Lock",
+            "wait_event": "transactionid",
+            "blockers": [
+              716
+            ]
+          }
+        ],
+        "successorWaitedThroughExpiryForTransaction": true,
+        "effectsRolledBack": true,
+        "safe": true
+      }
+    ],
+    "safe": true,
+    "finishedAt": "2026-10-26T21:03:14.512Z",
+    "cleanup": {
+      "ownedWorkersTerminated": true,
+      "errors": []
+    }
+  },
+  "generatedRuntimeOwnerDeath": {
+    "startedAt": "2026-10-26T21:14:02.884Z",
+    "b4Version": "0.15.5",
+    "artifactSourceCommit": "9f9f196c0eae38745f50af3b549621fb96c24cff",
+    "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "successorDeployment": {
+      "id": "dpl_8MyGopGhvVgWAGofb24bD4vRacTu",
+      "url": "https://hashbrown-2gh31u3hf-blovedev.vercel.app"
+    },
+    "threadId": "runtime-owner-a7fb909f-7cc8-40fa-ab37-fea671cfb736",
+    "runId": "c1df981b-bbcb-4dcd-937f-430e3c5e9e2c",
+    "topology": "Owned generated ATC runtime process over hosted Postgres; successor is an independent managed Vercel preview",
+    "statuses": [
+      {
+        "databaseBefore": "2026-10-26T21:14:13.747Z",
+        "status": 409,
+        "retryAfter": "1",
+        "databaseNow": "2026-10-26T21:14:14.114Z",
+        "elapsedMs": 440
+      },
+      {
+        "databaseBefore": "2026-10-26T21:14:38.551Z",
+        "status": 200,
+        "retryAfter": null,
+        "databaseNow": "2026-10-26T21:14:39.079Z",
+        "elapsedMs": 25405
+      }
+    ],
+    "framesBeforeKill": [
+      "RUN_STARTED"
+    ],
+    "checks": {
+      "actualGeneratedOwnerKilledWithoutCleanup": true,
+      "managedSuccessorConflictBeforeExpiry": true,
+      "naturalExpiryAllowsSuccessor": true,
+      "signedVisitorContinuity": true,
+      "pinnedOutputSchema": true,
+      "canonicalSingleSuccessorResponse": true,
+      "committedHistoryPreserved": true,
+      "latestInputPreserved": true,
+      "leaseReleased": true,
+      "noLateOwnerCommitAfter75Seconds": true,
+      "noOrphanedLeaseAfter75Seconds": true
+    },
+    "baseline": {
+      "checkpointId": "1f1d1822-d213-6260-8001-e23b7a9bd71d",
+      "humans": 1,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e"
+      ],
+      "providerIds": [
+        "resp_095a93dbb0886427006adfc29bded887d2ac2f7c669336cdf1"
+      ]
+    },
+    "seedAccepted": true,
+    "signal": "SIGKILL",
+    "finalOwnerLease": {
+      "ownerSha256": "ec956a91cd7712125c66d764112bad4f1fe5bb356d38e617a117725778080bc7",
+      "expiresAt": "2026-10-26T21:14:38.308Z",
+      "databaseNow": "2026-10-26T21:14:13.441Z"
+    },
+    "before": {
+      "checkpointId": "1f1d1822-d213-6260-8001-e23b7a9bd71d",
+      "humans": 1,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e"
+      ],
+      "providerIds": [
+        "resp_095a93dbb0886427006adfc29bded887d2ac2f7c669336cdf1"
+      ]
+    },
+    "after": {
+      "checkpointId": "1f1d1824-2b30-6c20-8004-83904fe0cb59",
+      "humans": 2,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "49fe98d863709b17dae433df6b8d0fe631ee8a294baa706fa9be4b1f262550d2"
+      ],
+      "providerIds": [
+        "resp_095a93dbb0886427006adfc29bded887d2ac2f7c669336cdf1",
+        "resp_095a93dbb0886427006adfc2bf267087d2b9f350112aeea0a0"
+      ]
+    },
+    "settled": {
+      "checkpointId": "1f1d1824-2b30-6c20-8004-83904fe0cb59",
+      "humans": 2,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "49fe98d863709b17dae433df6b8d0fe631ee8a294baa706fa9be4b1f262550d2"
+      ],
+      "providerIds": [
+        "resp_095a93dbb0886427006adfc29bded887d2ac2f7c669336cdf1",
+        "resp_095a93dbb0886427006adfc2bf267087d2b9f350112aeea0a0"
+      ]
+    },
+    "finishedAt": "2026-10-26T21:15:58.851Z",
+    "cleanup": {
+      "ownedWorkerExited": true,
+      "errors": [],
+      "managedSuccessorSettled": true
+    }
+  },
+  "generatedRuntimeSuspendedOwner": {
+    "startedAt": "2026-10-26T21:32:32.357Z",
+    "topology": "owned local runtime + hosted DB + managed successor",
+    "b4Version": "0.15.5",
+    "artifactSourceCommit": "9f9f196c0eae38745f50af3b549621fb96c24cff",
+    "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "successorDeployment": {
+      "id": "dpl_8MyGopGhvVgWAGofb24bD4vRacTu",
+      "url": "https://hashbrown-2gh31u3hf-blovedev.vercel.app"
+    },
+    "threadId": "runtime-suspended-owner-99e983f2-4123-4bc8-8d7c-3bd978fa8719",
+    "runId": "b727a5df-a5bc-4be8-abd8-34db3017bd35",
+    "ownerFrames": [
+      "RUN_STARTED",
+      "REASONING_START",
+      "REASONING_MESSAGE_START",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_CONTENT",
+      "REASONING_MESSAGE_END",
+      "REASONING_END",
+      "TEXT_MESSAGE_START",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_CONTENT",
+      "TEXT_MESSAGE_END",
+      "RUN_FINISHED"
+    ],
+    "statuses": [
+      {
+        "status": 409,
+        "retryAfter": "1",
+        "databaseBefore": "2026-10-26T21:32:50.377Z",
+        "databaseAfter": "2026-10-26T21:32:50.708Z"
+      },
+      {
+        "status": 200,
+        "databaseBefore": "2026-10-26T21:33:19.901Z",
+        "databaseAfterHeaders": "2026-10-26T21:33:20.434Z"
+      }
+    ],
+    "checks": {
+      "inputCommittedAndAdmissionUnlockedBeforeStop": true,
+      "ownedLocalRuntimeSuspendedAndResumed": true,
+      "managedSuccessor409WhollyBeforeExpiry": true,
+      "managedSuccessorDispatchedOnlyAfterDatabaseExpiry": true,
+      "actualCompletedProviderResponseDelayedUntilAfterSuccessor": true,
+      "signedVisitorContinuity": true,
+      "committedHistoryPreserved": true,
+      "latestFollowupCommitted": true,
+      "canonicalCheckpointAndProviderIdsUnchangedAfterResume": true,
+      "oldProviderIdNotCommitted": true,
+      "noLeaseAfterResume": true,
+      "noLateStaleCommitAfter75Seconds": true,
+      "noOrphanedLeaseAfter75Seconds": true
+    },
+    "ownerObservations": [
+      {
+        "event": "provider-completed-bytes-consumed"
+      },
+      {
+        "event": "provider-consumption-end",
+        "completedBytesConsumed": true,
+        "bodySha256": "1c8fc12ab172da75a7973619f55590e5c4f0b7aa65b93e90da7d7fef2a6c15c9"
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": false,
+          "databaseFenceExpiredOrReplaced": true,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": false,
+          "databaseFenceExpiredOrReplaced": true,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": false,
+          "databaseFenceExpiredOrReplaced": true,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": false,
+          "databaseFenceExpiredOrReplaced": true,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": false,
+          "databaseFenceExpiredOrReplaced": true,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      }
+    ],
+    "baseline": {
+      "checkpointId": "1f1d184c-313f-67b0-8001-b897b2ce7b9e",
+      "humans": 1,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e"
+      ],
+      "providerIds": [
+        "resp_078e89011d035120006adfc6f1653087d29381c178ac3178a3"
+      ],
+      "caps": [
+        4096
+      ]
+    },
+    "proxyPath": {
+      "responses": true,
+      "chatCompletions": false
+    },
+    "proxyValidation": {
+      "protocol": "responses",
+      "cap4096": true,
+      "streamTrue": true,
+      "schemaPresent": true,
+      "schemaHasDialect": true,
+      "dialectMatches": true,
+      "strictTrue": true,
+      "jsonSchemaFormat": true,
+      "actualSchemaSha256": "d3000b1d53566fc45e063f2525b37cb919247bd6249e0c1935f3e8ca526a3aa8",
+      "expectedConstraintsSha256": "49b3c9a368a593389cac9d5e9d34599b85d649642ff84c36ddb0e7081ed03c70",
+      "actualConstraintsSha256": "49b3c9a368a593389cac9d5e9d34599b85d649642ff84c36ddb0e7081ed03c70"
+    },
+    "providerRequest": {
+      "bodySha256": "2ffb0e722c7a11dc385b16e4d1d7d16100f4e1b930c4503ce091826e92c07657",
+      "protocol": "responses",
+      "maxOutputTokens": 4096,
+      "schemaSha256": "d3000b1d53566fc45e063f2525b37cb919247bd6249e0c1935f3e8ca526a3aa8"
+    },
+    "beforeStop": {
+      "checkpointId": "1f1d184c-841f-64d0-8003-1f9742bee195",
+      "humans": 2,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "e9ab270a9d62a467ae09bc5abff9b3dce6bb8a80a65256b3100ba7d713ec3058"
+      ],
+      "providerIds": [
+        "resp_078e89011d035120006adfc6f1653087d29381c178ac3178a3"
+      ],
+      "caps": [
+        4096
+      ]
+    },
+    "stoppedProcessState": "T",
+    "oldLease": {
+      "ownerSha256": "e3399e2a9c40f3bc5f06c4787c89c339104f0a419914a370bfa8724bb016a607",
+      "expiresAt": "2026-10-26T21:33:19.609Z",
+      "databaseNow": "2026-10-26T21:32:50.305Z"
+    },
+    "oldProvider": {
+      "status": 200,
+      "protocol": "responses",
+      "responseId": "resp_078e89011d035120006adfc702a0fc87d2b31094cd766f10c4",
+      "responseSha256": "1c8fc12ab172da75a7973619f55590e5c4f0b7aa65b93e90da7d7fef2a6c15c9",
+      "maxOutputTokens": 4096,
+      "completed": true,
+      "pinnedOutputSchema": true
+    },
+    "afterSuccessor": {
+      "checkpointId": "1f1d184e-1ba3-6080-8006-afea92c02789",
+      "humans": 3,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "e9ab270a9d62a467ae09bc5abff9b3dce6bb8a80a65256b3100ba7d713ec3058",
+        "49fe98d863709b17dae433df6b8d0fe631ee8a294baa706fa9be4b1f262550d2"
+      ],
+      "providerIds": [
+        "resp_078e89011d035120006adfc6f1653087d29381c178ac3178a3",
+        "resp_078e89011d035120006adfc720816c87d2b5a3f74cd7940dad"
+      ],
+      "caps": [
+        4096,
+        4096
+      ]
+    },
+    "bufferedTransportDelivery": {
+      "finished": true,
+      "bodySha256": "1c8fc12ab172da75a7973619f55590e5c4f0b7aa65b93e90da7d7fef2a6c15c9",
+      "bytes": 97856
+    },
+    "resumedAt": "2026-10-26T21:33:28.380Z",
+    "ownerTerminal": {
+      "event": "terminal",
+      "kind": "end",
+      "recognizedTerminal": true,
+      "unexplainedTerminal": false,
+      "admissionLossObserved": true,
+      "completedBytesConsumed": true,
+      "providerAbortedBeforeCompletion": false
+    },
+    "resumeSafetyPath": "completed provider bytes consumed; recognized ownership loss and canonical preservation",
+    "databaseFenceValidationObserved": true,
+    "attemptedStaleCheckpointCommitProven": false,
+    "afterResume": {
+      "checkpointId": "1f1d184e-1ba3-6080-8006-afea92c02789",
+      "humans": 3,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "e9ab270a9d62a467ae09bc5abff9b3dce6bb8a80a65256b3100ba7d713ec3058",
+        "49fe98d863709b17dae433df6b8d0fe631ee8a294baa706fa9be4b1f262550d2"
+      ],
+      "providerIds": [
+        "resp_078e89011d035120006adfc6f1653087d29381c178ac3178a3",
+        "resp_078e89011d035120006adfc720816c87d2b5a3f74cd7940dad"
+      ],
+      "caps": [
+        4096,
+        4096
+      ]
+    },
+    "after75Seconds": {
+      "checkpointId": "1f1d184e-1ba3-6080-8006-afea92c02789",
+      "humans": 3,
+      "humanContentHashes": [
+        "b4eeb5706d1f076fb64a0386496ba7b3c767073c7cffb9870683bc591dcaa39e",
+        "e9ab270a9d62a467ae09bc5abff9b3dce6bb8a80a65256b3100ba7d713ec3058",
+        "49fe98d863709b17dae433df6b8d0fe631ee8a294baa706fa9be4b1f262550d2"
+      ],
+      "providerIds": [
+        "resp_078e89011d035120006adfc6f1653087d29381c178ac3178a3",
+        "resp_078e89011d035120006adfc720816c87d2b5a3f74cd7940dad"
+      ],
+      "caps": [
+        4096,
+        4096
+      ]
+    },
+    "finishedAt": "2026-10-26T21:34:45.121Z",
+    "cleanup": {
+      "ownedWorkerExited": true,
+      "proxyClosed": true,
+      "upstreamAborted": true,
+      "childWasStoppedOnCleanup": false,
+      "errors": []
+    }
+  },
+  "limits": [
+    "Owned local worker control over hosted Postgres; independent managed successor.",
+    "No managed Vercel worker termination or database failover.",
+    "Generic admission fence observer does not identify the rejected SQL operation.",
+    "Old stream emitted text before terminal ownership outcome.",
+    "Immediate and 75-second snapshots, not continuous observation."
+  ],
+  "cleanup": {
+    "temporaryPreviewCredentialsRemoved": true,
+    "ownedProcessesAndProxyCleanupVerified": true,
+    "syntheticAuditRowsRetained": true
+  }
+}

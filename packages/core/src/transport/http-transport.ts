@@ -10,6 +10,12 @@ import {
 } from './sse-line-ending-normalizer';
 import { Transport, TransportRequest, TransportResponse } from './transport';
 import { TransportError } from './transport-error';
+import {
+  createHttpResponseError,
+  createHttpResponseRetryFetch,
+  HttpResponseRetryPolicy,
+  validateHttpResponseRetryPolicy,
+} from './http-response-retry';
 
 interface HttpEventObserver {
   next(event: HttpStreamEvent): void;
@@ -44,6 +50,8 @@ export interface HttpTransportOptions {
   middleware?: Chat.Middleware[];
   /** Fetch implementation used to issue requests. Defaults to global `fetch`. */
   fetchImpl?: typeof fetch;
+  /** Opt-in classification and bounded retries for rejected HTTP responses. */
+  retry?: HttpResponseRetryPolicy;
 }
 
 /**
@@ -56,8 +64,11 @@ export class HttpTransport implements Transport {
   private readonly baseUrl: string;
   private readonly middleware?: Chat.Middleware[];
   private readonly fetchImpl: typeof fetch;
+  private readonly retry?: HttpResponseRetryPolicy;
 
   constructor(options: HttpTransportOptions) {
+    validateHttpResponseRetryPolicy(options.retry);
+    this.retry = options.retry ? { ...options.retry } : undefined;
     this.baseUrl =
       !options.baseUrl || options.baseUrl.trim() === ''
         ? '/run'
@@ -153,9 +164,17 @@ export class HttpTransport implements Transport {
         signal: internalAbortController.signal,
       };
 
-      const httpEvents = createHttpEventSource(() =>
-        this.fetchImpl(this.baseUrl, requestInit),
-      );
+      const fetchResponse =
+        this.retry && this.retry.maxRetries > 0
+          ? createHttpResponseRetryFetch(
+              this.fetchImpl,
+              this.baseUrl,
+              requestInit,
+              this.retry,
+              internalAbortController.signal,
+            )
+          : () => this.fetchImpl(this.baseUrl, requestInit);
+      const httpEvents = createHttpEventSource(fetchResponse);
       const normalizedHttpEvents = normalizeSseLineEndings(httpEvents);
       const capturedHttpEvents = captureAgUiClient058Subscription(
         normalizedHttpEvents,
@@ -304,19 +323,7 @@ async function validateResponse(
   if (!response.ok) {
     const bodyText = reader ? await readResponseText(reader) : undefined;
 
-    const trimmedBody =
-      bodyText && bodyText.length > 500
-        ? `${bodyText.slice(0, 500)}…`
-        : bodyText;
-    const statusText = response.statusText || 'HTTP error';
-    const message = trimmedBody
-      ? `${statusText} (${response.status}): ${trimmedBody}`
-      : `${statusText} (${response.status})`;
-
-    throw new TransportError(message, {
-      status: response.status,
-      retryable: false,
-    });
+    throw createHttpResponseError(response, bodyText);
   }
 
   if (!response.body) {

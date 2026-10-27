@@ -1,5 +1,9 @@
 # ATC validation with b4.run 0.15.5
 
+[Core HTTP retry follow-up](./2026-10-26-atc-http-conflict-recovery.md) now records
+successful basic browser cancellation/conflict recovery. The production gates
+below describe the state at this report's original source commit.
+
 The previously reproduced shared-thread and duplicate-callback failures did not
 recur in this bounded hosted validation. Production remains on direct Hashbrown
 OpenAI; this report does not authorize switching it.

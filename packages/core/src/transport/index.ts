@@ -85,3 +85,8 @@ export {
   type WebLlmToolPhaseResult,
   type WebLlmToolsTurnContext,
 } from './experimental-webllm-tools-transport';
+
+export type {
+  HttpResponseRetryPolicy,
+  HttpResponseRetryContext,
+} from './http-response-retry';
