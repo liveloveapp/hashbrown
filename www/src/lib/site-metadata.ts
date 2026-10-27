@@ -27,6 +27,8 @@ export interface PageMetadataInput {
   description?: string;
   /** Open Graph image URL (absolute, or relative to `metadataBase`); omitted, Next uses the route's opengraph-image. */
   image?: string;
+  /** Alt text for `image`. */
+  imageAlt?: string;
   /** ISO date for articles (blog posts). */
   publishedTime?: string;
   /** The page's own path, e.g. `/blog/my-post`; becomes the canonical URL. */
@@ -43,10 +45,15 @@ const BRANDED_TITLE = /(^Hashbrown:|: Hashbrown\b)/;
  * a parent's `openGraph` wholesale, so the site-wide fields are repeated here.
  * Titles that already name Hashbrown skip {@link SITE_TITLE_TEMPLATE}.
  *
- * @param input - The page's title, description, path and optional image and date.
+ * @param input - The page's title, description, path, and optional image,
+ *   image alt text and date.
  */
 export function pageMetadata(input: PageMetadataInput): Metadata {
-  const images = input.image ? { images: [input.image] } : {};
+  const image =
+    input.image && input.imageAlt
+      ? { url: input.image, alt: input.imageAlt }
+      : input.image;
+  const images = image ? { images: [image] } : {};
   const alternates = input.path
     ? { alternates: { canonical: input.path } }
     : {};

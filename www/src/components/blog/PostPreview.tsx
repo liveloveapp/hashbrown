@@ -13,8 +13,28 @@ export type PostSummary = Omit<BlogPost, 'body'>;
  * @param post - A full blog post.
  */
 export function toPostSummary(post: BlogPost): PostSummary {
-  const { slug, title, description, date, tags, ogImage, team, youtube } = post;
-  return { slug, title, description, date, tags, ogImage, team, youtube };
+  const {
+    slug,
+    title,
+    description,
+    date,
+    tags,
+    ogImage,
+    ogImageAlt,
+    team,
+    youtube,
+  } = post;
+  return {
+    slug,
+    title,
+    description,
+    date,
+    tags,
+    ogImage,
+    ogImageAlt,
+    team,
+    youtube,
+  };
 }
 
 /** Tabler "brand-youtube" icon, from the Angular `www-brand-youtube`. */
