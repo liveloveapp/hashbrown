@@ -1,6 +1,12 @@
 import { ImageResponse } from 'next/og';
 import { loadCardFonts, svgDataUri } from './assets';
-import { CARD_COLORS, CARD_STRIPE_HEIGHT, cardSize, titleSize } from './tokens';
+import {
+  CARD_COLORS,
+  CARD_STRIPE_HEIGHT,
+  type CardSize,
+  cardSize,
+  titleSize,
+} from './tokens';
 
 /** What a card says. */
 export interface CardContent {
@@ -10,9 +16,17 @@ export interface CardContent {
   subtitle: string[];
   /** Optional code shown in a mono pill under the subtitle. */
   code?: string;
-  /** `og` (1200x630, default) or `github` (1280x640). */
-  size?: 'og' | 'github';
+  /** `og` (1200x630, default), `github` (1280x640) or `square` (1080x1080). */
+  size?: CardSize;
 }
+
+const CARD_PADDING: Record<CardSize, string> = {
+  og: '72px',
+  github: '80px 96px',
+  square: '96px 88px',
+};
+
+const CARD_INSET: Record<CardSize, number> = { og: 72, github: 96, square: 88 };
 
 /**
  * The one card layout, in LiveLoveApp's house style with hashbrown's colours:
@@ -21,7 +35,8 @@ export interface CardContent {
  */
 export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
   const { width, height } = cardSize(size);
-  const padding = size === 'github' ? '80px 96px' : '72px';
+  const padding = CARD_PADDING[size];
+  const textWidth = width - 2 * CARD_INSET[size];
   return (
     <div
       style={{
@@ -53,8 +68,8 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
       >
         <img
           src={svgDataUri('hashbrown-wordmark')}
-          width={321}
-          height={48}
+          width={size === 'square' ? 428 : 321}
+          height={size === 'square' ? 64 : 48}
           alt=""
         />
         <div
@@ -74,10 +89,10 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
         <div
           style={{
             display: 'flex',
-            ...titleSize(title),
+            ...titleSize(title, size),
             fontWeight: 600,
             letterSpacing: '-0.03em',
-            maxWidth: 1000,
+            maxWidth: Math.min(1000, textWidth),
           }}
         >
           {title}
@@ -95,9 +110,9 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
               key={`${index}`}
               style={{
                 display: 'flex',
-                fontSize: 26,
+                fontSize: size === 'square' ? 30 : 26,
                 color: CARD_COLORS.muted,
-                maxWidth: 1000,
+                maxWidth: Math.min(1000, textWidth),
               }}
             >
               {line}
