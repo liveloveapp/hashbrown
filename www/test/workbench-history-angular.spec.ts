@@ -123,9 +123,9 @@ test('Angular observes every resource guard, retains healthy text on errors, and
   expect(session.actions.savable()).toBe(false);
   runtime.error.set(new Error('resource failed'));
 
-  runtime.value = (() => {
+  vi.spyOn(runtime, 'value').mockImplementation(() => {
     throw new Error('must not read errored value');
-  }) as typeof runtime.value;
+  });
   flush();
   expect(session.store.getSnapshot().frame?.history?.sdk.messages).toHaveLength(
     2,
