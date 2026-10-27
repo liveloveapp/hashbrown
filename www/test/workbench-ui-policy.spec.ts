@@ -134,7 +134,7 @@ test('ignores historical, unknown, rejected, invalid, reversed and mismatched to
       result,
     ],
     [user, call, { ...result, toolCallId: 'other' }],
-    [user, call, { ...result, error: { message: 'Rejected' } }],
+    [user, call, { ...result, error: 'Rejected' }],
     ...[
       '',
       '{',
