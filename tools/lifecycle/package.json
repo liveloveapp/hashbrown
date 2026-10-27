@@ -10,6 +10,6 @@
     "@b4run/cli": "0.14.0",
     "@b4run/postgres-storage": "0.14.0",
     "@neondatabase/serverless": "0.10.4",
-    "hono": "4.13.5"
+    "hono": "4.13.13"
   }
 }
