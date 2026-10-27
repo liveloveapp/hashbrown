@@ -60,6 +60,30 @@ test('persists patches and notifies subscribers', () => {
   expect(createWorkbenchLayoutStore(storage).get().rail).toBe(true);
 });
 
+test('updates memory without writing storage when persist is false', () => {
+  const storage = fakeStorage();
+  const store = createWorkbenchLayoutStore(storage);
+  const listener = vi.fn();
+  store.subscribe(listener);
+
+  store.set({ split: 60 }, { persist: false });
+
+  expect(store.get().split).toBe(60);
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(storage.map.has(workbenchLayoutKey)).toBe(false);
+});
+
+test('stops notifying a listener after it unsubscribes', () => {
+  const store = createWorkbenchLayoutStore(fakeStorage());
+  const listener = vi.fn();
+  const unsubscribe = store.subscribe(listener);
+
+  unsubscribe();
+  store.set({ rail: true });
+
+  expect(listener).not.toHaveBeenCalled();
+});
+
 test('survives storage that throws', () => {
   const storage = {
     getItem: () => {
