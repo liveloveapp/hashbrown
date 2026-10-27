@@ -5,6 +5,7 @@ import {
 import { setTimeout as pollDelay } from 'node:timers/promises';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 import { LIVE_PROJECTS } from './live-configuration';
+import { LIVE_ASSERTION_TIMEOUT_MS } from './live-wait-policy';
 
 /** Fixed metadata allowed to reach the live Playwright reporter. */
 export interface LiveFailureAnnotation {
@@ -206,7 +207,7 @@ export async function waitForLiveNativeCompletion(
   fixture: Pick<LiveBrowserFixture, 'stats'>,
   calls: number,
 ): Promise<LiveNativeStats> {
-  const signal = AbortSignal.timeout(10_000);
+  const signal = AbortSignal.timeout(LIVE_ASSERTION_TIMEOUT_MS);
   while (!signal.aborted) {
     let stats: LiveNativeStats;
     try {
@@ -316,7 +317,7 @@ export async function waitForLiveApprovalPhase(
   fixture: Pick<LiveBrowserFixture, 'stats'>,
   phase: 1 | 2 | 3,
 ): Promise<LiveNativeStats> {
-  const signal = AbortSignal.timeout(10_000);
+  const signal = AbortSignal.timeout(LIVE_ASSERTION_TIMEOUT_MS);
   while (!signal.aborted) {
     const stats = await fixture.stats(signal);
     if (signal.aborted) throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
