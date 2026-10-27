@@ -33,8 +33,9 @@
   border-radius: var(--radius-input);
   background: var(--color-bg);
   color: var(--color-ink);
+  /* 16px: iOS Safari zooms into a focused field set any smaller. */
   font:
-    400 15px/21px var(--font-sans);
+    400 16px/22px var(--font-sans);
 }
 
 textarea.control {

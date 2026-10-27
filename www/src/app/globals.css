@@ -326,11 +326,25 @@ pre {
   font-family: var(--font-code);
 }
 
+/* A step smaller than its text, but never under 12px: code blocks set 12.5px
+   or 13.5px, and 0.875em of those is too small to read on a phone. */
 code {
   font:
-    400 0.875em/1.6 var(--font-code);
+    400 max(12px, 0.875em) / 1.6 var(--font-code);
   font-variant-ligatures: none;
   font-optical-sizing: auto;
+}
+
+/* While the announcement floats at the bottom of the window, the footer and
+   the docs panel leave this much room so their last row can scroll clear. */
+body:has([data-announcement]) {
+  --announcement-clearance: calc(var(--space-8) + var(--control-lg) + var(--space-4));
+}
+
+/* A long inline identifier breaks rather than running out of a phone-width
+   column, which clips it. */
+:not(pre) > code {
+  overflow-wrap: anywhere;
 }
 
 .kind.EntryPoint {

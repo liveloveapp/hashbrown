@@ -16,6 +16,7 @@
 .typeParam,
 .returns {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -40,4 +41,7 @@
 
 .return {
   display: inline-flex;
+  /* A long type scrolls rather than running past the card. */
+  max-width: 100%;
+  overflow-x: auto;
 }

@@ -127,7 +127,7 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  min-height: var(--control-md);
+  min-height: var(--control-lg);
   padding: 0 var(--space-4);
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-pill);

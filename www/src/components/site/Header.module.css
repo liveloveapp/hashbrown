@@ -29,6 +29,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    min-height: var(--control-lg);
   }
 }
 
@@ -95,6 +96,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: var(--control-md);
   cursor: pointer;
 
   /* Squircle (4px, 2px border) replaced with border-radius. */
@@ -109,7 +111,7 @@
     border: 1px solid var(--color-rule);
     border-radius: 6px;
     background: var(--color-surface);
-    font: 500 11px/1 var(--font-code);
+    font: 500 12px/1 var(--font-code);
   }
 }
 

@@ -80,3 +80,11 @@
 .copy:hover {
   background: var(--color-code-control-hover);
 }
+
+/* 44px touch targets on a phone. */
+@media screen and (max-width: 767px) {
+  .tabs button,
+  .copy {
+    min-height: var(--control-lg);
+  }
+}

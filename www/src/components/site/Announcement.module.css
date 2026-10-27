@@ -8,7 +8,9 @@
   max-width: 100vw;
   position: fixed;
   bottom: var(--space-8);
-  z-index: 1000;
+  /* Under the header (40) and every overlay (1000): the mobile menu and search
+     cover it rather than the other way round. */
+  z-index: 30;
   opacity: 1;
   transition: opacity 300ms var(--ease-out);
   padding: 0 var(--gutter);
@@ -28,7 +30,7 @@
   align-items: center;
   gap: var(--space-1);
   min-height: var(--control-lg);
-  padding: 0 var(--space-1);
+  padding: 0;
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-pill);
   background: var(--color-bg);
@@ -40,6 +42,9 @@
 }
 
 .alert a {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-lg);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   color: var(--color-muted);
   text-decoration: none;
@@ -56,11 +61,12 @@
 }
 
 .close {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-lg);
+  height: var(--control-lg);
   border-radius: var(--radius-pill);
   background: none;
   border: none;
