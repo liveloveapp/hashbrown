@@ -1,6 +1,6 @@
 ANGULAR · decisions
 
-This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Decision responses arrive whole. There is no narration.
+This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Decision responses arrive whole.  There is no narration.
 
 A complete TypeSafe decision returns a known next action and confidence. It does not stream text.
 

@@ -30,7 +30,7 @@ This is an intentional local demo denial, not authentication or a provider outag
 
 Playback does not send requests, execute tools, or apply a plan. The demo checkbox and acceptance control are disabled while inspecting historical frames.
 
-<img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The canonical workbench shows captured request evidence beside the conversation and synchronized player." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The Requests inspector lists the denied HTTP 403 and the recovered model and readContext requests, with the selected tool result beside them." width="1600" height="1000" loading="lazy" />
 
 ## Inspect the request and response
 

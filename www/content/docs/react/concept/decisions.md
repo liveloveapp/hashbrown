@@ -85,7 +85,7 @@ Read the [complete React client](https://github.com/liveloveapp/hashbrown/blob/m
 
 Decisions evaluate the input snapshot supplied for each request. They do not automatically load a chat history. The workbench keeps both requests in one feed so we can inspect what changed.
 
-<img src="/video/docs/canonical-workbench-decisions-react-result.png" alt="The app-owned plan appears beside a complete typed next-action decision, its confidence, and captured application state." width="1600" height="1000" loading="lazy" />
+<img src="/video/docs/canonical-workbench-decisions-react-result.png" alt="The app-owned plan appears beside the complete decision response and the SDK's typed choice and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Treat confidence as application policy
 

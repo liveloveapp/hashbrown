@@ -75,7 +75,14 @@ export function parseWorkbenchLayout(raw: string | null): WorkbenchLayout {
 /** A subscribable, persisted layout preference store. */
 export interface WorkbenchLayoutStore {
   get(): WorkbenchLayout;
-  set(patch: Partial<WorkbenchLayout>): void;
+  /**
+   * Applies a patch and notifies subscribers. Pass `{ persist: false }` for
+   * transient updates, such as a drag in progress, that should not be saved.
+   */
+  set(
+    patch: Partial<WorkbenchLayout>,
+    options?: { readonly persist?: boolean },
+  ): void;
   subscribe(listener: () => void): () => void;
 }
 
@@ -92,12 +99,14 @@ export function createWorkbenchLayoutStore(
   const listeners = new Set<() => void>();
   return {
     get: () => layout,
-    set(patch) {
+    set(patch, options) {
       layout = parseWorkbenchLayout(JSON.stringify({ ...layout, ...patch }));
-      try {
-        storage?.setItem(workbenchLayoutKey, JSON.stringify(layout));
-      } catch {
-        // Storage may be blocked; memory still updates.
+      if (options?.persist !== false) {
+        try {
+          storage?.setItem(workbenchLayoutKey, JSON.stringify(layout));
+        } catch {
+          // Storage may be blocked; memory still updates.
+        }
       }
       [...listeners].forEach((listener) => listener());
     },

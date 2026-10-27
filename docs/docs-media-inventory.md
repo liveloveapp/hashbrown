@@ -214,9 +214,24 @@ Run `npx nx docs-request-transform-demo www` sequentially with other recorders. 
 
 Checks cover trusted instructions at the actual provider boundary, forged browser policy isolation, identity/authorization/context failures, provider failure and truncation, cancellation before and during provider work, stale-run isolation, explicit recovery, no automatic request, mobile overflow and both video formats. Unit tests additionally preserve populated provider tools/schema/store/include/reasoning without mutation. Six public assets include the measured captions, walkthrough and 920×522 result frame; captures/masters/reports stay in ignored `dist/docs-request-transform`.
 
+## Canonical workbench shell re-record
+
+Updated 2026-10-26. Every `canonical-workbench-*` video, poster, result
+screenshot, caption file and walkthrough (all fourteen lessons, both frameworks,
+plus the two overview IDs) was re-recorded against the redesigned shell: a
+collapsible sectioned sidebar, a resizable chat and inspector split, one
+inspector that pairs captured and interpreted content, and an icon player bar.
+Recordings ran in fresh browser contexts, so they show the default layout
+(expanded sidebar, every section open, a 44/56 split). Sources are unchanged:
+real OpenAI (`gpt-4.1-mini`) and TypeSafe (`jev-1.14.0`) requests through the
+actual framework SDKs, in four `WORKBENCH_LESSONS` batches. All 30 recordings
+passed provider verification on the first attempt. Verifiers select milestone
+ticks by keyboard, because live runs crowd adjacent ticks closer than a pointer
+can separate.
+
 ## Canonical concept workbench
 
-The React and Angular components, tools and structured-output guides use six separate real-provider recordings: `canonical-workbench-{ui,tools,structured}-{react,angular}`. The two workbench overview IDs are refreshed from their matching Generative UI capture. All use the same two-step plan, LLA light surfaces, four visible columns, bottom milestone timeline and immutable synchronized playback. Every streaming frame remains available under Raw events.
+The React and Angular components, tools and structured-output guides use six separate real-provider recordings: `canonical-workbench-{ui,tools,structured}-{react,angular}`. The two workbench overview IDs are refreshed from their matching Generative UI capture. All use the same two-step plan, LLA light surfaces, the sectioned sidebar, a chat and inspector split, the bottom player bar and immutable synchronized playback. Every streaming frame remains available under Raw events.
 
 Run `npx nx workbench-demo www` with server-only OpenAI credentials/model after deterministic `npx nx workbench-e2e www` passes. The recorder verifies actual framework SDKs and the OpenAI adapter before replacing media; fixture source is rejected. It encodes half-speed readable footage, measured multi-phase captions, posters, final screenshots and honest walkthroughs. Fixture checks stay under ignored `dist/docs-workbench/verification`; each real recording preserves its report and original captures under a unique `dist/docs-workbench/captures/<run-id>` directory. The structured lesson uses actual structured-chat APIs and plain plan JSON; the UI lessons use exposed SummaryCard components. A tool reads application context in every turn; only explicit fresh, completed acceptance changes state. No SDK release is involved.
 
