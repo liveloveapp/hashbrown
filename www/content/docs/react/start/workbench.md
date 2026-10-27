@@ -16,7 +16,9 @@ The React and Angular versions use the same example, styles, and capture model. 
 
 ## Run the example
 
-Clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
+Try it without installing anything at [workbench.hashbrown.dev/react.html](https://workbench.hashbrown.dev/react.html). Each lesson's local URL in the table below works there too, for example `/react.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor.
+
+To run it yourself, clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
 
 ```sh
 npx nx workbench-serve www
@@ -24,7 +26,7 @@ npx nx workbench-serve www
 
 Open `http://127.0.0.1:4370/react.html`. The Angular version is available at `/angular.html` on the same server.
 
-This is a local development server. It uses the real OpenAI adapter, keeps the model and output limit on the server, and cancels the provider request when the browser disconnects. It does not provide production identity, durable storage, or shared admission control.
+The local server uses the real OpenAI adapter, keeps the model and output limit on the server, and cancels the provider request when the browser disconnects. It does not provide production identity, durable storage, or shared admission control.
 
 ## Choose one teaching focus
 

@@ -387,3 +387,60 @@ test('selection endpoint pins the whole candidate decision and passes the truste
     await new Promise<void>((done) => server.close(() => done()));
   }
 });
+
+test('accepts a same-host HTTPS origin, as a hosted deployment sends, and caps concurrent runs at maxActive', async () => {
+  let release = () => undefined as void;
+  const held = new Promise<void>((done) => (release = done));
+  const server = createServer(
+    createWorkbenchApp({
+      source: 'test-fixture',
+      maxActive: 1,
+      stream: async function* (input) {
+        yield {
+          type: EventType.RUN_STARTED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+        await held;
+        yield {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+        };
+      },
+    }),
+  );
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No test port');
+  const url = `http://127.0.0.1:${address.port}/api/workbench/chat`;
+  const request = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: `https://127.0.0.1:${address.port}`,
+    },
+    body: JSON.stringify({
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'u', role: 'user', content: 'Plan' }],
+      context: [],
+      tools: [],
+      state: {},
+    }),
+  };
+
+  try {
+    const first = await fetch(url, request);
+    const second = await fetch(url, request);
+    release();
+    const events = await first.text();
+
+    expect(first.status).toBe(200);
+    expect(events).toContain('RUN_FINISHED');
+    expect(second.status).toBe(429);
+  } finally {
+    release();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
