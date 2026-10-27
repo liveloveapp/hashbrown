@@ -54,29 +54,58 @@ effect replay after ambiguity. Publication CAS cannot retract already-authorized
 or in-flight terminal bytes; `Publishing` blocks another owner until finalization
 or terminal retirement after independently verified publisher quiescence. Stop and
 drain older workers before changing the native format or compatible catalog
-versions; there is no rolling mixed-format guarantee. Native approvals remain a
-separate milestone.
+versions; there is no rolling mixed-format guarantee. Genuine native
+`ApprovalRequiredAIFunction` registration is supported through this complete
+composition with an immutable matching `RequiresConfirmation` catalog identity.
+Whole decision batches reserve atomically before native execution; decline and
+cancel never dispatch their registered executor. Cancellation supplies native
+false with `Cancelled by caller.` while retaining a distinct durable Cancelled
+audit disposition. Consumed decisions cannot reopen after failure, even with zero
+dispatch. This guarantees at most one owned dispatch, not exactly-once external
+effects; uncertain effects need downstream evidence and terminal reconciliation.
 
 `check-docs` preserves the original four stateless/application-confirmation C#
-examples and all 16 combinations, then compiles the native startup with and without
-recovery for both OpenAI/Azure and Responses/Chat Completions (eight combinations).
+examples and all 16 combinations. The extended native verifier is configured for
+OpenAI/Azure × Responses/Chat Completions × recovery off/on × native approvals
+off/on: 16 native programs, retaining the original eight and adding eight protected
+programs, for 32 intended actual compiler programs overall. Identical framework
+blocks share those compilations; framework parity does not double the count.
+Current compiler logs, rather than this matrix description, establish passes.
 Both verifiers copy the locked actual project and Integration source into isolated
 temporary projects; they do not invoke providers. The native structural tests also
 check framework parity, complete dependency pins and authenticated initialization.
 
 Native recovery uses a complete trusted key, current configuration and server
-revision. Pending browser results return `NativePendingBrowserResults` without a
-snapshot: published `restoreConversation` rejects unresolved executable tools.
-Never rerun historical tools or invent results after reload. Only completed or
-known-safe snapshots restore; uncertainty remains blocked and a new thread is
-allowed. Scoped operator reconciliation requires evidence and external quiescence,
-and only terminally retires work. Maintenance retains selector tombstones and
-unknown fences; defaults are 128 live payloads and 4096 selectors per agent/scope.
+revision. Native-only Pending approval snapshots restore with a fresh local batch
+token and no lookup/restore model, executor or browser-handler work. An explicit
+current decision is required to continue. Live mixed continuation can settle a
+cancelled original browser sibling (handler count zero) and receive a fresh model
+browser call (fresh ID, handler once); a fresh call is not automatic. Pending mixed
+cold recovery returns Pending with `PendingMixedBrowserResult`, no snapshot and no
+adoptable batch. Disable sends/decisions and expose an explicit new-thread action;
+terminal operator retirement requires independent quiescence/evidence. Ordinary
+pending browser results remain `NativePendingBrowserResults` without a snapshot.
+Never invent results, drop calls or change registrations to evade that limit.
+Completed genuine histories can restore without rerunning historical work.
 
-The original deterministic browser baseline remains 360 cases; native additions
-are counted separately after the coordinated full matrix run. The existing live
-baseline remains seven groups across six projects (42 results) until the native
-live group is qualified; documentation compilation alone makes no live claim.
+Expiry uses DB time. Permanent selector, consumed-decision and invocation fences
+survive private-byte purge and count toward capacity: 128 live/private payloads and
+4096 selectors per agent/scope. Input/selector capacity known at admission rejects
+before model work; native-output capacity may be discovered after a real model
+request and rejects before excess capture, protected dispatch or publication,
+without fence eviction or automatic retry. Native schema 2 migration requires
+stopped/drained/quiescent schema1 workers; it preserves existing safety metadata
+and is separate from workflow checkpoint schema3. Public recovery remains schema1.
+
+Historical milestone-one qualification recorded 408 physical deterministic browser
+results and 48 live results across eight groups, with 75 actual model calls and 99
+reserved calls. Those results do not qualify milestone-two native approvals. The
+Task7 source matrix has 664 actual result identities reported in its current
+handoff; stronger published qualification remains pending until its own physical
+bundle run and review finish. Current milestone-two live qualification is pending.
+Documentation compilation alone establishes no provider, browser or published-SDK
+qualification; preserve each gate's raw evidence and do not substitute intended
+counts for passing results.
 
 ## Native Azure authentication
 
@@ -233,12 +262,12 @@ Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdent
 
 **Stop and drain all older workers before migrating to schema 3.** Overlapping mixed-version rolling operation is unsupported. Older binaries cannot start afterward; already-running older workers can still read new rows without identity checks, write legacy rows or use previously issued claims. Bound fingerprints fence their old admission validator from new rows, but cannot retrofit a running process. Identity-bound stores reject unbound legacy recovery/resume with 409; protected inspection/reconciliation remains available. Plan pending approvals and unknown effects before upgrading rather than backfilling browser-selected identities or replaying work.
 
-The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 42 groups succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. Older .NET runtimes, native MAF approval, provider-hosted tools, reasoning/continuation recovery, activities, shared chat-session persistence and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
+The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 48 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. Native MAF approval has separate deterministic coverage in the opt-in native composition above; its expanded live qualification is pending. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
 
 ## Opt-in published-client live qualification
 
-The live runner is separate from deterministic CI. List the six projects and 42
-scenario groups without credentials, builds, native processes, or model calls:
+The live runner is separate from deterministic CI. List the six projects and 48
+scenarios without credentials, builds, native processes, or model calls:
 
 ```sh
 npx nx live-provider-e2e dotnet-conformance --list
@@ -263,9 +292,10 @@ without rewriting the trusted baseline. Provider credentials are excluded from
 consumer builds, Playwright workers, Chromium, browser URLs, and bundles.
 
 The fixed matrix uses React/Angular with OpenAI Responses key, Azure Responses key,
-and Azure Responses CLI authentication. Its seven groups cover native streaming,
-structured schema, trusted UI/action, browser and server tools, approval recovery
-and decline, and real native iterator cancellation followed by a fresh thread.
+and Azure Responses CLI authentication. Its eight groups cover native streaming,
+structured schema, trusted UI/action, browser and server tools, application approval
+recovery and decline, real native iterator cancellation followed by a fresh thread,
+and same-response native browser/server interoperability.
 Three native preflights also check OpenAI Responses, Azure Responses, and Azure CLI
 Chat Completions with its separate cognitive-services audience. Managed identity
 on an actual Azure host remains an explicitly deferred qualification.
@@ -285,7 +315,7 @@ runs. The deterministic tests include an actual forced Playwright failure with
 secret canaries in assertion/error/cause, DOM, and split child output, then inspect
 all output artifacts. Unknown runner/Playwright overrides are rejected, and
 missing prerequisites fail qualification without a passing skip or automatic retry.
-Success requires 42 distinct passed outcomes matched to valid native wire/effect
+Success requires 48 distinct passed outcomes matched to valid native wire/effect
 evidence and all three successful preflights. Missing, skipped, duplicate, failed,
 or unpersisted evidence fails the run. The final result reports `plannedCases`,
 `actualPassedCases`, `successfulPreflights`, `reportDirectory`,
