@@ -12,6 +12,7 @@ const post: Omit<BlogPost, 'body'> = {
   date: '2026-10-22',
   tags: [],
   ogImage: undefined,
+  ogImageAlt: undefined,
   team: ['brian', 'mike'],
   youtube: undefined,
 };
@@ -39,6 +40,14 @@ test('describes a post as a BlogPosting with its share card', () => {
       url: 'https://hashbrown.dev',
     },
   });
+});
+
+test('resolves a site-relative frontmatter image against the site URL', () => {
+  const custom = { ...post, ogImage: '/blog/image/og/x.png' };
+
+  const data = blogPostingJsonLd(custom);
+
+  expect(data.image).toBe('https://hashbrown.dev/blog/image/og/x.png');
 });
 
 test('prefers the frontmatter image and falls back to the publisher as author', () => {

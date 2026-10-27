@@ -1,6 +1,8 @@
 ---
 title: 'Decision Models with Hashbrown: Decide, Then Generate'
 slug: 2026-10-27-decision-models-with-hashbrown
+ogImage: /blog/image/og/2026-10-27-decision-models-with-hashbrown.png
+ogImageAlt: 'Decide, then generate. A decision model scores FlightCard 0.90 and BookingCard 0.03, and an arrow leads to the flight card a generative model filled in: HB 103, Portland to Seattle, Tue 9:15 AM, $98.'
 description: Use a decision model to route input and pick UI, and a generative model to extract typed values. A real Angular and React example built with Hashbrown.
 tags:
   - story
