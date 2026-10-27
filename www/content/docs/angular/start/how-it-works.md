@@ -22,7 +22,7 @@ The recording uses the real Angular client and OpenAI adapter. The workbench add
 4. **Hashbrown parses the streamed values.** The schema describes a title and an array of steps. Streaming fields become available as the response arrives, so we can render a preview before the entire response is complete.
 5. **Our component renders.** `hb-render-message` resolves `SummaryCard` to the application component we exposed. Its props come from the generated response. Its markup and behavior come from our code.
 
-Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/angular.html?lesson=first-plan`. Step through the bottom timeline and compare **Requests**, **JSON**, and **UI**. They describe the same run at the selected moment.
+Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/angular.html?lesson=first-plan`. Step through the bottom timeline, drag it anywhere, and compare **Requests**, **JSON**, and **UI**. They describe the same run at the selected moment.
 
 ## What goes to the model?
 
