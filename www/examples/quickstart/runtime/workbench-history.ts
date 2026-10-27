@@ -130,6 +130,8 @@ export function encodeWorkbenchHistory(
     !messages.every(
       (message) =>
         record(message) &&
+        (message['role'] === 'user' || message['role'] === 'assistant') &&
+        typeof message['content'] === 'string' &&
         ['toolCalls', 'serverToolCalls'].every(
           (key) =>
             message[key] === undefined ||

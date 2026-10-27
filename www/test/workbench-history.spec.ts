@@ -414,3 +414,26 @@ test('failed setter releases intent without inventing SDK messages or losing ret
   expect(store.failHistoryReplacement()).toBe(false);
   expect(canSaveWorkbenchHistory(store.getSnapshot())).toBe(false);
 });
+
+test('rejects nonprimitive SDK text before serialization without invoking conversion hooks', () => {
+  const circular: Record<string, unknown> = {};
+  circular['self'] = circular;
+  let conversions = 0;
+  const conversion = {
+    toJSON: () => {
+      conversions++;
+      return 'disguised text';
+    },
+  };
+  const invalid = [BigInt(1), circular, conversion];
+
+  const encoded = invalid.map((content) =>
+    encodeWorkbenchHistory([messages[0], { ...messages[1], content }]),
+  );
+
+  expect(encoded).toEqual([null, null, null]);
+  expect(
+    encodeWorkbenchHistory([{ ...messages[0], role: conversion }, messages[1]]),
+  ).toBeNull();
+  expect(conversions).toBe(0);
+});
