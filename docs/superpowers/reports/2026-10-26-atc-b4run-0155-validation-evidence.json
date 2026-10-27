@@ -1,0 +1,1450 @@
+{
+  "schemaVersion": 1,
+  "version": "0.15.5",
+  "sourceCommit": "525ffa3a9ce5350ba52d762bd28f5c02e2eeff10",
+  "release": {
+    "candidateCommit": "877ce4899406cebabc150e80309cb5dbf2299bee",
+    "releaseWorkflowRunId": 40370125207,
+    "auditWorkflowRunId": 40376822663,
+    "immutable": true,
+    "record": {
+      "actionsArtifact": {
+        "id": "12675135138",
+        "name": "release-v0.15.5-877ce4899406",
+        "prepareRunAttempt": 1,
+        "prepareRunId": "40370125207",
+        "serviceDigest": "sha256:68d191a6520c315aa17f3d0376167c405a7a2cc6c2d093a5a70df0773ee07a0b"
+      },
+      "commitSha": "877ce4899406cebabc150e80309cb5dbf2299bee",
+      "manifestSha256": "81b7df4408a73b1e236570cace34efbfdd9cea5848dc2f8145cd6d730c29429e",
+      "schemaVersion": 1,
+      "tag": "v0.15.5",
+      "version": "0.15.5"
+    },
+    "audit": {
+      "checks": [
+        {
+          "conclusion": "success",
+          "detail": "The draft Release records this exact independent audit dispatch.",
+          "name": "release-dispatch-marker"
+        },
+        {
+          "conclusion": "success",
+          "detail": "The current GitHub run and attempt match the dispatched tag audit.",
+          "name": "workflow-run-attempt"
+        },
+        {
+          "conclusion": "success",
+          "detail": "The fixed release inventory was read from the immutable candidate commit.",
+          "name": "immutable-inventory"
+        },
+        {
+          "conclusion": "success",
+          "detail": "The production observer verified the durable candidate evidence without diagnostics.",
+          "name": "production-observation"
+        },
+        {
+          "conclusion": "success",
+          "detail": "The production planner permits only completion of this release audit.",
+          "name": "production-plan"
+        }
+      ],
+      "commitSha": "877ce4899406cebabc150e80309cb5dbf2299bee",
+      "conclusion": "success",
+      "finishedAt": "2026-10-26T18:22:14.221Z",
+      "manifestSha256": "81b7df4408a73b1e236570cace34efbfdd9cea5848dc2f8145cd6d730c29429e",
+      "runAttempt": 1,
+      "schemaVersion": 1,
+      "startedAt": "2026-10-26T18:20:57.987Z",
+      "version": "0.15.5",
+      "workflowRunId": 40376822663
+    }
+  },
+  "registry": {
+    "version": "0.15.5",
+    "commitSha": "877ce4899406cebabc150e80309cb5dbf2299bee",
+    "packages": [
+      {
+        "name": "@b4run/config-biome",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "3feb1c8f0d9ad1a515448cfaf541f0e5fc04e34e0ad60f4b9bb3c11e34ef8148"
+      },
+      {
+        "name": "@b4run/config-typescript",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "69b0cd78e1464500fe3c92c82477b4e8205da827acbe41eb46987949109bec90"
+      },
+      {
+        "name": "@b4run/devkit",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "f044c8146cbe4297015a7054631306b53ba0e7a80235bc06c8d1dd26fa019cc7"
+      },
+      {
+        "name": "@b4run/sdk",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "b24d64a630c8e3ae12c422240d4d5f56a44f2322774262a91ca4e630f5a1360d"
+      },
+      {
+        "name": "@b4run/ag-ui",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "665327fe933fb0f535baa7b2bf8f0c99dc66cd05c7be9d57f809fc3f9decfea5"
+      },
+      {
+        "name": "@b4run/langgraph",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "6c9d586cee9243c3371edac5d2a9fdd49bf0d8372d1552507c7aac3050cfa8e3"
+      },
+      {
+        "name": "@b4run/permissions",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "9bff9d09e796a5747d125f0bc740c2113ac1e4d804c727db35f1131a082552a1"
+      },
+      {
+        "name": "@b4run/postgres-storage",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "d23f5f45bf41c00267b08f0e881adb890e679ce226edec6d10e2ea8c469b3099"
+      },
+      {
+        "name": "@b4run/workspace",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "a5b24e9d97007c4739afe20d9b41d8eb726c58a91f292451d6bda3ae233f4f9b"
+      },
+      {
+        "name": "@b4run/sandbox",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "33f6eb4b7108457ef7ad2fbd3e902e80762e32cd3a495916a4bad345399d8d18"
+      },
+      {
+        "name": "@b4run/sqlite-storage",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "b5404a9070ce620093741bfdfec4442876ca4f36547d43a1c148ada5fe8e22e4"
+      },
+      {
+        "name": "@b4run/core",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "8856258e088898fef62ed02fff715d67c14420a5bca430ab7e916694af33b8ea"
+      },
+      {
+        "name": "@b4run/langchain",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "c22e6ac8ab6a712fbbd8e0cfe9b0db7c5a991f045ba49c624e3007e597cae982"
+      },
+      {
+        "name": "@b4run/memory",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "ecc699f1b89983e94c43d72983367498fcf52c5e695b34b6983e9c9c38321a82"
+      },
+      {
+        "name": "@b4run/cli",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "fe382e5389de7be297ef75aec79bb9544500360de027346522d2da5556e00f3f"
+      },
+      {
+        "name": "@b4run/inspector",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "4513206ccabda1bdc036b48a1b04e3bc0e1cb3f17345326097927d8e4fae0c17"
+      },
+      {
+        "name": "@b4run/memory-pgvector",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "0615ebf95b77df8936ca3f8190ec2ebf5a7d2a908806199b739fefa22c2d34ef"
+      },
+      {
+        "name": "@b4run/testing",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "668f989d29ccdb8264c28b276e36fe0a5b54108319ddcdbcf425b602b03bd18b"
+      },
+      {
+        "name": "@b4run/evals",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "a9f328b155db858661ef122e856801211423c257cdf56e51b9ebe49ce615a1b7"
+      },
+      {
+        "name": "@b4run/vite-plugin",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "ec82c9661f459a1f8153038ac614bb28c404c2bde78e1285e1c84179fe860512"
+      },
+      {
+        "name": "create-b4-app",
+        "status": "verified",
+        "version": "0.15.5",
+        "sha256": "6599c4260ea825fd66e3ef7934b494aea6fc08140d03ff3078eeed812e2d3f24"
+      }
+    ]
+  },
+  "continuation": {
+    "startedAt": "2026-10-26T18:22:14.045Z",
+    "source": "525ffa3a9ce5350ba52d762bd28f5c02e2eeff10",
+    "deployments": [
+      {
+        "id": "dpl_2wARzzkvaCg3dhVYd3iryGM5gaws",
+        "url": "https://hashbrown-dr990ixpq-blovedev.vercel.app"
+      },
+      {
+        "id": "dpl_CUyufJtYTY29bWgYjUixcsCQTiBe",
+        "url": "https://hashbrown-o2wkeg6ac-blovedev.vercel.app"
+      }
+    ],
+    "checks": {
+      "privateRoutesDenied": true,
+      "crossDeploymentOwnership": true,
+      "crossDeploymentContinuation": true,
+      "pinnedSchemaOutput": true,
+      "secureSignedCookie": true,
+      "providerCapAndSchemaPinned": true,
+      "duplicateResultAccepted": true
+    },
+    "databaseTables": [
+      "atc_checkpointer_migrations",
+      "atc_checkpoints",
+      "atc_client_tool_calls",
+      "atc_client_tool_calls_migrations",
+      "atc_permissions",
+      "atc_permissions_migrations",
+      "atc_run_admissions",
+      "atc_run_admissions_migrations",
+      "atc_threads",
+      "atc_threads_migrations",
+      "atc_writes"
+    ],
+    "threadId": "hosted-cdd28387-80a6-42db-9ec0-af5254d53bd4",
+    "finishedAt": "2026-10-26T18:22:27.158Z"
+  },
+  "concurrency": {
+    "version": "0.15.5",
+    "startedAt": "2026-10-26T18:25:57.899Z",
+    "deployments": [
+      {
+        "id": "dpl_2wARzzkvaCg3dhVYd3iryGM5gaws",
+        "url": "https://hashbrown-dr990ixpq-blovedev.vercel.app"
+      },
+      {
+        "id": "dpl_CUyufJtYTY29bWgYjUixcsCQTiBe",
+        "url": "https://hashbrown-o2wkeg6ac-blovedev.vercel.app"
+      }
+    ],
+    "cases": [
+      {
+        "kind": "same-thread-admission-and-retry",
+        "attempt": 0,
+        "threadId": "admission-277050ff-9f21-49af-99c5-d45284a4277f",
+        "statuses": [
+          200,
+          409,
+          200
+        ],
+        "retryAfter": "1",
+        "beforeProviderIds": [
+          "resp_091e945088c6104f006adf9b36954c87d28e6c3d6a294ab046"
+        ],
+        "afterProviderIds": [
+          "resp_091e945088c6104f006adf9b36954c87d28e6c3d6a294ab046",
+          "resp_091e945088c6104f006adf9b41772087d2bad6864b3e5e325d"
+        ],
+        "checkpointId": "1f1d16ab-946a-67b0-8004-878a69d8a8e1",
+        "safe": true
+      },
+      {
+        "kind": "same-thread-admission-and-retry",
+        "attempt": 1,
+        "threadId": "admission-855e4131-f3d3-42bb-94d3-49f6ac2ad2f3",
+        "statuses": [
+          200,
+          409,
+          200
+        ],
+        "retryAfter": "1",
+        "beforeProviderIds": [
+          "resp_0f7beac98bad0efd006adf9b46699c87d2b8ab8b476a8576d1"
+        ],
+        "afterProviderIds": [
+          "resp_0f7beac98bad0efd006adf9b46699c87d2b8ab8b476a8576d1",
+          "resp_0f7beac98bad0efd006adf9b4ca42487d2a4e1a3a40d05839b"
+        ],
+        "checkpointId": "1f1d16ac-0d66-6290-8004-bcb3c06e712e",
+        "safe": true
+      },
+      {
+        "kind": "same-thread-admission-and-retry",
+        "attempt": 2,
+        "threadId": "admission-69c16318-a1b1-4e94-af68-da9a2ba141f4",
+        "statuses": [
+          200,
+          409,
+          200
+        ],
+        "retryAfter": "1",
+        "beforeProviderIds": [
+          "resp_0085541ce733b6cb006adf9b52f06c87d2af57a61f22dccfd2"
+        ],
+        "afterProviderIds": [
+          "resp_0085541ce733b6cb006adf9b52f06c87d2af57a61f22dccfd2",
+          "resp_0085541ce733b6cb006adf9b59ec6887d2a25066f5f161afb4"
+        ],
+        "checkpointId": "1f1d16ac-7df8-6850-8004-f78241144479",
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": false,
+        "attempt": 0,
+        "threadId": "callback-e38bbf01-1d02-4a0f-b504-c5989e4d74ad",
+        "statuses": [
+          200,
+          409
+        ],
+        "continuationProviderIds": [
+          "resp_0eda8831f6ca1de9006adf9b63cb6887d29171bd2a836246b6"
+        ],
+        "persistedProviderIds": [
+          "resp_0eda8831f6ca1de9006adf9b5ebdc487d2b52fa27ace674d0a",
+          "resp_0eda8831f6ca1de9006adf9b63cb6887d29171bd2a836246b6"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_9YxzM94iGbXg0yKMsj7MrbrE",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": false,
+        "attempt": 1,
+        "threadId": "callback-9271ddbf-efb8-4efd-b3ac-3feb5e3df22d",
+        "statuses": [
+          200,
+          409
+        ],
+        "continuationProviderIds": [
+          "resp_0e2bcf9dd774fe8e006adf9b6e117487d293eb237680d2ca6e"
+        ],
+        "persistedProviderIds": [
+          "resp_0e2bcf9dd774fe8e006adf9b6680c487d2a2a80bc2cd879265",
+          "resp_0e2bcf9dd774fe8e006adf9b6e117487d293eb237680d2ca6e"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_3aiJuoqQAFXNsLVtQvNIi8Ai",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": false,
+        "attempt": 2,
+        "threadId": "callback-696c278c-8544-4d8f-993b-f22a7330eb89",
+        "statuses": [
+          200,
+          409
+        ],
+        "continuationProviderIds": [
+          "resp_026f09d1d4403661006adf9b7749cc87d2a7b42aaa89a71e53"
+        ],
+        "persistedProviderIds": [
+          "resp_026f09d1d4403661006adf9b70efc887d2ba501fc88f5c3979",
+          "resp_026f09d1d4403661006adf9b7749cc87d2a7b42aaa89a71e53"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_qxSlcUBZFfe4lvoOVOz63c4d",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": true,
+        "attempt": 0,
+        "threadId": "callback-4ac04e74-673d-4e84-a724-7e14c9b5c9c3",
+        "statuses": [
+          200,
+          409
+        ],
+        "continuationProviderIds": [
+          "resp_08b730658e4f2f4c006adf9b8007f487d2839471283c1f9c0a"
+        ],
+        "persistedProviderIds": [
+          "resp_08b730658e4f2f4c006adf9b79bddc87d2b2b98d7e3b7a304c",
+          "resp_08b730658e4f2f4c006adf9b8007f487d2839471283c1f9c0a"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_OLPnXCDnF70zx6xj3LTSG8mE",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": true,
+        "attempt": 1,
+        "threadId": "callback-6794e82e-f50b-4f5e-8253-9add870b899b",
+        "statuses": [
+          409,
+          200
+        ],
+        "continuationProviderIds": [
+          "resp_0e029077cd56d43f006adf9b8a9fd887d2bbc4532b74ac8af9"
+        ],
+        "persistedProviderIds": [
+          "resp_0e029077cd56d43f006adf9b82b73c87d2a97b71b8dd156c1c",
+          "resp_0e029077cd56d43f006adf9b8a9fd887d2bbc4532b74ac8af9"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_EMArxjN1KFJwB9Rh3xKCb4bh",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      },
+      {
+        "kind": "callback-ownership",
+        "identicalRunId": true,
+        "attempt": 2,
+        "threadId": "callback-cd8eff25-86b8-498c-9244-ef9af2447bb6",
+        "statuses": [
+          200,
+          409
+        ],
+        "continuationProviderIds": [
+          "resp_0dd6c3ade07cf282006adf9b93eb2487d280410b75f045f6f1"
+        ],
+        "persistedProviderIds": [
+          "resp_0dd6c3ade07cf282006adf9b8d31c487d29cc18e624bf6996e",
+          "resp_0dd6c3ade07cf282006adf9b93eb2487d280410b75f045f6f1"
+        ],
+        "delayedRetryStatus": 200,
+        "delayedRetryIsNoop": true,
+        "persistedProviderIdsUnchanged": true,
+        "toolRows": [
+          {
+            "tool_call_id": "call_hYxsHz5WJwstnWPTvAIoFSgr",
+            "kind": "client",
+            "answered": true,
+            "voided": false
+          }
+        ],
+        "safe": true
+      }
+    ],
+    "safe": true,
+    "finishedAt": "2026-10-26T18:27:34.138Z"
+  },
+  "load": {
+    "startedAt": "2026-10-26T18:27:47.218Z",
+    "deployments": [
+      {
+        "id": "dpl_2wARzzkvaCg3dhVYd3iryGM5gaws",
+        "url": "https://hashbrown-dr990ixpq-blovedev.vercel.app"
+      },
+      {
+        "id": "dpl_CUyufJtYTY29bWgYjUixcsCQTiBe",
+        "url": "https://hashbrown-o2wkeg6ac-blovedev.vercel.app"
+      }
+    ],
+    "limit": {
+      "maxConcurrency": 8,
+      "wavesPerLevel": 2,
+      "levels": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "timeoutMs": 55000
+    },
+    "waves": [
+      {
+        "concurrency": 1,
+        "wave": 0,
+        "elapsedMs": 6805,
+        "passed": 1,
+        "failures": []
+      },
+      {
+        "concurrency": 1,
+        "wave": 1,
+        "elapsedMs": 4348,
+        "passed": 1,
+        "failures": []
+      },
+      {
+        "concurrency": 2,
+        "wave": 0,
+        "elapsedMs": 5120,
+        "passed": 2,
+        "failures": []
+      },
+      {
+        "concurrency": 2,
+        "wave": 1,
+        "elapsedMs": 5759,
+        "passed": 2,
+        "failures": []
+      },
+      {
+        "concurrency": 4,
+        "wave": 0,
+        "elapsedMs": 5076,
+        "passed": 4,
+        "failures": []
+      },
+      {
+        "concurrency": 4,
+        "wave": 1,
+        "elapsedMs": 8295,
+        "passed": 4,
+        "failures": []
+      },
+      {
+        "concurrency": 8,
+        "wave": 0,
+        "elapsedMs": 7146,
+        "passed": 8,
+        "failures": []
+      },
+      {
+        "concurrency": 8,
+        "wave": 1,
+        "elapsedMs": 11001,
+        "passed": 8,
+        "failures": []
+      }
+    ],
+    "runs": [
+      {
+        "threadId": "load-70cbd542-a56d-47ab-bbd9-cb7c7a96c118",
+        "runId": "e43122d6-1612-4e8f-8fad-fcd0456d38b7",
+        "marker": "LOAD8319CDBBEE",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 427,
+        "totalMs": 6805,
+        "providerId": "resp_0e2429ba6055c8aa006adf9ba3d4ac87d2ad80cd7d510a9433",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-666b2b87-f3fb-421c-9d14-9d337d7aa058",
+        "runId": "4f5a1ae6-84d3-4c0a-9e68-8b95d114d2c3",
+        "marker": "LOADBADA89C449",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 390,
+        "totalMs": 4348,
+        "providerId": "resp_08fb357d63093b3e006adf9baa94b887d2bd3cf300b0ce9a39",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-3ef9c7a2-0115-45b9-a604-a5dcc541b1de",
+        "runId": "fb11a62b-f1f8-4c21-a394-5a4e2484bee3",
+        "marker": "LOADBD272B53FA",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 424,
+        "totalMs": 5120,
+        "providerId": "resp_014a928267d50c13006adf9baef81887d2800c0fa4740fda01",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-d7fcfd3d-97b7-4f4d-9f5d-8a8dc38cf46b",
+        "runId": "d173a904-a055-48a2-bfe5-11301a8e4e5a",
+        "marker": "LOAD00D3AAC018",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 387,
+        "totalMs": 4507,
+        "providerId": "resp_0d59b7329b7dfd02006adf9baeee0487d29d9b45860edd8f06",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-f3c12b72-3d59-4b2a-b723-8f1971dbf963",
+        "runId": "33d4afa7-0ed9-468a-89ed-ef1230047575",
+        "marker": "LOADCFFD3D3896",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 293,
+        "totalMs": 5759,
+        "providerId": "resp_046df3c0d7fac7d3006adf9bb3ef2087d299b0d747887c34cf",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-e84ff373-f355-4eaf-be24-f3c2ae71a492",
+        "runId": "3760db52-810d-47bc-908b-382a3fc68fa2",
+        "marker": "LOADBBACF48B16",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 298,
+        "totalMs": 4501,
+        "providerId": "resp_06daf737a88cde79006adf9bb3f1ec87d282a589e7266a55eb",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-33e68a09-22e6-49af-a046-dde8cd1a53b9",
+        "runId": "77163b53-01d9-400b-a704-bdad90332e48",
+        "marker": "LOAD8214AD315A",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 306,
+        "totalMs": 5076,
+        "providerId": "resp_0226aca5bd3b2f32006adf9bb9b82887d295ebd58d344d16b5",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-d3db4389-5e69-4eab-ac41-a8c243c5ee02",
+        "runId": "34386bb4-5138-49b8-a8b2-08f4f51f31ff",
+        "marker": "LOAD4313DEFBFC",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 312,
+        "totalMs": 4049,
+        "providerId": "resp_01d191f02eac8792006adf9bb9baa487d2ac909016038d82bc",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-4ca78127-8043-4c85-af87-fcc7900c69d4",
+        "runId": "f82d0ef3-dccf-4012-92b3-e6364fcdc9ca",
+        "marker": "LOAD6A80948B3B",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 400,
+        "totalMs": 4597,
+        "providerId": "resp_07a97308a87725ac006adf9bb9cedc87d28d977a542433c4d3",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-7ec5aef5-c727-44d3-a728-b21433719736",
+        "runId": "66b6d4b9-2465-4c62-bba5-30df6f88efed",
+        "marker": "LOADC178B112CA",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 403,
+        "totalMs": 4716,
+        "providerId": "resp_0b5faf7cdfb8ecdd006adf9bb9cfcc87d291c8547213edc2ca",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-f81ef06f-ffe1-4e55-ba07-e3b32c6a5a60",
+        "runId": "0b0c5978-d453-4a02-bcef-b5cbb6e3c3a4",
+        "marker": "LOADB06A0149A9",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 1772,
+        "totalMs": 8295,
+        "providerId": "resp_05f593f12957e680006adf9bc050d487d2b6e9ca6b6bdd0bdb",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-d30c25aa-1f31-4baa-beed-1300fa8376e7",
+        "runId": "5769b1f4-83eb-408a-91ed-36a0669531d2",
+        "marker": "LOADE4FBD606C9",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 1735,
+        "totalMs": 6634,
+        "providerId": "resp_051ad468e0043926006adf9bc04b5c87d2bbf092dd7a7d37ae",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-9c3b45e0-e12e-4599-b7a8-94021cb0614c",
+        "runId": "8999b5d7-f97b-4efa-8212-79a9f4c744a1",
+        "marker": "LOAD817A6521D2",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 311,
+        "totalMs": 3722,
+        "providerId": "resp_08f9e5e9992496b9006adf9bbecc7487d29d4c21d9bda5cf8c",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-88c0a275-c678-4d74-84f5-70dadaf4459c",
+        "runId": "b4c8cdf1-2209-4f9e-9626-4b5bf28d711c",
+        "marker": "LOADCCAA625A6B",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 317,
+        "totalMs": 5845,
+        "providerId": "resp_03f9a9ad665c3f11006adf9bbec72c87d29876fba4f383a615",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-53c0fdc2-ef50-474e-ac87-bf7d706df6b2",
+        "runId": "28c89228-4adc-4d45-8b96-85197e22ba7b",
+        "marker": "LOADA2EF4CBA05",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 333,
+        "totalMs": 5809,
+        "providerId": "resp_05537d8f101eaa92006adf9bc71ad087d28fb1004bb8bd0f2e",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-7430ddf6-c37a-4b3e-9b38-fd98cccb57ad",
+        "runId": "d3740a1c-436c-4807-a7ed-62b6c36b7207",
+        "marker": "LOAD5F1B2135EF",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 318,
+        "totalMs": 5879,
+        "providerId": "resp_02cad51608fe28bb006adf9bc71dfc87d283c7e09d4ab38967",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-a5b0493a-fbbf-4fa6-a4b9-0b526745dab9",
+        "runId": "e2ea9079-0f04-4c3e-b10a-674691b5d97b",
+        "marker": "LOAD9F9A5864FB",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 1746,
+        "totalMs": 7146,
+        "providerId": "resp_0f59e615915efb96006adf9bc8948487d2ae01f91821bcc029",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-87c1f34b-c0f6-43f5-ae47-2b75165645a8",
+        "runId": "4dbd4e66-12ea-4858-ba65-be6b55cd552a",
+        "marker": "LOAD12611363D4",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 337,
+        "totalMs": 6109,
+        "providerId": "resp_0a3d8d2cb6e8e33b006adf9bc71ae487d2b607a5daa48bf465",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-0cb895fd-02a3-4e52-bc10-87dbcb8b9db8",
+        "runId": "99c5c269-9abe-40b3-8604-e7f629bf7a66",
+        "marker": "LOAD25C51067E9",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 447,
+        "totalMs": 5886,
+        "providerId": "resp_0b79f87d74c724be006adf9bc7427c87d289eb0754b335ad17",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-db31b987-514b-4cc7-bc10-65039aaa4c51",
+        "runId": "d01df61e-beeb-485e-ade4-099309104494",
+        "marker": "LOAD21E1F59639",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 372,
+        "totalMs": 5843,
+        "providerId": "resp_0b15759b82ca64d3006adf9bc72fb087d28bf778477de163f2",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-ae58eef8-815c-4564-a5de-be4647450965",
+        "runId": "1879a8b6-8891-495b-bc54-0eaca6c89f97",
+        "marker": "LOADBD628B365F",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 362,
+        "totalMs": 5277,
+        "providerId": "resp_09c2dc12f41f18ca006adf9bc7233887d2892ce4c19644b178",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-71e57815-56e2-4b7d-bf9e-e6d1376763f4",
+        "runId": "079690be-f922-4622-8da3-18fe6ed8021b",
+        "marker": "LOAD09970F7A72",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 362,
+        "totalMs": 5833,
+        "providerId": "resp_0bf7e5e378836873006adf9bc725fc87d2bb12868c93e3b4d7",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-a189131a-e923-4d24-b17d-d99f5f848780",
+        "runId": "768974a2-b7d1-4093-9e21-7f3a9af4f1e1",
+        "marker": "LOADBC9F4CFB15",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 462,
+        "totalMs": 11001,
+        "providerId": "resp_0e94c0800b567bf0006adf9bce644487d289f8d5f05c16225e",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-56cda925-1a74-4d08-919e-8d65d9ba79cc",
+        "runId": "f1211767-1d15-44a9-bc6b-03db501ce266",
+        "marker": "LOAD2C1B6A3BBC",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 395,
+        "totalMs": 3916,
+        "providerId": "resp_053349ed486da293006adf9bce540c87d291e6c9afcb1c59c0",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-f1187154-887a-41b9-8d32-0306872ae45f",
+        "runId": "f28553f1-e2f9-4cb0-ad85-8f0480e84da2",
+        "marker": "LOADAEA6E851F2",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 384,
+        "totalMs": 4317,
+        "providerId": "resp_0bf6eeb20593dc0d006adf9bce565087d2a217765c861044d2",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-c943d00b-9927-45e5-a2a8-7e572e5699fd",
+        "runId": "17d2441a-2afb-405c-95ef-e40d0151684b",
+        "marker": "LOAD99CC04F125",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 326,
+        "totalMs": 4969,
+        "providerId": "resp_024ba3005e98312f006adf9bce489887d2a48ab1ab2dd7659a",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-5606ef83-74d3-4799-9d2e-ea0c3a9e6a17",
+        "runId": "2fab349e-b78b-4181-8ada-ce76cebbedd0",
+        "marker": "LOADBBE00213AB",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 420,
+        "totalMs": 3634,
+        "providerId": "resp_026bd2378d975936006adf9bce5bb887d2b518b17c5f1c7319",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-545c60c1-5c5a-4996-a311-210f10365e32",
+        "runId": "5ad47674-adeb-4976-ac98-30f0021a6526",
+        "marker": "LOAD2F642EA575",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 1886,
+        "totalMs": 5436,
+        "providerId": "resp_036f5cbd6a7ab6eb006adf9bcff1f087d283b71bbc3bc26ca7",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-a0f1ce7e-aaa2-4bd7-aa0a-45381167263a",
+        "runId": "938aebd5-40d2-4d19-b22f-801c9d1cf492",
+        "marker": "LOAD84645F9E04",
+        "deployment": 0,
+        "status": 200,
+        "firstByteMs": 382,
+        "totalMs": 4853,
+        "providerId": "resp_034670c6dc6da0f0006adf9bce5e0887d28b48eef4b6ea1996",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      },
+      {
+        "threadId": "load-ec3931f6-20a2-4815-8f41-462c9d4a6613",
+        "runId": "89556241-d63b-4bf7-8536-4efb60ad2ccf",
+        "marker": "LOADC1AD37B75B",
+        "deployment": 1,
+        "status": 200,
+        "firstByteMs": 455,
+        "totalMs": 4783,
+        "providerId": "resp_0632e6c86d6770cf006adf9bce6e5087d2bda9bc00bf99351f",
+        "checks": {
+          "schema": true,
+          "markerIsolation": true,
+          "checkpointIsolation": true,
+          "cap": true
+        },
+        "cookieEstablished": true
+      }
+    ],
+    "summary": {
+      "runs": 30,
+      "p50Ms": 5120,
+      "p95Ms": 8295,
+      "maxMs": 11001,
+      "uniqueProviderResponses": 30
+    },
+    "finishedAt": "2026-10-26T18:28:40.787Z"
+  },
+  "cancellation": {
+    "startedAt": "2026-10-26T18:28:52.498Z",
+    "checks": {
+      "duplicateProviderResponseIdsUnchanged": true,
+      "cancelledActiveRunBeforeText": true,
+      "cancelledResponseNotCommitted": true,
+      "followupOnSecondDeployment": true,
+      "noLateCancelledCommitAfter75Seconds": true
+    },
+    "cancelThreadId": "hosted-cancel-71736ed7-cede-4f2e-8880-f111dbd72fed",
+    "requestStartedAt": "2026-10-26T18:28:54.986Z",
+    "abortAt": "2026-10-26T18:28:55.376Z",
+    "eventsBeforeAbort": [
+      "RUN_STARTED"
+    ],
+    "followupConflicts": [
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:28:57.853Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:28:59.019Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:00.254Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:01.480Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:02.701Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:03.852Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:05.029Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:06.215Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:07.445Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:08.622Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:09.785Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:10.940Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:12.121Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:13.281Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:14.445Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:15.607Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:16.760Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:17.903Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:19.066Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:20.238Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:21.388Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:22.537Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:23.694Z"
+      },
+      {
+        "retryAfter": "1",
+        "at": "2026-10-26T18:29:24.856Z"
+      }
+    ],
+    "finishedAt": "2026-10-26T18:30:45.608Z"
+  },
+  "browser": {
+    "fixture": {
+      "cards": 1,
+      "highlighted": [
+        "a1c005"
+      ],
+      "requests": 4,
+      "threads": [
+        "4bc68cd6-e098-4ff0-8510-ebbb4a498a6b"
+      ],
+      "schemasStable": true,
+      "schemaExcludesArrivals": true,
+      "browserResults": [
+        [],
+        [
+          {
+            "role": "tool",
+            "id": "b5342a80-ec19-4209-a147-2b80cd3bb69c",
+            "toolCallId": "call_e9b3nWqzcqfNpzHr0ZQsTVsw"
+          }
+        ],
+        [
+          {
+            "role": "tool",
+            "id": "b5342a80-ec19-4209-a147-2b80cd3bb69c",
+            "toolCallId": "call_e9b3nWqzcqfNpzHr0ZQsTVsw"
+          },
+          {
+            "role": "tool",
+            "id": "tr-af583b3e-791a-40dd-ae11-3e205ce34b11",
+            "toolCallId": "call_e9b3nWqzcqfNpzHr0ZQsTVsw"
+          },
+          {
+            "role": "tool",
+            "id": "66ec6083-4d91-4bc6-b5c5-de7143e12b53",
+            "toolCallId": "call_ufLYOM0lgfk1la4AQ4m4YOcM"
+          }
+        ],
+        [
+          {
+            "role": "tool",
+            "id": "b5342a80-ec19-4209-a147-2b80cd3bb69c",
+            "toolCallId": "call_e9b3nWqzcqfNpzHr0ZQsTVsw"
+          },
+          {
+            "role": "tool",
+            "id": "tr-af583b3e-791a-40dd-ae11-3e205ce34b11",
+            "toolCallId": "call_e9b3nWqzcqfNpzHr0ZQsTVsw"
+          },
+          {
+            "role": "tool",
+            "id": "66ec6083-4d91-4bc6-b5c5-de7143e12b53",
+            "toolCallId": "call_ufLYOM0lgfk1la4AQ4m4YOcM"
+          },
+          {
+            "role": "tool",
+            "id": "tr-b5f26690-f95a-4a31-a779-a5c6406fd47d",
+            "toolCallId": "call_ufLYOM0lgfk1la4AQ4m4YOcM"
+          },
+          {
+            "role": "tool",
+            "id": "540b9d8a-57e5-4960-a56e-e9a8c1b9d86b",
+            "toolCallId": "call_XJ6PswuzarPuUBYV4lVFqLou"
+          }
+        ]
+      ],
+      "responses": [
+        {
+          "status": 200
+        },
+        {
+          "status": 200
+        },
+        {
+          "status": 200
+        }
+      ],
+      "errors": []
+    },
+    "reload": {
+      "beforeReload": {
+        "requests": 4,
+        "thread": "4bc68cd6-e098-4ff0-8510-ebbb4a498a6b",
+        "cards": 1,
+        "highlighted": 1,
+        "schemasStable": true
+      },
+      "cardsAfterReload": 0,
+      "highlightedAfterReload": 0,
+      "cookieFlags": [
+        {
+          "name": "atc_visitor",
+          "httpOnly": true,
+          "secure": true,
+          "sameSite": "Lax"
+        }
+      ],
+      "errors": []
+    },
+    "liveDecisions": {
+      "checkedAt": "2026-10-26T18:29:17.626Z",
+      "preview": "https://hashbrown-dr990ixpq-blovedev.vercel.app/angular/",
+      "beforeReload": {
+        "requests": 4,
+        "thread": "4bc68cd6-e098-4ff0-8510-ebbb4a498a6b",
+        "cards": 1,
+        "highlighted": 1,
+        "schemasStable": true
+      },
+      "reloadClearsUi": true,
+      "requestsAfterReload": 4,
+      "newThread": true,
+      "threadsAfterReload": [
+        "8b645960-5cc9-4c83-aa26-6553deeffc08"
+      ],
+      "schemasStableAfterReload": true,
+      "onlyFlightCard": true,
+      "liveDecisions": [
+        {
+          "kind": "route",
+          "status": 200
+        },
+        {
+          "kind": "cards",
+          "status": 200
+        }
+      ],
+      "cards": 1,
+      "highlighted": [
+        "a1c005"
+      ],
+      "agentStatuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "errors": []
+    },
+    "liveFeeds": {
+      "checkedAt": "2026-10-26T18:30:59.060Z",
+      "url": "https://hashbrown-dr990ixpq-blovedev.vercel.app/angular/",
+      "liveData": true,
+      "aircraft": 266,
+      "cardHex": "a8a4a0",
+      "cardText": "PXT656\nN656SM\n\nCessna Citation CJ3 \u00b7 Route unavailable\n\nAltitude\n45,000 ft\nSpeed\n393 kt\nHeading\n166\u00b0\n\nOne of three aircraft currently at the highest altitude on the map.",
+      "highlighted": [
+        "a8a4a0"
+      ],
+      "requests": 4,
+      "threads": [
+        "9e8978a7-2009-4137-85a1-fb1872e02be7"
+      ],
+      "schemasStable": true,
+      "schemaExcludesArrivals": true,
+      "services": [
+        {
+          "path": "/api/chart/airports",
+          "status": 200
+        },
+        {
+          "path": "/api/aircraft",
+          "status": 200
+        },
+        {
+          "path": "/api/chart/airspace",
+          "status": 200
+        },
+        {
+          "path": "/api/decide",
+          "status": 200
+        },
+        {
+          "path": "/api/run",
+          "status": 200
+        }
+      ],
+      "agentStatuses": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "errors": []
+    },
+    "limitations": [
+      "Chromium response-body inspection could not read streamed SSE; browser checks use observed request schemas, HTTP status and rendered UI. Separate Node probes validate streamed JSON and terminal events.",
+      "Initial airspace fetch returned 502; final live airspace fetch returned 200. Missing upstream route records returned 404. No page errors were recorded."
+    ]
+  },
+  "production": {
+    "checkedAt": "2026-10-26T18:31:38.262Z",
+    "deployment": {
+      "id": "dpl_7BDaudZpG4FJuVxwtjmP8yv9LKoK",
+      "url": "hashbrown-szhek2wr5-blovedev.vercel.app",
+      "readyState": "READY",
+      "target": "production",
+      "meta": {
+        "githubCommitAuthorName": "Brian Love",
+        "githubCommitAuthorEmail": "blove@users.noreply.github.com",
+        "githubCommitMessage": "fix(growth): call Brian the founder in the announcement and founder emails (#773)",
+        "githubCommitOrg": "liveloveapp",
+        "githubCommitRef": "main",
+        "githubCommitRepo": "hashbrown",
+        "githubCommitSha": "d3dfc9aba857abe3ceb948df37b76a47a4f2c186",
+        "githubDeployment": "1",
+        "githubOrg": "liveloveapp",
+        "githubRepo": "hashbrown",
+        "gitRootDirectory": "examples/atc",
+        "lambdaRuntimeStats": "{\"nodejs\":7}"
+      },
+      "alias": [
+        "atc.hashbrown.dev",
+        "hashbrown-atc.vercel.app",
+        "hashbrown-atc-blovedev.vercel.app"
+      ]
+    },
+    "routes": [
+      {
+        "path": "/",
+        "status": 200,
+        "url": "https://atc.hashbrown.dev/angular/"
+      },
+      {
+        "path": "/angular/",
+        "status": 200,
+        "url": "https://atc.hashbrown.dev/angular/"
+      },
+      {
+        "path": "/api/run",
+        "status": 405,
+        "url": "https://atc.hashbrown.dev/api/run"
+      },
+      {
+        "path": "/threads/probe",
+        "status": 404,
+        "url": "https://atc.hashbrown.dev/threads/probe"
+      },
+      {
+        "path": "/healthz",
+        "status": 404,
+        "url": "https://atc.hashbrown.dev/healthz"
+      }
+    ]
+  }
+}
