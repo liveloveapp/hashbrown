@@ -29,6 +29,12 @@ body {
   --wb-cobalt: #002fa7;
   --wb-cobalt-soft: #e8edfb;
   --wb-code: #fafafa;
+  /* Syntax tokens; each keeps at least 7:1 contrast on --wb-code. */
+  --wb-tok-key: #002fa7;
+  --wb-tok-string: #116329;
+  --wb-tok-number: #953800;
+  --wb-tok-literal: #6639ba;
+  --wb-tok-punct: #52525b;
   --wb-live: #dc2626;
   --wb-mono-font: 'JetBrains Mono', ui-monospace, monospace;
   padding: 12px;
@@ -668,6 +674,32 @@ body {
   border-radius: 10px;
   max-height: 55dvh;
   overflow: auto;
+}
+/* Highlighted JSON and Markdown in inspector blocks (see workbench-highlight.ts). */
+.wb-tok-key,
+.wb-tok-heading,
+.wb-tok-link {
+  color: var(--wb-tok-key);
+}
+.wb-tok-string,
+.wb-tok-code {
+  color: var(--wb-tok-string);
+}
+.wb-tok-number {
+  color: var(--wb-tok-number);
+}
+.wb-tok-literal {
+  color: var(--wb-tok-literal);
+}
+.wb-tok-punct,
+.wb-tok-marker {
+  color: var(--wb-tok-punct);
+}
+.wb-tok-heading {
+  font-weight: 700;
+}
+.wb-tok-emphasis {
+  font-style: italic;
 }
 .wb .wb-inspection > pre {
   flex: 1 0 auto;

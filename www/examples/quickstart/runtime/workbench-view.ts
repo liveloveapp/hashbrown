@@ -1,4 +1,8 @@
 import {
+  renderWorkbenchCode,
+  workbenchCodeLanguage,
+} from './workbench-highlight';
+import {
   workbenchBrowserInstructions,
   workbenchOnboardingPrompts,
 } from './workbench-onboarding';
@@ -196,13 +200,17 @@ function rebuildKeepingFocus(
 function playbackSpeedLabel(speed: number): string {
   return speed === 0.5 ? '½×' : `${speed}×`;
 }
-function pre(value: unknown): HTMLPreElement {
-  return element(
-    'pre',
-    typeof value === 'string'
-      ? value
-      : (JSON.stringify(value, null, 2) ?? 'Waiting for captured data'),
+function pre(value: unknown, tab: string): HTMLPreElement {
+  const source =
+    typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  const language =
+    source === undefined ? 'text' : workbenchCodeLanguage(value, tab);
+  const block = document.createElement('pre');
+  block.dataset.language = language;
+  block.append(
+    renderWorkbenchCode(source ?? 'Waiting for captured data', language),
   );
+  return block;
 }
 
 /** Names the captured teaching moment without hiding its original payload in Raw. */
@@ -1023,7 +1031,10 @@ export function mountWorkbench(
       inspection.replaceChildren();
       if (rawFrame) {
         inspection.append(
-          pre(tab === 'Transform' && transform ? transform : frame?.payload),
+          pre(
+            tab === 'Transform' && transform ? transform : frame?.payload,
+            tab,
+          ),
         );
       } else if (tab === 'Requests') {
         const list = element('div', '', 'wb-request-list');
@@ -1062,7 +1073,7 @@ export function mountWorkbench(
               ),
         );
       } else {
-        inspection.append(pre(value));
+        inspection.append(pre(value, tab));
       }
     });
     const detailHeader = element('header', '', 'wb-section-head');
@@ -1122,6 +1133,7 @@ export function mountWorkbench(
                       source: frame?.source ?? 'Application',
                     }
                   : requestContext?.payload,
+        tab,
       ),
     );
     if ((frame?.status ?? snapshot.status) === 'error') {
