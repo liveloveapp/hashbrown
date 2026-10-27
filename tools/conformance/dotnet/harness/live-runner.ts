@@ -17,8 +17,8 @@ import {
   LIVE_PROJECTS,
   type LiveConfiguration,
   loadLiveConfiguration,
-  publicChildEnvironment,
   nativeLiveChildEnvironment,
+  publicChildEnvironment,
 } from './live-configuration';
 import { startLiveStaticServer } from './live-static-server';
 import { createLiveQualificationLedger } from './live-qualification';

@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries -- Compares native projection with the private SDK reducer and actions, which have no public entry point. */
 import { type AGUIEvent, type Message } from '@ag-ui/core';
 import { apiActions, internalActions } from '../../../../packages/core/src/actions';
 import {
@@ -48,7 +49,10 @@ test('native projection bounds and folds genuine SSE while holding terminal publ
       .split('\n')
       .find((line) => line.startsWith(lifecyclePrefix));
     expect(lifecycleOutput).toBeDefined();
-    const cases = JSON.parse(lifecycleOutput!.slice(lifecyclePrefix.length)) as {
+    if (lifecycleOutput === undefined) {
+      throw new Error('Native projection lifecycle output is missing');
+    }
+    const cases = JSON.parse(lifecycleOutput.slice(lifecyclePrefix.length)) as {
       name: string;
       original: { messages: Readonly<Message>[] };
       events: AGUIEvent[];
@@ -60,8 +64,11 @@ test('native projection bounds and folds genuine SSE while holding terminal publ
       .split('\n')
       .find((line) => line.startsWith(browserBatchPrefix));
     expect(browserBatchOutput).toBeDefined();
+    if (browserBatchOutput === undefined) {
+      throw new Error('Native projection browser batch output is missing');
+    }
     const browserBatch = JSON.parse(
-      browserBatchOutput!.slice(browserBatchPrefix.length),
+      browserBatchOutput.slice(browserBatchPrefix.length),
     ) as (typeof cases)[number];
     for (const subject of [...cases, browserBatch]) {
       const active = reducer(

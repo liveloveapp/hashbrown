@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries -- Tests real host app recovery clients, which have no public library entry point. */
 import * as react from '../../hosts/react/src/recovery';
 import * as angular from '../../hosts/angular/src/recovery';
 

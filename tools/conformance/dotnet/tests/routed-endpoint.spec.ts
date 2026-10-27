@@ -88,7 +88,10 @@ test('a complete terminal protocol capture remains valid when its client cancels
       `http://127.0.0.1:${(server.address() as AddressInfo).port}/run`,
       async (endpoint) => {
         const response = await fetch(endpoint.url);
-        const reader = response.body!.getReader();
+        if (response.body === null) {
+          throw new Error('Fixture response body is missing');
+        }
+        const reader = response.body.getReader();
         let received = '';
         while (!received.endsWith('\n\n')) {
           const chunk = await reader.read();
