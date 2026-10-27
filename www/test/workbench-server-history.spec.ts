@@ -298,3 +298,29 @@ test('save results cannot commit after completion subscribers cancel or supersed
   expect(s.controller.state().snapshot?.messages).toEqual([]);
   expect(s.observation.messages).toHaveLength(2);
 });
+
+test('cancellation at replacement admission prevents the actual SDK setter side effect', async () => {
+  for (const stop of ['cancel', 'dispose'] as const) {
+    const s = setup();
+    s.fetcher
+      .mockResolvedValueOnce(Response.json(s.session))
+      .mockResolvedValueOnce(
+        Response.json({ id: 'light', version: 0, messages: [] }),
+      );
+    await s.controller.startSession();
+    let requestEnded = false;
+    s.controller.subscribe(() => {
+      const state = s.controller.state();
+      if (!state.busy) requestEnded = true;
+      else if (requestEnded) {
+        if (stop === 'cancel') s.controller.cancelPending();
+        else s.controller.dispose();
+      }
+    });
+
+    await s.controller.load();
+
+    expect(s.replace).not.toHaveBeenCalled();
+    expect(s.controller.state().threadId).toBeNull();
+  }
+});

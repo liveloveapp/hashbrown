@@ -268,6 +268,7 @@ export function createWorkbenchServerHistory(
         options.store.recordHistoryApp(app, 'load');
       publish({ busy: true }, 'replace-server-start');
       try {
+        if (!current(ticket)) return;
         await options.replace(id, document.messages);
         if (ticket === generation && !disposed && options.active())
           publish(
