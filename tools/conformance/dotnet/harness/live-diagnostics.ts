@@ -1,3 +1,4 @@
+import { LIVE_NATIVE_APPROVAL_FIELDS } from './live-native-approval';
 import { LIVE_PROJECTS } from './live-configuration';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 
@@ -7,9 +8,17 @@ export interface LiveDiagnosticSink {
 }
 
 const enums: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  nativeApprovalStage: [
+    'starting',
+    'pending',
+    'approved',
+    'followup',
+    'invalid',
+  ],
   project: LIVE_PROJECTS.map((entry) => entry.name),
   group: LIVE_BUDGET_MANIFEST.groups.map((entry) => entry.name),
   outcome: ['passed', 'failed'],
+  failureCode: ['LIVE_ASSERTION_FAILED'],
   preflight: LIVE_BUDGET_MANIFEST.preflights,
   provider: ['openai', 'azure'],
   api: ['responses', 'chat-completions'],
@@ -49,6 +58,10 @@ const numbers = [
   'dispatchedCalls',
   'cancelledCalls',
   'nativeEffects',
+  'nativeProtectedEffects',
+  'durableProtectedEffects',
+  'usageCompleteCalls',
+  'usageIncompleteCalls',
 ];
 
 /** Projects and bounds metadata before invoking any caller-owned stdout/file/report sink. */
@@ -82,7 +95,29 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
         input['status'] <= 599
       )
         safe['status'] = input['status'];
-      for (const key of ['nativeCoEmission', 'nativeExactHistory'])
+      for (const [key, maximum] of Object.entries(LIVE_NATIVE_APPROVAL_FIELDS))
+        if (
+          typeof input[key] === 'number' &&
+          Number.isSafeInteger(input[key]) &&
+          (input[key] as number) >= 0 &&
+          (input[key] as number) <= maximum
+        )
+          safe[key] = input[key];
+      if (
+        typeof input['wireIndex'] === 'number' &&
+        Number.isInteger(input['wireIndex']) &&
+        input['wireIndex'] >= 1 &&
+        input['wireIndex'] <= 4
+      )
+        safe['wireIndex'] = input['wireIndex'];
+      for (const key of [
+        'store',
+        'nativeCoEmission',
+        'nativeExactHistory',
+        'nativeApprovalPendingObserved',
+        'nativeApprovalBindingMatched',
+        'nativeApprovalJournalMatched',
+      ])
         if (typeof input[key] === 'boolean') safe[key] = input[key];
       const line = `${JSON.stringify(safe)}\n`;
       const bytes = Buffer.byteLength(line);

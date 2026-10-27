@@ -31,12 +31,13 @@ if (nativeApprovals) nativeFunction = new ApprovalRequiredAIFunction(nativeFunct
 if (nativeApprovals && !nativeEnabled) throw new InvalidOperationException("Protected native fixture requires native sessions.");
 var nativeCatalog = new NativeToolCatalog([new("lookupAirport", int.Parse(builder.Configuration["RegistryVersion"] ?? "1"), nativeFunction.JsonSchema, RequiresConfirmation: nativeApprovals)]);
 var nativeOptions = new NativeSessionOptions { PayloadCapacity = int.Parse(builder.Configuration["NativePayloadCapacity"] ?? "128"), SelectorCapacity = int.Parse(builder.Configuration["NativeSelectorCapacity"] ?? "4096"), MaximumCalls = int.Parse(builder.Configuration["NativeMaximumCalls"] ?? "256"), Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
+var liveApproval = builder.Configuration["FixtureLive"] == "true" && builder.Configuration["FixtureLiveGroup"] == "native-approval" ? new FixtureLiveApprovalProof(nativeCatalog.Identity) : null;
 INativeSessionJournal? nativeJournal = null;
 if (nativeEnabled)
 {
     if (source is null || !string.IsNullOrEmpty(builder.Configuration["Workflow"])) throw new InvalidOperationException("Native fixture requires PostgreSQL and an empty workflow.");
     nativeJournal = new FixtureNativeJournal(new PostgresNativeSessionJournal(source, nativeCatalog,
-        ServerConfigurationIdentity.Create(builder.Configuration), schema, nativeOptions), nativeGate, builder.Configuration["NativeFailSave"] == "true");
+        ServerConfigurationIdentity.Create(builder.Configuration), schema, nativeOptions), nativeGate, builder.Configuration["NativeFailSave"] == "true", liveApproval);
     await nativeJournal.InitializeAsync();
     await using var nativeEffects = source.CreateCommand($"CREATE TABLE IF NOT EXISTS \"{schema}\".fixture_native_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,code text NOT NULL)");
     await nativeEffects.ExecuteNonQueryAsync();
@@ -144,7 +145,7 @@ var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 nativeAccessor = accessor;
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
 using var liveState = builder.Configuration["FixtureLive"] == "true"
-    ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "") : null;
+    ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "", approval: liveApproval) : null;
 using var liveHttp = liveState is null ? null : new HttpClient(new FixtureLiveHttpHandler(liveState,
     builder.Configuration["Model"]!, builder.Configuration["ModelApi"] ?? "responses"));
 IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configuration)
@@ -152,7 +153,11 @@ IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configur
         new ProviderClientComposition(authentication => authentication.CreateCredential(), liveHttp!)), liveState);
 if (liveState is not null)
 {
-    app.MapGet("/__test/live-stats", () => Results.Json(liveState.Snapshot()));
+    app.MapGet("/__test/live-stats", async (HttpContext context) =>
+    {
+        if (liveApproval is not null) await liveApproval.ObserveDatabaseAsync(source!, schema, context.RequestAborted);
+        return Results.Json(liveState.Snapshot());
+    });
     app.MapPost("/__test/live-release", () => { liveState.Release(); return Results.Ok(); });
     if (liveState.Group == "preflight")
         app.MapPost("/__test/live-preflight", async (HttpContext context) =>
@@ -191,7 +196,13 @@ app.MapGet("/__test/counters", async () =>
         await using var reader = await command.ExecuteReaderAsync(); await reader.ReadAsync();
         durableNative = reader.GetInt64(0); nativeCode = reader.IsDBNull(1) ? null : reader.GetString(1);
     }
-    return Results.Ok(new { durableNative, nativeCode, server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
+    long durableNativeProtected = 0;
+    if (nativeEnabled)
+    {
+        await using var command = source!.CreateCommand($"SELECT count(*) FROM \"{schema}\".fixture_native_approval_effects");
+        durableNativeProtected = (long)(await command.ExecuteScalarAsync())!;
+    }
+    return Results.Ok(new { durableNativeProtected, durableNative, nativeCode, server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
 });
 if (nativeJournal is not null)
 {

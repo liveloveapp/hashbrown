@@ -8,9 +8,9 @@ test('reserves the immutable six-project manifest and three preflights within sa
   const budget = createLiveBudget();
 
   expect(LIVE_BUDGET_MANIFEST.groups.map((group) => group.calls)).toEqual([
-    1, 1, 2, 2, 2, 3, 3, 2,
+    1, 1, 2, 2, 2, 3, 3, 2, 4,
   ]);
-  expect(LIVE_BUDGET_MANIFEST.reservedCalls).toBe(99);
+  expect(LIVE_BUDGET_MANIFEST.reservedCalls).toBe(123);
   expect(LIVE_BUDGET_MANIFEST.maxRunCalls).toBe(128);
   expect(LIVE_BUDGET_MANIFEST.maxOutputTokens).toBe(384);
   expect(Object.isFrozen(LIVE_BUDGET_MANIFEST.groups[0])).toBe(true);
@@ -246,7 +246,7 @@ test('drains native iteration when a linked deadline cancels after the first rea
   expect(stages).toEqual(['first-native-item', 'drained']);
 });
 
-test('executes all fixed reservations without exceeding ninety-nine native attempts', async () => {
+test('executes all fixed reservations without exceeding one hundred twenty-three native attempts', async () => {
   const budget = createLiveBudget();
   const projects = [
     'react-openai-key',
@@ -276,6 +276,58 @@ test('executes all fixed reservations without exceeding ninety-nine native attem
       .reservePreflight(name)
       .dispatch(request, async () => undefined);
 
-  expect(budget.snapshot()).toEqual({ reservedCalls: 99, dispatchedCalls: 99 });
+  expect(budget.snapshot()).toEqual({
+    reservedCalls: 123,
+    dispatchedCalls: 123,
+  });
   budget.dispose();
+});
+
+test('native approval retains its own four attempts and cannot borrow unused reservations', async () => {
+  const budget = createLiveBudget();
+  const reservation = budget.reserveScenario(
+    'react-openai-key',
+    'native-approval',
+  );
+  const callback = jest.fn(async () => {
+    throw new Error('unit failure');
+  });
+
+  try {
+    for (let attempt = 0; attempt < 4; attempt++)
+      await expect(
+        reservation.dispatch(
+          { signal: new AbortController().signal, maxOutputTokens: 384 },
+          callback,
+        ),
+      ).rejects.toThrow('unit failure');
+    await expect(
+      reservation.dispatch(
+        { signal: new AbortController().signal, maxOutputTokens: 384 },
+        callback,
+      ),
+    ).rejects.toThrow('LIVE_SCENARIO_CALL_CAP');
+
+    expect(callback).toHaveBeenCalledTimes(4);
+    expect(reservation.snapshot().dispatchedCalls).toBe(4);
+    expect(budget.snapshot().reservedCalls).toBe(123);
+    expect(LIVE_BUDGET_MANIFEST.preflights).toEqual([
+      'openai-responses',
+      'azure-responses',
+      'azure-cli-chat',
+    ]);
+    expect(LIVE_BUDGET_MANIFEST.maxScenarioCalls).toBe(4);
+    expect(LIVE_BUDGET_MANIFEST.scenarioTimeoutMs).toBe(60_000);
+    expect(LIVE_BUDGET_MANIFEST.runTimeoutMs).toBe(900_000);
+  } finally {
+    budget.dispose();
+  }
+});
+
+test('requires fifty-four distinct live project group identities', async () => {
+  const { LIVE_CASE_COUNT } = await import('../harness/live-budget');
+
+  const actual = LIVE_CASE_COUNT;
+
+  expect(actual).toBe(54);
 });

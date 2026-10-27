@@ -23,8 +23,11 @@ export async function startNativeLiveFixture(
   )
     throw safeLiveError('LIVE_CHILD_START_FAILED');
   if (
-    group === 'mixed-native-tools' &&
+    ['mixed-native-tools', 'native-approval'].includes(group) &&
     (environment['FixtureNativeSessions'] !== 'true' ||
+      (group === 'native-approval' &&
+        (environment['FixtureNativeApprovals'] !== 'true' ||
+          environment['NativeGate'] !== '')) ||
       !environment['InterruptConnectionString']?.trim() ||
       environment['InterruptSchema']?.length !== 45 ||
       !/^durable_live_[a-f0-9]{32}$/.test(environment['InterruptSchema'] ?? ''))
@@ -103,7 +106,7 @@ export async function startNativeLiveFixture(
           clearTimeout(timer);
         }
       }
-      if (group === 'mixed-native-tools') {
+      if (['mixed-native-tools', 'native-approval'].includes(group)) {
         const cleanupSignal = AbortSignal.timeout(15_000);
         const cleanup = await startNativeLiveFixture(
           {

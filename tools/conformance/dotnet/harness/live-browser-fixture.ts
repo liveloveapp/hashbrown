@@ -1,3 +1,7 @@
+import {
+  type LiveNativeApprovalProof,
+  parseLiveNativeApprovalProof,
+} from './live-native-approval';
 import { setTimeout as pollDelay } from 'node:timers/promises';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 import { LIVE_PROJECTS } from './live-configuration';
@@ -20,7 +24,9 @@ export interface LiveNativeWire {
 }
 
 /** Safe fixture counters, retaining actual calls and gate cancellation evidence. */
-export interface LiveNativeStats {
+export interface LiveNativeStats extends Partial<LiveNativeApprovalProof> {
+  readonly usageCompleteCalls?: number;
+  readonly usageIncompleteCalls?: number;
   readonly calls: number;
   readonly httpCalls: number;
   readonly cancelledCalls: number;
@@ -107,7 +113,7 @@ function counter(value: unknown): number {
 }
 
 /** Projects a fixture response into fixed metadata without preserving arbitrary response fields. */
-function nativeStats(value: unknown): LiveNativeStats {
+export function nativeStats(value: unknown): LiveNativeStats {
   if (!value || typeof value !== 'object')
     throw new Error('LIVE_STATS_INVALID');
   const input = value as Record<string, unknown>;
@@ -157,7 +163,28 @@ function nativeStats(value: unknown): LiveNativeStats {
       store: row['store'],
     });
   });
+  const approval = Object.keys(input).some((key) =>
+    key.startsWith('nativeApproval'),
+  );
+  const usage = approval
+    ? {
+        usageCompleteCalls: counter(input['usageCompleteCalls']),
+        usageIncompleteCalls: counter(input['usageIncompleteCalls']),
+      }
+    : {};
+  if (
+    approval &&
+    (counter(input['calls']) > 4 ||
+      (usage.usageCompleteCalls ?? 0) + (usage.usageIncompleteCalls ?? 0) >
+        counter(input['calls']) ||
+      (input['stage'] === 'completed' &&
+        (usage.usageCompleteCalls ?? 0) + (usage.usageIncompleteCalls ?? 0) !==
+          counter(input['calls'])))
+  )
+    throw new Error('LIVE_STATS_INVALID');
   return Object.freeze({
+    ...(approval ? parseLiveNativeApprovalProof(input) : {}),
+    ...usage,
     calls: counter(input['calls']),
     httpCalls: counter(input['httpCalls']),
     cancelledCalls: counter(input['cancelledCalls']),
@@ -282,4 +309,54 @@ export async function withLiveBrowserFixture<T>(
   } finally {
     await cleanup();
   }
+}
+
+/** Waits for a fresh reviewed native phase; the fourth-call ceiling grants no alternative successful sequence. */
+export async function waitForLiveApprovalPhase(
+  fixture: Pick<LiveBrowserFixture, 'stats'>,
+  phase: 1 | 2 | 3,
+): Promise<LiveNativeStats> {
+  const signal = AbortSignal.timeout(10_000);
+  while (!signal.aborted) {
+    const stats = await fixture.stats(signal);
+    if (signal.aborted) throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
+    parseLiveNativeApprovalProof(
+      stats as unknown as Readonly<Record<string, unknown>>,
+    );
+    if (
+      stats.stage === 'failed' ||
+      stats.stage === 'cancelled' ||
+      stats.nativeApprovalStage === 'invalid' ||
+      stats.calls > phase
+    )
+      throw new Error('LIVE_NATIVE_COMPLETION_FAILED');
+    const expected =
+      phase === 1 ? 'pending' : phase === 2 ? 'approved' : 'followup';
+    if (
+      stats.stage === 'completed' &&
+      stats.calls === phase &&
+      stats.httpCalls === phase &&
+      stats.wire.length === phase &&
+      stats.wire.every((wire) => wire.status >= 200 && wire.status < 300) &&
+      stats.nativeApprovalStage === expected &&
+      stats.nativeApprovalModelPhase === phase &&
+      stats.nativeApprovalWirePhase === phase &&
+      stats.nativeApprovalPublications === phase &&
+      stats.usageCompleteCalls === phase &&
+      stats.usageIncompleteCalls === 0
+    )
+      return stats;
+    if (
+      stats.stage === 'completed' &&
+      stats.calls === phase &&
+      (stats.usageIncompleteCalls ?? 0) > 0
+    )
+      throw new Error('LIVE_USAGE_INCOMPLETE');
+    try {
+      await pollDelay(20, undefined, { signal });
+    } catch {
+      throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
+    }
+  }
+  throw new Error('LIVE_NATIVE_COMPLETION_TIMEOUT');
 }

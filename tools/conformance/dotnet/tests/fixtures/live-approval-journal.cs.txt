@@ -1,0 +1,262 @@
+#pragma warning disable MAAI001 // Deterministic public pinned MAF approval integration, with a fake model and real PostgreSQL.
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Hashbrown.Conformance.Testing;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+static void Check(bool value, string code) { if (!value) throw new Exception(code); }
+var fault = args.SingleOrDefault() ?? "none";
+Check(new[] { "none", "saved-receipt", "authorized-receipt", "public-content", "public-name", "public-arguments" }.Contains(fault), "LIVE_PROOF_UNKNOWN_TEST_FAULT");
+var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+builder.Logging.ClearProviders(); builder.Services.AddRouting();
+builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, LiveProofAuthentication>("fixture", _ => { });
+builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture required."));
+var schema = "durable_live_" + Guid.NewGuid().ToString("N");
+var nativeGate = new FixtureNativeGate("");
+var tools = new FixtureTools("", source, schema, nativeGate, () => accessor.HttpContext);
+AIFunction function = new ApprovalRequiredAIFunction(AIFunctionFactory.Create(tools.LookupProtectedNativeAirport, "lookupAirport"));
+var catalog = new NativeToolCatalog([new("lookupAirport", 1, function.JsonSchema, RequiresConfirmation: true)]);
+var proof = new FixtureLiveApprovalProof(catalog.Identity);
+var realJournal = new PostgresNativeSessionJournal(source, catalog, "live-proof-unit", schema);
+var observedJournal = new FixtureNativeJournal(realJournal, nativeGate, liveApproval: proof);
+var journal = System.Reflection.DispatchProxy.Create<INativeSessionJournal, LiveProofFaultJournal>();
+var recorder = (LiveProofFaultJournal)(object)journal;
+recorder.Target = observedJournal; recorder.Real = realJournal; recorder.Proof = proof; recorder.Fault = fault;
+using var gate = new FixtureLiveGate("native-approval", approval: proof);
+using var transport = new GenuineApprovalTransport();
+using var nativeHttp = new HttpClient(new FixtureLiveHttpHandler(gate, "gpt-4.1-mini", "responses", transport));
+var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+    ["Provider"] = "openai", ["ModelApi"] = "responses", ["Model"] = "gpt-4.1-mini", ["ModelEndpoint"] = "https://api.openai.com/v1/", ["ApiKey"] = "unit-only-no-service-key"
+}).Build();
+using var model = ProviderFactory.Create(configuration, new ProviderClientComposition(_ => throw new Exception("LIVE_PROOF_CREDENTIAL_ACQUISITION_FORBIDDEN"), nativeHttp));
+using var policy = new FixtureLiveModelClient(model, gate);
+using var client = new ResultContainerRecorder(policy);
+try
+{
+    await journal.InitializeAsync();
+    await using (var command = source.CreateCommand($"""
+      CREATE TABLE "{schema}".fixture_native_approval_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,session_id text NOT NULL,call_id text NOT NULL,request_id text NOT NULL,batch_id text NOT NULL,admitted_generation bigint NOT NULL,admitted_revision bigint NOT NULL,code text NOT NULL);
+      CREATE TABLE "{schema}".fixture_native_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,code text NOT NULL);
+      CREATE TABLE "{schema}".fixture_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,effect_id text NOT NULL,code text NOT NULL);
+      """)) await command.ExecuteNonQueryAsync();
+    NativeSessionEndpointConfiguration.Configure(builder.Services, "native", journal, catalog, _ => "alice");
+    var agent = NativeSessionAgentFactory.Create(client, "native", [function], catalog, accessor);
+    await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+    NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    await app.StartAsync();
+    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(15) };
+    var key = new NativeSessionKey("native", "alice", "live-proof", new Dictionary<string,string> { ["isolation"] = "alice" });
+    async Task<JsonObject> Prefix()
+    {
+        await using var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"); command.Parameters.AddWithValue("id", key.Id);
+        var payload = JsonNode.Parse((string)(await command.ExecuteScalarAsync())!)!;
+        return JsonNode.Parse(payload["publicRequest"]!.GetValue<string>())!.AsObject();
+    }
+    async Task<string> Send(object input)
+    {
+        using var response = await http.PostAsJsonAsync("/run", input);
+        var body = await response.Content.ReadAsStringAsync();
+        Check(response.IsSuccessStatusCode && body.Contains("RUN_FINISHED") && !body.Contains("RUN_ERROR"), "LIVE_PROOF_PUBLIC_TERMINAL_FAILED/status=" + (int)response.StatusCode + "/calls=" + gate.Calls + "/http=" + gate.HttpCalls + "/proof=" + JsonSerializer.Serialize(proof.Snapshot()));
+        await proof.ObserveDatabaseAsync(source, schema);
+        return body;
+    }
+    var first = await Send(new { threadId = "live-proof", runId = "initial", messages = new[] { new { id = "u1", role = "user", content = "Look up airport PDX once." } }, tools = Array.Empty<object>(), context = Array.Empty<object>(), state = new { } });
+    if (fault is "saved-receipt" or "authorized-receipt")
+    {
+        var invalid = JsonSerializer.SerializeToElement(proof.Snapshot());
+        Check(recorder.TrueSaveObserved && recorder.ValidBeforeFault && recorder.FaultBecameInvalid && recorder.TrueAuthorizationObserved && invalid.GetProperty("nativeApprovalStage").GetString() == "invalid" && transport.Calls == 1 && tools.Protected == 0, "LIVE_PROOF_RECEIPT_SUBSTITUTION_NOT_REJECTED");
+        Console.WriteLine("Live approval negative observation rejected: " + fault);
+        await app.StopAsync(); return;
+    }
+    var initialProof = JsonSerializer.SerializeToElement(proof.Snapshot());
+    Check(transport.Calls == 1 && tools.Protected == 0 && initialProof.GetProperty("nativeApprovalStage").GetString() == "pending" && initialProof.GetProperty("nativeApprovalPendingObserved").GetBoolean(), "LIVE_PROOF_PENDING_NOT_GENUINE");
+    var terminal = first.Split('\n').Where(line => line.StartsWith("data: ")).Select(line => JsonNode.Parse(line[6..])!).Single(item => item["type"]?.GetValue<string>() == "RUN_FINISHED");
+    var interruptId = terminal["outcome"]!["interrupts"]![0]!["id"]!.GetValue<string>();
+    var approved = await Prefix(); approved["runId"] = "approved";
+    approved["resume"] = new JsonArray(new JsonObject { ["interruptId"] = interruptId, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } });
+    await Send(approved);
+    if (fault.StartsWith("public-", StringComparison.Ordinal))
+    {
+        var invalid = JsonSerializer.SerializeToElement(proof.Snapshot());
+        Check(recorder.TrueSaveObserved && recorder.ValidBeforeFault && recorder.FaultBecameInvalid && invalid.GetProperty("nativeApprovalStage").GetString() == "invalid" && transport.Calls == 2 && tools.Protected == 1, "LIVE_PROOF_WRONG_PUBLIC_SAVE_NOT_REJECTED");
+        Console.WriteLine("Live approval negative observation rejected: " + fault);
+        await app.StopAsync(); return;
+    }
+    var approvedProof = JsonSerializer.SerializeToElement(proof.Snapshot());
+    Check(transport.Calls == 2 && tools.Protected == 1 && approvedProof.GetProperty("nativeApprovalStage").GetString() == "approved" && approvedProof.GetProperty("nativeApprovalJournalMatched").GetBoolean(), "LIVE_PROOF_APPROVED_NOT_JOINED");
+    var admittedGeneration = approvedProof.GetProperty("nativeApprovalAdmittedGeneration").GetInt64();
+    var admittedRevision = approvedProof.GetProperty("nativeApprovalAdmittedRevision").GetInt64();
+    var later = await Prefix(); later["runId"] = "later"; later.Remove("resume");
+    later["messages"]!.AsArray().Add(new JsonObject { ["id"] = "u2", ["role"] = "user", ["content"] = "Later plain answer with no tools." });
+    await Send(later);
+    var finalProof = JsonSerializer.SerializeToElement(proof.Snapshot());
+    var finalStats = JsonSerializer.SerializeToElement(gate.Snapshot());
+    Check(transport.Calls == 3 && tools.Protected == 1 && finalProof.GetProperty("nativeApprovalStage").GetString() == "followup" && finalProof.GetProperty("nativeApprovalPublications").GetInt32() == 3 && finalProof.GetProperty("nativeApprovalCompletions").GetInt32() == 1, "LIVE_PROOF_LATER_PHASE_NOT_FRESH");
+    Check(finalProof.GetProperty("nativeApprovalAdmittedGeneration").GetInt64() == admittedGeneration && finalProof.GetProperty("nativeApprovalAdmittedRevision").GetInt64() == admittedRevision && finalStats.GetProperty("usageCompleteCalls").GetInt32() == 3 && finalStats.GetProperty("httpCalls").GetInt32() == 3 && finalProof.GetProperty("nativeApprovalWirePhase").GetInt32() == 3, "LIVE_PROOF_ADMITTED_EPOCH_OR_USAGE_CHANGED");
+    await using (var mutate = source.CreateCommand($"UPDATE \"{schema}\".fixture_native_approval_effects SET request_id='foreign'")) await mutate.ExecuteNonQueryAsync();
+    await proof.ObserveDatabaseAsync(source, schema);
+    Check(!JsonSerializer.SerializeToElement(proof.Snapshot()).GetProperty("nativeApprovalJournalMatched").GetBoolean(), "LIVE_PROOF_ACCEPTED_UNMATCHED_EFFECT");
+    Check(client.Kinds.Count == 2, "LIVE_PROOF_CONTAINER_CHARACTERIZATION_MISSING");
+    Console.WriteLine("Native result containers: " + string.Join(" -> ", client.Kinds));
+    Console.WriteLine("Live approval real journal and native SDK proof passed; in-memory transport only.");
+    await app.StopAsync();
+}
+finally
+{
+    await using var drop = source.CreateCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE"); await drop.ExecuteNonQueryAsync();
+}
+
+/// <summary>In-memory native Responses wire fixture; it emits only tool call/text SSE, so real MAF creates every approval object.</summary>
+sealed class GenuineApprovalTransport : HttpMessageHandler
+{
+    public int Calls;
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested(); Calls++;
+        var responseId = "resp_approval_" + Calls; var messageId = "msg_approval_" + Calls;
+        var arguments = "{\"code\":\"PDX\"}";
+        var output = Calls == 1 ? JsonSerializer.SerializeToElement(new { type = "function_call", id = "fc_original", call_id = "original-live-proof", name = "lookupAirport", arguments, status = "completed" })
+            : JsonSerializer.SerializeToElement(new { type = "message", id = messageId, role = "assistant", status = "completed", content = new[] { new { type = "output_text", text = "done", annotations = Array.Empty<object>() } } });
+        var response = JsonSerializer.SerializeToElement(new { id = responseId, @object = "response", created_at = 1720000000, model = "gpt-4.1-mini", status = "completed", output = new[] { output }, usage = new { input_tokens = 2, output_tokens = 1, total_tokens = 3 } });
+        var events = new List<string>();
+        void Emit(string type, object data)
+        {
+            var payload = JsonSerializer.SerializeToElement(data).EnumerateObject().ToDictionary(item => item.Name, item => (object?)item.Value.Clone());
+            payload["type"] = type; payload["sequence_number"] = events.Count;
+            events.Add($"event: {type}\ndata: {JsonSerializer.Serialize(payload)}\n\n");
+        }
+        Emit("response.created", new { response = new { id = responseId, @object = "response", created_at = 1720000000, model = "gpt-4.1-mini", status = "in_progress", output = Array.Empty<object>() } });
+        if (Calls == 1)
+        {
+            Emit("response.output_item.added", new { output_index = 0, item = new { type = "function_call", id = "fc_original", call_id = "original-live-proof", name = "lookupAirport", arguments = "", status = "in_progress" } });
+            Emit("response.function_call_arguments.delta", new { item_id = "fc_original", output_index = 0, delta = arguments });
+            Emit("response.function_call_arguments.done", new { item_id = "fc_original", output_index = 0, arguments });
+        }
+        else
+        {
+            var part = output.GetProperty("content")[0];
+            Emit("response.output_item.added", new { output_index = 0, item = new { type = "message", id = messageId, role = "assistant", status = "in_progress", content = Array.Empty<object>() } });
+            Emit("response.content_part.added", new { item_id = messageId, output_index = 0, content_index = 0, part = new { type = "output_text", text = "", annotations = Array.Empty<object>() } });
+            Emit("response.output_text.delta", new { item_id = messageId, output_index = 0, content_index = 0, delta = "done", logprobs = Array.Empty<object>() });
+            Emit("response.output_text.done", new { item_id = messageId, output_index = 0, content_index = 0, text = "done", logprobs = Array.Empty<object>() });
+            Emit("response.content_part.done", new { item_id = messageId, output_index = 0, content_index = 0, part });
+        }
+        Emit("response.output_item.done", new { output_index = 0, item = output });
+        Emit("response.completed", new { response });
+        var content = new StringContent(string.Concat(events), System.Text.Encoding.UTF8, "text/event-stream");
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
+    }
+}
+
+/// <summary>Local test principal supplies trusted scope independently of caller JSON.</summary>
+sealed class LiveProofAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "alice")], Scheme.Name)), Scheme.Name)));
+}
+
+
+/// <summary>Test-only observation fault injector. Every fault starts after a real successful store result; no production authority API is altered.</summary>
+public class LiveProofFaultJournal : System.Reflection.DispatchProxy
+{
+    /// <summary>Real forwarding decorator used for all ordinary observations.</summary>
+    public INativeSessionJournal Target { get; set; } = null!;
+    /// <summary>Real store used only to preserve a successful save before testing a corrupted observation of its public projection.</summary>
+    public INativeSessionJournal Real { get; set; } = null!;
+    /// <summary>Passive fixture proof under test.</summary>
+    public FixtureLiveApprovalProof Proof { get; set; } = null!;
+    /// <summary>Fixed deterministic negative scenario, never provider data.</summary>
+    public string Fault { get; set; } = "none";
+    /// <summary>True only after the actual journal returned a non-null save receipt.</summary>
+    public bool TrueSaveObserved { get; private set; }
+    /// <summary>True only after actual publication authorization succeeded with the original receipt.</summary>
+    public bool TrueAuthorizationObserved { get; private set; }
+    /// <summary>The proof was valid immediately before injecting the isolated wrong observation.</summary>
+    public bool ValidBeforeFault { get; private set; }
+    /// <summary>The specific substituted-receipt/public-value observation immediately invalidated the proof.</summary>
+    public bool FaultBecameInvalid { get; private set; }
+    private bool _injected;
+
+    /// <inheritdoc />
+    protected override object? Invoke(System.Reflection.MethodInfo? method, object?[]? arguments)
+    {
+        if (method is null || arguments is null) throw new InvalidOperationException("LIVE_PROOF_PROXY_INVALID");
+        if (method.Name == nameof(INativeSessionJournal.SaveAsync)) return Save((NativeSessionLease)arguments[0]!, (NativeSessionSave)arguments[1]!, (CancellationToken)arguments[2]!);
+        if (method.Name == nameof(INativeSessionJournal.AuthorizePublicationAsync)) return Authorize((NativeSavedReceipt)arguments[0]!, (CancellationToken)arguments[1]!);
+        try { return method.Invoke(Target, arguments); }
+        catch (System.Reflection.TargetInvocationException exception) when (exception.InnerException is not null)
+        { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw(); throw; }
+    }
+    private string Stage() => (string)Proof.Snapshot()["nativeApprovalStage"];
+    private async ValueTask<NativeSavedReceipt?> Save(NativeSessionLease lease, NativeSessionSave save, CancellationToken cancellationToken)
+    {
+        // For public-value faults the real valid save runs first, then exactly one corrupted observer input replaces the normal passive callback.
+        var corruptPublic = !_injected && Fault.StartsWith("public-", StringComparison.Ordinal) && save.TurnCompleted;
+        var receipt = await (corruptPublic ? Real : Target).SaveAsync(lease, save, cancellationToken);
+        if (receipt is null) return null;
+        TrueSaveObserved = true;
+        if (!_injected && Fault == "saved-receipt")
+        {
+            ValidBeforeFault = Stage() != "invalid";
+            Proof.Published(receipt with { SavedRevision = receipt.SavedRevision + 1 }, false);
+            FaultBecameInvalid = Stage() == "invalid"; _injected = true;
+        }
+        if (corruptPublic)
+        {
+            ValidBeforeFault = Stage() == "pending";
+            var request = JsonNode.Parse(save.PublicRequest)!.AsObject();
+            var messages = request["messages"]!.AsArray();
+            if (Fault == "public-content") messages.Single(message => message!["role"]!.GetValue<string>() == "tool")!["content"] = "{\"code\":\"PDX\",\"name\":\"Wrong airport\"}";
+            else
+            {
+                var call = messages.Single(message => message!["toolCalls"] is JsonArray { Count: 1 })!["toolCalls"]![0]!;
+                if (Fault == "public-name") call["function"]!["name"] = "wrongLookup";
+                else call["function"]!["arguments"] = "{\"code\":\"LAX\"}";
+            }
+            var corrupted = new NativeSessionSave(save.NativeJson, request.ToJsonString(), save.PendingCalls, save.ExpectedBrowserCallIds, save.TurnCompleted, save.Approvals);
+            Proof.Saved(lease, corrupted, receipt);
+            FaultBecameInvalid = Stage() == "invalid"; _injected = true;
+        }
+        return receipt;
+    }
+    private async ValueTask<bool> Authorize(NativeSavedReceipt receipt, CancellationToken cancellationToken)
+    {
+        var authorized = await Target.AuthorizePublicationAsync(receipt, cancellationToken);
+        if (!authorized) return false;
+        TrueAuthorizationObserved = true;
+        if (!_injected && Fault == "authorized-receipt")
+        {
+            ValidBeforeFault = Stage() != "invalid";
+            var foreignOwner = receipt.Lease with { Token = receipt.Lease.Token + "-foreign" };
+            Proof.Published(receipt with { Lease = foreignOwner }, true);
+            FaultBecameInvalid = Stage() == "invalid"; _injected = true;
+        }
+        return true;
+    }
+}
+
+
+/// <summary>Records only fixed typed-container labels at the actual native policy input boundary, never raw results.</summary>
+sealed class ResultContainerRecorder(IChatClient inner) : DelegatingChatClient(inner)
+{
+    /// <summary>Only fixed container-kind labels observed before the native policy validates each input.</summary>
+    public readonly List<string> Kinds = [];
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var history = messages.ToArray();
+        foreach (var result in history.SelectMany(message => message.Contents).OfType<FunctionResultContent>())
+            Kinds.Add(result.Result switch { string => "string-json", JsonElement { ValueKind: JsonValueKind.Object } => "json-element-object", JsonElement { ValueKind: JsonValueKind.String } => "json-element-string", _ => "object" });
+        await foreach (var update in base.GetStreamingResponseAsync(history, options, cancellationToken)) yield return update;
+    }
+}

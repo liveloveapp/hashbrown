@@ -214,3 +214,50 @@ test('public child environment excludes PostgreSQL fixture secrets', async () =>
   expect(actual).toEqual({ PATH: '/bin' });
   expect(JSON.stringify(actual)).not.toContain('sentinel');
 });
+
+test('protected live child gets exact native mode and no blocking pending gate while public children stay secret free', async () => {
+  const { nativeLiveChildEnvironment } =
+    await import('../harness/live-configuration');
+  const schema = 'durable_live_0123456789abcdef0123456789abcdef';
+  const parent = {
+    DOTNET_TEST_POSTGRES: 'Host=unit;Password=DB_CANARY',
+    AZURE_CONFIG_DIR: 'IDENTITY_CANARY',
+    ApiKey: 'UNSELECTED_CANARY',
+  };
+  const provider = {
+    Provider: 'azure',
+    AzureAuthentication: 'azure-cli',
+    ModelApi: 'responses',
+  };
+
+  const actual = nativeLiveChildEnvironment(
+    provider,
+    parent,
+    'native-approval',
+    schema,
+  );
+  const publicEnvironment = publicChildEnvironment(actual);
+
+  expect(actual).toMatchObject({
+    ...provider,
+    FixtureNativeSessions: 'true',
+    FixtureNativeApprovals: 'true',
+    NativeGate: '',
+    InterruptSchema: schema,
+  });
+  expect(actual['ApiKey']).toBeUndefined();
+  expect(JSON.stringify(publicEnvironment)).not.toMatch(
+    /CANARY|InterruptConnectionString|FixtureNativeApprovals/,
+  );
+  expect(() =>
+    nativeLiveChildEnvironment(provider, {}, 'native-approval', schema),
+  ).toThrow('LIVE_POSTGRES_REQUIRED');
+  expect(() =>
+    nativeLiveChildEnvironment(provider, parent, 'native-approval', 'public'),
+  ).toThrow('LIVE_SCHEMA_INVALID');
+  expect(
+    nativeLiveChildEnvironment(provider, parent, 'mixed-native-tools', schema)[
+      'NativeGate'
+    ],
+  ).toBe('before-pending-save');
+});

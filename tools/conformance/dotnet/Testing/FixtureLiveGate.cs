@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using System.Text.Json;
 
 namespace Hashbrown.Conformance.Testing;
 
@@ -14,18 +15,23 @@ public sealed class FixtureLiveGate : IDisposable
     private bool _entered;
     private bool _nativeCoEmission;
     private bool _nativeExactHistory;
+    private int _usageCompleteCalls, _usageIncompleteCalls, _usageUpdates;
+    private bool _usageInvalid;
+    private long _nativeInput, _nativeOutput;
     private long _inputTokens;
     private long _outputTokens;
     private string _stage = "ready";
     /// <summary>Creates the immutable ceiling from the reviewed fixed scenario manifest.</summary>
-    public FixtureLiveGate(string group, TimeSpan? timeout = null)
+    public FixtureLiveGate(string group, TimeSpan? timeout = null, FixtureLiveApprovalProof? approval = null)
     {
         Group = group;
+        Approval = approval;
         MaxCalls = group switch
         {
             "streaming-plain" or "structured-schema" or "preflight" => 1,
             "trusted-ui-action" or "browser-tool" or "server-tool" or "mixed-native-tools" => 2,
             "approval-resume-decline" or "cancellation-recovery" => 3,
+            "native-approval" => 4,
             _ => throw new InvalidOperationException("LIVE_GROUP_INVALID")
         };
         var duration = timeout ?? TimeSpan.FromSeconds(60);
@@ -34,6 +40,8 @@ public sealed class FixtureLiveGate : IDisposable
     }
     /// <summary>The trusted fixed scenario identifier.</summary>
     public string Group { get; }
+    /// <summary>Passive original-native proof, present only for the protected live group.</summary>
+    public FixtureLiveApprovalProof? Approval { get; }
     /// <summary>The scenario's independent immutable native call limit.</summary>
     public int MaxCalls { get; }
     /// <summary>Cancellation linked into credential acquisition, HTTP, and enumeration.</summary>
@@ -54,6 +62,7 @@ public sealed class FixtureLiveGate : IDisposable
             if (Token.IsCancellationRequested) throw new InvalidOperationException("LIVE_CANCELLED");
             if (_calls >= MaxCalls) throw new InvalidOperationException("LIVE_CALL_CAP");
             _calls++;
+            _usageUpdates = 0; _usageInvalid = false; _nativeInput = 0; _nativeOutput = 0;
             _stage = "acquiring";
         }
     }
@@ -82,6 +91,18 @@ public sealed class FixtureLiveGate : IDisposable
             _stage = "streaming";
             foreach (var usage in update.Contents.OfType<UsageContent>())
             {
+                if (Group == "native-approval")
+                {
+                    _usageUpdates++;
+                    if (_usageUpdates != 1) { _usageInvalid = true; continue; }
+                    if (usage.Details.InputTokenCount is { } input && input >= 0 && input <= 9007199254740991L) _nativeInput = input;
+                    else _usageInvalid = true;
+                    if (usage.Details.OutputTokenCount is { } output && output >= 0 && output <= 9007199254740991L) _nativeOutput = output;
+                    else _usageInvalid = true;
+                    if (_nativeOutput > 384) _usageInvalid = true;
+                    if (usage.Details.TotalTokenCount is { } total && total != _nativeInput + _nativeOutput) _usageInvalid = true;
+                    continue;
+                }
                 _inputTokens += Math.Max(0, usage.Details.InputTokenCount ?? 0);
                 _outputTokens += Math.Max(0, usage.Details.OutputTokenCount ?? 0);
             }
@@ -106,13 +127,29 @@ public sealed class FixtureLiveGate : IDisposable
         lock (_sync)
         {
             if (cancelled) _cancelledCalls++;
+            if (Group == "native-approval")
+            {
+                var complete = !cancelled && !failed && !_usageInvalid && _usageUpdates == 1;
+                if (_inputTokens <= 9007199254740991L - _nativeInput && _outputTokens <= 9007199254740991L - _nativeOutput)
+                { _inputTokens += _nativeInput; _outputTokens += _nativeOutput; }
+                else complete = false;
+                if (complete) _usageCompleteCalls++; else _usageIncompleteCalls++;
+            }
             _stage = cancelled ? "cancelled" : failed ? "failed" : "completed";
         }
     }
     /// <summary>Projects only approved numeric and fixed-enum statistics.</summary>
     public object Snapshot()
     {
-        lock (_sync) return new { calls = _calls, httpCalls = _wire.Count, cancelledCalls = _cancelledCalls, stage = _stage, wire = _wire.ToArray(), inputTokens = _inputTokens, outputTokens = _outputTokens, nativeCoEmission = _nativeCoEmission, nativeExactHistory = _nativeExactHistory };
+        lock (_sync)
+        {
+            var stats = new { calls = _calls, httpCalls = _wire.Count, cancelledCalls = _cancelledCalls, stage = _stage, wire = _wire.ToArray(), inputTokens = _inputTokens, outputTokens = _outputTokens, nativeCoEmission = _nativeCoEmission, nativeExactHistory = _nativeExactHistory };
+            if (Group != "native-approval") return stats;
+            var projected = JsonSerializer.SerializeToElement(stats).EnumerateObject().ToDictionary(item => item.Name, item => (object)item.Value.Clone());
+            projected["usageCompleteCalls"] = _usageCompleteCalls; projected["usageIncompleteCalls"] = _usageIncompleteCalls;
+            if (Approval is not null) foreach (var item in Approval.Snapshot()) projected[item.Key] = item.Value;
+            return projected;
+        }
     }
     /// <summary>Cancels and releases owned scenario work.</summary>
     public void Dispose() { _deadline.Cancel(); _release.TrySetResult(); _deadline.Dispose(); }

@@ -121,7 +121,12 @@ test('checks sixteen native tuples and retains the original eight exact programs
   assert.deepEqual(
     variants
       .filter(({ approvals }) => !approvals)
-      .map(({ approvals, ...variant }) => variant),
+      .map(({ provider, api, recovery, program }) => ({
+        provider,
+        api,
+        recovery,
+        program,
+      })),
     originalPrograms(recipes),
   );
   for (const provider of ['openai', 'azure'])

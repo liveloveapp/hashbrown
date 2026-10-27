@@ -28,6 +28,7 @@ public sealed class FixtureLiveHttpHandler(FixtureLiveGate state, string model, 
             if (root.GetProperty("model").GetString() != model || tokens <= 0 || tokens > 384 || store ||
                 api == "responses" && (!root.TryGetProperty("store", out _) || storeProperty.ValueKind != JsonValueKind.False))
                 throw new InvalidOperationException();
+            if (state.Group == "native-approval" && (state.Approval is null || !state.Approval.ObserveWire(root))) throw new InvalidOperationException();
         }
         catch { throw new InvalidOperationException("LIVE_WIRE_INVALID"); }
         var authentication = request.Headers.Contains("api-key") ? "api-key" : request.Headers.Authorization?.Scheme == "Bearer" ? "bearer" : "missing";

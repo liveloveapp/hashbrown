@@ -6,24 +6,39 @@ using Hashbrown.Conformance.Integration;
 namespace Hashbrown.Conformance.Testing;
 
 /// <summary>Test-only barrier decorator delegating every authority decision to the real journal.</summary>
-public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNativeGate gate, bool failSave = false) : INativeSessionJournal
+public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNativeGate gate, bool failSave = false, FixtureLiveApprovalProof? liveApproval = null) : INativeSessionJournal
 {
     /// <inheritdoc />
     public ValueTask InitializeAsync(CancellationToken cancellationToken = default) => inner.InitializeAsync(cancellationToken);
     /// <inheritdoc />
     public ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string publicRequestJson, CancellationToken cancellationToken = default) => inner.TryAcquireAsync(key, publicRequestJson, cancellationToken);
     /// <inheritdoc />
-    public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default) => inner.CaptureModelCallAsync(lease, call, cancellationToken);
+    public async ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default)
+    {
+        var captured = await inner.CaptureModelCallAsync(lease, call, cancellationToken);
+        if (captured) liveApproval?.CapturedModel(lease, call);
+        return captured;
+    }
     /// <inheritdoc />
-    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default) => inner.CaptureApprovalBatchAsync(lease, capture, cancellationToken);
+    public async ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default)
+    {
+        var captured = await inner.CaptureApprovalBatchAsync(lease, capture, cancellationToken);
+        if (captured) liveApproval?.CapturedApproval(lease, capture);
+        return captured;
+    }
     /// <inheritdoc />
-    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default) => inner.GetOwnedApprovalEvidenceAsync(lease, cancellationToken);
+    public async ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default)
+    {
+        var evidence = await inner.GetOwnedApprovalEvidenceAsync(lease, cancellationToken);
+        if (evidence is not null) liveApproval?.Evidence(lease, evidence);
+        return evidence;
+    }
     /// <inheritdoc />
     public async ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default)
     {
         await gate.ReachAsync("before-decision-reservation", cancellationToken);
         var admitted = await inner.TryAdmitApprovalBatchAsync(lease, batchId, admission, cancellationToken);
-        if (admitted) await gate.ReachAsync("decision-admitted", cancellationToken);
+        if (admitted) { liveApproval?.Admitted(lease, batchId, admission); await gate.ReachAsync("decision-admitted", cancellationToken); }
         return admitted;
     }
     /// <inheritdoc />
@@ -37,11 +52,16 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     {
         await gate.ReachAsync("before-dispatch-marker", cancellationToken);
         var started = await inner.TryStartDispatchAsync(lease, call, cancellationToken);
-        if (started) await gate.ReachAsync("dispatch-marker-committed", cancellationToken);
+        if (started) { liveApproval?.Dispatch(lease, call, false); await gate.ReachAsync("dispatch-marker-committed", cancellationToken); }
         return started;
     }
     /// <inheritdoc />
-    public ValueTask<bool> CompleteDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default) => inner.CompleteDispatchAsync(lease, call, cancellationToken);
+    public async ValueTask<bool> CompleteDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default)
+    {
+        var completed = await inner.CompleteDispatchAsync(lease, call, cancellationToken);
+        if (completed) liveApproval?.Dispatch(lease, call, true);
+        return completed;
+    }
     /// <inheritdoc />
     public async ValueTask<bool> RenewAsync(NativeSessionLease lease, CancellationToken cancellationToken = default)
     {
@@ -60,21 +80,23 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
         if (save.Approvals.PendingBatch is not null || save.ExpectedBrowserCallIds.Count > 0) await gate.ReachAsync("before-pending-save", cancellationToken);
         if (failSave) return null;
         var receipt = await inner.SaveAsync(lease, save, cancellationToken);
-        if (receipt is not null) await gate.ReachAsync("after-save-before-publication", cancellationToken);
+        if (receipt is not null) { liveApproval?.Saved(lease, save, receipt); await gate.ReachAsync("after-save-before-publication", cancellationToken); }
         return receipt;
     }
     /// <inheritdoc />
     public async ValueTask<bool> AuthorizePublicationAsync(NativeSavedReceipt receipt, CancellationToken cancellationToken = default)
     {
         var authorized = await inner.AuthorizePublicationAsync(receipt, cancellationToken);
-        if (authorized) await gate.ReachAsync("publication-authorized", cancellationToken);
+        if (authorized) { liveApproval?.Published(receipt, false); await gate.ReachAsync("publication-authorized", cancellationToken); }
         return authorized;
     }
     /// <inheritdoc />
     public async ValueTask<bool> FinalizePublicationAsync(NativeSavedReceipt receipt, CancellationToken cancellationToken = default)
     {
         await gate.ReachAsync("before-publication-finalization", cancellationToken);
-        return await inner.FinalizePublicationAsync(receipt, cancellationToken);
+        var finalized = await inner.FinalizePublicationAsync(receipt, cancellationToken);
+        if (finalized) liveApproval?.Published(receipt, true);
+        return finalized;
     }
     /// <inheritdoc />
     public async ValueTask<bool> FailureCleanupAsync(NativeSessionLease lease, CancellationToken cancellationToken = default)

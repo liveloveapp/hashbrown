@@ -62,6 +62,9 @@ export default class LiveReporter implements Reporter {
       project,
       group,
       outcome: result.status === 'passed' ? 'passed' : 'failed',
+      ...(result.status === 'passed'
+        ? {}
+        : { failureCode: 'LIVE_ASSERTION_FAILED' }),
       stage: result.status === 'passed' ? 'completed' : 'failed',
       durationMs: Math.max(0, Math.round(result.duration)),
     };
