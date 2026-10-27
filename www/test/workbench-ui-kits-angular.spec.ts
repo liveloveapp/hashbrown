@@ -40,7 +40,14 @@ function setup(lesson: kits.WorkbenchUiLesson) {
     stop: vi.fn(),
     setMessages: vi.fn(),
   };
-  const uiChatResource = vi.fn(() => chat);
+  const uiChatResource = vi.fn(
+    (options: {
+      readonly tools: readonly { readonly handler: () => Promise<unknown> }[];
+    }) => {
+      expect(options.tools).toHaveLength(1);
+      return chat;
+    },
+  );
   const exports = {} as {
     UiKitWorkbenchSession: new () => Session;
     UiKitWorkbenchAnswer: unknown;
@@ -162,7 +169,9 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
       'data-kit-fallback',
     );
     expect(metadata.get('PlanReading')?.template).not.toContain('button');
-    expect(await uiChatResource.mock.calls[0][0].tools[0].handler()).toEqual(
+    const readContext = uiChatResource.mock.calls[0]?.[0].tools[0];
+    if (!readContext) throw new Error('Missing readContext tool');
+    expect(await readContext.handler()).toEqual(
       store.getSnapshot().application,
     );
     session.send('Create plan');
@@ -200,9 +209,10 @@ for (const lesson of ['ui-kits', 'ui-chatbot'] as const) {
     card.accept();
     card.accept();
     expect(store.getSnapshot().application.revision).toBe(1);
-    expect(
-      await uiChatResource.mock.calls[0][0].tools[0].handler(),
-    ).toMatchObject({ revision: 1, plan: props });
+    expect(await readContext.handler()).toMatchObject({
+      revision: 1,
+      plan: props,
+    });
     session.send('Next');
     const before = store.getSnapshot();
     flush();
