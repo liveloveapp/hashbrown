@@ -109,11 +109,15 @@ test('records a real HTTP denial and reads the gate for each new request', async
   if (!address || typeof address === 'string') throw new Error('No port');
   const store = createWorkbenchStore();
   let denied = true;
+  const responses: Response[] = [];
   const transport = createWorkbenchTransport(
     store,
     undefined,
     `http://127.0.0.1:${address.port}/api/workbench/debugging`,
-    { getDebugDenied: () => denied },
+    {
+      getDebugDenied: () => denied,
+      onResponse: (response) => responses.push(response),
+    },
   );
   const request = {
     input: {
@@ -141,6 +145,7 @@ test('records a real HTTP denial and reads the gate for each new request', async
     const response = store
       .getSnapshot()
       .events.find((event) => event.kind === 'response');
+    expect(responses.map((response) => response.status)).toEqual([403]);
     expect(response?.payload).toMatchObject({
       status: 403,
       source: 'demo-failure',

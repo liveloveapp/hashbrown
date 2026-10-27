@@ -1,3 +1,4 @@
+import { ServerWorkbenchConversation } from './ServerWorkbench';
 import { HistoryWorkbenchConversation } from './HistoryWorkbench';
 import { WorkflowWorkbenchConversation } from './WorkflowWorkbench';
 import { PlanCard } from './PlanCard';
@@ -292,8 +293,11 @@ function WorkbenchConversation({
 
 /** Retains independent SDK conversations and their captured application histories. */
 export function Workbench() {
-  const Conversation =
-    getWorkbenchLesson(window.location.search).format === 'history'
+  const Conversation = ['server-threads', 'public-endpoint'].includes(
+    getWorkbenchLesson(window.location.search).id,
+  )
+    ? ServerWorkbenchConversation
+    : getWorkbenchLesson(window.location.search).format === 'history'
       ? HistoryWorkbenchConversation
       : getWorkbenchLesson(window.location.search).format === 'workflow'
         ? WorkflowWorkbenchConversation

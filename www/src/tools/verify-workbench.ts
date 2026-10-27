@@ -1,3 +1,4 @@
+import { verifyServerWorkbench } from './verify-server-workbench';
 import { verifyHistoryWorkbench } from './verify-history-workbench';
 import { workbenchHistoryFixtureText } from './workbench-history-fixture';
 import { verifyWorkflowWorkbench } from './verify-workflow-workbench';
@@ -320,7 +321,9 @@ const app = createWorkbenchApp({
           lessonId === 'request-transformation' ||
           lessonId === 'system-instructions' ||
           lessonId === 'message-history' ||
-          lessonId === 'save-text-conversations'
+          lessonId === 'save-text-conversations' ||
+          lessonId === 'server-threads' ||
+          lessonId === 'public-endpoint'
         ? createWorkbenchOpenAIStream({
             apiKey: live ? (apiKey as string) : 'fixture-only',
             model: live ? (model as string) : 'fixture-model',
@@ -476,6 +479,22 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (lesson.id === 'server-threads' || lesson.id === 'public-endpoint') {
+        report.push(
+          await verifyServerWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (
         lesson.id === 'message-history' ||
         lesson.id === 'save-text-conversations'

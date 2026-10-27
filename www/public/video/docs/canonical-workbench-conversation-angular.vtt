@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:07.628
+00:00:00.000 --> 00:00:06.688
 A user names the plan. The assistant replies. Messages are not saved automatically.
 
-00:00:07.628 --> 00:00:09.390
+00:00:06.688 --> 00:00:08.564
 Local history only.
 
-00:00:09.390 --> 00:00:15.664
+00:00:08.564 --> 00:00:13.998
 A new run retains the same conversation and earlier messages.
 
-00:00:15.664 --> 00:00:19.298
+00:00:13.998 --> 00:00:17.502
 Replay follows captured turns without another request.
 
-00:00:19.298 --> 00:00:24.067
+00:00:17.502 --> 00:00:19.800
 Back live. Same conversation.

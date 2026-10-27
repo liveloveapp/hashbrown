@@ -1,19 +1,19 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:02.524
+00:00:00.000 --> 00:00:02.618
 Set shared state. No generation yet.
 
-00:00:02.524 --> 00:00:09.200
+00:00:02.618 --> 00:00:09.320
 The agent sends state updates around a real streamed reply.
 
-00:00:09.200 --> 00:00:10.866
+00:00:09.320 --> 00:00:10.984
 State committed.
 
-00:00:10.866 --> 00:00:18.470
+00:00:10.984 --> 00:00:17.346
 The next request carries the committed state.
 
-00:00:18.470 --> 00:00:24.502
+00:00:17.346 --> 00:00:22.518
 Read-only replay.
 
-00:00:24.502 --> 00:00:29.500
+00:00:22.518 --> 00:00:27.600
 Back live.

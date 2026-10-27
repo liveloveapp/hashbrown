@@ -171,6 +171,8 @@ export const workbenchLessonIcons: Readonly<
   'shared-state': 'braces',
   activities: 'activity',
   interrupts: 'square-check',
+  'server-threads': 'messages',
+  'public-endpoint': 'square-check',
   'message-history': 'messages',
   'save-text-conversations': 'scroll',
 };

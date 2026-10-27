@@ -1,3 +1,4 @@
+import { createWorkbenchThreads } from './workbench-threads';
 import { workbenchHistorySystem } from '../runtime/workbench-history';
 import {
   isWorkbenchWorkflowState,
@@ -88,7 +89,10 @@ export function pinWorkbenchInput(
   if (workflow && !isWorkbenchWorkflowState(input.state))
     throw new Error('Invalid workflow state');
   const history =
-    lesson === 'message-history' || lesson === 'save-text-conversations';
+    lesson === 'message-history' ||
+    lesson === 'save-text-conversations' ||
+    lesson === 'server-threads' ||
+    lesson === 'public-endpoint';
   const onboarding =
     lesson === 'first-plan' ||
     lesson === 'conversation' ||
@@ -192,6 +196,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   const maxActive = options.maxActive ?? 2;
   const app = express();
   app.disable('x-powered-by');
+  app.use('/api/workbench/server', createWorkbenchThreads(options));
   app.use(express.json({ limit: '128kb' }));
   let active = 0;
   app.post(
