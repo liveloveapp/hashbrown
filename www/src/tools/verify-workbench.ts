@@ -10,7 +10,10 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
-import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { createWorkbenchOpenAIStream } from '../../examples/quickstart/server/workbench-openai';
@@ -1039,11 +1042,7 @@ try {
       }
       if (process.env['WORKBENCH_RECORD'] !== '1') {
         await page.setViewportSize({ width: 390, height: 844 });
-        expect(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= innerWidth,
-          ),
-        ).toBe(true);
+        await expectNoHorizontalOverflow(page);
       } else {
         await page.waitForTimeout(800);
       }

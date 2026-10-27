@@ -1,4 +1,7 @@
-import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -398,11 +401,7 @@ export async function verifyOnboardingWorkbench(options: {
     }
     if (!recording) {
       await page.setViewportSize({ width: 390, height: 844 });
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true);
+      await expectNoHorizontalOverflow(page);
     }
     await expect(
       root.getByRole('button', { name: 'Accept plan', exact: true }),

@@ -108,6 +108,27 @@ test('maps keys to shortcuts outside text fields and buttons', () => {
     workbenchShortcut({ ...keys, key: 'b', metaKey: true }, document.body),
   ).toBe('toggle-sidebar');
   expect(workbenchShortcut({ ...keys, key: 'L' }, document.body)).toBe('live');
+  expect(
+    workbenchShortcut(
+      { ...keys, key: 'ArrowRight', shiftKey: true },
+      document.body,
+    ),
+  ).toBe('next-turn');
+  expect(workbenchShortcut({ ...keys, key: 'ArrowLeft' }, document.body)).toBe(
+    'previous-event',
+  );
+  expect(
+    workbenchShortcut({ ...keys, key: 'B', ctrlKey: true }, document.body),
+  ).toBe('toggle-sidebar');
+  expect(
+    workbenchShortcut(
+      { ...keys, key: 'b', ctrlKey: true, shiftKey: true },
+      document.body,
+    ),
+  ).toBeNull();
+  expect(
+    workbenchShortcut({ ...keys, key: ' ', shiftKey: true }, document.body),
+  ).toBeNull();
   expect(workbenchShortcut({ ...keys, key: ' ' }, button)).toBeNull();
   expect(workbenchShortcut({ ...keys, key: 'ArrowRight' }, range)).toBeNull();
   expect(workbenchShortcut({ ...keys, key: 'l' }, textarea)).toBeNull();

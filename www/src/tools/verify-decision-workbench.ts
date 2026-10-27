@@ -1,4 +1,7 @@
-import { expectWorkbenchDefaultLayout } from './verify-workbench-layout';
+import {
+  expectNoHorizontalOverflow,
+  expectWorkbenchDefaultLayout,
+} from './verify-workbench-layout';
 import { type Browser, expect } from '@playwright/test';
 import type { Decision } from '@hashbrownai/core';
 import { resolve } from 'node:path';
@@ -192,11 +195,7 @@ export async function verifyDecisionWorkbench(options: {
   }
   if (!recording) {
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+    await expectNoHorizontalOverflow(page);
   }
   expect(errors).toEqual([]);
   const video = page.video();
