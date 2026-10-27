@@ -100,8 +100,12 @@ for review, preserves editable controls, and applies validated fields explicitly
 against the current source/turn/revision. Its actual readContext tool supplies the
 applied plan to the follow-up. Parser and agent lessons preserve application state.
 
-All twenty-four lessons have two framework paths (48 total). Each new ID has both
+All twenty-six lessons have two framework paths (52 total). Each new ID has both
 codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
 protocol event pacing and half-speed footage are disclosed. Replay performs no
 requests or writes. Unique ignored capture directories retain masters/reports.
 Keep legacy assets and standalone fixtures for old bookmarks. No SDK release.
+
+## Canonical UI kits and chatbot
+
+`canonical-workbench-{ui-kits,ui-chatbot}-{react,angular}` use real OpenAI output, actual framework kit/UI chat APIs and browser readContext. The recorded kit registry and schema come from each SDK. Only explicit validated acceptance changes state; PlanReading has no write action. Both codecs, measured captions, poster, result and transcript accompany each recording. See `docs/docs-media-inventory.md` for current coverage and source boundaries.

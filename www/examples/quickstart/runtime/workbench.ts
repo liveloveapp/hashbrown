@@ -1,4 +1,13 @@
 import {
+  decodeWorkbenchUiDocument,
+  extractWorkbenchUi,
+  normalizeWorkbenchUiKit,
+  type WorkbenchUiComponent,
+  type WorkbenchUiKitInput,
+  type WorkbenchUiKitObservation,
+  type WorkbenchUiLesson,
+} from './workbench-ui-kits';
+import {
   decodeWorkbenchAuthoringDocument,
   normalizeWorkbenchAuthoringPlan,
   type WorkbenchAuthoringObservation,
@@ -64,6 +73,7 @@ export type WorkbenchStatus =
   'idle' | 'loading' | 'paused' | 'complete' | 'error' | 'cancelled';
 /** The origin of an observable change in the canonical example. */
 export type WorkbenchEventKind =
+  | 'kit'
   | 'decision'
   | 'dismiss'
   | 'choose'
@@ -86,6 +96,8 @@ export type WorkbenchEventKind =
   | 'history-app';
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
+  readonly uiComponent?: WorkbenchUiComponent;
+  readonly uiKit?: WorkbenchUiKitObservation;
   readonly history?: WorkbenchHistoryFrame;
   readonly workflow?: WorkbenchWorkflowObservation;
   readonly sequence: number;
@@ -100,6 +112,7 @@ export interface WorkbenchFrame {
     readonly role: 'user' | 'assistant';
     readonly content: string;
     readonly props?: WorkbenchFrame['props'];
+    readonly uiComponent?: WorkbenchUiComponent;
     readonly decision?: WorkbenchDecision;
     readonly recipe?: WorkbenchRecipe;
   }[];
@@ -129,6 +142,8 @@ export interface WorkbenchSnapshot {
 }
 /** The shared recording boundary used by the two real SDK clients. */
 export interface WorkbenchStore {
+  /** Captures safe metadata from the actual normalized SDK kit, deduplicated across renders. */
+  recordUiKit(input: WorkbenchUiKitInput): boolean;
   /** Captures actual parser values against the current SDK assistant identity. */
   recordAuthoring(observation: WorkbenchAuthoringObservationInput): boolean;
   /** Copies a fresh valid document for explicit review. */
@@ -362,7 +377,10 @@ export function createWorkbenchStore(
     | 'selection'
     | 'workflow'
     | 'history' = 'ui',
-  options: { readonly authoringMode?: 'parser' | 'form' } = {},
+  options: {
+    readonly authoringMode?: 'parser' | 'form';
+    readonly uiLesson?: WorkbenchUiLesson;
+  } = {},
 ): WorkbenchStore {
   const initialApplication = (): WorkbenchApplication =>
     freeze(
@@ -384,6 +402,9 @@ export function createWorkbenchStore(
         : { revision: 0, plan: null },
     );
   let application = initialApplication();
+  let uiKit: WorkbenchUiKitObservation | undefined;
+  let uiComponent: WorkbenchUiComponent | undefined;
+  let uiRevision = -1;
   let history: WorkbenchHistoryFrame | undefined;
   let authoring: WorkbenchAuthoringObservation | undefined;
   let latestSentUserId: string | null = null;
@@ -430,6 +451,7 @@ export function createWorkbenchStore(
   const record = (kind: WorkbenchEventKind, payload: unknown) => {
     if (
       (turn === 0 &&
+        kind !== 'kit' &&
         kind !== 'workflow' &&
         kind !== 'history' &&
         kind !== 'history-app' &&
@@ -500,22 +522,29 @@ export function createWorkbenchStore(
     }
     const frame: WorkbenchFrame = freeze(
       copy({
+        ...(uiKit ? { uiKit } : {}),
+        ...(uiComponent ? { uiComponent } : {}),
         sequence: events.length + 1,
         turn,
         kind,
         payload,
         source:
-          kind === 'parsed'
-            ? 'SDK parsed output'
-            : kind === 'history'
-              ? 'SDK history observation'
-              : kind === 'workflow' ||
-                  (kind === 'pause' && raw && 'isLoading' in raw)
-                ? 'SDK workflow observation'
-                : kind === 'event' || kind === 'request'
-                  ? 'Browser transport'
-                  : 'Application',
-        elapsedMs: Math.round(Math.max(0, performance.now() - started)),
+          kind === 'kit'
+            ? 'Kit configuration'
+            : kind === 'parsed'
+              ? 'SDK parsed output'
+              : kind === 'history'
+                ? 'SDK history observation'
+                : kind === 'workflow' ||
+                    (kind === 'pause' && raw && 'isLoading' in raw)
+                  ? 'SDK workflow observation'
+                  : kind === 'event' || kind === 'request'
+                    ? 'Browser transport'
+                    : 'Application',
+        elapsedMs:
+          kind === 'kit' && turn === 0
+            ? 0
+            : Math.round(Math.max(0, performance.now() - started)),
         application,
         ...(decision ? { decision } : {}),
         ...(recipe ? { recipe } : {}),
@@ -604,6 +633,14 @@ export function createWorkbenchStore(
     authoring.origin.revision === application.revision &&
     !authoring.applied;
   return {
+    recordUiKit(input) {
+      if (!options.uiLesson || format !== 'ui' || cursor !== null) return false;
+      const next = normalizeWorkbenchUiKit(input);
+      if (JSON.stringify(next) === JSON.stringify(uiKit)) return false;
+      uiKit = freeze(copy(next));
+      record('kit', uiKit);
+      return true;
+    },
     recordAuthoring(input) {
       if (
         format !== 'history' ||
@@ -920,6 +957,8 @@ export function createWorkbenchStore(
       turn++;
       status = 'loading';
       props = null;
+      uiComponent = undefined;
+      uiRevision = application.revision;
       decision = undefined;
       recipe = undefined;
       citation = undefined;
@@ -1093,31 +1132,47 @@ export function createWorkbenchStore(
     },
     parsed(value) {
       if (status !== 'loading') return;
+      const extracted =
+        options.uiLesson && format === 'ui'
+          ? extractWorkbenchUi(value, options.uiLesson)
+          : null;
       const next =
-        format === 'structured'
-          ? workbenchStructuredProps(value)
-          : workbenchProps(value);
+        options.uiLesson && format === 'ui'
+          ? (extracted?.props ?? null)
+          : format === 'structured'
+            ? workbenchStructuredProps(value)
+            : workbenchProps(value);
       const ui = object(value)?.['ui'];
       const field = Array.isArray(ui)
         ? object(object(object(ui[0])?.['SummaryCard'])?.['props'])
         : undefined;
       const ready =
-        format === 'structured'
-          ? isWorkbenchPlan(next)
-          : !!field && (!('complete' in field) || field['complete'] === true);
+        options.uiLesson && format === 'ui'
+          ? extracted?.ready === true
+          : format === 'structured'
+            ? isWorkbenchPlan(next)
+            : !!field && (!('complete' in field) || field['complete'] === true);
       if (
         JSON.stringify(next) === JSON.stringify(props) &&
-        propsReady === ready
+        propsReady === ready &&
+        (!options.uiLesson || uiComponent === extracted?.component)
       )
         return;
       props = next;
+      uiComponent = extracted?.component;
       propsReady = ready;
       const assistant = [...messages]
         .reverse()
         .find((message) => message.role === 'assistant');
       if (assistant && messages.at(-1)?.role === 'assistant')
         messages = messages.map((message) =>
-          message.id === assistant.id ? { ...message, props: next } : message,
+          message.id === assistant.id
+            ? {
+                ...message,
+                props: next,
+                ...(options.uiLesson ? { uiComponent } : {}),
+              }
+            : message,
         );
       else
         messages = [
@@ -1127,6 +1182,7 @@ export function createWorkbenchStore(
             role: 'assistant',
             content: json,
             props: next,
+            ...(uiComponent ? { uiComponent } : {}),
           },
         ];
       record('parsed', value);
@@ -1201,7 +1257,21 @@ export function createWorkbenchStore(
       return true;
     },
     accept(proposal) {
+      const original = options.uiLesson
+        ? decodeWorkbenchUiDocument(json, options.uiLesson)
+        : null;
       if (
+        (options.uiLesson &&
+          (format !== 'ui' ||
+            uiRevision !== application.revision ||
+            !original ||
+            original.component === 'PlanReading' ||
+            original.component !== uiComponent ||
+            original.props.title !== props?.title ||
+            original.props.steps.length !== props?.steps?.length ||
+            original.props.steps.some(
+              (step, index) => step !== props?.steps?.[index],
+            ))) ||
         cursor !== null ||
         status !== 'complete' ||
         finishReason !== 'stop' ||
@@ -1260,6 +1330,8 @@ export function createWorkbenchStore(
       messages = [];
       json = '';
       props = null;
+      uiComponent = undefined;
+      uiRevision = application.revision;
       decision = undefined;
       transformation = undefined;
       instructions = undefined;

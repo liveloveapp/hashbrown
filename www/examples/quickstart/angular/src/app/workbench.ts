@@ -1,3 +1,4 @@
+import { UiKitWorkbenchConversation } from './ui-kit-workbench';
 import { AuthoringWorkbenchConversation } from './authoring-workbench';
 import { ServerWorkbenchConversation } from './server-workbench';
 import { HistoryWorkbenchConversation } from './history-workbench';
@@ -340,6 +341,7 @@ export class WorkbenchConversation implements AfterViewInit {
   selector: 'app-workbench',
   imports: [
     WorkbenchConversation,
+    UiKitWorkbenchConversation,
     WorkflowWorkbenchConversation,
     HistoryWorkbenchConversation,
     AuthoringWorkbenchConversation,
@@ -352,7 +354,13 @@ export class WorkbenchConversation implements AfterViewInit {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (server) {
+    @if (uiKit) {
+      <app-ui-kit-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (server) {
       <app-server-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -416,6 +424,9 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  protected readonly uiKit = ['ui-kits', 'ui-chatbot'].includes(
+    getWorkbenchLesson(window.location.search).id,
+  );
   protected readonly authoring = [
     'agent-decisions',
     'json-parser',

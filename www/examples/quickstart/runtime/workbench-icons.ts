@@ -154,6 +154,8 @@ const icons: Readonly<Record<WorkbenchIconName, readonly IconElement[]>> = {
 export const workbenchLessonIcons: Readonly<
   Record<WorkbenchLessonId, WorkbenchIconName>
 > = {
+  'ui-kits': 'layout',
+  'ui-chatbot': 'messages',
   'generative-ui': 'layout',
   tools: 'wrench',
   'structured-output': 'braces',

@@ -20,6 +20,18 @@ test.each([
     'first-plan',
     'conversation',
     'system-instructions',
+    'shared-state',
+    'activities',
+    'interrupts',
+    'message-history',
+    'save-text-conversations',
+    'server-threads',
+    'public-endpoint',
+    'agent-decisions',
+    'json-parser',
+    'natural-forms',
+    'ui-kits',
+    'ui-chatbot',
   ].flatMap((lesson) =>
     ['react', 'angular'].map(
       (framework) => `canonical-workbench-${lesson}-${framework}`,

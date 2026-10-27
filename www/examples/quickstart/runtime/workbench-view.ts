@@ -1,3 +1,5 @@
+import { workbenchUiInspection } from './workbench-ui-inspection';
+import { getWorkbenchUiPrompts } from './workbench-ui-kits';
 import { workbenchAuthoringInspection } from './workbench-authoring-view';
 import { workbenchAuthoringPrompts } from './workbench-authoring';
 import { workbenchAgentPrompts } from './workbench-agent';
@@ -295,6 +297,7 @@ export function workbenchEventLabel(
       user: 'Prompt',
       request: 'Request',
       tool: 'Tool result',
+      kit: 'Kit configured',
       parsed: 'Resolved props',
       accept: 'Plan accepted',
       complete: 'Complete',
@@ -368,7 +371,12 @@ export function mountWorkbench(
           commands.lesson.id as keyof typeof workbenchOnboardingPrompts
         ]
       : undefined;
+  const uiPrompts =
+    commands.lesson?.id === 'ui-kits' || commands.lesson?.id === 'ui-chatbot'
+      ? getWorkbenchUiPrompts(commands.lesson.id)
+      : undefined;
   const prompts =
+    uiPrompts ??
     onboardingPrompts ??
     recipePrompts ??
     (commands.lesson?.id === 'agent-decisions'
@@ -568,6 +576,9 @@ export function mountWorkbench(
           : 'Text'
         : 'JSON',
     'Requests',
+    ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
+      ? ['Kit', 'Schema']
+      : []),
     ...(commands.lesson?.format === 'history'
       ? commands.lesson.id === 'agent-decisions'
         ? ['History', 'Agent']
@@ -926,7 +937,7 @@ export function mountWorkbench(
             'span',
             commands.lesson?.format === 'structured'
               ? 'Typed plan · captured preview'
-              : 'SummaryCard · captured preview',
+              : `${message.uiComponent ?? 'SummaryCard'} · captured preview`,
             'wb-muted',
           ),
           element('h2', props.title ?? 'Waiting for title'),
@@ -1120,7 +1131,9 @@ export function mountWorkbench(
                   },
                 }
         : undefined;
+    const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      uiView ??
       workbenchAuthoringInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchServerInspection(tab, history?.app.server) ??
       historyView ??
@@ -1391,9 +1404,13 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? workflowView
-            ? 'Captured SDK observations and separately recorded application form drafts.'
-            : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? uiView
+            ? tab === 'UI'
+              ? 'SDK component observations and application-owned state.'
+              : 'Framework kit configuration and checked application policy.'
+            : workflowView
+              ? 'Captured SDK observations and separately recorded application form drafts.'
+              : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),

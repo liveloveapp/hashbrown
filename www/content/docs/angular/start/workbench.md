@@ -30,40 +30,42 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens twenty-four lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens twenty-six lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
-| Lesson                                                                    | Local URL                                     | Follow                                                                     |
-| ------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
-| [First plan](/docs/angular/start/quick) | `/angular.html?lesson=first-plan` | One tool-free request and a trusted preview; no application write. |
-| [Messages and turns](/docs/angular/concept/ai-basics) | `/angular.html?lesson=conversation` | Retained messages, stable thread identity and fresh run identity. |
-| [System instructions](/docs/angular/concept/system-instructions) | `/angular.html?lesson=system-instructions` | Browser declaration and public effective policy at provider mapping. |
-| [Generative UI](/docs/angular/concept/components)                         | `/angular.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
-| [Tools](/docs/angular/concept/functions)                                  | `/angular.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
-| [Structured output](/docs/angular/concept/structured-output)              | `/angular.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
-| [Streaming](/docs/angular/concept/streaming)                              | `/angular.html?lesson=streaming`              | Partial title text and resolved steps.                                     |
-| [Schemas](/docs/angular/concept/schema)                                   | `/angular.html?lesson=schemas`                | The exact response contract and application validation.                    |
-| [Decisions](/docs/angular/concept/decisions)                              | `/angular.html?lesson=decisions`              | Complete typed choices, confidence and explicit application.               |
-| [Debugging](/docs/angular/concept/debugging)                              | `/angular.html?lesson=debugging`              | Local HTTP denial, same-conversation recovery, and captured evidence.      |
-| [Request transformation](/docs/angular/concept/transform-request-options) | `/angular.html?lesson=request-transformation` | Actual server callback, added instructions, and preserved provider fields. |
-| [Magic Text](/docs/angular/recipes/magic-text)                            | `/angular.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
-| [Predictive suggestions](/docs/angular/recipes/predictive-actions)        | `/angular.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
-| [UI selection](/docs/angular/recipes/ui-selection)                        | `/angular.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
-| [Shared agent state](/docs/angular/concept/shared-agent-state) | `/angular.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
-| [Activities](/docs/angular/concept/activities) | `/angular.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
-| [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) | `/angular.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
-| [Message history](/docs/angular/concept/message-history) | `/angular.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
-| [Save text conversations](/docs/angular/recipes/browser-history) | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
-| [Server-owned threads](/docs/angular/recipes/threads) | `/angular.html?lesson=server-threads` | Explicit server saves, refresh and version conflicts. |
-| [Public endpoints](/docs/angular/recipes/public-endpoint) | `/angular.html?lesson=public-endpoint` | Identity and ownership checks before provider work. |
-| [Decisions in agents](/docs/angular/recipes/decisions-in-agents) | `/angular.html?lesson=agent-decisions` | Server route decisions and fixed read-only handlers. |
-| [JSON parser](/docs/angular/recipes/json-parser) | `/angular.html?lesson=json-parser` | Raw JSON, real parser values and final document validation. |
-| [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) | `/angular.html?lesson=natural-forms` | Review, edit and explicitly apply a generated draft. |
+| Lesson                                                                              | Local URL                                      | Follow                                                                     |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------- |
+| [First plan](/docs/angular/start/quick)                                             | `/angular.html?lesson=first-plan`              | One tool-free request and a trusted preview; no application write.         |
+| [Messages and turns](/docs/angular/concept/ai-basics)                               | `/angular.html?lesson=conversation`            | Retained messages, stable thread identity and fresh run identity.          |
+| [System instructions](/docs/angular/concept/system-instructions)                    | `/angular.html?lesson=system-instructions`     | Browser declaration and public effective policy at provider mapping.       |
+| [Generative UI](/docs/angular/concept/components)                                   | `/angular.html?lesson=generative-ui`           | Streamed props and the trusted SummaryCard.                                |
+| [Tools](/docs/angular/concept/functions)                                            | `/angular.html?lesson=tools`                   | Browser context, tool result, and continuation.                            |
+| [Structured output](/docs/angular/concept/structured-output)                        | `/angular.html?lesson=structured-output`       | Plain typed plan data rendered by the application.                         |
+| [Streaming](/docs/angular/concept/streaming)                                        | `/angular.html?lesson=streaming`               | Partial title text and resolved steps.                                     |
+| [Schemas](/docs/angular/concept/schema)                                             | `/angular.html?lesson=schemas`                 | The exact response contract and application validation.                    |
+| [Decisions](/docs/angular/concept/decisions)                                        | `/angular.html?lesson=decisions`               | Complete typed choices, confidence and explicit application.               |
+| [Debugging](/docs/angular/concept/debugging)                                        | `/angular.html?lesson=debugging`               | Local HTTP denial, same-conversation recovery, and captured evidence.      |
+| [Request transformation](/docs/angular/concept/transform-request-options)           | `/angular.html?lesson=request-transformation`  | Actual server callback, added instructions, and preserved provider fields. |
+| [Magic Text](/docs/angular/recipes/magic-text)                                      | `/angular.html?lesson=magic-text`              | Streamed Markdown and actual source-reference selection.                   |
+| [Predictive suggestions](/docs/angular/recipes/predictive-actions)                  | `/angular.html?lesson=predictions`             | Current-context completions and explicit acceptance or dismissal.          |
+| [UI selection](/docs/angular/recipes/ui-selection)                                  | `/angular.html?lesson=ui-selection`            | Whole candidate decisions, app-owned views, and manual choice.             |
+| [Shared agent state](/docs/angular/concept/shared-agent-state)                      | `/angular.html?lesson=shared-state`            | Explicit local state replacement, agent drafts, commit, and rollback.      |
+| [Activities](/docs/angular/concept/activities)                                      | `/angular.html?lesson=activities`              | Actual agent progress messages, links, and fresh activity IDs.             |
+| [Interrupt and resume](/docs/angular/concept/interrupt-and-resume)                  | `/angular.html?lesson=interrupts`              | Complete approval batches and continuation within the same user turn.      |
+| [Message history](/docs/angular/concept/message-history)                            | `/angular.html?lesson=message-history`         | Keep completed text, clear SDK history, restore and continue.              |
+| [Save text conversations](/docs/angular/recipes/browser-history)                    | `/angular.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading.           |
+| [Server-owned threads](/docs/angular/recipes/threads)                               | `/angular.html?lesson=server-threads`          | Explicit server saves, refresh and version conflicts.                      |
+| [Public endpoints](/docs/angular/recipes/public-endpoint)                           | `/angular.html?lesson=public-endpoint`         | Identity and ownership checks before provider work.                        |
+| [Decisions in agents](/docs/angular/recipes/decisions-in-agents)                    | `/angular.html?lesson=agent-decisions`         | Server route decisions and fixed read-only handlers.                       |
+| [JSON parser](/docs/angular/recipes/json-parser)                                    | `/angular.html?lesson=json-parser`             | Raw JSON, real parser values and final document validation.                |
+| [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) | `/angular.html?lesson=natural-forms`           | Review, edit and explicitly apply a generated draft.                       |
+| [UI Kits](/docs/angular/recipes/ui-kits)                                            | `/angular.html?lesson=ui-kits`                 | Actual kit registry, trusted variants, and explicit acceptance.            |
+| [UI chatbot](/docs/angular/recipes/ui-chatbot)                                      | `/angular.html?lesson=ui-chatbot`              | A proposal, accepted state, and a read-only follow-up.                     |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
-The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+Magic Text, predictive suggestions, and UI selection begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions. UI Kits and UI chatbot begin without an accepted plan; an explicit acceptance creates one.
 
 The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
 

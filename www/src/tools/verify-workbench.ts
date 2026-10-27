@@ -1,4 +1,12 @@
 import {
+  type UiFixtureOutcome,
+  verifyUiWorkbench,
+} from './verify-ui-workbench';
+import {
+  getWorkbenchUiFixtureLesson,
+  workbenchUiFixtureText,
+} from './workbench-ui-fixture';
+import {
   type AgentFixtureOutcome,
   type AuthoringFixtureOutcome,
   verifyAuthoringWorkbench,
@@ -54,6 +62,7 @@ const requests: RunAgentInput[] = [];
 const agentRequests: { state: string }[] = [];
 let agentOutcome: AgentFixtureOutcome = 'success';
 let authoringOutcome: AuthoringFixtureOutcome = 'success';
+let uiOutcome: UiFixtureOutcome = 'success';
 const workflowProviderRequests: RunAgentInput[] = [];
 const transformations: WorkbenchTransformationTrace[] = [];
 const instructions: WorkbenchInstructionsTrace[] = [];
@@ -381,7 +390,9 @@ const app = createWorkbenchApp({
               lessonId === 'server-threads' ||
               lessonId === 'public-endpoint' ||
               lessonId === 'json-parser' ||
-              lessonId === 'natural-forms'
+              lessonId === 'natural-forms' ||
+              lessonId === 'ui-kits' ||
+              lessonId === 'ui-chatbot'
             ? createWorkbenchOpenAIStream({
                 apiKey: live ? (apiKey as string) : 'fixture-only',
                 model: live ? (model as string) : 'fixture-model',
@@ -467,18 +478,38 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     if (authoringOutcome === 'truncated')
       authoringText = authoringText.slice(0, -8);
   }
-  const onboardingText = authoringLesson
-    ? authoringLesson === 'json-parser' || hasContext
-      ? authoringText
+  const uiLesson = getWorkbenchUiFixtureLesson(input);
+  let uiText = workbenchUiFixtureText(uiLesson, input);
+  if (uiText) {
+    if (uiOutcome === 'unknown')
+      uiText = uiText.replace(
+        /SummaryCard|StepsCard|PlanReading/g,
+        'UntrustedCard',
+      );
+    if (uiOutcome === 'multiple') {
+      const value = JSON.parse(uiText);
+      value.ui = [...value.ui, ...value.ui];
+      uiText = JSON.stringify(value);
+    }
+    if (uiOutcome === 'malformed') uiText += ' trailing';
+    if (uiOutcome === 'truncated') uiText = uiText.slice(0, -8);
+  }
+  const onboardingText = uiLesson
+    ? hasContext
+      ? uiText
       : undefined
-    : onboarding
-      ? (workbenchHistoryFixtureText(
-          JSON.stringify(mapped).includes('Remember the plan name supplied')
-            ? 'message-history'
-            : undefined,
-          input,
-        ) ?? workbenchOnboardingFixtureText('system-instructions', input))
-      : undefined;
+    : authoringLesson
+      ? authoringLesson === 'json-parser' || hasContext
+        ? authoringText
+        : undefined
+      : onboarding
+        ? (workbenchHistoryFixtureText(
+            JSON.stringify(mapped).includes('Remember the plan name supplied')
+              ? 'message-history'
+              : undefined,
+            input,
+          ) ?? workbenchOnboardingFixtureText('system-instructions', input))
+        : undefined;
   const events =
     onboardingText !== undefined
       ? createSupportProviderEvents(onboardingText).map((event) =>
@@ -486,15 +517,21 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
           (outcome === 'error' ||
             outcome === 'length' ||
             (authoringLesson &&
-              (authoringOutcome === 'error' || authoringOutcome === 'length')))
+              (authoringOutcome === 'error' ||
+                authoringOutcome === 'length')) ||
+            (uiLesson && (uiOutcome === 'error' || uiOutcome === 'length')))
             ? {
                 type:
-                  outcome === 'error' || authoringOutcome === 'error'
+                  outcome === 'error' ||
+                  authoringOutcome === 'error' ||
+                  uiOutcome === 'error'
                     ? 'response.failed'
                     : 'response.incomplete',
                 response: {
                   status:
-                    outcome === 'error' || authoringOutcome === 'error'
+                    outcome === 'error' ||
+                    authoringOutcome === 'error' ||
+                    uiOutcome === 'error'
                       ? 'failed'
                       : 'incomplete',
                   error: { message: 'Intentional test failure' },
@@ -518,6 +555,9 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
               response: { status: 'completed', output: [] },
             },
           ];
+  if (uiLesson && uiOutcome === 'delay')
+    await new Promise((done) => setTimeout(done, 700));
+  if (res.destroyed) return;
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-store',
@@ -566,6 +606,26 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (lesson.id === 'ui-kits' || lesson.id === 'ui-chatbot') {
+        report.push(
+          await verifyUiWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            nativeRequests,
+            outcome: (value) => {
+              uiOutcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (
         lesson.id === 'agent-decisions' ||
         lesson.id === 'json-parser' ||

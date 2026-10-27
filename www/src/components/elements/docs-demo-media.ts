@@ -1,5 +1,37 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-ui-kits-react': {
+    title: 'React workbench: UI Kits.',
+    caption:
+      'Reuse SummaryCard and StepsCard from one trusted kit, then explicitly accept each proposal.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown React kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard and StepsCard are the only trusted components in this kit. Each proposal requires explicit validated acceptance. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-chatbot-react': {
+    title: 'React workbench: UI chatbot.',
+    caption:
+      'Propose a plan, explicitly accept it, and read accepted state in a read-only follow-up.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown React kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard proposes a plan; PlanReading is a read-only model report. Only explicit validated acceptance changes application state. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-kits-angular': {
+    title: 'Angular workbench: UI Kits.',
+    caption:
+      'Reuse SummaryCard and StepsCard from one trusted kit, then explicitly accept each proposal.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown Angular kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard and StepsCard are the only trusted components in this kit. Each proposal requires explicit validated acceptance. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-chatbot-angular': {
+    title: 'Angular workbench: UI chatbot.',
+    caption:
+      'Propose a plan, explicitly accept it, and read accepted state in a read-only follow-up.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown Angular kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard proposes a plan; PlanReading is a read-only model report. Only explicit validated acceptance changes application state. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'canonical-workbench-agent-decisions-react': {
     title: 'React workbench: decisions in agents.',
     caption:

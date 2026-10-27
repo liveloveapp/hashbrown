@@ -1,0 +1,22 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:16.576
+Real OpenAI output selects a component from our trusted kit.
+
+00:00:16.576 --> 00:00:21.062
+Only Accept plan changes application state.
+
+00:00:21.062 --> 00:00:25.296
+Next, readContext will supply the accepted plan.
+
+00:00:25.296 --> 00:00:36.478
+PlanReading reports the accepted plan. It has no write action.
+
+00:00:36.478 --> 00:00:41.014
+Replay follows captured components and state.
+
+00:00:41.014 --> 00:00:53.808
+No requests or application writes during replay.
+
+00:00:53.808 --> 00:00:59.200
+Back live.
