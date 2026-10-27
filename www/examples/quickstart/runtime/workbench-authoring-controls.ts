@@ -1,5 +1,9 @@
 import type { WorkbenchSnapshot, WorkbenchStore } from './workbench';
-import { createAuthoringActions } from './workbench-authoring';
+import type { WorkbenchAuthoringObservation } from './workbench-authoring';
+import {
+  createAuthoringActions,
+  workbenchAuthoringSource,
+} from './workbench-authoring';
 
 /** Selects only actual assistant text following the latest application-owned user send. */
 export function currentAuthoringAssistant(
@@ -37,7 +41,9 @@ export function mountAuthoringControls(
   lesson: string,
   active: () => boolean,
 ): { readonly render: () => void; readonly dispose: () => void } {
-  const actions = createAuthoringActions(store, active);
+  let disposed = false;
+  const mountedActive = () => !disposed && active();
+  const actions = createAuthoringActions(store, mountedActive);
   const feed = document.createElement('div');
   const preview = document.createElement('article');
   preview.className = 'wb-summary';
@@ -82,11 +88,58 @@ export function mountAuthoringControls(
   if (lesson === 'natural-forms') host.append(form);
   host.append(error);
   const render = () => {
+    if (disposed) return;
     const snapshot = store.getSnapshot();
     const history = snapshot.frame?.history;
     const authoring = history?.authoring;
+    const earlier = new Map<string, WorkbenchAuthoringObservation>();
+    for (const event of snapshot.events.slice(
+      0,
+      snapshot.cursor === null ? undefined : snapshot.cursor + 1,
+    )) {
+      const capture = event.history?.authoring;
+      if (capture?.origin.assistantId)
+        earlier.set(capture.origin.assistantId, capture);
+    }
     feed.replaceChildren(
       ...(history?.sdk.messages ?? []).flatMap((message) => {
+        if (lesson !== 'agent-decisions' && message['role'] === 'assistant') {
+          if (
+            message['id'] === authoring?.origin.assistantId ||
+            typeof message['id'] !== 'string' ||
+            !message['content']
+          )
+            return [];
+          const capture = earlier.get(message['id']);
+          const value = capture?.parser.value;
+          if (
+            !value ||
+            typeof value !== 'object' ||
+            capture?.parser.error ||
+            capture?.source === 'error'
+          )
+            return [];
+          const plan = value as Record<string, unknown>;
+          const card = document.createElement('article');
+          card.className = 'wb-summary';
+          card.dataset['authoringPast'] = '';
+          const label = document.createElement('p');
+          label.textContent = `Earlier generated draft · Source: ${capture?.source} · Parser: ${capture?.parser.complete ? 'complete' : 'incomplete'}`;
+          const heading = document.createElement('h3');
+          heading.textContent =
+            typeof plan['title'] === 'string' ? plan['title'] : '';
+          const list = document.createElement('ol');
+          for (const step of Array.isArray(plan['steps'])
+            ? plan['steps']
+            : []) {
+            if (typeof step !== 'string') continue;
+            const item = document.createElement('li');
+            item.textContent = step;
+            list.append(item);
+          }
+          card.append(label, heading, list);
+          return [card];
+        }
         if (
           message['role'] !== 'user' &&
           !(lesson === 'agent-decisions' && message['role'] === 'assistant')
@@ -100,7 +153,7 @@ export function mountAuthoringControls(
         return [paragraph];
       }),
     );
-    status.textContent = `Source: ${authoring?.source ?? 'idle'} · Parser: ${authoring?.parser.complete ? 'complete' : 'incomplete'}${authoring?.document ? ' · Original document valid' : ''}${authoring?.applied ? ' · Plan applied' : ''}`;
+    status.textContent = `Source: ${authoring?.source ?? workbenchAuthoringSource(snapshot)} · Parser: ${authoring?.parser.complete ? 'complete' : 'incomplete'}${authoring?.document ? ' · Original document valid' : ''}${authoring?.applied ? ' · Plan applied' : ''}`;
     const value = authoring?.parser.value;
     const object =
       value && typeof value === 'object'
@@ -118,7 +171,7 @@ export function mountAuthoringControls(
         }),
     );
     const ready =
-      active() &&
+      mountedActive() &&
       snapshot.cursor === null &&
       snapshot.status === 'complete' &&
       authoring?.source === 'complete' &&
@@ -151,6 +204,7 @@ export function mountAuthoringControls(
   return {
     render,
     dispose: () => {
+      disposed = true;
       unsubscribe();
       feed.remove();
       preview.remove();

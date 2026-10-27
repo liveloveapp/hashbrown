@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
 import type { WorkbenchStore } from '../examples/quickstart/runtime/workbench';
@@ -230,5 +230,63 @@ test('React parser errors hide previews and ordinary request errors allow an exp
   expect(chat.sendMessage).toHaveBeenCalledTimes(2);
   expect(sdk.store?.getSnapshot().application.revision).toBe(0);
   await act(() => root.unmount());
+  host.remove();
+});
+
+test('React StrictMode remount stays active and retained controls reject events after unmount', async () => {
+  window.history.replaceState(null, '', '?lesson=natural-forms');
+  const chat = runtime();
+  sdk.chat.mockReturnValue(chat);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const render = () =>
+    root.render(
+      <StrictMode>
+        <AuthoringWorkbenchConversation active navigation={{ ...navigation }} />
+      </StrictMode>,
+    );
+  await act(render);
+  await send(host);
+  expect(chat.sendMessage).toHaveBeenCalledTimes(1);
+  const user = chat.sendMessage.mock.calls[0][0];
+  chat.messages = [user];
+  chat.isLoading = true;
+  await act(render);
+  chat.messages = [
+    user,
+    {
+      id: 'answer',
+      role: 'assistant',
+      content: JSON.stringify({
+        title: 'Demo',
+        steps: ['Outline.', 'Record.'],
+      }),
+      toolCalls: [],
+    },
+  ];
+  chat.isLoading = false;
+  chat.lastRunFinishReason = 'stop';
+  await act(render);
+  await act(() => button(host, 'Review draft').click());
+  const retainedApply = button(host, 'Apply plan');
+  const retainedReview = button(host, 'Review draft');
+  const retainedField = host.querySelector<HTMLInputElement>(
+    '[aria-label="Plan title"]',
+  );
+  if (!retainedField || !sdk.store)
+    throw new Error('Missing reviewed controls');
+  const store = sdk.store;
+  expect(retainedApply.disabled).toBe(false);
+
+  await act(() => root.unmount());
+  const previous = store.getSnapshot();
+  retainedField.value = 'Detached edit';
+  retainedField.dispatchEvent(new Event('input', { bubbles: true }));
+  retainedReview.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  retainedApply.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  expect(store.getSnapshot()).toBe(previous);
+  expect(store.getSnapshot().application.revision).toBe(0);
   host.remove();
 });

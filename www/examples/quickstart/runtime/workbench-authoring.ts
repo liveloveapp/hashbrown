@@ -1,5 +1,10 @@
 import { s } from '@hashbrownai/core';
-import type { WorkbenchPlan, WorkbenchStore } from './workbench';
+import type {
+  WorkbenchPlan,
+  WorkbenchSnapshot,
+  WorkbenchStore,
+} from './workbench';
+import { isWorkbenchHistoryBusy } from './workbench-history';
 
 /** Actual framework parser session values; source lifecycle comes separately from SDK history. */
 export interface WorkbenchAuthoringObservationInput {
@@ -99,4 +104,28 @@ export function createAuthoringActions(
     /** Applies a valid current review once. */
     apply: () => active() && store.applyAuthoring(),
   };
+}
+
+/** Derives the selected source lifecycle from actual captured SDK and application status, even before assistant text exists. */
+export function workbenchAuthoringSource(
+  snapshot: WorkbenchSnapshot,
+): WorkbenchAuthoringObservation['source'] {
+  const frame = snapshot.frame;
+  const status = frame?.status ?? snapshot.status;
+  const capturedSdk = frame?.history?.sdk;
+  const currentUser = frame?.messages
+    .filter((message) => message.role === 'user')
+    .at(-1)?.id;
+  const observedUser = capturedSdk?.messages
+    .filter((message) => message['role'] === 'user')
+    .at(-1)?.['id'];
+  // A new send can precede the actual SDK observation; older lifecycle fields belong to that older request.
+  const sdk = currentUser === observedUser ? capturedSdk : undefined;
+  if ((frame?.turn ?? snapshot.turn) === 0) return 'idle';
+  if (status === 'cancelled') return 'stopped';
+  if (status === 'error' || sdk?.error || sdk?.recoveryRequired) return 'error';
+  if (status === 'loading' || isWorkbenchHistoryBusy(sdk)) return 'generating';
+  return status === 'complete' && sdk?.finishReason === 'stop'
+    ? 'complete'
+    : 'stopped';
 }

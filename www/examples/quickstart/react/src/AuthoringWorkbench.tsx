@@ -132,6 +132,7 @@ export function AuthoringWorkbenchConversation({
     );
     shell.navigation(current.current.navigation);
     return () => {
+      current.current.active = false;
       stopWorkbench(store, current.current.chat);
       controls.current?.dispose();
       shell.dispose();
