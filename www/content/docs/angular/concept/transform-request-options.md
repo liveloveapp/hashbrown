@@ -70,7 +70,11 @@ The checked OpenAI boundary uses the callback here:
 
 ```ts
 transformRequestOptions: async (mapped) => {
-  const before = { ...mapped, max_output_tokens: 2048 };
+  const before = applyWorkbenchUiToolPolicy(
+    { ...mapped, max_output_tokens: 2048 },
+    input,
+    lessonId,
+  );
   if (lessonId === 'system-instructions')
     instructions = traceWorkbenchInstructions(mapped);
   if (lessonId !== 'request-transformation') return before;
@@ -84,6 +88,8 @@ transformRequestOptions: async (mapped) => {
 ```
 
 </hb-code-example>
+
+The shared host also has a [context-tool policy](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-ui-policy.ts) for UI Kits and UI chatbot. It returns the options unchanged for this Request transformation lesson.
 
 The shared host sets a server-owned output cap before applying the lesson transform. The trace compares that capped request with the returned request. The transform changes only `instructions`.
 

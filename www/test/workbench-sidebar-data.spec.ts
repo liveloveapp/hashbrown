@@ -54,6 +54,8 @@ test('groups every lesson exactly once in sidebar order', () => {
         'magic-text',
         'predictions',
         'ui-selection',
+        'ui-kits',
+        'ui-chatbot',
         'agent-decisions',
         'json-parser',
         'natural-forms',

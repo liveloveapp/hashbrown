@@ -28,13 +28,13 @@ Files: root owns `workbench-view.ts`, CSS, new inspector helper if needed; `www/
 - [x] Failing tests for actual captured registry/schema/selected identity, truthful replay labels and caption phases. Implement projection/replay over immutable frames. Do not label a captured placeholder as a real SDK fallback.
 - [x] Add provider-native fixtures exercising actual OpenAI mapping; verify both two-turn flows, actual tools, kit/component transitions, source completion, acceptance, read-only reading, replay, errors/truncation/unknown source, retry/cancel/navigation, responsive layout. Fixtures explicitly labelled and never published as live.
 - [x] Rewrite guides in user voice and source-link examples. Consolidate inventory/current counts:26/52; keep old assets for bookmarks. Add four stable `canonical-workbench-{ui-kits,ui-chatbot}-{angular,react}` media IDs.
-- [ ] Verify four deterministic paths before spending on model captures. Record four genuine OpenAI flows using existing quiet server env helper and unique masters; use ffmpeg, measured readable captions, posters/results/transcripts. Inspect all outputs and decode both codecs.
-- [ ] Independent docs/tooling and final reviews; commit sources and verified media.
+- [x] Verify four deterministic paths before spending on model captures. Record four genuine OpenAI flows using existing quiet server env helper and unique masters; use ffmpeg, measured readable captions, posters/results/transcripts. Inspect all outputs and decode both codecs.
+- [x] Independent docs/tooling and final reviews; commit sources and verified media.
 
 ## Task 4: Verification and integration
 
-- [ ] Sequential builds (avoid concurrent dist cleanup): `npx nx build workbench`, `npx nx build www`; then www test/lint and workbench lint. Preserve NODE_ENV=production for Next builds; use normal localhost/IPC permission for server tools. No new dependencies.
-- [ ] `npx nx workbench-e2e www --excludeTaskDependencies` for full52 paths; `npx nx e2e www --excludeTaskDependencies` route report. Run tests at low worker count if build/encode CPU contention threatens existing5s render timeouts; never relax tests.
-- [ ] Start local production after all media exists; verify four native videos/captions and24 asset hashes; current inventory/26-lesson overviews and hosted-like server factory checks.
+- [x] Sequential builds (avoid concurrent dist cleanup): `npx nx build workbench`, `npx nx build www`; then www test/lint and workbench lint. Preserve NODE_ENV=production for Next builds; use normal localhost/IPC permission for server tools. No new dependencies.
+- [x] `npx nx workbench-e2e www --excludeTaskDependencies` for full52 paths; `npx nx e2e www --excludeTaskDependencies` route report. Run tests at low worker count if build/encode CPU contention threatens existing5s render timeouts; never relax tests.
+- [x] Start local production after all media exists; verify four native videos/captions and24 asset hashes; current inventory/26-lesson overviews and hosted-like server factory checks.
 - [ ] Fetch/integrate any newer main; rerun affected verification. Push, create PR with exact evidence and attach it; enable squash auto-merge, continue until required current-head checks green and merged.
 - [ ] Verify exact main docs/workbench deployments, four public videos/24 media hashes, hosted lesson pages/API validation. Add evidence to PR description, stop owned temporary production preview, keep useful local workbench, report clean status and existing warnings. No SDK release.

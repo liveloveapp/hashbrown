@@ -1,0 +1,19 @@
+REACT · ui-chatbot
+
+Real OpenAI output through actual Hashbrown UI chat, kit APIs and trusted framework renderers. The actual normalized kit registry and serialized schema are captured. A real configured framework fallback was observed. Only explicit acceptance of a current completed valid proposal changes application state. PlanReading is a read-only model report. The server requires a fresh successful context result before UI generation, then disables further tool calls. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
+
+Real OpenAI output selects a component from our trusted kit.
+
+Only Accept plan changes application state.
+
+Next, readContext will supply the accepted plan.
+
+PlanReading reports the accepted plan. It has no write action.
+
+Replay follows captured components and state.
+
+No requests or application writes during replay.
+
+Back live.
+
+The real readContext tool returns the accepted application plan and revision to the next request. Original JSON, parsed props, current source/turn/revision and once-only guards protect acceptance. Replay makes no requests or writes. Refresh clears local sessions and captures.
