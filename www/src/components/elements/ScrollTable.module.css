@@ -1,0 +1,40 @@
+.frame {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.scroller {
+  overflow-x: auto;
+}
+
+/* Edge shadows sit above the table, the header included, and show only on
+   an edge that has more columns past it. */
+.frame::before,
+.frame::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.frame::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-scroll-shade), transparent);
+}
+
+.frame::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-scroll-shade), transparent);
+}
+
+.frame[data-overflow-start]::before,
+.frame[data-overflow-end]::after {
+  opacity: 1;
+}

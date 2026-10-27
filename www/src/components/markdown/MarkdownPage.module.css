@@ -154,7 +154,7 @@
   min-height: var(--control-lg);
   border-radius: var(--radius-pill);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font: 600 15px/1 var(--font-sans);
   text-decoration: none;
   padding: 0 var(--space-6);
@@ -185,11 +185,13 @@
   font: 400 0.875em/1.5 var(--font-code);
 }
 
-.article table {
-  display: block;
-  overflow-x: auto;
-  border-collapse: collapse;
+/* ScrollTable wraps each table in a frame that scrolls it sideways. */
+.article [data-scroll-table] {
   margin: var(--space-2) 0 var(--space-6);
+}
+
+.article table {
+  border-collapse: collapse;
   font-size: 15px;
 }
 

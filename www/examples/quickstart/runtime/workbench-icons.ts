@@ -23,7 +23,10 @@ export type WorkbenchIconName =
   | 'transform'
   | 'wand'
   | 'lightbulb'
-  | 'square-check';
+  | 'square-check'
+  | 'flag'
+  | 'messages'
+  | 'scroll';
 
 interface IconElement {
   readonly tag: string;
@@ -133,6 +136,18 @@ const icons: Readonly<Record<WorkbenchIconName, readonly IconElement[]>> = {
     rect('3', '3', '18', '18', '2'),
     polyline('8 12 11 15 16 9'),
   ],
+  flag: [
+    path('M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'),
+    line('4', '22', '4', '15'),
+  ],
+  messages: [
+    path('M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z'),
+    path('M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1'),
+  ],
+  scroll: [
+    path('M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4'),
+    path('M19 17V5a2 2 0 0 0-2-2H4'),
+  ],
 };
 
 /** The icon shown beside each lesson in the sidebar. */
@@ -150,6 +165,9 @@ export const workbenchLessonIcons: Readonly<
   'magic-text': 'wand',
   predictions: 'lightbulb',
   'ui-selection': 'square-check',
+  'first-plan': 'flag',
+  conversation: 'messages',
+  'system-instructions': 'scroll',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

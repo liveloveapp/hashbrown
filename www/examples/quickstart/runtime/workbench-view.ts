@@ -1,3 +1,7 @@
+import {
+  workbenchBrowserInstructions,
+  workbenchOnboardingPrompts,
+} from './workbench-onboarding';
 import { s } from '@hashbrownai/core';
 import {
   getWorkbenchPlanSchema,
@@ -312,7 +316,15 @@ export function mountWorkbench(
           commands.lesson.id as keyof typeof workbenchRecipePrompts
         ]
       : undefined;
+  const onboardingPrompts =
+    commands.lesson &&
+    Object.hasOwn(workbenchOnboardingPrompts, commands.lesson.id)
+      ? workbenchOnboardingPrompts[
+          commands.lesson.id as keyof typeof workbenchOnboardingPrompts
+        ]
+      : undefined;
   const prompts =
+    onboardingPrompts ??
     recipePrompts ??
     (commands.lesson?.format === 'decision'
       ? workbenchDecisionPrompts
@@ -483,7 +495,11 @@ export function mountWorkbench(
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    commands.lesson?.format === 'text' ? 'Markdown' : 'JSON',
+    commands.lesson?.format === 'text'
+      ? commands.lesson.id === 'magic-text'
+        ? 'Markdown'
+        : 'Text'
+      : 'JSON',
     'Requests',
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
@@ -491,6 +507,7 @@ export function mountWorkbench(
       ? ['Schema']
       : []),
     ...(commands.lesson?.id === 'request-transformation' ? ['Transform'] : []),
+    ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
     'UI',
     'State',
   ].map((name) => {
@@ -797,30 +814,50 @@ export function mountWorkbench(
     tabButtons.forEach((item) =>
       item.setAttribute('aria-selected', String(item.textContent === tab)),
     );
-    const recipeView = workbenchRecipeInspection(
-      snapshot,
-      commands.lesson?.format,
-      tab,
-    );
+    const onboardingText =
+      commands.lesson?.id === 'conversation' ||
+      commands.lesson?.id === 'system-instructions';
+    const recipeView = onboardingText
+      ? tab === 'UI'
+        ? {
+            heading: 'Plain text renderer',
+            value: {
+              renderer: 'Plain text',
+              generatedProps: false,
+              exposedComponents: [],
+            },
+            detailHeading: 'Text rendering and request outcome',
+            detail: {
+              content: frame?.json ?? '',
+              outcome: frame?.status ?? snapshot.status,
+              note: 'Assistant text is rendered directly without a UI schema or exposed components.',
+            },
+          }
+        : undefined
+      : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab);
     capturedHeading.textContent =
       recipeView?.heading ??
-      (tab === 'JSON'
-        ? commands.lesson?.format === 'decision'
-          ? 'Decision response'
-          : 'Model output'
-        : tab === 'Schema'
-          ? 'Response contract'
-          : tab === 'Transform'
-            ? 'Mapped provider request'
-            : tab === 'UI'
-              ? commands.lesson?.format === 'decision'
-                ? 'Application-owned choice'
-                : commands.lesson?.format === 'structured'
-                  ? 'Application-rendered plan'
-                  : 'Trusted component'
-              : tab === 'State'
-                ? 'Application state'
-                : 'Requests and tools');
+      (tab === 'Instructions'
+        ? 'Browser declaration and effective provider policy'
+        : tab === 'Text'
+          ? 'Streamed text'
+          : tab === 'JSON'
+            ? commands.lesson?.format === 'decision'
+              ? 'Decision response'
+              : 'Model output'
+            : tab === 'Schema'
+              ? 'Response contract'
+              : tab === 'Transform'
+                ? 'Mapped provider request'
+                : tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? 'Application-owned choice'
+                    : commands.lesson?.format === 'structured'
+                      ? 'Application-rendered plan'
+                      : 'Trusted component'
+                  : tab === 'State'
+                    ? 'Application state'
+                    : 'Requests and tools');
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
     selection.replaceChildren(
       element(
@@ -866,6 +903,17 @@ export function mountWorkbench(
                 event.turn === (frame?.turn ?? snapshot.turn) &&
                 event.kind === 'request',
             ));
+    const browserPolicyObserved = visibleEvents.some((event) => {
+      if (event.kind !== 'request' || event.turn !== frame?.turn) return false;
+      const request = event.payload as {
+        input?: { messages?: readonly { role?: string; content?: unknown }[] };
+      } | null;
+      return request?.input?.messages?.some(
+        (message) =>
+          message.role === 'system' &&
+          message.content === workbenchBrowserInstructions,
+      );
+    });
     const transform = frame?.transformation;
     const transformFields = (
       value: NonNullable<typeof transform>['before'],
@@ -883,63 +931,80 @@ export function mountWorkbench(
     });
     const value = recipeView
       ? recipeView.value
-      : tab === 'Transform'
-        ? transform
-          ? {
-              before: transformFields(transform.before),
-              after: {
-                ...transformFields(transform.after),
-                addedInstructions:
-                  transform.before.instructions &&
-                  (transform.after.instructions ?? '').startsWith(
-                    transform.before.instructions,
-                  )
-                    ? (transform.after.instructions ?? '')
-                        .slice(transform.before.instructions.length)
-                        .trim()
-                    : transform.after.instructions,
-              },
-            }
-          : 'Waiting for the actual provider transformation callback'
-        : tab === 'Schema'
-          ? s.toJsonSchema(
-              getWorkbenchPlanSchema(
-                workbenchLessons.find(
-                  (lesson) => lesson.id === commands.lesson?.id,
-                )?.id ?? 'schemas',
-              ),
-            )
-          : tab === 'JSON'
-            ? frame?.json || 'Waiting for model output'
-            : tab === 'UI'
-              ? commands.lesson?.format === 'decision'
-                ? {
-                    renderer: 'Application-owned decision card',
-                    generatedProps: false,
-                  }
-                : commands.lesson?.format === 'structured'
-                  ? {
-                      renderer: 'Application-owned plan card',
-                      fields: ['title', 'steps'],
-                    }
-                  : {
-                      component: 'SummaryCard',
-                      children: false,
-                      inputs: { title: 'string', steps: 'streaming string[]' },
-                    }
-              : tab === 'State'
-                ? (frame?.application ?? snapshot.application)
-                : visibleEvents
-                    .filter(
-                      (event) =>
-                        event.kind === 'request' || event.kind === 'tool',
-                    )
-                    .map((event) => ({
-                      sequence: event.sequence,
-                      turn: event.turn,
-                      kind: event.kind,
-                      payload: event.payload,
-                    }));
+      : tab === 'Instructions'
+        ? {
+            browser: {
+              origin: 'Browser configuration',
+              policy: browserPolicyObserved
+                ? workbenchBrowserInstructions
+                : 'Waiting for the captured browser request',
+            },
+            effective:
+              frame?.instructions ??
+              'Waiting for the actual OpenAI adapter mapping callback',
+          }
+        : tab === 'Text'
+          ? frame?.json || 'Waiting for text'
+          : tab === 'Transform'
+            ? transform
+              ? {
+                  before: transformFields(transform.before),
+                  after: {
+                    ...transformFields(transform.after),
+                    addedInstructions:
+                      transform.before.instructions &&
+                      (transform.after.instructions ?? '').startsWith(
+                        transform.before.instructions,
+                      )
+                        ? (transform.after.instructions ?? '')
+                            .slice(transform.before.instructions.length)
+                            .trim()
+                        : transform.after.instructions,
+                  },
+                }
+              : 'Waiting for the actual provider transformation callback'
+            : tab === 'Schema'
+              ? s.toJsonSchema(
+                  getWorkbenchPlanSchema(
+                    workbenchLessons.find(
+                      (lesson) => lesson.id === commands.lesson?.id,
+                    )?.id ?? 'schemas',
+                  ),
+                )
+              : tab === 'JSON'
+                ? frame?.json || 'Waiting for model output'
+                : tab === 'UI'
+                  ? commands.lesson?.format === 'decision'
+                    ? {
+                        renderer: 'Application-owned decision card',
+                        generatedProps: false,
+                      }
+                    : commands.lesson?.format === 'structured'
+                      ? {
+                          renderer: 'Application-owned plan card',
+                          fields: ['title', 'steps'],
+                        }
+                      : {
+                          component: 'SummaryCard',
+                          children: false,
+                          inputs: {
+                            title: 'string',
+                            steps: 'streaming string[]',
+                          },
+                        }
+                  : tab === 'State'
+                    ? (frame?.application ?? snapshot.application)
+                    : visibleEvents
+                        .filter(
+                          (event) =>
+                            event.kind === 'request' || event.kind === 'tool',
+                        )
+                        .map((event) => ({
+                          sequence: event.sequence,
+                          turn: event.turn,
+                          kind: event.kind,
+                          payload: event.payload,
+                        }));
     rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
     capturedSub.textContent = rawFrame
       ? 'captured frame'

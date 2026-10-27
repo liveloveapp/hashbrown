@@ -183,7 +183,7 @@
 
 .message {
   flex: 1;
-  color: var(--gray-dark, #3d3c3a);
+  color: var(--color-ink);
 }
 
 .close {
@@ -194,56 +194,58 @@
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 4px;
-  background: rgba(61, 60, 58, 0.08);
-  color: var(--gray, #5e5c5a);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-muted);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .close:hover {
-  background: rgba(61, 60, 58, 0.16);
-  color: var(--gray-dark, #3d3c3a);
+  background: var(--color-rule);
+  color: var(--color-ink);
 }
 
 /* Success */
 .toast.success {
-  border-color: var(--olive-green, #616f36);
-  background: #e8ebe0;
+  border-color: var(--color-success);
+  background: var(--color-success-tint);
 }
 
 .toast.success .icon {
-  color: var(--olive-green, #616f36);
+  color: var(--color-success);
 }
 
 /* Error */
 .toast.error {
-  border-color: var(--indian-red, #b86060);
-  background: #f5e5e5;
+  border-color: var(--indian-red);
+  background: var(--color-danger-tint);
 }
 
 .toast.error .icon {
-  color: var(--indian-red-dark, #924e4e);
+  color: var(--color-danger);
 }
 
 /* Warning */
 .toast.warning {
-  border-color: var(--sunset-orange, #e88c4d);
-  background: #fceee5;
+  border-color: var(--sunset-orange);
+  background: var(--color-warning-tint);
 }
 
 .toast.warning .icon {
-  color: var(--sunset-orange, #e88c4d);
+  color: var(--color-warning);
 }
 
 /* Info */
 .toast.info {
-  border-color: var(--sky-blue, #9ecfd7);
-  background: #e8f5f7;
+  border-color: var(--sky-blue);
+  background: var(--color-info-tint);
 }
 
 .toast.info .icon {
-  color: var(--sky-blue-dark, #64afb5);
+  color: var(--color-info);
 }

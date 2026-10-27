@@ -1,3 +1,19 @@
+## 0.8.3 (2026-10-26)
+
+### 🧪 Experimental additions
+
+- **core:** enable opt-in image input with application-owned WebLLM engines through `experimental_webllm({ engine, media: { images: {}, resolve } })`. Export the image content, resolver, resource, and policy types; validate bounded media inputs and preserve shared engine ownership/cancellation. Hashbrown adds no WebLLM dependency and does not load or unload the application's model ([#764](https://github.com/liveloveapp/hashbrown/pull/764)).
+- **core:** add `experimental_webllm_tools({ engine, toolPhase })` for application-selected, text-only tool phases followed by structured output or trusted component UI. Buffer and validate complete JSON arguments before canonical dispatch, preserve exact call/result replay, and retain handler-owned permissions. This uses structured output rather than native WebLLM tool mode; existing text/image defaults remain unchanged ([#772](https://github.com/liveloveapp/hashbrown/pull/772)).
+
+### 🩹 Fixes
+
+- **core:** reject arrays where an object schema is required, including nested and `anyOf` validation. Strict WebLLM tool arguments also reject unsupported formats, reserved property names, and enum/type combinations that could otherwise be weakened by schema conversion ([#772](https://github.com/liveloveapp/hashbrown/pull/772)).
+
+### 📖 Documentation and qualification
+
+- Document both WebLLM opt-ins for React and Angular, with local-only aimock/worker contracts and separate real-worker qualification. The fixed image cases and six text-only tool/schema/single-component cases passed with the tested WebLLM 0.2.86 / Phi-3.5 Vision configuration on an M1 Max. Broader/nested/media tool UI and other models/devices remain unqualified; audio and cross-hardware testing remain deferred ([#764](https://github.com/liveloveapp/hashbrown/pull/764), [#772](https://github.com/liveloveapp/hashbrown/pull/772)).
+- Update .NET Chat Completions/Responses recipes and durable recovery evidence; this does not publish a Hashbrown NuGet package. Expand the canonical docs workbench and refresh the docs-site design ([#770](https://github.com/liveloveapp/hashbrown/pull/770), [#769](https://github.com/liveloveapp/hashbrown/pull/769), [#771](https://github.com/liveloveapp/hashbrown/pull/771), [#777](https://github.com/liveloveapp/hashbrown/pull/777)).
+
 ## 0.8.2 (2026-10-25)
 
 ### 🩹 Fixes

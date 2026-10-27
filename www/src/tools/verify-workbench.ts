@@ -1,3 +1,6 @@
+import { verifyOnboardingWorkbench } from './verify-onboarding-workbench';
+import { workbenchOnboardingFixtureText } from './workbench-onboarding-fixture';
+import type { WorkbenchInstructionsTrace } from '../../examples/quickstart/runtime/workbench-onboarding';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
 import { workbenchSelectionSchema } from '../../examples/quickstart/runtime/workbench-recipes';
 import { type Decision } from '@hashbrownai/core';
@@ -31,6 +34,7 @@ async function* pacedProvider(
 }
 const requests: RunAgentInput[] = [];
 const transformations: WorkbenchTransformationTrace[] = [];
+const instructions: WorkbenchInstructionsTrace[] = [];
 const nativeRequests: Record<string, unknown>[] = [];
 let fixtureBaseURL = '';
 const decisionRequests: Decision.Request[] = [];
@@ -61,6 +65,37 @@ async function* fixture(
     .reverse()
     .find((message) => message.role === 'user');
   const offset = input.messages.findIndex((message) => message.id === user?.id);
+  const onboardingText = workbenchOnboardingFixtureText(
+    lessonId,
+    input.messages,
+  );
+  if (onboardingText !== undefined) {
+    const messageId = `${input.runId}-answer`;
+    yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
+    for (let index = 0; index < onboardingText.length; index += 10) {
+      await new Promise((done) => setTimeout(done, 80));
+      if (signal.aborted) return;
+      yield {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId,
+        delta: onboardingText.slice(index, index + 10),
+      };
+    }
+    yield { type: EventType.TEXT_MESSAGE_END, messageId };
+    await new Promise((done) => setTimeout(done, 400));
+    yield outcome === 'error'
+      ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
+      : {
+          type: EventType.RUN_FINISHED,
+          ...ids,
+          metadata: {
+            hashbrown: {
+              finishReason: outcome === 'length' ? 'length' : 'stop',
+            },
+          },
+        };
+    return;
+  }
   const predictions = lessonId === 'predictions';
   const text = lessonId === 'magic-text';
   const verdict = predictions || text ? recipeOutcome : outcome;
@@ -257,7 +292,9 @@ const app = createWorkbenchApp({
   stream: (input, signal, lessonId) => {
     requests.push(structuredClone(input));
     const events =
-      live || lessonId === 'request-transformation'
+      live ||
+      lessonId === 'request-transformation' ||
+      lessonId === 'system-instructions'
         ? createWorkbenchOpenAIStream({
             apiKey: live ? (apiKey as string) : 'fixture-only',
             model: live ? (model as string) : 'fixture-model',
@@ -271,6 +308,11 @@ const app = createWorkbenchApp({
           event.name === 'workbench.request-transformation'
         )
           transformations.push(structuredClone(event.value));
+        if (
+          event.type === EventType.CUSTOM &&
+          event.name === 'workbench.system-instructions'
+        )
+          instructions.push(structuredClone(event.value));
         yield event;
       }
     })();
@@ -316,20 +358,44 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
       },
     ],
   });
-  const events = hasContext
-    ? createSupportProviderEvents(json)
-    : [
-        {
-          type: 'response.output_item.added',
-          output_index: 0,
-          item: { ...call, arguments: '' },
-        },
-        { type: 'response.output_item.done', output_index: 0, item: call },
-        {
-          type: 'response.completed',
-          response: { status: 'completed', output: [] },
-        },
-      ];
+  const onboarding =
+    mapped['tools'] === undefined ||
+    (Array.isArray(mapped['tools']) && mapped['tools'].length === 0);
+  const onboardingText = onboarding
+    ? workbenchOnboardingFixtureText('system-instructions', input)
+    : undefined;
+  const events =
+    onboardingText !== undefined
+      ? createSupportProviderEvents(onboardingText).map((event) =>
+          event.type === 'response.completed' && outcome !== 'success'
+            ? {
+                type:
+                  outcome === 'error'
+                    ? 'response.failed'
+                    : 'response.incomplete',
+                response: {
+                  status: outcome === 'error' ? 'failed' : 'incomplete',
+                  error: { message: 'Intentional test failure' },
+                  incomplete_details: { reason: 'max_output_tokens' },
+                  output: [],
+                },
+              }
+            : event,
+        )
+      : hasContext
+        ? createSupportProviderEvents(json)
+        : [
+            {
+              type: 'response.output_item.added',
+              output_index: 0,
+              item: { ...call, arguments: '' },
+            },
+            { type: 'response.output_item.done', output_index: 0, item: call },
+            {
+              type: 'response.completed',
+              response: { status: 'completed', output: [] },
+            },
+          ];
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-store',
@@ -376,6 +442,32 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (
+        ['first-plan', 'conversation', 'system-instructions'].includes(
+          lesson.id,
+        )
+      ) {
+        report.push(
+          await verifyOnboardingWorkbench({
+            browser,
+            framework,
+            lesson: lesson.id as
+              'first-plan' | 'conversation' | 'system-instructions',
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+            requests,
+            instructions,
+            nativeRequests,
+            outcome: (value) => {
+              outcome = value;
+            },
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (['magic-text', 'predictions', 'ui-selection'].includes(lesson.id)) {
         report.push(
           await verifyRecipeWorkbench({

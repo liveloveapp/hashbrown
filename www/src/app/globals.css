@@ -47,12 +47,34 @@
   --color-ink: var(--gray-dark);
   --color-muted: var(--gray);
   --color-rule: #ebe7dd;
+  --color-rule-strong: var(--gray-light);
   --color-accent: var(--chocolate-brown);
   --color-accent-hover: #5a3419;
+  --color-on-accent: #ffffff;
   --color-highlight: var(--sunshine-yellow-light);
-  --color-code-bg: #1c1917;
-  --color-code-fg: #ece8e1;
   --color-selection: var(--sunshine-yellow-light);
+  --color-overlay: rgba(28, 25, 23, 0.4);
+  --color-scroll-shade: rgba(28, 25, 23, 0.16);
+
+  /* Code panels: dark ink, a slightly lighter frame, and white at low alpha
+     for their rules and controls. */
+  --color-code-bg: #1c1917;
+  --color-code-frame: #2b2622;
+  --color-code-fg: #ece8e1;
+  --color-code-muted: var(--gray-light);
+  --color-code-rule: rgba(255, 255, 255, 0.12);
+  --color-code-control: rgba(255, 255, 255, 0.1);
+  --color-code-control-hover: rgba(255, 255, 255, 0.18);
+
+  /* Status: each a text colour and a tint, from the hashbrown palette. */
+  --color-success: var(--olive-green);
+  --color-success-tint: #e8ebe0;
+  --color-danger: var(--indian-red-dark);
+  --color-danger-tint: #f5e5e5;
+  --color-warning: #a8572a;
+  --color-warning-tint: #fceee5;
+  --color-info: #3f7a80;
+  --color-info-tint: #e8f5f7;
 
   --radius-input: 8px;
   --radius-card: 12px;
@@ -359,70 +381,6 @@ code {
 .kind.Method {
   background-color: #d4edda;
   color: #155724;
-}
-
-.shake:hover {
-  animation: shake 0.8s ease-in-out infinite;
-  animation-delay: 0s;
-  animation-iteration-count: infinite;
-  animation-play-state: running;
-  animation-direction: normal;
-}
-
-@keyframes shake {
-  0% {
-    transform: rotate(0deg);
-  }
-  10% {
-    transform: rotate(5deg);
-  }
-  20% {
-    transform: rotate(-5deg);
-  }
-  30% {
-    transform: rotate(4deg);
-  }
-  40% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(2deg);
-  }
-  60% {
-    transform: rotate(-2deg);
-  }
-  70% {
-    transform: rotate(1deg);
-  }
-  80% {
-    transform: rotate(-1deg);
-  }
-  90% {
-    transform: rotate(0.5deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
-
-[wwwSquircle] {
-  position: relative;
-}
-
-[wwwSquircle]::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 9999;
-  pointer-events: none;
-  background-image: var(--www-squircle-border-image-url);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-  border-radius: inherit;
 }
 
 .hb-btn {

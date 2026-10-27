@@ -1,0 +1,28 @@
+{
+  "name": "hashbrown-dotnet-live-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hashbrownai/core": "0.8.3",
+    "@hashbrownai/react": "0.8.3",
+    "@hashbrownai/angular": "0.8.3",
+    "@angular/core": "22.2.3",
+    "@angular/common": "22.2.3",
+    "@angular/forms": "22.2.3",
+    "@angular/platform-browser": "22.2.3",
+    "@angular/compiler": "22.2.3",
+    "@angular/compiler-cli": "22.2.3",
+    "@angular/build": "22.2.3",
+    "@angular-devkit/core": "22.2.3",
+    "@angular-devkit/architect": "0.2202.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  }
+}

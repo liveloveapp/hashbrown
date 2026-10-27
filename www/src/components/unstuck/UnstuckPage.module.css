@@ -3,10 +3,7 @@
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--vanilla-ivory, #faf9f0);
-  background-image: url('/image/texture/fabric.png');
-  background-repeat: repeat;
-  background-attachment: fixed;
+  background: var(--color-bg);
 }
 
 .page {
@@ -19,7 +16,7 @@
   box-sizing: border-box;
   margin: 0 auto;
   padding: 40px 16px 64px;
-  color: var(--gray-dark, #3d3c3a);
+  color: var(--color-ink);
 }
 
 .heading {
@@ -33,7 +30,7 @@
 .lede {
   margin: 0 0 16px;
   text-align: center;
-  color: var(--gray);
+  color: var(--color-muted);
   font:
     400 18px/1.55 var(--font-sans);
 }
@@ -53,7 +50,7 @@
 }
 
 .card a {
-  color: var(--chocolate-brown);
+  color: var(--color-accent);
 }
 
 @media screen and (min-width: 768px) {

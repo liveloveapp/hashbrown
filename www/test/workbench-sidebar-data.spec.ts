@@ -16,6 +16,11 @@ test('groups every lesson exactly once in sidebar order', () => {
 
   expect(groups).toEqual([
     [
+      'start',
+      'Get started',
+      ['first-plan', 'conversation', 'system-instructions'],
+    ],
+    [
       'concepts',
       'Concepts',
       [

@@ -27,7 +27,7 @@ test('the blog index renders every post, newest first', () => {
   const html = renderToStaticMarkup(<BlogIndexPage />);
 
   expect(postHrefs(html)).toEqual(posts.map((p) => `/blog/${p.slug}`));
-  expect(postHrefs(html)[0]).toBe('/blog/2026-10-22-hashbrown-v-0-8-0');
+  expect(postHrefs(html)[0]).toBe('/blog/2026-10-27-decision-models-with-hashbrown');
 });
 
 test('the blog index renders the filter buttons with all blogs selected', () => {
@@ -61,7 +61,7 @@ test('blog index metadata matches the Angular routeMeta', () => {
 
   const og = meta.openGraph as { title?: string; images?: unknown };
 
-  expect(meta.title).toBe('Home: Hashbrown Blog');
+  expect(meta.title).toEqual({ absolute: 'Home: Hashbrown Blog' });
   expect(meta.description).toBe('Hashbrown Blog.');
   expect(og.title).toBe('Home: Hashbrown Blog');
   expect(og.images).toEqual([DEFAULT_CARD_IMAGE]);

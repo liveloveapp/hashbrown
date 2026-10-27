@@ -1,5 +1,53 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-first-plan-react': {
+    title: 'React workbench: your first plan.',
+    caption:
+      'Follow one tool-free request as streamed props become a trusted two-step plan preview.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and the actual Hashbrown SDK. The standalone Quickstart and workbench share PlanCard and its registration. No browser tools, acceptance action or application writes. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-conversation-react': {
+    title: 'React workbench: messages and turns.',
+    caption:
+      'Name the plan, follow up in the same conversation, and inspect retained messages and fresh run identities.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. No browser tools or generated component props. Messages remain in the current local instance; no persistence across refresh is demonstrated. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-system-instructions-react': {
+    title: 'React workbench: system instructions.',
+    caption:
+      'Compare browser configuration with public server policy captured at the actual provider mapping boundary.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. The endpoint replaces browser instructions; the inspector captures only the fixed public policy from the adapter mapping callback. Prompts do not grant authorization. No browser tools or application writes. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-first-plan-angular': {
+    title: 'Angular workbench: your first plan.',
+    caption:
+      'Follow one tool-free request as streamed props become a trusted two-step plan preview.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and the actual Hashbrown SDK. The standalone Quickstart and workbench share PlanCard and its registration. No browser tools, acceptance action or application writes. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-conversation-angular': {
+    title: 'Angular workbench: messages and turns.',
+    caption:
+      'Name the plan, follow up in the same conversation, and inspect retained messages and fresh run identities.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. No browser tools or generated component props. Messages remain in the current local instance; no persistence across refresh is demonstrated. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-system-instructions-angular': {
+    title: 'Angular workbench: system instructions.',
+    caption:
+      'Compare browser configuration with public server policy captured at the actual provider mapping boundary.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. The endpoint replaces browser instructions; the inspector captures only the fixed public policy from the adapter mapping callback. Prompts do not grant authorization. No browser tools or application writes. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'canonical-workbench-magic-text-react': {
     title: 'React workbench: Magic Text.',
     caption:

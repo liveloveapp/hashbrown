@@ -1,5 +1,8 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'first-plan'
+  | 'conversation'
+  | 'system-instructions'
   | 'magic-text'
   | 'predictions'
   | 'ui-selection'
@@ -19,18 +22,30 @@ export interface WorkbenchLesson {
     'ui' | 'structured' | 'decision' | 'text' | 'predictions' | 'selection';
   readonly protocol: 'chat' | 'decision';
   readonly inspector:
-    'Markdown' | 'JSON' | 'Requests' | 'UI' | 'State' | 'Schema' | 'Transform';
+    | 'Markdown'
+    | 'JSON'
+    | 'Requests'
+    | 'UI'
+    | 'State'
+    | 'Schema'
+    | 'Transform'
+    | 'Instructions';
   readonly endpoint: string;
 }
 /** The sidebar sections; conversations are listed above the lesson groups. */
 export type WorkbenchSidebarSection =
-  'conversations' | 'concepts' | 'production' | 'recipes';
+  'conversations' | 'start' | 'concepts' | 'production' | 'recipes';
 /** The lesson groups shown in the sidebar, in display order. */
 export const workbenchLessonGroups: readonly {
   readonly id: Exclude<WorkbenchSidebarSection, 'conversations'>;
   readonly title: string;
   readonly lessons: readonly WorkbenchLessonId[];
 }[] = [
+  {
+    id: 'start',
+    title: 'Get started',
+    lessons: ['first-plan', 'conversation', 'system-instructions'],
+  },
   {
     id: 'concepts',
     title: 'Concepts',
@@ -143,6 +158,30 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     protocol: 'decision',
     inspector: 'UI',
     endpoint: '/api/workbench/ui-selection',
+  },
+  {
+    id: 'first-plan',
+    title: 'First plan',
+    format: 'ui',
+    protocol: 'chat',
+    inspector: 'UI',
+    endpoint: '/api/workbench/first-plan',
+  },
+  {
+    id: 'conversation',
+    title: 'Messages and turns',
+    format: 'text',
+    protocol: 'chat',
+    inspector: 'Requests',
+    endpoint: '/api/workbench/conversation',
+  },
+  {
+    id: 'system-instructions',
+    title: 'System instructions',
+    format: 'text',
+    protocol: 'chat',
+    inspector: 'Instructions',
+    endpoint: '/api/workbench/system-instructions',
   },
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */

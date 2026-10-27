@@ -19,6 +19,7 @@ export const workbenchLayoutKey = 'hashbrown.workbench.layout';
 
 const sections: readonly string[] = [
   'conversations',
+  'start',
   'concepts',
   'production',
   'recipes',

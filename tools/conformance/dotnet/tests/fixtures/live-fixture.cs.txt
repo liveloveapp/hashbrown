@@ -1,0 +1,219 @@
+using System.Runtime.CompilerServices;
+using Azure.Core;
+using System.Text;
+using System.Text.Json;
+using Hashbrown.Conformance.Integration;
+using Hashbrown.Conformance.Testing;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+
+var messages = new[] { new ChatMessage(ChatRole.User, "hello") };
+var state = new FixtureLiveGate("structured-schema");
+using var inner = new ProbeClient();
+using var subject = new FixtureLiveModelClient(inner, state);
+var original = new ChatOptions { MaxOutputTokens = 900, Temperature = 0.9f, Tools = [AIFunctionFactory.Create(() => "ok", "lookupAirport")] };
+await foreach (var _ in subject.GetStreamingResponseAsync(messages, original)) { }
+Check(original.MaxOutputTokens == 900 && original.Temperature == 0.9f && original.Tools.Count == 1, "mutated caller options");
+Check(inner.Options!.MaxOutputTokens == 384 && inner.Options.Temperature == 0 && inner.Options.ToolMode is NoneChatToolMode, "uncapped model options");
+Check(state.Calls == 1 && state.Stage == "completed", "missing attempt count");
+await Reject(async () => { await foreach (var _ in subject.GetStreamingResponseAsync(messages)) { } }, "LIVE_CALL_CAP");
+Check(inner.Calls == 1, "cap checked after native invocation");
+
+var toolState = new FixtureLiveGate("browser-tool");
+using var toolInner = new ProbeClient();
+using var toolClient = new FixtureLiveModelClient(toolInner, toolState);
+await foreach (var _ in toolClient.GetStreamingResponseAsync(messages, original)) { }
+Check(toolInner.Options!.ToolMode is RequiredChatToolMode required && required.RequiredFunctionName == "getWeather", "tool was not forced");
+await foreach (var _ in toolClient.GetStreamingResponseAsync([.. messages, new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call_1", "getWeather", new Dictionary<string,object?> { ["city"] = "Paris" })]), new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call_1", "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}")])], original)) { }
+Check(toolInner.Options!.ToolMode is NoneChatToolMode, "tool continuation was not disabled");
+
+var invalidHistory = new FixtureLiveGate("browser-tool");
+using var invalidClient = new FixtureLiveModelClient(new ProbeClient(), invalidHistory);
+await Reject(async () => { await foreach (var _ in invalidClient.GetStreamingResponseAsync([.. messages, new ChatMessage(ChatRole.Tool, [new FunctionResultContent("unowned", "secret-canary")])], original)) { } }, "LIVE_TOOL_INVALID");
+
+using (var expired = new FixtureLiveGate("structured-schema", TimeSpan.FromMilliseconds(10)))
+{
+    await Task.Delay(30);
+    using var expiredClient = new FixtureLiveModelClient(new ProbeClient(), expired);
+    await Reject(async () => { await foreach (var _ in expiredClient.GetStreamingResponseAsync(messages)) { } }, "LIVE_CANCELLED");
+    Check(expired.Calls == 0, "expired request acquired credentials");
+}
+
+var streamState = new FixtureLiveGate("streaming-plain");
+using var streamInner = new ProbeClient();
+using var streamClient = new FixtureLiveModelClient(streamInner, streamState);
+await using (var iterator = streamClient.GetStreamingResponseAsync(messages).GetAsyncEnumerator())
+{
+    Check(await iterator.MoveNextAsync() && iterator.Current.Text == "native-text", "gate hid first update");
+    var next = iterator.MoveNextAsync().AsTask();
+    await Task.Delay(30);
+    Check(!next.IsCompleted && streamState.Stage == "paused", "gate did not pause actual iterator");
+    streamState.Release();
+    Check(!await next, "gate synthesized output");
+}
+
+var cancelState = new FixtureLiveGate("cancellation-recovery");
+using var cancelInner = new ProbeClient();
+using var cancelClient = new FixtureLiveModelClient(cancelInner, cancelState);
+using (var cancel = new CancellationTokenSource())
+{
+    await using var iterator = cancelClient.GetStreamingResponseAsync(messages, cancellationToken: cancel.Token).GetAsyncEnumerator();
+    Check(await iterator.MoveNextAsync(), "missing actual update before cancel");
+    var next = iterator.MoveNextAsync().AsTask();
+    cancel.Cancel();
+    await Reject(async () => await next, "LIVE_CANCELLED");
+}
+Check(cancelState.CancelledCalls == 1 && cancelInner.DisposedIterators == 1, "native iterator not cancelled and disposed");
+await foreach (var _ in cancelClient.GetStreamingResponseAsync(messages)) { }
+Check(cancelState.Calls == 2 && cancelState.Stage == "completed", "fresh request failed after cancel");
+
+var failureState = new FixtureLiveGate("structured-schema");
+using var failureClient = new FixtureLiveModelClient(new ProbeClient { Fail = true }, failureState);
+await Reject(async () => { await foreach (var _ in failureClient.GetStreamingResponseAsync(messages)) { } }, "LIVE_PROVIDER_FAILED");
+
+// Native SDK generates the actual HTTPS request; only the unit transport is substituted.
+var wireState = new FixtureLiveGate("structured-schema");
+var transport = new NativeHandler();
+using var http = new HttpClient(new FixtureLiveHttpHandler(wireState, "gpt-4.1-mini", "responses", transport));
+var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+    ["Provider"] = "openai", ["ModelApi"] = "responses", ["Model"] = "gpt-4.1-mini", ["ModelEndpoint"] = "https://api.openai.com/v1/", ["ApiKey"] = "secret-canary"
+}).Build();
+using var native = ProviderFactory.Create(configuration, new ProviderClientComposition(auth => auth.CreateCredential(), http));
+var response = await native.GetResponseAsync(messages, new ChatOptions { MaxOutputTokens = 384, Temperature = 0 });
+Check(response.Text == "ok", "native SDK response failed");
+Check(transport.Calls == 1 && wireState.HttpCalls == 1, "wire missing");
+var facts = JsonSerializer.Serialize(wireState.Snapshot());
+Check(facts.Contains("384") && !facts.Contains("secret-canary") && !facts.Contains("hello"), "unsafe or missing wire facts");
+using var rejected = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses") { Content = new StringContent("{\"model\":\"gpt-4.1-mini\",\"max_output_tokens\":385,\"store\":false}") };
+await Reject(async () => await http.SendAsync(rejected), "LIVE_WIRE_INVALID");
+Check(transport.Calls == 1, "unsafe native request dispatched");
+var actualState = new FixtureLiveGate("cancellation-recovery");
+var actualTransport = new NativeHandler();
+using var actualHttp = new HttpClient(new FixtureLiveHttpHandler(actualState, "gpt-4.1-mini", "responses", actualTransport));
+using var actualNative = new FixtureLiveModelClient(ProviderFactory.Create(configuration, new ProviderClientComposition(auth => auth.CreateCredential(), actualHttp)), actualState);
+using (var cancellation = new CancellationTokenSource())
+{
+    await using var iterator = actualNative.GetStreamingResponseAsync(messages, cancellationToken: cancellation.Token).GetAsyncEnumerator();
+    var sawText = false;
+    while (await iterator.MoveNextAsync()) if (!string.IsNullOrEmpty(iterator.Current.Text)) { sawText = true; break; }
+    Check(sawText, "actual SDK produced no text");
+    var pending = iterator.MoveNextAsync().AsTask();
+    await Task.Delay(30);
+    Check(!pending.IsCompleted && actualState.Stage == "paused", "actual SDK gate not reached");
+    cancellation.Cancel();
+    await Reject(async () => await pending, "LIVE_CANCELLED");
+}
+Check(actualState.CancelledCalls == 1 && actualTransport.StreamDisposed, "actual SDK iterator not cancelled and disposed");
+await foreach (var _ in actualNative.GetStreamingResponseAsync(messages)) { }
+Check(actualState.Calls == 2 && actualState.HttpCalls == 2 && actualState.Stage == "completed", "actual SDK failed fresh recovery");
+
+var nonstreamState = new FixtureLiveGate("structured-schema");
+using var nonstreamClient = new FixtureLiveModelClient(new ProbeClient(), nonstreamState);
+var nonstream = await nonstreamClient.GetResponseAsync(messages, original);
+Check(nonstream.Text == "native-text" && nonstreamState.Calls == 1, "nonstream bypassed native policy");
+using (var disposalClient = new FixtureLiveModelClient(new DisposeFailureClient(), new FixtureLiveGate("structured-schema")))
+{
+    var iterator = disposalClient.GetStreamingResponseAsync(messages).GetAsyncEnumerator();
+    Check(await iterator.MoveNextAsync(), "missing disposal probe update");
+    await Reject(async () => await iterator.DisposeAsync(), "LIVE_PROVIDER_FAILED");
+}
+
+var acquisitionState = new FixtureLiveGate("structured-schema");
+var credential = new BudgetCredential(() => acquisitionState.Calls);
+var azure = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+    ["Provider"] = "azure", ["ModelApi"] = "responses", ["Model"] = "gpt-4.1-mini", ["ModelEndpoint"] = "https://native-unit.invalid/", ["AzureAuthentication"] = "azure-cli"
+}).Build();
+var acquisitionTransport = new NativeHandler();
+using var acquisitionHttp = new HttpClient(new FixtureLiveHttpHandler(acquisitionState, "gpt-4.1-mini", "responses", acquisitionTransport));
+using var acquisitionClient = new FixtureLiveModelClient(ProviderFactory.Create(azure, new ProviderClientComposition(_ => credential, acquisitionHttp)), acquisitionState);
+await Reject(async () => await acquisitionClient.GetResponseAsync(messages), "LIVE_PROVIDER_FAILED");
+Check(credential.Calls == 1 && credential.CountedFirst && acquisitionState.Calls == 1 && acquisitionTransport.Calls == 0, "failed native acquisition was not counted before acquisition");
+await Reject(async () => await acquisitionClient.GetResponseAsync(messages), "LIVE_CALL_CAP");
+Check(credential.Calls == 1, "exhausted native reservation reacquired credentials");
+var redirectState = new FixtureLiveGate("structured-schema");
+using var redirectAudit = new FixtureLiveHttpHandler(redirectState, "gpt-4.1-mini", "responses");
+Check(redirectAudit.InnerHandler is HttpClientHandler configuredHandler && !configuredHandler.AllowAutoRedirect, "redirects can bypass audited dispatches");
+redirectAudit.InnerHandler = new RedirectLoopback(redirectAudit.InnerHandler!, new Uri(Environment.GetEnvironmentVariable("LIVE_REDIRECT_LOOPBACK")!));
+using var redirectHttp = new HttpClient(redirectAudit);
+using var redirectClient = new FixtureLiveModelClient(ProviderFactory.Create(configuration, new ProviderClientComposition(auth => auth.CreateCredential(), redirectHttp)), redirectState);
+await Reject(async () => await redirectClient.GetResponseAsync(messages), "LIVE_PROVIDER_FAILED");
+Check(redirectState.Calls == 1 && redirectState.HttpCalls == 1, "redirect retried native dispatch");
+Console.WriteLine("Live native fixture passed.");
+
+static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+static async Task Reject(Func<Task> action, string code) {
+    try { await action(); } catch (Exception error) {
+        Check(error.Message == code && error.InnerException is null && !error.ToString().Contains("secret-canary"), "unsafe failure: " + code);
+        return;
+    }
+    throw new Exception("Expected " + code);
+}
+sealed class ProbeClient : IChatClient {
+    public ChatOptions? Options; public int Calls; public int DisposedIterators; public bool Fail;
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+        Options = options; Calls++;
+        try { await Task.Yield(); if (Fail) throw new Exception("secret-canary", new Exception("secret-canary")); cancellationToken.ThrowIfCancellationRequested(); yield return new ChatResponseUpdate(ChatRole.Assistant, "native-text"); }
+        finally { DisposedIterators++; }
+    }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+sealed class NativeHandler : HttpMessageHandler {
+    public int Calls; public bool StreamDisposed;
+    private const string Response = """{"id":"resp_fixture","object":"response","created_at":1720000000,"model":"gpt-4.1-mini","status":"completed","output":[{"type":"message","id":"msg_fixture","role":"assistant","status":"completed","content":[{"type":"output_text","text":"ok","annotations":[]}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}""";
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+        Calls++;
+        using var body = JsonDocument.Parse(await request.Content!.ReadAsByteArrayAsync(cancellationToken));
+        if (body.RootElement.TryGetProperty("stream", out var stream) && stream.GetBoolean()) {
+            var response = JsonSerializer.Deserialize<JsonElement>(Response);
+            var message = response.GetProperty("output")[0];
+            var part = message.GetProperty("content")[0];
+            var events = new List<string>();
+            void Emit(string type, object data) {
+                var payload = JsonSerializer.SerializeToElement(data).EnumerateObject().ToDictionary(item => item.Name, item => (object?)item.Value.Clone());
+                payload["type"] = type; payload["sequence_number"] = events.Count;
+                events.Add($"event: {type}\ndata: {JsonSerializer.Serialize(payload)}\n\n");
+            }
+            Emit("response.created", new { response = new { id = "resp_fixture", @object = "response", created_at = 1720000000, model = "gpt-4.1-mini", status = "in_progress", output = Array.Empty<object>() } });
+            Emit("response.output_item.added", new { output_index = 0, item = new { type = "message", id = "msg_fixture", role = "assistant", status = "in_progress", content = Array.Empty<object>() } });
+            Emit("response.content_part.added", new { item_id = "msg_fixture", output_index = 0, content_index = 0, part = new { type = "output_text", text = "", annotations = Array.Empty<object>() } });
+            Emit("response.output_text.delta", new { item_id = "msg_fixture", output_index = 0, content_index = 0, delta = "ok", logprobs = Array.Empty<object>() });
+            Emit("response.output_text.done", new { item_id = "msg_fixture", output_index = 0, content_index = 0, text = "ok", logprobs = Array.Empty<object>() });
+            Emit("response.content_part.done", new { item_id = "msg_fixture", output_index = 0, content_index = 0, part });
+            Emit("response.output_item.done", new { output_index = 0, item = message });
+            Emit("response.completed", new { response });
+            var content = new StreamContent(new ObservedStream(Encoding.UTF8.GetBytes(string.Concat(events)), () => StreamDisposed = true));
+            content.Headers.ContentType = new("text/event-stream");
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content };
+        }
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(Response, Encoding.UTF8, "application/json") };
+    }
+}
+sealed class ObservedStream(byte[] bytes, Action disposed) : MemoryStream(bytes) {
+    protected override void Dispose(bool disposing) { disposed(); base.Dispose(disposing); }
+}
+sealed class BudgetCredential(Func<int> count) : TokenCredential {
+    public int Calls; public bool CountedFirst;
+    public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) {
+        Calls++; CountedFirst = count() == 1;
+        return ValueTask.FromException<AccessToken>(new Exception("secret-canary", new Exception("secret-canary")));
+    }
+}
+sealed class DisposeFailureClient : IChatClient, IAsyncEnumerable<ChatResponseUpdate>, IAsyncEnumerator<ChatResponseUpdate> {
+    public ChatResponseUpdate Current => new(ChatRole.Assistant, "native-text");
+    public IAsyncEnumerator<ChatResponseUpdate> GetAsyncEnumerator(CancellationToken cancellationToken = default) => this;
+    public ValueTask<bool> MoveNextAsync() => ValueTask.FromResult(true);
+    public ValueTask DisposeAsync() => ValueTask.FromException(new Exception("secret-canary"));
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => this;
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+sealed class RedirectLoopback(HttpMessageHandler inner, Uri loopback) : DelegatingHandler(inner) {
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+        request.RequestUri = new Uri(loopback, request.RequestUri!.AbsolutePath);
+        return base.SendAsync(request, cancellationToken);
+    }
+}

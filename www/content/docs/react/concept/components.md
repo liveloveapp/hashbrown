@@ -60,20 +60,7 @@ A partial value is useful feedback. It is still a preview. The workbench enables
 
 ## Start and render the conversation
 
-The checked client passes the catalog, tool, system instruction, and capturing transport to `useUiChat()`:
-
-<hb-code-example header="react/src/Workbench.tsx">
-
-```ts
-  const chat = useUiChat({
-    system: workbenchSystem,
-    components,
-    tools: [readContext],
-    transport,
-  });
-```
-
-</hb-code-example>
+The checked client passes the catalog, `readContext` tool, system instruction, and capturing transport to `useUiChat()`. The [Quickstart](/docs/react/start/quick) shows the smaller tool-free setup; this lesson adds context and explicit acceptance.
 
 Assistant messages expose `message.ui`, which React renders inside the conversation. Keep the complete message history for follow-up turns.
 

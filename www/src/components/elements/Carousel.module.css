@@ -42,8 +42,8 @@
 }
 
 .actions > button {
-  background: rgba(61, 60, 58, 0.24);
-  color: var(--gray-light, #a4a3a1);
+  background: var(--color-rule);
+  color: var(--color-muted);
   width: 24px;
   height: 24px;
   border: 0;
@@ -60,7 +60,7 @@
 }
 
 .actions > button.active {
-  color: var(--gray-dark, #3d3c3a);
+  color: var(--color-ink);
 }
 
 @media screen and (min-width: 768px) {

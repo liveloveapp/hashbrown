@@ -46,11 +46,12 @@ test('renders New conversation first and four expanded sections by default', () 
   expect(firstButton?.getAttribute('aria-label')).toBe('New conversation');
   expect(sections.map((section) => section.dataset.section)).toEqual([
     'conversations',
+    'start',
     'concepts',
     'production',
     'recipes',
   ]);
-  expect(headings).toHaveLength(4);
+  expect(headings).toHaveLength(5);
   expect(
     headings.every(
       (heading) => heading.getAttribute('aria-expanded') === 'true',

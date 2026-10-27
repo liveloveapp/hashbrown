@@ -1,3 +1,7 @@
+import {
+  workbenchBrowserInstructions,
+  workbenchConversationSystem,
+} from '../../runtime/workbench-onboarding';
 import { MagicTextRenderer, useChat, useTool } from '@hashbrownai/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -22,6 +26,9 @@ export function MagicTextWorkbenchConversation({
   readonly active: boolean;
   readonly navigation: WorkbenchNavigation;
 }) {
+  const lesson = getWorkbenchLesson(window.location.search);
+  const plain =
+    lesson.id === 'conversation' || lesson.id === 'system-instructions';
   const { store, snapshot, host, live, commands } = useRecipeWorkbench(
     'text',
     active,
@@ -52,8 +59,13 @@ export function MagicTextWorkbenchConversation({
     deps: [store],
   });
   const chat = useChat({
-    system: workbenchTextSystem,
-    tools: [readContext],
+    system:
+      lesson.id === 'system-instructions'
+        ? workbenchBrowserInstructions
+        : plain
+          ? workbenchConversationSystem
+          : workbenchTextSystem,
+    tools: plain ? [] : [readContext],
     transport,
   });
   const origins = messageOrigins(chat.messages, users);
@@ -146,36 +158,46 @@ export function MagicTextWorkbenchConversation({
                 <article
                   key={message.id}
                   className="wb-summary wb-markdown"
-                  aria-label="Markdown explanation"
+                  aria-label={
+                    plain ? 'Plain text response' : 'Markdown explanation'
+                  }
                 >
-                  <MagicTextRenderer
-                    isComplete={
-                      snapshot.frame?.status !== 'loading' ||
-                      message.id !== messages.at(-1)?.id
-                    }
-                    caret={
-                      snapshot.cursor === null &&
-                      snapshot.status === 'loading' &&
-                      message.id === messages.at(-1)?.id
-                    }
-                    onLinkClick={(event) => event.preventDefault()}
-                    onCitationClick={(event, citation) => {
-                      event.preventDefault();
-                      if (store.getSnapshot().cursor === null && citation.url)
-                        store.inspectCitation(
-                          {
-                            id: citation.id,
-                            number: Number(citation.number),
-                            url: citation.url,
-                          },
-                          message.id,
-                        );
-                    }}
-                  >
-                    {message.recipe?.kind === 'text'
-                      ? message.recipe.markdown
-                      : message.content}
-                  </MagicTextRenderer>
+                  {plain ? (
+                    <p style={{ whiteSpace: 'pre-wrap' }}>
+                      {message.recipe?.kind === 'text'
+                        ? message.recipe.markdown
+                        : message.content}
+                    </p>
+                  ) : (
+                    <MagicTextRenderer
+                      isComplete={
+                        snapshot.frame?.status !== 'loading' ||
+                        message.id !== messages.at(-1)?.id
+                      }
+                      caret={
+                        snapshot.cursor === null &&
+                        snapshot.status === 'loading' &&
+                        message.id === messages.at(-1)?.id
+                      }
+                      onLinkClick={(event) => event.preventDefault()}
+                      onCitationClick={(event, citation) => {
+                        event.preventDefault();
+                        if (store.getSnapshot().cursor === null && citation.url)
+                          store.inspectCitation(
+                            {
+                              id: citation.id,
+                              number: Number(citation.number),
+                              url: citation.url,
+                            },
+                            message.id,
+                          );
+                      }}
+                    >
+                      {message.recipe?.kind === 'text'
+                        ? message.recipe.markdown
+                        : message.content}
+                    </MagicTextRenderer>
+                  )}
                 </article>
               ),
             )}

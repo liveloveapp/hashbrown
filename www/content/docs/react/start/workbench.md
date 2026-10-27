@@ -28,12 +28,15 @@ This is a local development server. It uses the real OpenAI adapter, keeps the m
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens eleven lessons under Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens fourteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
 | Lesson                                                                  | Local URL                                   | Follow                                                                     |
 | ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| [First plan](/docs/react/start/quick) | `/react.html?lesson=first-plan` | One tool-free request and a trusted preview; no application write. |
+| [Messages and turns](/docs/react/concept/ai-basics) | `/react.html?lesson=conversation` | Retained messages, stable thread identity and fresh run identity. |
+| [System instructions](/docs/react/concept/system-instructions) | `/react.html?lesson=system-instructions` | Browser declaration and public effective policy at provider mapping. |
 | [Generative UI](/docs/react/concept/components)                         | `/react.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
 | [Tools](/docs/react/concept/functions)                                  | `/react.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
 | [Structured output](/docs/react/concept/structured-output)              | `/react.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
@@ -49,6 +52,8 @@ The lessons are:
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
 The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+
+The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
 
 ## Follow a Generative UI turn
 

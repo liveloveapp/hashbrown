@@ -1,3 +1,6 @@
+import { PlanCard } from './plan-card';
+import { firstPlanComponents } from './first-plan-app';
+import { workbenchFirstPlanSystem } from '../../../runtime/workbench-onboarding';
 import { MagicTextWorkbenchConversation } from './magic-text-workbench';
 import { PredictionsWorkbenchConversation } from './predictions-workbench';
 import { SelectionWorkbenchConversation } from './selection-workbench';
@@ -52,26 +55,35 @@ export class WorkbenchSession {
   readonly snapshot = signal(this.store.getSnapshot());
   readonly users = signal<Readonly<Record<string, ProposalOrigin>>>({});
   readonly chat = uiChatResource({
-    system: workbenchSystem,
-    components,
+    system:
+      getWorkbenchLesson(window.location.search).id === 'first-plan'
+        ? workbenchFirstPlanSystem
+        : workbenchSystem,
+    components:
+      getWorkbenchLesson(window.location.search).id === 'first-plan'
+        ? firstPlanComponents
+        : components,
     transport: createWorkbenchTransport(
       this.store,
       undefined,
       getWorkbenchLesson(window.location.search).endpoint,
       { getDebugDenied: () => this.debugDenied() },
     ),
-    tools: [
-      createTool({
-        name: 'readContext',
-        description:
-          'Read the accepted application plan and revision without changing state.',
-        handler: async () => {
-          const result = this.store.getSnapshot().application;
-          this.store.record('tool', { name: 'readContext', result });
-          return result;
-        },
-      }),
-    ],
+    tools:
+      getWorkbenchLesson(window.location.search).id === 'first-plan'
+        ? []
+        : [
+            createTool({
+              name: 'readContext',
+              description:
+                'Read the accepted application plan and revision without changing state.',
+              handler: async () => {
+                const result = this.store.getSnapshot().application;
+                this.store.record('tool', { name: 'readContext', result });
+                return result;
+              },
+            }),
+          ],
   });
   private readonly history = signal<ReturnType<typeof this.chat.value>>([]);
   readonly messages = computed(() =>
@@ -188,14 +200,8 @@ export class WorkbenchAnswer {
 @Component({
   selector: 'app-workbench-summary',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<article class="wb-summary" aria-label="Summary card">
-    <span class="wb-muted">SummaryCard · trusted component</span>
-    <h2>{{ title() || 'Building your plan…' }}</h2>
-    <ol>
-      @for (step of steps(); track $index) {
-        <li>{{ step }}</li>
-      }
-    </ol>
+  imports: [PlanCard],
+  template: `<app-plan-card [title]="title()" [steps]="steps()">
     <button
       type="button"
       class="wb-primary"
@@ -213,7 +219,7 @@ export class WorkbenchAnswer {
             : 'Preview · unavailable for this run.'
       }}
     </p>
-  </article>`,
+  </app-plan-card>`,
 })
 export class SummaryCard {
   readonly title = input.required<string>();

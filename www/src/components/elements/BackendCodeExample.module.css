@@ -3,8 +3,8 @@
 .example {
   display: flex;
   flex-direction: column;
-  background: #2b2622;
-  border: 8px solid var(--gray-light, #a4a3a1);
+  background: var(--color-code-frame);
+  border: 0;
   border-radius: var(--radius-shot);
   overflow: hidden;
   margin: 16px 0;
@@ -31,7 +31,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: #a4a3a1;
+  color: var(--color-code-muted);
   font:
     400 13px/18px var(--font-code);
   cursor: pointer;
@@ -39,7 +39,7 @@
 }
 
 .tab:hover {
-  color: #e3e3e3;
+  color: var(--color-code-fg);
 }
 
 .tab[aria-pressed='true'] {
@@ -69,7 +69,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #e3e3e3;
+  color: var(--color-code-fg);
   background: none;
   border: 0;
   cursor: pointer;

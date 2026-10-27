@@ -6,6 +6,7 @@ import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
 import { DocsDemoVideo } from './elements/DocsDemoVideo';
 import { MagicTextDemo } from './elements/MagicTextDemo';
+import { ScrollTable } from './elements/ScrollTable';
 import { Expander } from './Expander';
 import {
   BoltIcon,
@@ -39,6 +40,7 @@ export function docsComponents(
     <SymbolLink reference={reference} popover={popovers.get(reference)} />
   );
   return {
+    table: ScrollTable,
     'hb-code-example': CodeExample,
     'hb-backend-code-example': BackendCodeExample,
     'hb-carousel': Carousel,

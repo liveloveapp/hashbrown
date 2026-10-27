@@ -2,25 +2,23 @@
 title: 'Messages and turns: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Understand messages, assistant turns, and conversations with context.'
+    content: 'Follow messages, turns, and request identities in the same plan conversation.'
 ---
 
 # Messages and turns
 
-A conversation is an ordered set of messages. We send a user message, the assistant responds, and the next request can include those earlier turns.
+Let's give our two-step plan a name, then ask the assistant to use it in a follow-up. The second request keeps the earlier exchange in the same conversation.
 
-Let's try a small example. Tell the assistant your name, then ask it to use that name in its next reply.
-
-<hb-docs-demo demo="conversation">
+<hb-docs-demo demo="canonical-workbench-conversation-angular">
 </hb-docs-demo>
 
-## Before we start
-
-Use the endpoint and provideHashbrown() configuration from the [Quickstart](/docs/angular/start/quick). This page switches to text chat so we can focus on the conversation itself.
+This lesson uses text chat. There are no tools or generated components, so we can focus on the messages themselves.
 
 ## Create a conversation
 
-<hb-code-example header="src/app/conversation.ts">
+Use the endpoint and provider from the [Quickstart](/docs/angular/start/quick). Create `src/app/conversation-basics.ts`:
+
+<hb-code-example header="src/app/conversation-basics.ts">
 
 ```ts
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
@@ -28,7 +26,7 @@ import { chatResource } from '@hashbrownai/angular';
 
 /** A text conversation that keeps earlier turns in the current chat instance. */
 @Component({
-  selector: 'app-conversation',
+  selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main>
@@ -68,13 +66,13 @@ import { chatResource } from '@hashbrownai/angular';
     </main>
   `,
 })
-export class Conversation {
+export class ConversationBasics {
   protected readonly prompt = signal(
-    'My name is Sam. Say hello in one sentence.',
+    'Call my two-step demo plan Lighthouse. What should I do first?',
   );
   protected readonly chat = chatResource({
     system:
-      'You are a friendly onboarding assistant. Keep each reply to one sentence.',
+      'Help discuss a small two-step plan. Remember the plan name in this conversation. Keep replies concise.',
     debugName: 'onboarding',
   });
 
@@ -85,56 +83,43 @@ export class Conversation {
   protected send(): void {
     if (!this.prompt().trim() || this.chat.isLoading()) return;
     this.chat.sendMessage({ role: 'user', content: this.prompt() });
-    this.prompt.set('');
+    this.prompt.set('What did I name my plan, and what comes next?');
   }
 }
 ```
 
 </hb-code-example>
 
-To try this as the root view, import `Conversation` in `src/main.ts`, pass it to `bootstrapApplication(Conversation, appConfig)`, and use `<app-conversation></app-conversation>` in `src/index.html`.
+In the frontend entry, import `ConversationBasics` and pass it to `bootstrapApplication()` in place of `FirstPlanApp`. Keep the same `appConfig` and `<app-root>` host.
 
-Send the first message, then enter **What is my name?** and send again. The second request includes the earlier exchange, so the model can use that context. Your model's wording may vary.
+Send the first message, then ask **What did I name my plan, and what comes next?** The second reply should refer to Lighthouse. The wording can vary; the earlier user message is the context for that name.
 
-## What is a message?
+## Inspect the two requests
 
-A user message has a `role` and `content`:
+Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/angular.html?lesson=conversation`. Send **First prompt**, then **Follow-up**. Select **Requests** and compare the envelopes:
 
-```ts
-{ role: 'user', content: 'My name is Sam. Say hello in one sentence.' }
-```
-
-Hashbrown adds it to the current chat and starts a request. As the response arrives, the assistant's message becomes available in `chat.value()`.
-
-| Role in Hashbrown | What it represents |
+| Value | What to look for |
 | --- | --- |
-| `user` | A request from the user or your application |
-| `assistant` | Generated content, tool calls, or both |
-| `error` | A failure represented in the conversation |
-| `activity` | A progress or status update from an agent |
+| `messages` | The follow-up includes the earlier user message and assistant reply. |
+| `threadId` | The conversation keeps the same thread identity. |
+| `runId` | The next run has a fresh identity. |
 
-The `system` option supplies guidance for the assistant. It is configuration for the conversation, rather than another user message. See [System instructions](/docs/angular/concept/system-instructions).
+Use the bottom timeline to revisit either turn. The chat, selected request, text, and captured state move together. Replay makes no new request.
 
-<img src="/video/docs/conversation-result.png" alt="Two user messages and two assistant replies, with the second reply using the name supplied in the first turn." width="920" height="437" loading="lazy" />
+<img src="/video/docs/canonical-workbench-conversation-angular-result.png" alt="The Angular conversation workbench retains the Lighthouse plan discussion while the inspector shows the follow-up request." width="1600" height="1000" loading="lazy" />
 
-## What happens during a turn?
+## A message, a turn, and a request
 
-A user message can lead directly to an answer. It can also lead to tool calls, tool results, and another model request before the answer is ready.
+A **message** is one item in the conversation, with a role and content. A user message starts the work we ask the assistant to do. The assistant's streamed reply becomes another message.
 
-```text
-User message → assistant calls a tool → tool result → assistant response
-```
+A **turn** can involve more than one model request. This lesson has no tools, so each of its two user turns needs one provider request. With [tools](/docs/angular/concept/functions), the assistant may request a handler, receive its result, and make another provider request before finishing that turn.
 
-Hashbrown manages that exchange. Use `isLoading` when your interface should remain busy through the whole operation, including tool calls. If your feature needs to show tool progress or a paused operation, continue with [Tool calling](/docs/angular/concept/functions), [Activities](/docs/angular/concept/activities), and [Interrupt and resume](/docs/angular/concept/interrupt-and-resume).
+The `system` option supplies feature guidance. It is not another user message. We'll inspect that distinction in [System instructions](/docs/angular/concept/system-instructions).
 
-## Chat or completion?
+## Start another conversation
 
-Use `chatResource()` for a text conversation that retains earlier messages in the current instance. Use `completionResource()` for a response driven by the current input, such as rewriting a sentence.
+Choose **New conversation** in the workbench. It starts with no messages and makes no request until you send one. The earlier conversation remains independently selectable in the sidebar.
 
-If the response should contain your components, use `uiChatResource()` instead. See [Choosing an API](/docs/angular/start/overview) for the complete comparison.
+The current chat instance retains its messages while it lives. A page refresh does not automatically load them again. A `threadId` identifies a conversation; it is not a database or a persistence strategy.
 
-## Keeping the conversation
-
-The current chat instance keeps its messages while it lives. A page refresh or a newly created instance does not automatically restore them.
-
-Continue with [Message history](/docs/angular/concept/message-history) to save and restore a conversation. If a request fails, use [Debugging](/docs/angular/concept/debugging) to inspect the endpoint and runtime state.
+Continue with [Message history](/docs/angular/concept/message-history) when you need to save and restore messages. That is separate from the workbench's read-only inspection timeline.
