@@ -144,22 +144,34 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       fetch(`${fixture.url}/__test/live-stats`, {
         signal: AbortSignal.timeout(1500),
       })
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) throw new Error('LIVE_STATS_FAILED');
+          return response.json();
+        })
         .catch(() => ({})),
       fetch(`${fixture.url}/__test/counters`, {
         signal: AbortSignal.timeout(1500),
       })
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) throw new Error('LIVE_STATS_FAILED');
+          return response.json();
+        })
         .catch(() => ({})),
     ]);
     diagnostic({ ...stats, ...context });
-    for (const fact of Array.isArray(stats.wire) ? stats.wire : [])
-      if (fact && typeof fact === 'object') diagnostic({ ...fact, ...context });
+    for (const [index, fact] of (Array.isArray(stats.wire)
+      ? stats.wire
+      : []
+    ).entries())
+      if (fact && typeof fact === 'object')
+        diagnostic({ ...fact, wireIndex: index + 1, ...context });
     diagnostic({
       ...context,
       effects: counters.protected,
       serverEffects: counters.server,
       nativeEffects: counters.durableNative,
+      nativeProtectedEffects: counters.durableNativeProtected,
+      durableProtectedEffects: counters.durableProtected,
     });
     const valid =
       promoteEvidence &&
@@ -579,6 +591,22 @@ async function executeQualification(
     );
     if (result.code !== 0) throw new Error('LIVE_QUALIFICATION_INCOMPLETE');
     coordinator.assertComplete();
+    // Revalidate the same immutable installation after provider/browser execution, without installing or overwriting metadata.
+    const after = await prepareArtifacts(
+      metadata.metadataPath,
+      environment,
+      controller.signal,
+    );
+    if (
+      after.metadataPath !== metadata.metadataPath ||
+      after.artifacts.react !== metadata.artifacts.react ||
+      after.artifacts.angular !== metadata.artifacts.angular
+    )
+      throw new Error('LIVE_CONSUMER_CHANGED');
+    await copyFile(
+      metadata.metadataPath,
+      join(output, 'consumer-provenance-after.json'),
+    );
     exitCode = 0;
   } catch {
     exitCode = 1;
@@ -631,6 +659,7 @@ export async function executeLiveRunner(
     };
   if (environment['HASHBROWN_LIVE_OPT_IN'] !== '1')
     throw new Error('LIVE_OPT_IN_REQUIRED');
+  if (!parsed.consumerMetadata) throw new Error('LIVE_CONSUMER_REQUIRED');
   const configuration = await (
     dependencies.loadConfiguration ?? loadLiveConfiguration
   )({

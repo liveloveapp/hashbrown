@@ -52,9 +52,20 @@ internal sealed class NativeMafSessionStore(IHttpContextAccessor accessor) : Age
             context.Http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("NativeSessionSave").LogWarning("Native projection unavailable before save; terminal type {TerminalType}, outcome {TerminalOutcome}.", projected.TerminalType, projected.TerminalOutcome);
             throw new NativeSessionRequestException(503);
         }
+        NativeApprovalSnapshot approvals = NativeApprovalSnapshot.Empty;
+        if (context.CapturedApprovalBatch is { } batch)
+        {
+            var locations = new Dictionary<string, NativePublicCallLocation>(StringComparer.Ordinal);
+            foreach (var member in batch.ProtectedRequests.Select(item => (item.RequestId, CallId: item.Call.Id)).Concat(batch.BrowserBindings.Select(item => (item.RequestId, item.CallId))))
+            {
+                var location = projection.PublicLocation(member.CallId) ?? throw new NativeSessionRequestException(503);
+                locations.Add(member.RequestId, new(location.Parent, location.MessageIndex, location.CallIndex));
+            }
+            approvals = new(new NativeBoundApprovalBatch(batch, locations));
+        }
         var json = await agent.SerializeSessionAsync(session, cancellationToken: context.Cancellation);
         context.Receipt = await context.Registration.Journal.SaveAsync(context.Lease,
-            new NativeSessionSave(json.GetRawText(), projected.PublicRequestJson, context.PendingCalls(), projected.ExpectedBrowserCallIds, projected.TurnCompleted), context.Cancellation)
+            new NativeSessionSave(json.GetRawText(), projected.PublicRequestJson, context.PendingCalls(), projected.ExpectedBrowserCallIds, projected.TurnCompleted, approvals), context.Cancellation)
             ?? throw new NativeSessionRequestException(409);
     }
     /// <inheritdoc />

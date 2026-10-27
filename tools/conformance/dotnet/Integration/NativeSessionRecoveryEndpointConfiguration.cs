@@ -8,7 +8,8 @@ namespace Hashbrown.Conformance.Integration;
 
 /// <summary>Versioned read-only native disposition containing a snapshot only when safe to restore.</summary>
 public sealed record NativeSessionRecovery(int SchemaVersion, string Disposition, long ServerRevision,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ConversationSnapshot? Snapshot = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ConversationSnapshot? Snapshot = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Reason = null);
 
 /// <summary>Authenticated native recovery and separately scoped terminal operator routes; neither executes tools.</summary>
 public static class NativeSessionRecoveryEndpointConfiguration
@@ -40,6 +41,7 @@ public static class NativeSessionRecoveryEndpointConfiguration
                     "Owned" or "Saved" or "Publishing" => "Busy",
                     "PublicationUnknown" or "Blocked" => "UnknownEffect",
                     "Ready" when status.IsNew => "FailedBeforeEffect",
+                    "Ready" when status.PendingInterrupts is { Count: > 0 } || status.RecoveryReason == "PendingMixedBrowserResult" => "Pending",
                     "Ready" when status.TurnCompleted => "Completed",
                     "Ready" => "NativePendingBrowserResults",
                     "Expired" => "Expired",
@@ -52,13 +54,13 @@ public static class NativeSessionRecoveryEndpointConfiguration
                     var supplied = JsonSerializer.SerializeToElement(new RunAgentInput { ThreadId = "", RunId = "", Tools = configuration.Tools?.ToList(), ForwardedProperties = configuration.ForwardedProps }, AGUIJsonSerializerContext.Default.RunAgentInput);
                     var system = input.Messages.FirstOrDefault() as AGUISystemMessage;
                     if (!JsonNode.DeepEquals(JsonNode.Parse(expected.GetRawText()), JsonNode.Parse(supplied.GetRawText())) || system?.Content != configuration.System) return Results.Conflict();
-                    if (disposition == "Completed")
+                    if (disposition == "Completed" || disposition == "Pending" && status.RecoveryReason is null)
                     {
                         var serialized = JsonSerializer.SerializeToElement(input, AGUIJsonSerializerContext.Default.RunAgentInput);
-                        snapshot = new(input.ThreadId, serialized.GetProperty("messages").Clone(), input.State?.Clone(), ConfiguredSystemMessageId: system?.Id);
+                        snapshot = new(input.ThreadId, serialized.GetProperty("messages").Clone(), input.State?.Clone(), Interrupts: status.PendingInterrupts, ConfiguredSystemMessageId: system?.Id);
                     }
                 }
-                return Results.Json(new NativeSessionRecovery(1, disposition, status.Revision, snapshot));
+                return Results.Json(new NativeSessionRecovery(1, disposition, status.Revision, snapshot, status.RecoveryReason));
             }
             catch (Exception exception) when (exception is ArgumentException or JsonException) { return Results.BadRequest(); }
             catch (Exception exception) when (exception is DbException or TimeoutException) { return Results.StatusCode(503); }

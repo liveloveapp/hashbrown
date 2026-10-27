@@ -26,7 +26,7 @@ test('list is independent of opt-in, credentials and child construction', async 
   expect(result).toEqual({
     exitCode: 0,
     projects: LIVE_PROJECTS.map((entry) => entry.name),
-    cases: 48,
+    cases: 54,
   });
   expect(load).not.toHaveBeenCalled();
   expect(start).not.toHaveBeenCalled();
@@ -144,23 +144,60 @@ test('actual Playwright forced failure discards assertion, DOM, cause and split 
   const { readdir, readFile } = await import('node:fs/promises');
   const { resolve } = await import('node:path');
   const directory = await mkdtemp(join(tmpdir(), 'hashbrown-pw-canary-'));
-  const canary = 'CANARY_PRIVATE_NATIVE_472936';
+  const canary = 'V9Qa72LmX4fP8nC6sR3tK5yB0wH1zD7u';
+  const { liveSensitiveFragments, excludesLiveSensitiveFragments } =
+    await import('./fixtures/live-sensitive-fragments');
+  const fragments = liveSensitiveFragments(canary);
   const witness = join(directory, 'body-executed.txt');
   const guard = resolve(
     'tools/conformance/dotnet/harness/live-browser-fixture.ts',
   );
   const reporter = resolve('tools/conformance/dotnet/harness/live-reporter.ts');
+  const nativeProof = resolve(
+    'tools/conformance/dotnet/harness/live-native-approval.ts',
+  );
+  const diagnosticsPath = resolve(
+    'tools/conformance/dotnet/harness/live-diagnostics.ts',
+  );
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
+  const { createLiveDiagnostics } = await import('../harness/live-diagnostics');
+  const { createServer } = await import('node:http');
+  const { appendFileSync } = await import('node:fs');
+  const proof = nativeApprovalUnitEvidence().proof;
+  const safeProof = join(directory, 'safe-proof.jsonl');
+  const safeOutcomes = join(directory, 'safe-outcomes.jsonl');
+  const sink = createLiveDiagnostics({
+    write: (line) => appendFileSync(safeOutcomes, line),
+  });
+  const sinkServer = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    const record = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    sink.record(record);
+    response.writeHead(204).end();
+  });
+  await new Promise<void>((done) => sinkServer.listen(0, '127.0.0.1', done));
+  const sinkOrigin = `http://127.0.0.1:${(sinkServer.address() as import('node:net').AddressInfo).port}`;
   const playwright = require.resolve('@playwright/test');
   const source = `import { test, expect } from ${JSON.stringify(playwright)};
 import { withSafeLiveCase } from ${JSON.stringify(guard)};
+import { parseLiveNativeApprovalProof } from ${JSON.stringify(nativeProof)};
 import { spawnSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
-test('canary', async ({page}, info) => {
+import { writeFileSync, appendFileSync } from 'node:fs';
+import { createLiveDiagnostics } from ${JSON.stringify(diagnosticsPath)};
+test('native-approval', async ({page}, info) => {
  await withSafeLiveCase(async () => {
   const secret=process.env.CANARY_VALUE;
+  const proof={...${JSON.stringify(proof)},project:'react-openai-key',group:'native-approval',rawRequestId:secret,rawCallId:secret,batch:secret,nativeBytes:secret,connectionString:secret};
+  createLiveDiagnostics({write:line=>appendFileSync(${JSON.stringify(safeProof)},line)}).record(proof);
+  try { parseLiveNativeApprovalProof(proof); } catch(error) { console.error(secret.slice(0,Math.floor(secret.length/2)));console.error(secret.slice(Math.floor(secret.length/2))); }
+  console.error(secret.slice(0,Math.floor(secret.length/2)));console.error(secret.slice(Math.floor(secret.length/2)));
+  console.log(JSON.stringify(proof));
   await page.setContent('<main>'+secret+'</main>');
   const child=spawnSync(process.execPath,['-e','process.stdout.write(process.env.CANARY_VALUE)'],{encoding:'utf8'});
-  const output=child.stdout;console.log(output.slice(0,8));console.log(output.slice(8));
+  const output=child.stdout;console.log(output.slice(0,Math.floor(output.length/2)));console.log(output.slice(Math.floor(output.length/2)));
+  info.annotations.push({type:'live-phase',description:'native-pending'});
   writeFileSync(${JSON.stringify(witness)},'canary-body-reached-forced-assertion');
   try { expect(secret).toBe('public'); } catch (error) { throw new Error(secret,{cause:error}); }
  }, annotation=>info.annotations.push(annotation));
@@ -168,7 +205,7 @@ test('canary', async ({page}, info) => {
   await writeFile(join(directory, 'canary.spec.ts'), source);
   await writeFile(
     join(directory, 'playwright.config.ts'),
-    `export default {testDir:${JSON.stringify(directory)},testMatch:'canary.spec.ts',workers:1,retries:0,outputDir:${JSON.stringify(join(directory, 'outputs'))},reporter:[[${JSON.stringify(reporter)}]],use:{trace:'off',screenshot:'off',video:'off',launchOptions:{env:${JSON.stringify(publicChildEnvironment(process.env))}}}}`,
+    `export default {testDir:${JSON.stringify(directory)},testMatch:'canary.spec.ts',workers:1,retries:0,projects:[{name:'react-openai-key'}],outputDir:${JSON.stringify(join(directory, 'outputs'))},reporter:[[${JSON.stringify(reporter)}]],use:{trace:'off',screenshot:'off',video:'off',launchOptions:{env:${JSON.stringify(publicChildEnvironment(process.env))}}}}`,
   );
 
   try {
@@ -185,6 +222,8 @@ test('canary', async ({page}, info) => {
         env: {
           ...publicChildEnvironment(process.env),
           CANARY_VALUE: canary,
+          HASHBROWN_LIVE_COORDINATOR: sinkOrigin,
+          HASHBROWN_LIVE_CAPABILITY: 'c'.repeat(64),
           PLAYWRIGHT_NO_COPY_PROMPT: '1',
         },
         timeout: 30_000,
@@ -215,11 +254,33 @@ test('canary', async ({page}, info) => {
     );
     expect(result.code).toBe(1);
     expect(result.stdout).toContain('failed');
-    expect(result.stdout + result.stderr + outputs.join('\n')).not.toContain(
-      canary,
-    );
+    expect(
+      excludesLiveSensitiveFragments(
+        [result.stdout, result.stderr, ...outputs],
+        fragments,
+      ),
+    ).toBe(true);
     expect(outputs.join('\n')).not.toContain('error-context.md');
+    const { parseLiveNativeApprovalProof } =
+      await import('../harness/live-native-approval');
+    expect(
+      parseLiveNativeApprovalProof(
+        JSON.parse((await readFile(safeProof, 'utf8')).trim()),
+      ),
+    ).toEqual(proof);
+    expect(
+      JSON.parse((await readFile(safeOutcomes, 'utf8')).trim()),
+    ).toMatchObject({
+      project: 'react-openai-key',
+      group: 'native-approval',
+      outcome: 'failed',
+      failureCode: 'LIVE_ASSERTION_FAILED',
+      failurePhase: 'native-pending',
+    });
+    expect(() => sink.assertHealthy()).not.toThrow();
   } finally {
+    sinkServer.closeAllConnections();
+    await new Promise<void>((done) => sinkServer.close(() => done()));
     await rm(directory, { recursive: true, force: true });
   }
 }, 40_000);
@@ -503,6 +564,8 @@ test('qualification integrity requires actual unique passed cases, valid native 
       status: 200,
     })),
   };
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
   const ledger = createLiveQualificationLedger();
 
   expect(() => ledger.assertComplete()).toThrow(
@@ -518,6 +581,7 @@ test('qualification integrity requires actual unique passed cases, valid native 
       ].includes(group.name)
         ? 2
         : 1;
+      const unitNative = nativeApprovalUnitEvidence();
       const evidence = {
         ...stats,
         nativeCoEmission: group.name === 'mixed-native-tools',
@@ -534,14 +598,34 @@ test('qualification integrity requires actual unique passed cases, valid native 
         })),
       };
       expect(
-        ledger.recordFixture(project.name, group.name, evidence, {
-          server: ['server-tool', 'mixed-native-tools'].includes(group.name)
-            ? 1
-            : 0,
-          durableNative: group.name === 'mixed-native-tools' ? 1 : 0,
-          nativeCode: group.name === 'mixed-native-tools' ? 'PDX' : null,
-          protected: group.name === 'approval-resume-decline' ? 1 : 0,
-        }),
+        ledger.recordFixture(
+          project.name,
+          group.name,
+          group.name === 'native-approval'
+            ? {
+                ...unitNative.stats,
+                wire: unitNative.stats.wire.map((fact) => ({
+                  ...fact,
+                  path:
+                    project.provider === 'openai'
+                      ? '/v1/responses'
+                      : '/openai/v1/responses',
+                })),
+              }
+            : evidence,
+          group.name === 'native-approval'
+            ? unitNative.counters
+            : {
+                server: ['server-tool', 'mixed-native-tools'].includes(
+                  group.name,
+                )
+                  ? 1
+                  : 0,
+                durableNative: group.name === 'mixed-native-tools' ? 1 : 0,
+                nativeCode: group.name === 'mixed-native-tools' ? 'PDX' : null,
+                protected: group.name === 'approval-resume-decline' ? 1 : 0,
+              },
+        ),
       ).toBe(true);
       expect(
         ledger.recordOutcome({
@@ -579,9 +663,9 @@ test('qualification integrity requires actual unique passed cases, valid native 
 
   expect(() => ledger.assertComplete()).not.toThrow();
   expect(ledger.snapshot()).toMatchObject({
-    actualPassedCases: 48,
+    actualPassedCases: 54,
     successfulPreflights: 3,
-    completedFixtures: 48,
+    completedFixtures: 54,
     invalid: false,
   });
 });
@@ -958,4 +1042,121 @@ test('native fixture context copies PostgreSQL only to its owned native child', 
       'unowned',
     ),
   ).toThrow('LIVE_SCHEMA_INVALID');
+});
+
+test('coordinator preserves native proof through its sink and rejects non-OK shaped stats before promotion', async () => {
+  const { createServer } = await import('node:http');
+  const { createLiveDiagnostics } = await import('../harness/live-diagnostics');
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
+  const unit = nativeApprovalUnitEvidence();
+  let status = 200;
+  const server = createServer((request, response) => {
+    response.writeHead(status, { 'Content-Type': 'application/json' });
+    response.end(
+      JSON.stringify(
+        request.url === '/__test/live-stats'
+          ? { ...unit.stats, requestId: 'PRIVATE_CANARY' }
+          : unit.counters,
+      ),
+    );
+  });
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  const url = `http://127.0.0.1:${(server.address() as import('node:net').AddressInfo).port}`;
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+  const coordinator = await createLiveCoordinator({
+    configuration: {
+      projects: LIVE_PROJECTS,
+      model: 'gpt-4.1-mini',
+      providerEnvironment: () => ({}),
+    },
+    environment: { DOTNET_TEST_POSTGRES: 'unit-only-not-read' },
+    origins: [],
+    startFixture: async () => ({ url, stop: async () => undefined }),
+    diagnostic: diagnostics.record,
+  });
+  const headers = { 'X-Live-Capability': coordinator.capability };
+  try {
+    for (const project of ['react-openai-key', 'angular-openai-key']) {
+      const started = await fetch(`${coordinator.url}/fixture`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ project, group: 'native-approval' }),
+      });
+      expect(started.ok).toBe(true);
+      const fixture = (await started.json()) as { id: string };
+      await fetch(`${coordinator.url}/fixture/${fixture.id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      status = 503;
+    }
+
+    expect(coordinator.snapshot()).toMatchObject({
+      completedFixtures: 1,
+      invalid: true,
+    });
+    const records = lines.map((line) => JSON.parse(line));
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          project: 'react-openai-key',
+          nativeApprovalStage: 'followup',
+          nativeApprovalJournalMatched: true,
+          usageCompleteCalls: 3,
+        }),
+        expect.objectContaining({
+          nativeProtectedEffects: 1,
+          durableProtectedEffects: 0,
+        }),
+      ]),
+    );
+    expect(lines.join('')).not.toContain('PRIVATE_CANARY');
+  } finally {
+    await coordinator.stop();
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  }
+});
+
+test('expanded live execution requires final consumer metadata before reading provider configuration', async () => {
+  const load = jest.fn();
+
+  const result = executeLiveRunner(
+    ['--credentials', '/must-not-read'],
+    { HASHBROWN_LIVE_OPT_IN: '1' },
+    { loadConfiguration: load },
+  );
+
+  await expect(result).rejects.toThrow('LIVE_CONSUMER_REQUIRED');
+  expect(load).not.toHaveBeenCalled();
+});
+
+test('full artifact scanner rejects separately persisted newline-separated sensitive halves', async () => {
+  const { liveSensitiveFragments, excludesLiveSensitiveFragments } =
+    await import('./fixtures/live-sensitive-fragments');
+  const fragments = liveSensitiveFragments(
+    'UniqueLeftSecret2937UniqueRightSecret8471',
+  );
+  const leaked = `${fragments[1]}\n${fragments[2]}`;
+
+  const accepted = excludesLiveSensitiveFragments(
+    ['safe artifact', leaked],
+    fragments,
+  );
+
+  expect(leaked).not.toContain(fragments[0]);
+  expect(accepted).toBe(false);
+  expect(
+    excludesLiveSensitiveFragments([fragments[1], fragments[2]], fragments),
+  ).toBe(false);
+  expect(
+    excludesLiveSensitiveFragments(
+      ['safe stdout', 'safe stderr', 'safe artifact'],
+      fragments,
+    ),
+  ).toBe(true);
 });

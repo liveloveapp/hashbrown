@@ -8,7 +8,9 @@
     "harness/**/*.ts",
     "specs/**/*.ts",
     "live.playwright.config.ts",
-    "live-specs/**/*.ts"
+    "live-specs/**/*.ts",
+    "local-native-approval.playwright.config.ts",
+    "local-specs/**/*.ts"
   ],
   "exclude": ["tests/**/*.ts"]
 }

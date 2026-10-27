@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
+import { LIVE_ASSERTION_TIMEOUT_MS } from './harness/live-wait-policy';
 import {
   LIVE_PROJECTS,
   publicChildEnvironment,
@@ -14,7 +15,7 @@ export default defineConfig({
   repeatEach: 1,
   timeout: 60_000,
   globalTimeout: 900_000,
-  expect: { timeout: 10_000 },
+  expect: { timeout: LIVE_ASSERTION_TIMEOUT_MS },
   outputDir:
     process.env['HASHBROWN_LIVE_OUTPUT'] ??
     resolve(__dirname, '../../../test-results/conformance/dotnet-live'),

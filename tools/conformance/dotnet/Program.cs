@@ -1,3 +1,5 @@
+#pragma warning disable MAAI001 // Fixture forwards pinned native keyed-store/partition APIs without replacing authority.
+using Microsoft.Agents.AI;
 using Hashbrown.Conformance.Integration;
 using Microsoft.Extensions.AI;
 using Hashbrown.Conformance.Testing;
@@ -15,27 +17,39 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("recovery", policy => policy.RequireAuthenticatedUser());
     options.AddPolicy("checkpoint-operator", policy => policy.RequireAuthenticatedUser().RequireRole("checkpoint-operator"));
 });
+var nativeApprovals = builder.Configuration["FixtureNativeApprovals"] == "true";
 var nativeEnabled = builder.Configuration["FixtureNativeSessions"] == "true";
 var connectionString = builder.Configuration["InterruptConnectionString"];
 await using var source = connectionString is null ? null : NpgsqlDataSource.Create(connectionString);
 var schema = builder.Configuration["InterruptSchema"] ?? "hashbrown";
 var nativeGate = new FixtureNativeGate(builder.Configuration["NativeGate"] ?? "");
-var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema, nativeGate);
+IHttpContextAccessor? nativeAccessor = null;
+var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema, nativeGate, () => nativeAccessor?.HttpContext);
 var nativeName = builder.Configuration["NativeAgentName"] ?? "HashbrownNative";
-var nativeFunction = AIFunctionFactory.Create(tools.LookupNativeAirport, "lookupAirport");
-var nativeCatalog = new NativeToolCatalog([new("lookupAirport", int.Parse(builder.Configuration["RegistryVersion"] ?? "1"), nativeFunction.JsonSchema)]);
-var nativeOptions = new NativeSessionOptions { Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
+AIFunction nativeFunction = AIFunctionFactory.Create(nativeApprovals ? tools.LookupProtectedNativeAirport : tools.LookupNativeAirport, "lookupAirport");
+if (nativeApprovals) nativeFunction = new ApprovalRequiredAIFunction(nativeFunction);
+if (nativeApprovals && !nativeEnabled) throw new InvalidOperationException("Protected native fixture requires native sessions.");
+var nativeCatalog = new NativeToolCatalog([new("lookupAirport", int.Parse(builder.Configuration["RegistryVersion"] ?? "1"), nativeFunction.JsonSchema, RequiresConfirmation: nativeApprovals)]);
+var nativeOptions = new NativeSessionOptions { PayloadCapacity = int.Parse(builder.Configuration["NativePayloadCapacity"] ?? "128"), SelectorCapacity = int.Parse(builder.Configuration["NativeSelectorCapacity"] ?? "4096"), MaximumCalls = int.Parse(builder.Configuration["NativeMaximumCalls"] ?? "256"), Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
+var liveApproval = builder.Configuration["FixtureLive"] == "true" && builder.Configuration["FixtureLiveGroup"] == "native-approval" ? new FixtureLiveApprovalProof(nativeCatalog.Identity) : null;
 INativeSessionJournal? nativeJournal = null;
 if (nativeEnabled)
 {
     if (source is null || !string.IsNullOrEmpty(builder.Configuration["Workflow"])) throw new InvalidOperationException("Native fixture requires PostgreSQL and an empty workflow.");
     nativeJournal = new FixtureNativeJournal(new PostgresNativeSessionJournal(source, nativeCatalog,
-        ServerConfigurationIdentity.Create(builder.Configuration), schema, nativeOptions), nativeGate, builder.Configuration["NativeFailSave"] == "true");
+        ServerConfigurationIdentity.Create(builder.Configuration), schema, nativeOptions), nativeGate, builder.Configuration["NativeFailSave"] == "true", liveApproval);
     await nativeJournal.InitializeAsync();
     await using var nativeEffects = source.CreateCommand($"CREATE TABLE IF NOT EXISTS \"{schema}\".fixture_native_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,code text NOT NULL)");
     await nativeEffects.ExecuteNonQueryAsync();
+    await using var approvalEffects = source.CreateCommand($"CREATE TABLE IF NOT EXISTS \"{schema}\".fixture_native_approval_effects(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,session_id text NOT NULL,call_id text NOT NULL,request_id text NOT NULL,batch_id text NOT NULL,admitted_generation bigint NOT NULL,admitted_revision bigint NOT NULL,code text NOT NULL)");
+    await approvalEffects.ExecuteNonQueryAsync();
     NativeSessionEndpointConfiguration.Configure(builder.Services, nativeName, nativeJournal, nativeCatalog,
         context => context.User.FindFirst("scope")?.Value, nativeOptions);
+}
+if (nativeEnabled && (builder.Configuration["NativeTenant"] is not null || builder.Configuration["NativeRegion"] is not null))
+{
+    var descriptor = builder.Services.Last(item => item.IsKeyedService && item.ServiceType == typeof(AgentSessionStore) && Equals(item.ServiceKey, nativeName));
+    builder.Services.AddKeyedSingleton<AgentSessionStore>(nativeName, (services, key) => new FixtureNativePartitionStore((AgentSessionStore)descriptor.KeyedImplementationFactory!(services, key), builder.Configuration["NativeTenant"], builder.Configuration["NativeRegion"]));
 }
 var app = builder.Build();
 app.UseCors();
@@ -128,9 +142,10 @@ if (source is not null)
     });
 }
 var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+nativeAccessor = accessor;
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
 using var liveState = builder.Configuration["FixtureLive"] == "true"
-    ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "") : null;
+    ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "", approval: liveApproval) : null;
 using var liveHttp = liveState is null ? null : new HttpClient(new FixtureLiveHttpHandler(liveState,
     builder.Configuration["Model"]!, builder.Configuration["ModelApi"] ?? "responses"));
 IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configuration)
@@ -138,7 +153,11 @@ IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configur
         new ProviderClientComposition(authentication => authentication.CreateCredential(), liveHttp!)), liveState);
 if (liveState is not null)
 {
-    app.MapGet("/__test/live-stats", () => Results.Json(liveState.Snapshot()));
+    app.MapGet("/__test/live-stats", async (HttpContext context) =>
+    {
+        if (liveApproval is not null) await liveApproval.ObserveDatabaseAsync(source!, schema, context.RequestAborted);
+        return Results.Json(liveState.Snapshot());
+    });
     app.MapPost("/__test/live-release", () => { liveState.Release(); return Results.Ok(); });
     if (liveState.Group == "preflight")
         app.MapPost("/__test/live-preflight", async (HttpContext context) =>
@@ -177,17 +196,29 @@ app.MapGet("/__test/counters", async () =>
         await using var reader = await command.ExecuteReaderAsync(); await reader.ReadAsync();
         durableNative = reader.GetInt64(0); nativeCode = reader.IsDBNull(1) ? null : reader.GetString(1);
     }
-    return Results.Ok(new { durableNative, nativeCode, server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
+    long durableNativeProtected = 0;
+    if (nativeEnabled)
+    {
+        await using var command = source!.CreateCommand($"SELECT count(*) FROM \"{schema}\".fixture_native_approval_effects");
+        durableNativeProtected = (long)(await command.ExecuteScalarAsync())!;
+    }
+    return Results.Ok(new { durableNativeProtected, durableNative, nativeCode, server = tools.Server, @protected = tools.Protected, protectedCode = tools.ProtectedCode, checkpointStage = tools.CheckpointStage, checkpointCancelled = tools.CheckpointCancelled, durableProtected, durableProtectedCode });
 });
 if (nativeJournal is not null)
 {
-    NativeSessionKey Key(string scope, string selector) => new(nativeName, scope, selector, new Dictionary<string, string> { ["isolation"] = scope });
+    NativeSessionKey Key(string scope, string selector)
+    {
+        var partitions = new Dictionary<string, string> { ["isolation"] = scope };
+        if (builder.Configuration["NativeTenant"] is { } tenant) partitions.Add("tenant", tenant);
+        if (builder.Configuration["NativeRegion"] is { } region) partitions.Add("region", region);
+        return new(nativeName, scope, selector, partitions);
+    }
     NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", nativeJournal, "recovery",
         (context, selector) => context.User.FindFirst("scope") is { } claim ? Key(claim.Value, selector) : null, nativeOptions);
     NativeSessionRecoveryEndpointConfiguration.MapOperations(app, "/native-sessions", nativeJournal, "checkpoint-operator",
         context => context.User.FindAll("operator-scope").Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal),
         context => context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, Key);
-    app.MapGet("/__test/native-stage", () => Results.Json(new { stage = nativeGate.Stage }));
+    app.MapGet("/__test/native-stage", () => Results.Json(new { stage = nativeGate.Stage, renewalFailed = nativeGate.RenewalFailed, cleanupCompleted = nativeGate.CleanupCompleted }));
     app.MapPost("/__test/release-native", () => { nativeGate.Release(); return Results.Ok(); });
     app.MapPost("/__test/expire-native-lease", async () =>
     {
@@ -207,6 +238,39 @@ if (nativeJournal is not null)
         while (await reader.ReadAsync()) { count = reader.GetInt64(2); rows.Add(new { id = reader.GetInt64(0), code = reader.GetString(1) }); }
         return Results.Json(new { count, rows });
     });
+    if (nativeApprovals)
+    {
+        app.MapPost("/__test/expire-native-payload", async () =>
+        {
+            await using var connection = await source!.OpenConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            await using var command = new NpgsqlCommand($"""
+                UPDATE "{schema}".native_approvals SET expires_at=clock_timestamp()-interval '3 seconds';
+                UPDATE "{schema}".native_approval_batches SET expires_at=clock_timestamp()-interval '2 seconds';
+                UPDATE "{schema}".native_sessions SET expires_at=clock_timestamp()-interval '1 second';
+                """, connection, transaction);
+            await command.ExecuteNonQueryAsync();
+            await transaction.CommitAsync();
+            return Results.Ok();
+        });
+        app.MapPost("/__test/maintain-native", async () => Results.Json(new { count = await nativeJournal.MaintainAsync() }));
+        app.MapGet("/__test/native-approval-state", async (HttpContext context, string threadId) =>
+        {
+            if (context.User.FindFirst("scope")?.Value is not { } scope) return Results.Unauthorized();
+            if (threadId.Length > 1024) return Results.BadRequest();
+            await using var command = source!.CreateCommand($"""
+                SELECT jsonb_build_object(
+                  'schemaVersion',(SELECT version FROM "{schema}".native_metadata WHERE id=1),
+                  'session',(SELECT jsonb_build_object('id',id,'state',state,'generation',generation,'revision',revision,'claim_revision',claim_revision,'payloadNull',payload IS NULL,'expires_at',expires_at) FROM "{schema}".native_sessions WHERE id=@id),
+                  'batches',COALESCE((SELECT jsonb_agg(to_jsonb(b) ORDER BY batch_id) FROM (SELECT batch_id,state,published_revision,member_count,member_digest,admitted_generation,admitted_revision,expires_at FROM "{schema}".native_approval_batches WHERE session_id=@id LIMIT 100) b),'[]'::jsonb),
+                  'members',COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY request_id) FROM (SELECT request_id,call_id,batch_id,kind,state,decision,captured_generation,admitted_generation,admitted_revision,result_digest IS NOT NULL AS "resultDigestPresent",private_descriptor IS NULL AS "privateDescriptorNull",expires_at FROM "{schema}".native_approvals WHERE session_id=@id LIMIT 100) a),'[]'::jsonb),
+                  'invocations',COALESCE((SELECT jsonb_agg(to_jsonb(c) ORDER BY call_id) FROM (SELECT call_id,name,version,state,captured_generation,dispatch_generation,descriptor IS NULL AS "descriptorNull" FROM "{schema}".native_invocations WHERE session_id=@id LIMIT 100) c),'[]'::jsonb),
+                  'effects',COALESCE((SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM (SELECT id,session_id,call_id,request_id,batch_id,admitted_generation,admitted_revision,code FROM "{schema}".fixture_native_approval_effects WHERE session_id=@id ORDER BY id LIMIT 100) e),'[]'::jsonb))::text
+                """);
+            command.Parameters.AddWithValue("id", Key(scope, threadId).Id);
+            return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
+        }).RequireAuthorization("recovery");
+    }
     NativeSessionEndpointConfiguration.Map(app, "/run", NativeSessionAgentFactory.Create(native, nativeName, [nativeFunction], nativeCatalog, accessor), "recovery");
 }
 else HashbrownEndpointConfiguration.Map(app, "/run",

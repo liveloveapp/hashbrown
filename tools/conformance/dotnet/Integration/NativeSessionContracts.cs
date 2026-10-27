@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Hashbrown.Conformance.Integration;
 
@@ -79,12 +80,19 @@ public sealed record NativeSessionSnapshot
 {
     /// <summary>Clones all collections at the storage boundary.</summary>
     public NativeSessionSnapshot(string? nativeJson, string publicRequest, IReadOnlyList<NativeToolCall> pendingCalls, IReadOnlyList<string> expectedBrowserCallIds, bool turnCompleted)
+        : this(nativeJson, publicRequest, pendingCalls, expectedBrowserCallIds, turnCompleted, NativeApprovalSnapshot.Empty) { }
+    /// <summary>Requires explicit independently owned approval state when reading serialized payloads.</summary>
+    [JsonConstructor]
+    public NativeSessionSnapshot(string? nativeJson, string publicRequest, IReadOnlyList<NativeToolCall> pendingCalls, IReadOnlyList<string> expectedBrowserCallIds, bool turnCompleted, NativeApprovalSnapshot approvals)
     {
+        Approvals = approvals ?? throw new ArgumentException("Explicit native approval state is required.");
         NativeJson = nativeJson; PublicRequest = publicRequest ?? throw new ArgumentException("Public history is required.");
         PendingCalls = Array.AsReadOnly((pendingCalls ?? throw new ArgumentException("Pending calls are required.")).ToArray());
         ExpectedBrowserCallIds = Array.AsReadOnly((expectedBrowserCallIds ?? throw new ArgumentException("Expected browser calls are required.")).ToArray());
         TurnCompleted = turnCompleted;
     }
+    /// <summary>Explicit saved approval state, never inferred from public history.</summary>
+    public NativeApprovalSnapshot Approvals { get; }
     /// <summary>Private opaque native JSON; null is allowed only for a known virgin.</summary>
     public string? NativeJson { get; }
     /// <summary>One current canonical AGUI request prefix.</summary>
@@ -103,10 +111,17 @@ public sealed record NativeSessionSave
 {
     /// <summary>Clones collections before asynchronous persistence can observe them.</summary>
     public NativeSessionSave(string nativeJson, string publicRequest, IReadOnlyList<NativeToolCall> pendingCalls, IReadOnlyList<string> expectedBrowserCallIds, bool turnCompleted)
+        : this(nativeJson, publicRequest, pendingCalls, expectedBrowserCallIds, turnCompleted, NativeApprovalSnapshot.Empty) { }
+    /// <summary>Requires explicit independently owned approval state when reading serialized payloads.</summary>
+    [JsonConstructor]
+    public NativeSessionSave(string nativeJson, string publicRequest, IReadOnlyList<NativeToolCall> pendingCalls, IReadOnlyList<string> expectedBrowserCallIds, bool turnCompleted, NativeApprovalSnapshot approvals)
     {
+        Approvals = approvals ?? throw new ArgumentException("Explicit native approval state is required.");
         NativeJson = nativeJson; PublicRequest = publicRequest;
         PendingCalls = Array.AsReadOnly(pendingCalls.ToArray()); ExpectedBrowserCallIds = Array.AsReadOnly(expectedBrowserCallIds.ToArray()); TurnCompleted = turnCompleted;
     }
+    /// <summary>Explicit saved approval state, never inferred from public history.</summary>
+    public NativeApprovalSnapshot Approvals { get; }
     /// <summary>Private opaque native session serialization.</summary>
     public string NativeJson { get; }
     /// <summary>Genuine-event projection of the admitted public request.</summary>
@@ -121,7 +136,7 @@ public sealed record NativeSessionSave
 /// <summary>Private receipt binding publication to the successfully saved owner and revision.</summary>
 public sealed record NativeSavedReceipt(NativeSessionLease Lease, long SavedRevision);
 /// <summary>Bounded public status; private native JSON is never exposed.</summary>
-public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null, bool IsNew = false, bool TurnCompleted = false);
+public sealed record NativeSessionStatus(int Status, string? State = null, long Generation = 0, long Revision = 0, string? PublicRequest = null, DateTimeOffset? LeaseUntil = null, bool IsNew = false, bool TurnCompleted = false, IReadOnlyList<RecoveryInterrupt>? PendingInterrupts = null, string? RecoveryReason = null);
 /// <summary>Scoped operator CAS requiring explicit quiescence and external evidence.</summary>
 public sealed record NativeSessionReconciliation(string ExpectedState, long ExpectedGeneration, long ExpectedRevision, string Outcome, string Reason, string EvidenceReference, bool ExternalQuiescenceAcknowledged);
 /// <summary>Immutable operator audit entry.</summary>
@@ -140,6 +155,16 @@ public interface INativeSessionJournal
     ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string publicRequestJson, CancellationToken cancellationToken = default);
     /// <summary>Persists an actual model descriptor before native bypass sees it.</summary>
     ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default);
+    /// <summary>Persists only genuine native request capture under the current owner.</summary>
+    ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken cancellationToken = default);
+    /// <summary>Materializes bound approval evidence only under current request authority.</summary>
+    ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken cancellationToken = default);
+    /// <summary>Atomically reserves the exact complete published decision set or consumes none.</summary>
+    ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default);
+    /// <summary>Settles only a genuine admitted decline or cancellation without dispatch.</summary>
+    ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken cancellationToken = default);
+    /// <summary>Settles the exact genuine interrupted browser rejection without granting a decision or dispatch.</summary>
+    ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batchId, string requestId, string callId, JsonElement result, CancellationToken cancellationToken = default);
     /// <summary>Reads only a captured descriptor under the current owner.</summary>
     ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string callId, CancellationToken cancellationToken = default);
     /// <summary>Commits a permanent dispatch marker before executing.</summary>

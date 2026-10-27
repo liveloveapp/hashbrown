@@ -1,0 +1,310 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.Conformance.Integration;
+using Npgsql;
+
+static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+static JsonElement Json(string value) => JsonSerializer.Deserialize<JsonElement>(value);
+static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+var catalog = new NativeToolCatalog([new("server", 1, Json("{\"type\":\"object\"}"), RequiresConfirmation: true)]);
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL required."));
+var schema = "approval_decisions_" + Guid.NewGuid().ToString("N");
+var journal = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema);
+var modelCount = 0;
+try
+{
+    await journal.InitializeAsync();
+    await Sql("CREATE TABLE {s}.effects(call_id text PRIMARY KEY)");
+    var setup = await Published("atomic", 3);
+    var publishedRevision = await Revision(setup.Key);
+    var forgedKey = new NativeSessionKey("agent", "bob", setup.Key.Selector, new Dictionary<string, string> { ["tenant"] = "trusted" });
+    Check((await journal.TryAcquireAsync(forgedKey, Resume(setup.Prefix, setup.Batch, [true, false, null]))).Lease is null && await Revision(setup.Key) == publishedRevision, "Foreign trusted scope cannot load another session's approval evidence.");
+    var lease = (await journal.TryAcquireAsync(setup.Key, Resume(setup.Prefix, setup.Batch, [true, false, null]))).Lease;
+    Check(lease is not null, "A coherent published pending batch must acquire its exact owned prefix.");
+    var invalid = new NativeApprovalAdmissionEnvelope(setup.Prefix, [new("r0", NativeApprovalDecisionKind.Approved), new("r1", NativeApprovalDecisionKind.Declined), new("foreign", NativeApprovalDecisionKind.Cancelled)]);
+    var revision = await Revision(setup.Key);
+    var futureClaim = lease! with { Revision = lease!.Revision + 1 };
+    Check(await journal.GetOwnedApprovalEvidenceAsync(futureClaim) is null && !await journal.TryAdmitApprovalBatchAsync(futureClaim, "batch", invalid), "A changed claim revision cannot materialize or mutate authority.");
+    var otherCatalog = new NativeToolCatalog([new("server", 2, Json("{\"type\":\"object\"}"), RequiresConfirmation: true)]);
+    Check(await new PostgresNativeSessionJournal(source, otherCatalog, "model-v1", schema).GetOwnedApprovalEvidenceAsync(lease!) is null, "Wrong catalog/version cannot materialize approval descriptors.");
+    Check(!await journal.TryAdmitApprovalBatchAsync(lease!, "batch", new(setup.Prefix.Replace("hello", "forged"), invalid.Decisions)) && await Revision(setup.Key) == revision, "Changed owned history is rejected before any update.");
+
+    Check(!await journal.TryAdmitApprovalBatchAsync(lease!, "batch", invalid), "A foreign member cannot partially consume a batch.");
+    Check(await Scalar<long>("SELECT count(*) FROM {s}.native_approvals WHERE state='Pending'") == 3 && await Revision(setup.Key) == revision, "All invalid-batch members and revision remain Pending/unchanged.");
+    foreach (var call in setup.Batch.ProtectedRequests) Check(!await journal.TryStartDispatchAsync(lease!, call.Call), "Unadmitted protected calls cannot receive Started.");
+    var incoming = NativeApprovalAdmission.Parse(Resume(setup.Prefix, setup.Batch, [true, false, null]), setup.Key, catalog, new());
+    var opposite = NativeApprovalAdmission.Parse(Resume(setup.Prefix, setup.Batch, [false, true, true]), setup.Key, catalog, new());
+    var owners = await Task.WhenAll(journal.TryAdmitApprovalBatchAsync(lease!, "batch", incoming).AsTask(), journal.TryAdmitApprovalBatchAsync(lease!, "batch", opposite).AsTask());
+    Check(owners.Count(value => value) == 1, "Only one whole-batch reservation wins.");
+    Check(await Revision(setup.Key) == revision + 1, "The opposing reservation race increments the actual durable session revision exactly once.");
+    Check(await Scalar<string>("SELECT string_agg(state||':'||COALESCE(dispatch_generation::text,'NULL'),',' ORDER BY call_id) FROM {s}.native_invocations WHERE session_id='" + setup.Key.Id + "'") == "Captured:NULL,Captured:NULL,Captured:NULL", "The opposing race does not alter any invocation or dispatch-generation state.");
+    var evidence = await journal.GetOwnedApprovalEvidenceAsync(lease!);
+    Check(evidence is { State: NativeApprovalState.DecisionAdmitted } && evidence.Decisions.Count == 3 && evidence.AdmittedGeneration == lease!.Generation && evidence.AdmittedRevision == revision + 1, "Admission records complete decisions and exact current owner/revision.");
+    var winning = owners[0] ? incoming : opposite;
+    Check(evidence!.Decisions.All(item => winning.Decisions.Any(expected => expected.RequestId == item.RequestId && expected.Kind == item.Kind)), "Every recorded kind belongs to the single complete winning envelope.");
+    Check(modelCount == 0 && await Scalar<long>("SELECT count(*) FROM {s}.effects") == 0, "Reservation itself performs zero model/effect operations.");
+    var chosen = evidence!.Decisions.ToDictionary(item => item.RequestId, item => item.Kind);
+    foreach (var descriptor in setup.Batch.ProtectedRequests)
+    {
+        var approved = chosen[descriptor.RequestId] == NativeApprovalDecisionKind.Approved;
+        Check(await journal.TryStartDispatchAsync(lease!, descriptor.Call) == approved, "Only admitted Approved can receive a Started grant.");
+    }
+    Console.WriteLine($"atomic: ownerWinners={owners.Count(value => value)}; decisions={string.Join(',', evidence.Decisions.Select(item => item.Kind))}; invocations={await States(setup.Key)}; revision={await Revision(setup.Key)}; effects={await Scalar<long>("SELECT count(*) FROM {s}.effects")}; models={modelCount}");
+
+    var terminal = JsonNode.Parse(setup.Prefix)!;
+    foreach (var descriptor in setup.Batch.ProtectedRequests)
+    {
+        var decision = chosen[descriptor.RequestId];
+        var result = JsonSerializer.SerializeToElement(decision == NativeApprovalDecisionKind.Approved ? "approved result" : decision == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.");
+        if (decision != NativeApprovalDecisionKind.Approved) Check(await journal.SettleApprovalRejectionAsync(lease!, new("batch", descriptor.RequestId, descriptor.Call.Id, decision, result)), "Zero-dispatch siblings settle against their admitted kind.");
+        terminal["messages"]!.AsArray().Add(new JsonObject { ["id"] = "result-" + descriptor.Call.Id, ["role"] = "tool", ["toolCallId"] = descriptor.Call.Id, ["content"] = result.GetString() });
+    }
+    Check(await journal.SaveAsync(lease!, new("{}", terminal.ToJsonString(), [], [], true)) is null, "An approved result cannot save before Started->Completed.");
+    foreach (var descriptor in setup.Batch.ProtectedRequests.Where(item => chosen[item.RequestId] == NativeApprovalDecisionKind.Approved)) Check(await journal.CompleteDispatchAsync(lease!, descriptor.Call), "Only the dispatch owner completes Approved.");
+    var atomicReceipt = await journal.SaveAsync(lease!, new("{}", terminal.ToJsonString(), [], [], true));
+    Check(atomicReceipt is not null && await journal.AuthorizePublicationAsync(atomicReceipt) && await journal.FinalizePublicationAsync(atomicReceipt), "A fully settled mixed-decision batch publishes through actual receipts.");
+
+    foreach (var kind in new[] { NativeApprovalDecisionKind.Declined, NativeApprovalDecisionKind.Cancelled })
+    {
+        var item = await Published("settle-" + kind, 1);
+        var raw = Resume(item.Prefix, item.Batch, [kind == NativeApprovalDecisionKind.Declined ? false : null]);
+        var owned = (await journal.TryAcquireAsync(item.Key, raw)).Lease!;
+        Check(await journal.TryAdmitApprovalBatchAsync(owned, "batch", NativeApprovalAdmission.Parse(raw, item.Key, catalog, new())), "Single zero-dispatch batch admits.");
+        var result = JsonSerializer.SerializeToElement(kind == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.");
+        Check(!await journal.SettleApprovalRejectionAsync(owned, new("batch", "r0", "c0", kind, Json("\"forged\""))), "Arbitrary caller result cannot settle native rejection.");
+        Check(!await journal.SettleApprovalRejectionAsync(owned, new("batch", "foreign", "c0", kind, result)), "Foreign request cannot settle.");
+        var wrongKind = kind == NativeApprovalDecisionKind.Declined ? NativeApprovalDecisionKind.Cancelled : NativeApprovalDecisionKind.Declined;
+        var wrongResult = JsonSerializer.SerializeToElement(wrongKind == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.");
+        Check(!await journal.SettleApprovalRejectionAsync(owned, new("batch", "r0", "c0", wrongKind, wrongResult)), "Even a genuine other-kind rejection cannot settle the admitted decision.");
+        Check(!await journal.SettleApprovalRejectionAsync(owned, new("batch", "r0", "foreign-call", kind, result)), "Foreign call cannot settle the admitted request.");
+        Check(await journal.SaveAsync(owned, new("{}", Finished(item.Prefix, result), [], [], true)) is null, "Missing durable settlement cannot save.");
+
+        Check(await journal.SettleApprovalRejectionAsync(owned, new("batch", "r0", "c0", kind, result)), "Exact pinned native rejection settles without dispatch.");
+        Check(!await journal.SettleApprovalRejectionAsync(owned, new("batch", "r0", "c0", kind, result)), "Duplicate rejection settlement loses.");
+        Check(await journal.SaveAsync(owned, new("{}", Finished(item.Prefix, Json("\"forged\"")), [], [], true)) is null, "Changed rejection result cannot save.");
+        var retainedPrivate = await Scalar<long>("SELECT (SELECT sum(octet_length(private_descriptor)) FROM {s}.native_approvals WHERE session_id='" + item.Key.Id + "')+(SELECT sum(octet_length(descriptor)) FROM {s}.native_invocations WHERE session_id='" + item.Key.Id + "')");
+        var lowerBudget = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { NativeBytes = checked((int)retainedPrivate - 1) });
+        Check(await lowerBudget.SaveAsync(owned, new("{}", Finished(item.Prefix, result), [], [], true)) is null, "Final Empty-approval Save still enforces retained aggregate private descriptors before publication.");
+        var duplicate = JsonNode.Parse(Finished(item.Prefix, result))!;
+        duplicate["messages"]!.AsArray().Add(new JsonObject { ["id"] = "duplicate", ["role"] = "tool", ["toolCallId"] = "c0", ["content"] = result.GetString() });
+        Check(await journal.SaveAsync(owned, new("{}", duplicate.ToJsonString(), [], [], true)) is null, "Duplicate zero-dispatch result cannot save.");
+        var foreignResult = JsonNode.Parse(Finished(item.Prefix, result))!;
+        foreignResult["messages"]!.AsArray().Last()!["toolCallId"] = "foreign";
+        Check(await journal.SaveAsync(owned, new("{}", foreignResult.ToJsonString(), [], [], true)) is null, "Foreign zero-dispatch result cannot save.");
+        var shorter = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { Retention = TimeSpan.FromMinutes(1) });
+        var receipt = await shorter.SaveAsync(owned, new("{}", Finished(item.Prefix, result), [], [], true));
+        Check(receipt is not null && await journal.AuthorizePublicationAsync(receipt) && await journal.FinalizePublicationAsync(receipt), "Exact settled result must use genuine save/publication receipts.");
+        var next = JsonNode.Parse(Finished(item.Prefix, result))!;
+        next["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"next","role":"user","content":"next turn"}"""));
+        var nextOwner = (await journal.TryAcquireAsync(item.Key, next.ToJsonString())).Lease!;
+        Check(nextOwner is not null && !await journal.CaptureModelCallAsync(nextOwner, item.Batch.ProtectedRequests[0].Call), "Successful publication allows a clean next turn while old calls stay fenced.");
+        Check(await journal.FailureCleanupAsync(nextOwner!), "Unconsumed later generation is safely releasable.");
+        Console.WriteLine($"settlement-{kind}: ownerWinners=1; decisions={kind}; invocations={await States(item.Key)}; revision={await Revision(item.Key)}; effects={await Scalar<long>("SELECT count(*) FROM {s}.effects")}; models={modelCount}");
+    }
+    foreach (var (mode, kind) in new[] { "cleanup", "takeover", "expiry", "maintenance", "orphan", "retire", "reconcile" }.SelectMany(mode => new[] { NativeApprovalDecisionKind.Declined, NativeApprovalDecisionKind.Cancelled }.Select(kind => (mode, kind))))
+    {
+        var item = await Published(mode + kind, 1);
+        var raw = Resume(item.Prefix, item.Batch, [kind == NativeApprovalDecisionKind.Declined ? false : null]);
+        var owned = (await journal.TryAcquireAsync(item.Key, raw)).Lease!;
+        Check(await journal.TryAdmitApprovalBatchAsync(owned, "batch", NativeApprovalAdmission.Parse(raw, item.Key, catalog, new())), "Fence setup admits declined batch.");
+        if (mode == "cleanup") Check(await journal.FailureCleanupAsync(owned), "Consumed cleanup commits blocking fence.");
+        if (mode == "takeover") { await Sql("UPDATE {s}.native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", ("id", item.Key.Id)); Check((await new PostgresNativeSessionJournal(source, catalog, "model-v1", schema).TryAcquireAsync(item.Key, raw)).Lease is null, "Consumed zero-start expiry cannot take over on another replica."); }
+        if (mode == "expiry") { await Expire(item.Key); Check((await journal.TryAcquireAsync(item.Key, raw)).Lease is null, "Selector expiry fences and purges consumed decisions."); }
+        if (mode is "maintenance" or "orphan")
+        {
+            await Expire(item.Key);
+            if (mode == "orphan") await Sql("UPDATE {s}.native_sessions SET payload=NULL WHERE id=@id", ("id", item.Key.Id));
+            Check(await journal.MaintainAsync() >= 1, "Maintenance processes consumed private bytes, including orphan descriptors after earlier payload purge.");
+            var after = await Revision(item.Key);
+            Check(await journal.MaintainAsync() == 0 && await Revision(item.Key) == after, "Repeated maintenance retains stable minimal fences.");
+        }
+        if (mode == "reconcile")
+        {
+            var status = await journal.ReadStatusAsync(item.Key);
+            var request = new NativeSessionReconciliation(status.State!, status.Generation, status.Revision, "Unresolved", "quiescent", "fixture-evidence", true);
+            Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, item.Key, "operator", request with { ExternalQuiescenceAcknowledged = false }) == 400, "Reconciliation requires external quiescence.");
+            Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, item.Key, "operator", request with { ExpectedRevision = status.Revision + 1 }) == 409, "Reconciliation is exact terminal revision CAS.");
+            Check(await journal.ReconcileAsync(new HashSet<string> { "alice" }, item.Key, "operator", request) == 200, "Quiescent reconciliation retires terminally with audit.");
+        }
+        if (mode == "retire")
+        {
+            var status = await journal.ReadStatusAsync(item.Key);
+            Check(await journal.RetireAsync(new HashSet<string> { "alice" }, item.Key, "operator", new(status.State!, status.Generation, status.Revision, "Retired", "quiescent", "fixture-evidence", true)) == 200, "Operator terminal CAS retires with audit.");
+        }
+        Check((await journal.TryAcquireAsync(item.Key, raw)).Lease is null && !await journal.TryAdmitApprovalBatchAsync(owned, "batch", NativeApprovalAdmission.Parse(raw, item.Key, catalog, new())) && !await journal.TryStartDispatchAsync(owned, item.Batch.ProtectedRequests[0].Call), "Consumed decisions never reopen after cleanup, expiry or retirement.");
+        Check(await Scalar<long>("SELECT count(*) FROM {s}.native_invocations WHERE session_id='" + item.Key.Id + "'") == 1, "Consumed Captured invocation is never pruned.");
+        if (mode is "cleanup" or "takeover" or "expiry" or "maintenance" or "orphan") Check((await journal.ReadStatusAsync(item.Key)).State == "Blocked", "Every consumed zero-start cleanup path must explicitly quarantine Blocked: " + mode);
+        if (mode is "expiry" or "maintenance" or "orphan" or "retire" or "reconcile") Check(await Scalar<bool>("SELECT private_descriptor IS NULL FROM {s}.native_approvals WHERE session_id='" + item.Key.Id + "'"), "Retirement purges descriptor bytes but retains fence.");
+        Console.WriteLine($"{mode}: ownerWinners=1; decisions={kind}; invocations={await States(item.Key)}; revision={await Revision(item.Key)}; effects={await Scalar<long>("SELECT count(*) FROM {s}.effects")}; models={modelCount}");
+    }
+    var malformed = await Published("malformed-pending", 1);
+    await Sql("UPDATE {s}.native_invocations SET state='Completed',dispatch_generation=captured_generation WHERE session_id=@id", ("id", malformed.Key.Id));
+    Check((await journal.TryAcquireAsync(malformed.Key, Resume(malformed.Prefix, malformed.Batch, [true]))).Lease is null, "A Pending member whose invocation is already dispatched cannot acquire or reserve.");
+    var browserKey = new NativeSessionKey("agent", "alice", "browser-fence", new Dictionary<string, string> { ["tenant"] = "trusted" });
+    var browserRequest = """{"threadId":"browser-fence","messages":[{"id":"u","role":"user","content":"hello"}],"tools":[{"name":"browser","description":"browser","parameters":{"type":"object"}}]}""";
+    var browserOwner = (await journal.TryAcquireAsync(browserKey, browserRequest)).Lease!;
+    var browserServer = catalog.CreateCall("protected", "server", Json("{}"));
+    Check(await journal.CaptureModelCallAsync(browserOwner, browserServer), "Capture mixed server call.");
+    var mixed = new NativeApprovalBatch("mixed", [new("protected-request", browserServer, new("native", 0, 0))], [new("browser-request", "browser-id", "browser", Json("{}"), new("native", 0, 1))]);
+    Check(await journal.CaptureApprovalBatchAsync(browserOwner, mixed), "Genuine registered browser bypass is captured without decision authority.");
+    Check(!await journal.CaptureModelCallAsync(browserOwner, catalog.CreateCall("browser-id", "server", Json("{}"))), "A retained browser approval call ID cannot allocate a server invocation.");
+    var fixedBatch = await Published("fixed-adc", 3);
+    var fixedRaw = Resume(fixedBatch.Prefix, fixedBatch.Batch, [true, false, null]);
+    var fixedOwner = (await journal.TryAcquireAsync(fixedBatch.Key, fixedRaw)).Lease!;
+    var fixedBefore = await Revision(fixedBatch.Key);
+    Check(await journal.TryAdmitApprovalBatchAsync(fixedOwner, "batch", NativeApprovalAdmission.Parse(fixedRaw, fixedBatch.Key, catalog, new())), "Deterministic approve/decline/cancel admits the complete batch.");
+    var fixedEvidence = (await journal.GetOwnedApprovalEvidenceAsync(fixedOwner))!;
+    Check(fixedEvidence.Decisions.Select(item => item.Kind).SequenceEqual(new[] { NativeApprovalDecisionKind.Approved, NativeApprovalDecisionKind.Declined, NativeApprovalDecisionKind.Cancelled }) && await Revision(fixedBatch.Key) == fixedBefore + 1, "Deterministic admission preserves exact three kinds and increments actual session revision once.");
+    Check(await Scalar<string>("SELECT string_agg(state||':'||COALESCE(dispatch_generation::text,'NULL'),',' ORDER BY call_id) FROM {s}.native_invocations WHERE session_id='" + fixedBatch.Key.Id + "'") == "Captured:NULL,Captured:NULL,Captured:NULL", "Admission alone leaves the complete invocation/dispatch-generation vector untouched.");
+    var fixedTerminal = JsonNode.Parse(fixedBatch.Prefix)!;
+    foreach (var descriptor in fixedBatch.Batch.ProtectedRequests)
+    {
+        var kind = fixedEvidence.Decisions.Single(item => item.RequestId == descriptor.RequestId).Kind;
+        var result = JsonSerializer.SerializeToElement(kind == NativeApprovalDecisionKind.Approved ? "approved result" : kind == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.");
+        if (kind == NativeApprovalDecisionKind.Approved) Check(await journal.TryStartDispatchAsync(fixedOwner, descriptor.Call) && await journal.CompleteDispatchAsync(fixedOwner, descriptor.Call), "Only deterministic Approved dispatches/completes.");
+        else Check(await journal.SettleApprovalRejectionAsync(fixedOwner, new("batch", descriptor.RequestId, descriptor.Call.Id, kind, result)), "Deterministic Declined/Cancelled settle genuine native rejection.");
+        fixedTerminal["messages"]!.AsArray().Add(new JsonObject { ["id"] = "result-" + descriptor.Call.Id, ["role"] = "tool", ["toolCallId"] = descriptor.Call.Id, ["content"] = result.GetString() });
+    }
+    var fixedReceipt = await journal.SaveAsync(fixedOwner, new("{}", fixedTerminal.ToJsonString(), [], [], true));
+    Check(fixedReceipt is not null && await journal.AuthorizePublicationAsync(fixedReceipt) && await journal.FinalizePublicationAsync(fixedReceipt), "Deterministic complete A/D/C settles and publishes with real receipts.");
+    Console.WriteLine($"fixed-adc: ownerWinners=1; decisions=Approved,Declined,Cancelled; invocations={await States(fixedBatch.Key)}; revision={await Revision(fixedBatch.Key)}; effects={await Scalar<long>("SELECT count(*) FROM {s}.effects")}; models={modelCount}");
+
+    var budgetRead = await Published("aggregate-budget-read", 1);
+    var readUsage = await PrivateUsage(budgetRead.Key);
+    var tooSmall = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { NativeBytes = checked((int)readUsage - 1) });
+    var readRejected = (await tooSmall.TryAcquireAsync(budgetRead.Key, Resume(budgetRead.Prefix, budgetRead.Batch, [false]))).Lease is null;
+    var budget = await Published("aggregate-budget-capture", 1);
+    var budgetRaw = Resume(budget.Prefix, budget.Batch, [false]);
+    var usage = await PrivateUsage(budget.Key);
+    var budgetOwner = (await journal.TryAcquireAsync(budget.Key, budgetRaw)).Lease!;
+    Check(await journal.TryAdmitApprovalBatchAsync(budgetOwner, "batch", NativeApprovalAdmission.Parse(budgetRaw, budget.Key, catalog, new())), "Aggregate capture setup consumes original batch.");
+    Check(await journal.SettleApprovalRejectionAsync(budgetOwner, new("batch", "r0", "c0", NativeApprovalDecisionKind.Declined, Json("\"Tool call invocation rejected.\""))), "Aggregate capture setup settles original batch.");
+    var nextCall = catalog.CreateCall("new-call", "server", Json("{}"));
+    Check(await journal.CaptureModelCallAsync(budgetOwner, nextCall), "Trusted next native observation captures a fresh ID after settlement.");
+    var nextBatch = new NativeApprovalBatch("next-batch", [new("new-request", nextCall, new("native-next", 1, 0))], []);
+    var nextDescriptorBytes = Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(new { formatVersion = 1, protectedRequest = nextBatch.ProtectedRequests[0] }, json));
+    var nextInvocationBytes = Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(nextCall, json));
+    var captureLimit = checked((int)(usage + nextDescriptorBytes + nextInvocationBytes - 1));
+    var boundedCapture = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { NativeBytes = captureLimit });
+    var captureRejected = !await boundedCapture.CaptureApprovalBatchAsync(budgetOwner, nextBatch);
+    Check(readRejected && captureRejected, $"Aggregate approval budget includes retained table descriptors, protected invocation copies, payload approvals and protected PendingCalls before materialization/allocation: readRejected={readRejected}; captureRejected={captureRejected}.");
+
+    var control = await Published("before-reservation", 1);
+    var controlRaw = Resume(control.Prefix, control.Batch, [false]);
+    var controlLease = (await journal.TryAcquireAsync(control.Key, controlRaw)).Lease!;
+    Check(await journal.FailureCleanupAsync(controlLease), "Failure before reservation safely releases ownership.");
+    var restored = (await new PostgresNativeSessionJournal(source, catalog, "model-v1", schema).TryAcquireAsync(control.Key, controlRaw)).Lease;
+    Check(restored is not null && (await journal.GetOwnedApprovalEvidenceAsync(restored))?.State == NativeApprovalState.Pending, "Untouched published Pending batch stays reusable with old descriptors under a legitimate later owner.");
+    Check(await journal.GetOwnedApprovalEvidenceAsync(controlLease) is null && !await journal.TryAdmitApprovalBatchAsync(controlLease, "batch", NativeApprovalAdmission.Parse(controlRaw, control.Key, catalog, new())), "Old owner token/generation/claim revision cannot read or mutate restored evidence.");
+    Check(modelCount == 0 && await Scalar<long>("SELECT count(*) FROM {s}.effects") == 0, "Admission/rejection durability does no native/model/effect work.");
+    foreach (var failure in new[] { "cleanup", "takeover", "maintenance" })
+    {
+        var selector = "unpublished-" + failure;
+        var unpublishedKey = new NativeSessionKey("agent", "alice", selector, new Dictionary<string, string> { ["tenant"] = "trusted" });
+        var unpublishedInput = $$"""{"threadId":"{{selector}}","messages":[{"id":"user","role":"user","content":"hello"}],"tools":[]}""";
+        var unpublishedLease = (await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Lease!;
+        var unpublishedCall = catalog.CreateCall("unpublished-call", "server", Json("{}"));
+        Check(await journal.CaptureModelCallAsync(unpublishedLease, unpublishedCall) && await journal.CaptureApprovalBatchAsync(unpublishedLease, new("unpublished-batch", [new("unpublished-request", unpublishedCall, new(null, null, 0))], [])), "Unpublished capture arrangement has genuine trusted current model/request ownership.");
+
+        if (failure == "cleanup") Check(await journal.FailureCleanupAsync(unpublishedLease), "Capture-before-save cleanup must complete.");
+        else if (failure == "takeover")
+        {
+            await Sql("UPDATE {s}.native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", ("id", unpublishedKey.Id));
+            Check((await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Status == 409, "An abandoned unpublished capture cannot acquire a fresh owner/model run.");
+        }
+        else { await Expire(unpublishedKey); await journal.MaintainAsync(); }
+
+        Check((await journal.InspectAsync(new HashSet<string> { "alice" }, unpublishedKey))!.Status.State == "Blocked", "Unpublished capture failure must block instead of advertising reusable Ready: " + failure);
+        Check(await Scalar<long>("SELECT count(*) FROM {s}.native_approvals WHERE session_id='" + unpublishedKey.Id + "'") == 1 && (await journal.TryAcquireAsync(unpublishedKey, unpublishedInput)).Lease is null, "Unpublished identities stay fenced with no replacement owner.");
+    }
+    foreach (var corruption in new[] { "declined-completed", "approved-declined", "settled-wrong-digest", "future-admission-revision" })
+    {
+        var item = await Published("corrupt-consumed-" + corruption, 1);
+        var raw = Resume(item.Prefix, item.Batch, [corruption == "approved-declined"]);
+        var owner = (await journal.TryAcquireAsync(item.Key, raw)).Lease!;
+        Check(await journal.TryAdmitApprovalBatchAsync(owner, "batch", NativeApprovalAdmission.Parse(raw, item.Key, catalog, new())), "Corrupt-consumed arrangement first uses a genuine complete atomic durable reservation.");
+        if (corruption == "declined-completed") await Sql("UPDATE {s}.native_invocations SET state='Completed',dispatch_generation=@generation WHERE session_id=@id", ("generation", owner.Generation), ("id", item.Key.Id));
+        if (corruption == "approved-declined") await Sql("UPDATE {s}.native_invocations SET state='Declined' WHERE session_id=@id", ("id", item.Key.Id));
+        if (corruption == "settled-wrong-digest") await Sql("BEGIN; UPDATE {s}.native_invocations SET state='Declined' WHERE session_id=@id; UPDATE {s}.native_approvals SET state='Settled',result_digest=repeat('A',64) WHERE session_id=@id; UPDATE {s}.native_approval_batches SET state='Settled' WHERE session_id=@id; COMMIT", ("id", item.Key.Id));
+        if (corruption == "future-admission-revision") await Sql("BEGIN; UPDATE {s}.native_approvals SET admitted_revision=admitted_revision+100 WHERE session_id=@id; UPDATE {s}.native_approval_batches SET admitted_revision=admitted_revision+100 WHERE session_id=@id; COMMIT", ("id", item.Key.Id));
+
+        var corrupt = await journal.GetOwnedApprovalEvidenceAsync(owner);
+
+        Check(corrupt is null, "Consumed durable reader must reject decision/invocation/result/admission provenance contradictions: " + corruption);
+    }
+    Console.WriteLine("Native approval decision contracts passed.");
+}
+finally { await Sql("DROP SCHEMA IF EXISTS {s} CASCADE"); }
+
+async Task<(NativeSessionKey Key, NativeApprovalBatch Batch, string Prefix)> Published(string selector, int count)
+{
+    var key = new NativeSessionKey("agent", "alice", selector, new Dictionary<string, string> { ["tenant"] = "trusted" });
+    var request = $$"""{"threadId":"{{selector}}","messages":[{"id":"user","role":"user","content":"hello"}],"tools":[]}""";
+    var lease = (await journal.TryAcquireAsync(key, request)).Lease!;
+    var calls = Enumerable.Range(0, count).Select(index => catalog.CreateCall("c" + index, "server", Json("{\"value\":" + index + "}"))).ToArray();
+    foreach (var call in calls) Check(await journal.CaptureModelCallAsync(lease, call), "Trusted current owner captures model call.");
+    var batch = new NativeApprovalBatch("batch", calls.Select((call, index) => new NativeApprovalDescriptor("r" + index, call, new("native-parent", 0, index))).ToArray(), []);
+    if (selector == "atomic")
+    {
+        var before = await Revision(key);
+        var changed = new NativeApprovalBatch("changed", [new("changed-request", catalog.CreateCall("c0", "server", Json("{\"value\":999}")), new("native-parent", 0, 0))], []);
+        Check(!await journal.CaptureApprovalBatchAsync(lease, changed), "Changed arguments cannot bind a captured genuine call.");
+        var version = new NativeApprovalBatch("version", [new("version-request", new("c0", "server", 2, Json("{}")), new("native-parent", 0, 0))], []);
+        Check(!await journal.CaptureApprovalBatchAsync(lease, version), "Wrong descriptor version cannot bind.");
+        Check(!await new PostgresNativeSessionJournal(source, catalog, "other-model", schema).CaptureApprovalBatchAsync(lease, batch), "Wrong compatibility cannot capture.");
+        Check(!await new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { MaximumCalls = 2 }).CaptureApprovalBatchAsync(lease, batch), "Complete union/request counts are bounded before allocation.");
+        Check(!await new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { NativeBytes = 100 }).CaptureApprovalBatchAsync(lease, batch), "Aggregate private descriptor bytes are bounded before allocation.");
+        Check(!await new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, new() { ArgumentBytes = 2 }).CaptureApprovalBatchAsync(lease, batch), "Per-member arguments are bounded before allocation.");
+        Check(await Revision(key) == before, "Rejected capture cannot allocate members or advance revision.");
+    }
+    Check(await journal.CaptureApprovalBatchAsync(lease, batch), "Trusted complete captured batch must persist.");
+    Check(!await journal.CaptureApprovalBatchAsync(lease, batch), "Reused batch/request/call IDs cannot bind twice.");
+    var prefixNode = JsonNode.Parse(request)!;
+    prefixNode["messages"]!.AsArray().Add(new JsonObject { ["id"] = "assistant", ["role"] = "assistant", ["toolCalls"] = new JsonArray(calls.Select(call => (JsonNode)new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments.GetRawText() } }).ToArray()) });
+    var prefix = NativeSessionHistory.Normalize(prefixNode.ToJsonString(), key, catalog, new());
+    var bound = new NativeBoundApprovalBatch(batch, batch.ProtectedRequests.Select((item, index) => (item.RequestId, Location: new NativePublicCallLocation("assistant", 1, index))).ToDictionary(item => item.RequestId, item => item.Location));
+    var snapshot = new NativeSessionSnapshot("{\"opaque\":\"unchanged\"}", prefix, calls, [], false, new(bound));
+    var payload = JsonSerializer.Serialize(new { formatVersion = 2, snapshot.NativeJson, snapshot.PublicRequest, snapshot.PendingCalls, snapshot.ExpectedBrowserCallIds, snapshot.TurnCompleted, snapshot.Approvals }, json);
+    // Trusted SQL arrangement models future producer's exact P(save), P+1(authorize), P+2(finalize), never a fabricated receipt.
+    var published = await Revision(key) + 1;
+    await Sql("BEGIN; UPDATE {s}.native_approval_batches SET published_revision=@published WHERE session_id=@id; UPDATE {s}.native_sessions SET state='Ready',token=NULL,lease_until=NULL,admitted_request=NULL,payload=@payload,ever_saved=true,revision=@published+2 WHERE id=@id; COMMIT", ("published", published), ("id", key.Id), ("payload", payload));
+    Check(await Scalar<string>("SELECT member_digest FROM {s}.native_approval_batches WHERE session_id='" + key.Id + "'") == Hash(NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(batch, json))), "Captured membership digest is independently canonical SHA256 over complete batch.");
+    return (key, batch, prefix);
+}
+string Resume(string prefix, NativeApprovalBatch batch, bool?[] kinds)
+{
+    var node = JsonNode.Parse(prefix)!;
+    node["resume"] = new JsonArray(batch.ProtectedRequests.Select((item, index) => (JsonNode)(kinds[index] is bool approved ? new JsonObject { ["interruptId"] = item.RequestId, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = approved } } : new JsonObject { ["interruptId"] = item.RequestId, ["status"] = "cancelled" })).ToArray());
+    return node.ToJsonString();
+}
+string Finished(string prefix, JsonElement result)
+{
+    var node = JsonNode.Parse(prefix)!;
+    node["messages"]!.AsArray().Add(new JsonObject { ["id"] = "result", ["role"] = "tool", ["toolCallId"] = "c0", ["content"] = result.GetString() });
+    return node.ToJsonString();
+}
+async Task Expire(NativeSessionKey key) => await Sql("BEGIN; UPDATE {s}.native_approvals SET expires_at=clock_timestamp()-interval '1 second' WHERE session_id=@id; UPDATE {s}.native_approval_batches SET expires_at=clock_timestamp()-interval '1 second' WHERE session_id=@id; UPDATE {s}.native_sessions SET expires_at=clock_timestamp()-interval '0.5 seconds' WHERE id=@id; COMMIT", ("id", key.Id));
+async Task<long> Revision(NativeSessionKey key) => await Scalar<long>("SELECT revision FROM {s}.native_sessions WHERE id='" + key.Id + "'");
+async Task<string> States(NativeSessionKey key) => await Scalar<string>("SELECT string_agg(state,',' ORDER BY call_id) FROM {s}.native_invocations WHERE session_id='" + key.Id + "'");
+async Task Sql(string sql, params (string Name, object Value)[] parameters)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("{s}", schema), connection);
+    foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
+    await command.ExecuteNonQueryAsync();
+}
+async Task<T> Scalar<T>(string sql)
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var command = new NpgsqlCommand(sql.Replace("{s}", schema), connection);
+    return (T)(await command.ExecuteScalarAsync())!;
+}
+
+async Task<long> PrivateUsage(NativeSessionKey key)
+{
+    var payload = JsonNode.Parse(await Scalar<string>("SELECT payload FROM {s}.native_sessions WHERE id='" + key.Id + "'"))!;
+    return await Scalar<long>("SELECT (SELECT COALESCE(sum(octet_length(private_descriptor)),0)::bigint FROM {s}.native_approvals WHERE session_id='" + key.Id + "')+(SELECT COALESCE(sum(octet_length(descriptor)),0)::bigint FROM {s}.native_invocations WHERE session_id='" + key.Id + "')") + Encoding.UTF8.GetByteCount(payload["approvals"]!.ToJsonString(json)) + payload["pendingCalls"]!.AsArray().Sum(call => Encoding.UTF8.GetByteCount(call!.ToJsonString(json)));
+}

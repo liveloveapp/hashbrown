@@ -174,6 +174,89 @@ using var redirectHttp = new HttpClient(redirectAudit);
 using var redirectClient = new FixtureLiveModelClient(ProviderFactory.Create(configuration, new ProviderClientComposition(auth => auth.CreateCredential(), redirectHttp)), redirectState);
 await Reject(async () => await redirectClient.GetResponseAsync(messages), "LIVE_PROVIDER_FAILED");
 Check(redirectState.Calls == 1 && redirectState.HttpCalls == 1, "redirect retried native dispatch");
+
+// Deterministic probes below are policy/accounting tests, never genuine live approval evidence.
+using var nativeApprovalCap = new FixtureLiveGate("native-approval");
+Check(nativeApprovalCap.MaxCalls == 4, "native approval reservation changed");
+for (var attempt = 0; attempt < 4; attempt++) nativeApprovalCap.Dispatch();
+await Reject(() => { nativeApprovalCap.Dispatch(); return Task.CompletedTask; }, "LIVE_CALL_CAP");
+Check(nativeApprovalCap.Calls == 4, "native fifth attempt counted");
+
+var protectedArguments = new Dictionary<string, object?> { ["code"] = "PDX" };
+using var approvalPolicyState = new FixtureLiveGate("native-approval");
+using var approvalProbe = new ApprovalProbe();
+using var approvalPolicy = new FixtureLiveModelClient(approvalProbe, approvalPolicyState);
+var protectedOptions = new ChatOptions { MaxOutputTokens = 900, AllowMultipleToolCalls = true, Tools = [AIFunctionFactory.Create(() => "unit only", "lookupAirport")] };
+await foreach (var _ in approvalPolicy.GetStreamingResponseAsync(messages, protectedOptions)) { }
+Check(approvalProbe.Options!.ToolMode is RequiredChatToolMode { RequiredFunctionName: "lookupAirport" } && approvalProbe.Options.MaxOutputTokens == 384 && approvalProbe.Options.AllowMultipleToolCalls == false, "native approval initial policy absent");
+Check(protectedOptions.MaxOutputTokens == 900 && protectedOptions.ToolMode is null && protectedOptions.AllowMultipleToolCalls == true, "native approval mutated options");
+var protectedCall = new FunctionCallContent("protected-model-call", "lookupAirport", protectedArguments);
+var protectedOutput = new FunctionResultContent("protected-model-call", "{\"code\":\"PDX\",\"name\":\"Portland International Airport\"}");
+ChatMessage[] protectedHistory = [ ..messages, new(ChatRole.Assistant, [protectedCall]), new(ChatRole.Tool, [protectedOutput])];
+foreach (var bad in new ChatMessage[][] {
+    messages,
+    [..messages, new(ChatRole.Assistant, [protectedCall])],
+    [..messages, new(ChatRole.Assistant, [new FunctionCallContent("other", "lookupAirport", protectedArguments)]), new(ChatRole.Tool, [protectedOutput])],
+    [..messages, new(ChatRole.Assistant, [protectedCall]), new(ChatRole.Tool, [new FunctionResultContent("protected-model-call", "{\"code\":\"PDX\",\"name\":\"wrong\"}")])],
+    [..messages, new(ChatRole.Assistant, [protectedCall, protectedCall]), new(ChatRole.Tool, [protectedOutput])]
+}) {
+    await Reject(async () => { await foreach (var _ in approvalPolicy.GetStreamingResponseAsync(bad, protectedOptions)) { } }, "LIVE_TOOL_INVALID");
+    Check(approvalProbe.Calls == 1, "wrong approval continuation reached native client");
+}
+await foreach (var _ in approvalPolicy.GetStreamingResponseAsync(protectedHistory, protectedOptions)) { }
+Check(approvalProbe.Options!.ToolMode is NoneChatToolMode, "native approval continuation allowed a tool");
+await Reject(async () => { await foreach (var _ in approvalPolicy.GetStreamingResponseAsync(protectedHistory, protectedOptions)) { } }, "LIVE_TOOL_INVALID");
+Check(approvalProbe.Calls == 2, "stale followup reused old model iterator");
+ChatMessage[] changedLaterHistory = [ ..messages, new(ChatRole.Assistant, [protectedCall]), new(ChatRole.Tool, [new FunctionResultContent("protected-model-call", "{\"code\":\"PDX\",\"name\":\"wrong\"}")]), new(ChatRole.Assistant, "done"), new(ChatRole.User, "later plain user")];
+await Reject(async () => { await foreach (var _ in approvalPolicy.GetStreamingResponseAsync(changedLaterHistory, protectedOptions)) { } }, "LIVE_TOOL_INVALID");
+Check(approvalProbe.Calls == 2, "changed third-turn result acquired model work");
+var rehydratedResult = new FunctionResultContent("protected-model-call", JsonSerializer.SerializeToElement(new { name = "Portland International Airport", code = "PDX" }));
+ChatMessage[] rehydratedHistory = [ ..messages, new(ChatRole.Assistant, [protectedCall]), new(ChatRole.Tool, [rehydratedResult])];
+await foreach (var _ in approvalPolicy.GetStreamingResponseAsync([..rehydratedHistory, new(ChatRole.Assistant, "done"), new(ChatRole.User, "later plain user")], protectedOptions)) { }
+var approvalStats = JsonSerializer.SerializeToElement(approvalPolicyState.Snapshot());
+Check(approvalProbe.Calls == 3 && approvalStats.GetProperty("usageCompleteCalls").GetInt32() == 3 && approvalStats.GetProperty("usageIncompleteCalls").GetInt32() == 0, "native three phase usage missing");
+Check(approvalStats.GetProperty("inputTokens").GetInt64() == 6 && approvalStats.GetProperty("outputTokens").GetInt64() == 3, "native usage not actual");
+await Reject(async () => { await foreach (var _ in approvalPolicy.GetStreamingResponseAsync([..protectedHistory, new(ChatRole.Assistant, "done"), new(ChatRole.User, "another request")], protectedOptions)) { } }, "LIVE_TOOL_INVALID");
+Check(approvalProbe.Calls == 3, "unused fourth allowance admitted an invented phase");
+
+foreach (var usage in new UsageDetails?[] {
+    null, new() { InputTokenCount = 7 }, new() { OutputTokenCount = 1 },
+    new() { InputTokenCount = -1, OutputTokenCount = 1 },
+    new() { InputTokenCount = 2, OutputTokenCount = 1, TotalTokenCount = 99 },
+    new() { InputTokenCount = 2, OutputTokenCount = 385 }
+}) {
+    using var usageGate = new FixtureLiveGate("native-approval");
+    usageGate.Dispatch();
+    if (usage is not null) usageGate.Observe(new ChatResponseUpdate { Contents = [new UsageContent(usage)] });
+    usageGate.Finished(false, false);
+    var sample = JsonSerializer.SerializeToElement(usageGate.Snapshot());
+    Check(sample.GetProperty("usageCompleteCalls").GetInt32() == 0 && sample.GetProperty("usageIncompleteCalls").GetInt32() == 1, "missing or contradictory native usage labeled complete");
+    if (usage?.InputTokenCount == 7) Check(sample.GetProperty("inputTokens").GetInt64() == 7, "known incomplete native usage erased");
+}
+using (var duplicateUsage = new FixtureLiveGate("native-approval")) {
+    duplicateUsage.Dispatch();
+    var update = new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = 2, OutputTokenCount = 1 })] };
+    duplicateUsage.Observe(update); duplicateUsage.Observe(update); duplicateUsage.Finished(false, false);
+    Check(JsonSerializer.SerializeToElement(duplicateUsage.Snapshot()).GetProperty("usageIncompleteCalls").GetInt32() == 1, "duplicate usage accepted");
+}
+
+var rejectedProof = new FixtureLiveApprovalProof("catalog-unit");
+var rejectedInner = System.Reflection.DispatchProxy.Create<INativeSessionJournal, RejectedLiveJournal>();
+var rejectedJournal = new FixtureNativeJournal(rejectedInner, new FixtureNativeGate(""), liveApproval: rejectedProof);
+var rejectedLease = new NativeSessionLease(new NativeSessionKey("HashbrownNative", "alice", "unit", new Dictionary<string,string> { ["isolation"] = "alice" }), "owner", 1, 1);
+var rejectedCall = new NativeToolCall("unit-call", "lookupAirport", 1, JsonSerializer.SerializeToElement(protectedArguments));
+var rejectedBatch = new NativeApprovalBatch("unit-batch", [new NativeApprovalDescriptor("unit-request", rejectedCall, new NativeRequestLocation("unit-parent", null, 0))], []);
+Check(!await rejectedJournal.CaptureModelCallAsync(rejectedLease, rejectedCall), "probe unexpectedly accepted model capture");
+Check(!await rejectedJournal.CaptureApprovalBatchAsync(rejectedLease, rejectedBatch), "probe unexpectedly accepted approval capture");
+Check(!await rejectedJournal.TryAdmitApprovalBatchAsync(rejectedLease, rejectedBatch.BatchId, new NativeApprovalAdmissionEnvelope("{}", [new NativeApprovalDecision("unit-request", NativeApprovalDecisionKind.Approved)])), "probe unexpectedly admitted");
+Check(!await rejectedJournal.TryStartDispatchAsync(rejectedLease, rejectedCall), "probe unexpectedly started");
+Check(!await rejectedJournal.CompleteDispatchAsync(rejectedLease, rejectedCall), "probe unexpectedly completed");
+Check(await rejectedJournal.SaveAsync(rejectedLease, new NativeSessionSave("{}", "{}", [], [], true)) is null, "probe unexpectedly saved");
+var rejectedReceipt = new NativeSavedReceipt(rejectedLease, 2);
+Check(!await rejectedJournal.AuthorizePublicationAsync(rejectedReceipt) && !await rejectedJournal.FinalizePublicationAsync(rejectedReceipt), "probe unexpectedly published");
+var rejectedSnapshot = JsonSerializer.SerializeToElement(rejectedProof.Snapshot());
+Check(rejectedSnapshot.GetProperty("nativeApprovalCaptures").GetInt32() == 0 && rejectedSnapshot.GetProperty("nativeApprovalAdmissions").GetInt32() == 0 && rejectedSnapshot.GetProperty("nativeApprovalDispatches").GetInt32() == 0 && rejectedSnapshot.GetProperty("nativeApprovalCompletions").GetInt32() == 0 && rejectedSnapshot.GetProperty("nativeApprovalPublications").GetInt32() == 0, "false real-journal responses manufactured successful proof");
+
 Console.WriteLine("Live native fixture passed.");
 
 static void Check(bool value, string message) { if (!value) throw new Exception(message); }
@@ -260,4 +343,28 @@ sealed class MixedProbe(FunctionCallContent[] calls): IChatClient {
  public object? GetService(Type t, object? key=null)=>null;
  public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> m,ChatOptions? o=null,CancellationToken c=default)=>throw new NotSupportedException();
  public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> m,ChatOptions? o=null,[EnumeratorCancellation]CancellationToken c=default) { await Task.CompletedTask; Options=o; yield return ++count==1 ? new ChatResponseUpdate { Contents=[..calls] } : new ChatResponseUpdate { Contents=[new TextContent("done")] }; }
+}
+
+
+/// <summary>Deterministic native client probe for policy and usage; never a live evidence producer.</summary>
+sealed class ApprovalProbe : IChatClient {
+    public ChatOptions? Options; public int Calls;
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+        await Task.CompletedTask; cancellationToken.ThrowIfCancellationRequested(); Options = options; Calls++;
+        yield return Calls == 1 ? new ChatResponseUpdate { Contents = [new FunctionCallContent("protected-model-call", "lookupAirport", new Dictionary<string,object?> { ["code"] = "PDX" })] } : new ChatResponseUpdate(ChatRole.Assistant, "done");
+        yield return new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = 2, OutputTokenCount = 1, TotalTokenCount = 3 })] };
+    }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+}
+
+/// <summary>Rejected authority responses demonstrate observation-after-success without manufacturing live evidence.</summary>
+public class RejectedLiveJournal : System.Reflection.DispatchProxy {
+    protected override object? Invoke(System.Reflection.MethodInfo? method, object?[]? arguments) {
+        if (method?.ReturnType == typeof(ValueTask<bool>)) return ValueTask.FromResult(false);
+        if (method?.ReturnType == typeof(ValueTask<NativeSavedReceipt>)) return ValueTask.FromResult<NativeSavedReceipt?>(null);
+        if (method?.ReturnType == typeof(ValueTask<NativeApprovalEvidence>)) return ValueTask.FromResult<NativeApprovalEvidence?>(null);
+        throw new NotSupportedException("unit journal method not configured");
+    }
 }

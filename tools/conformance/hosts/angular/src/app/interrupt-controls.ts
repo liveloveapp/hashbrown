@@ -49,6 +49,32 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
       >
         Cancel
       </button>
+      <button
+        data-testid="mixed-decisions"
+        type="button"
+        [disabled]="
+          disabled() || batch()?.interrupts.length !== 3 || isResuming()
+        "
+        (click)="submit('mixed')"
+      >
+        Approve, decline, cancel
+      </button>
+      <button
+        data-testid="capture-resume"
+        type="button"
+        [disabled]="disabled() || !batch() || isResuming()"
+        (click)="captureResume()"
+      >
+        Capture resume command
+      </button>
+      <button
+        data-testid="replay-captured-resume"
+        type="button"
+        [disabled]="disabled() || !batch() || !capturedResume() || isResuming()"
+        (click)="replayCapturedResume()"
+      >
+        Replay captured resume command
+      </button>
       <div data-testid="resume-error">{{ error() }}</div>
     </section>
   `,
@@ -63,9 +89,38 @@ export class InterruptControls {
   /** The runtime command invoked by the fixture form. */
   readonly resume = input.required<(options: ResumeOptions) => void>();
   protected readonly error = signal('');
+  protected readonly capturedResume = signal<(() => void) | undefined>(
+    undefined,
+  );
+
+  /** Captures an intentionally stale public command solely for fixture guard verification. */
+  protected captureResume(): void {
+    const batch = this.batch();
+    if (!batch) return;
+    const resume = this.resume();
+    const options: ResumeOptions = {
+      batchId: batch.id,
+      entries: batch.interrupts.map(({ id }) => ({
+        interruptId: id,
+        status: 'resolved',
+        payload: { approved: true },
+      })),
+    };
+    this.capturedResume.set(() => resume(options));
+  }
+
+  /** Replays the captured command without using it as current batch ownership. */
+  protected replayCapturedResume(): void {
+    this.error.set('');
+    try {
+      this.capturedResume()?.();
+    } catch (cause) {
+      this.error.set(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
 
   protected submit(
-    decision: 'approve' | 'decline' | 'cancel' = 'approve',
+    decision: 'approve' | 'decline' | 'cancel' | 'mixed' = 'approve',
   ): void {
     const batch = this.batch();
     if (!batch) return;
@@ -73,13 +128,19 @@ export class InterruptControls {
     try {
       this.resume()({
         batchId: batch.id,
-        entries: batch.interrupts.map(({ id }) => ({
-          interruptId: id,
-          status: decision === 'cancel' ? 'cancelled' : 'resolved',
-          ...(decision === 'cancel'
-            ? {}
-            : { payload: { approved: decision === 'approve' } }),
-        })),
+        entries: batch.interrupts.map(({ id }, index) => {
+          const selected =
+            decision === 'mixed'
+              ? (['approve', 'decline', 'cancel'] as const)[index]
+              : decision;
+          return {
+            interruptId: id,
+            status: selected === 'cancel' ? 'cancelled' : 'resolved',
+            ...(selected === 'cancel'
+              ? {}
+              : { payload: { approved: selected === 'approve' } }),
+          };
+        }),
       });
     } catch (cause) {
       this.error.set(cause instanceof Error ? cause.message : String(cause));

@@ -10,14 +10,19 @@ internal sealed class NativeSessionProjectionEvidence(
     Func<string?, string?, bool> matchesMessage,
     Func<string?, string?, string?, JsonNode?, bool> matchesCall,
     Func<bool>? available = null,
-    Func<string?, string?, JsonNode?, bool>? ownedCall = null)
+    Func<string?, string?, JsonNode?, bool>? ownedCall = null,
+    Func<IReadOnlyList<NativeProjectionApproval>>? approvals = null)
 {
+    internal IReadOnlyList<NativeProjectionApproval> Approvals => approvals?.Invoke() ?? [];
     internal bool Available => available?.Invoke() ?? true;
     internal bool Matches(string? responseId, string? messageId) => matchesMessage(responseId, messageId);
     internal bool MatchesCall(string? responseId, string? callId, string? name, JsonNode? arguments) => matchesCall(responseId, callId, name, arguments);
     /// <summary>Matches only an exact current owned registered server descriptor, independently of provider/browser evidence.</summary>
     internal bool OwnsCall(string? callId, string? name, JsonNode? arguments) => ownedCall?.Invoke(callId, name, arguments) == true;
 }
+
+/// <summary>Independent immutable journal/capture witness for one supported native approval projection.</summary>
+internal sealed record NativeProjectionApproval(string RequestId, string CallId, string Name, JsonElement Arguments, bool Protected, bool Pending, string? NativeMessageId, int ContentIndex, string? PublicParent = null, int? PublicMessageIndex = null, int? PublicCallIndex = null);
 
 /// <summary>A bounded current public prefix and the genuine terminal's continuation disposition.</summary>
 internal sealed record NativeSessionProjectionResult(
@@ -130,8 +135,8 @@ internal sealed class NativeSessionProjection
         if (_available && !BatchObligationsAgree()) Discard();
         _rawBatchCalls.Clear(); _rawBatchResults.Clear();
         var pending = _calls.Where(pair => !_answeredCalls.Contains(pair.Key)).ToArray();
-        if (pending.Any(pair => !_browserTools.Contains(Required(pair.Value["function"]!, "name")))) Discard();
-        if (_terminalType != "RUN_FINISHED" || _terminalOutcome != "success") Discard();
+        if (pending.Any(pair => !_browserTools.Contains(Required(pair.Value["function"]!, "name")) && !CurrentPending().Any(item => item.Protected && item.CallId == pair.Key))) Discard();
+        if (_terminalType != "RUN_FINISHED" || _terminalOutcome is not ("success" or "interrupt")) Discard();
         string? json = null;
         if (_available && _request is not null)
         {
@@ -139,8 +144,8 @@ internal sealed class NativeSessionProjection
             try { _ = JsonSerializer.Deserialize(json, AGUIJsonSerializerContext.Default.RunAgentInput) ?? throw new JsonException(); }
             catch (Exception exception) when (exception is JsonException or NotSupportedException) { Discard(); json = null; }
         }
-        _result = new(_available, json, _available ? Array.AsReadOnly(pending.Select(pair => pair.Key).ToArray()) : Array.Empty<string>(),
-            _available && pending.Length == 0, _terminalType, _terminalOutcome);
+        _result = new(_available, json, _available ? Array.AsReadOnly(pending.Where(pair => _browserTools.Contains(Required(pair.Value["function"]!, "name"))).Select(pair => pair.Key).ToArray()) : Array.Empty<string>(),
+            _available && pending.Length == 0 && CurrentPending().Count == 0, _terminalType, _terminalOutcome);
     }
 
     /// <summary>Publishes the held genuine bytes once, only after the caller has durably saved and authorized this owner/revision.</summary>
@@ -236,13 +241,14 @@ internal sealed class NativeSessionProjection
                 case "TOOL_CALL_RESULT":
                     var resultId = Required(item, "toolCallId");
                     var resultMessageId = Required(item, "messageId");
+                    if (item["rawEvent"] is not null) SeedOwnedHistoricalCall(resultId);
                     if (item["role"] is not null && item["role"]!.GetValue<string>() != "tool" || !_calls.ContainsKey(resultId) || _openCalls.Contains(resultId) || !_answeredCalls.Add(resultId) || !_messageIds.Add(resultMessageId) || resultMessageId != resultId && (_calls.ContainsKey(resultMessageId) || _historicalCallIds.Contains(resultMessageId))) { Discard(); break; }
                     var result = new JsonObject { ["id"] = resultMessageId, ["role"] = "tool", ["toolCallId"] = resultId, ["content"] = item["content"]!.DeepClone() };
                     CopyName(item, result); if (item["error"] is not null) result["error"] = item["error"]!.DeepClone();
                     _messages.Add(result); break;
                 case "STATE_SNAPSHOT": _request!["state"] = item["snapshot"]?.DeepClone(); break;
                 case "RUN_FINISHED":
-                    if (_terminalOutcome != "success" || !SupportedTerminalUsage(item["usage"]) || item["outcome"] is JsonObject outcome && outcome.Any(property => property.Key != "type")) Discard();
+                    if (!SupportedTerminalUsage(item["usage"]) || (_terminalOutcome == "interrupt" ? !SupportedApprovalTerminal(item["outcome"]) : _terminalOutcome != "success" || CurrentPending().Any(approval => approval.Protected) || item["outcome"] is JsonObject outcome && outcome.Any(property => property.Key != "type"))) Discard();
                     break;
                 case "RUN_ERROR": break;
                 default: Discard(); break;
@@ -251,6 +257,95 @@ internal sealed class NativeSessionProjection
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or NullReferenceException or ArgumentException) { Discard(); }
         return terminal;
+    }
+
+    private IReadOnlyList<NativeProjectionApproval> CurrentPending() => _evidence?.Approvals.Where(item => item.Pending).ToArray() ?? [];
+    /// <summary>Returns a location only from the completed genuine public fold.</summary>
+    internal (string Parent, int MessageIndex, int CallIndex)? PublicLocation(string callId)
+    {
+        if (!Result.Available) return null;
+        for (var messageIndex = 0; messageIndex < _messages.Count; messageIndex++)
+            if (_messages[messageIndex] is JsonObject message && message["toolCalls"] is JsonArray calls)
+                for (var callIndex = 0; callIndex < calls.Count; callIndex++)
+                    if (calls[callIndex]?["id"]?.GetValue<string>() == callId) return (Required(message, "id"), messageIndex, callIndex);
+        return null;
+    }
+    private bool SupportedApprovalTerminal(JsonNode? node)
+    {
+        var expected = CurrentPending().Where(item => item.Protected).ToArray();
+        if (expected.Length == 0 || node is not JsonObject outcome || outcome.Count != 2 || outcome["type"]?.GetValue<string>() != "interrupt" || outcome["interrupts"] is not JsonArray interrupts || interrupts.Count != expected.Length) return false;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in interrupts.OfType<JsonObject>())
+        {
+            if (item.Count != 5 || !seen.Add(Required(item, "id"))) return false;
+            var approval = expected.SingleOrDefault(value => value.RequestId == Required(item, "id"));
+            if (approval is null || item["reason"]?.GetValue<string>() != "tool_call" || item["message"]?.GetValue<string>() != "Approval required for tool call: " + approval.Name || item["toolCallId"]?.GetValue<string>() != approval.CallId ||
+                !JsonNode.DeepEquals(item["responseSchema"], JsonNode.Parse("{\"type\":\"object\",\"properties\":{\"approved\":{\"type\":\"boolean\"}},\"required\":[\"approved\"]}"))) return false;
+            if (!_calls.ContainsKey(approval.CallId) || _answeredCalls.Contains(approval.CallId)) return false;
+        }
+        return seen.Count == expected.Length;
+    }
+    private bool SeedOwnedHistoricalCall(string id)
+    {
+        if (_calls.ContainsKey(id)) return true;
+        var approval = _evidence?.Approvals.SingleOrDefault(item => !item.Pending && item.CallId == id);
+        if (approval is null || approval.PublicMessageIndex is not int messageIndex || approval.PublicCallIndex is not int callIndex || messageIndex >= _messages.Count || _messages[messageIndex] is not JsonObject message || Required(message, "id") != approval.PublicParent || message["role"]?.GetValue<string>() != "assistant" || message["toolCalls"] is not JsonArray calls || callIndex >= calls.Count || calls[callIndex] is not JsonObject call || Required(call, "id") != id ||
+            call["function"]?["name"]?.GetValue<string>() != approval.Name || !JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), JsonNode.Parse(approval.Arguments.GetRawText())) || _messages.Any(item => item?["role"]?.GetValue<string>() == "tool" && item["toolCallId"]?.GetValue<string>() == id)) return false;
+        _calls.Add(id, call); _callParents.Add(id, approval.PublicParent!); return true;
+    }
+    private bool SupportedApprovalRaw(JsonNode item, string type, JsonObject raw)
+    {
+        if (type is not ("TOOL_CALL_START" or "TOOL_CALL_ARGS" or "TOOL_CALL_END" or "TOOL_CALL_RESULT") || raw["contents"] is not JsonArray contents || contents.Count is < 1 || contents.Count > _maximumMessages) return false;
+        var approvals = _evidence?.Approvals ?? [];
+        if (approvals.Count == 0) return false;
+        var allowed = new HashSet<string>(["authorName", "role", "contents", "additionalProperties", "responseId", "messageId", "conversationId", "createdAt", "finishReason", "modelId", "continuationToken"], StringComparer.Ordinal);
+        if (raw.Any(property => !allowed.Contains(property.Key)) || raw["additionalProperties"] is not null || raw["conversationId"] is not null || raw["continuationToken"] is not null || raw["finishReason"] is not null && (type == "TOOL_CALL_RESULT" || raw["finishReason"]!.GetValue<string>() != "tool_calls") || raw["role"]?.GetValue<string>() != (type == "TOOL_CALL_RESULT" ? "tool" : "assistant")) return false;
+        var seen = new HashSet<string>(StringComparer.Ordinal); var selected = false;
+        for (var index = 0; index < contents.Count; index++)
+        {
+            if (contents[index] is not JsonObject content || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
+            JsonObject call;
+            NativeProjectionApproval? approval;
+            if (content["$type"]?.GetValue<string>() == "toolApprovalRequest")
+            {
+                if (type == "TOOL_CALL_RESULT" || content.Any(property => property.Key is not ("$type" or "toolCall" or "requiresConfirmation" or "requestId" or "annotations" or "additionalProperties")) || content["toolCall"] is not JsonObject function) return false;
+                approval = approvals.SingleOrDefault(value => value.Pending && value.Protected && value.RequestId == content["requestId"]?.GetValue<string>());
+                if (approval is null || content["requiresConfirmation"]?.GetValue<bool>() != true) return false;
+                call = function;
+            }
+            else
+            {
+                call = content;
+                approval = approvals.SingleOrDefault(value => value.CallId == content["callId"]?.GetValue<string>() && (type == "TOOL_CALL_RESULT" ? !value.Pending : value.Pending && !value.Protected));
+                if (approval is null) return false;
+            }
+            if (!seen.Add(approval.CallId) || call["callId"]?.GetValue<string>() != approval.CallId) return false;
+            if (type == "TOOL_CALL_RESULT")
+            {
+                if (call["$type"]?.GetValue<string>() != "functionResult" || call.Any(property => property.Key is not ("$type" or "result" or "callId" or "annotations" or "additionalProperties")) || !SeedOwnedHistoricalCall(approval.CallId)) return false;
+                if (_rawBatchResults.TryGetValue(approval.CallId, out var prior) && !JsonNode.DeepEquals(prior, call["result"])) return false;
+                _rawBatchResults[approval.CallId] = call["result"]?.DeepClone();
+                if (approval.CallId == item["toolCallId"]?.GetValue<string>())
+                {
+                    if (item["content"] is not JsonValue canonical || !canonical.TryGetValue<string>(out var text) || !EquivalentResult(text, call["result"])) return false;
+                    selected = true;
+                }
+            }
+            else
+            {
+                if (approval.ContentIndex != index || approval.NativeMessageId != raw["messageId"]?.GetValue<string>() || call["$type"]?.GetValue<string>() != "functionCall" || call["name"]?.GetValue<string>() != approval.Name || call["informationalOnly"]?.GetValue<bool>() != false || call["annotations"] is not null || call["additionalProperties"] is not null || call.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties")) || !JsonNode.DeepEquals(call["arguments"], JsonNode.Parse(approval.Arguments.GetRawText()))) return false;
+                var parent = raw["messageId"]?.GetValue<string>() ?? _activeAssistantMessageId ?? $"assistant-{approval.CallId}";
+                var obligation = new JsonObject { ["parentMessageId"] = parent, ["content"] = call.DeepClone() };
+                if (_rawBatchCalls.TryGetValue(approval.CallId, out var prior) && !JsonNode.DeepEquals(prior, obligation)) return false;
+                _rawBatchCalls[approval.CallId] = obligation;
+                if (approval.CallId == item["toolCallId"]?.GetValue<string>())
+                {
+                    if (type == "TOOL_CALL_START" && (item["toolCallName"]?.GetValue<string>() != approval.Name || item["parentMessageId"]?.GetValue<string>() != raw["messageId"]?.GetValue<string>())) return false;
+                    selected = true;
+                }
+            }
+        }
+        return selected;
     }
 
     private static bool KnownFields(JsonObject item, string type)
@@ -321,7 +416,7 @@ internal sealed class NativeSessionProjection
     private void Invalidate() { Discard(); _invalid = true; _frame.Clear(); _terminal = null; }
     private bool SupportedNativeRaw(JsonNode item, string type)
     {
-        try { return item["rawEvent"] is JsonObject raw && DiagnosticTypes(raw) && (SupportedNativeTextRaw(item, type) || SupportedNativeToolRaw(item, type)); }
+        try { return item["rawEvent"] is JsonObject raw && DiagnosticTypes(raw) && (SupportedNativeTextRaw(item, type) || SupportedApprovalRaw(item, type, raw) || SupportedNativeToolRaw(item, type)); }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException or ArgumentException) { return false; }
     }
 

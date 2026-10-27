@@ -38,11 +38,11 @@ export function readNativeRecipes(workspace = root) {
     [...text.matchAll(/```csharp\n([\s\S]*?)\n```/g)].map((match) => match[1]),
   );
   if (
-    blocks[0].length !== 2 ||
+    blocks[0].length !== 3 ||
     JSON.stringify(blocks[0]) !== JSON.stringify(blocks[1])
   )
     throw new Error(
-      'Native framework recipes must contain the same two tested C# examples.',
+      'Native framework recipes must contain the same three tested C# examples.',
     );
   const locked = packages(
     readFileSync(
@@ -69,24 +69,35 @@ const replaceOnce = (text, target, replacement) => {
   return text.replace(target, replacement);
 };
 
-/** Builds exact documented programs for every provider, API and optional recovery insertion. */
-export function nativeRecipePrograms([bootstrap, recoveryBlock]) {
+const registration =
+  'var functions = new[] { AIFunctionFactory.Create(LookupAirport, "lookupAirport") };\nvar catalog = new NativeToolCatalog(functions.Select(function =>\n    new NativeToolDefinition(function.Name, 1, function.JsonSchema)));';
+
+/** Builds every documented provider/API program with optional approvals and recovery. */
+export function nativeRecipePrograms([
+  bootstrap,
+  approvalRegistration,
+  recoveryBlock,
+]) {
   return ['openai', 'azure'].flatMap((provider) =>
     ['responses', 'chat-completions'].flatMap((api) =>
-      [false, true].map((recovery) => {
-        let program = replaceOnce(
-          bootstrap,
-          'builder.Configuration["ModelApi"] ??= "responses";',
-          `builder.Configuration["ModelApi"] = "${api}";\nbuilder.Configuration["Provider"] = "${provider}";`,
-        );
-        if (recovery)
-          program = replaceOnce(
-            program,
-            'await app.RunAsync();',
-            `${recoveryBlock}\n\nawait app.RunAsync();`,
+      [false, true].flatMap((recovery) =>
+        [false, true].map((approvals) => {
+          let program = replaceOnce(
+            bootstrap,
+            'builder.Configuration["ModelApi"] ??= "responses";',
+            `builder.Configuration["ModelApi"] = "${api}";\nbuilder.Configuration["Provider"] = "${provider}";`,
           );
-        return { provider, api, recovery, program };
-      }),
+          if (approvals)
+            program = replaceOnce(program, registration, approvalRegistration);
+          if (recovery)
+            program = replaceOnce(
+              program,
+              'await app.RunAsync();',
+              `${recoveryBlock}\n\nawait app.RunAsync();`,
+            );
+          return { provider, api, recovery, approvals, program };
+        }),
+      ),
     ),
   );
 }
@@ -111,9 +122,9 @@ export function compileNativeRecipes() {
       ['restore', '--locked-mode'],
       { cwd: directory, stdio: 'inherit' },
     );
-    for (const { provider, api, recovery, program } of variants) {
+    for (const { provider, api, recovery, approvals, program } of variants) {
       console.log(
-        `Compiling native ${provider} ${api} recipe, recovery=${recovery}`,
+        `Compiling native ${provider} ${api} recipe, recovery=${recovery}, approvals=${approvals}`,
       );
       writeFileSync(join(directory, 'Program.cs'), program);
       execFileSync(
