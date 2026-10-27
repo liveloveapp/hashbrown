@@ -40,6 +40,8 @@ export function useRecoveryControls(
   const enabled = Boolean(recoveryOrigin());
   const [fetching, setFetching] = useState(false);
   const [status, setStatus] = useState('');
+  const [lastRestore, setLastRestore] = useState<(() => void) | undefined>();
+  const [commandError, setCommandError] = useState('');
   const [blocked, setBlocked] = useState(
     () =>
       enabled && new URL(globalThis.location.href).searchParams.has('threadId'),
@@ -78,11 +80,16 @@ export function useRecoveryControls(
       if (!response.ok) throw new Error(`Recovery HTTP ${response.status}`);
       const envelope = readRecovery(await response.json());
       if (!current()) return;
-      if (envelope.snapshot)
-        chat.restoreConversation(envelope.snapshot, {
-          expectedRevision,
-          structuredHistory: 'preserve-diagnostics',
-        });
+      if (envelope.snapshot) {
+        const snapshot = envelope.snapshot;
+        const apply = () =>
+          chat.restoreConversation(snapshot, {
+            expectedRevision,
+            structuredHistory: 'preserve-diagnostics',
+          });
+        apply();
+        setLastRestore(() => apply);
+      }
       setStatus(recoveryStatus(envelope));
       setBlocked(recoveryBlocked(envelope));
     } catch (cause) {
@@ -90,6 +97,16 @@ export function useRecoveryControls(
         setStatus(cause instanceof Error ? cause.message : String(cause));
     } finally {
       if (generation.current === requestGeneration) setFetching(false);
+    }
+  }
+
+  /** Replays only the last genuine public restore command to exercise stale revision refusal. */
+  function replayLastRestore() {
+    setCommandError('');
+    try {
+      lastRestore?.();
+    } catch (cause) {
+      setCommandError(cause instanceof Error ? cause.message : String(cause));
     }
   }
 
@@ -105,6 +122,9 @@ export function useRecoveryControls(
 
   return {
     enabled,
+    replayLastRestore,
+    canReplayRestore: Boolean(lastRestore),
+    commandError,
     fetching,
     status,
     disabled: fetching || blocked || (enabled && chat.recovery.required),

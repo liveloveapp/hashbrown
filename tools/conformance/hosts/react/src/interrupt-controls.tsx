@@ -16,21 +16,56 @@ export function InterruptControls({
   resume,
 }: InterruptControlsProps) {
   const [error, setError] = useState('');
+  const [capturedResume, setCapturedResume] = useState<
+    (() => void) | undefined
+  >();
 
-  function submit(decision: 'approve' | 'decline' | 'cancel' = 'approve') {
+  function submit(
+    decision: 'approve' | 'decline' | 'cancel' | 'mixed' = 'approve',
+  ) {
     if (!batch) return;
     setError('');
     try {
       resume({
         batchId: batch.id,
-        entries: batch.interrupts.map(({ id }) => ({
-          interruptId: id,
-          status: decision === 'cancel' ? 'cancelled' : 'resolved',
-          ...(decision === 'cancel'
-            ? {}
-            : { payload: { approved: decision === 'approve' } }),
-        })),
+        entries: batch.interrupts.map(({ id }, index) => {
+          const selected =
+            decision === 'mixed'
+              ? (['approve', 'decline', 'cancel'] as const)[index]
+              : decision;
+          return {
+            interruptId: id,
+            status: selected === 'cancel' ? 'cancelled' : 'resolved',
+            ...(selected === 'cancel'
+              ? {}
+              : { payload: { approved: selected === 'approve' } }),
+          };
+        }),
       });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  /** Captures an intentionally stale public command solely for fixture guard verification. */
+  function captureResume() {
+    if (!batch) return;
+    const options: ResumeOptions = {
+      batchId: batch.id,
+      entries: batch.interrupts.map(({ id }) => ({
+        interruptId: id,
+        status: 'resolved',
+        payload: { approved: true },
+      })),
+    };
+    setCapturedResume(() => () => resume(options));
+  }
+
+  /** Replays the captured command without using it as current batch ownership. */
+  function replayCapturedResume() {
+    setError('');
+    try {
+      capturedResume?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -71,6 +106,30 @@ export function InterruptControls({
         onClick={() => submit('cancel')}
       >
         Cancel
+      </button>
+      <button
+        data-testid="mixed-decisions"
+        type="button"
+        disabled={disabled || batch?.interrupts.length !== 3 || isResuming}
+        onClick={() => submit('mixed')}
+      >
+        Approve, decline, cancel
+      </button>
+      <button
+        data-testid="capture-resume"
+        type="button"
+        disabled={disabled || !batch || isResuming}
+        onClick={captureResume}
+      >
+        Capture resume command
+      </button>
+      <button
+        data-testid="replay-captured-resume"
+        type="button"
+        disabled={disabled || !batch || !capturedResume || isResuming}
+        onClick={replayCapturedResume}
+      >
+        Replay captured resume command
       </button>
       <div data-testid="resume-error">{error}</div>
     </section>

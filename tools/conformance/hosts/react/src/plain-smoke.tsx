@@ -23,7 +23,9 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
   const { threadId, setThreadId } = useRecoveryThread();
   const [commandError, setCommandError] = useState('');
   const [submitted, setSubmitted] = useState('');
-  const [toolCount, setToolCount] = useState(0);
+  const [toolObservations, setToolObservations] = useState<readonly string[]>(
+    [],
+  );
   const getWeather = useTool({
     name: 'getWeather',
     description: 'Get the current weather for a city.',
@@ -31,7 +33,11 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       city: s.string('The city to get weather for'),
     }),
     handler: async ({ city }) => {
-      setToolCount((count) => count + 1);
+      setToolObservations((entries) => {
+        if (entries.length >= 128)
+          throw new Error('Fixture tool observation capacity exceeded');
+        return [...entries, city];
+      });
 
       return { city, temperatureC: 21, condition: 'sunny' };
     },
@@ -126,6 +132,19 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
           Refresh recovery
         </button>
       )}
+      {recovery.enabled && (
+        <button
+          data-testid="replay-last-restore"
+          type="button"
+          disabled={
+            recovery.fetching || isLoading || !recovery.canReplayRestore
+          }
+          onClick={recovery.replayLastRestore}
+        >
+          Replay last restore command
+        </button>
+      )}
+      <div data-testid="recovery-command-error">{recovery.commandError}</div>
       <div data-testid="recovery-status">{recovery.status}</div>
       <div data-testid="recovery-fetching">{String(recovery.fetching)}</div>
       <div data-testid="recovery-required">
@@ -151,7 +170,10 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       <div data-testid="error">{errorText(error)}</div>
       <div data-testid="sending-error">{errorText(sendingError)}</div>
       <div data-testid="generating-error">{errorText(generatingError)}</div>
-      <div data-testid="tool-count">{toolCount}</div>
+      <div data-testid="tool-count">{toolObservations.length}</div>
+      <div data-testid="tool-observations">
+        {JSON.stringify(toolObservations)}
+      </div>
       <div data-testid="reasoning">{reasoningText}</div>
       <div data-testid="reasoning-detail-count">{reasoningDetails.length}</div>
       <div data-testid="reasoning-has-opaque-value">
