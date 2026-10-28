@@ -26,3 +26,10 @@ Validation: failing regression tests before implementation; build, test and lint
 for www, conformance and dotnet-conformance; all workbench browser assertions;
 .NET browser smoke against real SDK and PostgreSQL; cache reuse/invalidation;
 workflow YAML and embedded shell syntax checks; independent source review.
+
+After rebasing onto packaged .NET integration, PR validation uses explicit
+`package-pr-acceptance` against freshly prepared qualified external consumers.
+Only the 664-case matrix is narrowed to its exact 64 pinned smoke identities;
+all 32 docs programs, upgrade checks, six approval regressions, and qualification
+boundaries remain required. The original full acceptance profile runs nightly
+with full Git history and bounded exported diagnostics.

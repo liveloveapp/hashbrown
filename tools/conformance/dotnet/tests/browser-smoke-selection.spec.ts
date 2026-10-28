@@ -34,3 +34,19 @@ test('smoke selection accepts the full titles supplied by Playwright', () => {
 
   expect(selected).toBe(true);
 });
+
+test('the packaged PR smoke has exactly the pinned identities in every supported combination', async () => {
+  const { expectedPackageIdentities } =
+    await import('../harness/package-reporter');
+
+  const identities = expectedPackageIdentities('smoke');
+
+  expect(identities).toHaveLength(64);
+  expect(new Set(identities.map(([project]) => project)).size).toBe(8);
+  expect(
+    identities.every(
+      ([, file, title]) =>
+        file === 'integration.spec.ts' && nativeBrowserSmoke.test(title),
+    ),
+  ).toBe(true);
+});

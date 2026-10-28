@@ -56,7 +56,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e,example-e2e,provider-smoke --graph="$RUNNER_TEMP/ci-tasks.json"
+          npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e,example-e2e,package-pr-acceptance --graph="$RUNNER_TEMP/ci-tasks.json"
           npx tsx tools/conformance/harness/select-ci-setup.ts "$RUNNER_TEMP/ci-tasks.json" >> "$GITHUB_OUTPUT"
           echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
@@ -120,7 +120,7 @@ jobs:
 
       - name: Run required .NET package acceptance
         if: steps.setup.outputs.dotnet == 'true'
-        run: npx nx package-acceptance dotnet-conformance
+        run: npx nx package-pr-acceptance dotnet-conformance
 
       - name: Upload .NET package acceptance and bounded provenance
         if: always() && steps.setup.outputs.dotnet == 'true'
@@ -130,10 +130,6 @@ jobs:
           path: test-results/dotnet-package
           retention-days: 7
           if-no-files-found: error
-      - name: Run .NET provider conformance
-        if: steps.setup.outputs.dotnet == 'true'
-        run: npx nx provider-smoke dotnet-conformance
-
       - name: Stop PostgreSQL
         if: always() && steps.setup.outputs.dotnet == 'true'
         run: docker rm --force hashbrown-postgres || true

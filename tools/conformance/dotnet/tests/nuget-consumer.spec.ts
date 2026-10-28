@@ -611,3 +611,18 @@ export function spawn(){const child=new EventEmitter();child.stdout=new EventEmi
 
   expect(result.trim()).toBe('passed');
 });
+
+test('PR acceptance retains qualification docs upgrade and regressions while selecting an explicit smoke profile', () => {
+  const result = probe(`
+const {acceptancePlan, acceptanceProfile}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+assert.equal(acceptanceProfile([]),'full');
+assert.equal(acceptanceProfile(['--pr']),'pr');
+assert.throws(()=>acceptanceProfile(['--metadata','/tmp/candidate.json']));
+const plan=acceptancePlan('/tmp/current.json','/tmp/npm.json','pr');
+assert.deepEqual(plan.map(x=>x.name),['candidate','npm','initial-qualification','docs','upgrade','smoke','regressions','final-qualification','final-npm-qualification']);
+assert.ok(plan.find(x=>x.name==='smoke').argv.includes('--smoke'));
+assert.ok(plan.find(x=>x.name==='regressions').argv.includes('--regressions'));
+`);
+
+  expect(result.trim()).toBe('passed');
+});

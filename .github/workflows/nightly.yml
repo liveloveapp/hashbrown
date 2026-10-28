@@ -44,9 +44,9 @@ jobs:
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
 
   dotnet:
-    name: Full .NET browser matrix
+    name: Full .NET package acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:18
@@ -64,6 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
@@ -76,14 +77,12 @@ jobs:
           cache-dependency-path: tools/conformance/dotnet/packages.lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx nx provider-e2e dotnet-conformance
+      - run: npx nx package-acceptance dotnet-conformance
       - name: Upload .NET diagnostics
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: dotnet-conformance-diagnostics
-          path: |
-            test-results/conformance/dotnet
-            playwright-report/conformance/dotnet
+          name: dotnet-package-acceptance
+          path: test-results/dotnet-package
           retention-days: 7
           if-no-files-found: ignore

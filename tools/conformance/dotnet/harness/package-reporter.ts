@@ -1,3 +1,4 @@
+import { nativeBrowserSmoke } from './browser-smoke-selection';
 import type {
   FullConfig,
   FullResult,
@@ -33,6 +34,38 @@ export function assertPackageIdentities(
     throw new Error('Package test identities differ or contain duplicates');
 }
 
+/** Reads pinned identities for the explicitly selected full, smoke, or approval regression suite. */
+export function expectedPackageIdentities(
+  kind: string | undefined,
+): readonly PackageIdentity[] {
+  if (kind === 'matrix' || kind === 'smoke') {
+    const identities: readonly PackageIdentity[] = JSON.parse(
+      readFileSync(
+        resolve(__dirname, '../tests/fixtures/package-identities.json'),
+        'utf8',
+      ),
+    ).identities;
+    const expected =
+      kind === 'smoke'
+        ? identities.filter(([, , title]) => nativeBrowserSmoke.test(title))
+        : identities;
+    if (kind === 'smoke' && expected.length !== 64)
+      throw new Error('Package smoke identities changed');
+    return expected;
+  } else if (kind === 'regressions')
+    return ['react', 'angular'].flatMap((framework) =>
+      ['browser-held', 'browser-held-slow', 'browser-held-hung'].map(
+        (mode) =>
+          [
+            framework,
+            'native-approval.spec.ts',
+            `genuine native approval browser ${mode} ${mode === 'browser-held-hung' ? 'aborts at the authoritative deadline without a successful terminal' : 'accepts successful terminal before HTTP EOF and rejects damaged captures'}`,
+          ] as const,
+      ),
+    );
+  else throw new Error('Explicit package suite required');
+}
+
 /** Compares exact scenario identities and rejects every non-passing or repeated result. */
 export default class PackageReporter implements Reporter {
   private expected: readonly PackageIdentity[] = [];
@@ -48,25 +81,7 @@ export default class PackageReporter implements Reporter {
 
   onBegin(config: FullConfig, suite: Suite): void {
     const kind = process.env['HASHBROWN_PACKAGE_SUITE'];
-    if (kind === 'matrix')
-      this.expected = JSON.parse(
-        readFileSync(
-          resolve(__dirname, '../tests/fixtures/package-identities.json'),
-          'utf8',
-        ),
-      ).identities;
-    else if (kind === 'regressions')
-      this.expected = ['react', 'angular'].flatMap((framework) =>
-        ['browser-held', 'browser-held-slow', 'browser-held-hung'].map(
-          (mode) =>
-            [
-              framework,
-              'native-approval.spec.ts',
-              `genuine native approval browser ${mode} ${mode === 'browser-held-hung' ? 'aborts at the authoritative deadline without a successful terminal' : 'accepts successful terminal before HTTP EOF and rejects damaged captures'}`,
-            ] as const,
-        ),
-      );
-    else throw new Error('Explicit package suite required');
+    this.expected = expectedPackageIdentities(kind);
     this.report =
       process.env['HASHBROWN_PACKAGE_OUTCOME_REPORT'] ??
       resolve(config.rootDir, '../../../test-results/package-outcomes.json');
@@ -87,7 +102,7 @@ export default class PackageReporter implements Reporter {
       relative(
         resolve(
           __dirname,
-          process.env['HASHBROWN_PACKAGE_SUITE'] === 'matrix'
+          process.env['HASHBROWN_PACKAGE_SUITE'] !== 'regressions'
             ? '../specs'
             : '../local-specs',
         ),

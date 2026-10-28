@@ -43,13 +43,20 @@ logs and native model request evidence under the test-results diagnostics folder
 
 ## CI cost and browser coverage
 
-PR and main validation use `npx nx provider-smoke dotnet-conformance`: eight
-browser journeys (partial and complete text, structured output, trusted UI,
-browser tools, approval, decline and cancel) across all eight
-framework/provider/model API combinations, for 64 cases. HTTP contract tests
-retain the detailed protocol, ownership, recovery and durability regressions.
-`npx nx provider-e2e dotnet-conformance` remains the complete browser matrix
-and runs nightly. Neither browser target caches its results.
+PR and main validation use `npx nx package-pr-acceptance dotnet-conformance`.
+This explicit PR profile prepares fresh NuGet and npm consumers, qualifies their
+actual loaded identities, compiles all 32 documented programs, runs upgrade
+checks, and verifies 64 essential browser cases across all eight
+framework/provider/model API combinations. All six native approval browser
+regressions and final consumer qualifications remain required. Reports identify
+this profile as `pr`; it does not claim full-matrix acceptance.
+
+`npx nx package-acceptance dotnet-conformance` retains the original complete
+664-case browser matrix and runs nightly. HTTP contract tests retain detailed
+protocol, ownership, recovery and durability regressions. The manual
+`npx nx provider-smoke dotnet-conformance` target runs the same eight essential
+source-host journeys per combination. Neither browser nor package acceptance
+target caches its results.
 
 Disposable HTTP fixture hosts are killed immediately during final cleanup;
 tests that exercise lifecycle or recovery explicitly initiate their own stop.

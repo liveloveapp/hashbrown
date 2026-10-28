@@ -42,3 +42,11 @@ test('all browser suite entry points provision Chromium', () => {
 
   expect(results.every((result) => result.browser)).toBe(true);
 });
+
+test('packaged PR acceptance provisions PostgreSQL and Chromium', () => {
+  const tasks = ['dotnet-conformance:package-pr-acceptance'];
+
+  const result = selectCiSetup(tasks);
+
+  expect(result).toEqual({ dotnet: true, browser: true });
+});

@@ -12,6 +12,8 @@ export function selectCiSetup(taskIds: readonly string[]): {
         target === 'example-e2e' ||
         target === 'provider-e2e' ||
         target === 'provider-smoke' ||
+        target === 'package-pr-acceptance' ||
+        target === 'package-acceptance' ||
         target === 'workbench-check' ||
         target === 'workbench-e2e'
       );

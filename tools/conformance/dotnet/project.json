@@ -92,7 +92,7 @@
         "parallel": false,
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
-          "eslint harness/terminate-fixture.ts harness/wait-for-native-recovery.ts harness/browser-smoke-selection.ts tests/terminate-fixture.spec.ts tests/wait-for-native-recovery.spec.ts tests/browser-smoke-selection.spec.ts smoke.playwright.config.ts",
+          "eslint harness/terminate-fixture.ts harness/wait-for-native-recovery.ts harness/browser-smoke-selection.ts tests/terminate-fixture.spec.ts tests/wait-for-native-recovery.spec.ts tests/browser-smoke-selection.spec.ts smoke.playwright.config.ts package-smoke.playwright.config.ts",
           "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
           "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
         ]
@@ -220,6 +220,14 @@
       "options": {
         "cwd": "tools/conformance/dotnet",
         "command": "dotnet restore --locked-mode"
+      }
+    },
+    "package-pr-acceptance": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "node tools/conformance/dotnet/nuget-consumer/run.mjs --pr"
       }
     }
   }
