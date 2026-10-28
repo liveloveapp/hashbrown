@@ -12,6 +12,10 @@
         "command": "tsx tools/workbench/build-vercel-output.mts"
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "node --test tools/workbench/*.test.mjs" }
+    },
     "lint": {
       "executor": "nx:run-commands",
       "options": { "command": "eslint tools/workbench" }
