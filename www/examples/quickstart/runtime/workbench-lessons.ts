@@ -1,5 +1,6 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'local-models'
   | 'javascript-runtime'
   | 'ui-kits'
   | 'ui-chatbot'
@@ -40,8 +41,9 @@ export interface WorkbenchLesson {
     | 'selection'
     | 'workflow'
     | 'history';
-  readonly protocol: 'chat' | 'decision' | 'runtime';
+  readonly protocol: 'chat' | 'decision' | 'runtime' | 'local';
   readonly inspector:
+    | 'Model'
     | 'Agent'
     | 'Parser'
     | 'Form'
@@ -97,6 +99,7 @@ export const workbenchLessonGroups: readonly {
     id: 'production',
     title: 'Production',
     lessons: [
+      'local-models',
       'debugging',
       'request-transformation',
       'save-text-conversations',
@@ -146,6 +149,14 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     endpoint: '',
   },
 
+  {
+    id: 'local-models',
+    title: 'Local models',
+    format: 'structured',
+    inspector: 'Model',
+    protocol: 'local',
+    endpoint: '',
+  },
   {
     id: 'structured-output',
     title: 'Structured output',
