@@ -37,6 +37,7 @@ import {
   type WorkbenchLayoutStore,
 } from './workbench-layout';
 import {
+  getWorkbenchLesson,
   type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
@@ -57,6 +58,7 @@ import {
   getWorkbenchEmbedMode,
   type WorkbenchEmbedMode,
 } from './workbench-embed';
+import { attachWorkbenchMessages } from './workbench-messages';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
@@ -726,13 +728,14 @@ export function mountWorkbench(
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
-  const play = iconButton('Play', 'play', () => {
-    if (playing) {
-      pause();
-      return;
-    }
-    if (!store.getSnapshot().events.length) return;
+  // Commit of the capture loaded into an embedded replay.
+  let recordedCommit: string | null = null;
+  // Tells an embedding docs page that playback started or stopped.
+  let playbackChanged: () => void = () => undefined;
+  const startPlayback = () => {
+    if (playing || !store.getSnapshot().events.length) return;
     playing = true;
+    playbackChanged();
     if (
       store.getSnapshot().cursor === null ||
       store.getSnapshot().cursor === store.getSnapshot().events.length - 1
@@ -740,7 +743,10 @@ export function mountWorkbench(
       store.seek(0);
     schedule();
     render();
-  });
+  };
+  const play = iconButton('Play', 'play', () =>
+    playing ? pause() : startPlayback(),
+  );
   play.classList.add('wb-play');
   const returnLive = button('', () => {
     pause();
@@ -880,9 +886,11 @@ export function mountWorkbench(
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
+    const wasPlaying = playing;
     playing = false;
     clearTimeout(timer);
     syncPlayButton();
+    if (wasPlaying) playbackChanged();
   }
   function syncPlayButton() {
     const label = playing ? 'Pause' : 'Play';
@@ -956,8 +964,9 @@ export function mountWorkbench(
                   ? 'Live model'
                   : 'Awaiting source';
     const historical = snapshot.cursor !== null;
+    // A recording that ended mid-run keeps a captured 'loading' status.
     const busy =
-      snapshot.status === 'loading' ||
+      (snapshot.status === 'loading' && !snapshot.readOnly) ||
       (snapshot.cursor === null && frame?.localModel?.state === 'preparing') ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
       !!frame?.history?.replacement ||
@@ -1007,7 +1016,11 @@ export function mountWorkbench(
     followup.disabled = historical || blocked;
     status.textContent = awaitingRecording
       ? 'Waiting for recording'
-      : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+      : embed === 'replay'
+        ? recordedCommit
+          ? `Recorded at ${recordedCommit.slice(0, 7)}`
+          : 'Recorded'
+        : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
       if (commands.lesson?.format === 'decision') {
@@ -1684,6 +1697,26 @@ export function mountWorkbench(
   const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
   render();
+  const lessonId = commands.lesson?.id;
+  const messages = embed
+    ? attachWorkbenchMessages({
+        mode: embed,
+        lesson:
+          workbenchLessons.find((lesson) => lesson.id === lessonId)?.id ??
+          getWorkbenchLesson(globalThis.location?.search ?? '').id,
+        framework:
+          commands.framework.toLowerCase() === 'angular' ? 'angular' : 'react',
+        format: commands.lesson?.format,
+        store,
+        isPlaying: () => playing,
+        play: startPlayback,
+        pause,
+        loading: (commit) => {
+          recordedCommit = commit;
+        },
+      })
+    : null;
+  if (messages) playbackChanged = messages.playbackChanged;
   return {
     live,
     pause,
@@ -1692,6 +1725,7 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      messages?.dispose();
       detachScrub();
       requestsView.dispose();
       pause();
