@@ -130,7 +130,7 @@
     },
     "check-docs": {
       "executor": "nx:run-commands",
-      "cache": true,
+      "cache": false,
       "inputs": [
         "default",
         "^production",
@@ -204,7 +204,6 @@
       "cache": false,
       "dependsOn": [
         "build",
-        "check-docs",
         {
           "projects": ["runtime-smoke-react", "runtime-smoke-angular"],
           "target": "build"
