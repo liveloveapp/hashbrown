@@ -128,6 +128,8 @@ client-tool store. Keep the b4.run dependency pins aligned when updating them.
 The runtime guard rejects an SDK that drops `agent({ maxOutputTokens })`.
 Earlier release and registry-validation evidence is recorded in the
 [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
+The [0.15.7 callback validation report](../../docs/superpowers/reports/2026-10-28-atc-b4run-0157-callback-validation.md)
+records the new release, no-op and partial-callback checks.
 
 Both apps use the shared chat transport factory and core's opt-in HTTP response
 retry policy. It waits up to a 60-second retry budget for B4's pre-execution
