@@ -68,8 +68,8 @@ Modify core `chat-runtime.ts`, model barrel; React chat/UI/structured facades an
 - [x] Expose core StateSignal, React readonly array and Angular Signal; export the shared public type from all entrypoints.
 - [x] Extend installed consumer checks with actual UiChatMessage types, owner/result fields and lifecycle state access. Do not add new installs/dependencies to the test infrastructure.
 - [x] Document lifecycle, nesting links, provenance, result independence, attribution-only/unknown restored records, suspension/resume and one shared run state. Use pure derived data and retain existing demos. Keep file search deferred and no release notes.
-- [ ] Run core unit/build/lint/e2e; React unit/build/inferred eslint:lint/e2e; Angular unit/build/lint/e2e; API reports for all three; docs test/lint/build. Use bounded workers and static logs, report warnings accurately.
-- [ ] Independent spec then quality review, followed by aggregate review. Update verification evidence and parent commits.
+- [x] Run core unit/build/lint/e2e; React unit/build/inferred eslint:lint/e2e; Angular unit/build/lint/e2e; API reports for all three; docs test/lint/build. Use bounded workers and static logs, report warnings accurately.
+- [x] Independent spec then quality review, followed by aggregate review. Update verification evidence and parent commits.
 
 ## Delivery
 
@@ -83,3 +83,24 @@ Locked dependencies installed with no manifest changes. Core baseline passed
 before implementation; logs `/private/tmp/hashbrown-subagents-core-baseline.log`.
 Existing setup warnings include ignored install scripts, Nx/Vite deprecations,
 color environment flags, project discovery and local pyenv shim permissions.
+
+## Final verification
+
+All four tasks passed independent specification and quality review; aggregate
+review found no remaining P1/P2 findings. Core: 103 suites / 2,448 tests / 14
+snapshots; React: 21 files / 222 tests; Angular: 24 files / 290 tests; docs:
+217 files / 1,520 tests. Distribution suites passed core 5, React 4 and Angular 2
+tests, including clean installed-package TypeScript checks. Core, React, Angular
+and docs builds, all three public API reports, and affected lint targets passed.
+The four new documentation examples parse successfully.
+
+Warnings: three existing core lint warnings and ten existing React lint warnings;
+Nx/Vite executor/plugin deprecations and color flags; API extractor release-tag,
+link and forgotten-export warnings (including the docs extractor's existing
+external core namespace limitation for JsonValue referenced by SubagentRun);
+Next.js middleware deprecation and two dynamic filesystem tracing warnings.
+No dependencies, release notes, live recordings or file search were added.
+
+Verification logs: `/private/tmp/hashbrown-subagents-final-{core-test,core-e2e,
+react-e2e,angular-e2e,core-api,react-api,angular-api,www-test,www-lint,www-build}.log`
+and `/tmp/task4-{react,angular}-all.log`, `/tmp/task4-{core,react,angular}-lint.log`.
