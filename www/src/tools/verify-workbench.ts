@@ -798,6 +798,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             nativeRequests,
             outcome: (value) => {
