@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:02.518
+00:00:00.000 --> 00:00:02.544
 TypeSafe returns a whole decision.
 
-00:00:02.518 --> 00:00:05.998
+00:00:02.544 --> 00:00:06.024
 Use suggestion: revision 1.
 
-00:00:05.998 --> 00:00:08.068
+00:00:06.024 --> 00:00:08.062
 The next decision suggests review.
 
-00:00:08.068 --> 00:00:14.096
+00:00:08.062 --> 00:00:14.094
 Replay follows complete choices, confidence and state. It makes no decision requests or writes.
 
-00:00:14.096 --> 00:00:16.167
+00:00:14.094 --> 00:00:16.167
 Back live. Revision 1.

@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:12.644
+00:00:00.000 --> 00:00:11.016
 The model calls readContext. Hashbrown returns browser state in a continuation.
 
-00:00:12.644 --> 00:00:16.456
+00:00:11.016 --> 00:00:15.038
 Accept plan: application revision 1.
 
-00:00:16.456 --> 00:00:24.522
+00:00:15.038 --> 00:00:25.504
 The follow-up reads the accepted plan and proposes a shorter second step.
 
-00:00:24.522 --> 00:00:31.854
+00:00:25.504 --> 00:00:32.980
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
-00:00:31.854 --> 00:00:33.900
+00:00:32.980 --> 00:00:35.000
 Back live. Revision 1.

@@ -1,40 +1,40 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:07.808
+00:00:00.000 --> 00:00:07.704
 Start a local demo session. Identity stays on the server.
 
-00:00:07.808 --> 00:00:11.606
+00:00:07.704 --> 00:00:11.510
 Load Lighthouse before sending a request.
 
-00:00:11.606 --> 00:00:19.992
+00:00:11.510 --> 00:00:20.902
 OpenAI streams the named plan into text chat.
 
-00:00:19.992 --> 00:00:23.880
+00:00:20.902 --> 00:00:24.700
 Save completed text with the loaded server version.
 
-00:00:23.880 --> 00:00:27.716
+00:00:24.700 --> 00:00:28.614
 A browser refresh starts a fresh capture.
 
-00:00:27.716 --> 00:00:31.642
+00:00:28.614 --> 00:00:32.464
 Load the saved thread. No model request.
 
-00:00:31.642 --> 00:00:39.348
+00:00:32.464 --> 00:00:39.918
 The next request includes the saved conversation.
 
-00:00:39.348 --> 00:00:43.450
+00:00:39.918 --> 00:00:43.714
 Another client saves a newer server version.
 
-00:00:43.450 --> 00:00:47.900
+00:00:43.714 --> 00:00:47.852
 Save returns 409. Unsaved text stays visible.
 
-00:00:47.900 --> 00:00:51.960
+00:00:47.852 --> 00:00:51.756
 Reload explicitly adopts the newer server snapshot.
 
-00:00:51.960 --> 00:00:55.712
+00:00:51.756 --> 00:00:55.564
 Review the actual HTTP operations and SDK messages.
 
-00:00:55.712 --> 00:01:13.896
+00:00:55.564 --> 00:01:14.750
 Replay makes no requests or writes.
 
-00:01:13.896 --> 00:01:18.600
+00:01:14.750 --> 00:01:22.467
 Back live.
