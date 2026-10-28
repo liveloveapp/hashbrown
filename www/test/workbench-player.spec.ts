@@ -148,3 +148,53 @@ test('maps keys to shortcuts outside text fields and buttons', () => {
     workbenchShortcut({ ...keys, key: 'l', metaKey: true }, document.body),
   ).toBeNull();
 });
+
+test('leaves links, summaries and ARIA widgets their own keyboard controls', () => {
+  const selectors = [
+    'a',
+    'summary',
+    'div[contenteditable]',
+    'div[role=button]',
+    ...[
+      'slider',
+      'separator',
+      'tab',
+      'tablist',
+      'checkbox',
+      'combobox',
+      'listbox',
+      'menu',
+      'menuitem',
+      'radio',
+      'radiogroup',
+      'scrollbar',
+      'searchbox',
+      'spinbutton',
+      'switch',
+      'textbox',
+      'tree',
+      'treegrid',
+      'grid',
+      'option',
+    ].map((role) => `div[role=${role}]`),
+  ];
+
+  for (const selector of selectors) {
+    const tag = selector.split('[')[0];
+    const node = document.createElement(tag);
+    const role = selector.match(/role=(\w+)/)?.[1];
+    if (role) node.setAttribute('role', role);
+    if (selector.includes('contenteditable'))
+      node.setAttribute('contenteditable', 'true');
+    if (tag === 'a') node.setAttribute('href', '/docs');
+    const child = document.createElement('span');
+    node.append(child);
+
+    for (const key of [' ', 'ArrowLeft', 'ArrowRight', 'l', 'b']) {
+      expect(
+        workbenchShortcut({ ...keys, key, ctrlKey: key === 'b' }, child),
+        selector,
+      ).toBeNull();
+    }
+  }
+});
