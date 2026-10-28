@@ -42,10 +42,26 @@ export const PARTIAL_CAPTURE_LESSONS: readonly WorkbenchLessonId[] = [
  * trailing slash or path in the configured value cannot break origin checks.
  */
 export function workbenchOrigin(): string {
-  return new URL(
-    process.env.NEXT_PUBLIC_WORKBENCH_ORIGIN ??
-      'https://workbench.hashbrown.dev',
-  ).origin;
+  const fallback = 'https://workbench.hashbrown.dev';
+  // An empty or malformed value falls back rather than breaking every page.
+  try {
+    return new URL(process.env.NEXT_PUBLIC_WORKBENCH_ORIGIN || fallback).origin;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Narrow a markdown `lesson` attribute to a workbench lesson id, so a typo in
+ * a docs page fails the build instead of embedding a broken panel.
+ *
+ * @param value - The attribute value.
+ * @throws When the value is not a workbench lesson id.
+ */
+export function assertWorkbenchLesson(value: string): WorkbenchLessonId {
+  const lesson = workbenchLessons.find((item) => item.id === value);
+  if (!lesson) throw new Error(`Unknown workbench lesson: ${value}`);
+  return lesson.id;
 }
 
 /**

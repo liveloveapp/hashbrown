@@ -16,7 +16,7 @@ test.each(['react', 'angular'])(
   (sdk) => {
     const body = guide(sdk);
 
-    const marker = `<hb-docs-demo demo="canonical-workbench-request-transformation-${sdk}">`;
+    const marker = `<hb-workbench lesson="request-transformation">`;
 
     expect(body.indexOf(marker)).toBeGreaterThan(-1);
     expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));

@@ -9,8 +9,8 @@ meta:
 
 Let's build a small plan together. We ask for a title and two steps. Hashbrown streams those values into a component we wrote.
 
-<hb-docs-demo demo="canonical-workbench-first-plan-angular">
-</hb-docs-demo>
+<hb-workbench lesson="first-plan">
+</hb-workbench>
 
 Hashbrown is an open source framework for building generative UI in Angular. You expose the components your application supports, describe their props with a schema, and let the model choose from that contract.
 

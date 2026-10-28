@@ -9,8 +9,8 @@ meta:
 
 <p class="subtitle">Share structured context with an agent and follow its updates.</p>
 
-<hb-docs-demo demo="canonical-workbench-shared-state-react">
-</hb-docs-demo>
+<hb-workbench lesson="shared-state">
+</hb-workbench>
 
 Let's keep the same two-step plan: outline a trusted UI demo, then record it. Change its title in the app and select **Set shared state**. Nothing runs yet. Send a message, and watch the agent read that value, stream its reply, and update the shared state.
 

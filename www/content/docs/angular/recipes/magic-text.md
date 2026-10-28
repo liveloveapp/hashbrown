@@ -7,8 +7,8 @@ meta:
 
 # Magic Text in Angular
 
-<hb-docs-demo demo="canonical-workbench-magic-text-angular">
-</hb-docs-demo>
+<hb-workbench lesson="magic-text">
+</hb-workbench>
 
 I want to read a reply while it arrives. Let's explain the same two-step plan in Markdown, follow its source reference, and ask for a shorter explanation.
 

@@ -7,8 +7,8 @@ meta:
 
 # Message history
 
-<hb-docs-demo demo="canonical-workbench-message-history-angular">
-</hb-docs-demo>
+<hb-workbench lesson="message-history">
+</hb-workbench>
 
 Let's name our two-step plan **Lighthouse**. We'll ask the assistant to explain it, keep the completed text, clear the chat, and restore that exchange. Then we'll ask a follow-up. The next request should contain the conversation we restored.
 

@@ -6,6 +6,7 @@ import { DOCS_DEMOS } from '../src/components/elements/docs-demo-media';
 import { WorkbenchPanel } from '../src/components/workbench/WorkbenchPanel';
 import { createEmbedClient } from '../src/components/workbench/embed-client';
 import {
+  assertWorkbenchLesson,
   LOOPBACK_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
   workbenchMediaId,
@@ -520,6 +521,30 @@ test('workbenchOrigin drops a trailing slash or path from the configured value',
   const configured = workbenchOrigin();
 
   expect(configured).toBe('http://localhost:4300');
+});
+
+test('workbenchOrigin falls back to the hosted workbench for an empty or invalid value', () => {
+  setup();
+  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', '');
+  const empty = workbenchOrigin();
+  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', 'not a url');
+
+  const invalid = workbenchOrigin();
+
+  expect(empty).toBe(origin);
+  expect(invalid).toBe(origin);
+});
+
+test('assertWorkbenchLesson accepts lesson ids and throws on anything else', () => {
+  const known = 'tools';
+  const unknown = 'ui';
+
+  const lesson = assertWorkbenchLesson(known);
+
+  expect(lesson).toBe('tools');
+  expect(() => assertWorkbenchLesson(unknown)).toThrow(
+    'Unknown workbench lesson: ui',
+  );
 });
 
 test('the replay poster loads lazily', () => {

@@ -7,8 +7,8 @@ meta:
 
 # Debugging
 
-<hb-docs-demo demo="canonical-workbench-debugging-angular">
-</hb-docs-demo>
+<hb-workbench lesson="debugging">
+</hb-workbench>
 
 When a card does not appear, I want to find where the turn stopped before changing the code. Let’s follow the same two-step plan through a failed request, recovery, and a follow-up.
 

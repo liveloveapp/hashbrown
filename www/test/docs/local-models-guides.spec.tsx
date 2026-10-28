@@ -32,9 +32,7 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'local-models'])?.body ?? '';
 
-    const demo = body.indexOf(
-      `<hb-docs-demo demo="canonical-workbench-local-models-${sdk}">`,
-    );
+    const demo = body.indexOf(`<hb-workbench lesson="local-models">`);
 
     expect(demo).toBeGreaterThan(-1);
     expect(demo).toBeLessThan(body.indexOf('\n## '));

@@ -9,8 +9,8 @@ meta:
 
 Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
 
-<hb-docs-demo demo="canonical-workbench-json-parser-react">
-</hb-docs-demo>
+<hb-workbench lesson="json-parser">
+</hb-workbench>
 
 <img src="/video/docs/canonical-workbench-json-parser-react-result.png" alt="The React workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />
 

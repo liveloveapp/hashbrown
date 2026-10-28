@@ -7,7 +7,7 @@ test.each(SDKS)(
   '%s predictive guide opens with its canonical framework recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'predictive-actions'])?.body ?? '';
-    const marker = `<hb-docs-demo demo="canonical-workbench-predictions-${sdk}">`;
+    const marker = `<hb-workbench lesson="predictions">`;
 
     expect(body.indexOf(marker)).toBeGreaterThan(-1);
     expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));

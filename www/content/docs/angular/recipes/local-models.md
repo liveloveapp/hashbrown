@@ -9,8 +9,8 @@ meta:
 
 Let's build the same two-step plan on the user's device. First, prepare the model. Then ask it to outline and record a trusted UI demo. We'll inspect the local request, follow the JSON into a typed preview, and explicitly accept the plan before asking for a shorter second step.
 
-<hb-docs-demo demo="canonical-workbench-local-models-angular">
-</hb-docs-demo>
+<hb-workbench lesson="local-models">
+</hb-workbench>
 
 ![The Angular workbench shows native model preparation and transport metadata beside the locally generated plan.](/video/docs/canonical-workbench-local-models-angular-result.png)
 

@@ -7,8 +7,8 @@ meta:
 
 # Generative UI with React components
 
-<hb-docs-demo demo="canonical-workbench-ui-react">
-</hb-docs-demo>
+<hb-workbench lesson="generative-ui">
+</hb-workbench>
 
 Let’s build a two-step plan. We will give the model one component, `SummaryCard`, and describe the props it accepts. As the response arrives, Hashbrown parses the JSON and renders our component.
 

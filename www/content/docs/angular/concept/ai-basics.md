@@ -9,8 +9,8 @@ meta:
 
 Let's give our two-step plan a name, then ask the assistant to use it in a follow-up. The second request keeps the earlier exchange in the same conversation.
 
-<hb-docs-demo demo="canonical-workbench-conversation-angular">
-</hb-docs-demo>
+<hb-workbench lesson="conversation">
+</hb-workbench>
 
 This lesson uses text chat. There are no tools or generated components, so we can focus on the messages themselves.
 

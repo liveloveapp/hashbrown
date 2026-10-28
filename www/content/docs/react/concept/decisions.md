@@ -7,8 +7,8 @@ meta:
 
 # Decisions
 
-<hb-docs-demo demo="canonical-workbench-decisions-react">
-</hb-docs-demo>
+<hb-workbench lesson="decisions">
+</hb-workbench>
 
 Our application already owns a two-step plan: outline the trusted UI demo, then record it. The outline is complete. What should we do next?
 

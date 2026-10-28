@@ -167,9 +167,7 @@ test.each(['react', 'angular'])(
         ? 'react/src/UiKitWorkbench.tsx'
         : 'angular/src/app/ui-kit-workbench.ts';
 
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-ui-chatbot-${sdk}">`,
-    );
+    expect(body).toContain(`<hb-workbench lesson="ui-chatbot">`);
     expect(body).toContain(file);
     expect(body).toContain('PlanReading');
     expect(body).toContain('read-only model report');

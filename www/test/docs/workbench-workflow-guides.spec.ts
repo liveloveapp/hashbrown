@@ -19,8 +19,10 @@ test.each(SDKS)(
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
 
-      expect(body.indexOf(`<hb-docs-demo demo="${id}">`)).toBeGreaterThan(-1);
-      expect(body.indexOf(`<hb-docs-demo demo="${id}">`)).toBeLessThan(
+      expect(body.indexOf(`<hb-workbench lesson="${lesson}">`)).toBeGreaterThan(
+        -1,
+      );
+      expect(body.indexOf(`<hb-workbench lesson="${lesson}">`)).toBeLessThan(
         body.indexOf('\n## '),
       );
       expect(body).toContain(`/video/docs/${id}-result.png`);

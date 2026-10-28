@@ -91,3 +91,20 @@ test('returns the page headings for the table of contents', async () => {
   });
   expect(headings.map((h) => h.id)).toContain('install-hashbrown');
 });
+
+test('renders hb-workbench as the inline workbench panel for the page SDK', async () => {
+  const md = '<hb-workbench lesson="tools">\n</hb-workbench>';
+
+  const html = await render(md);
+
+  expect(html).not.toContain('data-unported');
+  expect(html).toContain('/react.html?lesson=tools');
+});
+
+test('hb-workbench with an unknown lesson fails the render', async () => {
+  const md = '<hb-workbench lesson="nope">\n</hb-workbench>';
+
+  const rendering = render(md);
+
+  await expect(rendering).rejects.toThrow('Unknown workbench lesson: nope');
+});
