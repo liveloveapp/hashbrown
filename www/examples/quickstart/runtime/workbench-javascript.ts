@@ -117,7 +117,15 @@ export function captureWorkbenchJavaScriptValue(value: unknown): unknown {
     if (seen.has(input)) return '[circular]';
     seen.add(input);
     if (Array.isArray(input))
-      return input.slice(0, 64).map((item) => capture(item, depth + 1) ?? null);
+      return Array.from({ length: Math.min(input.length, 64) }, (_, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(
+          input,
+          String(index),
+        );
+        return descriptor && 'value' in descriptor
+          ? (capture(descriptor.value, depth + 1) ?? null)
+          : null;
+      });
     const record = object(input);
     if (!record) return '[unsupported value]';
     return Object.fromEntries(
@@ -145,9 +153,8 @@ export function normalizeWorkbenchJavaScriptObservation(
     value['runId'].length > 160 ||
     typeof value['code'] !== 'string' ||
     value['code'].length > workbenchJavaScriptCodeLimit ||
-    !['running', 'complete', 'error', 'cancelled'].includes(
-      String(value['status']),
-    ) ||
+    typeof value['status'] !== 'string' ||
+    !['running', 'complete', 'error', 'cancelled'].includes(value['status']) ||
     !Array.isArray(value['calls']) ||
     value['calls'].length > 32
   )

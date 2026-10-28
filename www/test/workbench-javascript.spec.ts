@@ -2,6 +2,7 @@ import { runInNewContext } from 'node:vm';
 import { expect, test } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
+  captureWorkbenchJavaScriptValue,
   normalizeWorkbenchJavaScriptObservation,
   readWorkbenchJavaScriptPlan,
   workbenchJavaScriptScripts,
@@ -202,4 +203,49 @@ test('estimate presets evaluate as scripts with synchronous QuickJS host binding
     stepCount: 2,
     totalMinutes: 20,
   });
+});
+
+test('observation statuses reject non-string values without invoking coercion callbacks', () => {
+  let coercions = 0;
+  const status = {
+    toString: () => {
+      coercions++;
+      return 'complete';
+    },
+  };
+
+  const result = normalizeWorkbenchJavaScriptObservation({
+    runId: 'run-1',
+    code: '1;',
+    calls: [],
+    status,
+  });
+
+  expect(result).toBeNull();
+  expect(coercions).toBe(0);
+});
+
+test('captured values skip object and array accessors without running callbacks', () => {
+  let reads = 0;
+  const array: unknown[] = [];
+  Object.defineProperty(array, '0', {
+    get: () => {
+      reads++;
+      return 'secret';
+    },
+    enumerable: true,
+  });
+  const value = { array };
+  Object.defineProperty(value, 'getter', {
+    get: () => {
+      reads++;
+      return 'secret';
+    },
+    enumerable: true,
+  });
+
+  const captured = captureWorkbenchJavaScriptValue(value);
+
+  expect(captured).toEqual({ array: [null] });
+  expect(reads).toBe(0);
 });
