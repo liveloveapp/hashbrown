@@ -64,10 +64,10 @@ and lint passed with three pre-existing warnings. Root suite has 46 cases.
 
 Modify core `chat-runtime.ts`, model barrel; React chat/UI/structured facades and `public-api.ts`; Angular chat/UI/structured resources and `public_api.ts`; appropriate existing runtime/facade specs; both installed-package compatibility tests and both framework activity/tool guides. Inspect decision chat adapters for forwarding rather than adding unrelated APIs. No completion-only API expansion unless an existing shared chat facade requires it.
 
-- [ ] Write failing core/runtime/framework tests for a readonly live subagents property and typed SubagentRun. Forward the same state through structured/UI chat without private ɵ types in public signatures or extra render effects/state.
-- [ ] Expose core StateSignal, React readonly array and Angular Signal; export the shared public type from all entrypoints.
-- [ ] Extend installed consumer checks with actual UiChatMessage types, owner/result fields and lifecycle state access. Do not add new installs/dependencies to the test infrastructure.
-- [ ] Document lifecycle, nesting links, provenance, result independence, attribution-only/unknown restored records, suspension/resume and one shared run state. Use pure derived data and retain existing demos. Keep file search deferred and no release notes.
+- [x] Write failing core/runtime/framework tests for a readonly live subagents property and typed SubagentRun. Forward the same state through structured/UI chat without private ɵ types in public signatures or extra render effects/state.
+- [x] Expose core StateSignal, React readonly array and Angular Signal; export the shared public type from all entrypoints.
+- [x] Extend installed consumer checks with actual UiChatMessage types, owner/result fields and lifecycle state access. Do not add new installs/dependencies to the test infrastructure.
+- [x] Document lifecycle, nesting links, provenance, result independence, attribution-only/unknown restored records, suspension/resume and one shared run state. Use pure derived data and retain existing demos. Keep file search deferred and no release notes.
 - [ ] Run core unit/build/lint/e2e; React unit/build/inferred eslint:lint/e2e; Angular unit/build/lint/e2e; API reports for all three; docs test/lint/build. Use bounded workers and static logs, report warnings accurately.
 - [ ] Independent spec then quality review, followed by aggregate review. Update verification evidence and parent commits.
 

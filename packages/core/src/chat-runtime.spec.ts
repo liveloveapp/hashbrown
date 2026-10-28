@@ -855,3 +855,58 @@ test('sendMessage delivers owned canonical multipart content to the transport', 
     teardown();
   }
 });
+
+test('publishes frozen native subagents reactively and clears them on thread change', async () => {
+  const runtime = createChatRuntime({
+    system: 'test',
+    debounce: 0,
+    transport: {
+      name: 'subagent-test',
+      send: async (request) => ({
+        events: successfulEvents(request, [
+          {
+            type: EventType.SUBAGENT_STARTED,
+            subagentRunId: 'child',
+            name: 'Research',
+          },
+          {
+            type: EventType.SUBAGENT_FINISHED,
+            subagentRunId: 'child',
+            result: { found: true },
+          },
+        ]),
+      }),
+    },
+  });
+  const observed: unknown[] = [];
+  expect(runtime.subagents()).toEqual([]);
+  expect(Object.isFrozen(runtime.subagents())).toBe(true);
+  const unsubscribe = runtime.subagents.subscribe((value) =>
+    observed.push(value),
+  );
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    runtime.sendMessage({ role: 'user', content: 'Research' });
+    await waitForRuntimeIdle(runtime);
+
+    expect(observed).toContainEqual([
+      expect.objectContaining({ status: 'running' }),
+    ]);
+    expect(runtime.subagents()).toEqual([
+      expect.objectContaining({
+        subagentRunId: 'child',
+        status: 'complete',
+        result: { found: true },
+      }),
+    ]);
+    expect(Object.isFrozen(runtime.subagents()[0])).toBe(true);
+    runtime.updateOptions({ threadId: 'fresh' });
+    await flushTaskBoundary();
+    expect(runtime.subagents()).toEqual([]);
+  } finally {
+    unsubscribe();
+    teardown();
+  }
+});
