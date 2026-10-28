@@ -407,7 +407,7 @@ test('load replays captured events read-only from the first event', () => {
   const loaded = store.getSnapshot();
   store.seek(3);
   const sought = store.getSnapshot().cursor;
-  expect(() => store.send('x')).toThrow();
+  const sent = store.send('x');
   store.record('user', { content: 'x' });
   const afterWrites = store.getSnapshot().events.length;
   store.live();
@@ -416,6 +416,8 @@ test('load replays captured events read-only from the first event', () => {
   expect(loaded.readOnly).toBe(true);
   expect(loaded.status).toBe('complete');
   expect(sought).toBe(3);
+  expect(sent).toEqual({ id: expect.any(String), role: 'user', content: 'x' });
+  expect(loaded.turn).toBe(capture.events.at(-1)?.turn);
   expect(afterWrites).toBe(capture.events.length);
   expect(store.getSnapshot().cursor).toBe(capture.events.length - 1);
   expect(Object.isFrozen(store.getSnapshot().events[0])).toBe(true);
@@ -431,4 +433,21 @@ test('load refuses while a live run is loading', () => {
   expect(store.getSnapshot().status).toBe('loading');
   expect(store.getSnapshot().readOnly).toBe(false);
   expect(store.getSnapshot().cursor).toBeNull();
+});
+
+test('a read-only store stays seekable and reloadable when the capture ends loading', () => {
+  const capture = recordedCapture();
+  const events = capture.events.map((event, index, all) =>
+    index === all.length - 1 ? { ...event, status: 'loading' as const } : event,
+  );
+  const store = createWorkbenchStore();
+
+  store.load(events);
+  store.seek(2);
+  const cursor = store.getSnapshot().cursor;
+  store.load(capture.events);
+
+  expect(cursor).toBe(2);
+  expect(store.getSnapshot().cursor).toBe(0);
+  expect(store.getSnapshot().status).toBe('complete');
 });

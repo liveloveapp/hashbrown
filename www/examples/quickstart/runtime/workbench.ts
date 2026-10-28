@@ -1031,6 +1031,8 @@ export function createWorkbenchStore(
     },
     send(content) {
       const text = content.trim();
+      if (readOnly)
+        return { id: `readonly-${events.length}`, role: 'user', content: text };
       if (
         cursor !== null ||
         status === 'loading' ||
@@ -1412,12 +1414,13 @@ export function createWorkbenchStore(
       return true;
     },
     load(recorded) {
-      if (status === 'loading' || !recorded.length) return;
+      if ((!readOnly && status === 'loading') || !recorded.length) return;
       generation++;
       localPreparationId = null;
       events = freeze(copy([...recorded]));
       const last = events[events.length - 1];
       status = last.status;
+      turn = last.turn;
       application = last.application;
       readOnly = true;
       cursor = 0;
@@ -1425,7 +1428,7 @@ export function createWorkbenchStore(
     },
     seek(index) {
       if (
-        status === 'loading' ||
+        (!readOnly && status === 'loading') ||
         (format === 'history' &&
           (!!history?.replacement || isWorkbenchHistoryBusy(history?.sdk))) ||
         !Number.isInteger(index) ||
