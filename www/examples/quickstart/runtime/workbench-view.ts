@@ -937,7 +937,7 @@ export function mountWorkbench(
       !!frame?.history?.sdk.pendingInterrupts ||
       !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
-    live.inert = historical;
+    live.inert = historical && options.externalComposer === true;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
     const server = frame?.history?.app.server;
