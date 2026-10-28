@@ -1,3 +1,4 @@
+import { workbenchLocalInspection } from './workbench-local-inspection';
 import { workbenchJavaScriptInspection } from './workbench-javascript-inspection';
 import { workbenchJavaScriptScripts } from './workbench-javascript';
 import { workbenchUiInspection } from './workbench-ui-inspection';
@@ -301,6 +302,7 @@ export function workbenchEventLabel(
       tool: 'Tool result',
       kit: 'Kit configured',
       javascript: 'QuickJS observed',
+      'local-model': 'Local model preparation',
       parsed: 'Resolved props',
       accept: 'Plan accepted',
       complete: 'Complete',
@@ -379,6 +381,12 @@ export function mountWorkbench(
       ? getWorkbenchUiPrompts(commands.lesson.id)
       : undefined;
   const prompts =
+    (commands.lesson?.id === 'local-models'
+      ? [
+          'Create a two-step plan to outline and record a trusted UI demo.',
+          'Keep the first step and make the second step shorter.',
+        ]
+      : undefined) ??
     (commands.lesson?.id === 'javascript-runtime'
       ? [workbenchJavaScriptScripts[0].code, workbenchJavaScriptScripts[1].code]
       : undefined) ??
@@ -516,6 +524,7 @@ export function mountWorkbench(
     if (
       snapshot.cursor !== null ||
       snapshot.status === 'loading' ||
+      snapshot.frame?.localModel?.state === 'preparing' ||
       !prompt.value.trim()
     )
       return;
@@ -599,6 +608,7 @@ export function mountWorkbench(
           : 'Text'
         : 'JSON',
     'Requests',
+    ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
     ...(commands.lesson?.id === 'javascript-runtime'
       ? ['Code', 'Runtime']
       : []),
@@ -866,22 +876,25 @@ export function mountWorkbench(
         ? payload.source
         : undefined;
     provenance.textContent =
-      commands.lesson?.id === 'javascript-runtime'
-        ? 'Real QuickJS · no model'
-        : commands.lesson?.id === 'agent-decisions' &&
-            frame?.history?.agent?.fallback === 'unavailable' &&
-            source === 'provider'
-          ? 'Classifier unavailable'
-          : source === 'demo-failure'
-            ? 'Local demo failure'
-            : source === 'test-fixture'
-              ? 'Test fixture'
-              : source === 'provider'
-                ? 'Live model'
-                : 'Awaiting source';
+      commands.lesson?.id === 'local-models'
+        ? 'Browser-local model'
+        : commands.lesson?.id === 'javascript-runtime'
+          ? 'Real QuickJS · no model'
+          : commands.lesson?.id === 'agent-decisions' &&
+              frame?.history?.agent?.fallback === 'unavailable' &&
+              source === 'provider'
+            ? 'Classifier unavailable'
+            : source === 'demo-failure'
+              ? 'Local demo failure'
+              : source === 'test-fixture'
+                ? 'Test fixture'
+                : source === 'provider'
+                  ? 'Live model'
+                  : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy =
       snapshot.status === 'loading' ||
+      (snapshot.cursor === null && frame?.localModel?.state === 'preparing') ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
       !!frame?.history?.replacement ||
       !!frame?.history?.app.server?.busy;
@@ -903,7 +916,12 @@ export function mountWorkbench(
         server.access !== 'local-demo' ||
         server.threadId !==
           server.threads?.[serverLesson][server.selectedSlot]);
-    send.disabled = historical || blocked || serverUnloaded;
+    send.disabled =
+      historical ||
+      blocked ||
+      serverUnloaded ||
+      (commands.lesson?.id === 'local-models' &&
+        frame?.localModel?.state !== 'ready');
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -1161,6 +1179,7 @@ export function mountWorkbench(
         : undefined;
     const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      workbenchLocalInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchJavaScriptInspection(tab, snapshot, commands.lesson?.id) ??
       uiView ??
       workbenchAuthoringInspection(tab, snapshot, commands.lesson?.id) ??

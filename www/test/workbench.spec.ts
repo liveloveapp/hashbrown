@@ -233,6 +233,7 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'generative-ui',
     'tools',
     'javascript-runtime',
+    'local-models',
     'structured-output',
     'streaming',
     'schemas',

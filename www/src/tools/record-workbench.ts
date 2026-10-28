@@ -1,3 +1,4 @@
+import { workbenchLocalRecordingCues } from './workbench-local-recording';
 import { workbenchJavaScriptRecordingCues } from './workbench-javascript-recording';
 import { workbenchUiRecordingCues } from './workbench-ui-recording';
 import { workbenchAuthoringRecordingCues } from './workbench-authoring-recording';
@@ -18,7 +19,9 @@ import { workbenchOnboardingRecordingCues } from './workbench-onboarding-recordi
 import { workbenchRecipeRecordingCues } from './workbench-recording-cues';
 
 if (
-  process.env['WORKBENCH_LESSONS'] !== 'javascript-runtime' &&
+  !['javascript-runtime', 'local-models'].includes(
+    process.env['WORKBENCH_LESSONS'] ?? '',
+  ) &&
   (!process.env['OPENAI_API_KEY'] || !process.env['OPENAI_MODEL'])
 )
   throw new Error(
@@ -71,6 +74,7 @@ const reports = JSON.parse(
 }[];
 const names: Record<string, string> = {
   'javascript-runtime': 'javascript-runtime',
+  'local-models': 'local-models',
   'ui-kits': 'ui-kits',
   'ui-chatbot': 'ui-chatbot',
   'agent-decisions': 'agent-decisions',
@@ -103,9 +107,12 @@ const timestamp = (seconds: number) =>
 for (const report of reports) {
   if (
     !report.passed ||
-    (report.lesson === 'javascript-runtime'
-      ? report.source !== 'runtime' || report.provider !== 'none'
-      : report.source !== 'provider') ||
+    (report.lesson === 'local-models'
+      ? report.source !== 'native-local' ||
+        report.provider !== 'chrome-prompt-api'
+      : report.lesson === 'javascript-runtime'
+        ? report.source !== 'runtime' || report.provider !== 'none'
+        : report.source !== 'provider') ||
     !names[report.lesson]
   )
     throw new Error(
@@ -118,6 +125,7 @@ for (const report of reports) {
     throw new Error(
       'Decision footage must come from the real TypeSafe adapter.',
     );
+  const timingScale = report.lesson === 'local-models' ? 1 : 2;
   const id = `canonical-workbench-${names[report.lesson]}-${report.framework}`;
   const raw = resolve(work, `${report.framework}-${report.lesson}-live.webm`);
   const base = resolve('www/public/video/docs', id);
@@ -163,7 +171,7 @@ for (const report of reports) {
         '-i',
         raw,
         '-vf',
-        'setpts=2*PTS',
+        `setpts=${timingScale}*PTS`,
         '-r',
         '30',
         '-an',
@@ -202,7 +210,10 @@ for (const report of reports) {
           : undefined) ??
         workbenchHistoryPosterTime(report, duration) ??
         workbenchWorkflowPosterTime(report, duration) ??
-        Math.min(duration - 0.1, (report.phases['firstComplete'] ?? 2) * 2),
+        Math.min(
+          duration - 0.1,
+          (report.phases['firstComplete'] ?? 2) * timingScale,
+        ),
     ),
     '-i',
     `${base}.mp4`,
@@ -215,6 +226,7 @@ for (const report of reports) {
     `${base}-result.png`,
   );
   const cues =
+    workbenchLocalRecordingCues(report, duration) ??
     workbenchJavaScriptRecordingCues(report, duration) ??
     workbenchUiRecordingCues(report, duration) ??
     workbenchAuthoringRecordingCues(report, duration) ??
@@ -286,7 +298,7 @@ for (const report of reports) {
       )
       .map(
         ([from, to, text]) =>
-          `${timestamp(from * 2)} --> ${timestamp(Math.min(duration, to * 2))}\n${text}\n`,
+          `${timestamp(from * timingScale)} --> ${timestamp(Math.min(duration, to * timingScale))}\n${text}\n`,
       )
       .join('\n');
   writeFileSync(`${base}.vtt`, vtt);
@@ -320,6 +332,12 @@ for (const report of reports) {
     writeFileSync(
       `${base}-transcript.txt`,
       `${report.framework.toUpperCase()} · JavaScript runtime\n\nReal QuickJS execution through actual Hashbrown framework runtime APIs. Application-owned scripts, actual readPlan host calls and result/error wrappers. No model or provider request; no simulated JSON streaming. Each run creates a fresh context. Footage is slowed to half speed for readability; no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nThe host validates arguments explicitly. Estimates do not modify the plan. The execution deadline interrupts loops but does not roll back host effects or impose a memory limit. Replay executes no scripts, host calls, requests or writes. Refresh clears local captures.\n`,
+    );
+  }
+  if (report.lesson === 'local-models') {
+    writeFileSync(
+      `${base}-transcript.txt`,
+      `${report.framework.toUpperCase()} · Local models\n\nActual native Chrome inference through the real Hashbrown framework structured-chat APIs and experimental_chrome transport. The existing dedicated test profile uses requested v4 browser configuration; this does not identify the loaded model or establish default-device availability. Model already available; no new model download. Actual-speed footage with reading pauses; no narration or hosted model request. Native stream EOF leads to SDK terminal events; original JSON validation and application acceptance are separate.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nEach native turn receives explicit application context. Only fresh successful valid proposals can be accepted. Replay opens no sessions, makes no prompts or requests, and writes no application state. Separate labelled API fixtures test unsupported states, cancellation, malformed output and recovery; they are not inference footage.\n`,
     );
   }
   if (report.lesson === 'generative-ui') {

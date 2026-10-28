@@ -2,19 +2,31 @@
 title: 'Local Models: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Prepare a browser model, extract a typed trip brief locally, and handle unavailable models, cancellation and recovery.'
+    content: 'Prepare a browser-local model, generate a typed plan, and inspect preparation, streaming, acceptance and recovery.'
 ---
 
-# Local Models
+# Local models
 
-Let's turn **“Three days in Lisbon.”** into a typed trip brief on the user's device. We'll prepare Chrome's model, send an explicit request, and display the destination and number of days after the response completes.
+Let's build the same two-step plan on the user's device. First, prepare the model. Then ask it to outline and record a trusted UI demo. We'll inspect the local request, follow the JSON into a typed preview, and explicitly accept the plan before asking for a shorter second step.
 
-<hb-docs-demo demo="local-models">
+<hb-docs-demo demo="canonical-workbench-local-models-angular">
 </hb-docs-demo>
 
-<img src="/video/docs/local-models-result.png" alt="A locally generated trip brief displays a destination and trip length after successful completion." width="920" height="518" loading="lazy" />
+![The Angular workbench shows native model preparation and transport metadata beside the locally generated plan.](/video/docs/canonical-workbench-local-models-angular-result.png)
 
-The recording uses real Chrome inference through the checked client and transport. Both React and Angular are verified before React supplies the shared recording. Presentation styles are added; there is no narration, scripted model answer, or hosted model call. Generated wording and timing can differ on another device.
+The recording uses real Chrome inference through the actual Angular client and `experimental_chrome` transport. Each framework has its own recording. The existing dedicated test profile had a model available under its requested v4 browser configuration; that configuration does not identify the loaded model or establish availability on another device. No new model download, scripted answer, or hosted model request supplies this footage. Playback runs at actual speed, with pauses for reading and no narration.
+
+## Follow the local turn
+
+Open the [local-model workbench](https://workbench.hashbrown.dev/angular.html?lesson=local-models) in a supported desktop Chrome browser. Choose **Prepare model**. Generation stays disabled until preparation succeeds.
+
+1. Send the first prompt. Hashbrown sends the request to the browser's native model.
+2. Inspect **Requests**. The row says **LOCAL Chrome Prompt API**, with the effective SDK envelope and native stream events. There is no HTTP model response.
+3. Follow **JSON** and **UI**. Parsed fields are a preview while the native stream is active.
+4. Select **Accept plan** after a valid response completes. **State** advances to revision one.
+5. Send the follow-up. Its explicit application context contains the accepted plan and revision. Review and accept the revised proposal separately.
+
+**Model** separates preparation from inference and shows actual allowlisted transport metadata when available. The bottom timeline follows captured preparation, requests, JSON, UI, and application state. Replay opens no sessions, sends no prompts or requests, starts no downloads, and applies no changes.
 
 ## Choose where the model runs
 
@@ -31,13 +43,54 @@ There is **no automatic hosted fallback** in this recipe. If the native model is
 
 ## Before we start
 
-Start with the [Quickstart](/docs/angular/start/quick) frontend and its installed Hashbrown packages. Keep the checked directory layout: `runtime/local-models.ts` beside the `angular` directory, and `angular/src/app/local-models.ts` in the frontend. Update relative imports if you put these files elsewhere. We need no API key, server process, frontend proxy, or new dependency for this task.
+Start with the [Angular Quickstart](/docs/angular/start/quick). The [complete native client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/local-models-workbench.ts), [preparation controller](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-local-controls.ts), and [local transport](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-local-models.ts) show the complete wiring. The application needs no hosted model key or new dependency for native Chrome inference.
 
-Use a supported **desktop** Chrome on HTTPS or localhost. Chrome's Prompt API is available to websites from Chrome 148, but browser version alone does not establish model availability. Device resources, browser policy, languages, and model installation also matter. Check the [current Chrome requirements and setup instructions](https://developer.chrome.com/docs/ai/prompt-api), then let **Prepare model** check the API on the actual device.
+Use a supported **desktop** Chrome on HTTPS or localhost. Check [Chrome's current Prompt API requirements](https://developer.chrome.com/docs/ai/prompt-api) and let **Prepare model** check the actual device. Browser version alone does not establish availability: model installation, languages, device resources and browser policy also matter.
 
-Edge's Prompt API is a separate developer preview in Canary and Dev. Follow [Microsoft's eligibility and setup instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api) before choosing its adapter. This recording verifies native Chrome inference; it does not demonstrate Edge inference or native mobile support.
+Edge's adapter has separate eligibility and setup requirements; follow [Microsoft's Prompt API instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api). These recordings establish Chrome inference on the test machine, not Edge or native mobile inference.
 
-The first preparation may download a browser-managed model. Keep that action explicit and display progress. Model generation can run on-device after preparation, but model downloads, application resources, and telemetry have their own network behavior. Local generation alone does not make an entire application offline. The provider configuration below disables Hashbrown's development telemetry for this example.
+The first explicit preparation may download a browser-managed model. Show the actual progress and allow **Stop preparation**. Model downloads, application assets and telemetry have separate network behavior; local generation does not make the whole application offline. The workbench disables Hashbrown development telemetry.
+
+## Connect a structured chat
+
+The native frontend uses @hashbrownai/angular!structuredChatResource:function with the same plan schema as the other structured lessons. Its capture wrapper delegates to the actual native transport:
+
+```ts
+import { experimental_chrome } from '@hashbrownai/core';
+
+const native = experimental_chrome({
+  outputLanguage: 'en',
+  events: {
+    downloadRequired: () => {
+      throw new Error('Select Prepare model before generating.');
+    },
+  },
+})();
+```
+
+The shared [preparation helper](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/local-models.ts) checks the same English text-output capability. It uses an explicit gesture to prepare a downloadable model, reports progress, and destroys the temporary preparation session. If the model is already available, preparation opens no session. Cancellation also destroys sessions that resolve late.
+
+Keep the throwing `downloadRequired` callback during inference. Availability can change after preparation; pressing Send must not silently start a download. Ask the user to prepare again.
+
+The workbench sends a fresh application snapshot with each local request. The model receives the accepted plan and revision as context, without a browser tool or a server round trip. This context is visible in Requests. A model response still does not change application state.
+
+## Complete, validate, then accept
+
+The native API streams text into Hashbrown's structured parser. After a normal native stream EOF, the transport emits its SDK terminal event. That event is not independent provider finish-reason metadata, and it does not prove that the JSON is complete or correct.
+
+Acceptance separately checks successful current completion, the original JSON document, exactly two bounded steps, matching parsed fields, the current user turn and application revision. Stopped, failed, truncated, malformed and stale proposals remain unavailable. Preparing again also withholds acceptance until preparation succeeds.
+
+## Handle unavailable models and recovery
+
+If the API is missing or unavailable, explain the issue and keep generation disabled. **Prepare model** is an explicit retry. If preparation fails, is stopped, or completes after navigation, its old callbacks cannot mark the new conversation ready.
+
+During generation, **Stop** cancels the current SDK run. Partial fields can remain visible as an unavailable preview. Send a fresh request to recover; the cancelled run cannot apply state or replace the new result. Changing conversations also stops active preparation and inference.
+
+There is **no automatic hosted fallback**. Sending a prompt off-device should be an explicit application choice.
+
+<hb-expander title="Standalone trip brief: complete checked source">
+
+The earlier example extracts “Three days in Lisbon.” into a typed trip brief. Its standalone clients remain available, with their complete setup below. The canonical recording above uses the plan workbench.
 
 ## Share the schema and preparation logic
 
@@ -532,6 +585,8 @@ This is extraction, rather than a travel recommendation. We are checking whether
 If generation reports that preparation is needed again, use **Prepare model** before retrying. The model may have been removed or become unavailable since the last check. Refresh also clears this component's ready state and result; preparation checks the browser's current state again.
 
 The recorder separately checks unavailable APIs, download progress/failure, cancellation, late session cleanup, invalid or failed output, and recovery with deterministic native-API shims. Those checks exercise the real clients and transport contracts. They do not establish model accuracy, real Edge support, or native inference on mobile devices. Mobile checks cover layout and the simulated contract only.
+
+</hb-expander>
 
 ## Keep local capabilities explicit
 

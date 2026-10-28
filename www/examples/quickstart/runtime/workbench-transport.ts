@@ -90,7 +90,9 @@ export function createWorkbenchTransport(
               if (current())
                 store.record('error', {
                   message:
-                    'Stream failed. Review the HTTP response or decoded events.',
+                    endpoint === 'native:chrome'
+                      ? 'Local stream failed. Review native availability and decoded events.'
+                      : 'Stream failed. Review the HTTP response or decoded events.',
                 });
               if (current()) store.settle('error');
               throw error;
@@ -101,7 +103,9 @@ export function createWorkbenchTransport(
         if (current())
           store.record('error', {
             message:
-              'Request failed. Review the HTTP response or decoded events.',
+              endpoint === 'native:chrome'
+                ? 'Local request failed. Review native availability and decoded events.'
+                : 'Request failed. Review the HTTP response or decoded events.',
           });
         if (current()) store.settle('error');
         throw error;

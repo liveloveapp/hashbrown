@@ -5,6 +5,10 @@ import { createWorkbenchApp } from '../examples/quickstart/server/workbench-app'
 import { createServer } from 'node:http';
 import { EventType } from '@ag-ui/core';
 
+test('browser-local inference cannot enter a hosted provider endpoint', () => {
+  expect(() => pinWorkbenchInput({}, 'local-models')).toThrow('local');
+});
+
 test('direct runtime lessons cannot be submitted to the provider boundary', () => {
   const input = {
     threadId: 't',

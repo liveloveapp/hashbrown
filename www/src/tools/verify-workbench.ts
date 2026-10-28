@@ -1,3 +1,5 @@
+import { verifyLocalWorkbench } from './verify-local-workbench';
+import { assertLocalRecordingAllowed } from './docs-local-models-fixtures';
 import { verifyJavaScriptWorkbench } from './verify-javascript-workbench';
 import {
   type UiFixtureOutcome,
@@ -240,7 +242,9 @@ const apiKey = process.env['OPENAI_API_KEY'];
 const model = process.env['OPENAI_MODEL'];
 if (
   live &&
-  process.env['WORKBENCH_LESSONS'] !== 'javascript-runtime' &&
+  !['javascript-runtime', 'local-models'].includes(
+    process.env['WORKBENCH_LESSONS'] ?? '',
+  ) &&
   (!apiKey || !model)
 )
   throw new Error(
@@ -601,6 +605,37 @@ const lessons = workbenchLessons.filter(
   (lesson) => !requestedLessons || requestedLessons.includes(lesson.id),
 );
 const report: unknown[] = [];
+let nativeLocal: import('@playwright/test').BrowserContext | undefined;
+if (live && lessons.some((lesson) => lesson.id === 'local-models')) {
+  assertLocalRecordingAllowed(process.env['CI']);
+  const launch = {
+    launchOptions: {
+      args: [
+        '--disable-features=',
+        '--enable-features=AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4',
+      ],
+      ignoreDefaultArgs: [
+        '--disable-component-update',
+        '--disable-background-networking',
+        '--disable-field-trial-config',
+      ],
+    },
+  };
+  nativeLocal = await chromium.launchPersistentContext(
+    process.env['LOCAL_MODEL_PROFILE'] ??
+      '/tmp/hashbrown-native-tools-model-profile',
+    {
+      ...launch.launchOptions,
+      channel: 'chrome',
+      headless: false,
+      viewport: { width: 1600, height: 1000 },
+      ...(process.env['WORKBENCH_RECORD'] === '1'
+        ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
+        : {}),
+    },
+  );
+}
+
 /** Retains completed-path evidence separately from the publication-gating final report. */
 function saveCheckpoint(complete = false) {
   writeFileSync(
@@ -611,6 +646,21 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (lesson.id === 'local-models') {
+        report.push(
+          await verifyLocalWorkbench({
+            browser,
+            native: nativeLocal,
+            framework,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (lesson.id === 'javascript-runtime') {
         report.push(
           await verifyJavaScriptWorkbench({
@@ -1371,6 +1421,7 @@ try {
   saveCheckpoint(true);
   console.log(JSON.stringify(report));
 } finally {
+  await nativeLocal?.close();
   await browser.close();
   await new Promise<void>((done) => server.close(() => done()));
 }

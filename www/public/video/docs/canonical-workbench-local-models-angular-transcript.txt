@@ -1,0 +1,21 @@
+ANGULAR · Local models
+
+Actual native Chrome inference through the real Hashbrown framework structured-chat APIs and experimental_chrome transport. The existing dedicated test profile uses requested v4 browser configuration; this does not identify the loaded model or establish default-device availability. Model already available; no new model download. Actual-speed footage with reading pauses; no narration or hosted model request. Native stream EOF leads to SDK terminal events; original JSON validation and application acceptance are separate.
+
+Prepare the available native model.
+
+Chrome generates a typed plan locally.
+
+Accept plan commits revision one.
+
+The next turn receives accepted state.
+
+Accept the revision explicitly.
+
+Replay follows captured local output.
+
+Replay opens no native sessions.
+
+Back live.
+
+Each native turn receives explicit application context. Only fresh successful valid proposals can be accepted. Replay opens no sessions, makes no prompts or requests, and writes no application state. Separate labelled API fixtures test unsupported states, cancellation, malformed output and recovery; they are not inference footage.

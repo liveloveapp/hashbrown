@@ -100,7 +100,7 @@ for review, preserves editable controls, and applies validated fields explicitly
 against the current source/turn/revision. Its actual readContext tool supplies the
 applied plan to the follow-up. Parser and agent lessons preserve application state.
 
-All twenty-seven lessons have two framework paths (54 total). Each new ID has both
+All twenty-eight lessons have two framework paths (56 total). Each new ID has both
 codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
 protocol event pacing and half-speed footage are disclosed. Replay performs no
 requests or writes. Unique ignored capture directories retain masters/reports.
@@ -122,3 +122,20 @@ The two `canonical-workbench-javascript-runtime-{react,angular}` recordings use
 actual execution, both codecs, measured captions, poster/result and transcripts.
 Record with `WORKBENCH_LESSONS=javascript-runtime npx nx workbench-demo www`.
 Legacy basket sources and media remain for old links and independent checks.
+
+## Canonical local models
+
+`?lesson=local-models` prepares a browser-native model explicitly, then runs real
+framework structured chat over `experimental_chrome`. Requests shows LOCAL
+Chrome Prompt API, actual envelopes/events and native metadata; it does not
+fabricate HTTP status. Original JSON, successful current stream completion and
+explicit acceptance guard each application revision. Replay prepares nothing,
+opens no native sessions, prompts nothing and writes no application state.
+
+`canonical-workbench-local-models-{react,angular}` contains separate actual native
+recordings with both codecs, measured captions, posters/results and transcripts.
+Unlike the hosted recordings, footage runs at actual speed with reading pauses.
+The existing dedicated test profile uses requested v4 configuration and must
+already report available; recording starts no model download and no hosted call.
+`WORKBENCH_LESSONS=local-models npx nx workbench-demo www` records locally only.
+CI uses clearly labelled native API fixtures. Legacy trip examples remain.
