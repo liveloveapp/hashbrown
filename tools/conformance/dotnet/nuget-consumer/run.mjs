@@ -12,9 +12,28 @@ const baselineRevision = '8f0a710a75cb907c1a07e34eb5527b1834da90ed';
 const maximumLogBytes = 4 * 1024 * 1024;
 const maximumStructuredBytes = 8 * 1024 * 1024;
 
+/** Recognizes SHA256 file facts, excluding dotted scalar credential names. */
+function isFileHash(key, value) {
+  return (
+    typeof value === 'string' &&
+    /^[a-f0-9]{64}$/i.test(value) &&
+    (/\.dll$/i.test(key) || /[\\/][^\\/]+\.[a-z0-9_]+$/i.test(key))
+  );
+}
+
 /** Removes credentials and bounds diagnostic strings without serializing process environments. */
 export function sanitize(value) {
-  if (typeof value === 'string')
+  if (typeof value === 'string') {
+    if (value.length <= maximumLogBytes && /^\s*[[{]/.test(value)) {
+      let structured;
+      try {
+        structured = JSON.parse(value);
+      } catch {
+        // Partial diagnostics still receive the bounded text redaction below.
+      }
+      if (structured)
+        return JSON.stringify(sanitize(structured)).slice(0, maximumLogBytes);
+    }
     return value
       .replace(
         /("(?!publickeytoken")(?:password|api.?key|authorization|[a-z][a-z0-9_]*token|token)"\s*:\s*")[^"]*/gi,
@@ -30,12 +49,14 @@ export function sanitize(value) {
         '$1[redacted]',
       )
       .slice(0, maximumLogBytes);
+  }
   if (Array.isArray(value)) return value.map(sanitize);
   if (value && typeof value === 'object')
     return Object.fromEntries(
       Object.entries(value)
         .filter(
-          ([key]) =>
+          ([key, item]) =>
+            isFileHash(key, item) ||
             !/environment|password|secret|authorization|api.?key/i.test(key),
         )
         .map(([key, item]) => [

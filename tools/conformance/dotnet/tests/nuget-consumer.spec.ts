@@ -366,6 +366,32 @@ assert.deepEqual(plan.at(-1).argv.slice(-1),['/tmp/npm.json']);
   expect(result.trim()).toBe('passed');
 });
 
+test('diagnostics preserve SHA256 file facts while removing credential and capability fields', () => {
+  const body = `
+const {sanitize}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const digest='a'.repeat(64);
+const files=Object.fromEntries(['System.Environment.dll','Microsoft.AspNetCore.Authorization.Policy.dll','Microsoft.Extensions.Configuration.UserSecrets.dll','/public/environment/src/secret.cs','Microsoft.ML.Tokenizers.dll','BearerToken.dll'].map(key=>[key,digest]));
+const capabilities=['token','claim_token','capture_token','accessToken','refreshToken','resumeToken','lease_token'];
+const credentials={environment:{publicFiles:files},password:digest,secret:digest,authorization:digest,apiKey:digest,'api.key':digest,'environment.json':digest,'password.json':digest,'secret.txt':digest,'authorization.config':digest,'System.Environment.dll':'non-hash-sensitive-value'};
+const input={files,credentials,...Object.fromEntries(capabilities.map(key=>[key,'private-capability'])),PublicKeyToken:'public-identity',publicKeyToken:'public-identity',tokenHash:digest,inputTokens:12,outputTokens:7};
+
+const cleaned=sanitize(input);
+const embedded=JSON.parse(sanitize(JSON.stringify(input)));
+
+for(const output of [cleaned,embedded]){
+ assert.deepEqual(output.files,files);
+ assert.deepEqual(output.credentials,{});
+ for(const key of capabilities)assert.equal(output[key],'[redacted]',key);
+ for(const key of ['PublicKeyToken','publicKeyToken','tokenHash','inputTokens','outputTokens'])assert.equal(output[key],input[key],key);
+ assert.ok(!JSON.stringify(output).includes('private-capability'));
+}
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
 test('acceptance bounds sanitizes diagnostics and fails timed out children without retry', () => {
   const result = probe(`
 const {executePhases,sanitize}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
