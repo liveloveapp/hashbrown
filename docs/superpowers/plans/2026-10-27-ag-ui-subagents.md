@@ -75,7 +75,7 @@ Modify core `chat-runtime.ts`, model barrel; React chat/UI/structured facades an
 
 - [ ] Confirm #805 merged when its refreshed CI turns green; keep other merges moving. No background schedule.
 - [ ] Fetch main and replay only this branch's subagent commits onto main after #805 squash merge (current feature base ed0f431e). Resolve genuine conflicts without losing other work; verify after any source changes.
-- [ ] Publish and attach a new reviewable PR. No automatic merge of this next PR without authorization. Keep the managed worktree attached for review.
+- [ ] Publish and attach a new reviewable PR (initially stacked on #805 while its CI completes; retarget main after rebasing). No automatic merge of this next PR without authorization. Keep the managed worktree attached for review.
 
 ## Baseline
 
