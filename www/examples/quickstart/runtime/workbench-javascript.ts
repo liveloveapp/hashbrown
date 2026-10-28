@@ -196,7 +196,7 @@ export function normalizeWorkbenchJavaScriptObservation(
 }
 
 function estimate(minutes: number): string {
-  return `const snapshot = await readPlan({ revision: 0 });\nconst stepCount = snapshot.plan.steps.length;\nreturn {\n  revision: snapshot.revision,\n  title: snapshot.plan.title,\n  stepCount,\n  totalMinutes: stepCount * ${minutes},\n};`;
+  return `const snapshot = readPlan({ revision: 0 });\nconst stepCount = snapshot.plan.steps.length;\n({\n  revision: snapshot.revision,\n  title: snapshot.plan.title,\n  stepCount,\n  totalMinutes: stepCount * ${minutes},\n});`;
 }
 /** Explicit application-owned scripts; selecting a preset does not execute it. */
 export const workbenchJavaScriptScripts = immutable([
@@ -205,17 +205,17 @@ export const workbenchJavaScriptScripts = immutable([
   {
     id: 'browser',
     title: 'Missing browser global',
-    code: 'return document.title;',
+    code: 'document.title;',
   },
   {
     id: 'invalid',
     title: 'Invalid host arguments',
-    code: 'return await readPlan({ revision: "0" });',
+    code: 'readPlan({ revision: "0" });',
   },
   { id: 'loop', title: 'Runtime timeout', code: 'while (true) {}' },
   {
     id: 'fresh',
     title: 'Fresh runtime context',
-    code: 'const previous = globalThis.previousRun;\nglobalThis.previousRun = true;\nreturn { fresh: previous === undefined };',
+    code: 'const previous = globalThis.previousRun;\nglobalThis.previousRun = true;\n({ fresh: previous === undefined });',
   },
 ] as const);

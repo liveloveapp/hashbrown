@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm';
 import { expect, test } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
@@ -174,4 +175,31 @@ test('runtime lesson resolves in concepts with no provider endpoint and explicit
   );
   expect(workbenchJavaScriptScripts[0].code).toContain('* 15');
   expect(workbenchJavaScriptScripts[1].code).toContain('* 10');
+});
+
+test('estimate presets evaluate as scripts with synchronous QuickJS host bindings', () => {
+  const application = createWorkbenchStore('text').getSnapshot().application;
+  const host = {
+    readPlan: (args: unknown) =>
+      readWorkbenchJavaScriptPlan(
+        JSON.parse(JSON.stringify(args)),
+        application,
+      ),
+  };
+
+  const estimate = runInNewContext(workbenchJavaScriptScripts[0].code, host);
+  const shorter = runInNewContext(workbenchJavaScriptScripts[1].code, {
+    ...host,
+  });
+
+  expect(estimate).toMatchObject({
+    revision: 0,
+    stepCount: 2,
+    totalMinutes: 30,
+  });
+  expect(shorter).toMatchObject({
+    revision: 0,
+    stepCount: 2,
+    totalMinutes: 20,
+  });
 });
