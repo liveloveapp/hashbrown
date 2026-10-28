@@ -55,3 +55,42 @@ test('an aborted fixture does not retain a preview waiter', async () => {
 
   expect(abort.signal.aborted).toBe(true);
 });
+
+test('a streamed plan pauses the producer until its browser preview is observed', async () => {
+  const { createWorkbenchPlanPreview } =
+    await import('../src/tools/workbench-verification-timing');
+  const preview = createWorkbenchPlanPreview();
+  const signal = new AbortController().signal;
+  let advanced = false;
+  await preview.wait(
+    '{"ui":[{"SummaryCard":{"props":{"title":"Show a trusted component",',
+    signal,
+  );
+
+  const waiting = preview.wait('"steps":["Outline', signal).then(() => {
+    advanced = true;
+  });
+  await Promise.resolve();
+
+  expect(advanced).toBe(false);
+  preview.release();
+  await waiting;
+  expect(advanced).toBe(true);
+  await preview.wait(' the demo","Record the demo"]}}}]}', signal);
+});
+
+test('cancelling a streamed plan releases its partial preview waiter', async () => {
+  const { createWorkbenchPlanPreview } =
+    await import('../src/tools/workbench-verification-timing');
+  const preview = createWorkbenchPlanPreview();
+  const controller = new AbortController();
+
+  const waiting = preview.wait(
+    '{"title":"Show","steps":["Outline',
+    controller.signal,
+  );
+  controller.abort();
+  await waiting;
+
+  expect(controller.signal.aborted).toBe(true);
+});

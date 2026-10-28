@@ -25,6 +25,7 @@ export async function verifyOnboardingWorkbench(options: {
   readonly live: boolean;
   readonly recording: boolean;
   readonly preview: () => () => void;
+  readonly partial: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly instructions: readonly WorkbenchInstructionsTrace[];
   readonly nativeRequests: readonly Record<string, unknown>[];
@@ -149,6 +150,8 @@ export async function verifyOnboardingWorkbench(options: {
     );
     await hold();
     mark('firstRequest');
+    const releasePartial =
+      !live && lesson === 'first-plan' ? options.partial() : undefined;
     await send.click();
     let partialTitle = '';
     let partialSteps: string[] = [];
@@ -179,6 +182,7 @@ export async function verifyOnboardingWorkbench(options: {
     } else {
       await expect(replies.first()).not.toBeEmpty({ timeout: 60_000 });
     }
+    releasePartial?.();
     await complete();
     mark('firstComplete');
     await expect(root.locator('[data-source]')).toHaveText(

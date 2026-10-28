@@ -39,3 +39,19 @@ export function createWorkbenchPreview(): {
     },
   };
 }
+
+/** Holds fixture output once required plan props begin streaming, until the browser observes the unfinished component. */
+export function createWorkbenchPlanPreview(): {
+  readonly wait: (delta: string, signal: AbortSignal) => Promise<void>;
+  readonly release: () => void;
+} {
+  const preview = createWorkbenchPreview();
+  let text = '';
+  return {
+    release: preview.release,
+    wait: async (delta, signal) => {
+      text += delta;
+      if (/"steps"\s*:\s*\[\s*"[^"]+/.test(text)) await preview.wait(signal);
+    },
+  };
+}

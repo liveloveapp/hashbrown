@@ -20,6 +20,7 @@ import { createWorkbenchAgentStream } from '../../examples/quickstart/server/wor
 import { DecisionError } from '@hashbrownai/typesafe';
 import { verifyServerWorkbench } from './verify-server-workbench';
 import {
+  createWorkbenchPlanPreview,
   createWorkbenchPreview,
   workbenchVerificationTiming,
 } from './workbench-verification-timing';
@@ -69,6 +70,16 @@ async function* pacedProvider(
   }
 }
 let pendingPreview: ReturnType<typeof createWorkbenchPreview> | undefined;
+let pendingPartial: ReturnType<typeof createWorkbenchPlanPreview> | undefined;
+/** Holds the first renderable plan fragment until its browser assertion completes. */
+function holdPartial(): () => void {
+  const preview = createWorkbenchPlanPreview();
+  pendingPartial = preview;
+  return () => {
+    preview.release();
+    if (pendingPartial === preview) pendingPartial = undefined;
+  };
+}
 /** Starts a single provisional-output checkpoint for the current serial scenario. */
 function holdPreview(): () => void {
   const preview = createWorkbenchPreview();
@@ -136,6 +147,10 @@ async function* fixture(
         messageId,
         delta: onboardingText.slice(index, index + 10),
       };
+      await pendingPartial?.wait(
+        onboardingText.slice(index, index + 10),
+        signal,
+      );
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId };
     await pendingPreview?.wait(signal);
@@ -620,6 +635,11 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     res.write(
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
     );
+    if (event.type === 'response.output_text.delta' && 'delta' in event)
+      await pendingPartial?.wait(
+        String(event.delta),
+        new AbortController().signal,
+      );
     if (event.type === 'response.output_text.delta')
       await new Promise((done) =>
         setTimeout(done, workbenchVerificationTiming(recording).chunkMs),
@@ -849,6 +869,7 @@ try {
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
             preview: holdPreview,
+            partial: holdPartial,
             requests,
             instructions,
             nativeRequests,
@@ -1469,6 +1490,7 @@ try {
 } finally {
   await nativeLocal?.close();
   pendingPreview?.release();
+  pendingPartial?.release();
   await browser.close();
   await new Promise<void>((done) => server.close(() => done()));
 }
