@@ -1,0 +1,17 @@
+# Canonical local models
+
+Continue the approved Angular/React canonical workbench rollout with browser-local inference. Preserve the LLA visual system, all panels, paired inspector and bottom timeline. No dependencies or SDK release.
+
+## Teaching task and scope
+
+Explicitly Prepare model, then generate a typed two-step plan with Chrome's native model through `experimental_chrome` and native framework structured chat. Partial JSON/props are previews; only explicit acceptance of a current successful original-document-valid proposal applies state. A second user turn receives the accepted plan and revision in explicit application context and requests a shorter second step. No browser tools or hosted model endpoint. Show Model preparation/availability/progress, Requests (actual local SDK envelopes/events, no fabricated HTTP response), JSON, Schema, UI and State together. Preparation cannot infer or write a plan.
+
+Use existing native preparation helpers and already installed dedicated test model. Actual recordings must not replace inference with fixtures and must not download another model. Capture each framework separately. Preparation/download and inference are different phases; unavailable/missing model leaves generation disabled and offers explicit retry. Each run/cancellation/navigation/disposal has an origin guard. Stopped/failed/truncated/stale outputs cannot be accepted. Late preparation sessions are destroyed. Replay operates solely on immutable captured values and never prepares, opens a session, prompts or writes application state.
+
+Existing trip-brief standalone examples and advanced local model guide content stay available. Keep Chrome, Edge, application-owned WebLLM and localhost Ollama distinctions and current official setup links; avoid unverified browser/model support claims. No automatic cloud fallback. Downloads, app resources and telemetry remain separate network behavior from local generation.
+
+## Architecture and verification
+
+Shared local-model preparation observations and transport wrapper carry bounded immutable POJOs into existing workbench frames, guarded against stale operations. The wrapper delegates actual `experimental_chrome`, captures original requests/events, and includes explicit current application context for each turn. React/Angular clients use genuine structured chat APIs and shared application validation/acceptance helpers, active-conversation and current-message guards. No native session handles enter capture state.
+
+TDD covers strict observations, preparation cancellation/late cleanup, local transport envelope/context, current successful original JSON validation and inert replay. Deterministic browser tests replace only LanguageModel with clearly labelled native API shims to cover missing/unavailable/downloadable/progress, failure/truncation/invalid output, stop/retry/navigation and no automatic inference/downloads. They are not model-quality evidence. Real browser recording uses the dedicated native profile with availability already available, both turns and explicit acceptance, measured captions, both codecs/posters/results/transcripts. Record actual speed then disclose any editorial retiming. Build/test/lint affected projects; complete production route/mobile and 56-path browser reports. Review, PR, merge on green and verify public guide/media and the unsupported native API state on noneligible browsers. SDK release remains separate.

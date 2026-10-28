@@ -758,7 +758,10 @@ export function createWorkbenchRequestsView(
         : [];
     return [
       facts([
-        ['HTTP status', toned(statusText, tone)],
+        [
+          exchange.method === 'LOCAL' ? 'Native stream status' : 'HTTP status',
+          toned(statusText, tone),
+        ],
         ['Finish reason', finishReason],
         ['Result', result ?? (exchange.status === 'pending' ? '…' : undefined)],
         ['Tool calls', callList],

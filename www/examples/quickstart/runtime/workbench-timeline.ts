@@ -22,6 +22,25 @@ export function workbenchMilestones(
     if (event.kind === 'error') lastError.set(event.turn, index);
   });
   return events.flatMap((event, index) => {
+    if (event.kind === 'local-model') {
+      const state = event.localModel;
+      return [
+        {
+          index,
+          turn: event.turn,
+          label:
+            state?.state === 'preparing'
+              ? 'Model preparing'
+              : state?.state === 'ready'
+                ? 'Model ready'
+                : state?.state === 'error'
+                  ? 'Model preparation failed'
+                  : state?.state === 'cancelled'
+                    ? 'Model preparation stopped'
+                    : 'Model preparation',
+        },
+      ];
+    }
     if (event.kind === 'javascript') {
       const execution = event.javascript;
       const label =

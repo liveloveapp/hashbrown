@@ -1,0 +1,25 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.393
+Prepare the available native model.
+
+00:00:02.393 --> 00:00:10.243
+Chrome generates a typed plan locally.
+
+00:00:10.243 --> 00:00:12.285
+Accept plan commits revision one.
+
+00:00:12.285 --> 00:00:19.642
+The next turn receives accepted state.
+
+00:00:19.642 --> 00:00:21.700
+Accept the revision explicitly.
+
+00:00:21.700 --> 00:00:25.764
+Replay follows captured local output.
+
+00:00:25.764 --> 00:00:29.848
+Replay opens no native sessions.
+
+00:00:29.848 --> 00:00:31.000
+Back live.

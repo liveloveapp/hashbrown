@@ -1,5 +1,22 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-local-models-react': {
+    title: 'React workbench: local models.',
+    caption:
+      'Prepare the native model, generate a typed plan locally, and explicitly accept each proposal.',
+    recording:
+      'Actual native Chrome inference through the Hashbrown React structured-chat API and experimental_chrome transport. The existing dedicated test profile had a model available under requested v4 browser configuration; that configuration does not identify the loaded model or establish availability elsewhere. No new download, scripted model answer or hosted model request. Actual-speed footage with reading pauses; no narration. Native EOF, JSON validation and application acceptance are distinct. Replay opens no sessions, sends no prompts, downloads no models and writes no application state. Test-only native API fixtures are excluded from published footage.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-local-models-angular': {
+    title: 'Angular workbench: local models.',
+    caption:
+      'Prepare the native model, generate a typed plan locally, and explicitly accept each proposal.',
+    recording:
+      'Actual native Chrome inference through the Hashbrown Angular structured-chat API and experimental_chrome transport. The existing dedicated test profile had a model available under requested v4 browser configuration; that configuration does not identify the loaded model or establish availability elsewhere. No new download, scripted model answer or hosted model request. Actual-speed footage with reading pauses; no narration. Native EOF, JSON validation and application acceptance are distinct. Replay opens no sessions, sends no prompts, downloads no models and writes no application state. Test-only native API fixtures are excluded from published footage.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-javascript-runtime-react': {
     title: 'React workbench: JavaScript runtime.',
     caption:

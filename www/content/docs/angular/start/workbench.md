@@ -30,7 +30,7 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens twenty-seven lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens twenty-eight lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -63,6 +63,7 @@ The lessons are:
 | [UI Kits](/docs/angular/recipes/ui-kits)                                            | `/angular.html?lesson=ui-kits`                 | Actual kit registry, trusted variants, and explicit acceptance.            |
 | [UI chatbot](/docs/angular/recipes/ui-chatbot)                                      | `/angular.html?lesson=ui-chatbot`              | A proposal, accepted state, and a read-only follow-up.                     |
 | [JavaScript runtime](/docs/angular/concept/runtime)                                 | `/angular.html?lesson=javascript-runtime`      | Actual QuickJS code, validated host calls, results and errors.             |
+| [Local models](/docs/angular/recipes/local-models)                                  | `/angular.html?lesson=local-models`            | Native model preparation, local structured chat and explicit acceptance.   |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
