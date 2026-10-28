@@ -26,6 +26,7 @@ test('groups every lesson exactly once in sidebar order', () => {
       [
         'generative-ui',
         'tools',
+        'javascript-runtime',
         'structured-output',
         'streaming',
         'schemas',

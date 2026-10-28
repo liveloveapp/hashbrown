@@ -100,7 +100,7 @@ for review, preserves editable controls, and applies validated fields explicitly
 against the current source/turn/revision. Its actual readContext tool supplies the
 applied plan to the follow-up. Parser and agent lessons preserve application state.
 
-All twenty-six lessons have two framework paths (52 total). Each new ID has both
+All twenty-seven lessons have two framework paths (54 total). Each new ID has both
 codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
 protocol event pacing and half-speed footage are disclosed. Replay performs no
 requests or writes. Unique ignored capture directories retain masters/reports.
@@ -109,3 +109,16 @@ Keep legacy assets and standalone fixtures for old bookmarks. No SDK release.
 ## Canonical UI kits and chatbot
 
 `canonical-workbench-{ui-kits,ui-chatbot}-{react,angular}` use real OpenAI output, actual framework kit/UI chat APIs and browser readContext. The recorded kit registry and schema come from each SDK. Only explicit validated acceptance changes state; PlanReading has no write action. Both codecs, measured captions, poster, result and transcript accompany each recording. See `docs/docs-media-inventory.md` for current coverage and source boundaries.
+
+## Canonical JavaScript runtime
+
+`?lesson=javascript-runtime` uses native framework Hashbrown QuickJS APIs against
+the same application-owned two-step plan. Visible scripts estimate 30 and 20
+minutes, then demonstrate browser/host failures and recovery. No model or API key
+is needed. Code, actual host calls and outcomes are immutable captured values;
+playback performs no execution or writes. The plan stays at revision zero.
+
+The two `canonical-workbench-javascript-runtime-{react,angular}` recordings use
+actual execution, both codecs, measured captions, poster/result and transcripts.
+Record with `WORKBENCH_LESSONS=javascript-runtime npx nx workbench-demo www`.
+Legacy basket sources and media remain for old links and independent checks.

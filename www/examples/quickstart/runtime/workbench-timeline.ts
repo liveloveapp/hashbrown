@@ -22,6 +22,20 @@ export function workbenchMilestones(
     if (event.kind === 'error') lastError.set(event.turn, index);
   });
   return events.flatMap((event, index) => {
+    if (event.kind === 'javascript') {
+      const execution = event.javascript;
+      const label =
+        execution?.status === 'complete'
+          ? 'QuickJS result'
+          : execution?.status === 'error'
+            ? 'QuickJS error'
+            : execution?.status === 'cancelled'
+              ? 'QuickJS cancelled'
+              : execution?.calls.length
+                ? 'Host call observed'
+                : 'QuickJS started';
+      return [{ index, turn: event.turn, label }];
+    }
     if (event.kind === 'parsed' && lastParsed.get(event.turn) !== index)
       return [];
     if (event.kind === 'error' && lastError.get(event.turn) !== index)

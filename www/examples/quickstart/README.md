@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has twenty-six allowlisted lessons in both framework hosts:
+The workbench now has twenty-seven allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -273,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All twenty-six lessons (52 framework paths) are covered by `npx nx workbench-e2e www`.
+All twenty-seven lessons (54 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -370,3 +370,16 @@ Replay is read-only. Legacy standalone examples and media remain independent.
 ## Canonical UI kits and chatbot
 
 The `ui-kits` and `ui-chatbot` lessons use actual framework kits and UI chat. Both capture the normalized registry, serialized schema and selected component. Only explicit, validated acceptance changes the application plan; PlanReading is read-only. Separate Angular and React recordings use real OpenAI output.
+
+## Canonical JavaScript runtime
+
+`?lesson=javascript-runtime` uses native framework Hashbrown QuickJS APIs against
+the same application-owned two-step plan. Visible scripts estimate 30 and 20
+minutes, then demonstrate browser/host failures and recovery. No model or API key
+is needed. Code, actual host calls and outcomes are immutable captured values;
+playback performs no execution or writes. The plan stays at revision zero.
+
+The two `canonical-workbench-javascript-runtime-{react,angular}` recordings use
+actual execution, both codecs, measured captions, poster/result and transcripts.
+Record with `WORKBENCH_LESSONS=javascript-runtime npx nx workbench-demo www`.
+Legacy basket sources and media remain for old links and independent checks.

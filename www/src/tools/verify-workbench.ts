@@ -1,3 +1,4 @@
+import { verifyJavaScriptWorkbench } from './verify-javascript-workbench';
 import {
   type UiFixtureOutcome,
   verifyUiWorkbench,
@@ -237,7 +238,11 @@ async function* fixture(
 }
 const apiKey = process.env['OPENAI_API_KEY'];
 const model = process.env['OPENAI_MODEL'];
-if (live && (!apiKey || !model))
+if (
+  live &&
+  process.env['WORKBENCH_LESSONS'] !== 'javascript-runtime' &&
+  (!apiKey || !model)
+)
   throw new Error(
     'Live verification requires OPENAI_API_KEY and OPENAI_MODEL.',
   );
@@ -606,6 +611,20 @@ function saveCheckpoint(complete = false) {
 try {
   for (const lesson of lessons) {
     for (const framework of ['react', 'angular']) {
+      if (lesson.id === 'javascript-runtime') {
+        report.push(
+          await verifyJavaScriptWorkbench({
+            browser,
+            framework,
+            origin: `http://127.0.0.1:${address.port}`,
+            work,
+            live,
+            recording: process.env['WORKBENCH_RECORD'] === '1',
+          }),
+        );
+        saveCheckpoint();
+        continue;
+      }
       if (lesson.id === 'ui-kits' || lesson.id === 'ui-chatbot') {
         report.push(
           await verifyUiWorkbench({

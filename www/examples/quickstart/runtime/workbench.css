@@ -1843,3 +1843,72 @@ app-workflow-workbench-conversation[hidden] {
   color: var(--wb-muted);
   background: var(--wb-code);
 }
+
+/* Direct execution shares the conversation, inspector and playback shell. */
+.wb-runtime {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.wb-runtime > p {
+  margin: 0;
+  color: var(--wb-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.wb-runtime nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wb-runtime nav button {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.wb-runtime label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--wb-muted);
+}
+.wb-runtime textarea {
+  font:
+    12px/1.6 'JetBrains Mono',
+    monospace;
+  background: var(--wb-code);
+  min-height: 170px;
+}
+.wb-runtime [data-runtime-messages] {
+  display: grid;
+  gap: 12px;
+}
+.wb-runtime [data-runtime-messages] .wb-user {
+  white-space: pre-wrap;
+  font:
+    11px/1.5 'JetBrains Mono',
+    monospace;
+  margin-bottom: 0 !important;
+}
+.wb-runtime [data-runtime-messages] pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--wb-code);
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  padding: 12px;
+  font:
+    12px/1.5 'JetBrains Mono',
+    monospace;
+}
+.wb-runtime > [data-runtime-run] {
+  align-self: flex-end;
+}
+.wb-runtime-bar {
+  padding: 6px 16px;
+}
+.wb-runtime-bar .wb-actions {
+  margin: 0;
+  justify-content: flex-end;
+}

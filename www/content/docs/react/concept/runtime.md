@@ -2,308 +2,114 @@
 title: 'JS Runtime: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Run JavaScript in QuickJS with explicitly exposed application functions.'
+    content: 'Run visible JavaScript against your application plan with a narrow QuickJS host capability.'
 ---
 
-# JS Runtime
+# JavaScript runtime
 
-Let's calculate a basket total. Our application provides three items; JavaScript running in QuickJS adds their prices and returns **4,200 cents ($42.00)**. Then we'll try browser access, reject invalid arguments, and run the calculation again.
+Let's estimate how long our plan will take. We have two steps. At 15 minutes per step, that's **30 minutes**. Change the estimate to 10 minutes per step and run it again: **20 minutes**. The plan hasn't changed. We've calculated a result from it.
 
-<hb-docs-demo demo="javascript-runtime">
+<hb-docs-demo demo="canonical-workbench-javascript-runtime-react">
 </hb-docs-demo>
 
-## Before we start
+![The React workbench shows submitted code, the actual QuickJS result, and application state at revision zero.](/video/docs/canonical-workbench-javascript-runtime-react-result.png)
 
-Start with the [React Quickstart](/docs/react/start/quick). This example uses the same client packages. QuickJS ships with `@hashbrownai/core` and loads lazily when you first run code. The direct example does not call a model or need an API key.
+## Run the example
 
-Keep the shared `runtime` directory beside the `react` and `angular` example directories. The imports below use that layout. If you copy this into an existing app, put the shared file in your source tree and update its import path.
+Open the [JavaScript runtime workbench](https://workbench.hashbrown.dev/react.html?lesson=javascript-runtime). Start with **15 minutes per step**, then choose **Run in QuickJS**. Next, choose **10 minutes per step** and run again.
 
-## Expose a read-only basket
+These are application-owned scripts running through the real Hashbrown React runtime API. There is no model or provider request in this lesson. Code doesn't stream into a generated component. The workbench captures the submitted source, actual host calls, and the result or error as each occurs.
 
-Create `runtime/basket.ts`:
+Use **Code** to inspect the script, **Runtime** to inspect execution, and **State** to compare the application-owned plan. The bottom player moves through captured moments. Replay executes no scripts, host functions, requests, or application writes.
 
-<hb-expander title="Complete runtime/basket.ts">
+## Give JavaScript a narrow capability
 
-<hb-code-example header="runtime/basket.ts">
+QuickJS runs JavaScript in a separate context. It doesn't have your browser's `document`, `window`, or `fetch`. We explicitly expose one function, `readPlan`, so the script can read a detached snapshot of the current plan.
+
+The handler executes in your host application, outside QuickJS. It checks that the arguments contain exactly one nonnegative integer `revision`, that it matches the current application revision, and that the plan is valid. It then copies the plan. The script cannot use this function to apply a change.
+
+The schema describes the function to the runtime and to a model when you use a JavaScript tool. It does **not automatically validate arguments or results**. Keep validation in the handler.
+
+Start with the [React Quickstart](/docs/react/start/quick), then compare the [complete native client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/RuntimeWorkbench.tsx) and [shared host contract](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-javascript.ts). Call hooks at the top level of your React component or custom hook.
+
+The client creates the native runtime with @hashbrownai/react!useRuntimeFunction:hook and @hashbrownai/react!useRuntime:hook. This excerpt uses the workbench's checked schemas and session controller:
 
 ```ts
-import { s } from '@hashbrownai/core';
-
-/** Describes the model-facing input; the handler still validates it. */
-export const basketArgs = s.object('Read the USD basket', {
-  currency: s.literal('USD'),
+const read = useRuntimeFunction({
+  name: 'readPlan',
+  description: 'Read the application-owned plan without changing it.',
+  args: workbenchJavaScriptReadPlanSchema,
+  result: workbenchJavaScriptPlanResultSchema,
+  handler: async (args, signal) => session.readPlan(args, signal),
+  deps: [session],
 });
+const runtime = useRuntime({ functions: [read], timeout: 1_000 });
+```
 
-/** Describes the basket snapshot returned to the script. */
-export const basketResult = s.object('A read-only basket snapshot', {
-  currency: s.literal('USD'),
-  items: s.array(
-    'Basket items',
-    s.object('An item', {
-      name: s.string('Product name'),
-      priceCents: s.number('Integer price in cents'),
-    }),
-  ),
-});
+The [session controller](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-javascript-session.ts) owns the current run, validates the host call, forwards cancellation and captures plain values. It rejects work from an inactive conversation or an old run. The full client shows how the session and runtime are connected.
 
-/** Reads a fresh basket snapshot after explicitly validating untrusted arguments. */
-export function readBasket(input: unknown): s.Infer<typeof basketResult> {
-  if (
-    typeof input !== 'object' ||
-    input === null ||
-    Array.isArray(input) ||
-    Object.keys(input).length !== 1 ||
-    !('currency' in input) ||
-    input.currency !== 'USD'
-  ) {
-    throw new TypeError('Expected exactly { currency: "USD" }.');
-  }
+## Submit the exact script
 
-  return {
-    currency: 'USD',
-    items: [
-      { name: 'Coffee', priceCents: 1800 },
-      { name: 'Tea', priceCents: 1400 },
-      { name: 'Chocolate', priceCents: 1000 },
-    ],
-  };
-}
+The first script reads the plan and calculates its estimate:
 
-/** Scripts used by both framework examples; host calls appear synchronous in QuickJS. */
-export const runtimeScripts = {
-  calculate: `const basket = readBasket({ currency: 'USD' });
+```js
+const snapshot = readPlan({ revision: 0 });
 ({
-  currency: basket.currency,
-  itemCount: basket.items.length,
-  totalCents: basket.items.reduce((total, item) => total + item.priceCents, 0),
-});`,
-  browser: 'document.title;',
-  invalid: "readBasket({ currency: 'EUR' });",
-};
+  revision: snapshot.revision,
+  title: snapshot.plan.title,
+  stepCount: snapshot.plan.steps.length,
+  totalMinutes: snapshot.plan.steps.length * 15,
+});
 ```
 
-</hb-code-example>
+The host handler is async. Inside the script, `readPlan(...)` appears synchronous: the QuickJS bridge waits for it before continuing. The final expression supplies the result; this is a script, so don't add a top-level `return`.
 
-</hb-expander>
-
-A few things to note:
-
-- Prices use integer cents. We add `1800 + 1400 + 1000` before formatting the amount for display.
-- `readBasket` accepts `unknown` and checks the argument itself. It accepts exactly one `currency` field with the value `USD`.
-- Each call returns a new snapshot. The script does not receive a reference to application state.
-- `basketArgs` and `basketResult` describe the function's contract to the model and provide TypeScript guidance. The current QuickJS bridge does **not automatically validate arguments or results** against these schemas. Validate untrusted inputs in the host handler and validate external data before returning it.
-
-The handler executes in your host application, outside QuickJS. It retains your application's privileges. A function that reads account data or writes to an API must enforce its own authorization and validation. Only expose capabilities the script should be able to call.
-
-## Run the script
-
-Create `src/RuntimeDemo.tsx`:
-
-<hb-expander title="Complete src/RuntimeDemo.tsx">
-
-<hb-code-example header="src/RuntimeDemo.tsx">
-
-```tsx
-import { useState } from 'react';
-import { useRuntime, useRuntimeFunction } from '@hashbrownai/react';
-import {
-  basketArgs,
-  basketResult,
-  readBasket,
-  runtimeScripts,
-} from '../../runtime/basket';
-
-/** Runs visible JavaScript in QuickJS with one explicitly validated host capability. */
-export function RuntimeDemo() {
-  const [code, setCode] = useState(runtimeScripts.calculate);
-  const [output, setOutput] = useState(
-    'Run the script to calculate the basket total.',
-  );
-  const [running, setRunning] = useState(false);
-  const read = useRuntimeFunction({
-    name: 'readBasket',
-    description: 'Read the current basket in USD. Prices are integer cents.',
-    args: basketArgs,
-    result: basketResult,
-    handler: async (input) => readBasket(input),
-    deps: [],
-  });
-  const runtime = useRuntime({ functions: [read], timeout: 1_000 });
-
-  async function run() {
-    setRunning(true);
-    try {
-      const response: unknown = await runtime.run(
-        code,
-        AbortSignal.timeout(2_000),
-      );
-      setOutput(JSON.stringify(response, null, 2));
-    } catch (error) {
-      setOutput(
-        JSON.stringify(
-          { error: error instanceof Error ? error.message : String(error) },
-          null,
-          2,
-        ),
-      );
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  return (
-    <main>
-      <h1>JavaScript runtime</h1>
-      <p>Read three basket items, then calculate the total inside QuickJS.</p>
-      <p>
-        The only exposed host function is readBasket. It validates the currency
-        before returning a snapshot.
-      </p>
-      <nav aria-label="Script presets">
-        <button
-          type="button"
-          disabled={running}
-          onClick={() => setCode(runtimeScripts.calculate)}
-        >
-          Calculate basket total
-        </button>
-        <button
-          type="button"
-          disabled={running}
-          onClick={() => setCode(runtimeScripts.browser)}
-        >
-          Try browser access
-        </button>
-        <button
-          type="button"
-          disabled={running}
-          onClick={() => setCode(runtimeScripts.invalid)}
-        >
-          Try invalid arguments
-        </button>
-      </nav>
-      <label htmlFor="runtime-code">JavaScript code</label>
-      <textarea
-        id="runtime-code"
-        rows={9}
-        value={code}
-        disabled={running}
-        onChange={(event) => setCode(event.target.value)}
-      />
-      <button type="button" disabled={running} onClick={() => void run()}>
-        Run in sandbox
-      </button>
-      {running && <p role="status">Running in QuickJS...</p>}
-      <h2>Result or error</h2>
-      <pre aria-live="polite" data-testid="runtime-output">
-        {output}
-      </pre>
-      <p>
-        Each run starts with a fresh context. Choose another script and run
-        again after an error.
-      </p>
-    </main>
-  );
-}
+```ts
+const response = await runtime.run(code, signal);
 ```
 
-</hb-code-example>
-
-</hb-expander>
-
-Replace the `App` import in the Quickstart's `src/main.tsx` with `RuntimeDemo`, then render `<RuntimeDemo />` inside the existing `HashbrownProvider`.
-
-We use @hashbrownai/react!useRuntimeFunction:hook to expose `readBasket`, then @hashbrownai/react!useRuntime:hook to create the runtime. The handler is async in the host. Inside the script, `readBasket(...)` appears synchronous: the QuickJS bridge waits for the host call before continuing execution.
-
-Click **Run in sandbox**. The JavaScript editor shows the exact code submitted to `runtime.run`. Its last expression becomes the result:
+A successful evaluation returns a wrapper such as:
 
 ```json
 {
   "result": {
-    "currency": "USD",
-    "itemCount": 3,
-    "totalCents": 4200
+    "revision": 0,
+    "title": "Show how a model renders trusted UI",
+    "stepCount": 2,
+    "totalMinutes": 30
   }
 }
 ```
 
-`run` returns a promise for a wrapper: `{ result: value }` on successful evaluation, or `{ error: details }` for a QuickJS evaluation error. Check the wrapper before using the value. The component also catches rejected promises, such as initialization or host failures, and displays an error message.
+Check the wrapper before using the value. QuickJS evaluation errors return an `error` wrapper; initialization or host failures can also reject the promise. The workbench handles both. A result is application-rendered data, not a model reply or an applied plan.
 
 ## Try a failure, then recover
 
-Choose **Try browser access**, then **Run in sandbox**. The script evaluates `document.title`. QuickJS has no browser `document`, so the output contains an error. Browser globals such as `window` and `fetch` are also unavailable in this context; a host function can still provide access to host resources if you expose it.
+Choose **Missing browser global** and run `document.title`. QuickJS reports a missing browser global. Next, **Invalid host arguments** supplies a string instead of an integer revision. Our host handler rejects it explicitly.
 
-Next, choose **Try invalid arguments** and run again. `readBasket({ currency: 'EUR' })` reaches our host handler and fails its explicit currency check. The error is visible in the output. The schema declaration alone would not enforce this check.
+Choose the estimate again. It still returns 30 minutes. A failed evaluation doesn't prevent the next run, and application state remains at revision zero.
 
-Choose **Calculate basket total** and run once more. The result is 4,200 cents again. An earlier failed run does not prevent the next calculation.
+The extra presets let you interrupt a loop and check context lifetime. Each call to `runtime.run` creates a new QuickJS runtime and context. Variables do not persist between runs. Keep application data in your application and expose only the functions each script needs.
 
-## Context lifetime and cancellation
+## Bound execution and handle cancellation
 
-Each call to `runtime.run` creates a new QuickJS runtime and context. Variables from one run do not persist into another run. Keep application data in your application and expose a function to read the data each script needs.
+The example configures a 1,000 ms runtime deadline and forwards an AbortSignal to `run`. The SDK combines that signal with its deadline and passes it to exposed handlers. Forward it again when a handler calls cancellable operations such as `fetch`.
 
-The example configures `timeout: 1_000` and passes `AbortSignal.timeout(2_000)` to `run`. Hashbrown combines the caller's signal with the runtime timeout. QuickJS checks that signal through its interrupt handler, which can interrupt JavaScript loops. The signal is also passed to exposed host handlers. When a handler performs asynchronous work, forward it to operations such as `fetch` that support cancellation.
+QuickJS checks interruption while evaluating JavaScript, including loops. Initialization also consumes the deadline. A caller's timer-based signal depends on the browser event loop; it cannot reliably interrupt synchronous code before the event loop runs. Keep the runtime deadline bounded.
 
-The configured runtime timeout is its execution deadline. A caller’s timer-based AbortSignal also depends on the browser event loop; a shorter caller timeout cannot be relied on to interrupt synchronous code before that event loop can run. Keep the runtime deadline bounded rather than relying only on a caller timer.
+Timeouts don't forcibly stop arbitrary host code, roll back side effects, or impose a memory limit. Keep handlers narrow and bounded. In this example, **Stop**, navigation and disposal invalidate the run so a late outcome cannot replace the current conversation.
 
-These timeouts do not forcibly stop arbitrary host code, roll back side effects, or set a memory limit. Keep handlers narrow and bounded. QuickJS is an execution boundary for the submitted script; it is not a substitute for host validation, server authorization, or application resource limits.
+## Let a model submit code
 
-## Let a model call the runtime
+Once direct execution is clear, @hashbrownai/react!useToolJavaScript:hook can wrap a runtime as a chat tool. Create a separate runtime for that integration: the workbench's `session.readPlan()` handler is bound to explicit **Run** actions and cannot be reused unchanged by a model tool.
 
-The direct example is useful for understanding execution without a model in the loop. To let a model submit scripts, wrap the runtime with @hashbrownai/react!useToolJavaScript:hook and include the returned tool in a chat's `tools` collection.
+Use the shared `readWorkbenchJavaScriptPlan(args, application)` validator in your model-facing host handler. Read a fresh application snapshot at invocation, forward the model request's cancellation signal, and reject callbacks from inactive or superseded requests. The read-only validator checks the revision and copies the plan; your request lifecycle owns cancellation and origin checks.
 
-This optional helper uses the same basket contract. It requires the Quickstart's provider configuration and chat endpoint:
+Add the returned JavaScript tool to your chat's `tools` collection, using [tools](/docs/react/concept/functions) and your existing provider endpoint. That version requires a model; the direct workbench doesn't. The model receives the exposed function descriptions and type signatures, submits a script, and receives the actual result or error wrapper.
 
-<hb-expander title="Complete src/useBasketChat.ts">
-
-<hb-code-example header="src/useBasketChat.ts">
-
-```ts
-import {
-  useChat,
-  useRuntime,
-  useRuntimeFunction,
-  useToolJavaScript,
-} from '@hashbrownai/react';
-import { basketArgs, basketResult, readBasket } from '../../runtime/basket';
-
-/** Creates a text chat with a JavaScript tool for basket calculations. */
-export function useBasketChat() {
-  const read = useRuntimeFunction({
-    name: 'readBasket',
-    description: 'Read the USD basket. Prices are integer cents.',
-    args: basketArgs,
-    result: basketResult,
-    handler: async (input) => readBasket(input),
-    deps: [],
-  });
-  const runtime = useRuntime({ functions: [read], timeout: 1_000 });
-  const javascript = useToolJavaScript({ runtime });
-
-  return useChat({
-    system:
-      'Use javascript to calculate basket totals. Each call starts fresh. Return the total in USD.',
-    tools: [javascript],
-  });
-}
-```
-
-</hb-code-example>
-
-</hb-expander>
-
-Call `useBasketChat()` at the top level of your React component and use its messages and `sendMessage` method as with `useChat`. The model receives the exposed function descriptions and type signatures. The `javascript` tool passes its generated code to `runtime.run` and returns the result/error wrapper to the model. Each tool call still gets a fresh context.
-
-For data transformation, start with read-only functions like this one. Add mutation capabilities only when their handlers can enforce the same rules as the rest of your application.
+Start with read-only functions. Add mutation capabilities only when their handlers can enforce your application's validation, authorization and resource limits. A sandbox doesn't replace those checks.
 
 ## Next steps
 
-<hb-next-steps>
-  <hb-next-step link="concept/structured-output">
-    <div><hb-database-cog /></div>
-    <div><h4>Get structured data from models</h4><p>Use Skillet schemas to describe model responses.</p></div>
-  </hb-next-step>
-  <hb-next-step link="concept/components">
-    <div><hb-components /></div>
-    <div><h4>Generate user interfaces</h4><p>Expose React components for generative UI.</p></div>
-  </hb-next-step>
-</hb-next-steps>
+- [Expose tools](/docs/react/concept/functions) to read application data or perform checked actions.
+- [Use structured output](/docs/react/concept/structured-output) when the task needs typed data rather than code execution.
