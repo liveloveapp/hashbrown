@@ -167,7 +167,7 @@ try {
  for(const identity of [{...trusted.identity,id:'Wrong.Id'},{...trusted.identity,version:'0.1.0-preview.999'}])assert.throws(()=>v.validateArchive(archive,identity,trusted.revision),/candidate ID|version/i);
  const repository=path.join(parent,'repository');await fs.mkdir(repository);
  for(const file of Object.keys(trusted.sources)) {await fs.mkdir(path.dirname(path.join(repository,file)),{recursive:true});await fs.copyFile(path.join(trusted.repository,file),path.join(repository,file));}
- for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','changed-source-after-qualification']) {
+ for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
   const copy=path.join(parent,'copy');
   await fs.cp(trusted.root,copy,{recursive:true,mode:fs.constants.COPYFILE_FICLONE});
   let metadata=JSON.parse(JSON.stringify(trusted).replaceAll(trusted.root,copy));metadata.repository=repository;
@@ -204,6 +204,12 @@ try {
   }
   else if(mutation==='symlink'){await fs.rm(path.join(copy,'app/Program.cs'));await fs.symlink(path.join(trusted.root,'app/Program.cs'),path.join(copy,'app/Program.cs'));}
   else if(mutation==='pointer')await fs.appendFile(pointer,' ');
+  else if(mutation==='missing-roles'){
+   delete metadata.roles;
+   await fs.writeFile(location,JSON.stringify(metadata));
+   await fs.writeFile(pointer,JSON.stringify({metadata:location,sha256:await v.hashFile(location)}));
+   await fs.writeFile(pointer+'.sha256',await v.hashFile(pointer));
+  }
   else await fs.appendFile(path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),'changed after qualification');
   await assert.rejects(()=>qualifyConsumer(pointer,launch),undefined,mutation+' must fail before launch');assert.equal(launches,0,mutation);
   if(mutation==='changed-source-after-qualification')await fs.copyFile(path.join(trusted.repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'));

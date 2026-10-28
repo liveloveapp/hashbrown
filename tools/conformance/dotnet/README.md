@@ -272,12 +272,13 @@ The default compatibility guarantee comes from deterministic suites. The separat
 
 The local regression runs the same native approval scenario as live qualification
 against genuine MAF, PostgreSQL and the pinned native SDK with an in-memory HTTP
-transport. It requires the existing fixture database and an explicitly prepared
-published consumer. CI runs it without model credentials or provider opt-in.
+transport. It requires the existing fixture database, an explicitly prepared
+NuGet candidate and a prepared published npm consumer. CI runs it without model credentials or provider opt-in.
 
 ```sh
+npx nx package-prepare dotnet-conformance --metadata=/private/tmp/hashbrown-nuget-candidate.json --output-style=static
 npx nx prepare-live-consumer dotnet-conformance --output-style=static
-HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA=/absolute/path/from/prepare/consumer-metadata.json npx nx local-native-approval-browser dotnet-conformance --output-style=static
+HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA=/absolute/path/from/prepare/consumer-metadata.json npx nx local-native-approval-browser dotnet-conformance --metadata=/private/tmp/hashbrown-nuget-candidate.json --output-style=static
 ```
 
 Both frameworks complete all three phases while the HTTP connection remains open
@@ -396,7 +397,6 @@ injection is rejected; source mode is explicitly selected by the semantic-test a
 original source-browser configurations. Package mode cannot resolve `dist`.
 Outcome, qualification, and per-launch provenance reports are retained in the
 candidate root's `browser-reports`, or `HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY`.
-
 
 ## Local package documentation qualification
 

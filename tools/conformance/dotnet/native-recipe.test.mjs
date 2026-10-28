@@ -528,3 +528,44 @@ test('combined CLI reaches mandatory metadata validation without an import deadl
     rmSync(dirname(metadata), { recursive: true, force: true });
   }
 });
+
+test('README native approval browser examples select both prepared NuGet and npm consumers', () => {
+  const text = readFileSync(
+    resolve(root, 'tools/conformance/dotnet/README.md'),
+    'utf8',
+  );
+  const commands = [
+    ...text.matchAll(
+      /`([^`]*\bnpx nx local-native-approval-browser dotnet-conformance[^`]*)`/g,
+    ),
+  ].map((match) => match[1]);
+
+  assert.ok(commands.length >= 2, 'Check every README browser example');
+  for (const command of commands) {
+    const invocation = command
+      .split('\n')
+      .find((line) =>
+        line.includes(
+          'npx nx local-native-approval-browser dotnet-conformance',
+        ),
+      );
+
+    assert.match(
+      invocation,
+      /--metadata(?:=|\s+)\S+/,
+      'Browser command requires an explicit NuGet candidate pointer',
+    );
+    assert.ok(
+      /--npm-metadata(?:=|\s+)\S+/.test(invocation) ||
+        /HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA=\S+/.test(invocation) ||
+        (command === invocation &&
+          /Set `HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA` to that absolute\s+path/.test(
+            text
+              .slice(0, text.indexOf('`' + command + '`'))
+              .split('\n\n')
+              .at(-1),
+          )),
+      'Browser command must retain its explicit prepared npm selection or the documented preceding environment setting',
+    );
+  }
+});

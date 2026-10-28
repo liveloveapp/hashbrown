@@ -307,6 +307,7 @@ for (const mutation of [
   'empty-source-trees',
   'missing-source-trees',
   'missing-probe-role',
+  'missing-roles',
   'extra-role',
   'missing-evaluation',
 ])
@@ -338,6 +339,7 @@ for (const mutation of [
     if (mutation === 'empty-source-trees') metadata.sourceTrees = [];
     if (mutation === 'missing-source-trees') delete metadata.sourceTrees;
     if (mutation === 'missing-probe-role') delete metadata.roles.probe;
+    if (mutation === 'missing-roles') delete metadata.roles;
     if (mutation === 'extra-role')
       metadata.roles.unreviewed = metadata.roles.fixture;
     if (mutation === 'missing-evaluation') delete role.evaluation;

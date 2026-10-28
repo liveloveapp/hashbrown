@@ -407,7 +407,7 @@ export function validateArchive(buffer, identity, revision) {
 /** Qualifies an existing immutable consumer before invoking any caller-owned effect. */
 export async function verifyConsumer(pointer, effect) {
   const metadata = await readAnchoredMetadata(pointer);
-  if (metadata.roles !== undefined) assertPackageRoles(metadata);
+  assertPackageRoles(metadata);
   assert.deepEqual(metadata.identity, IDENTITY, 'Candidate identity differs');
   assert.equal(
     await fs.realpath(metadata.root),
