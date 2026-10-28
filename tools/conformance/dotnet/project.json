@@ -13,6 +13,20 @@
       "{workspaceRoot}/www/content/docs/react/platform/dotnet-native-tools.md",
       "{workspaceRoot}/www/content/docs/angular/platform/dotnet-native-tools.md",
       "{workspaceRoot}/packages/dotnet/**/*"
+    ],
+    "sourceTests": [
+      "default",
+      "{workspaceRoot}/packages/core/**/*",
+      "{workspaceRoot}/tools/conformance/hosts/{react,angular}/src/recovery.ts",
+      "{workspaceRoot}/tools/conformance/harness/{app-driver,event-gate}.ts",
+      "{workspaceRoot}/.github/workflows/nightly.yml",
+      "{workspaceRoot}/www/test/rehype-shiki.spec.ts",
+      "{workspaceRoot}/LICENSE",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/jest.preset.js",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/packages/dotnet/.gitignore"
     ]
   },
   "implicitDependencies": [
@@ -71,16 +85,21 @@
         "runInBand": true
       },
       "inputs": [
-        "default",
-        "^production",
-        "{workspaceRoot}/tsconfig.base.json",
-        "{workspaceRoot}/jest.preset.js",
-        "{projectRoot}/harness/terminate-fixture.ts",
+        "sourceTests",
         {
           "runtime": "dotnet --version"
         },
         {
+          "runtime": "node --version"
+        },
+        {
+          "runtime": "node -p \"process.platform + '-' + process.arch\""
+        },
+        {
           "env": "DOTNET_TEST_POSTGRES"
+        },
+        {
+          "env": "HASHBROWN_DOTNET_HOST_MODE"
         }
       ]
     },

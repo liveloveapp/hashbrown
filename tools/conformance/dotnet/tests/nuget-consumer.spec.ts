@@ -167,7 +167,6 @@ try {
  for(const identity of [{...trusted.identity,id:'Wrong.Id'},{...trusted.identity,version:'0.1.0-preview.999'}])assert.throws(()=>v.validateArchive(archive,identity,trusted.revision),/candidate ID|version/i);
  const repository=path.join(parent,'repository');await fs.mkdir(repository);
  for(const file of Object.keys(trusted.sources)) {await fs.mkdir(path.dirname(path.join(repository,file)),{recursive:true});await fs.copyFile(path.join(trusted.repository,file),path.join(repository,file));}
- for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
   const copy=path.join(parent,'copy');
   await fs.cp(trusted.root,copy,{recursive:true,mode:fs.constants.COPYFILE_FICLONE});
   let metadata=JSON.parse(JSON.stringify(trusted).replaceAll(trusted.root,copy));metadata.repository=repository;
@@ -184,8 +183,19 @@ try {
   }
   const location=path.join(copy,'metadata.json');await fs.rm(location);await fs.writeFile(location,JSON.stringify(metadata));
   const pointer=path.join(parent,'copy-pointer.json');await fs.writeFile(pointer,JSON.stringify({metadata:location,sha256:await v.hashFile(location)}));await fs.writeFile(pointer+'.sha256',await v.hashFile(pointer));
+  const baselineMetadata=JSON.stringify(metadata);
+  const changedFiles=[metadata.archive,'app/packages.lock.json','app/bin/Release/net10.0/Hashbrown.AspNetCore.dll','app/Program.cs','metadata.json','NuGet.Config','app/obj/project.assets.json','app/bin/Release/net10.0/Consumer.deps.json','Directory.Build.targets','app/Consumer.csproj'].map(file=>path.join(copy,file));
+  changedFiles.push(pointer,pointer+'.sha256',path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'));
+  const snapshots=await Promise.all(changedFiles.map(async file=>{
+   try {const stat=await fs.lstat(file);return {file,bytes:await fs.readFile(file),mode:stat.mode & 0o777};}
+   catch(error){if(error.code==='ENOENT')return {file};throw error;}
+  }));
+ // Reuse only disposable setup; every case requalifies the complete restored byte closure.
+ for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
+  const metadata=JSON.parse(baselineMetadata);
   let launches=0;
   const launch=async()=>{launches++;return JSON.stringify(metadata.loaded);};
+  try {
   await qualifyConsumer(pointer,launch);assert.equal(launches,1);launches=0;
   const append=async(file)=>fs.appendFile(path.join(copy,file),'tampered');
   if(mutation==='archive')await append(metadata.archive);
@@ -212,8 +222,12 @@ try {
   }
   else await fs.appendFile(path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),'changed after qualification');
   await assert.rejects(()=>qualifyConsumer(pointer,launch),undefined,mutation+' must fail before launch');assert.equal(launches,0,mutation);
-  if(mutation==='changed-source-after-qualification')await fs.copyFile(path.join(trusted.repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'));
-  await fs.rm(copy,{recursive:true,force:true});
+  } finally {
+   for(const snapshot of snapshots){
+    await fs.rm(snapshot.file,{force:true});
+    if(snapshot.bytes!==undefined)await fs.writeFile(snapshot.file,snapshot.bytes,{mode:snapshot.mode});
+   }
+  }
  }
 } finally {if(prepared)await fs.rm(prepared.root,{recursive:true,force:true});await fs.rm(parent,{recursive:true,force:true});}`;
 
