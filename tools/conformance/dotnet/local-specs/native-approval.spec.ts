@@ -1,8 +1,10 @@
+import {
+  resolveDotnetHost,
+  verifyLoadedDotnetHost,
+} from '../harness/dotnet-host';
 import { expect, test } from '@playwright/test';
 import { execFile, spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import {
   localNativeApprovalStats,
@@ -43,28 +45,11 @@ for (const mode of ['browser-held', 'browser-held-slow', 'browser-held-hung'])
     const metadata = await qualify();
     const framework = info.project.name;
     await withLocalNativeApprovalResources(async (own) => {
-      const directory = await mkdtemp(
-        join(tmpdir(), 'hashbrown-local-native-browser-'),
-      );
-      own(() => rm(directory, { recursive: true, force: true }));
-      const project = resolve(
-        'tools/conformance/dotnet/Hashbrown.Conformance.csproj',
-      );
-      const source = await readFile(
-        resolve(
-          'tools/conformance/dotnet/tests/fixtures/live-approval-journal.cs.txt',
-        ),
-        'utf8',
-      );
+      const host = resolveDotnetHost(undefined, 'probe');
       const environment = {
-        ...publicChildEnvironment(process.env),
+        ...host.environment,
         DOTNET_TEST_POSTGRES: process.env['DOTNET_TEST_POSTGRES'],
       };
-      await writeFile(
-        join(directory, 'Probe.csproj'),
-        `<Project Sdk="Microsoft.NET.Sdk.Web"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup><ItemGroup><ProjectReference Include="${project}" /></ItemGroup></Project>`,
-      );
-      await writeFile(join(directory, 'Program.cs'), source);
       const staticServer = await startLiveStaticServer(
         metadata.artifacts[framework],
       );
@@ -93,17 +78,18 @@ for (const mode of ['browser-held', 'browser-held-slow', 'browser-held-hung'])
       own(() => context.close());
       const page = await context.newPage();
 
-      await promisify(execFile)(
-        process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
-        ['build', join(directory, 'Probe.csproj'), '--verbosity', 'quiet'],
-        { env: environment, timeout: 45_000 },
-      );
       worker = spawn(
-        process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
-        [join(directory, 'bin/Debug/net10.0/Probe.dll'), mode],
-        { env: environment, stdio: ['ignore', 'pipe', 'pipe'] },
+        host.command ?? process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
+        [host.executable, mode],
+        {
+          cwd: host.workingDirectory,
+          env: environment,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
       );
-      const url = await waitForLocalNativeApprovalServer(worker);
+      const url = await waitForLocalNativeApprovalServer(worker, (output) =>
+        verifyLoadedDotnetHost(host, output),
+      );
       const fixture = {
         url,
         stats: (signal?: AbortSignal) => localNativeApprovalStats(url, signal),

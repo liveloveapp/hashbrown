@@ -1,3 +1,11 @@
+import {
+  type DotnetFixtureConfiguration,
+  type DotnetHostSelection,
+  fixtureChildEnvironment,
+  resolveDotnetHost,
+  validateHostOverrides,
+  verifyLoadedDotnetHost,
+} from './dotnet-host';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import { LLMock } from '@copilotkit/aimock';
 import { spawn } from 'node:child_process';
@@ -43,9 +51,31 @@ export async function withDotnetFixture<T>(
   use: (fixture: DotnetFixture) => Promise<T>,
   workflow = '',
   streamControl?: ModelStreamControl,
-  environment: Readonly<Record<string, string>> = {},
+  environment: DotnetFixtureConfiguration = {},
   modelRouter?: StableModelRouter,
+  hostSelection?: DotnetHostSelection,
 ): Promise<T> {
+  const host = resolveDotnetHost(hostSelection);
+  if (host.loaded) validateHostOverrides(environment);
+  const fixtureOrigins = host.loaded
+    ? [
+        process.env['HASHBROWN_PACKAGE_REACT_URL'],
+        process.env['HASHBROWN_PACKAGE_ANGULAR_URL'],
+      ]
+        .map((value) => {
+          const url = new URL(value ?? '');
+          if (
+            url.protocol !== 'http:' ||
+            url.hostname !== '127.0.0.1' ||
+            !url.port ||
+            url.origin !== value
+          )
+            throw new Error('Explicit owned package origin required');
+          return url.origin;
+        })
+        .join(',')
+    : (process.env['FixtureOrigins'] ??
+      'http://127.0.0.1:4431,http://127.0.0.1:4432');
   const workerTrace = traceRecoveryRequest('worker');
   const beginModelTrace = recoveryRequestRecorder('model');
   const mock = new LLMock({ port: 0, strict: true });
@@ -143,11 +173,11 @@ export async function withDotnetFixture<T>(
   const route = modelRouter?.register(modelUrl);
   const endpoint = route?.endpoint ?? modelUrl;
   const child = spawn(
-    process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
-    [resolve('dist/tools/conformance/dotnet/Hashbrown.Conformance.dll')],
+    host.command ?? process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
+    [host.executable],
     {
-      env: {
-        ...process.env,
+      cwd: host.workingDirectory,
+      env: fixtureChildEnvironment(host, {
         ASPNETCORE_URLS: 'http://127.0.0.1:0',
         Provider: provider,
         ModelEndpoint: provider === 'openai' ? `${endpoint}/v1` : endpoint,
@@ -157,8 +187,9 @@ export async function withDotnetFixture<T>(
             : 'fixture-azure-deployment',
         ApiKey: route?.apiKey ?? 'fixture-only',
         Workflow: workflow,
+        FixtureOrigins: fixtureOrigins,
         ...environment,
-      },
+      }),
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
@@ -197,6 +228,7 @@ export async function withDotnetFixture<T>(
     });
     const health = await fetch(`${url}/health`);
     if (!health.ok) throw new Error(`.NET health failed: ${output}`);
+    verifyLoadedDotnetHost(host, output);
     workerTrace('ready');
     return await use({
       url,
@@ -273,10 +305,13 @@ export async function postRun(
   let body = '';
   const decoder = new TextDecoder();
   try {
-    for await (const bytes of response.body ?? []) body += decoder.decode(bytes, { stream: true });
+    for await (const bytes of response.body ?? [])
+      body += decoder.decode(bytes, { stream: true });
     body += decoder.decode();
   } catch (error) {
-    throw new Error(`Native response read failed: ${String(error)}\n${body}\n${fixture.diagnostics()}\n${JSON.stringify(fixture.requests)}`);
+    throw new Error(
+      `Native response read failed: ${String(error)}\n${body}\n${fixture.diagnostics()}\n${JSON.stringify(fixture.requests)}`,
+    );
   }
   const events = body
     .split(/\r?\n/)

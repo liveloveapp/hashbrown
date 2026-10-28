@@ -178,6 +178,10 @@ try {
    }
   }
   metadata.files=await v.fingerprintFiles(copy,Object.keys(metadata.files));
+  for(const role of Object.values(metadata.roles ?? {})) {
+   role.files=await v.fingerprintFiles(copy,Object.keys(role.files));
+   for(const file of Object.keys(role.inputs)) role.inputs[file]=await v.hashFile(file);
+  }
   const location=path.join(copy,'metadata.json');await fs.rm(location);await fs.writeFile(location,JSON.stringify(metadata));
   const pointer=path.join(parent,'copy-pointer.json');await fs.writeFile(pointer,JSON.stringify({metadata:location,sha256:await v.hashFile(location)}));await fs.writeFile(pointer+'.sha256',await v.hashFile(pointer));
   let launches=0;
@@ -238,3 +242,51 @@ for(const files of [[],['src/Original.cs','src/Injected.cs']])assert.throws(()=>
 
   expect(result.trim()).toBe('passed');
 });
+
+const runtimeSelector = resolve(__dirname, '../nuget-consumer/roles.mjs');
+
+for (const family of ['Microsoft.NETCore.App', 'Microsoft.AspNetCore.App']) {
+  test(`runtime selection ignores other major and minor versions for ${family}`, () => {
+    const body = `
+import {selectRuntime} from ${JSON.stringify(`file://${runtimeSelector}`)};
+const list = ['10.0.9', '10.0.13', '10.1.20', '11.0.20'].map(version => '${family} '+version+' [/sdk/shared/${family}]').join(String.fromCharCode(10));
+assert.equal(selectRuntime(list, '${family}', 'net10.0')[2], '10.0.13');`;
+
+    const result = probe(body);
+
+    expect(result.trim()).toBe('passed');
+  });
+
+  test(`runtime selection orders compatible patches numerically for ${family}`, () => {
+    const body = `
+import {selectRuntime} from ${JSON.stringify(`file://${runtimeSelector}`)};
+const list = ['10.0.100', '10.0.13', '10.0.9'].map(version => '${family} '+version+' [/sdk/shared/${family}]').join(String.fromCharCode(10));
+assert.equal(selectRuntime(list, '${family}', 'net10.0')[2], '10.0.100');`;
+
+    const result = probe(body);
+
+    expect(result.trim()).toBe('passed');
+  });
+
+  test(`runtime selection fails closed without net10 for ${family}`, () => {
+    const body = `
+import {selectRuntime} from ${JSON.stringify(`file://${runtimeSelector}`)};
+const list = ['9.0.20', '10.1.1', '11.0.1'].map(version => '${family} '+version+' [/sdk/shared/${family}]').join(String.fromCharCode(10));
+assert.throws(() => selectRuntime(list, '${family}', 'net10.0'), /Required net10[.]0 shared runtime missing/);`;
+
+    const result = probe(body);
+
+    expect(result.trim()).toBe('passed');
+  });
+
+  test(`runtime selection rejects malformed and unsafe patches for ${family}`, () => {
+    const body = `
+import {selectRuntime} from ${JSON.stringify(`file://${runtimeSelector}`)};
+const list = ['10.0.13', '10.0.14-preview.1', '10.0.-1', '10.0.NaN', '10.0.9007199254740992'].map(version => '${family} '+version+' [/sdk/shared/${family}]').join(String.fromCharCode(10));
+assert.equal(selectRuntime(list, '${family}', 'net10.0')[2], '10.0.13');`;
+
+    const result = probe(body);
+
+    expect(result.trim()).toBe('passed');
+  });
+}

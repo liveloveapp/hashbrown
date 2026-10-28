@@ -1,3 +1,4 @@
+import { resolveDotnetHost, selectDotnetHost } from './dotnet-host';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createStableModelRouter } from './stable-model-router';
@@ -70,6 +71,8 @@ export async function withDurableCluster<T>(
   use: (cluster: DurableFixtureCluster) => Promise<T>,
   environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
+  const hostSelection = selectDotnetHost();
+  resolveDotnetHost(hostSelection);
   const database = await postgres();
   const router = await createStableModelRouter().catch(async (error) => {
     await database.dispose();
@@ -105,6 +108,7 @@ export async function withDurableCluster<T>(
         InterruptSchema: schema,
       },
       router,
+      hostSelection,
     );
     running.push(task);
     void task.catch(fail);

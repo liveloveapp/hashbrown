@@ -36,9 +36,7 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{workspaceRoot}/dist/tools/conformance/dotnet"
-      ],
+      "outputs": ["{workspaceRoot}/dist/tools/conformance/dotnet"],
       "options": {
         "cwd": "tools/conformance/dotnet",
         "parallel": false,
@@ -53,9 +51,7 @@
     "test": {
       "executor": "@nx/jest:jest",
       "cache": false,
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "jestConfig": "tools/conformance/dotnet/jest.config.ts",
         "runInBand": true
@@ -69,13 +65,11 @@
         "parallel": false,
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
-          "eslint nuget-consumer/*.mjs tests/nuget-consumer.spec.ts",
-          "prettier --check \"nuget-consumer/*.mjs\" tests/nuget-consumer.spec.ts"
+          "eslint nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
+          "prettier --check \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
         ]
       },
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "provider-e2e": {
       "executor": "nx:run-commands",
@@ -84,10 +78,7 @@
         "build",
         "check-docs",
         {
-          "projects": [
-            "runtime-smoke-react",
-            "runtime-smoke-angular"
-          ],
+          "projects": ["runtime-smoke-react", "runtime-smoke-angular"],
           "target": "build"
         }
       ],
@@ -98,13 +89,8 @@
     "check-docs": {
       "executor": "nx:run-commands",
       "cache": false,
-      "inputs": [
-        "default",
-        "^default"
-      ],
-      "dependsOn": [
-        "build"
-      ],
+      "inputs": ["default", "^default"],
+      "dependsOn": ["build"],
       "options": {
         "parallel": false,
         "commands": [
@@ -131,11 +117,8 @@
     "local-native-approval-browser": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        "build"
-      ],
       "options": {
-        "command": "playwright test --config tools/conformance/dotnet/local-native-approval.playwright.config.ts"
+        "command": "tsx tools/conformance/dotnet/nuget-consumer/browser-runner.mjs --regressions"
       }
     },
     "package-prepare": {
@@ -143,6 +126,13 @@
       "cache": false,
       "options": {
         "command": "node tools/conformance/dotnet/nuget-consumer/prepare.mjs"
+      }
+    },
+    "package-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx tools/conformance/dotnet/nuget-consumer/browser-runner.mjs"
       }
     }
   }

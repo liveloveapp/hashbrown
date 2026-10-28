@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { prepareRoles } from './roles.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -718,6 +719,15 @@ export async function prepareConsumer(pointerPath) {
       /CS0122.*InterruptValidation|InterruptValidation.*CS0122/,
       'Internal compile must fail for inaccessible implementation',
     );
+    const roles = await prepareRoles(
+      root,
+      repository,
+      environment,
+      closure,
+      sha512,
+      sdkRoot,
+      run,
+    );
     const rootFiles = (await listFiles(root)).filter(
       (file) =>
         !file.startsWith('logs/') &&
@@ -746,10 +756,21 @@ export async function prepareConsumer(pointerPath) {
       })),
       environment,
       evaluation,
+      roles,
       loaded,
       restoreNegative,
       files: await fingerprintFiles(root, rootFiles),
       sources,
+      sourceTrees: [
+        {
+          directory: 'packages/dotnet',
+          exclude: ['bin/', 'obj/', 'tools/bin/', 'tools/obj/'],
+        },
+        ...['nuget-consumer', 'Testing', 'harness', 'specs'].map((name) => ({
+          directory: 'tools/conformance/dotnet/' + name,
+          exclude: [],
+        })),
+      ],
     };
     const metadataPath = path.join(root, 'metadata.json');
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), {

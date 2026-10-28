@@ -1,3 +1,4 @@
+import { assertPackageRoles } from './role-shape.cjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -124,7 +125,7 @@ export function validateConfig(config, root, closure) {
 }
 
 /** Validates evaluated compilation, resolved references, and build import provenance. */
-export function validateEvaluation(evaluation, root, repository, sdk) {
+export function validateEvaluation(evaluation, root, repository, sdk, role) {
   const items = evaluation.Items ?? {},
     properties = evaluation.Properties ?? {};
   assert.equal(
@@ -138,10 +139,12 @@ export function validateEvaluation(evaluation, root, repository, sdk) {
   );
   for (const item of items.Compile ?? [])
     assert.ok(
-      [
-        'app/Program.cs',
-        'app/obj/Release/net10.0/Consumer.GlobalUsings.g.cs',
-      ].some((file) => item.FullPath === path.join(root, file)),
+      (
+        role?.compile ?? [
+          'app/Program.cs',
+          'app/obj/Release/net10.0/Consumer.GlobalUsings.g.cs',
+        ]
+      ).some((file) => item.FullPath === path.join(root, file)),
       `Compile path escape: ${item.FullPath}`,
     );
   for (const item of items.Reference ?? [])
@@ -184,9 +187,9 @@ export function validateEvaluation(evaluation, root, repository, sdk) {
     within(sdk, file) ||
     within(path.join(root, 'packages'), file) ||
     [
-      'app/Consumer.csproj',
-      'app/obj/Consumer.csproj.nuget.g.props',
-      'app/obj/Consumer.csproj.nuget.g.targets',
+      `${role?.directory ?? 'app'}/Consumer.csproj`,
+      `${role?.directory ?? 'app'}/obj/Consumer.csproj.nuget.g.props`,
+      `${role?.directory ?? 'app'}/obj/Consumer.csproj.nuget.g.targets`,
     ].some((relative) => file === path.join(root, relative));
   for (const file of [
     ...(properties.MSBuildAllProjects ?? '').split(';').filter(Boolean),
@@ -201,7 +204,14 @@ export function validateEvaluation(evaluation, root, repository, sdk) {
 }
 
 /** Requires only the exact candidate and approved package libraries from the owned local feeds. */
-export function validateAssets(assets, root, identity, closure, candidateHash) {
+export function validateAssets(
+  assets,
+  root,
+  identity,
+  closure,
+  candidateHash,
+  directory = 'app',
+) {
   const expected = Object.fromEntries([
     ...closure.map((item) => [`${item.id}/${item.version}`, item.contentHash]),
     [`${identity.id}/${identity.version}`, candidateHash],
@@ -230,7 +240,7 @@ export function validateAssets(assets, root, identity, closure, candidateHash) {
   );
   assert.equal(
     assets.project.restore.projectPath,
-    path.join(root, 'app/Consumer.csproj'),
+    path.join(root, directory, 'Consumer.csproj'),
     'Stale assets project path',
   );
   assert.equal(
@@ -397,6 +407,7 @@ export function validateArchive(buffer, identity, revision) {
 /** Qualifies an existing immutable consumer before invoking any caller-owned effect. */
 export async function verifyConsumer(pointer, effect) {
   const metadata = await readAnchoredMetadata(pointer);
+  if (metadata.roles !== undefined) assertPackageRoles(metadata);
   assert.deepEqual(metadata.identity, IDENTITY, 'Candidate identity differs');
   assert.equal(
     await fs.realpath(metadata.root),
@@ -485,6 +496,28 @@ export async function verifyConsumer(pointer, effect) {
     metadata.repository,
     metadata.sdkRoot,
   );
+  if (metadata.roles)
+    for (const role of Object.values(metadata.roles)) {
+      validateEvaluation(
+        role.evaluation,
+        metadata.root,
+        metadata.repository,
+        metadata.sdkRoot,
+        role,
+      );
+      await verifyFiles(metadata.root, role.files);
+      for (const [file, digest] of Object.entries({
+        ...role.inputs,
+        ...role.runtimeInputs,
+      })) {
+        assert.equal(await fs.realpath(file), file, 'Role input symlink');
+        assert.equal(
+          await hashFile(file),
+          digest,
+          'Role evaluated input changed',
+        );
+      }
+    }
   if (effect) await effect(metadata);
   return metadata;
 }
@@ -677,5 +710,23 @@ export async function listSourceFiles(repository) {
     'tools/conformance/dotnet/project.json',
     'tools/conformance/dotnet/Hashbrown.Conformance.csproj',
     'tools/conformance/dotnet/tests/nuget-consumer.spec.ts',
+    'tools/conformance/dotnet/tests/dotnet-host.spec.ts',
+    'tools/conformance/dotnet/tests/package-identities.spec.ts',
+    'tools/conformance/dotnet/Program.cs',
+    'tools/conformance/dotnet/package.playwright.config.ts',
+    'tools/conformance/dotnet/local-native-approval.playwright.config.ts',
+    'tools/conformance/dotnet/dotnet.playwright.config.ts',
+    'tools/conformance/dotnet/local-specs/native-approval.spec.ts',
+    'tools/conformance/dotnet/tests/fixtures/package-identities.json',
+    ...(
+      await listFiles(path.join(repository, 'tools/conformance/dotnet/harness'))
+    ).map((file) => 'tools/conformance/dotnet/harness/' + file),
+    ...(
+      await listFiles(path.join(repository, 'tools/conformance/dotnet/specs'))
+    ).map((file) => 'tools/conformance/dotnet/specs/' + file),
+    'tools/conformance/dotnet/tests/fixtures/live-approval-journal.cs.txt',
+    ...(
+      await listFiles(path.join(repository, 'tools/conformance/dotnet/Testing'))
+    ).map((file) => 'tools/conformance/dotnet/Testing/' + file),
   ];
 }

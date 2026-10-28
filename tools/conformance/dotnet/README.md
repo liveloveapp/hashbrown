@@ -351,3 +351,44 @@ evidence fails the run. The final result reports `plannedCases`,
 `actualPassedCases`, `successfulPreflights`, `reportDirectory`,
 `verifiedMetadataPath`, and `provenancePath`; the planned count alone never
 establishes successful qualification.
+
+### Prepared package browser gate
+
+`package-prepare` builds the public smoke consumer and two application roles once
+outside the repository. The fixture role compiles `Program.cs` and the explicit
+`Testing/*.cs` allowlist in `nuget-consumer/roles.mjs`. The probe role compiles the
+actual `tests/fixtures/live-approval-journal.cs.txt` with that same reviewed
+application allowlist. Each role has one exact `Hashbrown.AspNetCore`
+PackageReference and no project, source, or DLL fallback. The existing
+`FixtureIntegrationReflection` remains test-host-only: it reads/clones existing
+internal diagnostics and constructs fault-injection diagnostics. It neither
+changes library visibility nor supplies an implementation or public observation
+API. `FixturePackageIdentity` uses an internal module initializer, enabled only by
+the controlled package environment, to report the actual loaded assembly before
+readiness. Source probes retain their original output.
+
+Prepare one published npm 0.8.3 consumer with
+`npx nx prepare-live-consumer dotnet-conformance`; retain its returned
+`metadataPath`. Set `HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA` to that absolute
+path, then run `npx nx package-e2e dotnet-conformance --metadata=<absolute-pointer>`
+and `npx nx local-native-approval-browser dotnet-conformance --metadata=<same-pointer>`.
+Both commands also accept `--npm-metadata=<absolute-path>` for aggregate callers.
+They never prepare implicitly, and reuse the same physically installed npm
+consumer. They fully qualify NuGet and npm before and after the run. The matrix
+reuses the original eight projects/spec files; its reporter compares all 664
+reviewed project/file/title tuples. The separate regression reporter requires the
+six genuine fast, delayed, and hung approval cases across both frameworks.
+
+A shared synchronous schema rejects missing/resealed role, launcher, runtime, or
+source-discovery evidence before acquisition. Both role targets must remain bound
+to their manifested external executable and library.
+
+Every fixture acquisition, including durable restarts and second workers, rechecks
+the separately pinned pointer, metadata, role source/output closure, source
+manifest, configuration, evaluated build inputs and runtime hashes. Runtime
+framework versions are pinned with roll-forward disabled. No restore, compilation,
+API scan, or public smoke runs per worker. Runtime-loader/build environment
+injection is rejected; source mode is explicitly selected by the semantic-test and
+original source-browser configurations. Package mode cannot resolve `dist`.
+Outcome, qualification, and per-launch provenance reports are retained in the
+candidate root's `browser-reports`, or `HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY`.
