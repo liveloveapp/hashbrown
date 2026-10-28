@@ -407,11 +407,7 @@ export function ɵfoldAgUiSubagents(
       });
       if (kind === 'text' && event['role'] === 'assistant')
         context(owner, { assistantMessageId: id });
-      if (kind === 'tool')
-        context(owner, {
-          toolCallId: id,
-          assistantMessageId: event['parentMessageId'] as string,
-        });
+      if (kind === 'tool') context(owner, { toolCallId: id });
     }
     attribute(owner);
   } else {
@@ -491,11 +487,7 @@ export function ɵfoldAgUiSubagents(
         (event['role'] === undefined || event['role'] === 'assistant')
       )
         context(owner, { assistantMessageId: id });
-      if (type === 'TOOL_CALL_START')
-        context(owner, {
-          toolCallId: id,
-          assistantMessageId: event['parentMessageId'] as string,
-        });
+      if (type === 'TOOL_CALL_START') context(owner, { toolCallId: id });
     }
     attribute(owner);
     if (type === 'STEP_STARTED' || type === 'STEP_FINISHED') {

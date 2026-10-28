@@ -1040,3 +1040,51 @@ test('restored tool starts retain their known parent when omitted', () => {
 
   expect(result.events.at(-1)).toMatchObject({ parentMessageId: 'answer' });
 });
+
+test.each(
+  [undefined, 'child'].flatMap((owner) =>
+    [EventType.TOOL_CALL_START, EventType.TOOL_CALL_CHUNK].flatMap((type) =>
+      [false, true].map((hasText) => ({ owner, type, hasText })),
+    ),
+  ),
+)(
+  'explicit tool parent preserves the active text parent: %p',
+  ({ owner, type, hasText }) => {
+    const attribution = owner === undefined ? {} : { subagentRunId: owner };
+    const state = sequence([
+      ...(hasText
+        ? [
+            {
+              type: EventType.TEXT_MESSAGE_START,
+              messageId: 'answer',
+              ...attribution,
+            },
+          ]
+        : []),
+      {
+        type,
+        toolCallId: 'explicit-call',
+        toolCallName: 'backend',
+        parentMessageId: 'other-parent',
+        ...attribution,
+      },
+      {
+        type: EventType.TOOL_CALL_END,
+        toolCallId: 'explicit-call',
+        ...attribution,
+      },
+    ]);
+
+    const result = fold(state, {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'next-call',
+      toolCallName: 'browser',
+      ...attribution,
+    });
+
+    expect(result.events.at(-1)).toMatchObject({
+      parentMessageId: hasText ? 'answer' : 'assistant-next-call',
+    });
+    expect(result.state.owners.tool.get('next-call')).toBe(owner);
+  },
+);

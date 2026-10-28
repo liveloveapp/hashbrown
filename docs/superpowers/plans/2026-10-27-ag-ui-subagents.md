@@ -114,3 +114,15 @@ without conflicts; range-diff confirmed every patch unchanged.
 
 Post-rebase core (2,448), React (222), Angular (290), docs (1,575) tests and
 affected lint targets passed again. Source patches remained identical.
+
+## PR #812 CI follow-up
+
+The .NET native projection parity check exposed a regression: an explicitly
+parented tool changed the owner-local text assistant fallback for the next
+parentless call. Preserve the actual text assistant context while retaining
+each tool's independent stored parent. Eight parent/child, explicit/chunk and
+text/no-text cases failed before the fix and passed afterward. The unchanged
+.NET parity test also failed before and passed after the core fix. Independent
+review approved the change. Full core: 103 suites / 2,456 tests passed; build and
+lint passed with the same three existing warnings. Main was merged cleanly
+before verification. File search remains deferred.
