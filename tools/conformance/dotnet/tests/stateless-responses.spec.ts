@@ -1,15 +1,13 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native Responses clones supplied options and removes continuation authority in both request modes', async () => {
-  const directory = await mkdtemp(
-    join(tmpdir(), 'hashbrown-responses-options-'),
-  );
+  const directory = await createDotnetProbeDirectory('hashbrown-responses-options-');
   const project = resolve(
     'tools/conformance/dotnet/Hashbrown.Conformance.csproj',
   );

@@ -5,12 +5,12 @@ using System.ClientModel.Primitives;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.AI;
 using OpenAI.Responses;
 
 var assembly = typeof(StatelessResponsesClient).Assembly;
-var evidenceType = assembly.GetType("Hashbrown.Conformance.Integration.ResponsesRecoveryEvidence") ?? throw new Exception("Missing pre-loss native evidence guard.");
+var evidenceType = assembly.GetType("Hashbrown.AspNetCore.ResponsesRecoveryEvidence") ?? throw new Exception("Missing pre-loss native evidence guard.");
 var begin = evidenceType.GetMethod("Begin", BindingFlags.Static | BindingFlags.NonPublic)!;
 var available = evidenceType.GetProperty("Available", BindingFlags.Instance | BindingFlags.NonPublic)!;
 var message = """{"id":"msg_native","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"hello","annotations":[]}]}""";
@@ -138,7 +138,7 @@ static async Task<string?> Capture(Assembly assembly, string responseId, int mod
     var handle = (CheckpointCaptureHandle)Activator.CreateInstance(typeof(CheckpointCaptureHandle), BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { claim, original, new InterruptStoreOptions() }, null)!;
     string? snapshot = null;
     Func<string, string?, ValueTask> commit = (outcome, value) => { snapshot = value; return ValueTask.CompletedTask; };
-    var observerType = assembly.GetType("Hashbrown.Conformance.Integration.CheckpointSseObserver")!;
+    var observerType = assembly.GetType("Hashbrown.AspNetCore.CheckpointSseObserver")!;
     var observer = Activator.CreateInstance(observerType, BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { handle, commit }, null)!;
     var observe = observerType.GetMethod("ObserveAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
     var raw = new { responseId, messageId = "msg_native", role = "assistant", contents = new[] { new Dictionary<string, object?> { ["$type"] = "text", ["text"] = "hello" } } };

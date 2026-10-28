@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using Azure.Core;
 using System.Text;
 using System.Text.Json;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Hashbrown.Conformance.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;

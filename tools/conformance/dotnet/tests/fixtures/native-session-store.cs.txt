@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Npgsql;
 
 static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }

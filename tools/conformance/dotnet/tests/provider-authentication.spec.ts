@@ -1,7 +1,7 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { postRun, runInput, withDotnetFixture } from '../harness/http-fixture';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 const execute = promisify(execFile);
 
 async function runProbe(fixture: string, marker: string) {
-  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-authentication-'));
+  const directory = await createDotnetProbeDirectory('hashbrown-authentication-');
   const project = resolve(
     'tools/conformance/dotnet/Hashbrown.Conformance.csproj',
   );
