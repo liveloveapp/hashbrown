@@ -32,6 +32,7 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
+import { verifyEmbedWorkbench } from './verify-embed-workbench';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -1413,6 +1414,16 @@ try {
           ),
         );
     }
+  }
+  // A cross-origin docs page drives a replay embed; fixtures only.
+  if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
+    report.push(
+      await verifyEmbedWorkbench({
+        browser,
+        origin: `http://127.0.0.1:${address.port}`,
+      }),
+    );
+    saveCheckpoint();
   }
   writeFileSync(
     resolve(work, `${live ? 'live' : 'fixture'}-report.json`),

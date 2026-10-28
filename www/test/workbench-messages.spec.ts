@@ -122,8 +122,8 @@ test('loads a matching capture and reports its milestone ids', () => {
     },
     docsOrigin,
   );
-  expect(post.mock.calls.every(([, origin]) => origin === docsOrigin)).toBe(
-    true,
+  expect(new Set(post.mock.calls.map(([, origin]) => origin))).toEqual(
+    new Set([docsOrigin]),
   );
 });
 
