@@ -57,7 +57,10 @@ import {
   workbenchRecipeEventLabel,
   workbenchRecipeInspection,
 } from './workbench-recipe-view';
-import { workbenchMilestones } from './workbench-timeline';
+import {
+  withWorkbenchMilestoneIds,
+  workbenchMilestones,
+} from './workbench-timeline';
 import {
   isWorkbenchPlan,
   type WorkbenchSnapshot,
@@ -1564,18 +1567,20 @@ export function mountWorkbench(
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
     const milestones = rawEvents
-      ? snapshot.events.map((event, index) => ({
-          index,
-          turn: event.turn,
-          label: workbenchEventLabel(event, commands.lesson?.format),
-        }))
+      ? withWorkbenchMilestoneIds(
+          snapshot.events.map((event, index) => ({
+            index,
+            turn: event.turn,
+            label: workbenchEventLabel(event, commands.lesson?.format),
+          })),
+        )
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
       .at(-1);
     rebuildKeepingFocus(events, 'data-index', () => {
       events.replaceChildren();
-      milestones.forEach(({ index, label }) => {
+      milestones.forEach(({ index, label, id }) => {
         const event = snapshot.events[index];
         const item = button(label, () => {
           pause();
@@ -1583,6 +1588,7 @@ export function mountWorkbench(
         });
         item.disabled = busy;
         item.dataset.index = String(index);
+        item.dataset.milestone = id;
         item.style.left = `${workbenchTickPercent(index, total)}%`;
         item.setAttribute(
           'aria-label',

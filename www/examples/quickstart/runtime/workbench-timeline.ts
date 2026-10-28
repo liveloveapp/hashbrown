@@ -7,6 +7,40 @@ export interface WorkbenchMilestone {
   readonly index: number;
   readonly turn: number;
   readonly label: string;
+  /** Readable, deterministic id: `${slug(label)}-${turn}`, later same-turn duplicates suffixed `-2`, `-3`. */
+  readonly id: string;
+}
+
+/** Lowercases a label and collapses runs of non-alphanumerics into single dashes. */
+function slug(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Assigns stable ids to milestones in order; ids are unique within the list. */
+export function withWorkbenchMilestoneIds(
+  items: readonly Omit<WorkbenchMilestone, 'id'>[],
+): readonly WorkbenchMilestone[] {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const base = `${slug(item.label)}-${item.turn}`;
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return { ...item, id: count === 1 ? base : `${base}-${count}` };
+  });
+}
+
+/** Finds a milestone by its stable id, or null when the capture has none. */
+export function findWorkbenchMilestone(
+  events: readonly WorkbenchEvent[],
+  id: string,
+  format?: WorkbenchLesson['format'],
+): WorkbenchMilestone | null {
+  return (
+    workbenchMilestones(events, format).find((item) => item.id === id) ?? null
+  );
 }
 
 /** Summarizes repetitive streaming events without deleting or resampling any frames. */
@@ -14,6 +48,13 @@ export function workbenchMilestones(
   events: readonly WorkbenchEvent[],
   format?: WorkbenchLesson['format'],
 ): readonly WorkbenchMilestone[] {
+  return withWorkbenchMilestoneIds(collectMilestones(events, format));
+}
+
+function collectMilestones(
+  events: readonly WorkbenchEvent[],
+  format?: WorkbenchLesson['format'],
+): readonly Omit<WorkbenchMilestone, 'id'>[] {
   const firstChunks = new Set<number>();
   const lastParsed = new Map<number, number>();
   const lastError = new Map<number, number>();
