@@ -735,12 +735,12 @@ export function mountWorkbench(
   const startPlayback = () => {
     if (playing || !store.getSnapshot().events.length) return;
     playing = true;
-    playbackChanged();
     if (
       store.getSnapshot().cursor === null ||
       store.getSnapshot().cursor === store.getSnapshot().events.length - 1
     )
       store.seek(0);
+    playbackChanged();
     schedule();
     render();
   };
@@ -1711,8 +1711,9 @@ export function mountWorkbench(
         isPlaying: () => playing,
         play: startPlayback,
         pause,
-        loading: (commit) => {
+        loaded: (commit) => {
           recordedCommit = commit;
+          render();
         },
       })
     : null;

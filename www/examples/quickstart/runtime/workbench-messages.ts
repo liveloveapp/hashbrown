@@ -129,8 +129,8 @@ export interface WorkbenchMessageHost {
   readonly isPlaying: () => boolean;
   readonly play: () => void;
   readonly pause: () => void;
-  /** Called with the capture's commit just before its events load. */
-  readonly loading: (commit: string | null) => void;
+  /** Called with the capture's commit once its events have loaded. */
+  readonly loaded: (commit: string | null) => void;
 }
 
 /** The attached protocol: report playback changes the store cannot see. */
@@ -207,11 +207,22 @@ export function attachWorkbenchMessages(
         });
         return;
       }
+      const before = host.store.getSnapshot();
       act(() => {
         host.pause();
-        host.loading(capture.commit);
         host.store.load(capture.events);
       });
+      const after = host.store.getSnapshot();
+      // The store refuses empty traces (and loads during a live run).
+      if (after === before || !after.readOnly || !after.events.length) {
+        post({
+          type: 'hb-workbench:rejected',
+          version: 1,
+          reason: 'malformed',
+        });
+        return;
+      }
+      host.loaded(capture.commit);
       post({
         type: 'hb-workbench:loaded',
         version: 1,

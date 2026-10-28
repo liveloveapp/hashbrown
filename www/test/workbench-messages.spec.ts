@@ -11,14 +11,14 @@ import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 const docsOrigin = 'https://hashbrown.dev';
 
-function recordedCapture() {
+function recordedCapture({ settled = true } = {}) {
   const store = createWorkbenchStore();
   store.send('Plan a demo');
   store.record('request', { requestId: 'r1' });
   store.parsed({
     ui: [{ SummaryCard: { props: { title: 'Demo', steps: ['Outline'] } } }],
   });
-  store.settle('complete', 'stop');
+  if (settled) store.settle('complete', 'stop');
   return {
     ...createWorkbenchCapture(store.getSnapshot(), {
       lesson: 'tools',
@@ -57,13 +57,19 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
     host.remove();
     post.mockRestore();
   });
-  return { host, store, post };
+  return { host, store, post, dispose: mounted.dispose };
 }
 
-function fromParent(data: unknown, origin = docsOrigin) {
-  window.dispatchEvent(
-    new MessageEvent('message', { data, origin, source: window }),
-  );
+function fromParent(
+  data: unknown,
+  origin = docsOrigin,
+  source: MessageEventSource | null = window,
+) {
+  window.dispatchEvent(new MessageEvent('message', { data, origin, source }));
+}
+
+function load(capture: unknown = recordedCapture()) {
+  fromParent({ type: 'hb-workbench:load', version: 1, capture });
 }
 
 test('posts ready on mount and ignores messages from foreign origins', () => {
@@ -238,4 +244,127 @@ test('play reports each step and the stop at the end of the recording', () => {
     milestone: 'complete-1',
     playing: false,
   });
+});
+
+test('ignores allowed-origin messages that do not come from the parent window', () => {
+  const { host, store, post } = mountReplay();
+  const other = document.createElement('iframe');
+  document.body.append(other);
+  onTestFinished(() => other.remove());
+  post.mockClear();
+
+  const capture = recordedCapture();
+  fromParent(
+    { type: 'hb-workbench:load', version: 1, capture },
+    docsOrigin,
+    null,
+  );
+  fromParent(
+    { type: 'hb-workbench:load', version: 1, capture },
+    docsOrigin,
+    other.contentWindow,
+  );
+
+  expect(post).not.toHaveBeenCalled();
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(host.textContent).toContain('Waiting for recording');
+});
+
+test('rejects a capture the store refuses to load and keeps waiting', () => {
+  const { host, store, post } = mountReplay();
+  post.mockClear();
+
+  load({ ...recordedCapture(), events: [] });
+
+  expect(post.mock.calls).toEqual([
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'malformed' },
+      docsOrigin,
+    ],
+  ]);
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(host.textContent).toContain('Waiting for recording');
+  expect(host.textContent).not.toContain('Recorded');
+});
+
+test('play from the end of the recording reports the first milestone', () => {
+  vi.useFakeTimers();
+  onTestFinished(() => void vi.useRealTimers());
+  const { host, store, post } = mountReplay();
+  load();
+  store.seek(store.getSnapshot().events.length - 1);
+  post.mockClear();
+
+  host.querySelector<HTMLButtonElement>('.wb-play')?.click();
+
+  expect(post.mock.calls[0]?.[0]).toEqual({
+    type: 'hb-workbench:state',
+    version: 1,
+    mode: 'replay',
+    milestone: 'prompt-1',
+    playing: true,
+  });
+});
+
+test('a capture without a commit shows Recorded in the status', () => {
+  const { host } = mountReplay();
+
+  load({ ...recordedCapture(), commit: null });
+
+  expect(host.textContent).toContain('Recorded');
+  expect(host.textContent).not.toContain('Recorded at');
+});
+
+test('a capture that ended loading still plays, seeks and shows its commit', () => {
+  vi.useFakeTimers();
+  onTestFinished(() => void vi.useRealTimers());
+  const { host, store } = mountReplay();
+  const capture = recordedCapture({ settled: false });
+
+  load(capture);
+  const play = host.querySelector<HTMLButtonElement>('.wb-play');
+  const disabled = play?.disabled;
+  fromParent({
+    type: 'hb-workbench:seek',
+    version: 1,
+    milestone: 'request-1',
+  });
+  const sought = store.getSnapshot().cursor;
+  fromParent({ type: 'hb-workbench:play', version: 1 });
+
+  expect(capture.events.at(-1)?.status).toBe('loading');
+  expect(host.textContent).toContain('Recorded at 0123456');
+  expect(disabled).toBe(false);
+  expect(sought).toBe(1);
+  expect(play?.getAttribute('aria-label')).toBe('Pause');
+});
+
+test('a load with another message version is rejected as a version mismatch', () => {
+  const { store, post } = mountReplay();
+  post.mockClear();
+
+  fromParent({
+    type: 'hb-workbench:load',
+    version: 2,
+    capture: recordedCapture(),
+  });
+
+  expect(post.mock.calls).toEqual([
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'version' },
+      docsOrigin,
+    ],
+  ]);
+  expect(store.getSnapshot().readOnly).toBe(false);
+});
+
+test('a disposed workbench ignores parent messages', () => {
+  const { store, post, dispose } = mountReplay();
+  dispose();
+  post.mockClear();
+
+  load();
+
+  expect(post).not.toHaveBeenCalled();
+  expect(store.getSnapshot().readOnly).toBe(false);
 });
