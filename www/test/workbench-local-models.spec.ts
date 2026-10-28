@@ -335,20 +335,165 @@ test('the actual native transport refuses an unprepared download without creatin
 });
 
 test('a fresh preparation attempt withholds the previous local proposal until preparation is ready', () => {
-  const store = createWorkbenchStore('structured', { localModel: true });
-  const proposal = { title: 'Plan', steps: ['Outline.', 'Record.'] };
-  store.beginLocalPreparation('first');
-  store.recordLocalPreparation({ operationId: 'first', state: 'ready' });
-  store.send('Plan');
-  store.record('source', { source: 'local-model' });
-  store.record('event', {
-    type: 'TEXT_MESSAGE_CONTENT',
-    messageId: 'answer',
-    delta: JSON.stringify(proposal),
-  });
-  store.parsed(proposal);
-  store.settle('complete', 'stop');
-  store.beginLocalPreparation('second');
+  for (const state of ['preparing', 'cancelled', 'error'] as const) {
+    const store = createWorkbenchStore('structured', { localModel: true });
+    const proposal = { title: 'Plan', steps: ['Outline.', 'Record.'] };
+    store.beginLocalPreparation('first');
+    store.recordLocalPreparation({ operationId: 'first', state: 'ready' });
+    store.send('Plan');
+    store.record('source', { source: 'local-model' });
+    store.record('event', {
+      type: 'TEXT_MESSAGE_CONTENT',
+      messageId: 'answer',
+      delta: JSON.stringify(proposal),
+    });
+    store.parsed(proposal);
+    store.settle('complete', 'stop');
+    store.beginLocalPreparation('second');
 
-  expect(store.accept(proposal)).toBe(false);
+    if (state !== 'preparing')
+      store.recordLocalPreparation({ operationId: 'second', state });
+
+    expect(store.accept(proposal)).toBe(false);
+  }
+});
+
+test('actual native response metadata is captured as bounded source facts and its session is disposed', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'LanguageModel');
+  let destroyed = 0;
+  Object.defineProperty(globalThis, 'LanguageModel', {
+    configurable: true,
+    value: {
+      availability: async () => 'available',
+      create: async () => ({
+        prompt: async () => '',
+        promptStreaming: async () =>
+          new ReadableStream<string>({
+            start(controller) {
+              controller.enqueue(
+                '{"title":"Plan","steps":["Outline.","Record."]}',
+              );
+              controller.close();
+            },
+          }),
+        destroy: () => {
+          destroyed++;
+        },
+      }),
+    },
+  });
+  const store = createWorkbenchStore('structured');
+  store.beginLocalPreparation('prepare');
+  store.recordLocalPreparation({ operationId: 'prepare', state: 'ready' });
+  store.send('Generate');
+  const request: TransportRequest = {
+    input: {
+      threadId: 't',
+      runId: 'r',
+      messages: [{ id: 'user', role: 'user', content: 'Generate a plan' }],
+      tools: [],
+      context: [],
+      state: {},
+    },
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: 'request-1',
+  };
+
+  try {
+    const response = await createWorkbenchLocalTransport(store).send(request);
+    for await (const event of response.events)
+      expect(typeof event.type).toBe('string');
+    await response.dispose?.();
+
+    expect(
+      store
+        .getSnapshot()
+        .events.filter((event) => event.kind === 'source')
+        .at(-1)?.payload,
+    ).toEqual({
+      source: 'local-model',
+      native: {
+        source: 'chrome-prompt-api',
+        status: 'available',
+        promptMode: 'promptStreaming',
+        outputLanguage: 'en',
+      },
+    });
+    expect(
+      store.getSnapshot().events.some((event) => event.kind === 'response'),
+    ).toBe(false);
+    expect(destroyed).toBe(1);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'LanguageModel', previous);
+    else Reflect.deleteProperty(globalThis, 'LanguageModel');
+  }
+});
+
+test('local metadata capture ignores unknown fields, accessors and superseded responses', async () => {
+  const store = createWorkbenchStore('structured');
+  let finish:
+    ((value: Awaited<ReturnType<Transport['send']>>) => void) | undefined;
+  const transport = createWorkbenchLocalTransport(store, {
+    delegate: {
+      name: 'metadata-test-seam',
+      send: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    },
+  });
+  const request: TransportRequest = {
+    input: {
+      threadId: 't',
+      runId: 'r',
+      messages: [],
+      tools: [],
+      context: [],
+      state: {},
+    },
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: 'request-1',
+  };
+  store.beginLocalPreparation('prepare');
+  store.recordLocalPreparation({ operationId: 'prepare', state: 'ready' });
+  store.send('Plan');
+  const metadata = {
+    source: 'chrome-prompt-api',
+    status: 'made-up',
+    session: { destroy: () => undefined },
+    get outputLanguage(): string {
+      throw new Error('Do not invoke runtime accessors');
+    },
+  };
+  const pending = transport.send(request);
+  finish?.({
+    metadata,
+    events: (async function* () {
+      yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' } as const;
+    })(),
+  });
+  await pending;
+
+  expect(
+    store
+      .getSnapshot()
+      .events.filter((event) => event.kind === 'source')
+      .at(-1)?.payload,
+  ).toEqual({ source: 'local-model', native: { source: 'chrome-prompt-api' } });
+
+  const stale = transport.send(request);
+  store.clear();
+  finish?.({
+    metadata: { source: 'chrome-prompt-api', status: 'available' },
+    events: (async function* () {
+      yield { type: EventType.RUN_STARTED, threadId: 't', runId: 'r' } as const;
+    })(),
+  });
+  await stale;
+
+  expect(store.getSnapshot().events).toEqual([]);
 });

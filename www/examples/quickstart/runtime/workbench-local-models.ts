@@ -61,6 +61,27 @@ export function normalizeWorkbenchLocalModelObservation(
   });
 }
 
+function captureLocalMetadata(
+  input: unknown,
+): Readonly<Record<string, string>> | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const allowed: Readonly<Record<string, readonly string[]>> = {
+    source: ['chrome-prompt-api'],
+    status: ['available', 'unavailable', 'downloadable', 'downloading'],
+    promptMode: ['promptStreaming'],
+    outputLanguage: ['en', 'es', 'ja', 'de', 'fr'],
+  };
+  const values = Object.entries(allowed).flatMap(([key, candidates]) => {
+    const descriptor = Object.getOwnPropertyDescriptor(input, key);
+    const value: unknown =
+      descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    return typeof value === 'string' && candidates.includes(value)
+      ? [[key, value]]
+      : [];
+  });
+  return values.length ? Object.freeze(Object.fromEntries(values)) : null;
+}
+
 /** Captures effective local SDK requests and events with fresh application context per turn. */
 export function createWorkbenchLocalTransport(
   store: WorkbenchStore,
@@ -77,10 +98,15 @@ export function createWorkbenchLocalTransport(
       },
     })();
   const capture = createWorkbenchTransport(store, delegate, 'native:chrome');
+  let nonce = 0;
   return {
     name: 'WorkbenchLocalModelTransport',
     async send(request) {
+      const currentNonce = ++nonce;
       const snapshot = store.getSnapshot();
+      const userId = snapshot.frame?.messages
+        .filter((message) => message.role === 'user')
+        .at(-1)?.id;
       if (
         snapshot.cursor !== null ||
         snapshot.status !== 'loading' ||
@@ -113,10 +139,25 @@ export function createWorkbenchLocalTransport(
                 : message,
             );
       store.record('source', { source: 'local-model' });
-      return capture.send({
+      const response = await capture.send({
         ...request,
         input: { ...request.input, messages },
       });
+      const current = store.getSnapshot();
+      const native = captureLocalMetadata(response.metadata);
+      if (
+        native &&
+        nonce === currentNonce &&
+        !request.signal.aborted &&
+        current.cursor === null &&
+        current.status === 'loading' &&
+        current.turn === snapshot.turn &&
+        current.frame?.messages
+          .filter((message) => message.role === 'user')
+          .at(-1)?.id === userId
+      )
+        store.record('source', { source: 'local-model', native });
+      return response;
     },
   };
 }
