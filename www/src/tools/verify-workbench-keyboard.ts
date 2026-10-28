@@ -104,6 +104,16 @@ export async function verifyWorkbenchKeyboard(
   await inspector.getByRole('tab', { name: 'State', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(root.locator('.wb-inspection')).toContainText('"revision": 0');
+  await root.locator('.wb-inspector > [role=tabpanel]').focus();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Space');
+  await expect(
+    root.getByRole('button', { name: 'Return to live', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    root.getByRole('button', { name: 'Play', exact: true }),
+  ).toBeVisible();
   await expect(seek).toHaveAttribute('max', maximum ?? '');
   expect(requestCount()).toBe(requests);
 }
