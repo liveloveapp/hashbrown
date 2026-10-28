@@ -72,6 +72,36 @@ function focusedKey(nav: HTMLElement): string | undefined {
 }
 
 /**
+ * Finds the nearest sidebar scroll adjustment that reveals the selected lesson without hiding keyboard focus.
+ *
+ * @param viewport - The sidebar's visible vertical bounds.
+ * @param current - The selected lesson's bounds, or zero-height bounds for a collapsed group.
+ * @param focused - Bounds of the currently focused sidebar control, when present.
+ * @returns The scroll delta; zero when already visible, hidden, or incompatible with visible focus.
+ */
+export function workbenchSidebarScrollDelta(
+  viewport: Readonly<{ top: number; bottom: number }>,
+  current: Readonly<{ top: number; bottom: number }>,
+  focused?: Readonly<{ top: number; bottom: number }>,
+): number {
+  if (viewport.bottom <= viewport.top || current.bottom <= current.top)
+    return 0;
+  const delta =
+    current.bottom > viewport.bottom
+      ? current.bottom - viewport.bottom
+      : current.top < viewport.top
+        ? current.top - viewport.top
+        : 0;
+  if (
+    focused &&
+    (focused.top - delta < viewport.top ||
+      focused.bottom - delta > viewport.bottom)
+  )
+    return 0;
+  return delta;
+}
+
+/**
  * Replaces `nav`'s children with the sectioned, collapsible workbench sidebar:
  * a New conversation call to action, the rail toggle, then the Conversations,
  * Concepts, Production and Recipes sections.

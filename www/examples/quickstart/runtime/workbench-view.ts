@@ -54,7 +54,10 @@ import {
   workbenchTickPercent,
   workbenchTurnSegments,
 } from './workbench-player';
-import { renderWorkbenchSidebar } from './workbench-sidebar';
+import {
+  renderWorkbenchSidebar,
+  workbenchSidebarScrollDelta,
+} from './workbench-sidebar';
 import {
   getWorkbenchEmbedMode,
   type WorkbenchEmbedMode,
@@ -522,6 +525,17 @@ export function mountWorkbench(
         });
       },
     });
+    // Refreshing a group can reset its scroll position; reveal the lesson without moving focus.
+    const selected = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    const focused = nav.ownerDocument.activeElement;
+    if (selected)
+      nav.scrollTop += workbenchSidebarScrollDelta(
+        nav.getBoundingClientRect(),
+        selected.getBoundingClientRect(),
+        focused && nav.contains(focused)
+          ? focused.getBoundingClientRect()
+          : undefined,
+      );
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');

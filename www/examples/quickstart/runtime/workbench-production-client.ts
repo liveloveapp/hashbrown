@@ -52,7 +52,8 @@ export function createProductionClient(
     disposition: 'unread',
     application: null,
     busy: false,
-    operation: 'Create a thread or enter a remembered thread ID.',
+    operation:
+      'Start the TypeScript/Postgres reference server, then create a thread or enter its remembered ID.',
     error: '',
   };
   const key = 'hashbrown:production:/api/production/run:thread';
