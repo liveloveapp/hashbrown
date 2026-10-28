@@ -73,12 +73,33 @@ test('embedded mounts ignore the sidebar shortcut and never write the layout', (
   document.dispatchEvent(
     new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }),
   );
-  document.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }),
-  );
 
   expect(storage.map.size).toBe(0);
   expect(host.querySelector('.wb-rail')).toBeNull();
+});
+
+test('non-embedded mounts toggle the rail with the same shortcut', () => {
+  const { host, storage } = mountEmbedded({ embed: null });
+
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }),
+  );
+
+  expect(storage.map.size).toBe(1);
+  expect(host.querySelector('.wb-rail')).not.toBeNull();
+});
+
+test('embedded splits resize in memory without touching storage', () => {
+  const { host, storage } = mountEmbedded({ embed: 'live' });
+  const handle = host.querySelector<HTMLElement>('.wb-split');
+  const layout = host.querySelector<HTMLElement>('.wb-layout');
+
+  handle?.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+  );
+
+  expect(layout?.style.getPropertyValue('--wb-chat')).toBe('48fr');
+  expect(storage.map.size).toBe(0);
 });
 
 test('embedded replay hides the composer until a capture loads', () => {

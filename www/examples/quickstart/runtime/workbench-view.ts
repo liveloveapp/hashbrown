@@ -31,7 +31,11 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { workbenchLayout, type WorkbenchLayoutStore } from './workbench-layout';
+import {
+  createWorkbenchLayoutStore,
+  workbenchLayout,
+  type WorkbenchLayoutStore,
+} from './workbench-layout';
 import {
   type WorkbenchLesson,
   type WorkbenchLessonId,
@@ -399,9 +403,11 @@ export function mountWorkbench(
       ? getWorkbenchEmbedMode(globalThis.location?.search ?? '')
       : options.embed;
   const sharedLayout = options.layout ?? workbenchLayout;
+  // Embedded mounts start from the saved layout but keep changes in memory.
   const layoutStore: WorkbenchLayoutStore = embed
-    ? { ...sharedLayout, set: () => undefined }
+    ? createWorkbenchLayoutStore()
     : sharedLayout;
+  if (embed) layoutStore.set(sharedLayout.get(), { persist: false });
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
