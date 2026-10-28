@@ -310,6 +310,7 @@ export function workbenchEventLabel(
   }
   return (
     {
+      production: 'Application recovery observation',
       event: 'Stream event',
       user: 'Prompt',
       request: 'Request',
@@ -980,6 +981,11 @@ export function mountWorkbench(
       !!frame?.history?.app.server?.busy;
     const blocked =
       busy ||
+      (commands.lesson?.id === 'production-recovery' &&
+        (!frame?.production ||
+          frame.production.busy ||
+          frame.production.attachedThreadId !== frame.production.threadId ||
+          frame.production.disposition !== 'idle')) ||
       snapshot.status === 'paused' ||
       !!frame?.workflow?.recoveryRequired ||
       !!frame?.history?.sdk.pendingInterrupts ||
@@ -1136,7 +1142,13 @@ export function mountWorkbench(
                           sdkFields: ['state', 'messages', 'pendingInterrupts'],
                         }
                       : {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           isLoading: workflow?.isLoading ?? false,
                           isResuming: workflow?.isResuming ?? false,
                           finishReason: workflow?.finishReason ?? null,
@@ -1187,7 +1199,13 @@ export function mountWorkbench(
                       }
                     : tab === 'UI'
                       ? {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           activityIds:
                             workflow?.activities.map((message) => message.id) ??
                             [],
@@ -1198,7 +1216,12 @@ export function mountWorkbench(
                       : {
                           applicationForm,
                           acceptedApplication:
-                            frame?.application ?? snapshot.application,
+                            frame?.production?.application ??
+                            frame?.application ??
+                            snapshot.application,
+                          ...(frame?.production
+                            ? { recoveryOperation: frame.production }
+                            : {}),
                           outcome,
                         },
           }

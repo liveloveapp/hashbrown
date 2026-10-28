@@ -41,6 +41,7 @@ test('groups every lesson exactly once in sidebar order', () => {
       'production',
       'Production',
       [
+        'production-recovery',
         'local-models',
         'debugging',
         'request-transformation',

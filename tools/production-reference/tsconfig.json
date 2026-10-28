@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2023", "dom"],
+    "types": ["node", "vitest/globals"],
+    "noEmit": true,
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
+    "importHelpers": false
+  },
+  "include": ["../../www/examples/quickstart/server/production/**/*.ts"],
+  "exclude": []
+}

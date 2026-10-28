@@ -218,3 +218,19 @@ test.each(SDKS)('makes LangGraph without B4 discoverable for %s', (sdk) => {
     href: `/docs/${sdk}/platform/langgraph`,
   });
 });
+
+test.each(SDKS)(
+  'links the %s durable recovery reference from production guides',
+  (sdk) => {
+    const sections = docsMenuSections(sdk);
+
+    const production = sections.find(
+      (section) => section.title === 'Production guides',
+    );
+
+    expect(production?.links).toContainEqual({
+      text: 'Durable recovery with b4.run',
+      href: `/docs/${sdk}/platform/b4run`,
+    });
+  },
+);
