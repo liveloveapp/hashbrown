@@ -190,3 +190,12 @@ test('shows the release announcement after the previous release was dismissed', 
     await setImmediate();
   }
 });
+
+test('marks the page while it shows, so the end of the page can clear it', () => {
+  reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
+
+  mount();
+
+  expect(document.querySelectorAll('[data-announcement]')).toHaveLength(1);
+});

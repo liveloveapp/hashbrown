@@ -13,7 +13,9 @@
 .header {
   display: flex;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-6);
+  gap: var(--space-4);
+  /* The 44px tabs and buttons set the row height. */
+  padding: 0 var(--space-6);
   color: var(--color-code-fg);
   font:
     400 13px/18px var(--font-code);
@@ -21,13 +23,21 @@
 
 .tabs {
   display: flex;
-  gap: 24px;
+  gap: var(--space-4);
+  /* On a phone the tabs scroll sideways rather than wrapping. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
   position: relative;
+  flex: none;
+  justify-content: center;
+  min-width: var(--control-lg);
+  min-height: var(--control-lg);
   padding: 0;
   background: none;
   border: none;
@@ -53,12 +63,12 @@
   left: 0;
   width: 100%;
   height: 2px;
-  margin-bottom: calc(var(--space-3) * -1);
   border-radius: 2px;
   background: var(--sunshine-yellow);
 }
 
 .actions {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -68,6 +78,9 @@
 .actions button {
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-width: var(--control-lg);
+  min-height: var(--control-lg);
   gap: 4px;
   color: var(--color-code-fg);
   background: none;
@@ -101,4 +114,9 @@
 .content[data-backend='nestjs'] > [backend='nestjs'],
 .content[data-backend='hono'] > [backend='hono'] {
   display: block;
+}
+
+/* The copy target overhangs the padding so its icon stays on the edge. */
+.actions > :last-child {
+  margin-right: calc((var(--control-lg) - 18px) / -2);
 }

@@ -1,0 +1,20 @@
+-- Frozen native v1 DDL: source commit 3dd38a2d, Integration/PostgresNativeSessionJournal.cs
+-- Source SHA256: 597669eaace9ae739421d17696e111a6d6b971e3134f147c4328464a93be6eac
+-- Table identifiers are substituted by the fixture; statements below are verbatim v1 initializer DDL.
+CREATE TABLE IF NOT EXISTS {Metadata}(id integer PRIMARY KEY CHECK(id=1), version integer NOT NULL);
+INSERT INTO {Metadata}(id,version) VALUES(1,1) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS {Sessions}(
+    id text PRIMARY KEY,agent text NOT NULL,scope text NOT NULL,selector text NOT NULL,key_data text NOT NULL,compatibility text NOT NULL,
+    state text NOT NULL CHECK(state IN ('Ready','Owned','Saved','Publishing','PublicationUnknown','Blocked','Retired')),
+    token text,generation bigint NOT NULL CHECK(generation>=1),revision bigint NOT NULL CHECK(revision>=1),claim_revision bigint NOT NULL CHECK(claim_revision>=1),
+    ever_saved boolean NOT NULL DEFAULT false,lease_until timestamptz,expires_at timestamptz NOT NULL,payload text,admitted_request text,
+    CHECK(state NOT IN ('Owned','Saved','Publishing') OR (token IS NOT NULL AND lease_until IS NOT NULL)));
+CREATE INDEX IF NOT EXISTS native_scoped_sessions ON {Sessions}(agent,scope,id);
+CREATE TABLE IF NOT EXISTS {Calls}(
+    session_id text NOT NULL REFERENCES {Sessions}(id),call_id text NOT NULL,name text NOT NULL,version integer NOT NULL CHECK(version>0),descriptor text,
+    state text NOT NULL CHECK(state IN ('Captured','Started','Completed')),captured_generation bigint NOT NULL,dispatch_generation bigint,
+    PRIMARY KEY(session_id,call_id));
+CREATE TABLE IF NOT EXISTS {Audit}(
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,session_id text NOT NULL REFERENCES {Sessions}(id),scope text NOT NULL,actor text NOT NULL,
+    prior_state text NOT NULL,prior_generation bigint NOT NULL,prior_revision bigint NOT NULL,outcome text NOT NULL,
+    reason text NOT NULL,evidence_reference text NOT NULL,recorded_at timestamptz NOT NULL);

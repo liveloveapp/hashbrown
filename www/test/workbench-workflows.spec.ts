@@ -2,12 +2,12 @@ import { expect, test } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 
-test('appends three chat workflow lessons and preserves the original fourteen and default', () => {
+test('registers the three chat workflow lessons and preserves the default', () => {
   const lessons = workbenchLessons;
 
   expect(
     lessons
-      .slice(14, 17)
+      .filter(({ format }) => format === 'workflow')
       .map(({ id, format, protocol }) => ({ id, format, protocol })),
   ).toEqual([
     { id: 'shared-state', format: 'workflow', protocol: 'chat' },

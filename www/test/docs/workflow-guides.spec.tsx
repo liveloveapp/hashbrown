@@ -42,7 +42,7 @@ test.each(SDKS)(
       const id =
         demo === 'persistence'
           ? `canonical-workbench-message-history-${sdk}`
-          : ['interrupts', 'shared-state', 'activities'].includes(demo)
+          : ['interrupts', 'shared-state', 'activities', 'ui-kits'].includes(demo)
             ? `canonical-workbench-${demo}-${sdk}`
             : demo;
       const media = body.indexOf(`<hb-docs-demo demo="${id}">`);

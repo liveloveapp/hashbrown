@@ -44,7 +44,7 @@
 .search > input {
   background-color: transparent;
   font-size: 16px;
-  min-height: var(--control-md);
+  min-height: var(--control-lg);
   padding: 0 var(--space-4) 0 var(--space-10);
   width: 100%;
   border: 1px solid var(--color-rule);
@@ -60,7 +60,8 @@
 
 .kinds {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Three across where they fit, two on a phone. */
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: 16px;
 }
 
@@ -94,9 +95,18 @@
   width: 100%;
   padding: 0 24px;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  /* minmax(0, 1fr): a long name wraps instead of widening its track past the
+     panel, which hides overflow. */
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 16px;
   border-left: 1px solid var(--color-code-rule);
+}
+
+/* Each name is a full-height touch target; rows sit flush instead of gapped. */
+.symbols > a {
+  min-height: var(--control-lg);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media screen and (min-width: 768px) {
@@ -113,7 +123,7 @@
   }
 
   .symbols {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -123,6 +133,6 @@
   }
 
   .symbols {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

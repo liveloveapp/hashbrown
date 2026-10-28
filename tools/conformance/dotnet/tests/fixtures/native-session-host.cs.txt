@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http.Features;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using AGUI.Abstractions;
 using Hashbrown.Conformance.Integration;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
@@ -30,7 +31,8 @@ Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [], new Nat
 Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction], new NativeToolCatalog([]), probeAccessor), "Factory must reject missing catalog names.");
 Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction], new NativeToolCatalog([new("backend", 1, JsonSerializer.SerializeToElement(new { type = "object" }))]), probeAccessor), "Factory must reject schema drift.");
 Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction, probeFunction], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject duplicate functions.");
-Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [new ApprovalRequiredAIFunction(probeFunction)], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject native approval registrations in the first milestone.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [new ApprovalRequiredAIFunction(probeFunction)], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema)]), probeAccessor), "Factory must reject protected wrappers when the catalog does not require confirmation.");
+Reject(() => NativeSessionAgentFactory.Create(new Model(), "native", [probeFunction], new NativeToolCatalog([new("backend", 1, probeFunction.JsonSchema, RequiresConfirmation: true)]), probeAccessor), "Factory must reject an unprotected function when the catalog requires confirmation.");
 var unsafeBuilder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production" });
 unsafeBuilder.WebHost.UseKestrel(); unsafeBuilder.Logging.ClearProviders();
 await using (var unsafeApp = unsafeBuilder.Build())
@@ -40,6 +42,40 @@ var durable = new PostgresNativeSessionJournal(source, catalog, "host-probe-v1",
 await durable.InitializeAsync();
 try
 {
+    var rawJournal = new GateJournal(durable);
+    var rawModel = new Model();
+    await using (var rawHost = await Host.Start(rawJournal, catalog, rawModel, options: new NativeSessionOptions { PublicBytes = 2048 }))
+    {
+        var duplicate = Host.Input("raw-duplicate").ToJsonString().Replace("\"state\":{}", "\"state\":{},\"state\":{}");
+
+        Check((await rawHost.SendRaw(duplicate)).Status == 400, "Original duplicate properties must fail before typed binding loses them.");
+        Check((await rawHost.SendRaw(new string(' ', 2049))).Status == 413, "A known oversized body must fail before binding.");
+        Check((await rawHost.SendRaw(new string(' ', 2049), chunked: true)).Status == 413, "A chunked oversized body must fail before binding.");
+        Check((await rawHost.SendRaw("{", caller: null)).Status == 401, "Authorization must precede malformed body capture and binding.");
+        var alias = Host.Input("raw-alias").ToJsonString().Replace("\"state\":{}", "\"state\":{},\"State\":{}");
+        Check((await rawHost.SendRaw(alias)).Status == 400, "Case aliases of protocol fields must not disagree with the Web body binder.");
+        Check(rawJournal.Acquisitions == 0, "Invalid original bodies must never acquire journal authority.");
+        foreach (var spelling in new[] { "description", "Description", "value", "Value" })
+        {
+            var input = Host.Input("raw-context-" + spelling);
+            var fields = spelling is "description" or "Description" ? $"{{\"{spelling}\":\"native context\",\"value\":\"original\"}}" : $"{{\"description\":\"native context\",\"{spelling}\":\"original\"}}";
+            var raw = input.ToJsonString().Replace("\"context\":[]", "\"context\":[" + fields + "]");
+            string? canonical = null;
+            try { canonical = JsonSerializer.Serialize(JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!, AGUIJsonSerializerContext.Default.RunAgentInput); } catch (JsonException) { }
+            var beforeAcquisitions = rawJournal.Acquisitions; var beforeBindings = rawHost.SourceBindings.Count;
+
+            var bindingResult = await rawHost.SendRaw(raw);
+
+            if (bindingResult.Status == 200) Check(canonical is not null && JsonNode.DeepEquals(JsonNode.Parse(rawHost.SourceBindings.Last()), JsonNode.Parse(canonical)), "Actual ASP.NET bound input and raw AGUI canonical input must be semantically identical before executing native work: " + spelling);
+            else Check(bindingResult.Status == 400 && rawJournal.Acquisitions == beforeAcquisitions && rawHost.SourceBindings.Count == beforeBindings, "A raw/typed binding mismatch must reject before journal or model work: " + spelling);
+        }
+        var expanded = Host.Input("raw-canonical-expansion").ToJsonString().Replace("\"hello\"", "\"" + new string('é', 850) + "\"");
+        var beforeExpanded = rawJournal.Acquisitions;
+
+        var expandedResult = await rawHost.SendRaw(expanded);
+
+        Check(expandedResult.Status == 400 && rawJournal.Acquisitions == beforeExpanded, "Canonical UTF-8 expansion beyond PublicBytes must fail before acquiring native authority.");
+    }
     var journal = new GateJournal(durable) { HoldSave = true };
     await using var host = await Host.Start(journal, catalog, new Model());
     var pending = host.Send(Host.Input("barrier"));
@@ -316,7 +352,8 @@ try
     }
     // Authentication, schema validation and name collisions must reject before native/model work.
     var admissionJournal = new GateJournal(durable);
-    await using (var admissionHost = await Host.Start(admissionJournal, catalog, new Model()))
+    var scopeAdmissionModel = new Model();
+    await using (var admissionHost = await Host.Start(admissionJournal, catalog, scopeAdmissionModel))
     {
         Check((await admissionHost.Send(Host.Input("anonymous"), caller: null)).Status == 401, "Native routes require authentication.");
         Check((await admissionHost.Send(Host.Input("scope"), scope: "missing")).Status == 400, "Missing trusted scope must reject before admission.");
@@ -326,8 +363,8 @@ try
         var invalidSchema = Host.Input("schema"); invalidSchema["forwardedProps"] = JsonNode.Parse("""{"hashbrown":{"responseSchema":false}}""");
         Check((await admissionHost.Send(invalidSchema)).Status == 400, "Invalid output schema must fail before admission.");
         var resume = Host.Input("resume"); resume["resume"] = JsonNode.Parse("""[{"interruptId":"forged","status":"resolved","payload":{"approved":true}}]""");
-        Check((await admissionHost.Send(resume)).Status == 400, "Native approval resumes must remain explicitly unsupported.");
-        Check(admissionJournal.Acquisitions == 1, "Only the valid explicit-scope request may acquire native/model authority.");
+        Check((await admissionHost.Send(resume)).Status == 400, "Unowned native approval resumes must reject before native/model work.");
+        Check(admissionJournal.Acquisitions == 2 && admissionJournal.SuccessfulAcquisitions == 1 && scopeAdmissionModel.Calls == 1, "Only the valid explicit-scope request may acquire native/model authority; the unowned decision lookup grants none.");
     }
     foreach (var failure in new[] { "save", "authorize", "retire", "publishing" })
     {
@@ -494,9 +531,10 @@ sealed class Model : IChatClient
     public void Dispose() { }
 }
 
-sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource terminalSeen) : IAsyncDisposable
+sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource terminalSeen, List<string> sourceBindings) : IAsyncDisposable
 {
     public TaskCompletionSource TerminalSeen => terminalSeen;
+    public IReadOnlyList<string> SourceBindings => sourceBindings;
     public static async Task<Host> Start(GateJournal journal, NativeToolCatalog catalog, IChatClient model, AIFunction[]? functions = null, NativeSessionOptions? options = null, bool pipe = false, bool failWriter = false, bool stateless = false, bool failTerminalFlush = false, bool holdTerminalWrite = false, bool failTerminalWrite = false)
     {
         var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
@@ -515,7 +553,7 @@ sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource te
         else
         {
             endpoint.GetMethod("Configure")!.Invoke(null, [builder.Services, "native", journal, catalog, (Func<HttpContext, string?>)(context => context.User.FindFirst("scope")?.Value), options]);
-            agent = (AIAgent)factory.GetMethod("Create")!.Invoke(null, [model, "native", functions ?? Array.Empty<AIFunction>(), catalog, accessor])!;
+            agent = NativeSessionAgentFactory.Create(model, "native", functions ?? Array.Empty<AIFunction>(), catalog, accessor);
         }
         var app = builder.Build();
         var terminalSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -527,10 +565,16 @@ sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource te
             finally { journal.HttpFinished.TrySetResult(); }
         });
         app.UseAuthentication(); app.UseAuthorization();
+        var sourceBindings = new List<string>();
         var mapped = endpoint is null || stateless ? app.MapAGUIServer("/run", agent) : (IEndpointConventionBuilder)endpoint.GetMethod("Map")!.Invoke(null, [app, "/run", agent, "native"])!;
+        ((RouteHandlerBuilder)mapped).AddEndpointFilter(async (context, next) =>
+        {
+            if (context.Arguments.OfType<RunAgentInput>().FirstOrDefault() is { } bound) sourceBindings.Add(JsonSerializer.Serialize(bound, AGUIJsonSerializerContext.Default.RunAgentInput));
+            return await next(context);
+        });
         if (pipe) ((RouteHandlerBuilder)mapped).AddEndpointFilter(async (context, next) => new PipeTransportResult((IResult)(await next(context))!, failWriter));
         await app.StartAsync();
-        return new Host(app, new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(20) }, terminalSeen);
+        return new Host(app, new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(20) }, terminalSeen, sourceBindings);
     }
     public static JsonObject Input(string thread) => new() { ["threadId"] = thread, ["runId"] = Guid.NewGuid().ToString("N"), ["messages"] = new JsonArray(new JsonObject { ["id"] = "u1", ["role"] = "user", ["content"] = "hello" }), ["tools"] = new JsonArray(), ["context"] = new JsonArray(), ["state"] = new JsonObject() };
     public static JsonObject MixedInput(string thread)
@@ -538,6 +582,16 @@ sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource te
         var input = Input(thread);
         input["tools"] = JsonNode.Parse("""[{"name":"frontend","description":"browser","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}]""");
         return input;
+    }
+    public async Task<(int Status, string Body)> SendRaw(string json, bool chunked = false, string? caller = "alice")
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+        if (chunked) request.Headers.TransferEncodingChunked = true;
+        if (caller is not null) request.Headers.Add("X-Caller", caller);
+
+        using var response = await client.SendAsync(request);
+
+        return ((int)response.StatusCode, await response.Content.ReadAsStringAsync());
     }
     public async Task<(int Status, string Body)> Send(JsonObject input, string? caller = "alice", string? scope = null, CancellationToken cancellationToken = default)
     {
@@ -624,6 +678,7 @@ sealed class GateJournal(INativeSessionJournal inner) : INativeSessionJournal
     public TaskCompletionSource FinalizeCancellation = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool AllowRenewal = true;
     public int Acquisitions;
+    public int SuccessfulAcquisitions;
     public int CleanupCount;
     public NativeSessionLease? LastLease;
     public TaskCompletionSource AuthorizeEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -639,9 +694,14 @@ sealed class GateJournal(INativeSessionJournal inner) : INativeSessionJournal
     public TaskCompletionSource SaveRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public ValueTask InitializeAsync(CancellationToken ct = default) => inner.InitializeAsync(ct);
     public async ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string request, CancellationToken ct = default)
-    { Interlocked.Increment(ref Acquisitions); var result = await inner.TryAcquireAsync(key, request, ct); if (result.Lease is not null) LastLease = result.Lease; return result; }
+    { Interlocked.Increment(ref Acquisitions); var result = await inner.TryAcquireAsync(key, request, ct); if (result.Lease is not null) { LastLease = result.Lease; Interlocked.Increment(ref SuccessfulAcquisitions); } return result; }
     public ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default) => inner.CaptureModelCallAsync(lease,
         NormalizeNumericArguments && call.Name == "numeric" ? new NativeToolCall(call.Id, call.Name, call.Version, JsonSerializer.SerializeToElement(new { amount = 1 })) : call, ct);
+    public ValueTask<bool> CaptureApprovalBatchAsync(NativeSessionLease lease, NativeApprovalBatch capture, CancellationToken ct = default) => inner.CaptureApprovalBatchAsync(lease, capture, ct);
+    public ValueTask<NativeApprovalEvidence?> GetOwnedApprovalEvidenceAsync(NativeSessionLease lease, CancellationToken ct = default) => inner.GetOwnedApprovalEvidenceAsync(lease, ct);
+    public ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken ct = default) => inner.TryAdmitApprovalBatchAsync(lease, batchId, admission, ct);
+    public ValueTask<bool> SettleApprovalRejectionAsync(NativeSessionLease lease, NativeApprovalRejection rejection, CancellationToken ct = default) => inner.SettleApprovalRejectionAsync(lease, rejection, ct);
+    public ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batchId, string requestId, string callId, JsonElement result, CancellationToken ct = default) => inner.SettleBrowserBypassResultAsync(lease, batchId, requestId, callId, result, ct);
     public ValueTask<NativeToolCall?> GetOwnedCallAsync(NativeSessionLease lease, string id, CancellationToken ct = default) => inner.GetOwnedCallAsync(lease, id, ct);
     public async ValueTask<bool> TryStartDispatchAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken ct = default)
     {

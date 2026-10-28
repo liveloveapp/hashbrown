@@ -97,7 +97,8 @@ export function Announcement() {
     ? ['New:', announcement.text.slice('New:'.length)]
     : [undefined, announcement.text];
   return (
-    <div className={styles.announcement}>
+    // data-announcement lets the page reserve room to scroll clear of it.
+    <div className={styles.announcement} data-announcement="">
       <div className={styles.alert}>
         <Link href={announcement.href}>
           {lead && <strong>{lead}</strong>}

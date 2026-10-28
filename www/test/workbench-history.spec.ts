@@ -246,7 +246,7 @@ test('appends two history lessons and pins real plain text server policy without
 
   const pinned = pinWorkbenchInput(input, 'message-history');
 
-  expect(workbenchLessons).toHaveLength(19);
+  expect(workbenchLessons).toHaveLength(26);
   expect(workbenchLessons[0].id).toBe('generative-ui');
   expect(pinned.tools).toEqual([]);
   expect(pinned.messages[0].content).toContain('Lighthouse');

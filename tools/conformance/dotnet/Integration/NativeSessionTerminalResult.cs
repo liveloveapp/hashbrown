@@ -17,7 +17,7 @@ internal sealed class NativeSessionTerminalResult(IResult inner, NativeSessionCo
             using var evidence = ResponsesRecoveryEvidence.Begin(request.Registration.Options.PublicBytes, request.Registration.Options.MaximumMessages);
             var projection = new NativeSessionProjection(request.PublicRequest, (request.Input.Tools ?? []).Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal),
                 request.Registration.Options.PublicBytes, request.Registration.Options.MaximumMessages,
-                evidence: new NativeSessionProjectionEvidence(evidence.Matches, evidence.MatchesCall, () => evidence.Available, ownedCall: request.MatchesOwnedCall));
+                evidence: new NativeSessionProjectionEvidence(evidence.Matches, evidence.MatchesCall, () => evidence.Available, ownedCall: request.MatchesOwnedCall, approvals: request.ProjectionApprovals));
             request.Projection = projection;
             body = new NativeBodyFeature(original, projection, request);
             context.Features.Set<IHttpResponseBodyFeature>(body);

@@ -181,6 +181,7 @@ test('diagnostics preserve numeric native cap and dispatch evidence while droppi
     maxOutputTokens: 384,
     serverEffects: 1,
     effects: 1,
+    store: false,
   });
 });
 
@@ -235,4 +236,41 @@ test('native proof metadata is retained while fixture database secrets are exclu
     nativeEffects: 1,
   });
   expect(lines[0]).not.toContain('sentinel');
+});
+
+test('sanitized native approval proof remains independently parseable while all native identity canaries disappear', async () => {
+  const { nativeApprovalUnitEvidence } =
+    await import('./fixtures/live-native-approval');
+  const { parseLiveNativeApprovalProof } =
+    await import('../harness/live-native-approval');
+  const { stats, proof } = nativeApprovalUnitEvidence();
+  const lines: string[] = [];
+  const diagnostics = createLiveDiagnostics({
+    write: (line) => lines.push(line),
+  });
+
+  diagnostics.record({
+    ...stats,
+    project: 'react-openai-key',
+    group: 'native-approval',
+    rawRequestId: 'NATIVE_PRIVATE_CANARY',
+    rawCallId: 'NATIVE_PRIVATE_CANARY',
+    batchId: 'NATIVE_PRIVATE_CANARY',
+    descriptor: { secret: 'NATIVE_PRIVATE_CANARY' },
+    InterruptConnectionString: 'NATIVE_PRIVATE_CANARY',
+    ApiKey: 'NATIVE_PRIVATE_CANARY',
+  });
+
+  const retained = JSON.parse(lines[0]);
+  expect(parseLiveNativeApprovalProof(retained)).toEqual(proof);
+  expect(retained).toMatchObject({
+    project: 'react-openai-key',
+    group: 'native-approval',
+    usageCompleteCalls: 3,
+    usageIncompleteCalls: 0,
+  });
+  expect(lines.join('')).not.toContain('NATIVE_PRIVATE_CANARY');
+  diagnostics.record({ ...proof, nativeApprovalCompletions: 2 });
+  expect(() => parseLiveNativeApprovalProof(JSON.parse(lines[1]))).toThrow();
+  expect(() => diagnostics.assertHealthy()).not.toThrow();
 });

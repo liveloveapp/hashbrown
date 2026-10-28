@@ -16,7 +16,9 @@ The React and Angular versions use the same example, styles, and capture model. 
 
 ## Run the example
 
-Clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
+Try it without installing anything at [workbench.hashbrown.dev/react.html](https://workbench.hashbrown.dev/react.html). Each lesson's local URL in the table below works there too, for example `/react.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor. Server-owned threads and Public endpoints run only on the local server, because their demo sessions live in one process.
+
+To run it yourself, clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
 
 ```sh
 npx nx workbench-serve www
@@ -24,39 +26,46 @@ npx nx workbench-serve www
 
 Open `http://127.0.0.1:4370/react.html`. The Angular version is available at `/angular.html` on the same server.
 
-This is a local development server. It uses the real OpenAI adapter, keeps the model and output limit on the server, and cancels the provider request when the browser disconnects. It does not provide production identity, durable storage, or shared admission control.
+The local server uses the real OpenAI adapter, keeps the model and output limit on the server, and cancels the provider request when the browser disconnects. It does not provide production identity, durable storage, or shared admission control.
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens nineteen lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The collapsible sidebar opens twenty-six lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
-| Lesson                                                                  | Local URL                                   | Follow                                                                     |
-| ----------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
-| [First plan](/docs/react/start/quick) | `/react.html?lesson=first-plan` | One tool-free request and a trusted preview; no application write. |
-| [Messages and turns](/docs/react/concept/ai-basics) | `/react.html?lesson=conversation` | Retained messages, stable thread identity and fresh run identity. |
-| [System instructions](/docs/react/concept/system-instructions) | `/react.html?lesson=system-instructions` | Browser declaration and public effective policy at provider mapping. |
-| [Generative UI](/docs/react/concept/components)                         | `/react.html?lesson=generative-ui`          | Streamed props and the trusted SummaryCard.                                |
-| [Tools](/docs/react/concept/functions)                                  | `/react.html?lesson=tools`                  | Browser context, tool result, and continuation.                            |
-| [Structured output](/docs/react/concept/structured-output)              | `/react.html?lesson=structured-output`      | Plain typed plan data rendered by the application.                         |
-| [Streaming](/docs/react/concept/streaming)                              | `/react.html?lesson=streaming`              | Partial title text and resolved steps.                                     |
-| [Schemas](/docs/react/concept/schema)                                   | `/react.html?lesson=schemas`                | The exact response contract and application validation.                    |
-| [Decisions](/docs/react/concept/decisions)                              | `/react.html?lesson=decisions`              | Complete typed choices, confidence and explicit application.               |
-| [Debugging](/docs/react/concept/debugging)                              | `/react.html?lesson=debugging`              | Local HTTP denial, same-conversation recovery, and captured evidence.      |
-| [Request transformation](/docs/react/concept/transform-request-options) | `/react.html?lesson=request-transformation` | Actual server callback, added instructions, and preserved provider fields. |
-| [Magic Text](/docs/react/recipes/magic-text)                            | `/react.html?lesson=magic-text`             | Streamed Markdown and actual source-reference selection.                   |
-| [Predictive suggestions](/docs/react/recipes/predictive-actions)        | `/react.html?lesson=predictions`            | Current-context completions and explicit acceptance or dismissal.          |
-| [UI selection](/docs/react/recipes/ui-selection)                        | `/react.html?lesson=ui-selection`           | Whole candidate decisions, app-owned views, and manual choice.             |
-| [Shared agent state](/docs/react/concept/shared-agent-state) | `/react.html?lesson=shared-state` | Explicit local state replacement, agent drafts, commit, and rollback. |
-| [Activities](/docs/react/concept/activities) | `/react.html?lesson=activities` | Actual agent progress messages, links, and fresh activity IDs. |
-| [Interrupt and resume](/docs/react/concept/interrupt-and-resume) | `/react.html?lesson=interrupts` | Complete approval batches and continuation within the same user turn. |
-| [Message history](/docs/react/concept/message-history) | `/react.html?lesson=message-history` | Keep completed text, clear SDK history, restore and continue. |
-| [Save text conversations](/docs/react/recipes/browser-history) | `/react.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading. |
+| Lesson                                                                            | Local URL                                    | Follow                                                                     |
+| --------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| [First plan](/docs/react/start/quick)                                             | `/react.html?lesson=first-plan`              | One tool-free request and a trusted preview; no application write.         |
+| [Messages and turns](/docs/react/concept/ai-basics)                               | `/react.html?lesson=conversation`            | Retained messages, stable thread identity and fresh run identity.          |
+| [System instructions](/docs/react/concept/system-instructions)                    | `/react.html?lesson=system-instructions`     | Browser declaration and public effective policy at provider mapping.       |
+| [Generative UI](/docs/react/concept/components)                                   | `/react.html?lesson=generative-ui`           | Streamed props and the trusted SummaryCard.                                |
+| [Tools](/docs/react/concept/functions)                                            | `/react.html?lesson=tools`                   | Browser context, tool result, and continuation.                            |
+| [Structured output](/docs/react/concept/structured-output)                        | `/react.html?lesson=structured-output`       | Plain typed plan data rendered by the application.                         |
+| [Streaming](/docs/react/concept/streaming)                                        | `/react.html?lesson=streaming`               | Partial title text and resolved steps.                                     |
+| [Schemas](/docs/react/concept/schema)                                             | `/react.html?lesson=schemas`                 | The exact response contract and application validation.                    |
+| [Decisions](/docs/react/concept/decisions)                                        | `/react.html?lesson=decisions`               | Complete typed choices, confidence and explicit application.               |
+| [Debugging](/docs/react/concept/debugging)                                        | `/react.html?lesson=debugging`               | Local HTTP denial, same-conversation recovery, and captured evidence.      |
+| [Request transformation](/docs/react/concept/transform-request-options)           | `/react.html?lesson=request-transformation`  | Actual server callback, added instructions, and preserved provider fields. |
+| [Magic Text](/docs/react/recipes/magic-text)                                      | `/react.html?lesson=magic-text`              | Streamed Markdown and actual source-reference selection.                   |
+| [Predictive suggestions](/docs/react/recipes/predictive-actions)                  | `/react.html?lesson=predictions`             | Current-context completions and explicit acceptance or dismissal.          |
+| [UI selection](/docs/react/recipes/ui-selection)                                  | `/react.html?lesson=ui-selection`            | Whole candidate decisions, app-owned views, and manual choice.             |
+| [Shared agent state](/docs/react/concept/shared-agent-state)                      | `/react.html?lesson=shared-state`            | Explicit local state replacement, agent drafts, commit, and rollback.      |
+| [Activities](/docs/react/concept/activities)                                      | `/react.html?lesson=activities`              | Actual agent progress messages, links, and fresh activity IDs.             |
+| [Interrupt and resume](/docs/react/concept/interrupt-and-resume)                  | `/react.html?lesson=interrupts`              | Complete approval batches and continuation within the same user turn.      |
+| [Message history](/docs/react/concept/message-history)                            | `/react.html?lesson=message-history`         | Keep completed text, clear SDK history, restore and continue.              |
+| [Save text conversations](/docs/react/recipes/browser-history)                    | `/react.html?lesson=save-text-conversations` | Explicit browser saves, hard refresh and validated text loading.           |
+| [Server-owned threads](/docs/react/recipes/threads)                               | `/react.html?lesson=server-threads`          | Explicit server saves, refresh and version conflicts.                      |
+| [Public endpoints](/docs/react/recipes/public-endpoint)                           | `/react.html?lesson=public-endpoint`         | Identity and ownership checks before provider work.                        |
+| [Decisions in agents](/docs/react/recipes/decisions-in-agents)                    | `/react.html?lesson=agent-decisions`         | Server route decisions and fixed read-only handlers.                       |
+| [JSON parser](/docs/react/recipes/json-parser)                                    | `/react.html?lesson=json-parser`             | Raw JSON, real parser values and final document validation.                |
+| [Natural language forms](/docs/react/recipes/natural-language-to-structured-data) | `/react.html?lesson=natural-forms`           | Review, edit and explicitly apply a generated draft.                       |
+| [UI Kits](/docs/react/recipes/ui-kits)                                            | `/react.html?lesson=ui-kits`                 | Actual kit registry, trusted variants, and explicit acceptance.            |
+| [UI chatbot](/docs/react/recipes/ui-chatbot)                                      | `/react.html?lesson=ui-chatbot`              | A proposal, accepted state, and a read-only follow-up.                     |
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
-The recipe lessons begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions.
+Magic Text, predictive suggestions, and UI selection begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions. UI Kits and UI chatbot begin without an accepted plan; an explicit acceptance creates one.
 
 The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
 

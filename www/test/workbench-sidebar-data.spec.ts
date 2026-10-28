@@ -39,9 +39,28 @@ test('groups every lesson exactly once in sidebar order', () => {
     [
       'production',
       'Production',
-      ['debugging', 'request-transformation', 'save-text-conversations'],
+      [
+        'debugging',
+        'request-transformation',
+        'save-text-conversations',
+        'server-threads',
+        'public-endpoint',
+      ],
     ],
-    ['recipes', 'Recipes', ['magic-text', 'predictions', 'ui-selection']],
+    [
+      'recipes',
+      'Recipes',
+      [
+        'magic-text',
+        'predictions',
+        'ui-selection',
+        'ui-kits',
+        'ui-chatbot',
+        'agent-decisions',
+        'json-parser',
+        'natural-forms',
+      ],
+    ],
   ]);
   expect(flattened).toEqual(workbenchLessons.map((l) => l.id).sort());
 });

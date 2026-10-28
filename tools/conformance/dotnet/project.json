@@ -106,6 +106,14 @@
       "options": {
         "command": "tsx tools/conformance/dotnet/harness/live-runner.ts"
       }
+    },
+    "local-native-approval-browser": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build"],
+      "options": {
+        "command": "playwright test --config tools/conformance/dotnet/local-native-approval.playwright.config.ts"
+      }
     }
   }
 }

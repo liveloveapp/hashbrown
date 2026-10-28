@@ -4,9 +4,19 @@ namespace Hashbrown.Conformance.Testing;
 public sealed class FixtureNativeGate(string selected)
 {
     private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _renewalFailed;
+    private int _cleanupCompleted;
     private string _stage = "pending";
     /// <summary>Last observed selected native boundary.</summary>
     public string Stage => Volatile.Read(ref _stage);
+    /// <summary>Count of forwarded renewals that returned false or threw.</summary>
+    public int RenewalFailed => Volatile.Read(ref _renewalFailed);
+    /// <summary>Count of completed real failure-cleanup operations.</summary>
+    public int CleanupCompleted => Volatile.Read(ref _cleanupCompleted);
+    /// <summary>Records a real failed renewal without changing its outcome.</summary>
+    public void RecordRenewalFailure() => Interlocked.Increment(ref _renewalFailed);
+    /// <summary>Records a completed forwarded cleanup operation.</summary>
+    public void RecordCleanup() => Interlocked.Increment(ref _cleanupCompleted);
     /// <summary>Releases this worker's selected boundary.</summary>
     public void Release() => _release.TrySetResult();
     /// <summary>Records the boundary before asynchronously waiting for fixture release or cancellation.</summary>

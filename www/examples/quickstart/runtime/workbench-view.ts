@@ -1,3 +1,9 @@
+import { workbenchUiInspection } from './workbench-ui-inspection';
+import { getWorkbenchUiPrompts } from './workbench-ui-kits';
+import { workbenchAuthoringInspection } from './workbench-authoring-view';
+import { workbenchAuthoringPrompts } from './workbench-authoring';
+import { workbenchAgentPrompts } from './workbench-agent';
+import { workbenchServerInspection } from './workbench-server-view';
 import {
   canSaveWorkbenchHistory,
   isWorkbenchHistoryBusy,
@@ -291,6 +297,7 @@ export function workbenchEventLabel(
       user: 'Prompt',
       request: 'Request',
       tool: 'Tool result',
+      kit: 'Kit configured',
       parsed: 'Resolved props',
       accept: 'Plan accepted',
       complete: 'Complete',
@@ -364,16 +371,25 @@ export function mountWorkbench(
           commands.lesson.id as keyof typeof workbenchOnboardingPrompts
         ]
       : undefined;
+  const uiPrompts =
+    commands.lesson?.id === 'ui-kits' || commands.lesson?.id === 'ui-chatbot'
+      ? getWorkbenchUiPrompts(commands.lesson.id)
+      : undefined;
   const prompts =
+    uiPrompts ??
     onboardingPrompts ??
     recipePrompts ??
-    (commands.lesson?.format === 'history'
-      ? workbenchHistoryPrompts
-      : commands.lesson?.format === 'workflow'
-        ? workbenchWorkflowPrompts
-        : commands.lesson?.format === 'decision'
-          ? workbenchDecisionPrompts
-          : workbenchPrompts);
+    (commands.lesson?.id === 'agent-decisions'
+      ? workbenchAgentPrompts
+      : ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+        ? workbenchAuthoringPrompts
+        : commands.lesson?.format === 'history'
+          ? workbenchHistoryPrompts
+          : commands.lesson?.format === 'workflow'
+            ? workbenchWorkflowPrompts
+            : commands.lesson?.format === 'decision'
+              ? workbenchDecisionPrompts
+              : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
   const header = element('header', '', 'wb-header');
@@ -552,13 +568,31 @@ export function mountWorkbench(
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = [
-    ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
-      ? commands.lesson?.id === 'magic-text'
-        ? 'Markdown'
-        : 'Text'
-      : 'JSON',
+    ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+      ? 'JSON'
+      : ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
+        ? commands.lesson?.id === 'magic-text'
+          ? 'Markdown'
+          : 'Text'
+        : 'JSON',
     'Requests',
-    ...(commands.lesson?.format === 'history' ? ['History', 'Saved text'] : []),
+    ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
+      ? ['Kit', 'Schema']
+      : []),
+    ...(commands.lesson?.format === 'history'
+      ? commands.lesson.id === 'agent-decisions'
+        ? ['History', 'Agent']
+        : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
+          ? [
+              'History',
+              'Parser',
+              ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
+              'Schema',
+            ]
+          : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+            ? ['History', 'Server', 'Access']
+            : ['History', 'Saved text']
+      : []),
     ...(['structured', 'predictions', 'selection'].includes(
       commands.lesson?.format ?? '',
     )
@@ -806,18 +840,23 @@ export function mountWorkbench(
         ? payload.source
         : undefined;
     provenance.textContent =
-      source === 'demo-failure'
-        ? 'Local demo failure'
-        : source === 'test-fixture'
-          ? 'Test fixture'
-          : source === 'provider'
-            ? 'Live model'
-            : 'Awaiting source';
+      commands.lesson?.id === 'agent-decisions' &&
+      frame?.history?.agent?.fallback === 'unavailable' &&
+      source === 'provider'
+        ? 'Classifier unavailable'
+        : source === 'demo-failure'
+          ? 'Local demo failure'
+          : source === 'test-fixture'
+            ? 'Test fixture'
+            : source === 'provider'
+              ? 'Live model'
+              : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy =
       snapshot.status === 'loading' ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
-      !!frame?.history?.replacement;
+      !!frame?.history?.replacement ||
+      !!frame?.history?.app.server?.busy;
     const blocked =
       busy ||
       snapshot.status === 'paused' ||
@@ -827,7 +866,16 @@ export function mountWorkbench(
     live.hidden = historical && !commands.managedChat;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
-    send.disabled = historical || blocked;
+    const server = frame?.history?.app.server;
+    const serverLesson = commands.lesson?.id;
+    const serverUnloaded =
+      (serverLesson === 'server-threads' ||
+        serverLesson === 'public-endpoint') &&
+      (!server?.threadId ||
+        server.access !== 'local-demo' ||
+        server.threadId !==
+          server.threads?.[serverLesson][server.selectedSlot]);
+    send.disabled = historical || blocked || serverUnloaded;
     stop.disabled = historical || !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
@@ -889,7 +937,7 @@ export function mountWorkbench(
             'span',
             commands.lesson?.format === 'structured'
               ? 'Typed plan · captured preview'
-              : 'SummaryCard · captured preview',
+              : `${message.uiComponent ?? 'SummaryCard'} · captured preview`,
             'wb-muted',
           ),
           element('h2', props.title ?? 'Waiting for title'),
@@ -1083,7 +1131,11 @@ export function mountWorkbench(
                   },
                 }
         : undefined;
+    const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      uiView ??
+      workbenchAuthoringInspection(tab, snapshot, commands.lesson?.id) ??
+      workbenchServerInspection(tab, history?.app.server) ??
       historyView ??
       workflowView ??
       (onboardingText
@@ -1352,9 +1404,13 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? workflowView
-            ? 'Captured SDK observations and separately recorded application form drafts.'
-            : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? uiView
+            ? tab === 'UI'
+              ? 'SDK component observations and application-owned state.'
+              : 'Framework kit configuration and checked application policy.'
+            : workflowView
+              ? 'Captured SDK observations and separately recorded application form drafts.'
+              : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),

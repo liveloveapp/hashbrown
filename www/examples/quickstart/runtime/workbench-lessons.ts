@@ -1,5 +1,12 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'ui-kits'
+  | 'ui-chatbot'
+  | 'agent-decisions'
+  | 'json-parser'
+  | 'natural-forms'
+  | 'server-threads'
+  | 'public-endpoint'
   | 'first-plan'
   | 'conversation'
   | 'system-instructions'
@@ -34,6 +41,9 @@ export interface WorkbenchLesson {
     | 'history';
   readonly protocol: 'chat' | 'decision';
   readonly inspector:
+    | 'Agent'
+    | 'Parser'
+    | 'Form'
     | 'Markdown'
     | 'JSON'
     | 'Requests'
@@ -45,7 +55,9 @@ export interface WorkbenchLesson {
     | 'Transform'
     | 'Instructions'
     | 'History'
-    | 'Saved text';
+    | 'Saved text'
+    | 'Server'
+    | 'Access';
   readonly endpoint: string;
 }
 /** The sidebar sections; conversations are listed above the lesson groups. */
@@ -81,12 +93,27 @@ export const workbenchLessonGroups: readonly {
   {
     id: 'production',
     title: 'Production',
-    lessons: ['debugging', 'request-transformation', 'save-text-conversations'],
+    lessons: [
+      'debugging',
+      'request-transformation',
+      'save-text-conversations',
+      'server-threads',
+      'public-endpoint',
+    ],
   },
   {
     id: 'recipes',
     title: 'Recipes',
-    lessons: ['magic-text', 'predictions', 'ui-selection'],
+    lessons: [
+      'magic-text',
+      'predictions',
+      'ui-selection',
+      'ui-kits',
+      'ui-chatbot',
+      'agent-decisions',
+      'json-parser',
+      'natural-forms',
+    ],
   },
 ];
 /** The allowlisted lesson catalog; browser input cannot select arbitrary endpoints. */
@@ -203,6 +230,14 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     inspector: 'Instructions',
     endpoint: '/api/workbench/system-instructions',
   },
+  ...(['ui-kits', 'ui-chatbot'] as const).map((id) => ({
+    id,
+    title: id === 'ui-kits' ? 'UI Kits' : 'UI chatbot',
+    format: 'ui' as const,
+    inspector: 'UI' as const,
+    protocol: 'chat' as const,
+    endpoint: `/api/workbench/${id}`,
+  })),
   ...(['shared-state', 'activities', 'interrupts'] as const).map((id) => ({
     id,
     title: {
@@ -220,6 +255,15 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     protocol: 'chat' as const,
     endpoint: `/api/workbench/${id}`,
   })),
+  ...(['server-threads', 'public-endpoint'] as const).map((id) => ({
+    id,
+    title: id === 'server-threads' ? 'Server threads' : 'Public endpoints',
+    format: 'history' as const,
+    protocol: 'chat' as const,
+    inspector:
+      id === 'server-threads' ? ('Server' as const) : ('Access' as const),
+    endpoint: `/api/workbench/server/${id}/chat`,
+  })),
   ...(['message-history', 'save-text-conversations'] as const).map((id) => ({
     id,
     title:
@@ -230,6 +274,25 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     protocol: 'chat' as const,
     endpoint: `/api/workbench/${id}`,
   })),
+  ...(['agent-decisions', 'json-parser', 'natural-forms'] as const).map(
+    (id) => ({
+      id,
+      title: {
+        'agent-decisions': 'Decisions in agents',
+        'json-parser': 'JSON parser',
+        'natural-forms': 'Natural language forms',
+      }[id],
+      format: 'history' as const,
+      protocol: 'chat' as const,
+      inspector:
+        id === 'agent-decisions'
+          ? ('Agent' as const)
+          : id === 'json-parser'
+            ? ('Parser' as const)
+            : ('Form' as const),
+      endpoint: `/api/workbench/${id}`,
+    }),
+  ),
 ];
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {

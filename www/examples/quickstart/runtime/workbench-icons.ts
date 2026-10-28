@@ -154,6 +154,8 @@ const icons: Readonly<Record<WorkbenchIconName, readonly IconElement[]>> = {
 export const workbenchLessonIcons: Readonly<
   Record<WorkbenchLessonId, WorkbenchIconName>
 > = {
+  'ui-kits': 'layout',
+  'ui-chatbot': 'messages',
   'generative-ui': 'layout',
   tools: 'wrench',
   'structured-output': 'braces',
@@ -171,6 +173,11 @@ export const workbenchLessonIcons: Readonly<
   'shared-state': 'braces',
   activities: 'activity',
   interrupts: 'square-check',
+  'agent-decisions': 'branch',
+  'json-parser': 'braces',
+  'natural-forms': 'file-code',
+  'server-threads': 'messages',
+  'public-endpoint': 'square-check',
   'message-history': 'messages',
   'save-text-conversations': 'scroll',
 };

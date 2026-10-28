@@ -1,0 +1,19 @@
+ANGULAR · public-endpoint
+
+Real OpenAI text through the actual Hashbrown SDK. Unchanged provider events are paced at 20 ms for filming. Footage is slowed to half speed; no narration. The loopback demo session and process-memory repository are application integrations, not production authentication or durable agent checkpoints.
+
+An anonymous request returns 401 before provider work.
+
+Start a local demo session and load your thread.
+
+An authorized request streams a real OpenAI reply.
+
+A foreign thread returns 404 before provider work.
+
+Inspect the actual statuses beside the conversation.
+
+Replay makes no requests or writes.
+
+Back live.
+
+Server saves are explicit completed-text snapshots with owner and version checks. No tools, generated UI, shared state or paused checkpoints are restored. The competing client makes a real independent HTTP write; a stale save returns 409. Anonymous and foreign-owner checks stop before provider invocation. Refresh clears SDK sessions and captures; loading server text starts no generation. Replay makes no requests or writes.

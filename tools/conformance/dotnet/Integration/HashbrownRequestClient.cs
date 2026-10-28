@@ -28,7 +28,7 @@ public sealed class HashbrownRequestClient : DelegatingChatClient
             };
         }
         var browserTools = configured.TryGetRunAgentInput(out var run)
-            ? (run.Tools ?? []).Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal)
+            ? (_nativeContext?.Invoke()?.Input.Tools ?? run.Tools ?? []).Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal)
             : [];
         if (browserTools.Count > 0)
         {
@@ -36,7 +36,7 @@ public sealed class HashbrownRequestClient : DelegatingChatClient
             // request's schema while preserving server function instances and their handlers.
             configured.Tools = (configured.Tools ?? [])
                 .Where(tool => tool is not AIFunctionDeclaration declaration || !browserTools.Contains(declaration.Name))
-                .Concat((run!.Tools ?? []).Select(tool => AIFunctionFactory.CreateDeclaration(
+                .Concat((_nativeContext?.Invoke()?.Input.Tools ?? run!.Tools ?? []).Select(tool => AIFunctionFactory.CreateDeclaration(
                     tool.Name, tool.Description, tool.Parameters?.Clone() ?? JsonSerializer.SerializeToElement(new { type = "object" }), null)))
                 .ToList();
         }

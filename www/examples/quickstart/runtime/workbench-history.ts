@@ -1,3 +1,6 @@
+import type { WorkbenchAuthoringObservation } from './workbench-authoring';
+import type { WorkbenchAgentTrace } from './workbench-agent';
+import type { WorkbenchServerHistoryState } from './workbench-server-history';
 import type { WorkbenchSnapshot } from './workbench';
 
 /** A deliberately narrow application copy; SDK identifiers are never persisted. */
@@ -18,6 +21,7 @@ export interface WorkbenchHistoryRead {
 }
 /** Separately captured application state; no field is an SDK checkpoint. */
 export interface WorkbenchHistoryApp {
+  readonly server?: WorkbenchServerHistoryState;
   readonly retained: WorkbenchTextDocument | null;
   readonly selectedSlot: WorkbenchHistorySlot;
   readonly saved: WorkbenchHistoryRead;
@@ -54,6 +58,8 @@ export interface WorkbenchHistoryObservation {
 export type WorkbenchHistoryReplacement = 'clear' | 'restore' | 'load';
 /** Paired capture keeps application text and SDK lifecycle distinct. */
 export interface WorkbenchHistoryFrame {
+  readonly authoring?: WorkbenchAuthoringObservation;
+  readonly agent?: WorkbenchAgentTrace;
   readonly replacement: WorkbenchHistoryReplacement | null;
   readonly sdk: WorkbenchHistoryObservation;
   readonly app: WorkbenchHistoryApp;

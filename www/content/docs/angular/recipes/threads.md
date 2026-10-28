@@ -2,602 +2,87 @@
 title: 'Persist and Resume Threads: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Load and save authorized text conversations on the server, check versions, and recover from a conflicting save.'
+    content: 'Load completed text from a server-owned thread, save against its version, and recover from a conflicting write.'
 ---
 
 # Persist and Resume Threads
 
-Let's move a completed text conversation to our server. We'll load it before creating the chat, save after the reply finishes, then refresh and switch conversations. If another window saves first, we'll show the conflict instead of overwriting its work.
+Let's move our conversation to the server. We'll save Lighthouse, refresh the browser, and ask a follow-up using the saved messages. Then we'll let another client save first and see why the version matters.
 
-<hb-docs-demo demo="server-threads">
+<hb-docs-demo demo="canonical-workbench-server-threads-angular">
 </hb-docs-demo>
 
-This example stores completed user and assistant text. It does not restore canonical provider metadata, generated UI, tool history, shared state, or a paused interrupt checkpoint. Those require a persistence design for the agent and state your application actually uses.
+<img src="/video/docs/canonical-workbench-server-threads-angular-result.png" alt="The Angular workbench pairs the text conversation with its server snapshot and captured HTTP operations." width="1600" height="1000" loading="lazy" />
 
-## Start with the endpoint contract
+## Before we start
 
-Use the [authenticated text endpoint](/docs/angular/recipes/public-endpoint) and your application's existing session. The recorder supplies a local fixture session; no authentication secret is embedded in these clients.
+Use the [canonical workbench](/docs/angular/start/workbench) and run its checked Angular client. The server owns the session, thread records, and model configuration. The browser owns the visible chat and makes an explicit request to save it.
 
-| Request | Response | Boundary |
-| --- | --- | --- |
-| GET `/api/threads/:id` | `{ id, version, messages }` | Verify the user and authorize this thread |
-| PUT `/api/threads/:id` | The next versioned snapshot | Verify Origin and owner; update only if `expectedVersion` still matches |
-| POST `/api/chat` | AG-UI event stream | Authorize the thread and apply server policy before calling the provider |
+This example stores completed user and assistant text. A saved conversation does not contain tool calls, generated components, shared agent state, or a paused agent checkpoint. Choose a broader persistence contract when your agent needs those values.
 
-A `threadId` is the identity sent with the run. It does not load history, authorize a read, or change the request into a message delta. The client sends its current transcript on every run. Storage is a separate application request.
+## Follow the conversation
 
-## Define versioned storage
+1. Start a **local demo session**. The server provisions Lighthouse and Harbor for that session.
+2. Load Lighthouse before sending the first prompt. The SDK uses the loaded thread ID.
+3. Ask the model to name the plan Lighthouse. Wait for successful completion, then save the text against the loaded version.
+4. Refresh the page and explicitly load Lighthouse again. Loading text does not start a model request.
+5. Ask the follow-up. Inspect the request: it includes the saved exchange and a new run ID.
+6. Use the competing-client action to make an independent HTTP save. Our browser still remembers the earlier version.
+7. Save from our browser. The server returns **409** and the unsaved conversation stays visible.
+8. Reload the server snapshot explicitly to adopt the newer saved version.
 
-`ThreadStore` gives us an owner-scoped read and an atomic compare-and-swap. The local implementation below copies messages when accepting and returning them, so callers do not mutate the saved snapshot through a shared reference.
+The recording uses real OpenAI responses. The demo server stores records in process memory: they survive a browser refresh, but not a server restart. Use database persistence for a deployed application.
 
-<hb-expander title="Complete server/thread-store.ts">
+## Keep identity and history separate
 
-<hb-code-example header="server/thread-store.ts">
+A thread ID identifies the conversation. It does not fetch messages or grant access. Our application loads the snapshot through an owner-scoped route, validates the response, and replaces the actual SDK history before enabling Send.
+
+Each generation gets a fresh run ID. The follow-up uses the same server thread, with the restored user and assistant text in its request. Message IDs are local SDK metadata; this text snapshot does not preserve them.
+
+Loading ends on an assistant message, so it does not ask the SDK to generate another reply. An empty saved thread also loads without generation. A failed load preserves the current conversation and leaves Send unavailable for an unloaded selection.
+
+## Save against the version you loaded
+
+The save request contains two application values:
+
+<hb-code-example header="Versioned save request">
 
 ```ts
-/** A completed visible message supported by this server's storage contract. */
-export interface StoredTextMessage {
-  readonly role: 'user' | 'assistant';
-  readonly content: string;
-}
-
-/** Validates and copies this application's bounded completed-text format. */
-export function parseCompletedText(value: unknown): StoredTextMessage[] | null {
-  if (
-    !Array.isArray(value) ||
-    value.length > 100 ||
-    value.some(
-      (message) =>
-        typeof message !== 'object' ||
-        message === null ||
-        (message.role !== 'user' && message.role !== 'assistant') ||
-        typeof message.content !== 'string' ||
-        message.content.length > 10000 ||
-        Object.keys(message).some((key) => key !== 'role' && key !== 'content'),
-    ) ||
-    (value.length > 0 && value.at(-1).role !== 'assistant')
-  )
-    return null;
-  return value.map(({ role, content }) => ({ role, content }));
-}
-
-/** One application-owned snapshot; it is not an agent checkpoint. */
-export interface ThreadSnapshot {
-  readonly id: string;
-  readonly version: number;
-  readonly messages: StoredTextMessage[];
-}
-
-/** Persistence operations that must enforce owner scope and atomic version checks. */
-export interface ThreadStore {
-  read(ownerId: string, id: string): Promise<ThreadSnapshot | null>;
-  compareAndSwap(
-    ownerId: string,
-    id: string,
-    expectedVersion: number,
-    messages: readonly StoredTextMessage[],
-  ): Promise<ThreadSnapshot | null>;
-}
-
-/** A thread provisioned by the application, rather than by client identity claims. */
-export interface ThreadSeed {
-  readonly ownerId: string;
-  readonly id: string;
-  readonly messages: readonly StoredTextMessage[];
-}
-
-function copy(snapshot: ThreadSnapshot): ThreadSnapshot {
-  return {
-    ...snapshot,
-    messages: snapshot.messages.map((message) => ({ ...message })),
-  };
-}
-
-/**
- * Creates local demonstration storage. Data survives page refreshes, but not a
- * server restart, and is not shared across server processes. Use an atomic
- * database update scoped by both owner and version in a deployed application.
- */
-export function createMemoryThreadStore(
-  seeds: readonly ThreadSeed[],
-): ThreadStore {
-  let records = new Map<string, { ownerId: string; snapshot: ThreadSnapshot }>(
-    seeds.map((seed) => {
-      const parsed = parseCompletedText(seed.messages);
-      if (parsed === null || !seed.id || !seed.ownerId)
-        throw new Error('Invalid thread seed');
-      return [
-        seed.id,
-        {
-          ownerId: seed.ownerId,
-          snapshot: { id: seed.id, version: 0, messages: parsed },
-        },
-      ] as const;
-    }),
-  );
-  if (records.size !== seeds.length)
-    throw new Error('Thread IDs must be unique');
-  return {
-    async read(ownerId, id) {
-      const record = records.get(id);
-      return record?.ownerId === ownerId ? copy(record.snapshot) : null;
-    },
-    async compareAndSwap(ownerId, id, expectedVersion, messages) {
-      const record = records.get(id);
-      if (
-        !record ||
-        record.ownerId !== ownerId ||
-        record.snapshot.version !== expectedVersion ||
-        !Number.isSafeInteger(expectedVersion) ||
-        expectedVersion < 0 ||
-        expectedVersion >= Number.MAX_SAFE_INTEGER
-      )
-        return null;
-      const parsed = parseCompletedText(messages);
-      if (parsed === null) throw new Error('Only completed text can be saved');
-      const snapshot = {
-        id,
-        version: expectedVersion + 1,
-        messages: parsed,
-      };
-      records = new Map(records).set(id, { ownerId, snapshot });
-      return copy(snapshot);
-    },
-  };
-}
+const body = {
+  expectedVersion: loaded.version,
+  messages: completedText,
+};
 ```
 
 </hb-code-example>
 
-</hb-expander>
+The repository checks the owner, thread ID, and version in one atomic update. A successful save returns the next version and its saved messages. Keep that returned snapshot only after validating it.
 
+If another client saves first, the version no longer matches. A 409 is useful information: our browser has an older view. Keep the unsaved text, explain what happened, and let the user decide when to reload. Retrying the same write automatically would hide that decision.
 
-Before mounting the client, provision two thread records with the lowercase IDs `personal` and `work`, both owned by the account ID returned by your verified session resolver. Use an empty messages array and version 0 for each new record. The Personal and Work labels in the UI refer to those records. They keep the tutorial easy to follow; they are not an access-control mechanism. In a multi-account application, provision unique thread IDs and load the authorized thread list instead of hard-coding these two options. The recorder also provisions a different owner's thread to verify rejection.
+The workbench's competing-client action makes an ordinary independent PUT using the last server snapshot. It advances the server version while leaving this browser's loaded version unchanged. The resulting conflict comes from the actual version check.
 
-This repository is in memory. A page refresh keeps the server's data, while a server restart removes it. For deployment, implement the same contract using a database. The update must atomically match the owner, thread ID, and expected version; a separate database read followed by an unconditional write is not sufficient.
+## Save completed text deliberately
 
-## Validate responses at the client boundary
+Save is enabled only after a fresh, successful generation. Being idle is not enough: an error, cancellation, interrupted run, or output limit must not turn partial text into a completed conversation.
 
-Use the [checked `text-history.ts`](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/text-history.ts) for this example's completed-text format and `restoreTextMessages()`. Keep that file beside the following files, or start with the [complete checked example](https://github.com/liveloveapp/hashbrown/tree/main/www/examples/quickstart).
+The shared codec accepts at most 40 plain user/assistant messages, 2,000 characters per message, and a 64,000-byte serialized document. It rejects unsupported or oversized content rather than truncating it. Browser and server validate this contract independently.
 
-The transport helper verifies the selected thread ID, message format, and version before a server response reaches the chat. A successful save must return exactly the next expected version. A 409 remains a conflict; it does not become a saved status.
+Loading invalidates the previous generation's save eligibility. Complete another successful reply before saving again. There is no autosave in this example.
 
-<hb-expander title="Complete angular/src/app/server-history.ts">
+## Inspect and replay
 
-<hb-code-example header="angular/src/app/server-history.ts">
+The **Server** view pairs the last successfully loaded or saved snapshot with actual HTTP operations. **History** shows the SDK transcript and lifecycle. **Requests** shows generation input and decoded events.
 
-```ts
-import {
-  decodeTextHistory,
-  encodeTextHistory,
-  type SavedTextMessage,
-  type TextHistorySource,
-} from './text-history';
+Replay follows captured operations and SDK messages without requests or writes. After a refresh, the timeline contains only events observed by the new page; it does not reconstruct the old stream from saved text.
 
-/** A server-owned, versioned snapshot of a completed text conversation. */
-export interface ServerHistory {
-  readonly id: string;
-  readonly version: number;
-  readonly messages: SavedTextMessage[];
-}
+## Read the checked source
 
-/** An HTTP failure whose status distinguishes authentication, missing data, and conflicts. */
-export class ServerHistoryError extends Error {
-  constructor(readonly status: number) {
-    super(
-      status === 409
-        ? 'Another session saved this conversation. Reload the saved conversation.'
-        : status === 401
-          ? 'Sign in before loading or saving this conversation.'
-          : status === 404
-            ? 'This conversation is unavailable.'
-            : 'The server could not load or save this conversation.',
-    );
-    this.name = 'ServerHistoryError';
-  }
-}
+- [Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/server-workbench.ts) binds the real SDK to explicit application controls.
+- [Text codec](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-history.ts) validates the narrow saved-text format.
+- [Shared server controller](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-server-history.ts) guards requests, versions, replacement, and stale responses.
+- [Demo server composition](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-threads.ts) supplies the local session and isolated records.
+- [Application endpoint](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-app.ts) checks identity, Origin, input, ownership, and admission before streaming.
+- [Thread repository](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-store.ts) defines the owner-scoped atomic storage contract.
 
-async function readSnapshot(
-  response: Response,
-  selectedId: string,
-  expectedVersion?: number,
-): Promise<ServerHistory> {
-  if (!response.ok) throw new ServerHistoryError(response.status);
-  try {
-    const value: unknown = await response.json();
-    if (
-      typeof value !== 'object' ||
-      value === null ||
-      !('id' in value) ||
-      value.id !== selectedId ||
-      !('version' in value) ||
-      typeof value.version !== 'number' ||
-      !Number.isSafeInteger(value.version) ||
-      value.version < 0 ||
-      (expectedVersion !== undefined && value.version !== expectedVersion) ||
-      !('messages' in value) ||
-      Object.keys(value).some(
-        (key) => !['id', 'version', 'messages'].includes(key),
-      )
-    )
-      throw new Error();
-    const decoded = decodeTextHistory(
-      JSON.stringify({ version: 1, messages: value.messages }),
-    );
-    if (decoded.issue) throw new Error();
-    return {
-      id: selectedId,
-      version: value.version,
-      messages: decoded.messages,
-    };
-  } catch {
-    throw new Error('Invalid server conversation');
-  }
-}
-
-/** Loads a provisioned thread using the application's existing same-origin session. */
-export async function loadServerHistory(
-  id: string,
-  signal?: AbortSignal,
-  request: typeof fetch = globalThis.fetch,
-): Promise<ServerHistory> {
-  const response = await request(`/api/threads/${encodeURIComponent(id)}`, {
-    credentials: 'same-origin',
-    cache: 'no-store',
-    signal,
-  });
-  return readSnapshot(response, id);
-}
-
-/** Atomically saves completed text against the last successfully loaded server version. */
-export async function saveServerHistory(
-  id: string,
-  expectedVersion: number,
-  messages: readonly TextHistorySource[],
-  signal?: AbortSignal,
-  request: typeof fetch = globalThis.fetch,
-): Promise<ServerHistory> {
-  if (
-    !Number.isSafeInteger(expectedVersion) ||
-    expectedVersion < 0 ||
-    expectedVersion >= Number.MAX_SAFE_INTEGER
-  ) {
-    throw new Error('Invalid expected version');
-  }
-  const decoded = decodeTextHistory(encodeTextHistory(messages));
-  const response = await request(`/api/threads/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    credentials: 'same-origin',
-    signal,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expectedVersion, messages: decoded.messages }),
-  });
-  return readSnapshot(response, id, expectedVersion + 1);
-}
-```
-
-</hb-code-example>
-
-</hb-expander>
-
-
-## Load first, then create the chat
-
-The parent loads the selected snapshot before mounting the child. A selection change invalidates the earlier load and creates a fresh chat instance for the new thread. While generating a reply or saving, the UI disables switching until the operation settles.
-
-The child compares the completed text projection with the last successfully saved snapshot. It sends one save at a time and advances its version only after a validated successful response. A failed save leaves the current messages visible and blocks further sends until the user explicitly reloads.
-
-<hb-expander title="Complete angular/src/app/server-conversations.ts">
-
-<hb-code-example header="angular/src/app/server-conversations.ts">
-
-```ts
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  effect,
-  inject,
-  output,
-  signal,
-} from '@angular/core';
-import { chatResource } from '@hashbrownai/angular';
-import type { Chat } from '@hashbrownai/core';
-import { encodeTextHistory, restoreTextMessages } from './text-history';
-import {
-  loadServerHistory,
-  saveServerHistory,
-  type ServerHistory,
-} from './server-history';
-
-type ThreadId = 'personal' | 'work';
-
-/** Owns one loaded runtime and saves completed responses one at a time. */
-@Component({
-  selector: 'app-server-thread',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <label for="prompt">Your message</label>
-    <input id="prompt" [value]="prompt()" (input)="onInput($event)" />
-    <button
-      type="button"
-      [disabled]="
-        chat.isLoading() ||
-        saveState() === 'saving' ||
-        saveState() === 'failed' ||
-        !prompt().trim()
-      "
-      (click)="send()"
-    >
-      Send message
-    </button>
-    <button
-      type="button"
-      [disabled]="chat.isLoading() || saveState() === 'saving'"
-      (click)="reload.emit()"
-    >
-      Reload saved conversation
-    </button>
-    @if (chat.isLoading()) {
-      <p role="status">Waiting for a reply...</p>
-    }
-    @if (chat.error()) {
-      <p role="alert">
-        The request failed. The saved conversation is unchanged.
-      </p>
-    }
-    @if (saveState() === 'saving') {
-      <p role="status">Saving conversation...</p>
-    }
-    @if (saveState() === 'saved' && !chat.isLoading() && !chat.error()) {
-      <p role="status">Saved on the server</p>
-    }
-    @if (saveState() === 'failed') {
-      <p role="alert">
-        {{ issue() }} Keep this page open to retain unsaved messages. Reload
-        replaces them with the saved conversation.
-      </p>
-    }
-    <ol aria-label="Conversation">
-      @for (message of visibleMessages(); track $index) {
-        <li>
-          <strong>{{ message.role }}: </strong>{{ messageText(message) }}
-        </li>
-      }
-    </ol>
-  `,
-})
-export class ServerThread {
-  private readonly initial = (() => {
-    const loaded = inject(ServerConversations).snapshot();
-    if (!loaded)
-      throw new Error('Load a conversation before creating its runtime.');
-    return loaded;
-  })();
-  readonly busy = output<boolean>();
-  readonly reload = output<void>();
-  protected readonly prompt = signal(
-    'My name is Sam. Say hello in one sentence.',
-  );
-  protected readonly saveState = signal<'saved' | 'saving' | 'failed'>('saved');
-  protected readonly issue = signal<string | null>(null);
-  protected readonly visibleMessages = signal<
-    Chat.Message<string, Chat.AnyTool>[]
-  >([]);
-  private saved = {
-    version: this.initial.version,
-    encoded: encodeTextHistory(this.initial.messages),
-  };
-  private inFlight = false;
-  private failed = false;
-  private controller: AbortController | null = null;
-  protected readonly chat = chatResource({
-    system:
-      'You are a friendly onboarding assistant. Keep each reply to one sentence.',
-    threadId: this.initial.id,
-    messages: restoreTextMessages(this.initial.messages),
-  });
-
-  constructor() {
-    inject(DestroyRef).onDestroy(() => this.controller?.abort());
-    effect(() => {
-      if (this.chat.error()) {
-        this.busy.emit(false);
-        return;
-      }
-      const messages = this.chat.value();
-      this.visibleMessages.set(messages);
-      if (this.chat.isLoading() || this.inFlight || this.failed) return;
-      let encoded: string;
-      try {
-        encoded = encodeTextHistory(messages);
-      } catch {
-        this.failed = true;
-        this.saveState.set('failed');
-        this.issue.set('Only completed text conversations can be saved.');
-        this.busy.emit(false);
-        return;
-      }
-      if (encoded === this.saved.encoded) {
-        this.busy.emit(false);
-        return;
-      }
-      this.inFlight = true;
-      this.busy.emit(true);
-      this.saveState.set('saving');
-      const controller = new AbortController();
-      this.controller = controller;
-      void saveServerHistory(
-        this.initial.id,
-        this.saved.version,
-        messages,
-        controller.signal,
-      )
-        .then(
-          (result) => {
-            if (controller.signal.aborted) return;
-            this.saved = { version: result.version, encoded };
-            this.saveState.set('saved');
-          },
-          (error: unknown) => {
-            if (controller.signal.aborted) return;
-            this.failed = true;
-            this.saveState.set('failed');
-            this.issue.set(
-              error instanceof Error ? error.message : 'Saving failed.',
-            );
-          },
-        )
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            this.inFlight = false;
-            this.busy.emit(false);
-          }
-        });
-    });
-  }
-
-  protected onInput(event: Event): void {
-    this.prompt.set((event.currentTarget as HTMLInputElement).value);
-  }
-  protected send(): void {
-    if (
-      this.chat.isLoading() ||
-      this.inFlight ||
-      this.failed ||
-      !this.prompt().trim()
-    )
-      return;
-    this.busy.emit(true);
-    this.chat.sendMessage({ role: 'user', content: this.prompt() });
-    this.prompt.set('');
-  }
-  protected messageText(message: Chat.Message<string, Chat.AnyTool>): string {
-    return 'content' in message && typeof message.content === 'string'
-      ? message.content
-      : 'Activity received';
-  }
-}
-
-/** Loads server-owned history before mounting a fresh runtime for the selected thread. */
-@Component({
-  selector: 'app-server-conversations',
-  imports: [ServerThread],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <main>
-      <h1>A conversation saved on the server</h1>
-      <label for="conversation">Conversation</label>
-      <select
-        id="conversation"
-        [value]="selectedId()"
-        [disabled]="busy()"
-        (change)="select($event)"
-      >
-        <option value="personal">Personal</option>
-        <option value="work">Work</option>
-      </select>
-      @if (issue()) {
-        <p role="alert">{{ issue() }}</p>
-      } @else if (!snapshot()) {
-        <p role="status">Loading saved conversation...</p>
-      }
-      @for (
-        active of snapshot() ? [snapshot()!] : [];
-        track active.id + ':' + revision()
-      ) {
-        <app-server-thread (busy)="busy.set($event)" (reload)="reload()" />
-      }
-      @if (!snapshot() && issue()) {
-        <button type="button" (click)="reload()">
-          Reload saved conversation
-        </button>
-      }
-    </main>
-  `,
-})
-export class ServerConversations {
-  private generation = 0;
-  readonly snapshot = signal<ServerHistory | null>(null);
-  protected readonly selectedId = signal<ThreadId>('personal');
-  protected readonly revision = signal(0);
-  protected readonly busy = signal(false);
-  protected readonly issue = signal<string | null>(null);
-
-  constructor() {
-    effect((onCleanup) => {
-      const id = this.selectedId();
-      this.revision();
-      const current = this.generation;
-      const controller = new AbortController();
-      this.snapshot.set(null);
-      this.issue.set(null);
-      void loadServerHistory(id, controller.signal).then(
-        (loaded) => {
-          if (!controller.signal.aborted && this.generation === current)
-            this.snapshot.set(loaded);
-        },
-        (error: unknown) => {
-          if (!controller.signal.aborted && this.generation === current)
-            this.issue.set(
-              error instanceof Error ? error.message : 'Loading failed.',
-            );
-        },
-      );
-      onCleanup(() => controller.abort());
-    });
-  }
-
-  protected select(event: Event): void {
-    const id = (event.currentTarget as HTMLSelectElement).value;
-    if (
-      this.busy() ||
-      id === this.selectedId() ||
-      (id !== 'personal' && id !== 'work')
-    )
-      return;
-    this.generation += 1;
-    this.snapshot.set(null);
-    this.selectedId.set(id);
-  }
-  protected reload(): void {
-    this.generation += 1;
-    this.snapshot.set(null);
-    this.revision.update((value) => value + 1);
-  }
-}
-```
-
-</hb-code-example>
-
-</hb-expander>
-
-
-In `angular/src/main.ts`, bootstrap `ServerConversations` from `./app/server-conversations` with the existing application configuration. Replace `<app-root>` with `<app-server-conversations>` in the HTML and configure `provideHashbrown` with `/api/chat`.
-
-Keep the client and endpoint on the same application origin, using your existing authenticated session and development proxy. The helper uses same-origin credentials and disables response caching. A server-rendered application should load authorized data through its own server data layer and mount the chat from that result; the browser's session cookie is not a client-supplied owner ID.
-
-## Refresh and switch
-
-1. Open **Personal**, introduce Sam, and wait for **Saved on the server**.
-2. Refresh. The earlier exchange should load from the server without starting a model run.
-3. Switch to **Work**, introduce Lee, and wait for the save.
-4. Return to **Personal** and ask **What is my name?** The next request contains the restored Sam exchange.
-
-The recorded provider output is scripted; the storage calls, version checks, runtime recreation, and restored request history are real. Both framework clients run the same sequence.
-
-## Recover a conflicting save
-
-<img src="/video/docs/server-threads-conflict.png" alt="A version conflict keeps the unsaved conversation visible and asks the user to reload the server snapshot explicitly." width="1000" height="463" loading="lazy" />
-
-Suppose two windows load version 3. The first saves version 4. The second still submits `expectedVersion: 3`, so the server returns 409 and keeps version 4.
-
-The second window keeps its unsaved messages visible. **Reload saved conversation** deliberately replaces them with the server's winning snapshot. The example does not silently merge histories or automatically replay a model run. If your product needs merging or branching, define that behavior as part of its conversation model.
-
-The browser checks also delay loads and saves, reject a save, and create a real version conflict. They verify that a stale load cannot mount a chat for a different selection, pending saves prevent concurrent sends/switches, failures retain messages, and explicit reload shows the server winner.
-
-## Choose a broader persistence contract deliberately
-
-Saving public messages does not export Hashbrown's complete canonical agent checkpoint. Reusing a thread ID after refresh does not restore ownership of a pending interrupt. The text format here excludes tools, activities, UI values, reasoning metadata, and shared state.
-
-Use [Message history](/docs/angular/concept/message-history) to understand that boundary and [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) for the live workflow. Apply retention, account-switch behavior, deletion, and authorization in your application's persistence layer.
+For deployment, supply your application's verified identity, durable repository, and shared admission policy. Continue with [Securing a Public Endpoint](/docs/angular/recipes/public-endpoint).

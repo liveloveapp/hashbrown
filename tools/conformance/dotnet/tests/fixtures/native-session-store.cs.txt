@@ -303,7 +303,7 @@ try
         await using var row = new NpgsqlCommand($"SELECT count(*) FROM \"{schema}\".interrupt_batches WHERE id=@id AND state='Pending'", connection);
         row.Parameters.AddWithValue("id", checkpoint.Id);
         Check((long)(await row.ExecuteScalarAsync())! == 1, "Native initialization must preserve actual schema-three checkpoint rows.");
-        await using var future = new NpgsqlCommand($"UPDATE \"{schema}\".native_metadata SET version=2 WHERE id=1", connection);
+        await using var future = new NpgsqlCommand($"UPDATE \"{schema}\".native_metadata SET version=3 WHERE id=1", connection);
         await future.ExecuteNonQueryAsync();
         var rejectedFuture = false;
         try { await journal.InitializeAsync(); } catch (InvalidOperationException) { rejectedFuture = true; }

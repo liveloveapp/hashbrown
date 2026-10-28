@@ -1,5 +1,119 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-ui-kits-react': {
+    title: 'React workbench: UI Kits.',
+    caption:
+      'Reuse SummaryCard and StepsCard from one trusted kit, then explicitly accept each proposal.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown React kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard and StepsCard are the only trusted components in this kit. Each proposal requires explicit validated acceptance. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-chatbot-react': {
+    title: 'React workbench: UI chatbot.',
+    caption:
+      'Propose a plan, explicitly accept it, and read accepted state in a read-only follow-up.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown React kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard proposes a plan; PlanReading is a read-only model report. Only explicit validated acceptance changes application state. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-kits-angular': {
+    title: 'Angular workbench: UI Kits.',
+    caption:
+      'Reuse SummaryCard and StepsCard from one trusted kit, then explicitly accept each proposal.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown Angular kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard and StepsCard are the only trusted components in this kit. Each proposal requires explicit validated acceptance. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-ui-chatbot-angular': {
+    title: 'Angular workbench: UI chatbot.',
+    caption:
+      'Propose a plan, explicitly accept it, and read accepted state in a read-only follow-up.',
+    recording:
+      'Recorded with real OpenAI requests, actual Hashbrown Angular kit and UI chat APIs, trusted framework components and the real readContext browser tool. Kit metadata and schema come from the actual framework kit. The server requires fresh context before UI generation, then disables further tool calls for that response. SummaryCard proposes a plan; PlanReading is a read-only model report. Only explicit validated acceptance changes application state. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-agent-decisions-react': {
+    title: 'React workbench: decisions in agents.',
+    caption:
+      'Inspect real TypeSafe route decisions and fixed application handler replies across two turns.',
+    recording:
+      'Recorded with real TypeSafe route decisions and whole application-owned handler text in the checked React workbench. Decision confidence gates only known read-only handlers; handler prose is not generated model text. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-json-parser-react': {
+    title: 'React workbench: streaming JSON parser.',
+    caption:
+      'Follow actual OpenAI JSON into framework parser values and independent final validation.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked React workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-natural-forms-react': {
+    title: 'React workbench: natural language forms.',
+    caption:
+      'Generate, review, edit and explicitly apply a plan, then use the applied context in a follow-up.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked React workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Review and Apply are explicit; browser readContext returns the applied plan and revision. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-agent-decisions-angular': {
+    title: 'Angular workbench: decisions in agents.',
+    caption:
+      'Inspect real TypeSafe route decisions and fixed application handler replies across two turns.',
+    recording:
+      'Recorded with real TypeSafe route decisions and whole application-owned handler text in the checked Angular workbench. Decision confidence gates only known read-only handlers; handler prose is not generated model text. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-json-parser-angular': {
+    title: 'Angular workbench: streaming JSON parser.',
+    caption:
+      'Follow actual OpenAI JSON into framework parser values and independent final validation.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked Angular workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Application state is unchanged. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-natural-forms-angular': {
+    title: 'Angular workbench: natural language forms.',
+    caption:
+      'Generate, review, edit and explicitly apply a plan, then use the applied context in a follow-up.',
+    recording:
+      'Recorded with real OpenAI JSON and actual framework parser APIs in the checked Angular workbench. Source completion, parser completion, original JSON validation and application actions remain separate. Review and Apply are explicit; browser readContext returns the applied plan and revision. Unchanged protocol events are paced at 20 ms for filming; the normal host adds no delay. Footage is slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
+  'canonical-workbench-server-threads-react': {
+    title: 'React workbench: server-owned threads.',
+    caption:
+      'Load and save completed text, refresh, and recover from a genuine version conflict.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-public-endpoint-react': {
+    title: 'React workbench: public endpoints.',
+    caption:
+      'Compare anonymous and foreign-owner denials with an authorized streamed reply.',
+    recording:
+      'Recorded in the real React workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-server-threads-angular': {
+    title: 'Angular workbench: server-owned threads.',
+    caption:
+      'Load and save completed text, refresh, and recover from a genuine version conflict.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-public-endpoint-angular': {
+    title: 'Angular workbench: public endpoints.',
+    caption:
+      'Compare anonymous and foreign-owner denials with an authorized streamed reply.',
+    recording:
+      'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. Local demo sessions and process-memory thread storage demonstrate application boundaries; they are not production authentication or durable agent checkpoints. Saves and reloads are explicit. HTTP denials and version conflicts come from the checked server. Unchanged provider events are paced at 20 ms for filming; footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-message-history-react': {
     title: 'React workbench: message history.',
     caption:

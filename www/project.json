@@ -7,18 +7,14 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{projectRoot}/.next"
-      ],
+      "outputs": ["{projectRoot}/.next"],
       "options": {
         "command": "next build",
         "cwd": "www"
       },
       "dependsOn": [
         {
-          "projects": [
-            "openai"
-          ],
+          "projects": ["openai"],
           "target": "build"
         },
         "collect-docs",
@@ -34,9 +30,7 @@
       },
       "dependsOn": [
         {
-          "projects": [
-            "openai"
-          ],
+          "projects": ["openai"],
           "target": "build"
         },
         "collect-docs",
@@ -48,10 +42,7 @@
       "options": {
         "command": "vitest run --config www/vitest.config.mts"
       },
-      "dependsOn": [
-        "collect-docs",
-        "generate-llms"
-      ]
+      "dependsOn": ["collect-docs", "generate-llms"]
     },
     "lint": {
       "executor": "nx:run-commands",
@@ -62,12 +53,13 @@
     "e2e": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsx www/src/tools/route-report.ts"
+        "commands": [
+          "tsx www/src/tools/route-report.ts",
+          "tsx www/src/tools/mobile-layout-report.ts"
+        ],
+        "parallel": false
       },
-      "dependsOn": [
-        "build",
-        "workbench-e2e"
-      ]
+      "dependsOn": ["build", "workbench-e2e"]
     },
     "collect-docs": {
       "executor": "nx:run-commands",
@@ -76,11 +68,7 @@
       },
       "dependsOn": [
         {
-          "projects": [
-            "angular",
-            "core",
-            "react"
-          ],
+          "projects": ["angular", "core", "react"],
           "target": "build"
         }
       ]
@@ -138,13 +126,7 @@
       },
       "dependsOn": [
         {
-          "projects": [
-            "core",
-            "react",
-            "angular",
-            "openai",
-            "typesafe"
-          ],
+          "projects": ["core", "react", "angular", "openai", "typesafe"],
           "target": "build"
         }
       ]
@@ -158,9 +140,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ],
+      "dependsOn": ["typecheck"],
       "cache": false
     },
     "docs-workflows-demo": {
@@ -173,9 +153,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-structured-demo": {
       "executor": "nx:run-commands",
@@ -187,9 +165,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-production-demo": {
       "executor": "nx:run-commands",
@@ -201,9 +177,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-recipes-demo": {
       "executor": "nx:run-commands",
@@ -215,9 +189,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-local-models-demo": {
       "executor": "nx:run-commands",
@@ -229,9 +201,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-request-transform-demo": {
       "executor": "nx:run-commands",
@@ -243,9 +213,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-threadplane-prepare": {
       "executor": "nx:run-commands",
@@ -271,9 +239,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-ui-chatbot-demo": {
       "executor": "nx:run-commands",
@@ -285,9 +251,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "docs-parser-demo": {
       "executor": "nx:run-commands",
@@ -299,9 +263,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "workbench-build": {
       "executor": "nx:run-commands",
@@ -316,9 +278,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     },
     "workbench-serve": {
       "executor": "nx:run-commands",
@@ -326,9 +286,7 @@
       "options": {
         "command": "node --env-file-if-exists=.env dist/docs-workbench/node/workbench-server.mjs"
       },
-      "dependsOn": [
-        "workbench-build"
-      ]
+      "dependsOn": ["workbench-build"]
     },
     "workbench-e2e": {
       "executor": "nx:run-commands",
@@ -336,9 +294,7 @@
       "options": {
         "command": "node dist/docs-workbench/node/verify-workbench.mjs"
       },
-      "dependsOn": [
-        "workbench-build"
-      ]
+      "dependsOn": ["workbench-build"]
     },
     "workbench-demo": {
       "executor": "nx:run-commands",
@@ -346,9 +302,7 @@
       "options": {
         "command": "tsx www/src/tools/record-workbench.ts"
       },
-      "dependsOn": [
-        "workbench-build"
-      ]
+      "dependsOn": ["workbench-build"]
     }
   }
 }

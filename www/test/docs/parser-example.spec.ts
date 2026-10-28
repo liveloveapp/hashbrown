@@ -231,37 +231,32 @@ test.each([
 );
 
 test.each(['react', 'angular'] as const)(
-  '%s parser guide publishes the exact checked source in closed disclosures',
+  '%s parser guide links actual framework parsing and explains the original document boundary',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'json-parser'])?.body ?? '';
-    const files = [
-      'runtime/json-parser-demo.ts',
+    const file =
       sdk === 'react'
-        ? 'react/src/JsonParserDemo.tsx'
-        : 'angular/src/app/json-parser-demo.ts',
-    ];
+        ? 'react/src/AuthoringWorkbench.tsx'
+        : 'angular/src/app/authoring-workbench.ts';
+    const api = sdk === 'react' ? 'useJsonParser' : 'injectJsonParser';
 
-    for (const file of files) {
-      const disclosure =
-        body
-          .split(`<hb-expander title="Complete ${file}">`)[1]
-          ?.split('</hb-expander>')[0] ?? '';
-      const snippet = disclosure.match(/```(?:ts|tsx)\n([\s\S]*?)\n```/)?.[1];
-
-      expect(snippet?.trim(), file).toBe(
-        readFileSync(
-          resolve(import.meta.dirname, '../../examples/quickstart', file),
-          'utf8',
-        ).trim(),
-      );
-      expect(disclosure).not.toContain('default-open');
-    }
-    expect(body).toContain(`<hb-docs-demo demo="json-parser-${sdk}">`);
-    expect(body).toContain('finite local');
-    expect(body).toContain('no live model');
-    expect(body).toContain('JSON.parse');
+    expect(body).toContain(
+      `https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/${file}`,
+    );
+    expect(
+      readFileSync(
+        resolve(import.meta.dirname, '../../examples/quickstart', file),
+        'utf8',
+      ),
+    ).toContain(api);
+    expect(body).toContain(api);
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-json-parser-${sdk}">`,
+    );
+    expect(body).toContain('original JSON');
+    expect(body).toContain('Source lifecycle');
     expect(body).toContain('Stop');
-    expect(body).toContain('Reset');
+    expect(body).toContain('real OpenAI');
   },
 );
 

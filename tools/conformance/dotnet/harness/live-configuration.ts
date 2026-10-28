@@ -179,7 +179,8 @@ export function nativeLiveChildEnvironment(
   group: string,
   schema: string,
 ): Readonly<Record<string, string>> {
-  if (group !== 'mixed-native-tools') return provider;
+  if (!['mixed-native-tools', 'native-approval'].includes(group))
+    return provider;
   if (schema.length !== 45 || !/^durable_live_[a-f0-9]{32}$/.test(schema))
     throw new Error('LIVE_SCHEMA_INVALID');
   const connection = parent['DOTNET_TEST_POSTGRES'];
@@ -187,7 +188,8 @@ export function nativeLiveChildEnvironment(
   return Object.freeze({
     ...provider,
     FixtureNativeSessions: 'true',
-    NativeGate: 'before-pending-save',
+    NativeGate: group === 'mixed-native-tools' ? 'before-pending-save' : '',
+    ...(group === 'native-approval' ? { FixtureNativeApprovals: 'true' } : {}),
     InterruptSchema: schema,
     InterruptConnectionString: `${connection};Search Path=${schema}`,
   });

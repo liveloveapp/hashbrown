@@ -1,3 +1,4 @@
+import { applyWorkbenchUiToolPolicy } from './workbench-ui-policy';
 import {
   traceWorkbenchInstructions,
   type WorkbenchInstructionsTrace,
@@ -31,7 +32,11 @@ export function createWorkbenchOpenAIStream(options: {
       input,
       signal,
       transformRequestOptions: async (mapped) => {
-        const before = { ...mapped, max_output_tokens: 2048 };
+        const before = applyWorkbenchUiToolPolicy(
+          { ...mapped, max_output_tokens: 2048 },
+          input,
+          lessonId,
+        );
         if (lessonId === 'system-instructions')
           instructions = traceWorkbenchInstructions(mapped);
         if (lessonId !== 'request-transformation') return before;

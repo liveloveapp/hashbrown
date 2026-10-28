@@ -16,6 +16,7 @@
 .header {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-3) var(--space-6);
   color: var(--color-code-fg);
   font:
@@ -45,6 +46,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  /* Lets a long return type shrink and scroll instead of overflowing. */
+  min-width: 0;
 }
 
 .content {

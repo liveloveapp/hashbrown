@@ -56,3 +56,56 @@ walkthroughs. Storage contains only validated completed text, not agent checkpoi
 No model calls or storage writes occur during synchronized replay. Provider events
 are paced unchanged for filming and footage is shown at half speed. Originals
 and reports remain in unique ignored capture directories. No narration.
+
+
+## Canonical server-owned threads and public endpoints
+
+Updated 2026-10-27. The Angular and React `recipes/threads` and
+`recipes/public-endpoint` guides use separate
+`canonical-workbench-{server-threads,public-endpoint}-{angular,react}` recordings.
+Actual Hashbrown text chat streams real OpenAI output. Session, load and save
+requests use the checked server routes; denials happen before provider work.
+
+Threads shows explicit save, hard refresh, text restoration under the same server
+thread identity, and a follow-up with a fresh run ID. An independent ordinary PUT
+advances the repository version; a stale save genuinely returns 409 and preserves
+unsaved SDK text until explicit reload. Only successful completed bounded text is
+saved. This is not an agent checkpoint.
+
+Access shows an anonymous 401, an authorized model request and a foreign-owner
+404. The local demo session is server-minted; the process-memory repository is
+isolated per session. These integrations demonstrate boundaries and are not
+production authentication or durable storage. No credentials appear in captures.
+
+All twenty-one lessons have two framework paths (42 total). Each new recording
+has MP4/WebM, measured captions, poster, result and an honest walkthrough.
+Unchanged provider events are paced 20 ms for filming and footage is half speed.
+Replay is inert. Preserve legacy examples/media for independent fixtures and
+bookmarks. Unique ignored capture directories retain masters and reports.
+No SDK release.
+
+
+## Canonical agent decisions, JSON parsing and natural forms
+
+Updated 2026-10-27. The six Angular/React recipes use separate
+`canonical-workbench-{agent-decisions,json-parser,natural-forms}-{angular,react}`
+recordings. Agent decisions call real TypeSafe on the server, validate a closed
+route at confidence >=0.75 and invoke fixed read-only application handlers.
+Decisions arrive whole; handler text is not model-generated prose.
+
+Parser and forms use actual Hashbrown text chat and direct framework parsers over
+OpenAI JSON. Partial values, source completion, parser completion, original JSON
+validation and application rules are separate. Forms copies a fresh valid draft
+for review, preserves editable controls, and applies validated fields explicitly
+against the current source/turn/revision. Its actual readContext tool supplies the
+applied plan to the follow-up. Parser and agent lessons preserve application state.
+
+All twenty-six lessons have two framework paths (52 total). Each new ID has both
+codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
+protocol event pacing and half-speed footage are disclosed. Replay performs no
+requests or writes. Unique ignored capture directories retain masters/reports.
+Keep legacy assets and standalone fixtures for old bookmarks. No SDK release.
+
+## Canonical UI kits and chatbot
+
+`canonical-workbench-{ui-kits,ui-chatbot}-{react,angular}` use real OpenAI output, actual framework kit/UI chat APIs and browser readContext. The recorded kit registry and schema come from each SDK. Only explicit validated acceptance changes state; PlanReading has no write action. Both codecs, measured captions, poster, result and transcript accompany each recording. See `docs/docs-media-inventory.md` for current coverage and source boundaries.

@@ -35,7 +35,10 @@ test.each(SDKS)(
   '%s production guides begin with the behavior they demonstrate',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo,
+      demo:
+        demo === 'javascript-runtime'
+          ? demo
+          : `canonical-workbench-${demo}-${sdk}`,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
@@ -62,30 +65,23 @@ test.each(SDKS)(
       ['server/thread-store.ts', thread],
       [
         sdk === 'react'
-          ? 'react/src/ServerConversations.tsx'
-          : 'angular/src/app/server-conversations.ts',
+          ? 'react/src/ServerWorkbench.tsx'
+          : 'angular/src/app/server-workbench.ts',
         thread,
       ],
-      [
-        sdk === 'react'
-          ? 'react/src/server-history.ts'
-          : 'angular/src/app/server-history.ts',
-        thread,
-      ],
+      ['runtime/workbench-server-history.ts', thread],
     ];
 
     for (const [file, body] of files) {
-      const section = body.slice(
-        body.indexOf(`<hb-code-example header="${file}">`),
+      expect(body, file).toContain(
+        `https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/${file}`,
       );
-      const snippet = section.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1];
-
-      expect(snippet?.trim(), file).toBe(
-        readFileSync(
+      expect(
+        existsSync(
           resolve(import.meta.dirname, '../../examples/quickstart', file),
-          'utf8',
-        ).trim(),
-      );
+        ),
+        file,
+      ).toBe(true);
     }
   },
 );
