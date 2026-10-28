@@ -3,6 +3,29 @@ import {
   createWorkbenchStore,
   workbenchStructuredProps,
 } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
+
+function recordedCapture() {
+  const source = createWorkbenchStore();
+  source.send('Make a plan');
+  source.record('event', { type: 'TEXT_MESSAGE_START', messageId: 'a' });
+  source.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'a',
+    delta: '{"ui":[',
+  });
+  source.parsed({
+    ui: [
+      { SummaryCard: { props: { title: 'Plan', steps: ['First', 'Second'] } } },
+    ],
+  });
+  source.settle('complete', 'stop');
+  return createWorkbenchCapture(source.getSnapshot(), {
+    lesson: 'ui-kits',
+    framework: 'react',
+    recordedAt: '2026-10-28T00:00:00.000Z',
+  });
+}
 
 test('seeking reconstructs captured JSON and state without changing live application state', () => {
   const store = createWorkbenchStore();
@@ -374,4 +397,38 @@ test('SDK errors settle only the captured user turn represented by healthy frame
   expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
     false,
   );
+});
+
+test('load replays captured events read-only from the first event', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+
+  store.load(capture.events);
+  const loaded = store.getSnapshot();
+  store.seek(3);
+  const sought = store.getSnapshot().cursor;
+  expect(() => store.send('x')).toThrow();
+  store.record('user', { content: 'x' });
+  const afterWrites = store.getSnapshot().events.length;
+  store.live();
+
+  expect(loaded.cursor).toBe(0);
+  expect(loaded.readOnly).toBe(true);
+  expect(loaded.status).toBe('complete');
+  expect(sought).toBe(3);
+  expect(afterWrites).toBe(capture.events.length);
+  expect(store.getSnapshot().cursor).toBe(capture.events.length - 1);
+  expect(Object.isFrozen(store.getSnapshot().events[0])).toBe(true);
+});
+
+test('load refuses while a live run is loading', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+  store.send('Make a plan');
+
+  store.load(capture.events);
+
+  expect(store.getSnapshot().status).toBe('loading');
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(store.getSnapshot().cursor).toBeNull();
 });
