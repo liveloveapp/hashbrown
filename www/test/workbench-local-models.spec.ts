@@ -157,6 +157,8 @@ test('local acceptance requires the successful original complete JSON document a
     JSON.stringify({ ...proposal, title: 'Different' }),
   ]) {
     const store = createWorkbenchStore('structured', { localModel: true });
+    store.beginLocalPreparation('prepare');
+    store.recordLocalPreparation({ operationId: 'prepare', state: 'ready' });
     store.send('Plan');
     store.record('source', { source: 'local-model' });
     store.record('event', {
@@ -170,6 +172,8 @@ test('local acceptance requires the successful original complete JSON document a
     expect(store.accept(proposal)).toBe(false);
   }
   const store = createWorkbenchStore('structured', { localModel: true });
+  store.beginLocalPreparation('prepare');
+  store.recordLocalPreparation({ operationId: 'prepare', state: 'ready' });
   store.send('Plan');
   store.record('source', { source: 'local-model' });
   store.record('event', {
@@ -328,4 +332,23 @@ test('the actual native transport refuses an unprepared download without creatin
     if (previous) Object.defineProperty(globalThis, 'LanguageModel', previous);
     else Reflect.deleteProperty(globalThis, 'LanguageModel');
   }
+});
+
+test('a fresh preparation attempt withholds the previous local proposal until preparation is ready', () => {
+  const store = createWorkbenchStore('structured', { localModel: true });
+  const proposal = { title: 'Plan', steps: ['Outline.', 'Record.'] };
+  store.beginLocalPreparation('first');
+  store.recordLocalPreparation({ operationId: 'first', state: 'ready' });
+  store.send('Plan');
+  store.record('source', { source: 'local-model' });
+  store.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'answer',
+    delta: JSON.stringify(proposal),
+  });
+  store.parsed(proposal);
+  store.settle('complete', 'stop');
+  store.beginLocalPreparation('second');
+
+  expect(store.accept(proposal)).toBe(false);
 });

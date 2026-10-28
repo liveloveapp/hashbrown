@@ -1347,6 +1347,7 @@ export function createWorkbenchStore(
         }
         if (
           format !== 'structured' ||
+          localModel?.state !== 'ready' ||
           !localSource ||
           uiRevision !== application.revision ||
           !isWorkbenchPlan(localOriginal) ||
