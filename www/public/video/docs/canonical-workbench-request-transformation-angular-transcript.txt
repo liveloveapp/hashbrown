@@ -4,12 +4,12 @@ This is a real provider recording of the checked canonical workbench. Footage is
 
 The actual provider callback adds server-owned instructions while preserving the mapped model, tools and response schema.
 
-Review the completed plan. Accept plan updates application state to revision 1.
+Accept plan: application revision 1.
 
 The follow-up reads the accepted plan and proposes a shorter second step.
 
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
-Back live. The accepted plan remains at revision 1.
+Back live. Revision 1.
 
 The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. The UI-chat API renders the exposed SummaryCard from resolved props. Accept plan is an explicit application action. Refresh clears local sessions.

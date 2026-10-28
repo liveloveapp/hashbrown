@@ -1,3 +1,4 @@
+import { createWorkbenchTabs } from './workbench-tabs';
 import { workbenchLocalInspection } from './workbench-local-inspection';
 import { workbenchJavaScriptInspection } from './workbench-javascript-inspection';
 import { workbenchJavaScriptScripts } from './workbench-javascript';
@@ -525,6 +526,9 @@ export function mountWorkbench(
   chat.setAttribute('aria-label', 'Conversation');
   const chatHeader = element('div', '', 'wb-panel-head');
   const status = element('span', 'Ready', 'wb-muted');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-atomic', 'true');
   chatHeader.append(
     element(
       'h1',
@@ -718,6 +722,7 @@ export function mountWorkbench(
     return item;
   });
   tabs.append(...tabButtons);
+  const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
   inspector.append(
     element('h2', 'Inspector', 'wb-panel-head'),
     tabs,
@@ -1016,13 +1021,14 @@ export function mountWorkbench(
     if (embed === 'replay') form.hidden = true;
     first.disabled = historical || blocked;
     followup.disabled = historical || blocked;
-    status.textContent = awaitingRecording
+    const statusText = awaitingRecording
       ? 'Waiting for recording'
       : embed === 'replay'
         ? recordedCommit
           ? `Recorded at ${recordedCommit.slice(0, 7)}`
           : 'Recorded'
         : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+    if (status.textContent !== statusText) status.textContent = statusText;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
       if (commands.lesson?.format === 'decision') {
@@ -1083,11 +1089,10 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
-    tabButtons.forEach((item) => {
-      item.setAttribute('aria-selected', String(item.textContent === tab));
-      if (item.textContent === tab)
-        tabPanel.setAttribute('aria-labelledby', item.id);
-    });
+    inspectorTabs.sync(
+      tabButtons.find((item) => item.textContent === tab)?.id ??
+        tabButtons[0].id,
+    );
     const onRequests = tab === 'Requests';
     const panelContent = onRequests ? requestsView.element : pair;
     if (tabPanel.firstElementChild !== panelContent)
@@ -1680,6 +1685,12 @@ export function mountWorkbench(
     seek.max = String(Math.max(0, total - 1));
     seek.value = String(snapshot.cursor ?? total - 1);
     seek.disabled = busy || !total;
+    seek.setAttribute(
+      'aria-valuetext',
+      frame
+        ? `Turn ${frame.turn} · Event ${selectedIndex + 1} of ${total} · ${activeMilestone?.label ?? workbenchEventLabel(frame, commands.lesson?.format)} · ${formatPlaybackSeconds(frame.elapsedMs)}`
+        : 'No captured events',
+    );
     play.disabled = busy || total < 2;
     syncPlayButton();
     returnLive.disabled = !historical;
@@ -1731,6 +1742,7 @@ export function mountWorkbench(
       messages?.dispose();
       detachScrub();
       requestsView.dispose();
+      inspectorTabs.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
       unsubscribe();

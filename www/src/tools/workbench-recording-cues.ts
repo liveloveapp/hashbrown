@@ -92,7 +92,7 @@ export function workbenchRecipeRecordingCues(
                 : 'Use view: summary saved at revision 1.',
             ],
             [followup, phase('manual'), 'Confidence gates the preview.'],
-            [phase('manual'), replay, 'Show steps manually. Revision 2.'],
+            [phase('manual'), replay, 'Show steps. Revision 2.'],
             [replay, live, 'Replay: no requests or writes.'],
             [live, end, 'Back live. Revision 2.'],
           ];
@@ -103,4 +103,36 @@ export function workbenchRecipeRecordingCues(
     previous = to;
   }
   return cues;
+}
+
+/** Rejects unreadable or invalid intervals on the rounded, encoded caption timeline. */
+export function validateWorkbenchRecordingCues(
+  cues: readonly WorkbenchRecordingCue[],
+  duration: number,
+  timingScale: number,
+): void {
+  if (
+    !cues.length ||
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    !Number.isFinite(timingScale) ||
+    timingScale <= 0
+  )
+    throw new Error('Invalid caption timeline.');
+  let previous = 0;
+  for (const [from, to, text] of cues) {
+    const start = Math.round(from * timingScale * 1000) / 1000;
+    const end = Math.round(to * timingScale * 1000) / 1000;
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      start < previous ||
+      end <= start ||
+      end > duration + 0.001 ||
+      !text.trim() ||
+      text.length / (end - start) > 20
+    )
+      throw new Error(`Unreadable or invalid caption: ${text}`);
+    previous = end;
+  }
 }

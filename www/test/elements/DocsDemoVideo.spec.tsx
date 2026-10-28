@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
+import { DocsDemoVideo } from '../../src/components/elements/DocsDemoVideo';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
 import { listDocs, readDoc, SDKS } from '../../src/lib/content';
@@ -125,7 +127,9 @@ test.each(SDKS)(
     expect(structured).toContain(
       `<hb-docs-demo demo="canonical-workbench-structured-${sdk}">`,
     );
-    expect(quick).toContain(`<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`);
+    expect(quick).toContain(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
       `<hb-docs-demo demo="canonical-workbench-debugging-${sdk}">`,
     );
@@ -175,4 +179,39 @@ test('rejects an unknown recording identifier instead of generating broken media
   const render = () => renderToStaticMarkup(result.content);
 
   expect(render).toThrow('Unknown documentation demo: missing');
+});
+
+test('associates each recorded video with its own concise visible description', () => {
+  const html = renderToStaticMarkup(
+    <>
+      <DocsDemoVideo demo="canonical-workbench-react" />
+      <DocsDemoVideo demo="canonical-workbench-react" />
+    </>,
+  );
+
+  const descriptions = [
+    ...html.matchAll(/<video[^>]*aria-describedby="([^"]+)"/g),
+  ].map((match) => match[1]);
+
+  expect(descriptions).toHaveLength(2);
+  expect(new Set(descriptions).size).toBe(2);
+  for (const id of descriptions) {
+    expect(html).toContain(
+      `<p id="${id}">${DOCS_DEMOS['canonical-workbench-react'].caption}</p>`,
+    );
+  }
+});
+
+test('names text walkthrough links by the recording they explain', () => {
+  const html = renderToStaticMarkup(
+    <DocsDemoVideo demo="canonical-workbench-threadplane-react" />,
+  );
+
+  const link =
+    html.match(/<a[^>]+href="[^"]+-transcript.txt"[^>]*>/)?.[0] ?? '';
+
+  expect(link).toContain(
+    'aria-label="Read the text walkthrough: Give the plan a React chat screen."',
+  );
+  expect(html).toContain('>Read the text walkthrough</a>');
 });

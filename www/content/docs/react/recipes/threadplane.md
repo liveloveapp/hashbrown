@@ -187,3 +187,5 @@ The server still owns authentication, authorization, provider credentials, and m
 ## Next steps
 
 Read [Migrate chat presentation to Threadplane](/docs/react/migrations/threadplane) before replacing an existing screen. For saved conversations, review [Message history](/docs/react/concept/message-history). The source contracts are in [ChatInput](https://github.com/cacheplane/threadplane/blob/2c7f01fa958441f3ed94e2559987217be284e94a/libs/react/src/chat/chat-input.tsx) and [TextTranscript](https://github.com/cacheplane/threadplane/blob/2c7f01fa958441f3ed94e2559987217be284e94a/libs/react/src/chat/text-transcript.tsx).
+
+The [conversation workbench guide](/docs/react/start/workbench#inspect-and-replay) explains the inspector, keyboard controls, and read-only playback.

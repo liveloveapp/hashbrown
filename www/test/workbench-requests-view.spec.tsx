@@ -681,3 +681,50 @@ test('keeps one failure alert in place across renders and clears it', () => {
   expect(cleared).toBeNull();
   shell.dispose();
 });
+
+test('automatically roves request detail tabs across rebuilt tab buttons without seeking', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  rowButton(host, 'Model request').click();
+  const snapshot = store.getSnapshot();
+  detailTab(host, 'Overview').focus();
+
+  expect(detailTabs(host).filter((tab) => tab.tabIndex === 0)).toEqual([
+    detailTab(host, 'Overview'),
+  ]);
+  expect(
+    press(document.activeElement as HTMLElement, 'End').defaultPrevented,
+  ).toBe(true);
+  expect(document.activeElement).toBe(detailTab(host, 'Response'));
+  expect(detailTab(host, 'Response').getAttribute('aria-selected')).toBe(
+    'true',
+  );
+  press(document.activeElement as HTMLElement, 'ArrowRight');
+  expect(document.activeElement).toBe(detailTab(host, 'Overview'));
+  press(document.activeElement as HTMLElement, 'ArrowLeft');
+  expect(document.activeElement).toBe(detailTab(host, 'Response'));
+  press(document.activeElement as HTMLElement, 'Home');
+  expect(document.activeElement).toBe(detailTab(host, 'Overview'));
+  expect(
+    press(document.activeElement as HTMLElement, 'ArrowUp').defaultPrevented,
+  ).toBe(false);
+  expect(
+    press(document.activeElement as HTMLElement, 'End', { shiftKey: true })
+      .defaultPrevented,
+  ).toBe(false);
+  const panel = host.querySelector<HTMLElement>(
+    '.wb-requests-panel',
+  ) as HTMLElement;
+  expect(panel.tabIndex).toBe(0);
+  expect(panel.getAttribute('aria-labelledby')).toBe(
+    detailTab(host, 'Overview').id,
+  );
+  expect(detailTab(host, 'Overview').getAttribute('aria-controls')).toBe(
+    panel.id,
+  );
+  expect(detailTabs(host).filter((tab) => tab.tabIndex === 0)).toEqual([
+    detailTab(host, 'Overview'),
+  ]);
+  expect(store.getSnapshot()).toBe(snapshot);
+  shell.dispose();
+});
