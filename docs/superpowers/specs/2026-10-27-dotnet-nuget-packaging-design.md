@@ -2,7 +2,7 @@
 
 ## Outcome and authorization
 
-Extract the tested .NET integration into a real compiled NuGet library and prove that applications can restore, build, and run the packed artifact without workspace implementation access. The user authorized brainstorming, specification, independent review, implementation using subagents, PR, merge on green, and verification without intermediate permission requests unless input is necessary. This document supplies the design for that autonomous workflow. Dependency reuse approval is pending under AGENTS.md and must arrive before adding package references.
+Extract the tested .NET integration into a real compiled NuGet library and prove that applications can restore, build, and run the packed artifact without workspace implementation access. The user authorized brainstorming, specification, independent review, implementation using subagents, PR, merge on green, and verification without intermediate permission requests unless input is necessary. This document supplies the design for that autonomous workflow. The user explicitly approved reuse of the existing pinned dependencies under AGENTS.md on 2026-10-27; additional third-party dependencies require separate approval.
 
 This milestone produces and qualifies a release-ready local `.nupkg` and symbol artifact. It does not push an initial version to NuGet.org or claim public-registry availability. Registry ownership, publication credentials and the initial public release remain separate work. Existing npm packages are consumed unchanged.
 
@@ -20,7 +20,7 @@ Audit the public surface explicitly, emit a checked API baseline from the built 
 
 ## Dependencies and compatibility
 
-Subject to requested approval, reuse only the nine existing direct dependency packages and versions from the conformance project. No new third-party package is required. The actual Azure.Core 1.63.0 artifact includes the Azure.Identity credential types used by this integration; do not introduce a historically separate package based on outdated assumptions. Use explicit exact dependency constraints for this preview-sensitive tested baseline, inspect the resulting nuspec, and verify the restored consumer closure. Do not assume the producer lockfile constrains downstream restores.
+Under that approval, reuse only the nine existing direct dependency packages and versions from the conformance project. No new third-party package is required. The actual Azure.Core 1.63.0 artifact includes the Azure.Identity credential types used by this integration; do not introduce a historically separate package based on outdated assumptions. Use explicit exact dependency constraints for this preview-sensitive tested baseline, inspect the resulting nuspec, and verify the restored consumer closure. Do not assume the producer lockfile constrains downstream restores.
 
 Keep SDK 10.0.402 and reproducible lockfiles. Do not place the .NET library in npm release/publish groups. Add Nx build/test/lint/pack/API-check targets with dependencies and inputs that select .NET conformance whenever package source or packaging metadata changes.
 
