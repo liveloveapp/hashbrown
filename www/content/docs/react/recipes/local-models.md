@@ -936,3 +936,5 @@ The local-only real-worker suite checks structured output, nested trusted UI, an
 ## Next steps
 
 Read [Skillet schemas](/docs/react/concept/schema) and [Structured output](/docs/react/concept/structured-output) to develop the data contract. Use [Ollama](/docs/react/platform/ollama) for a model behind a localhost server. The [local conformance instructions](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) explain native checks, deterministic contracts, and application-owned WebLLM test runs.
+
+The [conversation workbench guide](/docs/react/start/workbench#inspect-and-replay) explains the inspector, keyboard controls, and read-only playback.

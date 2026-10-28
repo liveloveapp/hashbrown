@@ -157,3 +157,5 @@ The chat can display capabilities the backend emits. Replacing the UI doesn't tr
 ## Next steps
 
 Use [Migrate chat presentation to Threadplane](/docs/angular/migrations/threadplane) for an existing app. Review [Message history](/docs/angular/concept/message-history) before restoring conversations, and Threadplane's [AG-UI documentation](https://threadplane.ai/docs/ag-ui/getting-started/quickstart) for adapter-specific configuration.
+
+The [conversation workbench guide](/docs/angular/start/workbench#inspect-and-replay) explains the inspector, keyboard controls, and read-only playback.

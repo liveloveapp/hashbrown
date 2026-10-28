@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest';
-import { workbenchRecipeRecordingCues } from '../src/tools/workbench-recording-cues';
+import {
+  validateWorkbenchRecordingCues,
+  workbenchRecipeRecordingCues,
+} from '../src/tools/workbench-recording-cues';
 
 const phases = {
   firstComplete: 2,
@@ -46,4 +49,29 @@ test('describes actual manual selection instead of claiming a model result was a
 
   expect(cues?.[1][2]).toContain('Show summary manually');
   expect(cues?.[1][2]).not.toContain('Use view');
+});
+
+test('validates encoded caption reading speed at the actual footage scale', () => {
+  const cues = [[0, 1, 'A readable caption.']] as const;
+
+  expect(() => validateWorkbenchRecordingCues(cues, 2, 2)).not.toThrow();
+  expect(() => validateWorkbenchRecordingCues(cues, 0.5, 0.5)).toThrow(
+    /caption/,
+  );
+});
+
+test('rejects invalid caption intervals instead of dropping or clamping them', () => {
+  for (const cues of [
+    [[0, NaN, 'Caption']],
+    [[1, 1, 'Caption']],
+    [
+      [0, 2, 'Caption'],
+      [1, 3, 'Overlap'],
+    ],
+    [[0, 4, 'Beyond the video']],
+    [[0, 1, '']],
+  ] as const) {
+    expect(() => validateWorkbenchRecordingCues(cues, 3, 1)).toThrow(/caption/);
+  }
+  expect(() => validateWorkbenchRecordingCues([], 3, 1)).toThrow(/caption/);
 });

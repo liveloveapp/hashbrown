@@ -90,3 +90,5 @@ Replay is read-only. Moving through the captured access checks does not mint a s
 - [Provider composition](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-server.ts) demonstrates server-owned OpenAI configuration.
 
 Continue with [Persist and Resume Threads](/docs/react/recipes/threads) to inspect explicit saves and conflict recovery. This text persistence format does not restore a durable agent checkpoint.
+
+The [conversation workbench guide](/docs/react/start/workbench#inspect-and-replay) explains the inspector, keyboard controls, and read-only playback.
