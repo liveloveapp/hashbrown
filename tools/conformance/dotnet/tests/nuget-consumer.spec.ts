@@ -332,7 +332,11 @@ const project=JSON.parse(await fs.readFile('tools/conformance/dotnet/project.jso
 assert.equal(project.targets['package-acceptance'].cache,false);
 assert.ok(project.implicitDependencies.includes('dotnet-sdk'));
 const workflow=await fs.readFile('.github/workflows/pr-main.yml','utf8');
-assert.ok(workflow.includes('npx nx package-acceptance dotnet-conformance'));
+assert.ok(workflow.includes('npx nx package-pr-acceptance dotnet-conformance'));
+assert.equal(project.targets['package-pr-acceptance'].cache,false);
+assert.equal(project.targets['package-pr-acceptance'].options.command,'node tools/conformance/dotnet/nuget-consumer/run.mjs --pr');
+const nightly=await fs.readFile('.github/workflows/nightly.yml','utf8');
+assert.ok(nightly.includes('npx nx package-acceptance dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx provider-e2e dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx prepare-live-consumer dotnet-conformance'));
 assert.ok(workflow.includes('needs: [ci, targets, preview]'));
@@ -581,13 +585,13 @@ await fs.mkdir(sourceDirectory,{recursive:true});
 const originalEnvironment={...process.env};
 try {
  let source=await fs.readFile(path.join(repository,'tools/conformance/dotnet/harness/http-fixture.ts'),'utf8');
- for(const original of ['./dotnet-host','@ag-ui/core/schemas','@copilotkit/aimock','node:child_process','./recovery-timings'])source=source.replaceAll("from '"+original+"'","from './adapters.mjs'");
+ for(const original of ['./terminate-fixture','./dotnet-host','@ag-ui/core/schemas','@copilotkit/aimock','node:child_process','./recovery-timings'])source=source.replaceAll("from '"+original+"'","from './adapters.mjs'");
  const javascript=ts.default.transpileModule(source,{compilerOptions:{module:ts.default.ModuleKind.ESNext,target:ts.default.ScriptTarget.ES2022}}).outputText;
  await fs.writeFile(path.join(root,'fixture.mjs'),javascript);
  await fs.writeFile(path.join(root,'adapters.mjs'),\`
 import {EventEmitter} from 'node:events';
 export const resolveDotnetHost=()=>({executable:'fixture-test-only',controlled:process.env.TEST_FIXTURE_MODE==='historical',loaded:process.env.TEST_FIXTURE_MODE==='package'?{}:undefined});
-export const validateHostOverrides=()=>{};export const verifyLoadedDotnetHost=()=>{};export const fixtureChildEnvironment=()=>({});
+export const terminateFixture=async()=>{};export const validateHostOverrides=()=>{};export const verifyLoadedDotnetHost=()=>{};export const fixtureChildEnvironment=()=>({});
 export const recoveryRequestRecorder=()=>()=>()=>{};export const traceRecoveryRequest=()=>()=>{};export const EventSchemas={};
 export class LLMock {onMessage(){}async start(){}async stop(){}}
 export function spawn(){const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.exitCode=null;child.signalCode=null;queueMicrotask(()=>{child.stdout.emit('data','PRIVATE_FIXTURE_OUTPUT_SENTINEL');child.exitCode=7;child.emit('exit',7,null);});return child;}
