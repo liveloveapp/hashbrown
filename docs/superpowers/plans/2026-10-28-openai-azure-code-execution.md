@@ -111,17 +111,17 @@ already combines the argument-completion state correctly.
 - [x] Update four guides/options tables: code execution, native configurations,
   displayed results/outcomes, generated-file IDs and app-owned downloads,
   explicit-container reuse and stateless omission. Keep deferred items absent.
-- [ ] Run `npx nx test openai --runInBand`, `npx nx build openai`,
+- [x] Run `npx nx test openai --runInBand`, `npx nx build openai`,
   `npx nx lint openai`, `npx nx e2e openai --runInBand`,
   `npx nx build-api-report openai`; repeat for Azure. Inspect reports for the
   exact SDK-derived option and no unintended public API changes.
-- [ ] Run `npx nx test core --runInBand`, `npx nx build core`,
+- [x] Run `npx nx test core --runInBand`, `npx nx build core`,
   `npx nx lint core`, `npx nx e2e core --runInBand`, then React/Angular unit
   checks and sequential `npx nx build react` and `npx nx build angular`.
   Run docs test/lint/build. Inspect all logs, report
   warnings and avoid concurrent dist writers. Existing passing fixtures remain
   baseline coverage, not a claim of live built-in qualification.
-- [ ] Final aggregate review; parent updates verification evidence, commits,
+- [x] Final aggregate review; parent updates verification evidence, commits,
   pushes and opens/attaches a focused PR. Keep auto-merge off until authorized.
 
 ## Baseline
@@ -153,3 +153,20 @@ when absent/empty, while accepting fresh nonempty raw errors. Full core:
 145 / 8 passed. Real HTTP tests: OpenAI 13; Azure 3. Both root conformance
 suites: 8 each. Four guides updated; 14 code-section TypeScript examples parse.
 Final package/framework/docs checks are recorded below after completion.
+
+Final verification: core/OpenAI/Azure builds, lint, API reports and deterministic
+e2e passed (live provider tests disabled). Core package e2e: 5 tests; OpenAI:
+17 passed / 5 live skipped. React 222 tests and Angular 290 tests passed, with
+both framework builds sequentially green. Documentation: 1770 tests / 245 files,
+lint and production build passed. Generated provider API reports expose exactly
+the SDK-derived codeExecution option; no core public API was added. API report
+files remain ignored under existing repository policy.
+
+Warnings: three pre-existing unused destructuring variables in core tool-step;
+Nx/Jest/Rollup deprecations, API Extractor/TSDoc export/link/span warnings,
+module-loading and NO_COLOR/FORCE_COLOR warnings, and two website dynamic
+filesystem tracing warnings. Initial sandbox runs could not write npm's cache,
+bind localhost/tsx IPC or launch the package browser; reruns with a temporary
+cache and required local access passed. No live provider calls or recordings.
+Latest main's documentation captures (#822) were merged before docs validation.
+Independent final aggregate quality review found no actionable issues.
