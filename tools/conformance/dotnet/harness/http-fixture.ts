@@ -2,6 +2,7 @@ import {
   type DotnetFixtureConfiguration,
   type DotnetHostSelection,
   fixtureChildEnvironment,
+  type HistoricalDotnetHostSelection,
   resolveDotnetHost,
   validateHostOverrides,
   verifyLoadedDotnetHost,
@@ -37,6 +38,15 @@ export interface ModelRequest {
 /** Owned real .NET integration and deterministic model upstream for a test. */
 export interface DotnetFixture {
   readonly url: string;
+  /** Actual spawned OS process and awaited termination evidence. */
+  readonly process: {
+    readonly pid: number;
+    readonly executable: string;
+    readonly startedAt: string;
+    readonly exited: () =>
+      | { code: number | null; signal: NodeJS.Signals | null; at: string }
+      | undefined;
+  };
   readonly mock: LLMock;
   readonly requests: readonly ModelRequest[];
   readonly diagnostics: () => string;
@@ -53,10 +63,10 @@ export async function withDotnetFixture<T>(
   streamControl?: ModelStreamControl,
   environment: DotnetFixtureConfiguration = {},
   modelRouter?: StableModelRouter,
-  hostSelection?: DotnetHostSelection,
+  hostSelection?: DotnetHostSelection | HistoricalDotnetHostSelection,
 ): Promise<T> {
   const host = resolveDotnetHost(hostSelection);
-  if (host.loaded) validateHostOverrides(environment);
+  if (host.loaded || host.controlled) validateHostOverrides(environment);
   const fixtureOrigins = host.loaded
     ? [
         process.env['HASHBROWN_PACKAGE_REACT_URL'],
@@ -193,6 +203,13 @@ export async function withDotnetFixture<T>(
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
+  const startedAt = new Date().toISOString();
+  let exit:
+    | { code: number | null; signal: NodeJS.Signals | null; at: string }
+    | undefined;
+  child.once('exit', (code, signal) => {
+    exit = { code, signal, at: new Date().toISOString() };
+  });
   let output = '';
   child.stdout.on('data', (data) => {
     output = (output + data).slice(-32_000);
@@ -229,9 +246,16 @@ export async function withDotnetFixture<T>(
     const health = await fetch(`${url}/health`);
     if (!health.ok) throw new Error(`.NET health failed: ${output}`);
     verifyLoadedDotnetHost(host, output);
+    if (child.pid === undefined) throw new Error('Spawned fixture PID missing');
     workerTrace('ready');
     return await use({
       url,
+      process: {
+        pid: child.pid,
+        executable: host.executable,
+        startedAt,
+        exited: () => exit,
+      },
       mock,
       requests,
       diagnostics: () => output,

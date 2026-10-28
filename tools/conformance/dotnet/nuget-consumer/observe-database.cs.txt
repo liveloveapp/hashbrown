@@ -1,0 +1,17 @@
+using Npgsql;
+using System.Text.Json;
+
+if (args.Length != 2 || !System.Text.RegularExpressions.Regex.IsMatch(args[1], "^durable_[a-f0-9]{32}$")) throw new InvalidOperationException("Owned durable schema required");
+await using var source = NpgsqlDataSource.Create(args[0]);
+await using var tables = source.CreateCommand("SELECT tablename FROM pg_tables WHERE schemaname=@schema ORDER BY tablename");
+tables.Parameters.AddWithValue("schema", args[1]);
+var names = new List<string>();
+await using (var reader = await tables.ExecuteReaderAsync()) while (await reader.ReadAsync()) names.Add(reader.GetString(0));
+var result = new Dictionary<string, JsonElement>();
+foreach (var name in names)
+{
+    if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-z_]+$")) throw new InvalidOperationException("Unexpected table");
+    await using var rows = source.CreateCommand($"SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)::text FROM \"{args[1]}\".\"{name}\" t");
+    result[name] = JsonDocument.Parse((string)(await rows.ExecuteScalarAsync())!).RootElement.Clone();
+}
+Console.WriteLine(JsonSerializer.Serialize(result));

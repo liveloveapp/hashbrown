@@ -712,6 +712,8 @@ export async function listSourceFiles(repository) {
     'tools/conformance/dotnet/tests/nuget-consumer.spec.ts',
     'tools/conformance/dotnet/tests/dotnet-host.spec.ts',
     'tools/conformance/dotnet/tests/package-identities.spec.ts',
+    'tools/conformance/dotnet/tests/package-upgrade.spec.ts',
+    'tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json',
     'tools/conformance/dotnet/Program.cs',
     'tools/conformance/dotnet/package.playwright.config.ts',
     'tools/conformance/dotnet/local-native-approval.playwright.config.ts',

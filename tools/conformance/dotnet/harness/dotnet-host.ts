@@ -16,12 +16,21 @@ export interface DotnetHostSelection {
   readonly HASHBROWN_DOTNET_CONSUMER_SHA256?: string;
 }
 
+/** Explicit historical test input; never selected by environment or used as a candidate fallback. */
+export interface HistoricalDotnetHostSelection {
+  readonly kind: 'pre-extraction-test-only';
+  readonly descriptor: string;
+  readonly sha256: string;
+}
+
 /** Qualified executable and expected actual loaded package identity. */
 export interface DotnetHost {
   readonly command?: string;
   readonly workingDirectory?: string;
   readonly executable: string;
   readonly environment: Readonly<Record<string, string>>;
+  /** Historical fixtures use the same reviewed application-only environment boundary as packages. */
+  readonly controlled?: boolean;
   readonly loaded?: {
     readonly identity: string;
     readonly location: string;
@@ -60,9 +69,70 @@ export function selectDotnetHost(
 
 /** Rechecks pinned descriptors, executable/runtime closure, evaluated inputs and source hashes before every spawn. */
 export function resolveDotnetHost(
-  selection = selectDotnetHost(),
+  selection:
+    DotnetHostSelection | HistoricalDotnetHostSelection = selectDotnetHost(),
   roleName: 'fixture' | 'probe' = 'fixture',
 ): DotnetHost {
+  if ('kind' in selection) {
+    if (selection.kind !== 'pre-extraction-test-only' || roleName !== 'fixture')
+      throw new Error('Historical host is test-only');
+    checked(selection.descriptor, selection.sha256);
+    const baseline = JSON.parse(readFileSync(selection.descriptor, 'utf8'));
+    const manifestPath = resolve(
+      __dirname,
+      '../tests/fixtures/pre-extraction-host.json',
+    );
+    checked(manifestPath, baseline.manifestSha256);
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (
+      baseline.revision !== '8f0a710a75cb907c1a07e34eb5527b1834da90ed' ||
+      baseline.namespace !== manifest.namespace ||
+      JSON.stringify(baseline.sources) !== JSON.stringify(manifest.files) ||
+      !['original-local-archive', 'immutable-git-build'].includes(
+        baseline.provenance,
+      ) ||
+      baseline.executable !==
+        join(baseline.root, 'bin/Hashbrown.Conformance.dll')
+    )
+      throw new Error('Historical identity/source substitution');
+    if (
+      baseline.provenance === 'original-local-archive' &&
+      JSON.stringify(baseline.files) !== JSON.stringify(manifest.archivedFiles)
+    )
+      throw new Error('Historical archived binary substitution');
+    const files = (directory: string, prefix = ''): string[] =>
+      readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        if (entry.isSymbolicLink()) throw new Error('Historical symlink');
+        const name = prefix + entry.name;
+        return entry.isDirectory()
+          ? files(join(directory, entry.name), name + '/')
+          : [name];
+      });
+    if (
+      JSON.stringify(files(join(baseline.root, 'bin')).sort()) !==
+      JSON.stringify(Object.keys(baseline.files).sort())
+    )
+      throw new Error('Historical binary closure changed');
+    for (const [file, hash] of Object.entries(baseline.files))
+      checked(join(baseline.root, 'bin', file), hash as string);
+    for (const [file, hash] of Object.entries(manifest.files))
+      checked(join(baseline.root, 'source', file), hash as string);
+    for (const [file, hash] of Object.entries(baseline.runtimeInputs))
+      checked(file, hash as string);
+    const image = readFileSync(baseline.executable);
+    if (
+      !image.includes(Buffer.from(manifest.namespace)) ||
+      image.includes(Buffer.from('Hashbrown.AspNetCore'))
+    )
+      throw new Error('Historical assembly namespace substitution');
+    return {
+      command: baseline.launcher,
+      executable: baseline.executable,
+      workingDirectory: dirname(baseline.executable),
+      environment: baseline.environment,
+      controlled: true,
+    };
+  }
   if (selection.HASHBROWN_DOTNET_HOST_MODE === 'source') {
     if (roleName !== 'fixture')
       throw new Error('Package probe requires a package descriptor');
@@ -264,7 +334,8 @@ export function fixtureChildEnvironment(
   host: DotnetHost,
   configuration: DotnetFixtureConfiguration,
 ): Readonly<Record<string, string>> {
-  if (!host.loaded) return { ...host.environment, ...configuration };
+  if (!host.loaded && !host.controlled)
+    return { ...host.environment, ...configuration };
   validateHostOverrides(configuration);
   return {
     ...host.environment,
