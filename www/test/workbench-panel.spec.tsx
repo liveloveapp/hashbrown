@@ -467,7 +467,7 @@ test.each([false, true])(
 
     if (!narrow) fireEvent.click(liveTab());
 
-    expect(document.querySelector('video')).not.toBeNull();
+    expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
     expect(document.querySelector(`a[href^="${origin}"]`)).toBeNull();
     expect(document.body.textContent).not.toContain('Open full workbench');
   },
@@ -530,20 +530,58 @@ test('narrow viewports get the video and an open link', () => {
   ).toContain('Open full workbench');
 });
 
-test('lessons without a capture replay the video and never fetch', () => {
+test('production-recovery replays its capture lazily and notes the reload', async () => {
   const { fetchMock, intersect } = setup();
   render(<WorkbenchPanel lesson="production-recovery" sdk="angular" />);
   intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
 
-  fireEvent.click(liveTab());
+  const fetchedBeforeReady = fetchMock.mock.calls.length;
+  await fromFrame(frame, {
+    ...ready,
+    lesson: 'production-recovery',
+    framework: 'angular',
+  });
 
-  expect(WORKBENCH_LESSONS_WITHOUT_CAPTURE).toEqual(['production-recovery']);
+  expect(WORKBENCH_LESSONS_WITHOUT_CAPTURE).toEqual([]);
+  expect(fetchedBeforeReady).toBe(0);
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/video/docs/canonical-workbench-production-recovery-angular-capture.json',
+    expect.anything(),
+  );
+  expect(document.body.textContent).toContain(
+    'This replay starts after the page reload; the video shows the whole run.',
+  );
+});
+
+test('a panel without a capture replays the video and never fetches', async () => {
+  const { fetchMock, intersect } = setup();
+  const { WorkbenchPanelClient } =
+    await import('../src/components/workbench/WorkbenchPanelClient');
+  render(
+    <WorkbenchPanelClient
+      lesson="tools"
+      sdk="react"
+      origin={origin}
+      mediaId="canonical-workbench-tools-react"
+      title="Tools"
+      width={1440}
+      height={810}
+      hasCapture={false}
+      partialCapture={false}
+      availability={{ live: true }}
+      openHref={null}
+      fallback={<video poster="/poster.png" />}
+    />,
+  );
+  intersect();
+
   expect(replayFrame()).toBeNull();
   expect(fetchMock).not.toHaveBeenCalled();
   expect(document.querySelector('video')?.getAttribute('poster')).toBe(
-    '/video/docs/canonical-workbench-production-recovery-angular-poster.png',
+    '/poster.png',
   );
-  expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
 });
 
 test('partial captures say the replay starts after the reload', () => {

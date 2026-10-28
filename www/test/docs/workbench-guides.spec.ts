@@ -167,3 +167,17 @@ test('every hb-workbench embed is an opening and closing tag pair', () => {
     );
   }
 });
+
+test('every lesson outside the exemption list publishes a capture per SDK', () => {
+  const dir = resolve(import.meta.dirname, '../../public/video/docs');
+
+  const missing = workbenchLessons
+    .filter((lesson) => !WORKBENCH_LESSONS_WITHOUT_CAPTURE.includes(lesson.id))
+    .flatMap((lesson) =>
+      SDKS.map((sdk) => `${workbenchMediaId(lesson.id, sdk)}-capture.json`),
+    )
+    .filter((name) => !existsSync(join(dir, name)));
+
+  expect(WORKBENCH_LESSONS_WITHOUT_CAPTURE).toEqual([]);
+  expect(missing).toEqual([]);
+});

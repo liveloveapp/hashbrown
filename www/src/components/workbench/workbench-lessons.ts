@@ -66,15 +66,18 @@ export function workbenchLiveAvailability(
   return { live: true };
 }
 
-/** Lessons with no published capture; their Replay tab shows the video. */
-export const WORKBENCH_LESSONS_WITHOUT_CAPTURE: readonly WorkbenchLessonId[] = [
-  'production-recovery',
-];
+/**
+ * Lessons with no published capture; their Replay tab shows the video.
+ * Empty while every lesson publishes one.
+ */
+export const WORKBENCH_LESSONS_WITHOUT_CAPTURE: readonly WorkbenchLessonId[] =
+  [];
 
 /** Lessons whose capture starts after a page reload the video includes. */
 export const PARTIAL_CAPTURE_LESSONS: readonly WorkbenchLessonId[] = [
   'server-threads',
   'save-text-conversations',
+  'production-recovery',
 ];
 
 /**
