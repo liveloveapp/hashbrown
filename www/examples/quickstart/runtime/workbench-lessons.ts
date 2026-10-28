@@ -1,5 +1,6 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'production-recovery'
   | 'local-models'
   | 'javascript-runtime'
   | 'ui-kits'
@@ -30,6 +31,8 @@ export type WorkbenchLessonId =
   | 'save-text-conversations';
 /** Metadata shared by framework clients and their workbench shell. */
 export interface WorkbenchLesson {
+  /** Requires the opt-in Postgres host instead of the public anonymous backend. */
+  readonly host?: 'production-reference';
   readonly id: WorkbenchLessonId;
   readonly title: string;
   readonly format:
@@ -99,6 +102,7 @@ export const workbenchLessonGroups: readonly {
     id: 'production',
     title: 'Production',
     lessons: [
+      'production-recovery',
       'local-models',
       'debugging',
       'request-transformation',
@@ -316,7 +320,21 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
       endpoint: `/api/workbench/${id}`,
     }),
   ),
+  {
+    id: 'production-recovery',
+    title: 'Production recovery',
+    format: 'workflow',
+    protocol: 'chat',
+    inspector: 'State',
+    endpoint: '/api/production/run',
+    host: 'production-reference',
+  },
 ];
+/** Lessons supported by the public anonymous backend and its deterministic verification host. */
+export const hostedWorkbenchLessons = workbenchLessons.filter(
+  (lesson) => !lesson.host,
+);
+
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {
   const id = new URLSearchParams(search).get('lesson');

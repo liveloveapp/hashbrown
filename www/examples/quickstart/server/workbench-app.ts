@@ -39,6 +39,7 @@ import {
 } from '../runtime/workbench';
 
 import {
+  hostedWorkbenchLessons,
   type WorkbenchLessonId,
   workbenchLessons,
 } from '../runtime/workbench-lessons';
@@ -64,6 +65,8 @@ export function pinWorkbenchInput(
   value: unknown,
   lesson: WorkbenchLessonId = 'generative-ui',
 ): RunAgentInput {
+  if (workbenchLessons.find((entry) => entry.id === lesson)?.host)
+    throw new Error('Use the separate production reference server.');
   if (
     workbenchLessons.find((entry) => entry.id === lesson)?.protocol === 'local'
   )
@@ -316,7 +319,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   app.post(
     [
       '/api/workbench/chat',
-      ...workbenchLessons
+      ...hostedWorkbenchLessons
         .filter((lesson) => lesson.protocol === 'chat')
         .map((lesson) => lesson.endpoint),
     ],
@@ -395,7 +398,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
   app.all(
     [
       '/api/workbench/chat',
-      ...workbenchLessons
+      ...hostedWorkbenchLessons
         .filter((lesson) => lesson.protocol === 'chat')
         .map((lesson) => lesson.endpoint),
     ],

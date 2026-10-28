@@ -1,3 +1,4 @@
+import { ProductionWorkbenchConversation } from './ProductionWorkbench';
 import { LocalModelsWorkbenchConversation } from './LocalModelsWorkbench';
 import { RuntimeWorkbenchConversation } from './RuntimeWorkbench';
 import { UiKitWorkbenchConversation } from './UiKitWorkbench';
@@ -298,42 +299,46 @@ function WorkbenchConversation({
 /** Retains independent SDK conversations and their captured application histories. */
 export function Workbench() {
   const Conversation =
-    getWorkbenchLesson(window.location.search).id === 'local-models'
-      ? LocalModelsWorkbenchConversation
-      : getWorkbenchLesson(window.location.search).id === 'javascript-runtime'
-        ? RuntimeWorkbenchConversation
-        : ['ui-kits', 'ui-chatbot'].includes(
-              getWorkbenchLesson(window.location.search).id,
-            )
-          ? UiKitWorkbenchConversation
-          : ['server-threads', 'public-endpoint'].includes(
+    getWorkbenchLesson(window.location.search).id === 'production-recovery'
+      ? ProductionWorkbenchConversation
+      : getWorkbenchLesson(window.location.search).id === 'local-models'
+        ? LocalModelsWorkbenchConversation
+        : getWorkbenchLesson(window.location.search).id === 'javascript-runtime'
+          ? RuntimeWorkbenchConversation
+          : ['ui-kits', 'ui-chatbot'].includes(
                 getWorkbenchLesson(window.location.search).id,
               )
-            ? ServerWorkbenchConversation
-            : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
+            ? UiKitWorkbenchConversation
+            : ['server-threads', 'public-endpoint'].includes(
                   getWorkbenchLesson(window.location.search).id,
                 )
-              ? AuthoringWorkbenchConversation
-              : getWorkbenchLesson(window.location.search).format === 'history'
-                ? HistoryWorkbenchConversation
+              ? ServerWorkbenchConversation
+              : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
+                    getWorkbenchLesson(window.location.search).id,
+                  )
+                ? AuthoringWorkbenchConversation
                 : getWorkbenchLesson(window.location.search).format ===
-                    'workflow'
-                  ? WorkflowWorkbenchConversation
-                  : getWorkbenchLesson(window.location.search).format === 'text'
-                    ? MagicTextWorkbenchConversation
+                    'history'
+                  ? HistoryWorkbenchConversation
+                  : getWorkbenchLesson(window.location.search).format ===
+                      'workflow'
+                    ? WorkflowWorkbenchConversation
                     : getWorkbenchLesson(window.location.search).format ===
-                        'predictions'
-                      ? PredictionsWorkbenchConversation
+                        'text'
+                      ? MagicTextWorkbenchConversation
                       : getWorkbenchLesson(window.location.search).format ===
-                          'selection'
-                        ? SelectionWorkbenchConversation
+                          'predictions'
+                        ? PredictionsWorkbenchConversation
                         : getWorkbenchLesson(window.location.search).format ===
-                            'decision'
-                          ? DecisionWorkbenchConversation
+                            'selection'
+                          ? SelectionWorkbenchConversation
                           : getWorkbenchLesson(window.location.search)
-                                .format === 'structured'
-                            ? StructuredWorkbenchConversation
-                            : WorkbenchConversation;
+                                .format === 'decision'
+                            ? DecisionWorkbenchConversation
+                            : getWorkbenchLesson(window.location.search)
+                                  .format === 'structured'
+                              ? StructuredWorkbenchConversation
+                              : WorkbenchConversation;
   const [conversations, setConversations] = useState([
     { id: '1', label: 'Two-step plan' },
   ]);

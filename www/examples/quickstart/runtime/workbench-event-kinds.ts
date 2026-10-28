@@ -17,6 +17,7 @@ export const workbenchEventKinds = [
   'source',
   'response',
   'workflow',
+  'production',
   'form',
   'pause',
   'resume',

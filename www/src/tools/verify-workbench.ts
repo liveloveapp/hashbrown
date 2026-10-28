@@ -48,7 +48,7 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
+import { hostedWorkbenchLessons as workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';

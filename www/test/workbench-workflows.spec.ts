@@ -7,7 +7,7 @@ test('registers the three chat workflow lessons and preserves the default', () =
 
   expect(
     lessons
-      .filter(({ format }) => format === 'workflow')
+      .filter(({ format, host }) => format === 'workflow' && !host)
       .map(({ id, format, protocol }) => ({ id, format, protocol })),
   ).toEqual([
     { id: 'shared-state', format: 'workflow', protocol: 'chat' },

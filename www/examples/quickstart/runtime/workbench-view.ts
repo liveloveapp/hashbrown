@@ -54,7 +54,10 @@ import {
   workbenchTickPercent,
   workbenchTurnSegments,
 } from './workbench-player';
-import { renderWorkbenchSidebar } from './workbench-sidebar';
+import {
+  renderWorkbenchSidebar,
+  workbenchSidebarScrollDelta,
+} from './workbench-sidebar';
 import {
   getWorkbenchEmbedMode,
   type WorkbenchEmbedMode,
@@ -314,6 +317,7 @@ export function workbenchEventLabel(
   }
   return (
     {
+      production: 'Application recovery observation',
       event: 'Stream event',
       user: 'Prompt',
       request: 'Request',
@@ -553,6 +557,17 @@ export function mountWorkbench(
         });
       },
     });
+    // Refreshing a group can reset its scroll position; reveal the lesson without moving focus.
+    const selected = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    const focused = nav.ownerDocument.activeElement;
+    if (selected)
+      nav.scrollTop += workbenchSidebarScrollDelta(
+        nav.getBoundingClientRect(),
+        selected.getBoundingClientRect(),
+        focused && nav.contains(focused)
+          ? focused.getBoundingClientRect()
+          : undefined,
+      );
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
@@ -1012,6 +1027,11 @@ export function mountWorkbench(
       !!frame?.history?.app.server?.busy;
     const blocked =
       busy ||
+      (commands.lesson?.id === 'production-recovery' &&
+        (!frame?.production ||
+          frame.production.busy ||
+          frame.production.attachedThreadId !== frame.production.threadId ||
+          frame.production.disposition !== 'idle')) ||
       snapshot.status === 'paused' ||
       !!frame?.workflow?.recoveryRequired ||
       !!frame?.history?.sdk.pendingInterrupts ||
@@ -1168,7 +1188,13 @@ export function mountWorkbench(
                           sdkFields: ['state', 'messages', 'pendingInterrupts'],
                         }
                       : {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           isLoading: workflow?.isLoading ?? false,
                           isResuming: workflow?.isResuming ?? false,
                           finishReason: workflow?.finishReason ?? null,
@@ -1219,7 +1245,13 @@ export function mountWorkbench(
                       }
                     : tab === 'UI'
                       ? {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           activityIds:
                             workflow?.activities.map((message) => message.id) ??
                             [],
@@ -1230,7 +1262,12 @@ export function mountWorkbench(
                       : {
                           applicationForm,
                           acceptedApplication:
-                            frame?.application ?? snapshot.application,
+                            frame?.production?.application ??
+                            frame?.application ??
+                            snapshot.application,
+                          ...(frame?.production
+                            ? { recoveryOperation: frame.production }
+                            : {}),
                           outcome,
                         },
           }
