@@ -19,14 +19,15 @@ core chat runtime and React/Angular chat facades (including structured/UI chat
 facades derived from them). Records are keyed by opaque `subagentRunId`, in
 first-observation order. Fields: subagentRunId, optional name/description,
 parentSubagentRunId/parentToolCallId/parentMessageId, runId, result, error
-{message, code?}, timing {startedAt, settledAt?}, interruptIds, and status
+{message, code?}, timing {startedAt?, settledAt?}, interruptIds, and status
 `unknown | running | awaiting | complete | failed | cancelled`.
 
 Attribution-only IDs are valid and yield unknown records without invented
 names/times/outcomes. STARTED announces running and its declared links/name;
 FINISHED with absent/success outcome completes; suspended means awaiting;
 ERROR means failed, without failing the enclosing run. Use only supplied finite
-timestamps, never read a clock for display timing. Own/freeze JSON result and
+timestamps, never read a clock for display timing. Start and settlement timing
+are independently optional; a known terminal time never invents a start time. Own/freeze JSON result and
 metadata-derived values. Do not flatten provider answer attribution into this
 provenance model.
 
@@ -95,7 +96,9 @@ carry native attribution. Calls inherit their assistant's provenance in native
 snapshots; results keep their own. Round-trip these fields through view lowering,
 canonical projection, local tool settlement and facade UI types. A client-executed
 result is parent-owned unless the producer explicitly attributes that result;
-do not copy the caller's owner onto it.
+do not copy the caller's owner onto it. Existing call grouping treats different
+caller or result subagent identities as barriers, preserving provenance when
+applications group a combined call list.
 
 Reasoning attaches to the next appropriate assistant in its own owner lane,
 across interleaved siblings; never to an unrelated parent's next answer. Apply

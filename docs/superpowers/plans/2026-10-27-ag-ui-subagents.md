@@ -16,23 +16,23 @@ Create `packages/core/src/models/subagent-run.ts`,
 `packages/core/src/reducers/ag-ui-subagents.ts` and
 `packages/core/src/reducers/ag-ui-subagents.spec.ts`.
 
-- [ ] Define public readonly SubagentRun exactly as the spec, with TSDoc; do not export the public barrel yet.
-- [ ] Write failing tests for lifecycle transitions/validation, unknown/late attribution, null compatibility, opaque/prototype IDs, closed parents, duplicate starts, independent owner-specific step names, snapshot ownership, tool parent inheritance/results, ID-based continuations and ambiguous chunks.
-- [ ] Run `NX_DAEMON=false NX_ISOLATE_PLUGINS=false npx nx test core --testFile=ag-ui-subagents.spec.ts --runInBand --output-style=static`; record assertion or missing-module RED.
-- [ ] Implement a pure constructor seeded from native messages and optional prior records, plus fold returning `{ state, events }`. `events` holds implicit chunk ends followed by the normalized original event. Export reusable internal helpers with TSDoc (ɵ prefix when later shared through core root). No global mutable state or clocks.
-- [ ] Use distinct owner buckets and Map keys (undefined parent vs empty string), immutable copies and original state identity for unchanged events. Follow installed SDK verifier/chunk semantics, retaining native history validation as caller responsibility.
-- [ ] Run focused tests/scoped lint; independent spec review, then quality review; fix findings and parent commits only reviewed files.
+- [x] Define public readonly SubagentRun exactly as the spec, with TSDoc; do not export the public barrel yet.
+- [x] Write failing tests for lifecycle transitions/validation, unknown/late attribution, null compatibility, opaque/prototype IDs, closed parents, duplicate starts, independent owner-specific step names, snapshot ownership, tool parent inheritance/results, ID-based continuations and ambiguous chunks.
+- [x] Run `NX_DAEMON=false NX_ISOLATE_PLUGINS=false npx nx test core --testFile=ag-ui-subagents.spec.ts --runInBand --output-style=static`; record assertion or missing-module RED.
+- [x] Implement a pure constructor seeded from native messages and optional prior records, plus fold returning `{ state, events }`. `events` holds implicit chunk ends followed by the normalized original event. Export reusable internal helpers with TSDoc (ɵ prefix when later shared through core root). No global mutable state or clocks.
+- [x] Use distinct owner buckets and Map keys (undefined parent vs empty string), immutable copies and original state identity for unchanged events. Follow installed SDK verifier/chunk semantics, retaining native history validation as caller responsibility.
+- [x] Run focused tests/scoped lint; independent spec review, then quality review; fix findings and parent commits only reviewed files.
 
 ## Task 2: Lossless public/native provenance
 
-Modify `packages/core/src/models/{view.models.ts,internal.models.ts,internal_helpers.ts}`;
+Modify `packages/core/src/models/{view.models.ts,internal.models.ts,internal_helpers.ts,server-tool-call-display.ts}`;
 `packages/core/src/reducers/{ag-ui-message-history.ts,ag-ui-message-accumulator.ts,ag-ui-activity.ts}`;
 their existing specs. Add a focused owner-aware reasoning helper module/spec if needed to share the three projection/index loops.
 
 - [ ] Write failing round-trip tests for assistant/user/call subagentRunId and independent resultSubagentRunId, including client-settled parent results, native restored history, encrypted/provider continuation metadata and frozen inputs.
 - [ ] Add public/internal optional fields with TSDoc; carry them through source projection, cached reconciliation, view conversion and lowering. ToolCall has no native tag, so use its assistant owner; tool-result tag stays independent.
 - [ ] Make reasoning association owner-aware in source indexes, full projection, cached reconciliation and hydration; sibling assistants/results must not consume another owner's pending reasoning. Preserve prior untagged behavior and cancellation/diagnostic barriers.
-- [ ] Make activity recomputation use latest assistant/tool per owner, retaining replacing-snapshot semantics. Keep shared agent state run-scoped.
+- [ ] Make activity recomputation use latest assistant/tool per owner, retaining replacing-snapshot semantics. Add caller/result owner identity barriers to existing call grouping, with a failing cross-owner regression first. Keep shared agent state run-scoped.
 - [ ] Run affected focused core specs with confirmed RED/GREEN and scoped lint; independent spec then quality review; parent commits.
 
 ## Task 3: Root acceptance, concurrency and resume
