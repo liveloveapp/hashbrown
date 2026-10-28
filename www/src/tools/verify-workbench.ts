@@ -21,6 +21,7 @@ import { createWorkbenchAgentStream } from '../../examples/quickstart/server/wor
 import { DecisionError } from '@hashbrownai/typesafe';
 import { verifyServerWorkbench } from './verify-server-workbench';
 import {
+  createWorkbenchFallbackPreview,
   createWorkbenchPlanPreview,
   createWorkbenchPreview,
   workbenchVerificationTiming,
@@ -72,9 +73,20 @@ async function* pacedProvider(
 }
 let pendingPreview: ReturnType<typeof createWorkbenchPreview> | undefined;
 let pendingPartial: ReturnType<typeof createWorkbenchPlanPreview> | undefined;
+let pendingFallback:
+  ReturnType<typeof createWorkbenchFallbackPreview> | undefined;
+/** Holds incomplete UI-kit props until the browser sees the framework fallback. */
+function holdFallback(): () => void {
+  const preview = createWorkbenchFallbackPreview();
+  pendingFallback = preview;
+  return () => {
+    preview.release();
+    if (pendingFallback === preview) pendingFallback = undefined;
+  };
+}
 /** Holds the first renderable plan fragment until its browser assertion completes. */
-function holdPartial(): () => void {
-  const preview = createWorkbenchPlanPreview();
+function holdPartial(completeFirstStep = false): () => void {
+  const preview = createWorkbenchPlanPreview(completeFirstStep);
   pendingPartial = preview;
   return () => {
     preview.release();
@@ -636,11 +648,16 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     res.write(
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
     );
-    if (event.type === 'response.output_text.delta' && 'delta' in event)
+    if (event.type === 'response.output_text.delta' && 'delta' in event) {
+      await pendingFallback?.wait(
+        String(event.delta),
+        new AbortController().signal,
+      );
       await pendingPartial?.wait(
         String(event.delta),
         new AbortController().signal,
       );
+    }
     if (event.type === 'response.output_text.delta')
       await new Promise((done) =>
         setTimeout(done, workbenchVerificationTiming(recording).chunkMs),
@@ -755,6 +772,8 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            fallback: holdFallback,
+            partial: () => holdPartial(true),
             requests,
             nativeRequests,
             outcome: (value) => {
@@ -1500,6 +1519,7 @@ try {
   await nativeLocal?.close();
   pendingPreview?.release();
   pendingPartial?.release();
+  pendingFallback?.release();
   await browser.close();
   await new Promise<void>((done) => server.close(() => done()));
 }

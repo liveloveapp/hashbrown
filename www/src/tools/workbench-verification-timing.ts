@@ -40,8 +40,11 @@ export function createWorkbenchPreview(): {
   };
 }
 
-/** Holds fixture output once required plan props begin streaming, until the browser observes the unfinished component. */
-export function createWorkbenchPlanPreview(): {
+/**
+ * Holds a renderable plan fragment until the browser observes the unfinished component.
+ * @param completeFirstStep - Waits for a complete first item when the kit uses non-streaming strings.
+ */
+export function createWorkbenchPlanPreview(completeFirstStep = false): {
   readonly wait: (delta: string, signal: AbortSignal) => Promise<void>;
   readonly release: () => void;
 } {
@@ -51,7 +54,26 @@ export function createWorkbenchPlanPreview(): {
     release: preview.release,
     wait: async (delta, signal) => {
       text += delta;
-      if (/"steps"\s*:\s*\[\s*"[^"]+/.test(text)) await preview.wait(signal);
+      const ready = completeFirstStep
+        ? /"steps"\s*:\s*\[\s*"(?:[^"\\]|\\.)*"/.test(text)
+        : /"steps"\s*:\s*\[\s*"[^"]+/.test(text);
+      if (ready) await preview.wait(signal);
+    },
+  };
+}
+
+/** Holds incomplete required UI-kit props until the browser observes its framework fallback. */
+export function createWorkbenchFallbackPreview(): {
+  readonly wait: (delta: string, signal: AbortSignal) => Promise<void>;
+  readonly release: () => void;
+} {
+  const preview = createWorkbenchPreview();
+  let text = '';
+  return {
+    release: preview.release,
+    wait: async (delta, signal) => {
+      text += delta;
+      if (/"title"\s*:\s*"[^"]+/.test(text)) await preview.wait(signal);
     },
   };
 }

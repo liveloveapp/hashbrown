@@ -94,3 +94,56 @@ test('cancelling a streamed plan releases its partial preview waiter', async () 
 
   expect(controller.signal.aborted).toBe(true);
 });
+
+test('a UI kit fixture holds missing required props until its fallback is observed', async () => {
+  const { createWorkbenchFallbackPreview } =
+    await import('../src/tools/workbench-verification-timing');
+  const preview = createWorkbenchFallbackPreview();
+  const signal = new AbortController().signal;
+  let advanced = false;
+  await preview.wait('{"ui":[{"SummaryCard":{"props":{', signal);
+
+  const waiting = preview.wait('"title":"Trust', signal).then(() => {
+    advanced = true;
+  });
+  await Promise.resolve();
+
+  expect(advanced).toBe(false);
+  preview.release();
+  await waiting;
+  expect(advanced).toBe(true);
+  await preview.wait('ed UI demo","steps":["Outline"]}}}]}', signal);
+});
+
+test('cancelling a UI kit fixture releases its fallback waiter', async () => {
+  const { createWorkbenchFallbackPreview } =
+    await import('../src/tools/workbench-verification-timing');
+  const preview = createWorkbenchFallbackPreview();
+  const controller = new AbortController();
+
+  const waiting = preview.wait('{"title":"Trust', controller.signal);
+  controller.abort();
+  await waiting;
+
+  expect(controller.signal.aborted).toBe(true);
+});
+
+test('non-streaming kit steps pause only after the first complete string is available', async () => {
+  const { createWorkbenchPlanPreview } =
+    await import('../src/tools/workbench-verification-timing');
+  const preview = createWorkbenchPlanPreview(true);
+  const signal = new AbortController().signal;
+  let advanced = false;
+  await preview.wait('{"title":"Trusted demo","steps":["Outline', signal);
+
+  const waiting = preview.wait(' the demo",', signal).then(() => {
+    advanced = true;
+  });
+  await Promise.resolve();
+
+  expect(advanced).toBe(false);
+  preview.release();
+  await waiting;
+  expect(advanced).toBe(true);
+  await preview.wait('"Record the demo"]}', signal);
+});

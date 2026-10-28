@@ -113,6 +113,8 @@ jobs:
         run: npm ls --all
 
       - name: Validate affected projects
+        env:
+          NX_VERBOSE_LOGGING: 'true'
         run: npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e --parallel=3
 
       - name: Run affected conformance suites
