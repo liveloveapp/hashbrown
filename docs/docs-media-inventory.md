@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-27. This inventory describes the current guides and their recording sources. Historical captures remain available for bookmarks and independent tests; they are not the current walkthroughs unless listed below.
+Updated 2026-10-28. This inventory describes the current guides and their recording sources. Historical captures remain available for bookmarks and independent tests; they are not the current walkthroughs unless listed below.
 
 ## Current canonical coverage
 
@@ -8,36 +8,36 @@ The workbench has 28 lessons, each implemented in Angular and React: 56 framewor
 
 Each lesson below has a separate recording per framework. The media ID is `canonical-workbench-<recording>-<sdk>`, where `<sdk>` is `angular` or `react`. A lesson can introduce more than one guide without requiring another recording.
 
-| Lesson | Recording | Guide path below `/docs/<sdk>/` |
-| --- | --- | --- |
-| First plan | `first-plan` | `start/intro`, `start/quick`, `start/how-it-works` |
-| Messages and turns | `conversation` | `concept/ai-basics` |
-| System instructions | `system-instructions` | `concept/system-instructions` |
-| Generative UI | `ui` | `concept/components` |
-| Tools | `tools` | `concept/functions` |
-| Structured output | `structured` | `concept/structured-output` |
-| Streaming | `streaming` | `concept/streaming` |
-| Schemas | `schemas` | `concept/schema` |
-| Decisions | `decisions` | `concept/decisions` |
-| Shared agent state | `shared-state` | `concept/shared-agent-state` |
-| Activities | `activities` | `concept/activities` |
-| Interrupt and resume | `interrupts` | `concept/interrupt-and-resume` |
-| Message history | `message-history` | `concept/message-history` |
-| Debugging | `debugging` | `concept/debugging` |
-| Request transformation | `request-transformation` | `concept/transform-request-options` |
-| Save text conversations | `save-text-conversations` | `recipes/browser-history` |
-| Server-owned threads | `server-threads` | `recipes/threads` |
-| Public endpoints | `public-endpoint` | `recipes/public-endpoint` |
-| Magic Text | `magic-text` | `recipes/magic-text` |
-| Predictive suggestions | `predictions` | `recipes/predictive-actions` |
-| UI selection | `ui-selection` | `recipes/ui-selection` |
-| Decisions in agents | `agent-decisions` | `recipes/decisions-in-agents` |
-| Streaming JSON Parser | `json-parser` | `recipes/json-parser` |
-| Natural language forms | `natural-forms` | `recipes/natural-language-to-structured-data` |
-| Local models | `local-models` | `recipes/local-models` |
-| JavaScript runtime | `javascript-runtime` | `concept/runtime` |
-| UI Kits | `ui-kits` | `recipes/ui-kits` |
-| UI chatbot | `ui-chatbot` | `recipes/ui-chatbot` |
+| Lesson                  | Recording                 | Guide path below `/docs/<sdk>/`                    |
+| ----------------------- | ------------------------- | -------------------------------------------------- |
+| First plan              | `first-plan`              | `start/intro`, `start/quick`, `start/how-it-works` |
+| Messages and turns      | `conversation`            | `concept/ai-basics`                                |
+| System instructions     | `system-instructions`     | `concept/system-instructions`                      |
+| Generative UI           | `ui`                      | `concept/components`                               |
+| Tools                   | `tools`                   | `concept/functions`                                |
+| Structured output       | `structured`              | `concept/structured-output`                        |
+| Streaming               | `streaming`               | `concept/streaming`                                |
+| Schemas                 | `schemas`                 | `concept/schema`                                   |
+| Decisions               | `decisions`               | `concept/decisions`                                |
+| Shared agent state      | `shared-state`            | `concept/shared-agent-state`                       |
+| Activities              | `activities`              | `concept/activities`                               |
+| Interrupt and resume    | `interrupts`              | `concept/interrupt-and-resume`                     |
+| Message history         | `message-history`         | `concept/message-history`                          |
+| Debugging               | `debugging`               | `concept/debugging`                                |
+| Request transformation  | `request-transformation`  | `concept/transform-request-options`                |
+| Save text conversations | `save-text-conversations` | `recipes/browser-history`                          |
+| Server-owned threads    | `server-threads`          | `recipes/threads`                                  |
+| Public endpoints        | `public-endpoint`         | `recipes/public-endpoint`                          |
+| Magic Text              | `magic-text`              | `recipes/magic-text`                               |
+| Predictive suggestions  | `predictions`             | `recipes/predictive-actions`                       |
+| UI selection            | `ui-selection`            | `recipes/ui-selection`                             |
+| Decisions in agents     | `agent-decisions`         | `recipes/decisions-in-agents`                      |
+| Streaming JSON Parser   | `json-parser`             | `recipes/json-parser`                              |
+| Natural language forms  | `natural-forms`           | `recipes/natural-language-to-structured-data`      |
+| Local models            | `local-models`            | `recipes/local-models`                             |
+| JavaScript runtime      | `javascript-runtime`      | `concept/runtime`                                  |
+| UI Kits                 | `ui-kits`                 | `recipes/ui-kits`                                  |
+| UI chatbot              | `ui-chatbot`              | `recipes/ui-chatbot`                               |
 
 Every new canonical recording includes MP4, WebM, a poster, a result screenshot, measured WebVTT captions and a text walkthrough. Files live under `www/public/video/docs`; the media registry is `www/src/components/elements/docs-demo-media.ts`.
 
@@ -64,21 +64,29 @@ The latest authoring recordings preserve actual outcomes: a 0.74 agent choice us
 - **Debugging and request transformation:** the deliberate local 403 happens before provider work. Transformation traces come from the actual adapter callback after mapping, with safe public fields only.
 - **Playback:** immutable captured values drive requests, JSON, components and state together. Replay makes no provider calls, invokes no component callbacks and performs no application writes.
 
-## Remaining standalone guides
+## Canonical installed integrations
 
-This topic pair still use their own checked examples and recordings. They are the remaining canonical rollout candidates.
+Threadplane completes the primary standalone guide rollout. Its separately installed Angular and React consumers use the same two-step trusted UI plan, follow-up, LLA workbench shell, paired inspector and bottom timeline. They retain Threadplane's own transcript and composer. The media IDs are `canonical-workbench-threadplane-{angular,react}`.
 
-| Topic | Current media | Current source and next step |
-| --- | --- | --- |
-| Threadplane | `threadplane-angular`, `threadplane-react` | Separately installed framework consumers use actual Threadplane presentation. Recordings use scripted provider-native events through the real Hashbrown adapter. Align the conversation and live streaming with the canonical plan while retaining Threadplane's own chat UI. |
+These are two installed integration paths alongside the 28 bundled lessons / 56 framework paths. They do not add a hosted `?lesson=threadplane` route or force external package installation into the normal workbench build. The optional shell is built separately after installed-consumer compilation and served by checked local hosts. Public documentation embeds the recordings; installation instructions reproduce the actual consumer.
 
-The Threadplane migration guides keep runtime, presentation, identity, history, tools and component ownership explicit. Their installation instructions must be checked against the corresponding framework consumer; do not infer one framework's package/API from the other.
+Both replacement recordings use real provider output through the actual Hashbrown OpenAI server adapter. React retains Hashbrown `useChat` behind Threadplane `TextTranscript` / `ChatInput`; Angular uses Threadplane's AG-UI frontend and `ChatComponent`. Actual protocol JSON and streamed text are distinct views. No generated component or parsed plan is claimed, and application state stays at revision zero. Replay makes no requests or writes. Footage runs at actual speed with measured captions and reading pauses.
+
+The Threadplane migration guides keep runtime, presentation, identity, history, tools and component ownership explicit. Installation is checked against each framework's own consumer. Labelled provider-native fixtures verify keyboard interaction, failures, truncation, cancellation, recovery and standalone mobile layout; fixture publication is rejected. Real recording is a separate credentialed target.
+
+No primary guide pair remains on standalone scripted footage. Next is a consistency and accessibility review across the full set; durable agent state, production identity and storage remain separate integrations.
 
 ## Retained legacy assets
 
 Earlier WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, shopping-list, parser, decisions, assisted-interface and ATC recordings remain for old links and independent fixtures. Their source disclosures still apply. A retained asset is not evidence that the current guide uses it.
 
-Standalone workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
+Retained standalone Threadplane shipping clips and workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
+
+## Accessibility and consistency checks
+
+The 60 active recordings appear in 64 canonical guide embeds. Their caption intervals are ordered, nonempty and at most 20 characters per displayed second. The initial overview, generative UI, tools, schemas, streaming, structured output, debugging, request transformation, decisions and UI-selection captions were shortened where needed, without retiming or replacing footage. Text walkthroughs and recorder sources use the same concise descriptions. Runtime ownership and source disclosures are preserved.
+
+Video players keep native controls and captions, with a visible caption associated to each player and a context-specific text-walkthrough link. Workbench tab strips use one Tab stop with arrow/Home/End navigation; request-detail rebuilds preserve keyboard focus. The bottom range names its turn, event, milestone and elapsed time. Lifecycle status is polite and deduplicated; stream tokens and JSON panels are not live regions. Playback shortcuts leave focused links and interactive controls alone.
 
 ## Reproduction and verification
 
@@ -88,6 +96,8 @@ Set server-only `OPENAI_API_KEY` and `OPENAI_MODEL` for chat recordings. TypeSaf
 
 ```sh
 WORKBENCH_LESSONS=ui-kits,ui-chatbot npx nx workbench-demo www
+DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-demo www
+npx nx docs-threadplane-live-demo www
 npx nx workbench-e2e www
 npx nx build www
 npx nx test www
@@ -103,3 +113,11 @@ Keep unique masters, phase reports and failed-run evidence in ignored `dist/docs
 - Production identity, atomic durable storage, distributed admission control, retention and operational observability remain application integrations; local fixtures do not satisfy those requirements.
 - Keep learning guides task-focused and link to generated API reference for the full inventories. Check snippets against the real framework APIs before polishing their prose.
 - Typography selection and the SDK release remain separate work.
+
+## Opt-in production recovery reference
+
+`platform/b4run` in Angular and React accompanies the `production-recovery` lesson. It runs against the separate TypeScript/Postgres `production-reference` server, with native b4.run checkpoints, approval grants, shared run admission, and a transactionally accepted application plan. It is excluded from the public anonymous workbench lesson count above.
+
+The published recording IDs are `canonical-workbench-production-recovery-{angular,react}`. The 2026-10-28 captures use real OpenAI output, the actual native b4.run runtime and isolated Postgres. Each crosses a server process replacement, restores one approval without another run, and explicitly approves before the application advances from revision 0 to 1 with one database receipt. Playback adds no requests or writes. Footage runs at actual speed: 31.67 seconds for React and 31.57 seconds for Angular, each with seven readable caption cues, a text transcript, poster and result image.
+
+Measured evidence and masters: `dist/docs-production-reference/captures/2026-10-28T19-10-28.186Z`. `npx nx demo production-reference` reproduces the pair with an isolated database, server-side OpenAI credentials and ffmpeg. The recorder stages both complete companion sets before publication. Together with the primary set above, there are 62 active recordings across 66 guide embeds. The opt-in reference endpoint is not registered by the public anonymous backend.

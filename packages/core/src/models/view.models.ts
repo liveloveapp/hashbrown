@@ -33,6 +33,11 @@ export type AnyTool = Tool<string, any, any>;
 export type UserMessage = {
   /** The canonical AG-UI message id. Stable for the life of the message. */
   readonly id: string;
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
   role: 'user';
   content: JsonValue;
 };
@@ -43,6 +48,16 @@ export type UserMessage = {
 export type ToolCall<ToolUnion extends AnyTool> = Prettify<
   ToolUnion extends Tool<infer Name, infer Args, infer Result>
     ? | {
+          /**
+           * The subagent invocation that produced this message or requested this call.
+           * Calls inherit their enclosing assistant's owner when omitted.
+           */
+          readonly subagentRunId?: string;
+          /**
+           * The subagent invocation that produced the result. An absent owner means
+           * the parent when a result exists; a pending call has no result provenance yet.
+           */
+          readonly resultSubagentRunId?: string;
           role: 'tool';
           status: 'done';
           name: Name;
@@ -60,6 +75,16 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
           metadata?: Metadata;
         }
       | {
+          /**
+           * The subagent invocation that produced this message or requested this call.
+           * Calls inherit their enclosing assistant's owner when omitted.
+           */
+          readonly subagentRunId?: string;
+          /**
+           * The subagent invocation that produced the result. An absent owner means
+           * the parent when a result exists; a pending call has no result provenance yet.
+           */
+          readonly resultSubagentRunId?: string;
           role: 'tool';
           status: 'pending';
           name: Name;
@@ -158,6 +183,17 @@ export type ServerToolCallOutcome =
  * @public
  */
 export type ServerToolCall = {
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
+  /**
+   * The subagent invocation that produced the result. An absent owner means
+   * the parent when a result exists; a pending call has no result provenance yet.
+   */
+  readonly resultSubagentRunId?: string;
+
   toolCallId: string;
   name: string;
   status: 'inProgress' | 'executing' | 'complete';
@@ -227,6 +263,11 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
    * and after it is committed.
    */
   readonly id: string;
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
   role: 'assistant';
   content?: Output;
   toolCalls: ToolCall<ToolUnion>[];

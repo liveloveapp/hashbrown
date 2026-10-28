@@ -155,6 +155,8 @@ function sameIdentity(
     right.metadata?.[ɵTOOL_STEP_METADATA_KEY],
   ).provider;
   return (
+    left.subagentRunId === right.subagentRunId &&
+    left.resultSubagentRunId === right.resultSubagentRunId &&
     left.name === right.name &&
     left.kind === right.kind &&
     left.builtin === right.builtin &&

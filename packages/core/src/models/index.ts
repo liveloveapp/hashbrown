@@ -39,3 +39,5 @@ export {
   type TurnSummary,
   type TurnSummaryOptions,
 } from './summarize-turn';
+
+export type { SubagentRun } from './subagent-run';

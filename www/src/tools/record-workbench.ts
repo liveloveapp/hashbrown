@@ -13,10 +13,18 @@ import {
 } from './workbench-workflow-recording';
 /** Records the verified live lesson clients and publishes their local documentation media. */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  publishWorkbenchMedia,
+  workbenchMediaSuffixes,
+} from './workbench-media-publication';
 import { resolve } from 'node:path';
+import { prepareWorkbenchCaptures } from './workbench-capture-file';
 import { workbenchOnboardingRecordingCues } from './workbench-onboarding-recording';
-import { workbenchRecipeRecordingCues } from './workbench-recording-cues';
+import {
+  validateWorkbenchRecordingCues,
+  workbenchRecipeRecordingCues,
+} from './workbench-recording-cues';
 
 if (
   !['javascript-runtime', 'local-models'].includes(
@@ -102,8 +110,17 @@ const names: Record<string, string> = {
   debugging: 'debugging',
   'request-transformation': 'request-transformation',
 };
+// Captures are stamped with the commit the media is published from.
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+  encoding: 'utf8',
+}).trim();
+// Every capture is checked before any encoding, so one bad lesson fails fast.
+const captures = prepareWorkbenchCaptures(work, reports, commit);
 const timestamp = (seconds: number) =>
   new Date(Math.round(seconds * 1000)).toISOString().slice(11, 23);
+const staging = resolve(work, 'encoded');
+mkdirSync(staging, { recursive: true });
+const publishIds: string[] = [];
 for (const report of reports) {
   if (
     !report.passed ||
@@ -128,7 +145,12 @@ for (const report of reports) {
   const timingScale = report.lesson === 'local-models' ? 1 : 2;
   const id = `canonical-workbench-${names[report.lesson]}-${report.framework}`;
   const raw = resolve(work, `${report.framework}-${report.lesson}-live.webm`);
-  const base = resolve('www/public/video/docs', id);
+  const base = resolve(staging, id);
+  publishIds.push(id);
+  writeFileSync(
+    `${base}-capture.json`,
+    captures.get(`${report.framework}-${report.lesson}`) ?? '',
+  );
   for (const [extension, codec] of [
     [
       'mp4',
@@ -241,7 +263,7 @@ for (const report of reports) {
             [
               0,
               report.phases['recovery'],
-              'A deliberate local HTTP 403 denies the request before provider work. The plan stays at revision 0.',
+              'A local 403 stops before the provider. Revision 0.',
             ],
           ] as const)
         : []),
@@ -249,7 +271,7 @@ for (const report of reports) {
         report.lesson === 'debugging' ? report.phases['recovery'] : 0,
         report.phases['firstComplete'],
         report.lesson === 'decisions'
-          ? 'A complete TypeSafe decision returns a known next action and confidence. It does not stream text.'
+          ? 'TypeSafe returns a whole decision.'
           : report.lesson === 'debugging'
             ? 'Disable Demo denial and retry in the same conversation. Real model output now streams into the trusted plan card.'
             : report.lesson === 'request-transformation'
@@ -264,14 +286,14 @@ for (const report of reports) {
         report.phases['firstComplete'],
         report.phases['followup'],
         report.lesson === 'decisions'
-          ? 'Review the typed choice. Use suggestion saves nextAction and advances the application revision to 1.'
-          : 'Review the completed plan. Accept plan updates application state to revision 1.',
+          ? 'Use suggestion: revision 1.'
+          : 'Accept plan: application revision 1.',
       ],
       [
         report.phases['followup'],
         report.phases['replay'],
         report.lesson === 'decisions'
-          ? 'The next input says the demo is recorded. The decision suggests review using the current application snapshot.'
+          ? 'The next decision suggests review.'
           : 'The follow-up reads the accepted plan and proposes a shorter second step.',
       ],
       [
@@ -281,24 +303,15 @@ for (const report of reports) {
           ? 'Replay follows complete choices, confidence and state. It makes no decision requests or writes.'
           : 'Replay follows captured chat, JSON, UI and state. It makes no new requests.',
       ],
-      [
-        report.phases['returnedLive'],
-        duration / 2,
-        report.lesson === 'decisions'
-          ? 'Return to live to continue. The chosen next action stays at revision 1.'
-          : 'Back live. The accepted plan remains at revision 1.',
-      ],
+      [report.phases['returnedLive'], duration / 2, 'Back live. Revision 1.'],
     ] as const);
+  validateWorkbenchRecordingCues(cues, duration, timingScale);
   const vtt =
     'WEBVTT\n\n' +
     cues
-      .filter(
-        ([from, to]) =>
-          Number.isFinite(from) && Number.isFinite(to) && to > from,
-      )
       .map(
         ([from, to, text]) =>
-          `${timestamp(from * timingScale)} --> ${timestamp(Math.min(duration, to * timingScale))}\n${text}\n`,
+          `${timestamp(from * timingScale)} --> ${timestamp(to * timingScale)}\n${text}\n`,
       )
       .join('\n');
   writeFileSync(`${base}.vtt`, vtt);
@@ -341,23 +354,15 @@ for (const report of reports) {
     );
   }
   if (report.lesson === 'generative-ui') {
-    for (const suffix of [
-      '.mp4',
-      '.webm',
-      '.vtt',
-      '-poster.png',
-      '-result.png',
-      '-transcript.txt',
-    ])
-      copyFileSync(
-        base + suffix,
-        resolve(
-          'www/public/video/docs',
-          `canonical-workbench-${report.framework}${suffix}`,
-        ),
-      );
+    const overview = `canonical-workbench-${report.framework}`;
+    for (const suffix of workbenchMediaSuffixes)
+      copyFileSync(base + suffix, resolve(staging, overview + suffix));
+    publishIds.push(overview);
   }
   console.log(
-    `${id}: ${duration.toFixed(2)}s; ${report.source} source verified`,
+    `${id}: ${duration.toFixed(2)}s; ${report.source} source verified and staged`,
   );
 }
+
+publishWorkbenchMedia(staging, resolve('www/public/video/docs'), publishIds);
+console.log(`Published ${publishIds.length} checked recordings.`);

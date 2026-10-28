@@ -1054,3 +1054,166 @@ test('history Text and UI views describe the actual selected text without genera
   shell.dispose();
   host.remove();
 });
+
+test.each([false, true])(
+  'managed chat preserves historical interaction handlers unless the composer is external: %s',
+  (externalComposer) => {
+    const host = document.createElement('div');
+    const store = createWorkbenchStore('text');
+    const shell = mountWorkbench(
+      host,
+      store,
+      {
+        framework: 'React',
+        managedChat: true,
+        lesson: {
+          id: 'magic-text',
+          title: 'Magic Text',
+          format: 'text',
+          inspector: 'Text',
+        },
+        send: vi.fn(),
+        stop: vi.fn(),
+        reset: vi.fn(),
+      },
+      { externalComposer },
+    );
+    store.send('A two-step plan');
+    store.settle('complete');
+
+    store.seek(0);
+
+    expect(shell.live.hidden).toBe(false);
+    expect(shell.live.inert).toBe(externalComposer);
+    shell.dispose();
+  },
+);
+
+test('automatically activates inspector tabs with one tab stop and labelled readable panels', () => {
+  const { host, store, shell } = mountShell();
+  const tabs = [
+    ...host.querySelectorAll<HTMLButtonElement>('.wb-tabs [role=tab]'),
+  ];
+  const selected = () =>
+    tabs.find(
+      (item) => item.getAttribute('aria-selected') === 'true',
+    ) as HTMLButtonElement;
+  const press = (key: string, init: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    document.activeElement?.dispatchEvent(event);
+    return event;
+  };
+  const snapshot = store.getSnapshot();
+  selected().focus();
+
+  expect(tabs.filter((item) => item.tabIndex === 0)).toEqual([selected()]);
+  expect(press('End').defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(tabs.at(-1));
+  expect(selected()).toBe(tabs.at(-1));
+  press('ArrowRight');
+  expect(document.activeElement).toBe(tabs[0]);
+  press('ArrowLeft');
+  expect(document.activeElement).toBe(tabs.at(-1));
+  press('Home');
+  expect(document.activeElement).toBe(tabs[0]);
+  expect(press('ArrowDown').defaultPrevented).toBe(false);
+  expect(press('ArrowRight', { ctrlKey: true }).defaultPrevented).toBe(false);
+  expect(selected()).toBe(tabs[0]);
+  const panel = host.querySelector<HTMLElement>('.wb-tabpanel') as HTMLElement;
+  expect(panel.tabIndex).toBe(0);
+  expect(panel.getAttribute('aria-labelledby')).toBe(selected().id);
+  expect(selected().getAttribute('aria-controls')).toBe(panel.id);
+  expect(store.getSnapshot()).toBe(snapshot);
+  store.record('event', { type: 'RUN_STARTED' });
+  expect(document.activeElement).toBe(tabs[0]);
+  shell.dispose();
+});
+
+test('describes native playback position and only announces lifecycle changes', () => {
+  const { host, store, shell } = mountShell();
+  const seek = host.querySelector<HTMLInputElement>(
+    'input[type=range]',
+  ) as HTMLInputElement;
+  const status = host.querySelector<HTMLElement>(
+    '.wb-chat [role=status]',
+  ) as HTMLElement;
+  expect(seek.getAttribute('aria-valuetext')).toBe('No captured events');
+  expect(status?.getAttribute('aria-live')).toBe('polite');
+  const observer = new MutationObserver(() => undefined);
+  observer.observe(status, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+
+  store.send('Plan');
+  const loading = status?.textContent;
+  observer.takeRecords();
+  store.record('event', { type: 'RUN_STARTED' });
+  store.record('event', { type: 'TEXT_MESSAGE_CONTENT', delta: 'Hello' });
+
+  expect(loading).toContain('loading');
+  expect(observer.takeRecords()).toHaveLength(0);
+  expect(seek.getAttribute('aria-valuetext')).toMatch(
+    /Turn 1 · Event \d+ of \d+ · .+ · \d+\.\d+ s/,
+  );
+  expect(seek.type).toBe('range');
+  store.settle('complete', 'stop');
+  expect(status?.textContent).toContain('complete');
+  expect(observer.takeRecords().length).toBeGreaterThan(0);
+  store.seek(0);
+  expect(status?.textContent).toContain('Replay');
+  observer.disconnect();
+  shell.dispose();
+});
+
+test('preserves focused controls and handled keys while body shortcuts still play back', () => {
+  const { host, store, shell, layout } = mountShell();
+  store.send('Plan');
+  store.record('event', { type: 'RUN_STARTED' });
+  store.settle('complete', 'stop');
+  store.seek(0);
+  const anchor = host.querySelector('a[href]') as HTMLElement;
+  const seek = host.querySelector('input[type=range]') as HTMLElement;
+  const separator = host.querySelector('[role=separator]') as HTMLElement;
+  const press = (
+    target: EventTarget,
+    key: string,
+    init: KeyboardEventInit = {},
+  ) => {
+    const event = new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  for (const control of [anchor, seek, separator]) {
+    control.focus();
+    const arrow = press(control, 'ArrowRight');
+    if (control !== separator) expect(arrow.defaultPrevented).toBe(false);
+    expect(press(control, 'b', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(store.getSnapshot().cursor).toBe(0);
+    expect(layout.get().rail).toBe(false);
+  }
+  const handled = new KeyboardEvent('keydown', {
+    key: 'ArrowRight',
+    bubbles: true,
+    cancelable: true,
+  });
+  handled.preventDefault();
+  document.body.dispatchEvent(handled);
+  expect(store.getSnapshot().cursor).toBe(0);
+  expect(press(document.body, 'ArrowRight').defaultPrevented).toBe(true);
+
+  expect(store.getSnapshot().cursor).toBe(1);
+  shell.dispose();
+});

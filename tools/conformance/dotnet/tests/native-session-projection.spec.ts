@@ -19,7 +19,7 @@ test('native projection bounds and folds genuine SSE while holding terminal publ
     'tools/conformance/dotnet/tests/fixtures/native-session-projection.cs.txt',
   );
   const production = resolve(
-    'tools/conformance/dotnet/Integration/NativeSessionProjection.cs',
+    'packages/dotnet/src/NativeSessionProjection.cs',
   );
 
   try {

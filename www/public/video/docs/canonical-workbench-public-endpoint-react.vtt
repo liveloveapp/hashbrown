@@ -1,22 +1,22 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:07.794
+00:00:00.000 --> 00:00:07.738
 An anonymous request returns 401 before provider work.
 
-00:00:07.794 --> 00:00:15.278
+00:00:07.738 --> 00:00:15.284
 Start a local demo session and load your thread.
 
-00:00:15.278 --> 00:00:23.730
+00:00:15.284 --> 00:00:23.784
 An authorized request streams a real OpenAI reply.
 
-00:00:23.730 --> 00:00:27.572
+00:00:23.784 --> 00:00:28.126
 A foreign thread returns 404 before provider work.
 
-00:00:27.572 --> 00:00:31.342
+00:00:28.126 --> 00:00:31.908
 Inspect the actual statuses beside the conversation.
 
-00:00:31.342 --> 00:00:42.394
+00:00:31.908 --> 00:00:42.942
 Replay makes no requests or writes.
 
-00:00:42.394 --> 00:00:50.167
+00:00:42.942 --> 00:00:50.700
 Back live.

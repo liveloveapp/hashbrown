@@ -140,6 +140,7 @@ test(
           ServerToolCallGroup,
           GroupedServerToolCall,
           GroupServerToolCallsOptions,
+          SubagentRun,
           UiChatMessage,
             ChatResourceOptions,
             ImperativeJsonParserRef,
@@ -218,6 +219,18 @@ test(
             system: 'system',
             state,
           });
+          for (const result of [chat, structuredChat, uiChat]) {
+            const records: readonly SubagentRun[] = result.subagents();
+            // @ts-expect-error Native subagent records cannot be appended by consumers.
+            records.push({ subagentRunId: 'child', status: 'unknown' });
+            // @ts-expect-error Native lifecycle projections are readonly.
+            result.subagents = result.subagents;
+            if (records[0]) {
+              // @ts-expect-error Native lifecycle records are readonly.
+              records[0].status = 'running';
+            }
+            void records;
+          }
           const uiCompletion = uiCompletionResource({
             components: [],
             input,
@@ -241,6 +254,18 @@ test(
             state: signal(state),
           };
           void invalidReactiveState;
+
+        function verifyNativeSubagentProvenance(message: UiChatMessage<never>) {
+          if (message.role === 'assistant') {
+            const owner: string | undefined = message.subagentRunId;
+            for (const call of message.serverToolCalls ?? []) {
+              const requester: string | undefined = call.subagentRunId;
+              const executor: string | undefined = call.resultSubagentRunId;
+              void [owner, requester, executor];
+            }
+          }
+        }
+        void verifyNativeSubagentProvenance;
 
         function verifyTurnHelpers(messages: readonly UiChatMessage<never>[]) {
           const turns: readonly Turn<UiChatMessage<never>>[] = groupTurns(messages);
@@ -310,6 +335,14 @@ test(
             const angular = await import('@hashbrownai/angular');
             const cjsCore = require('@hashbrownai/core');
             const esmCore = await import('@hashbrownai/core');
+        for (const core of [cjsCore, esmCore]) {
+          const runtime = core.createChatRuntime({ system: 'consumer' });
+          const initial = runtime.subagents();
+          if (initial.length !== 0 || !Object.isFrozen(initial) || runtime.subagents() !== initial) {
+            throw new Error('Packed runtime must expose the frozen native subagent selector');
+          }
+        }
+
 
         for (const api of [angular]) {
           for (const name of ['groupTurns', 'getServerToolCallLabel', 'groupServerToolCalls',

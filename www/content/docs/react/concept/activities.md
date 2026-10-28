@@ -150,3 +150,46 @@ invented duration. See [tool display and timing policy](/docs/react/concept/func
 Any AG-UI backend can emit activity events. A delta for an unknown ID or a patch that cannot apply is dropped with a console warning rather than ending the run; valid metadata is retained. Trailing activities do not cause `reload` or continuation to treat them as an unanswered conversation message.
 
 Hashbrown adapters also offer an explicit `activities` option. See [Sending activities](/docs/react/platform/openai#sending-activities). Use it when your server owns the progress; the model does not emit progress simply because the client renders an activity card.
+
+## Follow native subagent invocations
+
+A producer can attribute concurrent work with native [AG-UI subagent events](https://docs.ag-ui.com/concepts/subagents). Hashbrown exposes that provenance and lifecycle; the producer still schedules and executes the child agents. Direct provider adapters do not invent these events.
+
+`useChat()`, `useStructuredChat()`, and `useUiChat()` expose `readonly subagents: readonly SubagentRun[]`. Derive groups during render; no effect or copied state is needed. The core `ChatRuntime.subagents` property is a `StateSignal<readonly SubagentRun[]>`; `SubagentRun` is also exported from `@hashbrownai/core`. These frozen records start as an empty array.
+
+```tsx
+import { useChat, type SubagentRun } from '@hashbrownai/react';
+
+export function ResearchProgress() {
+  const chat = useChat({ system: 'Help with research.' });
+  const rows = chat.subagents.map((run: SubagentRun) => ({
+    run,
+    outputs: chat.messages.filter(
+      (message) =>
+        message.role === 'assistant' &&
+        message.subagentRunId === run.subagentRunId,
+    ),
+    activities: chat.messages.filter(
+      (message) =>
+        message.role === 'activity' &&
+        message.links.subagentRunId === run.subagentRunId,
+    ),
+  }));
+
+  return rows.map(({ run, outputs, activities }) => (
+    <p key={run.subagentRunId}>
+      {run.name ?? run.subagentRunId}: {run.status}
+      {' — '}
+      {outputs.length} replies, {activities.length} activities
+    </p>
+  ));
+}
+```
+
+Use `subagentRunId` as the opaque identity of one invocation. `name` is a reusable display name, so two invocations may have the same name. Preserve `undefined` for the parent: an empty string is a valid child identifier, and a string sentinel can collide with a real ID. `parentSubagentRunId` describes nesting; `parentToolCallId` and `parentMessageId` connect an invocation to the call and message that spawned it. Activity ownership is in `links.subagentRunId`.
+
+The observed statuses are `unknown`, `running`, `awaiting`, `complete`, `failed`, and `cancelled`. Attribution without lifecycle events creates an `unknown` record. Start, finish, suspension, and error events supply lifecycle facts. `timing.startedAt` and `timing.settledAt` appear only for finite timestamps explicitly supplied by the producer; they are not browser clock measurements. A child error does not fail the enclosing run or settle a tool call's outcome.
+
+This lifecycle is local transactional display state, not a new wire format or storage API. Native message snapshots preserve provenance, but restored records have unknown names, outcomes, and timing; explicit retained interrupts can establish `awaiting`. A successful resume acknowledgement resolves the answered waits even if continuation uses a new invocation ID or later fails. Approval answers do not prove execution or completion. Continue using `pendingInterrupts` and `resume()` for approvals; there is no separate resume-by-subagent API.
+
+Attributed state events still update the single root shared-state document. There is no per-subagent shared-state scope. Structured and UI replies continue using the configured response schema; attribution does not introduce per-child schema configuration.

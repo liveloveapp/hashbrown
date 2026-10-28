@@ -1,3 +1,5 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
+import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
 import { assertLocalRecordingAllowed } from './docs-local-models-fixtures';
 import { verifyJavaScriptWorkbench } from './verify-javascript-workbench';
@@ -32,6 +34,7 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
+import { verifyEmbedWorkbench } from './verify-embed-workbench';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -45,7 +48,7 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
+import { hostedWorkbenchLessons as workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
@@ -1045,28 +1048,7 @@ try {
       mark('firstComplete');
       // A verification step, not footage: recordings skip it.
       if (lesson.id === 'tools' && process.env['WORKBENCH_RECORD'] !== '1') {
-        const requestsDetail = page.locator(
-          '.wb:visible .wb-inspector [data-detail]',
-        );
-        await page.getByRole('tab', { name: 'Requests', exact: true }).click();
-        await page
-          .getByRole('button', { name: 'Model request', exact: true })
-          .first()
-          .click();
-        await expect(requestsDetail).toBeVisible();
-        await expect(
-          requestsDetail.getByRole('tab', { name: /^Response\b/ }),
-        ).toBeVisible();
-        await requestsDetail
-          .getByRole('tab', { name: /^Raw request\b/ })
-          .click();
-        await expect(requestsDetail).toContainText('"messages"');
-        await page.keyboard.press('Escape');
-        await expect(requestsDetail).toHaveCount(0);
-        // Selecting a request seeks the player to it; go back to the live end.
-        await page
-          .getByRole('button', { name: 'Return to live', exact: true })
-          .click();
+        await verifyWorkbenchKeyboard(page, () => requests.length);
       }
       if (
         lesson.id === 'request-transformation' &&
@@ -1402,6 +1384,14 @@ try {
           : {}),
         passed: true,
       });
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await saveWorkbenchCapture(
+          page,
+          resolve(
+            work,
+            `${framework}-${lesson.id}-${live ? 'live' : 'fixture'}.capture.json`,
+          ),
+        );
       saveCheckpoint();
       const video = page.video();
       await page.close();
@@ -1413,6 +1403,16 @@ try {
           ),
         );
     }
+  }
+  // A cross-origin docs page drives a replay embed; fixtures only.
+  if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
+    report.push(
+      await verifyEmbedWorkbench({
+        browser,
+        origin: `http://127.0.0.1:${address.port}`,
+      }),
+    );
+    saveCheckpoint();
   }
   writeFileSync(
     resolve(work, `${live ? 'live' : 'fixture'}-report.json`),

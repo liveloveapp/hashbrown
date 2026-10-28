@@ -130,6 +130,20 @@ export function ɵprepareRootAction(
   state: State,
   action: { readonly type: string; readonly payload?: unknown },
 ) {
+  if (
+    action.type === devActions.resume.type ||
+    action.type === internalActions.resumeAcknowledged.type
+  ) {
+    const next = fromInterrupts.reducer(state.interrupts, action);
+    const accepted =
+      next !== state.interrupts &&
+      (action.type !== devActions.resume.type ||
+        (action as ReturnType<typeof devActions.resume>).payload.batch ===
+          state.interrupts.pending);
+    return accepted
+      ? { ...action, ɵacceptedResume: true }
+      : { type: '@hashbrown/noop' };
+  }
   if (action.type === devActions.restoreConversation.type) {
     const restore = action as ReturnType<typeof devActions.restoreConversation>;
     if (restore.payload.expectedRevision !== state.recovery.revision)
@@ -337,6 +351,7 @@ export function ɵprepareRootAction(
       }
       return {
         ...action,
+        ɵthreadReplaced: threadChanged,
         ɵagUiMessageProjection: ɵreconcileAgUiMessageProjection(
           undefined,
           state.agUiMessages.attemptActive
@@ -481,6 +496,41 @@ export const selectLastRunFinishReason = select(
   fromStatus.selectLastRunFinishReason,
 );
 
+/** Selects immutable native subagent display records. @internal */
+export const ɵselectSubagents = select(
+  (state: State) => state.agUiMessages,
+  fromAgUiMessages.ɵselectSubagents,
+);
+
+const NO_STREAMING_ASSISTANTS: readonly Chat.Internal.AssistantMessage[] =
+  Object.freeze([]);
+const NO_STREAMING_TOOL_CALLS: readonly Chat.Internal.ToolCall[] =
+  Object.freeze([]);
+
+/** Selects every concurrently streaming assistant. @internal */
+const selectStreamingMessages = select(
+  (state: State) => state.streamingMessage,
+  selectMessages,
+  (state: State) => state.config.responseSchema,
+  (state: State) => state.messages.preparedProjection,
+  (streaming, canonicalMessages, schema, prepared) => {
+    const streamed = fromStreamingMessage.ɵselectStreamingMessages(streaming);
+    if (streamed.length === 0) return NO_STREAMING_ASSISTANTS;
+    return streamed.map((message) => {
+      const canonical = canonicalMessages.find(
+        (candidate): candidate is Chat.Internal.AssistantMessage =>
+          candidate.role === 'assistant' && candidate.id === message.id,
+      );
+      if (!canonical || !prepared) return message;
+      return canonical.content === message.content &&
+        streaming.configSnapshot?.responseSchema === schema &&
+        message.contentResolved !== undefined
+        ? { ...canonical, contentResolved: message.contentResolved }
+        : canonical;
+    });
+  },
+);
+
 /**
  * Streaming Message
  */
@@ -492,7 +542,22 @@ export const selectRawStreamingMessage = select(
 );
 export const selectRawStreamingToolCalls = select(
   selectStreamingMessageState,
-  fromStreamingMessage.selectRawStreamingToolCalls,
+  (state: State) => state.tools.entities,
+  (streaming, tools) => {
+    const calls = fromStreamingMessage.selectRawStreamingToolCalls(streaming);
+    if (calls.length === 0) return NO_STREAMING_TOOL_CALLS;
+    return calls.map((call): Chat.Internal.ToolCall => {
+      if (
+        isProviderToolCall(call) ||
+        streaming.configSnapshot?.toolsByName[call.name]?.schema ===
+          tools[call.name]?.schema
+      )
+        return call;
+      const { argumentsResolved, ...canonical } = call;
+      void argumentsResolved;
+      return canonical;
+    });
+  },
 );
 export const selectStreamingMessageError = select(
   selectStreamingMessageState,
@@ -503,8 +568,8 @@ export const selectStreamingMessage = select(
   fromStreamingMessage.selectStreamingMessage,
 );
 export const selectStreamingToolCallEntities = select(
-  selectStreamingMessageState,
-  fromStreamingMessage.selectStreamingToolCallEntities,
+  selectRawStreamingToolCalls,
+  (calls) => Object.fromEntries(calls.map((call) => [call.id, call])),
 );
 
 /**
@@ -669,7 +734,7 @@ function mergeStreamingToolCallEntities(
 }
 
 const selectStreamingViewMessageEntries = select(
-  selectStreamingMessage,
+  selectStreamingMessages,
   selectStreamingToolCallEntities,
   selectToolCallEntities,
   selectTools,
@@ -681,7 +746,7 @@ const selectStreamingViewMessageEntries = select(
     tools,
     responseSchema,
   ) => {
-    return (streamingMessage ? [streamingMessage] : []).map((message) => ({
+    return streamingMessage.map((message) => ({
       id: message.id,
       messages: Chat.helpers.toViewMessagesFromInternal(
         message,

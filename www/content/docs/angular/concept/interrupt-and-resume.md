@@ -91,7 +91,6 @@ Select the paused frame to inspect its original batch and the form choices captu
 
 Continue with [Shared Agent State](/docs/angular/concept/shared-agent-state) and [Message History](/docs/angular/concept/message-history).
 
-
 ## Show Resume Progress
 
 While awaiting answers, `isLoading()` and `isResuming()` are false. Calling resume claims the batch synchronously, sets both flags, and prevents duplicate submissions. The batch stays visible until the server's matching `RUN_STARTED` arrives.
@@ -127,3 +126,5 @@ Snapshots contain a stable thread ID, canonical native messages, optional shared
 Keep the server's operational disposition separate from this runtime API: installing available history does not authorize another send or decision while the effect is busy or unknown. Invalidate lookup guards on thread changes and disposal, reject unknown envelope versions/statuses, and offer explicit refresh or a deliberate new thread. See the [authenticated .NET recovery recipe](/docs/angular/platform/dotnet) for retained-history limits, UI guards and protected operator reconciliation.
 
 Native requests retain cancellation text but strip private runtime provenance. After a cold reload, structured/UI recovery cannot prove that this text is a runtime cancellation marker and rejects it if it does not match the configured response schema. Keep recovery blocked or deliberately start a new thread; do not remove messages, infer ownership from their text, or fabricate provenance. Plain-chat recovery retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.
+
+For a runnable TypeScript/Postgres reference that survives a server restart, see [Durable recovery with b4.run](/docs/angular/platform/b4run). It separates conversation checkpoints, native approval grants, and the application’s accepted plan.

@@ -11,25 +11,30 @@ Use this opt-in recipe when one model response needs both browser tools and regi
 
 The [stateless .NET recipe](/docs/react/platform/dotnet) remains available for separate browser/server model turns and application workflow confirmations. This native composition also supports genuine MAF `ApprovalRequiredAIFunction` requests through Hashbrown's generic interrupt controls. Application workflow confirmation and its checkpoint store remain a separate composition.
 
-## Copy the tested source and pinned dependencies
+## Install the pinned preview from a local feed
 
-This is a source recipe. Copy the [Integration C# source](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet/Integration) into your ASP.NET Core application; update those files and startup together. Do not copy `Program.cs`, `Testing/`, fixture authentication or fixture control routes. Use .NET SDK `10.0.402`, a `Microsoft.NET.Sdk.Web` project targeting `net10.0`, nullable/implicit usings enabled, and these exact references. Commit the generated lockfile and restore with `--locked-mode`:
+Use .NET SDK `10.0.402` and a `Microsoft.NET.Sdk.Web` application targeting `net10.0`, with nullable and implicit usings enabled. Add this single exact package reference; its nuspec supplies the tested dependencies. Commit the generated lockfile and restore with `--locked-mode`:
+
+This milestone produces a release-ready local `.nupkg` and `.snupkg`; version `0.1.0-preview.1` is **not published to NuGet.org**. Obtain the qualified artifacts from your release build and place the `.nupkg` in an owned local feed. Configure that feed explicitly, with `Hashbrown.AspNetCore` mapped only to it and the upstream dependencies mapped to your approved upstream feed. Restore using that configuration:
+
+```sh
+dotnet restore --configfile NuGet.Config --use-lock-file
+dotnet restore --configfile NuGet.Config --locked-mode
+```
+
+Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only, pending mixed browser work cannot cold restore, and uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
+
+<hb-code-example header="Package reference">
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.26.0-preview.261023.1" />
-  <PackageReference Include="Microsoft.Agents.AI" Version="1.26.0" />
-  <PackageReference Include="AGUI.Abstractions" Version="1.0.1" />
-  <PackageReference Include="AGUI.Server" Version="1.0.1" />
-  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
-  <PackageReference Include="OpenAI" Version="2.14.0" />
-  <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
-  <PackageReference Include="Azure.Core" Version="1.63.0" />
-  <PackageReference Include="Npgsql" Version="10.0.3" />
+  <PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />
 </ItemGroup>
 ```
 
-The hosting package is a preview. The copied helpers narrowly document and suppress the pinned `MAAI001` experimental session APIs. Upgrade the package set and helpers together and rerun conformance. No private native session fields are accessed.
+</hb-code-example>
+
+The library and its upstream hosting dependency are previews. The pinned library narrowly documents and suppresses the `MAAI001` experimental session APIs. Upgrade the library pin and application startup together and rerun conformance. No private native session fields are accessed.
 
 Use the same [server provider configuration and Azure authentication settings](/docs/react/platform/dotnet#choose-the-provider-on-the-server) as the existing recipe. Explicitly select `Provider=openai|azure`, `ModelApi=responses|chat-completions`, the matching endpoint and model/deployment. Supply credentials through server secret configuration. Azure CLI and managed identity modes remain server-owned; deployed managed identity qualification is still a separate follow-up. Provider credentials and PostgreSQL connection strings never belong in browser configuration.
 
@@ -37,9 +42,11 @@ Use the same [server provider configuration and Azure authentication settings](/
 
 This complete startup assumes your application already signs users into the `app` cookie scheme with a trusted `NameIdentifier` claim. That claim must identify the full caller boundary, including tenant/issuer where necessary; provision it through your authentication system. Serve the browser and endpoint over HTTPS on the same origin. Integrate your existing authentication and request-forgery protection before accepting production requests; this example configures the session scheme and policies, not a sign-in flow.
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 using System.Security.Claims;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.AI;
 
@@ -118,6 +125,8 @@ static object LookupAirport(string code) => new
 };
 ```
 
+</hb-code-example>
+
 `NativeSessionEndpointConfiguration.Configure`, `NativeSessionAgentFactory.Create` and `Map` are one composition. Pass the same catalog instance, complete function set, options and stable agent name. Build the catalog from each registered `AIFunction.JsonSchema` and explicit operation version. A hand-written approximation, missing function or mismatched schema is rejected. Browser declarations cannot reuse server names. Increment operation versions when behavior changes; never modify identities to bypass a stored conflict.
 
 The raw `ProviderFactory` client is owned and disposed after the application stops. The pooled `NpgsqlDataSource` also lives through host shutdown. Configure `ConnectionStrings:NativeSessions` through server secrets and use authenticated TLS with certificate validation as described by [Npgsql security](https://www.npgsql.org/doc/security.html). The reference is tested with PostgreSQL 18. `InitializeAsync` must finish before requests are accepted; it safely initializes a separately versioned native schema without converting existing application confirmation checkpoints. Coordinate initialization DDL privileges, runtime data permissions and upgrades across every worker.
@@ -132,6 +141,8 @@ The airport lookup is read-only. Authorize each privileged tool inside applicati
 
 To require native approval for this registered lookup, replace the `functions` and `catalog` declarations in the startup above with this block. Keep the rest of the startup, authenticated scope, PostgreSQL journal initialization and endpoint composition. The lookup remains read-only; approval demonstrates the native flow and does not grant application permissions.
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 var functions = new AIFunction[]
 {
@@ -142,6 +153,8 @@ var catalog = new NativeToolCatalog(functions.Select(function =>
     new NativeToolDefinition(
         function.Name, 1, function.JsonSchema, RequiresConfirmation: true)));
 ```
+
+</hb-code-example>
 
 The named `RequiresConfirmation: true` argument matches the actual wrapper; the fourth positional parameter is the optional argument validator. The complete factory composition verifies that each registered function's actual wrapper requirement matches the immutable catalog. A mixed protected/unprotected server catalog must record each function's requirement individually; marking an unwrapped function as protected is rejected. Operation versions, schemas and confirmation requirements are part of compatibility. Deploy changes deliberately, never to bypass a retained conflict.
 
@@ -169,6 +182,8 @@ A restart with the browser still alive may continue by sending its genuine pendi
 
 Insert this block before `await app.RunAsync();` in the startup above. The key builder mirrors the full actual native partition set. The operator policy and allowed scope claims come only from trusted application authentication; a requested route scope cannot grant access.
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 NativeSessionKey Key(string scope, string threadId) => new(
     AgentName, scope, threadId,
@@ -187,6 +202,8 @@ NativeSessionRecoveryEndpointConfiguration.MapOperations(
     Scope,
     Key);
 ```
+
+</hb-code-example>
 
 The recovery route accepts `POST /threads/{threadId}/native-session` with the current `ConversationRecoveryConfiguration` from `getRecoveryConfiguration()`. Use matching core/framework SDK versions. These recovery APIs require SDK 0.8.1 or later; bounded projected diagnostic codes require **0.8.2 or later**. The current qualification consumer uses 0.8.3. See the existing [framework recovery integration](/docs/react/platform/dotnet#recover-retained-conversations-and-inspect-effects) and send the current system/tool/forwarded configuration; configuration drift prevents snapshot restoration.
 
@@ -210,4 +227,4 @@ Fresh initialization uses native schema 2. Stop, drain and establish quiescence 
 
 For cookie authentication, keep secure/HTTP-only cookies, API 401/403 behavior, same-origin deployment and application request-forgery validation. If cross-origin hosting is necessary, allowlist exact trusted HTTPS origins, configure credentialed requests and your cookie/CSRF policy together; never combine credentials with wildcard CORS. Test those application policies with the browser before deployment.
 
-The compiled documentation check is configured to compare identical framework C# blocks and build both provider/API choices with and without native approvals and recovery against the locked actual Integration source. Its intended matrix retains the original eight native programs and adds eight approval programs; the separate stateless/application verifier retains its sixteen programs, for thirty-two compiler programs in total. Compilation results must be read from the current check output. Deterministic strict-provider tests establish protocol behavior; actual live provider and published-SDK qualification are recorded separately in the [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet).
+The compiled documentation check is configured to compare identical framework C# blocks and build both provider/API choices with and without native approvals and recovery against the exact local package candidate. Its intended matrix retains the original eight native programs and adds eight approval programs; the separate stateless/application verifier retains its sixteen programs, for thirty-two compiler programs in total. Compilation results must be read from the current check output. Deterministic strict-provider tests establish protocol behavior; actual live provider and published-SDK qualification are recorded separately in the [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet).

@@ -9,7 +9,7 @@ meta:
 
 Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same Hashbrown APIs as a Node-backed application; the .NET server chooses the model, holds credentials, and runs its own tools.
 
-The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Responses and Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. This is a source recipe, not a Hashbrown NuGet package.
+The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Responses and Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. The maintained server library is `Hashbrown.AspNetCore`.
 
 The recovery examples below require Hashbrown SDK **0.8.1 or later**, which includes `getRecoveryConfiguration` and `restoreConversation`; SDK 0.8.0 does not include these APIs. Install matching core and framework SDK versions.
 
@@ -17,25 +17,30 @@ This page uses the stateless tool mode and application workflow confirmations. F
 
 ## Server dependencies
 
-Use SDK `10.0.402`. Add these exact references to a `Microsoft.NET.Sdk.Web` project targeting `net10.0`, then restore and commit its NuGet lockfile:
+Use SDK `10.0.402`. Add this single exact reference to a `Microsoft.NET.Sdk.Web` project targeting `net10.0`, then restore and commit its NuGet lockfile:
+
+This milestone produces a release-ready local `.nupkg` and `.snupkg`; version `0.1.0-preview.1` is **not published to NuGet.org**. Obtain the qualified artifacts from your release build and place the `.nupkg` in an owned local feed. Configure that feed explicitly, with `Hashbrown.AspNetCore` mapped only to it and the upstream dependencies mapped to your approved upstream feed. Restore using that configuration:
+
+```sh
+dotnet restore --configfile NuGet.Config --use-lock-file
+dotnet restore --configfile NuGet.Config --locked-mode
+```
+
+Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only, pending mixed browser work cannot cold restore, and uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
+
+<hb-code-example header="Package reference">
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.26.0-preview.261023.1" />
-  <PackageReference Include="Microsoft.Agents.AI" Version="1.26.0" />
-  <PackageReference Include="AGUI.Abstractions" Version="1.0.1" />
-  <PackageReference Include="AGUI.Server" Version="1.0.1" />
-  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
-  <PackageReference Include="OpenAI" Version="2.14.0" />
-  <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
-  <PackageReference Include="Azure.Core" Version="1.63.0" />
-  <PackageReference Include="Npgsql" Version="10.0.3" />
+  <PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />
 </ItemGroup>
 ```
 
-Copy the C# files in the [tested Integration source](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet/Integration) into your server project. They supply request-local schema configuration, an optional confirmation workflow, bounded memory and PostgreSQL checkpoint stores, and upstream endpoint configuration. Keep their namespace or update the imports below. The fixture's `Program.cs`, `Testing/` directory, and TypeScript harness are internal testing infrastructure.
+</hb-code-example>
 
-When upgrading an existing copy of this recipe, update the copied Integration helpers and startup code together. Register the former `Prepare`/`Execute` handlers under a stable operation name/version in `WorkflowOperationRegistry`, and pass a `WorkflowCheckpoint` JSON descriptor instead of captured delegates.
+The package supplies request-local schema configuration, confirmation workflows, memory and PostgreSQL stores, and endpoint configuration. There is one maintained implementation in `packages/dotnet`; application code imports `Hashbrown.AspNetCore`.
+
+When upgrading a source-based application, remove the copied Integration files and old namespace imports before adding the package. Update startup code together with the package pin. Register the former `Prepare`/`Execute` handlers under a stable operation name/version in `WorkflowOperationRegistry`, and pass a `WorkflowCheckpoint` JSON descriptor instead of captured delegates.
 
 The baseline hosting package is a preview even though the core Agent Framework package is stable. `HashbrownEndpointConfiguration.Configure` registers upstream native interrupt serialization explicitly for this version combination. Upgrade the package set together and rerun the conformance suite.
 
@@ -88,10 +93,12 @@ Managed identity selection is covered deterministically. A real Azure-hosted man
 
 The following startup uses the reference helpers and a real server tool. It assumes your application signs users into the `app` cookie scheme with a `NameIdentifier` claim; integrate your existing authentication scheme instead when appropriate. Serve the browser and `/run` under the same origin so the ordinary session cookie reaches the endpoint.
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 using System.Security.Claims;
 using System.Text.Json;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -161,6 +168,8 @@ static object LookupAirport(string code) => new
 };
 ```
 
+</hb-code-example>
+
 The server-tool names passed to `Map` must match the tools registered on the agent. A browser tool cannot reuse one of those names. Use separate model turns for browser and server calls: the reference configuration rejects a single response combining both kinds before server functions execute. Sequential mixed workflows are covered by CI.
 
 Hashbrown supplies the complete canonical transcript on each run. Keep the agent's persisted chat-session storage disabled for this recipe; appending that transcript to a stored transcript duplicates history. Use `threadId` as conversation identity, not as authorization. The reference does not require a `parentRunId`.
@@ -183,6 +192,8 @@ Register server functions with the .NET agent as above. They execute in .NET and
 
 To pause a server-selected workflow, wrap the schema client before creating the agent:
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 var workflowClient = new InterruptWorkflowClient(
     client, pending, registry,
@@ -195,6 +206,8 @@ var confirmedAgent = workflowClient.AsAIAgent(
     tools: [AIFunctionFactory.Create(LookupAirport, "lookupAirport")]);
 ```
 
+</hb-code-example>
+
 Pass `confirmedAgent` instead of `agent` to `Map`. This example pauses before a server-selected airport lookup and then continues the agent. The stored checkpoint contains a versioned operation name and cloned, server-selected JSON parameters. The registry reconstructs its behavior on every instance; delegates and request closures are never persisted. Return `null` from `selectCheckpoint` for runs that need no confirmation; a browser flag is not an authorization policy. The gate asks two confirmation questions, stores their batch before emitting native interrupt content, and pauses without calling the model. It is an explicit application confirmation gate, not automatic support for MAF `ApprovalRequiredAIFunction` tools.
 
 Authorize server tools independently. A privileged operation protected by a checkpoint must not also be exposed as an unrestricted model tool. The example lookup is read-only; the checkpoint API does not automatically intercept tool proposals.
@@ -206,6 +219,8 @@ An accepted batch atomically claims its stored checkpoint using a fresh server t
 ### Persist confirmations in PostgreSQL
 
 For restart and multi-instance recovery, replace the `IInterruptStore pending = ...` line in the host example with this block. Keep the same registry, optional confirmation wrapper, authenticated scope, and endpoint mapping:
+
+<hb-code-example header="ASP.NET Core">
 
 ```csharp
 await using var checkpointSource = Npgsql.NpgsqlDataSource.Create(
@@ -229,6 +244,8 @@ builder.Services.AddHostedService(services => new PostgresInterruptCleanupServic
     services.GetRequiredService<ILogger<PostgresInterruptCleanupService>>(),
     TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10)));
 ```
+
+</hb-code-example>
 
 The pooled `NpgsqlDataSource` lives for the application lifetime and is disposed when the host exits. Supply `ConnectionStrings:Checkpoints` through server secret configuration. Configure authenticated TLS and certificate validation for production according to [Npgsql security documentation](https://www.npgsql.org/doc/security.html).
 
@@ -262,6 +279,8 @@ Use bounded metric labels such as operation version and checkpoint state. Track 
 
 Opt in by adding these mappings before `await app.RunAsync()` in the host example. Keep ordinary recovery and operator authorization separate:
 
+<hb-code-example header="ASP.NET Core">
+
 ```csharp
 RecoveryEndpointConfiguration.MapRecovery(
     app, "/threads/{threadId}/recovery", pending, "conversation-user",
@@ -272,6 +291,8 @@ RecoveryEndpointConfiguration.MapOperations(
         .Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal),
     context => context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 ```
+
+</hb-code-example>
 
 Your application authenticates users with its real session and issues the `checkpoint-operator` permission only to authorized operators. The `checkpoint-scope` claims come from your trusted application authorization service and list the principal scopes that operator may inspect. Never accept scopes, actor identities, or permissions from request bodies. This example scopes each conversation to its signed-in `NameIdentifier`; adapt both the run and recovery resolvers together for tenant/application ownership. A thread ID is only a selector. The internal fixture's credentials and `Testing/` code are not an authentication recipe.
 
@@ -318,13 +339,13 @@ This is checkpoint-scoped recovery, not general chat-session persistence. Both s
 
 `SnapshotRetention` defaults to ten minutes measured from checkpoint creation, independently of ordinary terminal metadata retention. It is not renewed by answer completion. `AuditRetention` defaults to thirty days from each audit's recorded time, with separate bounded cleanup. Purging transcripts does not reopen consumed IDs or remove unresolved dispatch markers to make room. A missing snapshot keeps the UI gated. Memory storage loses everything on process restart; PostgreSQL retains the same server-owned contract across instances.
 
-The PostgreSQL recipe registers `PostgresInterruptCleanupService` before building the host. It runs one maintenance pass immediately, then once per minute; each pass has a ten-second cancellation budget linked to host shutdown. These are example operational budgets, not retention deadlines. Choose a schedule that meets your physical-deletion requirements and monitor cleanup failures. Deploy this helper with the updated Integration source.
+The PostgreSQL recipe registers `PostgresInterruptCleanupService` before building the host. It runs one maintenance pass immediately, then once per minute; each pass has a ten-second cancellation budget linked to host shutdown. These are example operational budgets, not retention deadlines. Choose a schedule that meets your physical-deletion requirements and monitor cleanup failures. Deploy this helper with the pinned package.
 
 `PostgresInterruptStore.CleanupAsync(cancellationToken)` is independently committed, so an idle deployment can enforce retention without admitting another checkpoint. It returns separate metadata-deletion, transcript-purge and audit-deletion counts, each bounded by `CleanupBatchSize`. Repeat passes to drain a backlog. Concurrent maintenance skips locked candidates; later passes retry them. The scheduler does not run workflows or retry effects. Cancellation before commit rolls back the current pass.
 
 `EffectStarted` **and** `FailedAfterEffect` records remain until explicit operator reconciliation, even after ordinary terminal retention expires. Their snapshots and audits still expire on their independent deadlines. Retained unresolved metadata counts against capacity; investigate and reconcile using authenticated evidence instead of deleting it to make room. Known terminal records can be removed after retention, making their old selectors unknown rather than reusable.
 
-Schema initialization migrates versions 1/2 to version 3 under the existing startup lock, without fabricating missing history or a server identity. Legacy rows retain their original fingerprints, null identity and dispatch safety. The identity-bound recipe rejects their recovery and resume with 409 rather than converting them into fresh approvals; protected operator inspection remains available. Stop all older workers before migration as described above. Unsupported future schema versions fail closed. Deploy compatible Integration source, operation registry and schema together.
+Schema initialization migrates versions 1/2 to version 3 under the existing startup lock, without fabricating missing history or a server identity. Legacy rows retain their original fingerprints, null identity and dispatch safety. The identity-bound recipe rejects their recovery and resume with 409 rather than converting them into fresh approvals; protected operator inspection remains available. Stop all older workers before migration as described above. Unsupported future schema versions fail closed. Deploy compatible package version, operation registry and schema together.
 
 Final-answer capture supports canonical native text and server-tool history, including strictly equivalent redundant upstream diagnostics. Meaningful unknown raw events, reasoning/annotation/continuation extras, incomplete tool rounds, or snapshot replacement during an open text/tool fold fail closed to unavailable terminal history. A disconnect, process death, byte limit or persistence failure can also leave the answer unavailable while preserving the effect marker. This does not establish general AG-UI event replay or feature parity. Effect completion and answer availability remain independent.
 

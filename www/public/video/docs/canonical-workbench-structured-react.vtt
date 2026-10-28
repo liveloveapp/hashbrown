@@ -1,16 +1,16 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:14.510
+00:00:00.000 --> 00:00:10.372
 Real model output streams through Hashbrown into the plan preview.
 
-00:00:14.510 --> 00:00:18.306
-Review the completed plan. Accept plan updates application state to revision 1.
+00:00:10.372 --> 00:00:14.126
+Accept plan: application revision 1.
 
-00:00:18.306 --> 00:00:30.446
+00:00:14.126 --> 00:00:22.214
 The follow-up reads the accepted plan and proposes a shorter second step.
 
-00:00:30.446 --> 00:00:37.816
+00:00:22.214 --> 00:00:29.644
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
-00:00:37.816 --> 00:00:39.900
-Back live. The accepted plan remains at revision 1.
+00:00:29.644 --> 00:00:31.600
+Back live. Revision 1.

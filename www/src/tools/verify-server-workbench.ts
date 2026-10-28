@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -286,6 +287,8 @@ export async function verifyServerWorkbench(options: {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

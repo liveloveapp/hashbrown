@@ -1,3 +1,4 @@
+import { createWorkbenchTabs } from './workbench-tabs';
 import { workbenchLocalInspection } from './workbench-local-inspection';
 import { workbenchJavaScriptInspection } from './workbench-javascript-inspection';
 import { workbenchJavaScriptScripts } from './workbench-javascript';
@@ -31,8 +32,13 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { workbenchLayout, type WorkbenchLayoutStore } from './workbench-layout';
 import {
+  createWorkbenchLayoutStore,
+  workbenchLayout,
+  type WorkbenchLayoutStore,
+} from './workbench-layout';
+import {
+  getWorkbenchLesson,
   type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
@@ -48,7 +54,19 @@ import {
   workbenchTickPercent,
   workbenchTurnSegments,
 } from './workbench-player';
-import { renderWorkbenchSidebar } from './workbench-sidebar';
+import {
+  renderWorkbenchSidebar,
+  workbenchSidebarScrollDelta,
+} from './workbench-sidebar';
+import {
+  getWorkbenchEmbedMode,
+  type WorkbenchEmbedMode,
+} from './workbench-embed';
+import { attachWorkbenchMessages } from './workbench-messages';
+import {
+  createWorkbenchCapture,
+  type WorkbenchCapture,
+} from './workbench-capture';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
@@ -57,7 +75,10 @@ import {
   workbenchRecipeEventLabel,
   workbenchRecipeInspection,
 } from './workbench-recipe-view';
-import { workbenchMilestones } from './workbench-timeline';
+import {
+  withWorkbenchMilestoneIds,
+  workbenchMilestones,
+} from './workbench-timeline';
 import {
   isWorkbenchPlan,
   type WorkbenchSnapshot,
@@ -296,6 +317,7 @@ export function workbenchEventLabel(
   }
   return (
     {
+      production: 'Application recovery observation',
       event: 'Stream event',
       user: 'Prompt',
       request: 'Request',
@@ -323,6 +345,34 @@ export function workbenchEventLabel(
   );
 }
 
+/** The page hook recorders call to save the visible workbench's capture. */
+interface WorkbenchCaptureGlobal {
+  hashbrownWorkbench?: {
+    readonly capture: (recordedAt: string) => WorkbenchCapture;
+  };
+}
+// Retained conversations mount several shells; the visible one is captured.
+const captureSources: {
+  readonly root: HTMLElement;
+  readonly capture: (recordedAt: string) => WorkbenchCapture;
+}[] = [];
+function exposeWorkbenchCapture() {
+  const host = globalThis as WorkbenchCaptureGlobal;
+  if (!captureSources.length) {
+    delete host.hashbrownWorkbench;
+    return;
+  }
+  host.hashbrownWorkbench = {
+    capture: (recordedAt) =>
+      (
+        [...captureSources]
+          .reverse()
+          .find((source) => !source.root.closest('[hidden]')) ??
+        captureSources[captureSources.length - 1]
+      ).capture(recordedAt),
+  };
+}
+
 /** Navigation shared by retained, independent framework conversation instances. */
 export interface WorkbenchNavigation {
   readonly currentId: string;
@@ -338,6 +388,33 @@ export interface WorkbenchNavigation {
 export interface WorkbenchMountOptions {
   /** The layout preference store; defaults to the shared `workbenchLayout`. */
   readonly layout?: WorkbenchLayoutStore;
+  /** The installed UI owns its composer; omit the shell composer. */
+  readonly externalComposer?: boolean;
+  /** Render captured assistant messages as plain text in replay. */
+  readonly plainTextReplay?: boolean;
+  /** An explicit set of inspector tabs for an externally owned runtime. */
+  readonly inspectorTabs?: readonly string[];
+  /** Projects actual runtime observations into the selected inspector. */
+  readonly inspection?: (
+    tab: string,
+    snapshot: WorkbenchSnapshot,
+  ) =>
+    | {
+        readonly heading: string;
+        readonly value: unknown;
+        readonly detailHeading: string;
+        readonly detail: unknown;
+      }
+    | undefined;
+  /** Omits the new-conversation action when no reset adapter is installed. */
+  readonly disableNewConversation?: boolean;
+  /** Names the only hosted topic when this is an isolated consumer shell. */
+  readonly fixedSidebarTopic?: string;
+  /**
+   * Embedded in a docs page: no sidebar, no new conversation, and the layout
+   * is read but never saved. Defaults to the page's `?embed=` value.
+   */
+  readonly embed?: WorkbenchEmbedMode;
 }
 
 /**
@@ -360,7 +437,16 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
-  const layoutStore = options.layout ?? workbenchLayout;
+  const embed =
+    options.embed === undefined
+      ? getWorkbenchEmbedMode(globalThis.location?.search ?? '')
+      : options.embed;
+  const sharedLayout = options.layout ?? workbenchLayout;
+  // Embedded mounts start from the saved layout but keep changes in memory.
+  const layoutStore: WorkbenchLayoutStore = embed
+    ? createWorkbenchLayoutStore()
+    : sharedLayout;
+  if (embed) layoutStore.set(sharedLayout.get(), { persist: false });
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
@@ -406,6 +492,10 @@ export function mountWorkbench(
               : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
+  if (embed) {
+    root.classList.add('wb-embed');
+    root.dataset.embed = embed;
+  }
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
@@ -427,11 +517,14 @@ export function mountWorkbench(
     if (key !== sidebarKey) renderNavigation();
   }
   function renderNavigation() {
+    if (embed) return;
     const current = layoutStore.get();
     sidebarKey = JSON.stringify([current.rail, current.collapsed]);
     root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
+      fixedTopic: options.fixedSidebarTopic,
+      hideCreate: options.disableNewConversation || !!embed,
       currentLesson: (commands.lesson?.id ??
         'generative-ui') as WorkbenchLessonId,
       conversations: navigation?.conversations ?? [
@@ -464,11 +557,25 @@ export function mountWorkbench(
         });
       },
     });
+    // Refreshing a group can reset its scroll position; reveal the lesson without moving focus.
+    const selected = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    const focused = nav.ownerDocument.activeElement;
+    if (selected)
+      nav.scrollTop += workbenchSidebarScrollDelta(
+        nav.getBoundingClientRect(),
+        selected.getBoundingClientRect(),
+        focused && nav.contains(focused)
+          ? focused.getBoundingClientRect()
+          : undefined,
+      );
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
   const chatHeader = element('div', '', 'wb-panel-head');
   const status = element('span', 'Ready', 'wb-muted');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-atomic', 'true');
   chatHeader.append(
     element(
       'h1',
@@ -521,7 +628,9 @@ export function mountWorkbench(
   form.onsubmit = (event) => {
     event.preventDefault();
     const snapshot = store.getSnapshot();
+    // A read-only replay never reaches the model, whatever the form shows.
     if (
+      snapshot.readOnly ||
       snapshot.cursor !== null ||
       snapshot.status === 'loading' ||
       snapshot.frame?.localModel?.state === 'preparing' ||
@@ -556,7 +665,7 @@ export function mountWorkbench(
     ...(debugging ? [debugControls] : []),
     live,
     replay,
-    form,
+    ...(options.externalComposer ? [] : [form]),
   );
   const inspector = element('section', '', 'wb-panel wb-inspector');
   inspector.setAttribute('aria-label', 'Inspector');
@@ -599,49 +708,57 @@ export function mountWorkbench(
   detail.dataset.detail = '';
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
-  const tabButtons = [
-    ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
-      ? 'JSON'
-      : ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
-        ? commands.lesson?.id === 'magic-text'
-          ? 'Markdown'
-          : 'Text'
-        : 'JSON',
-    'Requests',
-    ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
-    ...(commands.lesson?.id === 'javascript-runtime'
-      ? ['Code', 'Runtime']
-      : []),
-    ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
-      ? ['Kit', 'Schema']
-      : []),
-    ...(commands.lesson?.format === 'history'
-      ? commands.lesson.id === 'agent-decisions'
-        ? ['History', 'Agent']
-        : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
-          ? [
-              'History',
-              'Parser',
-              ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
-              'Schema',
-            ]
-          : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
-            ? ['History', 'Server', 'Access']
-            : ['History', 'Saved text']
-      : []),
-    ...(['structured', 'predictions', 'selection'].includes(
-      commands.lesson?.format ?? '',
-    )
-      ? ['Schema']
-      : []),
-    ...(commands.lesson?.id === 'request-transformation' ? ['Transform'] : []),
-    ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
-    'UI',
-    'State',
-    ...(commands.lesson?.format === 'workflow'
-      ? ['Activities', 'Interrupts']
-      : []),
-  ].map((name) => {
+  const tabButtons = (
+    options.inspectorTabs ?? [
+      ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+        ? 'JSON'
+        : ['text', 'workflow', 'history'].includes(
+              commands.lesson?.format ?? '',
+            )
+          ? commands.lesson?.id === 'magic-text'
+            ? 'Markdown'
+            : 'Text'
+          : 'JSON',
+      'Requests',
+      ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
+      ...(commands.lesson?.id === 'javascript-runtime'
+        ? ['Code', 'Runtime']
+        : []),
+      ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
+        ? ['Kit', 'Schema']
+        : []),
+      ...(commands.lesson?.format === 'history'
+        ? commands.lesson.id === 'agent-decisions'
+          ? ['History', 'Agent']
+          : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
+            ? [
+                'History',
+                'Parser',
+                ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
+                'Schema',
+              ]
+            : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+              ? ['History', 'Server', 'Access']
+              : ['History', 'Saved text']
+        : []),
+      ...(['structured', 'predictions', 'selection'].includes(
+        commands.lesson?.format ?? '',
+      )
+        ? ['Schema']
+        : []),
+      ...(commands.lesson?.id === 'request-transformation'
+        ? ['Transform']
+        : []),
+      ...(commands.lesson?.id === 'system-instructions'
+        ? ['Instructions']
+        : []),
+      'UI',
+      'State',
+      ...(commands.lesson?.format === 'workflow'
+        ? ['Activities', 'Interrupts']
+        : []),
+    ]
+  ).map((name) => {
     const item = button(name, () => {
       tab = name;
       render();
@@ -652,6 +769,7 @@ export function mountWorkbench(
     return item;
   });
   tabs.append(...tabButtons);
+  const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
   inspector.append(
     element('h2', 'Inspector', 'wb-panel-head'),
     tabs,
@@ -664,21 +782,25 @@ export function mountWorkbench(
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
-  const play = iconButton('Play', 'play', () => {
-    if (playing) {
-      pause();
-      return;
-    }
-    if (!store.getSnapshot().events.length) return;
+  // Commit of the capture loaded into an embedded replay.
+  let recordedCommit: string | null = null;
+  // Tells an embedding docs page that playback started or stopped.
+  let playbackChanged: () => void = () => undefined;
+  const startPlayback = () => {
+    if (playing || !store.getSnapshot().events.length) return;
     playing = true;
     if (
       store.getSnapshot().cursor === null ||
       store.getSnapshot().cursor === store.getSnapshot().events.length - 1
     )
       store.seek(0);
+    playbackChanged();
     schedule();
     render();
-  });
+  };
+  const play = iconButton('Play', 'play', () =>
+    playing ? pause() : startPlayback(),
+  );
   play.classList.add('wb-play');
   const returnLive = button('', () => {
     pause();
@@ -801,6 +923,7 @@ export function mountWorkbench(
     const shortcut = workbenchShortcut(event, event.target);
     if (!shortcut) return;
     if (shortcut === 'toggle-sidebar') {
+      if (embed) return;
       event.preventDefault();
       layoutStore.set({ rail: !layoutStore.get().rail });
       return;
@@ -812,13 +935,16 @@ export function mountWorkbench(
   }
   document.addEventListener('keydown', onShortcut);
   const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
-  layout.append(nav, chat, split.element, inspector);
+  if (embed) layout.append(chat, split.element, inspector);
+  else layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
+    const wasPlaying = playing;
     playing = false;
     clearTimeout(timer);
     syncPlayButton();
+    if (wasPlaying) playbackChanged();
   }
   function syncPlayButton() {
     const label = playing ? 'Pause' : 'Play';
@@ -892,19 +1018,26 @@ export function mountWorkbench(
                   ? 'Live model'
                   : 'Awaiting source';
     const historical = snapshot.cursor !== null;
+    // A recording that ended mid-run keeps a captured 'loading' status.
     const busy =
-      snapshot.status === 'loading' ||
+      (snapshot.status === 'loading' && !snapshot.readOnly) ||
       (snapshot.cursor === null && frame?.localModel?.state === 'preparing') ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
       !!frame?.history?.replacement ||
       !!frame?.history?.app.server?.busy;
     const blocked =
       busy ||
+      (commands.lesson?.id === 'production-recovery' &&
+        (!frame?.production ||
+          frame.production.busy ||
+          frame.production.attachedThreadId !== frame.production.threadId ||
+          frame.production.disposition !== 'idle')) ||
       snapshot.status === 'paused' ||
       !!frame?.workflow?.recoveryRequired ||
       !!frame?.history?.sdk.pendingInterrupts ||
       !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
+    live.inert = historical && options.externalComposer === true;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
     const server = frame?.history?.app.server;
@@ -935,9 +1068,19 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
+    const awaitingRecording =
+      embed === 'replay' && (!snapshot.readOnly || !snapshot.events.length);
+    if (embed === 'replay') form.hidden = true;
     first.disabled = historical || blocked;
     followup.disabled = historical || blocked;
-    status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+    const statusText = awaitingRecording
+      ? 'Waiting for recording'
+      : embed === 'replay'
+        ? recordedCommit
+          ? `Recorded at ${recordedCommit.slice(0, 7)}`
+          : 'Recorded'
+        : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+    if (status.textContent !== statusText) status.textContent = statusText;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
       if (commands.lesson?.format === 'decision') {
@@ -975,6 +1118,10 @@ export function mountWorkbench(
           replay.append(card);
           continue;
         }
+        if (options.plainTextReplay) {
+          replay.append(element('p', message.content, 'wb-assistant'));
+          continue;
+        }
         const props = message.props;
         if (!props) continue;
         const card = element('article', '', 'wb-summary');
@@ -994,11 +1141,10 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
-    tabButtons.forEach((item) => {
-      item.setAttribute('aria-selected', String(item.textContent === tab));
-      if (item.textContent === tab)
-        tabPanel.setAttribute('aria-labelledby', item.id);
-    });
+    inspectorTabs.sync(
+      tabButtons.find((item) => item.textContent === tab)?.id ??
+        tabButtons[0].id,
+    );
     const onRequests = tab === 'Requests';
     const panelContent = onRequests ? requestsView.element : pair;
     if (tabPanel.firstElementChild !== panelContent)
@@ -1042,7 +1188,13 @@ export function mountWorkbench(
                           sdkFields: ['state', 'messages', 'pendingInterrupts'],
                         }
                       : {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           isLoading: workflow?.isLoading ?? false,
                           isResuming: workflow?.isResuming ?? false,
                           finishReason: workflow?.finishReason ?? null,
@@ -1093,7 +1245,13 @@ export function mountWorkbench(
                       }
                     : tab === 'UI'
                       ? {
-                          state: workflow?.state ?? null,
+                          state:
+                            workflow?.productionState ??
+                            workflow?.state ??
+                            null,
+                          ...(frame?.production
+                            ? { serverApplication: frame.production }
+                            : {}),
                           activityIds:
                             workflow?.activities.map((message) => message.id) ??
                             [],
@@ -1104,7 +1262,12 @@ export function mountWorkbench(
                       : {
                           applicationForm,
                           acceptedApplication:
-                            frame?.application ?? snapshot.application,
+                            frame?.production?.application ??
+                            frame?.application ??
+                            snapshot.application,
+                          ...(frame?.production
+                            ? { recoveryOperation: frame.production }
+                            : {}),
                           outcome,
                         },
           }
@@ -1179,6 +1342,7 @@ export function mountWorkbench(
         : undefined;
     const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      options.inspection?.(tab, snapshot) ??
       workbenchLocalInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchJavaScriptInspection(tab, snapshot, commands.lesson?.id) ??
       uiView ??
@@ -1452,15 +1616,17 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? commands.lesson?.id === 'javascript-runtime'
-            ? 'Captured native QuickJS values and application-owned state.'
-            : uiView
-              ? tab === 'UI'
-                ? 'SDK component observations and application-owned state.'
-                : 'Framework kit configuration and checked application policy.'
-              : workflowView
-                ? 'Captured SDK observations and separately recorded application form drafts.'
-                : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? options.inspection
+            ? 'Captured protocol and runtime observations.'
+            : commands.lesson?.id === 'javascript-runtime'
+              ? 'Captured native QuickJS values and application-owned state.'
+              : uiView
+                ? tab === 'UI'
+                  ? 'SDK component observations and application-owned state.'
+                  : 'Framework kit configuration and checked application policy.'
+                : workflowView
+                  ? 'Captured SDK observations and separately recorded application form drafts.'
+                  : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),
@@ -1524,18 +1690,20 @@ export function mountWorkbench(
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
     const milestones = rawEvents
-      ? snapshot.events.map((event, index) => ({
-          index,
-          turn: event.turn,
-          label: workbenchEventLabel(event, commands.lesson?.format),
-        }))
+      ? withWorkbenchMilestoneIds(
+          snapshot.events.map((event, index) => ({
+            index,
+            turn: event.turn,
+            label: workbenchEventLabel(event, commands.lesson?.format),
+          })),
+        )
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
       .at(-1);
     rebuildKeepingFocus(events, 'data-index', () => {
       events.replaceChildren();
-      milestones.forEach(({ index, label }) => {
+      milestones.forEach(({ index, label, id }) => {
         const event = snapshot.events[index];
         const item = button(label, () => {
           pause();
@@ -1543,6 +1711,7 @@ export function mountWorkbench(
         });
         item.disabled = busy;
         item.dataset.index = String(index);
+        item.dataset.milestone = id;
         item.style.left = `${workbenchTickPercent(index, total)}%`;
         item.setAttribute(
           'aria-label',
@@ -1585,6 +1754,12 @@ export function mountWorkbench(
     seek.max = String(Math.max(0, total - 1));
     seek.value = String(snapshot.cursor ?? total - 1);
     seek.disabled = busy || !total;
+    seek.setAttribute(
+      'aria-valuetext',
+      frame
+        ? `Turn ${frame.turn} · Event ${selectedIndex + 1} of ${total} · ${activeMilestone?.label ?? workbenchEventLabel(frame, commands.lesson?.format)} · ${formatPlaybackSeconds(frame.elapsedMs)}`
+        : 'No captured events',
+    );
     play.disabled = busy || total < 2;
     syncPlayButton();
     returnLive.disabled = !historical;
@@ -1604,6 +1779,40 @@ export function mountWorkbench(
   const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
   render();
+  const lessonId = commands.lesson?.id;
+  const captureLesson =
+    workbenchLessons.find((lesson) => lesson.id === lessonId)?.id ??
+    getWorkbenchLesson(globalThis.location?.search ?? '').id;
+  const captureFramework =
+    commands.framework.toLowerCase() === 'angular' ? 'angular' : 'react';
+  const captureSource = {
+    root,
+    capture: (recordedAt: string) =>
+      createWorkbenchCapture(store.getSnapshot(), {
+        lesson: captureLesson,
+        framework: captureFramework,
+        recordedAt,
+      }),
+  };
+  captureSources.push(captureSource);
+  exposeWorkbenchCapture();
+  const messages = embed
+    ? attachWorkbenchMessages({
+        mode: embed,
+        lesson: captureLesson,
+        framework: captureFramework,
+        format: commands.lesson?.format,
+        store,
+        isPlaying: () => playing,
+        play: startPlayback,
+        pause,
+        loaded: (commit) => {
+          recordedCommit = commit;
+          render();
+        },
+      })
+    : null;
+  if (messages) playbackChanged = messages.playbackChanged;
   return {
     live,
     pause,
@@ -1612,8 +1821,13 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      const captureIndex = captureSources.indexOf(captureSource);
+      if (captureIndex >= 0) captureSources.splice(captureIndex, 1);
+      exposeWorkbenchCapture();
+      messages?.dispose();
       detachScrub();
       requestsView.dispose();
+      inspectorTabs.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
       unsubscribe();

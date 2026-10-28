@@ -17,6 +17,7 @@ function reactDispatch(format: string, id?: string) {
     },
   }).outputText;
   const names = [
+    'ProductionWorkbenchConversation',
     'LocalModelsWorkbenchConversation',
     'RuntimeWorkbenchConversation',
     'UiKitWorkbenchConversation',
@@ -78,19 +79,21 @@ test('React root dispatch preserves all prior lessons and binds the three author
 
   expect(selected).toEqual(
     workbenchLessons.map((lesson) =>
-      lesson.id === 'local-models'
-        ? 'LocalModelsWorkbenchConversation'
-        : lesson.id === 'javascript-runtime'
-          ? 'RuntimeWorkbenchConversation'
-          : ['ui-kits', 'ui-chatbot'].includes(lesson.id)
-            ? 'UiKitWorkbenchConversation'
-            : ['server-threads', 'public-endpoint'].includes(lesson.id)
-              ? 'ServerWorkbenchConversation'
-              : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
-                    lesson.id,
-                  )
-                ? 'AuthoringWorkbenchConversation'
-                : expected[lesson.format],
+      lesson.id === 'production-recovery'
+        ? 'ProductionWorkbenchConversation'
+        : lesson.id === 'local-models'
+          ? 'LocalModelsWorkbenchConversation'
+          : lesson.id === 'javascript-runtime'
+            ? 'RuntimeWorkbenchConversation'
+            : ['ui-kits', 'ui-chatbot'].includes(lesson.id)
+              ? 'UiKitWorkbenchConversation'
+              : ['server-threads', 'public-endpoint'].includes(lesson.id)
+                ? 'ServerWorkbenchConversation'
+                : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
+                      lesson.id,
+                    )
+                  ? 'AuthoringWorkbenchConversation'
+                  : expected[lesson.format],
     ),
   );
   expect(selected).toHaveLength(workbenchLessons.length);

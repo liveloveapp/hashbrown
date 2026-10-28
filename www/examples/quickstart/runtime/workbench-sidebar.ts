@@ -11,6 +11,10 @@ import {
 export interface WorkbenchSidebarOptions {
   /** The framework name, used to build lesson links such as `react.html`. */
   readonly framework: string;
+  /** Shows a single fixed topic for an isolated consumer without lesson navigation. */
+  readonly fixedTopic?: string;
+  /** Omits the new-conversation control when no runtime reset is available. */
+  readonly hideCreate?: boolean;
   /** The lesson marked with `aria-current="page"`. */
   readonly currentLesson: WorkbenchLessonId;
   /** The retained conversations, listed in the Conversations section. */
@@ -68,6 +72,36 @@ function focusedKey(nav: HTMLElement): string | undefined {
 }
 
 /**
+ * Finds the nearest sidebar scroll adjustment that reveals the selected lesson without hiding keyboard focus.
+ *
+ * @param viewport - The sidebar's visible vertical bounds.
+ * @param current - The selected lesson's bounds, or zero-height bounds for a collapsed group.
+ * @param focused - Bounds of the currently focused sidebar control, when present.
+ * @returns The scroll delta; zero when already visible, hidden, or incompatible with visible focus.
+ */
+export function workbenchSidebarScrollDelta(
+  viewport: Readonly<{ top: number; bottom: number }>,
+  current: Readonly<{ top: number; bottom: number }>,
+  focused?: Readonly<{ top: number; bottom: number }>,
+): number {
+  if (viewport.bottom <= viewport.top || current.bottom <= current.top)
+    return 0;
+  const delta =
+    current.bottom > viewport.bottom
+      ? current.bottom - viewport.bottom
+      : current.top < viewport.top
+        ? current.top - viewport.top
+        : 0;
+  if (
+    focused &&
+    (focused.top - delta < viewport.top ||
+      focused.bottom - delta > viewport.bottom)
+  )
+    return 0;
+  return delta;
+}
+
+/**
  * Replaces `nav`'s children with the sectioned, collapsible workbench sidebar:
  * a New conversation call to action, the rail toggle, then the Conversations,
  * Concepts, Production and Recipes sections.
@@ -97,7 +131,7 @@ export function renderWorkbenchSidebar(
   rail.title = layout.rail ? 'Expand sidebar' : 'Collapse sidebar';
   rail.setAttribute('aria-expanded', String(!layout.rail));
   rail.append(workbenchIcon('sidebar'));
-  top.append(cta, rail);
+  top.append(...(options.hideCreate ? [] : [cta]), rail);
 
   function group(
     section: WorkbenchSidebarSection,
@@ -147,25 +181,40 @@ export function renderWorkbenchSidebar(
     conversations.append(select);
   }
 
-  const lessonGroups = workbenchLessonGroups.map(({ id, title, lessons }) => {
-    const links = document.createElement('div');
-    links.className = 'wb-lessons';
-    for (const lesson of lessons) {
-      const meta = workbenchLessons.find((entry) => entry.id === lesson);
-      const link = document.createElement('a');
-      link.dataset.navKey = `lesson:${lesson}`;
-      link.href = `${options.framework.toLowerCase()}.html?lesson=${lesson}`;
-      labelled(
-        link,
-        workbenchIcon(workbenchLessonIcons[lesson]),
-        meta?.title ?? lesson,
-      );
-      if (lesson === options.currentLesson)
-        link.setAttribute('aria-current', 'page');
-      links.append(link);
-    }
-    return group(id, title, links);
-  });
+  const lessonGroups = options.fixedTopic
+    ? []
+    : workbenchLessonGroups.map(({ id, title, lessons }) => {
+        const links = document.createElement('div');
+        links.className = 'wb-lessons';
+        for (const lesson of lessons) {
+          const meta = workbenchLessons.find((entry) => entry.id === lesson);
+          const link = document.createElement('a');
+          link.dataset.navKey = `lesson:${lesson}`;
+          link.href = `${options.framework.toLowerCase()}.html?lesson=${lesson}`;
+          labelled(
+            link,
+            workbenchIcon(workbenchLessonIcons[lesson]),
+            meta?.title ?? lesson,
+          );
+          if (lesson === options.currentLesson)
+            link.setAttribute('aria-current', 'page');
+          links.append(link);
+        }
+        return group(id, title, links);
+      });
+
+  if (options.fixedTopic) {
+    const topic = document.createElement('div');
+    topic.className = 'wb-lessons';
+    const current = labelled(
+      document.createElement('span'),
+      workbenchIcon('conversation'),
+      options.fixedTopic,
+    );
+    current.setAttribute('aria-current', 'page');
+    topic.append(current);
+    lessonGroups.push(group('start', 'Get started', topic));
+  }
 
   nav.replaceChildren(
     top,

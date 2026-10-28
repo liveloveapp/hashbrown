@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -743,6 +744,11 @@ export async function verifyRecipeWorkbench(options: {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(
+        page,
+        resolve(work, `${artifactBase}.capture.json`),
+      );
     succeeded = true;
     return {
       framework,

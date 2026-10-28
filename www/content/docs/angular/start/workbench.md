@@ -18,6 +18,8 @@ The Angular and React versions use the same example, styles, and capture model. 
 
 Try it without installing anything at [workbench.hashbrown.dev/angular.html](https://workbench.hashbrown.dev/angular.html). Each lesson's local URL in the table below works there too, for example `/angular.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor. Server-owned threads and Public endpoints run only on the local server, because their demo sessions live in one process.
 
+The [production recovery reference](/docs/angular/platform/b4run) uses a separate TypeScript/Postgres server. Run that host to restore native checkpoints and approvals; the public anonymous backend does not expose its endpoints.
+
 To run it yourself, clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
 
 ```sh
@@ -87,11 +89,15 @@ The next prompt stays in the conversation. Its tool call reads the accepted plan
 
 ## Inspect and replay
 
-The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag anywhere on the track to any moment in the captured conversation. Space plays and pauses, and the arrow keys step.
+The bottom player records user prompts, requests, decoded stream events, tool results, parsed output, completion, and acceptance. Press play, step by event or by turn, or drag anywhere on the track to any moment in the captured conversation. With focus outside a control, Space plays and pauses, the left and right arrows step by event, and Shift with an arrow moves by turn. Press L to return to live. These shortcuts leave links, inputs, tabs, readable panels, and resize controls to handle their own keys.
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
 The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Every tab except Requests puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. The `{ }` toggle on the captured side shows the raw frame.
+
+Use Tab to reach the active inspector tab. Left and right arrows switch views; Home and End go to the first and last view. Press Tab again to leave the tab strip and reach the panel controls or its readable content. The request-detail tabs use the same keys. Switching a view doesn't send a request or apply a plan.
+
+Focus the bottom scrubber to use its native arrow, Home, and End keys. Its accessible value names the turn, event, milestone, and elapsed time. Status announcements follow lifecycle changes, such as loading or completion, rather than announcing every token.
 
 The Requests tab opens with an overview timeline you can drag or click to seek, above a table of requests grouped by turn. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
 
@@ -115,3 +121,9 @@ Continue with [Exposing components](/docs/angular/concept/components), [Tool cal
 Open `/angular.html?lesson=message-history` to keep, clear, and restore a completed exchange. The History inspector distinguishes the SDK transcript from the app's in-memory text copy. Open `/angular.html?lesson=save-text-conversations` to save Lighthouse and Harbor explicitly, refresh, and load text into a new runtime.
 
 Only successful completed text is saved. Browser slots do not restore shared state, activities, tools, or pending interrupts. The timeline after refresh starts a new capture; replay never requests or writes storage. See [Message history](/docs/angular/concept/message-history) and [Save text conversations](/docs/angular/recipes/browser-history).
+
+## Add a chat screen with Threadplane
+
+The [Threadplane walkthrough](/docs/angular/recipes/threadplane) uses the same two-step plan in a separately installed application. Its recording keeps Threadplane's actual chat controls inside the canonical inspector and timeline. Inspect the streamed text, request history, and unchanged application state together.
+
+Threadplane is an installed integration pair alongside the 28 bundled lessons. It isn't another `?lesson=` route in the hosted workbench. Follow the checked installation instructions to run the consumer locally.

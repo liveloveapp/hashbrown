@@ -1,25 +1,25 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:07.878
+00:00:00.000 --> 00:00:07.770
 OpenAI replies with the named plan.
 
-00:00:07.878 --> 00:00:13.822
+00:00:07.770 --> 00:00:13.492
 Keep completed text in application memory.
 
-00:00:13.822 --> 00:00:16.728
+00:00:13.492 --> 00:00:16.454
 Clear actual SDK messages. No request.
 
-00:00:16.728 --> 00:00:19.698
+00:00:16.454 --> 00:00:19.360
 Restore text with fresh SDK message IDs.
 
-00:00:19.698 --> 00:00:22.556
+00:00:19.360 --> 00:00:22.220
 Restored text alone cannot be saved.
 
-00:00:22.556 --> 00:00:31.004
+00:00:22.220 --> 00:00:30.614
 A new OpenAI request remembers Lighthouse.
 
-00:00:31.004 --> 00:00:48.616
+00:00:30.614 --> 00:00:48.184
 Replay is read-only. No requests or writes.
 
-00:00:48.616 --> 00:00:53.800
+00:00:48.184 --> 00:00:55.400
 Back live.

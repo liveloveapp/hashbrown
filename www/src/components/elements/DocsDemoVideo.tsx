@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { DOCS_DEMOS, type DocsDemoId } from './docs-demo-media';
 import styles from './DocsDemoVideo.module.css';
 
@@ -10,6 +11,7 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
   if (!Object.hasOwn(DOCS_DEMOS, demo)) {
     throw new Error(`Unknown documentation demo: ${demo}`);
   }
+  const captionId = useId();
   const media = DOCS_DEMOS[demo];
   const { width, height } =
     'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
@@ -19,6 +21,7 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
     <figure className={styles.demo}>
       <video
         aria-label={media.title}
+        aria-describedby={captionId}
         poster={`${base}-poster.png`}
         width={width}
         height={height}
@@ -38,12 +41,18 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
         <a href={`${base}.mp4`}>Download the demo</a>
       </video>
       <figcaption>
-        <p>{media.caption}</p>
+        <p id={captionId}>{media.caption}</p>
         <p className={styles.note}>
           {'recording' in media
             ? media.recording
             : 'Recorded in the ATC example with scripted model responses and fixture traffic. No narration.'}{' '}
-          <a href={`${base}-transcript.txt`}>Read the text walkthrough</a>.
+          <a
+            href={`${base}-transcript.txt`}
+            aria-label={`Read the text walkthrough: ${media.title}`}
+          >
+            Read the text walkthrough
+          </a>
+          .
         </p>
       </figcaption>
     </figure>

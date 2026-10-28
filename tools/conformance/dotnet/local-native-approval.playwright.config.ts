@@ -13,7 +13,7 @@ export default defineConfig({
     __dirname,
     '../../../test-results/conformance/local-native-approval',
   ),
-  reporter: [['list']],
+  reporter: [['list'], [resolve(__dirname, 'harness/package-reporter.ts')]],
   use: {
     browserName: 'chromium',
     trace: 'off',

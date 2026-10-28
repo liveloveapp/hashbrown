@@ -3,6 +3,29 @@ import {
   createWorkbenchStore,
   workbenchStructuredProps,
 } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
+
+function recordedCapture() {
+  const source = createWorkbenchStore();
+  source.send('Make a plan');
+  source.record('event', { type: 'TEXT_MESSAGE_START', messageId: 'a' });
+  source.record('event', {
+    type: 'TEXT_MESSAGE_CONTENT',
+    messageId: 'a',
+    delta: '{"ui":[',
+  });
+  source.parsed({
+    ui: [
+      { SummaryCard: { props: { title: 'Plan', steps: ['First', 'Second'] } } },
+    ],
+  });
+  source.settle('complete', 'stop');
+  return createWorkbenchCapture(source.getSnapshot(), {
+    lesson: 'ui-kits',
+    framework: 'react',
+    recordedAt: '2026-10-28T00:00:00.000Z',
+  });
+}
 
 test('seeking reconstructs captured JSON and state without changing live application state', () => {
   const store = createWorkbenchStore();
@@ -258,6 +281,7 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
     'agent-decisions',
     'json-parser',
     'natural-forms',
+    'production-recovery',
   ]);
 });
 
@@ -374,4 +398,80 @@ test('SDK errors settle only the captured user turn represented by healthy frame
   expect(isCurrentWorkbenchError(store.getSnapshot(), [old, current])).toBe(
     false,
   );
+});
+
+test('load replays captured events read-only from the first event', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+
+  store.load(capture.events);
+  const loaded = store.getSnapshot();
+  store.seek(3);
+  const sought = store.getSnapshot().cursor;
+  const sent = store.send('x');
+  store.record('user', { content: 'x' });
+  const afterWrites = store.getSnapshot().events.length;
+  store.live();
+
+  expect(loaded.cursor).toBe(0);
+  expect(loaded.readOnly).toBe(true);
+  expect(loaded.status).toBe('complete');
+  expect(sought).toBe(3);
+  expect(sent).toEqual({ id: expect.any(String), role: 'user', content: 'x' });
+  expect(loaded.turn).toBe(capture.events.at(-1)?.turn);
+  expect(afterWrites).toBe(capture.events.length);
+  expect(store.getSnapshot().cursor).toBe(capture.events.length - 1);
+  expect(Object.isFrozen(store.getSnapshot().events[0])).toBe(true);
+});
+
+test('load refuses while a live run is loading', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+  store.send('Make a plan');
+
+  store.load(capture.events);
+
+  expect(store.getSnapshot().status).toBe('loading');
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(store.getSnapshot().cursor).toBeNull();
+});
+
+test('a read-only store stays seekable and reloadable when the capture ends loading', () => {
+  const capture = recordedCapture();
+  const events = capture.events.map((event, index, all) =>
+    index === all.length - 1 ? { ...event, status: 'loading' as const } : event,
+  );
+  const store = createWorkbenchStore();
+
+  store.load(events);
+  store.seek(2);
+  const cursor = store.getSnapshot().cursor;
+  store.load(capture.events);
+
+  expect(cursor).toBe(2);
+  expect(store.getSnapshot().cursor).toBe(0);
+  expect(store.getSnapshot().status).toBe('complete');
+});
+
+test('a read-only snapshot always has a cursor after load, seek and live', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+
+  store.load(capture.events);
+  const loaded = store.getSnapshot();
+  store.seek(2);
+  const sought = store.getSnapshot();
+  store.live();
+  const live = store.getSnapshot();
+
+  expect(
+    [loaded, sought, live].map(({ readOnly, cursor }) => ({
+      readOnly,
+      cursor,
+    })),
+  ).toEqual([
+    { readOnly: true, cursor: 0 },
+    { readOnly: true, cursor: 2 },
+    { readOnly: true, cursor: capture.events.length - 1 },
+  ]);
 });

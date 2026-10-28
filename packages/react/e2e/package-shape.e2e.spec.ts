@@ -184,6 +184,7 @@ test('packed React and core packages install and load in a clean consumer', () =
           ServerToolCallGroup,
           GroupedServerToolCall,
           GroupServerToolCallsOptions,
+          SubagentRun,
           UiChatMessage,
           HashbrownProviderOptions,
           UiChatOptions,
@@ -255,6 +256,18 @@ test('packed React and core packages install and load in a clean consumer', () =
             components: [],
             state: { count: 1 },
           });
+          for (const result of [plainChat, structuredChat, uiChat]) {
+            const records: readonly SubagentRun[] = result.subagents;
+            // @ts-expect-error Native subagent records cannot be appended by consumers.
+            records.push({ subagentRunId: 'child', status: 'unknown' });
+            // @ts-expect-error Native lifecycle projections are readonly.
+            result.subagents = result.subagents;
+            if (records[0]) {
+              // @ts-expect-error Native lifecycle records are readonly.
+              records[0].status = 'running';
+            }
+            void records;
+          }
           const uiCompletion = useUiCompletion({
             input: 'input',
             system: 'system',
@@ -277,6 +290,18 @@ test('packed React and core packages install and load in a clean consumer', () =
         }
 
         void verifySharedStateInference;
+
+        function verifyNativeSubagentProvenance(message: UiChatMessage<never>) {
+          if (message.role === 'assistant') {
+            const owner: string | undefined = message.subagentRunId;
+            for (const call of message.serverToolCalls ?? []) {
+              const requester: string | undefined = call.subagentRunId;
+              const executor: string | undefined = call.resultSubagentRunId;
+              void [owner, requester, executor];
+            }
+          }
+        }
+        void verifyNativeSubagentProvenance;
 
         function verifyTurnHelpers(messages: readonly UiChatMessage<never>[]) {
           const turns: readonly Turn<UiChatMessage<never>>[] = groupTurns(messages);
@@ -350,6 +375,14 @@ test('packed React and core packages install and load in a clean consumer', () =
         const cjsCore = require('@hashbrownai/core');
         const esm = await import('@hashbrownai/react');
         const esmCore = await import('@hashbrownai/core');
+        for (const core of [cjsCore, esmCore]) {
+          const runtime = core.createChatRuntime({ system: 'consumer' });
+          const initial = runtime.subagents();
+          if (initial.length !== 0 || !Object.isFrozen(initial) || runtime.subagents() !== initial) {
+            throw new Error('Packed runtime must expose the frozen native subagent selector');
+          }
+        }
+
 
         for (const [api, core] of [[cjs, cjsCore], [esm, esmCore]]) {
           for (const name of ['groupTurns', 'getServerToolCallLabel', 'groupServerToolCalls',

@@ -3,12 +3,12 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
 static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
-var project = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("Project", BindingFlags.NonPublic | BindingFlags.Static)!;
+var project = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeApprovalAgent")!.GetMethod("Project", BindingFlags.NonPublic | BindingFlags.Static)!;
 AgentResponseUpdate Project(AgentResponseUpdate source, IList<AIContent> contents) => (AgentResponseUpdate)project.Invoke(null, [source, contents])!;
 static (AgentResponseUpdate Outer, ChatResponseUpdate Raw, FunctionCallContent Call) Source()
 {
@@ -46,7 +46,7 @@ foreach (var mutation in new[] { "unknown", "contents", "role", "parent", "respo
 
     Check(rejected, "Unknown or inconsistent native raw update must fail representability: " + mutation);
 }
-var publicBoundary = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("ProjectForPublic", BindingFlags.NonPublic | BindingFlags.Static)!;
+var publicBoundary = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeApprovalAgent")!.GetMethod("ProjectForPublic", BindingFlags.NonPublic | BindingFlags.Static)!;
 foreach (var mutation in new[] { "valid", "unknown", "contents", "role" })
 {
     var call = new FunctionCallContent("owned-echo", "backend", new Dictionary<string, object?> { ["code"] = "original" }) { InformationalOnly = true };
@@ -62,7 +62,7 @@ foreach (var mutation in new[] { "valid", "unknown", "contents", "role" })
 
     Check(mutation == "valid" ? !rejected && projected is null : rejected, "The actual all-owned-echo suppression boundary must validate raw data before dropping an empty projection: " + mutation);
 }
-var configureOptions = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!.GetMethod("ConfigureOptions", BindingFlags.NonPublic | BindingFlags.Static)!;
+var configureOptions = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeApprovalAgent")!.GetMethod("ConfigureOptions", BindingFlags.NonPublic | BindingFlags.Static)!;
 var backend = new ApprovalRequiredAIFunction(AIFunctionFactory.Create((string code) => code, "backend"));
 var registeredCatalog = new NativeToolCatalog([new("backend", 1, backend.JsonSchema, RequiresConfirmation: true)]);
 var originalBrowserSchema = JsonSerializer.SerializeToElement(new { type = "object", properties = new { city = new { type = "string" } }, required = new[] { "city" } });
@@ -96,7 +96,7 @@ foreach (var mutation in new[] { "valid", "unknown", "duplicate-browser", "dupli
         Check(declarations.Length == 1 && declarations[0].Name == "frontend" && JsonNode.DeepEquals(JsonNode.Parse(declarations[0].JsonSchema.GetRawText()), JsonNode.Parse(originalBrowserSchema.GetRawText())), "Run options add exactly the original browser schema; registered server defaults participate once in the genuine native union.");
     }
 }
-var boundedJsonType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionJson");
+var boundedJsonType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeSessionJson");
 Check(boundedJsonType is not null, "Actual native argument capture requires a bounded serialization boundary before JSON materialization.");
 var boundedJson = boundedJsonType!.GetMethod("SerializeArguments", BindingFlags.NonPublic | BindingFlags.Static)!;
 var arguments = new Dictionary<string, object?> { ["value"] = "é\"\\" };
@@ -116,10 +116,10 @@ foreach (var (value, limit) in new[] { ((object)new Dictionary<string, object?> 
     Check(rejected, "Native argument serialization must reject exact UTF-8 overflow before materializing a complete JSON document.");
 }
 // Pure lower-layer Restore qualification: no journal acquisition, model or executor is called.
-var restoreType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.Conformance.Integration.NativeApprovalAgent")!;
+var restoreType = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeApprovalAgent")!;
 var restore = restoreType.GetMethod("Restore", BindingFlags.NonPublic | BindingFlags.Static)!;
-var registrationType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionRegistration")!;
-var contextType = restoreType.Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionContext")!;
+var registrationType = restoreType.Assembly.GetType("Hashbrown.AspNetCore.NativeSessionRegistration")!;
+var contextType = restoreType.Assembly.GetType("Hashbrown.AspNetCore.NativeSessionContext")!;
 await using var mappingSource = Npgsql.NpgsqlDataSource.Create("Host=127.0.0.1;Port=1;Username=fixture;Database=fixture");
 var mappingJournal = new PostgresNativeSessionJournal(mappingSource, registeredCatalog, "adapter", "adapter_native");
 var registration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,

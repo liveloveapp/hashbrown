@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json.Nodes;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 
 static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 static string Frame(object item) => "data: " + System.Text.Json.JsonSerializer.Serialize(item) + "\r\n\r\n";

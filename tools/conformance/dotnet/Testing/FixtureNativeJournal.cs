@@ -1,7 +1,7 @@
 #pragma warning disable MAAI001 // Fixture delegates all public pinned native store methods beneath actual isolation.
 using Microsoft.Agents.AI;
 using System.Text.Json;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 
 namespace Hashbrown.Conformance.Testing;
 

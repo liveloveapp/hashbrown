@@ -174,17 +174,10 @@ test('a replacing snapshot may change subagentRunId', () => {
 
   expect(changed[1]).toMatchObject({ subagentRunId: 'sub-2' });
   expect(readActivityLinks(changed[1])).toEqual({
-    runId: 'run-1',
-    assistantMessageId: 'assistant-1',
-    toolCallId: 'tool-1',
     subagentRunId: 'sub-2',
   });
   expect(cleared[1]).not.toHaveProperty('subagentRunId');
-  expect(readActivityLinks(cleared[1])).toEqual({
-    runId: 'run-1',
-    assistantMessageId: 'assistant-1',
-    toolCallId: 'tool-1',
-  });
+  expect(readActivityLinks(cleared[1])).toEqual({});
 });
 
 test('a delta applies an RFC 6902 patch copy-on-write and freezes the result', () => {
@@ -488,11 +481,14 @@ test('a kept activity whose assistant is gone moves to the end', () => {
   ]);
 });
 
-test('recomputeActivityLinks links each activity to the nearest assistant before it and its last tool call', () => {
+test('recomputeActivityLinks links each activity to the nearest same-owner assistant and its last tool call', () => {
   const messages = Object.freeze([
     activity('activity-first', { assistantMessageId: 'forged' }),
     user,
-    assistant('assistant-1', ['tool-1', 'tool-2']),
+    {
+      ...assistant('assistant-1', ['tool-1', 'tool-2']),
+      subagentRunId: 'sub-1',
+    } as Message,
     {
       id: 'tool-message-1',
       role: 'tool',
@@ -564,4 +560,92 @@ test('only activities after the last user message get the run id', () => {
     undefined,
     { runId: 'run-9', assistantMessageId: 'assistant-2' },
   ]);
+});
+
+test('recomputes activity links in distinct parent empty and child owner lanes', () => {
+  const messages: Message[] = [
+    { id: 'p', role: 'assistant', content: 'parent' },
+    { id: 'e', role: 'assistant', content: 'empty', subagentRunId: '' },
+    {
+      id: 'c',
+      role: 'assistant',
+      content: 'child',
+      subagentRunId: '__proto__',
+      toolCalls: [
+        { id: 't', type: 'function', function: { name: 'x', arguments: '{}' } },
+      ],
+    },
+    {
+      id: 'nearer',
+      role: 'assistant',
+      content: 'unrelated',
+      subagentRunId: 'sibling',
+    },
+    { id: 'ap', role: 'activity', activityType: 'x', content: {} },
+    {
+      id: 'ae',
+      role: 'activity',
+      activityType: 'x',
+      content: {},
+      subagentRunId: '',
+    },
+    {
+      id: 'ac',
+      role: 'activity',
+      activityType: 'x',
+      content: {},
+      subagentRunId: '__proto__',
+    },
+  ];
+
+  const linked = recomputeActivityLinks(Object.freeze(messages));
+
+  expect(readActivityLinks(linked[4])).toMatchObject({
+    assistantMessageId: 'p',
+  });
+  expect(readActivityLinks(linked[5])).toMatchObject({
+    assistantMessageId: 'e',
+    subagentRunId: '',
+  });
+  expect(readActivityLinks(linked[6])).toMatchObject({
+    assistantMessageId: 'c',
+    toolCallId: 't',
+    subagentRunId: '__proto__',
+  });
+});
+
+test('replacing an activity owner uses the incoming owner lane and retains links only within that lane', () => {
+  const original = seed({ subagentRunId: 'A' });
+  const event = {
+    type: EventType.ACTIVITY_SNAPSHOT as const,
+    messageId: 'activity-1',
+    activityType: 'plan',
+    content: { steps: ['B'] },
+    subagentRunId: 'B',
+    replace: true,
+  };
+  const arrival = Object.freeze({
+    runId: 'run-B',
+    assistantMessageId: 'assistant-B',
+    toolCallId: 'tool-B',
+  });
+
+  const replaced = applyActivitySnapshot(original, event, arrival);
+  const sameOwner = applyActivitySnapshot(replaced, event, {
+    runId: 'later',
+    assistantMessageId: 'later',
+  });
+  const retained = applyActivitySnapshot(
+    original,
+    { ...event, replace: false },
+    arrival,
+  );
+
+  expect(readActivityLinks(replaced[1])).toEqual({
+    ...arrival,
+    subagentRunId: 'B',
+  });
+  expect(readActivityLinks(sameOwner[1])).toBe(readActivityLinks(replaced[1]));
+  expect(readActivityLinks(retained[1])).toBe(readActivityLinks(original[1]));
+  expect(original[1]).toMatchObject({ subagentRunId: 'A' });
 });

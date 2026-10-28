@@ -1,13 +1,13 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native PostgreSQL whole approval batches are irreversible and rejection-bound', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-native-store-'));
+  const directory = await createDotnetProbeDirectory('hashbrown-native-store-');
   const source = await readFile(
     resolve(
       'tools/conformance/dotnet/tests/fixtures/native-approval-decisions.cs.txt',

@@ -1,19 +1,19 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:14.094
+00:00:00.000 --> 00:00:12.174
 OpenAI JSON feeds the actual framework parser as it arrives.
 
-00:00:14.094 --> 00:00:18.150
+00:00:12.174 --> 00:00:16.238
 Source completion, parser completion and validation are separate.
 
-00:00:18.150 --> 00:00:25.990
+00:00:16.238 --> 00:00:24.126
 A new request replaces the preview with a shorter plan.
 
-00:00:25.990 --> 00:00:30.108
+00:00:24.126 --> 00:00:28.234
 The completed document is validated against the original JSON.
 
-00:00:30.108 --> 00:00:54.098
+00:00:28.234 --> 00:00:48.426
 Replay follows captured JSON and values. No requests or writes.
 
-00:00:54.098 --> 00:00:58.067
+00:00:48.426 --> 00:00:56.400
 Back live.

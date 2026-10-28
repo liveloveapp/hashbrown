@@ -1,3 +1,4 @@
+import { createWorkbenchTabs } from './workbench-tabs';
 import type { WorkbenchFrame, WorkbenchSnapshot } from './workbench';
 import { renderWorkbenchCode } from './workbench-highlight';
 import {
@@ -394,6 +395,7 @@ export function createWorkbenchRequestsView(
   const panel = element('div', '', 'wb-requests-panel');
   panel.id = `${instanceId}-request-detail`;
   panel.setAttribute('role', 'tabpanel');
+  const detailTabs = createWorkbenchTabs(tablist, panel);
   detail.append(detailHead, panel);
   body.append(tableWrap);
   root.append(timeline.element, empty, body);
@@ -939,12 +941,12 @@ export function createWorkbenchRequestsView(
         }
         tab.setAttribute('role', 'tab');
         tab.id = `${instanceId}-request-tab-${tabKey.replace(/\s+/g, '-').toLowerCase()}`;
-        tab.setAttribute('aria-selected', String(tabKey === active));
-        tab.setAttribute('aria-controls', panel.id);
         tab.dataset.focusKey = `tab:${tabKey}`;
-        if (tabKey === active) panel.setAttribute('aria-labelledby', tab.id);
         return tab;
       }),
+    );
+    detailTabs.sync(
+      `${instanceId}-request-tab-${active.replace(/\s+/g, '-').toLowerCase()}`,
     );
     tabCounts = counts;
   }
@@ -1027,6 +1029,7 @@ export function createWorkbenchRequestsView(
     dispose: () => {
       root.removeEventListener('keydown', onKeydown);
       timeline.dispose();
+      detailTabs.dispose();
     },
   };
 }

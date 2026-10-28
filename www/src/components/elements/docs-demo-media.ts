@@ -1,5 +1,21 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-production-recovery-react': {
+    title: 'React workbench: durable recovery with b4.run.',
+    caption:
+      'Restore a paused turn after a server restart, then explicitly approve the application-owned plan.',
+    recording:
+      'Real OpenAI output through Hashbrown React and b4.run 0.15.5 with isolated Postgres storage. Actual-speed footage with reading pauses and no narration. A genuine server process replacement preserves the checkpoint and pending approval. Explicit restoration generates no model request. Explicit approval commits one plan revision and database receipt; this does not guarantee exactly-once external effects. The local identity adapter uses a signed anonymous cookie, not account login. The post-refresh capture records newly observed recovery and resume facts, not the original stream timing. Playback sends no requests and writes no application state.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-production-recovery-angular': {
+    title: 'Angular workbench: durable recovery with b4.run.',
+    caption:
+      'Restore a paused turn after a server restart, then explicitly approve the application-owned plan.',
+    recording:
+      'Real OpenAI output through Hashbrown Angular and b4.run 0.15.5 with isolated Postgres storage. Actual-speed footage with reading pauses and no narration. A genuine server process replacement preserves the checkpoint and pending approval. Explicit restoration generates no model request. Explicit approval commits one plan revision and database receipt; this does not guarantee exactly-once external effects. The local identity adapter uses a signed anonymous cookie, not account login. The post-refresh capture records newly observed recovery and resume facts, not the original stream timing. Playback sends no requests and writes no application state.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'canonical-workbench-local-models-react': {
     title: 'React workbench: local models.',
     caption:
@@ -502,6 +518,22 @@ export const DOCS_DEMOS = {
     recording:
       'Recorded through the checked Angular parser component with a finite local JSON stream. No model, weather service or API key is used. Presentation styles added. No narration.',
     dimensions: { width: 1440, height: 900 },
+  },
+  'canonical-workbench-threadplane-react': {
+    title: 'Give the plan a React chat screen.',
+    caption:
+      'Stream two real replies through Threadplane, inspect the requests, and replay the same conversation.',
+    recording:
+      'Actual separately installed React TextTranscript and ChatInput with Hashbrown useChat and the real OpenAI server adapter. Real provider output, optional canonical inspector and timeline, actual-speed footage with reading pauses. No narration. Text does not apply application state; replay makes no requests or writes.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-threadplane-angular': {
+    title: 'Give the plan an Angular chat screen.',
+    caption:
+      'Stream two real replies through Threadplane, inspect the requests, and replay the same conversation.',
+    recording:
+      'Actual separately installed Angular ChatComponent and Threadplane AG-UI frontend with the real Hashbrown OpenAI server adapter. Real provider output, optional canonical inspector and timeline, actual-speed footage with reading pauses. No narration. Text does not apply application state; replay makes no requests or writes.',
+    dimensions: { width: 1600, height: 1000 },
   },
   'threadplane-react': {
     title: 'Compose a React chat with Threadplane.',

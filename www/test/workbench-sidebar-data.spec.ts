@@ -8,6 +8,37 @@ import {
   workbenchIcon,
   workbenchLessonIcons,
 } from '../examples/quickstart/runtime/workbench-icons';
+import { workbenchSidebarScrollDelta } from '../examples/quickstart/runtime/workbench-sidebar';
+
+test('reveals a clipped current lesson while keeping the focused heading visible', () => {
+  const viewport = { top: 64, bottom: 898 };
+  const lesson = { top: 930, bottom: 962 };
+  const focused = { top: 330, bottom: 365 };
+
+  const delta = workbenchSidebarScrollDelta(viewport, lesson, focused);
+
+  expect(delta).toBe(64);
+});
+
+test('keeps sidebar keyboard focus visible when both controls cannot fit', () => {
+  const viewport = { top: 64, bottom: 898 };
+  const lesson = { top: 1300, bottom: 1332 };
+  const focused = { top: 70, bottom: 105 };
+
+  const delta = workbenchSidebarScrollDelta(viewport, lesson, focused);
+
+  expect(delta).toBe(0);
+});
+
+test('reveals a current lesson above the viewport and leaves hidden groups alone', () => {
+  const viewport = { top: 64, bottom: 898 };
+
+  const above = workbenchSidebarScrollDelta(viewport, { top: 20, bottom: 52 });
+  const hidden = workbenchSidebarScrollDelta(viewport, { top: 0, bottom: 0 });
+
+  expect(above).toBe(-44);
+  expect(hidden).toBe(0);
+});
 
 test('groups every lesson exactly once in sidebar order', () => {
   const groups = workbenchLessonGroups.map((g) => [g.id, g.title, g.lessons]);
@@ -41,6 +72,7 @@ test('groups every lesson exactly once in sidebar order', () => {
       'production',
       'Production',
       [
+        'production-recovery',
         'local-models',
         'debugging',
         'request-transformation',

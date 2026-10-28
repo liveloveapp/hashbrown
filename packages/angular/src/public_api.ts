@@ -116,3 +116,5 @@ export {
   type GroupedServerToolCall,
   type GroupServerToolCallsOptions,
 } from '@hashbrownai/core';
+
+export type { SubagentRun } from '@hashbrownai/core';

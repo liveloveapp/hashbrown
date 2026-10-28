@@ -109,6 +109,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     ordered: false,
     entries: [
       { text: 'Securing a public endpoint', path: 'recipes/public-endpoint' },
+      { text: 'Durable recovery with b4.run', path: 'platform/b4run' },
       {
         text: 'Request customization',
         path: 'concept/transform-request-options',

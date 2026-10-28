@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -175,9 +176,9 @@ export async function verifyDecisionWorkbench(options: {
     await expect(
       page.locator('.wb:visible .wb-chat .wb-panel-head'),
     ).toContainText('cancelled');
-    await expect(page.getByRole('status')).toContainText(
-      'Decision cancelled. Retry or review the plan manually.',
-    );
+    await expect(
+      page.locator('.wb:visible .wb-feed[data-live] [role=status]'),
+    ).toContainText('Decision cancelled. Retry or review the plan manually.');
     options.outcome('success');
     await page.getByRole('button', { name: 'Follow-up', exact: true }).click();
     await send.click();
@@ -198,6 +199,14 @@ export async function verifyDecisionWorkbench(options: {
     await expectNoHorizontalOverflow(page);
   }
   expect(errors).toEqual([]);
+  if (process.env['WORKBENCH_RECORD'] === '1')
+    await saveWorkbenchCapture(
+      page,
+      resolve(
+        work,
+        `${framework}-decisions-${live ? 'live' : 'fixture'}.capture.json`,
+      ),
+    );
   const video = page.video();
   await page.close();
   if (video)

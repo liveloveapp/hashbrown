@@ -1,13 +1,13 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native approval admission enforces the protected boundary', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-native-approval-admission-'));
+  const directory = await createDotnetProbeDirectory('hashbrown-native-approval-admission-');
   const source = await readFile(resolve('tools/conformance/dotnet/tests/fixtures/native-approval-admission.cs.txt'), 'utf8');
   const project = resolve('tools/conformance/dotnet/Hashbrown.Conformance.csproj');
 

@@ -19,6 +19,7 @@ import {
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type SubagentRun,
   type TokenUsage,
   type TransportOrFactory,
   ɵmergeOfferedComponents,
@@ -120,6 +121,8 @@ export interface UiChatResourceRef<
 > extends Resource<UiChatMessage<Tools>[]> {
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
+  /** Observed native subagent invocations in the current conversation. */
+  readonly subagents: Signal<readonly SubagentRun[]>;
   /** The complete pending interrupt batch, including while claimed. */
   readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
   /** Whether the resumed interaction is still running. */
