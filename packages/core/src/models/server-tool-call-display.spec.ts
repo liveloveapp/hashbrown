@@ -281,3 +281,17 @@ test('uses application group labels with safe fallback and length limits', () =>
   if (long[0].kind === 'group')
     expect(Array.from(long[0].label)).toHaveLength(120);
 });
+
+test('keeps requester and result provenance as independent grouping barriers', () => {
+  const calls = [
+    call(),
+    call({ subagentRunId: '' }),
+    call({ subagentRunId: 'A' }),
+    call({ subagentRunId: 'A', resultSubagentRunId: 'B' }),
+  ];
+
+  const grouped = groupServerToolCalls(Object.freeze(calls));
+
+  expect(grouped).toEqual(calls);
+  expect(grouped.every((entry, index) => entry === calls[index])).toBe(true);
+});

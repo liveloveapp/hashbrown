@@ -2554,6 +2554,7 @@ test('setMessages lowers activity messages and recomputes their links', () => {
       { id: 'user-1', role: 'user', content: 'hello' },
       {
         id: 'assistant-1',
+        subagentRunId: 'subagent-1',
         role: 'assistant',
         content: 'Done.',
         toolCalls: [
@@ -2617,6 +2618,7 @@ test('a saved transcript restored with setMessages keeps ids and activity links'
     },
     {
       id: 'assistant-1',
+      subagentRunId: 'subagent-1',
       role: 'assistant' as const,
       content: 'Here is a plan.',
       toolCalls: [],

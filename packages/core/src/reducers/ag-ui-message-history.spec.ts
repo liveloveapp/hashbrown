@@ -1,5 +1,6 @@
 import { EventType, type Message } from '@ag-ui/core';
 import { Chat } from '../models';
+import { bindHistoryDiagnostic } from '../models/history-diagnostics';
 import { s } from '../schema';
 import {
   applySystemMessageOverlay,
@@ -9,6 +10,7 @@ import {
   projectAgUiMessages,
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
+  ɵindexAgUiCanonicalMessageSources,
   ɵownValidatedAgUiMessages,
   ɵpairViewMessagesWithAgUi,
   ɵprepareAgUiMessageEvent,
@@ -1178,4 +1180,338 @@ test('retains legacy JSON serialization for generic and ambiguous user arrays', 
       messages[0].role === 'user' ? messages[0].content : undefined,
     ),
   ).toEqual(inputs.map((content) => JSON.stringify(content)));
+});
+
+test('preserves independent message, requester and result owners through native projection', () => {
+  const history = ownAgUiMessages([
+    { id: 'u', role: 'user', content: 'hi', subagentRunId: '' },
+    {
+      id: 'a',
+      role: 'assistant',
+      subagentRunId: '__proto__',
+      encryptedValue: 'secret',
+      metadata: { x: 1 },
+      toolCalls: [
+        {
+          id: 'c',
+          type: 'function',
+          function: { name: 'server', arguments: '{}' },
+          encryptedValue: 'call-secret',
+        },
+        {
+          id: 'd',
+          type: 'function',
+          function: { name: 'server', arguments: '{}' },
+        },
+      ],
+    },
+    {
+      id: 'r',
+      role: 'tool',
+      toolCallId: 'c',
+      content: 'ok',
+      subagentRunId: 'B',
+    },
+    { id: 's', role: 'tool', toolCallId: 'd', content: 'parent' },
+  ]);
+
+  const full = projectAgUiMessages(history, {});
+  const cached = ɵreconcileAgUiMessageProjection(undefined, history, {});
+  const calls = Object.fromEntries(
+    full.toolCalls.map((call) => [call.id, call]),
+  );
+  const view = Chat.helpers.toViewMessagesFromInternal(
+    full.messages[1],
+    calls,
+    [],
+  );
+
+  expect(cached.projection).toEqual(full);
+  expect(full.messages[0]).toMatchObject({ subagentRunId: '' });
+  expect(full.messages[1]).toMatchObject({
+    subagentRunId: '__proto__',
+    encryptedValue: 'secret',
+    metadata: { x: 1 },
+  });
+  expect(full.toolCalls[0]).toMatchObject({
+    subagentRunId: '__proto__',
+    resultSubagentRunId: 'B',
+    encryptedValue: 'call-secret',
+  });
+  expect(full.toolCalls[1]).toMatchObject({ subagentRunId: '__proto__' });
+  expect(full.toolCalls[1]).not.toHaveProperty('resultSubagentRunId');
+  expect(view[0]).toMatchObject({
+    subagentRunId: '__proto__',
+    serverToolCalls: [
+      { subagentRunId: '__proto__', resultSubagentRunId: 'B' },
+      { subagentRunId: '__proto__' },
+    ],
+  });
+});
+
+test('associates concurrent reasoning only with its owner across full cached and source projections', () => {
+  const history = ownAgUiMessages([
+    {
+      id: 'ra',
+      role: 'reasoning',
+      content: 'A',
+      subagentRunId: '__proto__',
+      encryptedValue: 'hidden',
+    },
+    { id: 'rb', role: 'reasoning', content: 'B', subagentRunId: '' },
+    { id: 'rp', role: 'reasoning', content: 'parent' },
+    {
+      id: 'parent',
+      role: 'assistant',
+      content: 'parent',
+      toolCalls: [
+        { id: 'c', type: 'function', function: { name: 'x', arguments: '{}' } },
+      ],
+    },
+    { id: 'result', role: 'tool', toolCallId: 'c', content: 'result' },
+    { id: 'b', role: 'assistant', content: 'B', subagentRunId: '' },
+    { id: 'a', role: 'assistant', content: 'A', subagentRunId: '__proto__' },
+  ]);
+
+  const full = projectAgUiMessages(history, {});
+  const cached = ɵreconcileAgUiMessageProjection(undefined, history, {});
+  const sources = ɵindexAgUiCanonicalMessageSources(history);
+
+  expect(cached.projection).toEqual(full);
+  for (const [index, id] of ['parent', 'b', 'a'].entries()) {
+    const expected = [history[[2, 1, 0][index]]];
+    expect(full.messages[index]).toMatchObject({
+      reasoning: { details: expected },
+    });
+    expect(cached.messageSources[id].reasoning).toEqual(expected);
+    expect(sources[id].reasoning).toEqual(expected);
+  }
+});
+
+test('lowers client view provenance independently and rejects conflicting requester owners', () => {
+  const tool = {
+    name: 'client',
+    description: 'client',
+    schema: s.object('args', {}),
+    handler: async () => 'ok',
+  };
+  const message = Object.freeze({
+    id: 'a',
+    role: 'assistant' as const,
+    subagentRunId: '',
+    toolCalls: [
+      {
+        role: 'tool' as const,
+        status: 'done' as const,
+        name: 'client',
+        toolCallId: 'c',
+        args: {},
+        result: { status: 'fulfilled' as const, value: 'ok' },
+        resultSubagentRunId: 'B',
+      },
+    ],
+  });
+
+  const native = lowerViewMessagesToAgUi([message], { createId: () => 'r' });
+  const internal = Chat.helpers.toInternalMessagesFromView(message);
+  const calls = Chat.helpers.toInternalToolCallsFromView([message]);
+  const view = Chat.helpers.toViewMessagesFromInternal(
+    internal[0],
+    { c: calls[0] },
+    [tool],
+  );
+
+  expect(native[0]).toMatchObject({ subagentRunId: '' });
+  expect(native[1]).toMatchObject({ subagentRunId: 'B' });
+  expect(view[0]).toMatchObject({
+    subagentRunId: '',
+    toolCalls: [{ subagentRunId: '', resultSubagentRunId: 'B' }],
+  });
+  const conflicting = {
+    ...message,
+    toolCalls: [{ ...message.toolCalls[0], subagentRunId: 'other' }],
+  };
+  expect(() =>
+    lowerViewMessagesToAgUi([conflicting], { createId: () => 'r' }),
+  ).toThrow(/owner/i);
+});
+
+test.each([undefined, '', '__proto__'])(
+  'roundtrips client requester independently from result owner %s',
+  (resultSubagentRunId) => {
+    const schema = s.object('input', {});
+    const handler = async () => 'unused';
+    const tool = Object.freeze({
+      name: 'client',
+      description: 'client',
+      schema,
+      handler,
+    });
+    const input = Object.freeze({
+      id: 'a',
+      role: 'assistant' as const,
+      subagentRunId: 'A',
+      encryptedValue: 'assistant-secret',
+      metadata: Object.freeze({ provider: 'opaque' }),
+      toolCalls: [
+        Object.freeze({
+          role: 'tool' as const,
+          status: 'done' as const,
+          name: 'client',
+          toolCallId: 'c',
+          args: Object.freeze({}),
+          result: Object.freeze({
+            status: 'rejected' as const,
+            reason: 'denied',
+          }),
+          encryptedValue: 'call-secret',
+          metadata: Object.freeze({ opaque: true }),
+          ...(resultSubagentRunId !== undefined ? { resultSubagentRunId } : {}),
+        }),
+      ],
+    });
+    let nextId = 0;
+
+    const native = lowerViewMessagesToAgUi([input], {
+      createId: () => `id-${nextId++}`,
+    });
+    const projection = projectAgUiMessages(native, { client: tool });
+    const call = projection.toolCalls[0];
+    const view = Chat.helpers.toViewMessagesFromInternal(
+      projection.messages[0],
+      { c: call },
+      [tool],
+    );
+
+    expect(native[0]).toMatchObject({
+      id: 'a',
+      subagentRunId: 'A',
+      encryptedValue: 'assistant-secret',
+      metadata: { provider: 'opaque' },
+    });
+    expect(native[1]).toMatchObject({
+      role: 'tool',
+      content: 'denied',
+      error: 'denied',
+    });
+    expect(call.subagentRunId).toBe('A');
+    expect(call.resultSubagentRunId).toBe(resultSubagentRunId);
+    expect(view[0]).toMatchObject({
+      subagentRunId: 'A',
+      toolCalls: [
+        {
+          subagentRunId: 'A',
+          result: { status: 'rejected', reason: 'denied' },
+          encryptedValue: 'call-secret',
+          metadata: { opaque: true },
+        },
+      ],
+    });
+    expect(tool.schema).toBe(schema);
+    expect(tool.handler).toBe(handler);
+    expect(Object.isFrozen(input.toolCalls[0])).toBe(true);
+  },
+);
+
+test.each(['', '__proto__', undefined])(
+  'preserves user owner %s through local and native conversions',
+  (subagentRunId) => {
+    const input = Object.freeze({
+      id: 'u',
+      role: 'user' as const,
+      content: 'hello',
+      ...(subagentRunId !== undefined ? { subagentRunId } : {}),
+    });
+
+    const native = lowerViewMessagesToAgUi([input], {
+      createId: () => 'unused',
+    });
+    const projection = projectAgUiMessages(native, {});
+    const local = Chat.helpers.toInternalMessagesFromView(input);
+    const view = Chat.helpers.toViewMessagesFromInternal(local[0], {}, []);
+
+    expect(projection.messages).toEqual(local);
+    expect(view[0]).toEqual(input);
+    expect(native[0]).toEqual(input);
+  },
+);
+
+test('turn barriers clear pending reasoning while unrelated child user turns retain siblings', () => {
+  const history = ownAgUiMessages([
+    { id: 'ra', role: 'reasoning', content: 'A', subagentRunId: 'A' },
+    { id: 'rb', role: 'reasoning', content: 'B', subagentRunId: 'B' },
+    { id: 'u', role: 'user', content: 'child turn', subagentRunId: 'A' },
+    { id: 'a', role: 'assistant', content: 'A', subagentRunId: 'A' },
+    { id: 'b', role: 'assistant', content: 'B', subagentRunId: 'B' },
+    { id: 'rc', role: 'reasoning', content: 'stale', subagentRunId: 'B' },
+    { id: 'parent', role: 'user', content: 'next turn' },
+    { id: 'next', role: 'assistant', content: 'B next', subagentRunId: 'B' },
+  ]);
+
+  const full = projectAgUiMessages(history, {});
+  const cached = ɵreconcileAgUiMessageProjection(undefined, history, {});
+  const sources = ɵindexAgUiCanonicalMessageSources(history);
+
+  expect(cached.projection).toEqual(full);
+  expect(full.messages[1]).not.toHaveProperty('reasoning');
+  expect(full.messages[2]).toMatchObject({
+    reasoning: { details: [history[1]] },
+  });
+  expect(full.messages[4]).not.toHaveProperty('reasoning');
+  expect(sources['a'].reasoning).toEqual([]);
+  expect(sources['b'].reasoning).toEqual([history[1]]);
+  expect(sources['next'].reasoning).toEqual([]);
+  expect(cached.messageSources).toEqual(sources);
+});
+
+test('source indexing respects schema-invalid diagnostic reasoning barriers like both projections', () => {
+  const schema = s.object('answer', { answer: s.string('answer') });
+  const history = ownAgUiMessages([
+    {
+      id: 'reasoning',
+      role: 'reasoning',
+      content: 'stale A',
+      subagentRunId: 'A',
+    },
+    { id: 'diagnostic', role: 'assistant', content: '"invalid parent answer"' },
+    {
+      id: 'a',
+      role: 'assistant',
+      content: '{"answer":"A"}',
+      subagentRunId: 'A',
+    },
+  ]);
+  bindHistoryDiagnostic(history[1], 'thread');
+
+  const full = projectAgUiMessages(history, {}, schema);
+  const cached = ɵreconcileAgUiMessageProjection(
+    undefined,
+    history,
+    {},
+    schema,
+  );
+  const sources = ɵindexAgUiCanonicalMessageSources(history, schema);
+
+  expect(full.messages).toHaveLength(1);
+  expect(full.messages[0]).not.toHaveProperty('reasoning');
+  expect(cached.projection).toEqual(full);
+  expect(sources).toEqual(cached.messageSources);
+  expect(sources['a'].reasoning).toEqual([]);
+  for (const currentSchema of [undefined, s.string('plain answer')]) {
+    const unfiltered = projectAgUiMessages(history, {}, currentSchema);
+    const unfilteredCache = ɵreconcileAgUiMessageProjection(
+      undefined,
+      history,
+      {},
+      currentSchema,
+    );
+    const unfilteredSources = ɵindexAgUiCanonicalMessageSources(
+      history,
+      currentSchema,
+    );
+    expect(unfiltered.messages).toHaveLength(2);
+    expect(unfilteredCache.projection).toEqual(unfiltered);
+    expect(unfilteredSources).toEqual(unfilteredCache.messageSources);
+    expect(unfilteredSources['a'].reasoning).toEqual([history[0]]);
+  }
 });
