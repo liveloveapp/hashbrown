@@ -49,6 +49,10 @@ import {
   workbenchTurnSegments,
 } from './workbench-player';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
+import {
+  getWorkbenchEmbedMode,
+  type WorkbenchEmbedMode,
+} from './workbench-embed';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
@@ -363,6 +367,11 @@ export interface WorkbenchMountOptions {
   readonly disableNewConversation?: boolean;
   /** Names the only hosted topic when this is an isolated consumer shell. */
   readonly fixedSidebarTopic?: string;
+  /**
+   * Embedded in a docs page: no sidebar, no new conversation, and the layout
+   * is read but never saved. Defaults to the page's `?embed=` value.
+   */
+  readonly embed?: WorkbenchEmbedMode;
 }
 
 /**
@@ -385,7 +394,14 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
-  const layoutStore = options.layout ?? workbenchLayout;
+  const embed =
+    options.embed === undefined
+      ? getWorkbenchEmbedMode(globalThis.location?.search ?? '')
+      : options.embed;
+  const sharedLayout = options.layout ?? workbenchLayout;
+  const layoutStore: WorkbenchLayoutStore = embed
+    ? { ...sharedLayout, set: () => undefined }
+    : sharedLayout;
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
@@ -431,6 +447,10 @@ export function mountWorkbench(
               : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
+  if (embed) {
+    root.classList.add('wb-embed');
+    root.dataset.embed = embed;
+  }
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
@@ -452,13 +472,14 @@ export function mountWorkbench(
     if (key !== sidebarKey) renderNavigation();
   }
   function renderNavigation() {
+    if (embed) return;
     const current = layoutStore.get();
     sidebarKey = JSON.stringify([current.rail, current.collapsed]);
     root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       fixedTopic: options.fixedSidebarTopic,
-      hideCreate: options.disableNewConversation,
+      hideCreate: options.disableNewConversation || !!embed,
       currentLesson: (commands.lesson?.id ??
         'generative-ui') as WorkbenchLessonId,
       conversations: navigation?.conversations ?? [
@@ -836,6 +857,7 @@ export function mountWorkbench(
     const shortcut = workbenchShortcut(event, event.target);
     if (!shortcut) return;
     if (shortcut === 'toggle-sidebar') {
+      if (embed) return;
       event.preventDefault();
       layoutStore.set({ rail: !layoutStore.get().rail });
       return;
@@ -847,7 +869,8 @@ export function mountWorkbench(
   }
   document.addEventListener('keydown', onShortcut);
   const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
-  layout.append(nav, chat, split.element, inspector);
+  if (embed) layout.append(chat, split.element, inspector);
+  else layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
@@ -971,9 +994,14 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
+    const awaitingRecording =
+      embed === 'replay' && (!snapshot.readOnly || !snapshot.events.length);
+    if (embed === 'replay') form.hidden = true;
     first.disabled = historical || blocked;
     followup.disabled = historical || blocked;
-    status.textContent = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+    status.textContent = awaitingRecording
+      ? 'Waiting for recording'
+      : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
       if (commands.lesson?.format === 'decision') {
