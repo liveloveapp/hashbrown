@@ -6,15 +6,21 @@ import {
   threadplaneInspection,
 } from '../../examples/quickstart/runtime/workbench-threadplane';
 
+const identity = { threadId: 'thread-1', runId: 'run-1' };
 const envelope = {
+  ...identity,
+  tools: [],
+  context: [],
+  state: {},
+  forwardedProps: {},
   messages: [{ id: 'u1', role: 'user', content: 'A two-step plan' }],
 };
 const events = [
-  { type: 'RUN_STARTED' },
+  { type: 'RUN_STARTED', ...identity },
   { type: 'TEXT_MESSAGE_START', messageId: 'a1', role: 'assistant' },
   { type: 'TEXT_MESSAGE_CONTENT', messageId: 'a1', delta: 'First. Second.' },
   { type: 'TEXT_MESSAGE_END', messageId: 'a1' },
-  { type: 'RUN_FINISHED' },
+  { type: 'RUN_FINISHED', ...identity },
 ];
 const sse = (items = events) =>
   items.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('');
@@ -267,4 +273,126 @@ test('isolated Threadplane navigation lists its current topic without unhosted l
   expect(host.querySelector('[data-nav-key="cta"]')).toBeNull();
   expect(host.querySelectorAll('.wb-lessons')).toHaveLength(1);
   shell.dispose();
+});
+
+test.each([
+  ['terminal without start', [{ type: 'RUN_FINISHED', ...identity }]],
+  [
+    'wrong run start',
+    [{ type: 'RUN_STARTED', ...identity, runId: 'other' }, ...events.slice(1)],
+  ],
+  [
+    'wrong thread finish',
+    [
+      ...events.slice(0, -1),
+      { type: 'RUN_FINISHED', ...identity, threadId: 'other' },
+    ],
+  ],
+  [
+    'malformed text delta',
+    [
+      events[0],
+      events[1],
+      { type: 'TEXT_MESSAGE_CONTENT', messageId: 'a1', delta: { text: 'bad' } },
+      events[3],
+      events[4],
+    ],
+  ],
+  ['content before message start', [events[0], events[2], events[4]]],
+  [
+    'mismatched message end',
+    [
+      ...events.slice(0, 3),
+      { type: 'TEXT_MESSAGE_END', messageId: 'other' },
+      events[4],
+    ],
+  ],
+  ['unfinished text message', [...events.slice(0, 3), events[4]]],
+  [
+    'unknown event type',
+    [events[0], { type: 'NOT_A_PROTOCOL_EVENT' }, events[4]],
+  ],
+])('rejects %s while forwarding exact bytes', async (_name, sourceEvents) => {
+  const source = sourceEvents
+    .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+    .join('');
+  const capture = createThreadplaneCapture({
+    framework: 'React',
+    origin: 'https://example.test',
+    fetch: async () => new Response(source),
+  });
+
+  const response = await capture.fetch(request());
+
+  expect(await response.text()).toBe(source);
+  expect(capture.store.getSnapshot().status).toBe('error');
+});
+
+test('observing a Request preserves its original body for the real upstream transport', async () => {
+  const upstream = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const forwarded = new Request(input, init);
+      expect(await forwarded.json()).toEqual(envelope);
+      return new Response(sse());
+    },
+  );
+  const capture = createThreadplaneCapture({
+    framework: 'React',
+    origin: 'https://example.test',
+    fetch: upstream,
+  });
+
+  const response = await capture.fetch(request());
+
+  expect(await response.text()).toBe(sse());
+  expect(capture.store.getSnapshot().status).toBe('complete');
+});
+
+test('a terminal observed after an actual abort cannot turn cancellation into completion', async () => {
+  const abort = new AbortController();
+  const capture = createThreadplaneCapture({
+    framework: 'React',
+    origin: 'https://example.test',
+    fetch: async () => new Response(sse()),
+  });
+
+  const response = await capture.fetch(
+    new Request(request(), { signal: abort.signal }),
+  );
+  abort.abort();
+  await response.text();
+
+  expect(capture.store.getSnapshot().status).toBe('cancelled');
+  expect(
+    capture.store
+      .getSnapshot()
+      .events.some((event) => event.kind === 'complete'),
+  ).toBe(false);
+});
+
+test.each([
+  null,
+  { ...envelope, runId: 5 },
+  { ...envelope, messages: [null] },
+  {
+    ...envelope,
+    messages: [{ id: 'u1', role: 'user', content: { bad: true } }],
+  },
+])('rejects malformed input before capture or transport: %j', async (input) => {
+  const upstream = vi.fn();
+  const capture = createThreadplaneCapture({
+    framework: 'React',
+    origin: 'https://example.test',
+    fetch: upstream,
+  });
+
+  await expect(
+    capture.fetch('https://example.test/api/chat', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  ).rejects.toThrow();
+
+  expect(upstream).not.toHaveBeenCalled();
+  expect(capture.store.getSnapshot().events).toHaveLength(0);
 });

@@ -1,3 +1,4 @@
+import { EventSchema, RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { createWorkbenchStore, type WorkbenchSnapshot } from './workbench';
 import { createWorkbenchLayoutStore } from './workbench-layout';
 import { mountWorkbench } from './workbench-view';
@@ -36,18 +37,24 @@ export function createThreadplaneCapture(options: ThreadplaneCaptureOptions) {
       throw new Error('Live sends are disabled during replay.');
     const request =
       input instanceof Request
-        ? new Request(input, init)
+        ? new Request(input.clone(), init)
         : new Request(url, init);
-    const body = await request.clone().text();
+    const body = await request.text();
     if (body.length > limit)
       throw new Error('Chat request exceeds capture limit.');
-    const envelope = JSON.parse(body) as {
-      readonly messages?: readonly {
-        readonly role?: string;
-        readonly content?: unknown;
-      }[];
-    };
-    const content = [...(envelope.messages ?? [])]
+    const envelope: unknown = JSON.parse(body);
+    const parsedInput = RunAgentInputSchema.safeParse(envelope);
+    if (!parsedInput.success) throw new Error('Invalid AG-UI chat request.');
+    const run = parsedInput.data;
+    if (
+      !run.runId ||
+      run.runId.length > 120 ||
+      !run.threadId ||
+      run.threadId.length > 100 ||
+      run.messages.length > 100
+    )
+      throw new Error('Invalid or oversized chat run identity.');
+    const content = [...run.messages]
       .reverse()
       .find((message) => message.role === 'user')?.content;
     if (typeof content !== 'string')
@@ -104,6 +111,9 @@ export function createThreadplaneCapture(options: ThreadplaneCaptureOptions) {
     let pending = '';
     let count = 0;
     let terminal = false;
+    let started = false;
+    let messageId: string | null = null;
+    const messageIds = new Set<string>();
     let invalid = false;
     const consume = (text: string, eof = false) => {
       count += text.length;
@@ -128,12 +138,59 @@ export function createThreadplaneCapture(options: ThreadplaneCaptureOptions) {
           .join('\n');
         if (!data) continue;
         try {
-          const event = JSON.parse(data);
-          if (!event || typeof event.type !== 'string' || terminal) {
+          const raw: unknown = JSON.parse(data);
+          const result = EventSchema.safeParse(raw);
+          if (!result.success || terminal) {
             invalid = true;
             continue;
           }
-          if (fresh()) store.record('event', event);
+          const event = result.data;
+          if (event.type === 'RUN_STARTED') {
+            if (
+              started ||
+              event.runId !== run.runId ||
+              event.threadId !== run.threadId
+            ) {
+              invalid = true;
+              continue;
+            }
+            started = true;
+          } else if (!started) {
+            invalid = true;
+            continue;
+          }
+          if (
+            event.type === 'RUN_FINISHED' &&
+            (event.runId !== run.runId ||
+              event.threadId !== run.threadId ||
+              messageId !== null)
+          ) {
+            invalid = true;
+            continue;
+          }
+          if (event.type === 'TEXT_MESSAGE_START') {
+            if (
+              messageId !== null ||
+              messageIds.has(event.messageId) ||
+              (event.role !== undefined && event.role !== 'assistant')
+            ) {
+              invalid = true;
+              continue;
+            }
+            messageId = event.messageId;
+            messageIds.add(messageId);
+          }
+          if (
+            event.type === 'TEXT_MESSAGE_CONTENT' ||
+            event.type === 'TEXT_MESSAGE_END'
+          ) {
+            if (messageId !== event.messageId) {
+              invalid = true;
+              continue;
+            }
+            if (event.type === 'TEXT_MESSAGE_END') messageId = null;
+          }
+          if (fresh()) store.record('event', raw);
           if (event.type === 'RUN_FINISHED') terminal = true;
           if (event.type === 'RUN_ERROR') invalid = true;
         } catch {
