@@ -48,3 +48,31 @@ test('rejects captures with another version, an unknown lesson or malformed even
   expect(unknownLesson).toBeNull();
   expect(malformedEvents).toBeNull();
 });
+
+test('rejects events with missing structure or non-finite numbers', () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  const valid = createWorkbenchCapture(store.getSnapshot(), {
+    lesson: 'generative-ui',
+    framework: 'react',
+    recordedAt: '2026-10-28T00:00:00.000Z',
+  });
+  const event = valid.events[0];
+  const withEvent = (patch: Record<string, unknown>) =>
+    parseWorkbenchCapture({ ...valid, events: [{ ...event, ...patch }] });
+
+  const results = [
+    withEvent({ kind: 'nope' }),
+    withEvent({ kind: undefined }),
+    withEvent({ source: 1 }),
+    withEvent({ messages: undefined }),
+    withEvent({ application: null }),
+    withEvent({ application: [] }),
+    withEvent({ elapsedMs: Number.NaN }),
+    withEvent({ sequence: Number.POSITIVE_INFINITY }),
+  ];
+
+  expect(valid.events.length).toBeGreaterThan(0);
+  expect(withEvent({})).not.toBeNull();
+  expect(results.every((result) => result === null)).toBe(true);
+});

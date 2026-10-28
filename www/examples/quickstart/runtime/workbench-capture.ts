@@ -1,4 +1,8 @@
-import type { WorkbenchEvent, WorkbenchSnapshot } from './workbench';
+import {
+  type WorkbenchEvent,
+  workbenchEventKinds,
+  type WorkbenchSnapshot,
+} from './workbench';
 import { type WorkbenchLessonId, workbenchLessons } from './workbench-lessons';
 
 /** The current capture schema version. */
@@ -40,6 +44,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isFiniteNumber(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 /**
  * Validates untrusted JSON as a capture. Returns null on a wrong version, an
  * unknown lesson, a bad framework or malformed events.
@@ -60,9 +68,13 @@ export function parseWorkbenchCapture(value: unknown): WorkbenchCapture | null {
   const wellFormed = events.every(
     (event) =>
       isRecord(event) &&
-      typeof event['sequence'] === 'number' &&
-      typeof event['turn'] === 'number' &&
-      typeof event['elapsedMs'] === 'number',
+      isFiniteNumber(event['sequence']) &&
+      isFiniteNumber(event['turn']) &&
+      isFiniteNumber(event['elapsedMs']) &&
+      (workbenchEventKinds as readonly unknown[]).includes(event['kind']) &&
+      typeof event['source'] === 'string' &&
+      Array.isArray(event['messages']) &&
+      isRecord(event['application']),
   );
   if (!wellFormed) return null;
   return {
