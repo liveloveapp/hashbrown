@@ -1,8 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { docsComponents } from '../src/components/docs-components';
 import { readDoc } from '../src/lib/content';
 import { renderMarkdown } from '../src/lib/markdown';
+
+// next/dynamic resolves asynchronously outside Next; render the client panel
+// directly. The build check covers the split itself.
+vi.mock('../src/components/workbench/WorkbenchPanelLoader', async () => ({
+  WorkbenchPanelLoader: (
+    await import('../src/components/workbench/WorkbenchPanelClient')
+  ).WorkbenchPanelClient,
+}));
 
 const render = async (md: string) =>
   renderToStaticMarkup(

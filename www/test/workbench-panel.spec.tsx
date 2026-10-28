@@ -18,6 +18,14 @@ import {
 } from '../src/components/workbench/workbench-lessons';
 import { workbenchMediaName } from '../src/components/workbench/workbench-media';
 
+// next/dynamic resolves asynchronously outside Next; render the client panel
+// directly. The build check covers the split itself.
+vi.mock('../src/components/workbench/WorkbenchPanelLoader', async () => ({
+  WorkbenchPanelLoader: (
+    await import('../src/components/workbench/WorkbenchPanelClient')
+  ).WorkbenchPanelClient,
+}));
+
 const origin = 'https://workbench.hashbrown.dev';
 const capture = {
   version: 1,
@@ -572,17 +580,20 @@ test('workbenchMediaId maps generative-ui and structured-output to their media n
   expect(LOOPBACK_LESSONS).toEqual(['server-threads', 'public-endpoint']);
 });
 
-test('workbenchOrigin defaults to the hosted workbench', () => {
-  setup();
-  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', undefined);
-  const fallback = workbenchOrigin();
-  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', 'http://localhost:4300');
+test.each([
+  [undefined, origin],
+  ['http://localhost:4300', 'http://localhost:4300'],
+])(
+  'workbenchOrigin reads NEXT_PUBLIC_WORKBENCH_ORIGIN %s as %s',
+  (configured, expected) => {
+    setup();
+    vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', configured);
 
-  const configured = workbenchOrigin();
+    const value = workbenchOrigin();
 
-  expect(fallback).toBe(origin);
-  expect(configured).toBe('http://localhost:4300');
-});
+    expect(value).toBe(expected);
+  },
+);
 
 test('workbenchOrigin drops a trailing slash or path from the configured value', () => {
   setup();
@@ -593,17 +604,17 @@ test('workbenchOrigin drops a trailing slash or path from the configured value',
   expect(configured).toBe('http://localhost:4300');
 });
 
-test('workbenchOrigin falls back to the hosted workbench for an empty or invalid value', () => {
-  setup();
-  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', '');
-  const empty = workbenchOrigin();
-  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', 'not a url');
+test.each(['', 'not a url'])(
+  'workbenchOrigin falls back to the hosted workbench for %j',
+  (configured) => {
+    setup();
+    vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', configured);
 
-  const invalid = workbenchOrigin();
+    const value = workbenchOrigin();
 
-  expect(empty).toBe(origin);
-  expect(invalid).toBe(origin);
-});
+    expect(value).toBe(origin);
+  },
+);
 
 test('assertWorkbenchLesson accepts lesson ids and throws on anything else', () => {
   const known = 'tools';
@@ -624,3 +635,127 @@ test('the replay poster loads lazily', () => {
 
   expect(document.querySelector('img')?.getAttribute('loading')).toBe('lazy');
 });
+
+function liveFrame() {
+  return document.querySelector<HTMLIFrameElement>('iframe[src*="embed=live"]');
+}
+
+const liveReady = {
+  type: 'hb-workbench:ready',
+  version: 1,
+  mode: 'live',
+  lesson: 'tools',
+  framework: 'angular',
+};
+
+test('Live stays once the live workbench says ready', async () => {
+  const { intersect } = setup({ fakeTimers: true });
+  render(<WorkbenchPanel lesson="tools" sdk="angular" />);
+  intersect();
+  fireEvent.click(liveTab());
+
+  await fromFrame(liveFrame() as HTMLIFrameElement, liveReady);
+  act(() => vi.advanceTimersByTime(20000));
+
+  expect(liveFrame()).not.toBeNull();
+  expect(document.body.textContent).not.toContain(
+    "Couldn't load the live workbench.",
+  );
+});
+
+test('Live falls back when no ready arrives in 8 seconds', () => {
+  const { intersect } = setup({ fakeTimers: true });
+  render(<WorkbenchPanel lesson="tools" sdk="angular" />);
+  intersect();
+  fireEvent.click(liveTab());
+
+  act(() => vi.advanceTimersByTime(7999));
+  const before = liveFrame();
+  act(() => vi.advanceTimersByTime(1));
+
+  expect(before).not.toBeNull();
+  expect(liveFrame()).toBeNull();
+  const panel = liveTab().getAttribute('aria-controls') as string;
+  const live = document.getElementById(panel) as HTMLElement;
+  expect(live.textContent).toContain("Couldn't load the live workbench.");
+  expect(
+    live.querySelector(`a[href="${origin}/angular.html?lesson=tools"]`),
+  ).not.toBeNull();
+});
+
+test.each([
+  ['another lesson', { lesson: 'streaming' }],
+  ['another framework', { framework: 'react' }],
+  ['replay mode', { mode: 'replay' }],
+])('Live falls back on a ready for %s', async (_, override) => {
+  const { intersect } = setup({ fakeTimers: true });
+  render(<WorkbenchPanel lesson="tools" sdk="angular" />);
+  intersect();
+  fireEvent.click(liveTab());
+
+  await fromFrame(liveFrame() as HTMLIFrameElement, {
+    ...liveReady,
+    ...override,
+  });
+
+  expect(liveFrame()).toBeNull();
+  expect(document.body.textContent).toContain(
+    "Couldn't load the live workbench.",
+  );
+});
+
+test.each([
+  ['another lesson', { lesson: 'streaming' }],
+  ['another framework', { framework: 'angular' }],
+  ['live mode', { mode: 'live' }],
+])('Replay falls back on a ready for %s', async (_, override) => {
+  const { fetchMock, intersect } = setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+
+  await fromFrame(frame, { ...ready, ...override });
+
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(replayFrame()).toBeNull();
+  expect(document.querySelector('video')).not.toBeNull();
+});
+
+test('the Live frame may use the built-in model and the clipboard', () => {
+  const { intersect } = setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+
+  fireEvent.click(liveTab());
+
+  expect(liveFrame()?.getAttribute('allow')).toBe(
+    'language-model; clipboard-write',
+  );
+});
+
+test('arrowing onto Live does not start the live workbench', () => {
+  setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  const [replay, live] = document.querySelectorAll<HTMLElement>('[role="tab"]');
+
+  fireEvent.keyDown(replay, { key: 'ArrowRight' });
+
+  expect(live.getAttribute('aria-selected')).toBe('true');
+  expect(liveFrame()).toBeNull();
+});
+
+test.each(['Enter', ' '])(
+  'pressing %j on the Live tab starts the live workbench',
+  (key) => {
+    setup();
+    render(<WorkbenchPanel lesson="tools" sdk="react" />);
+    const [replay, live] =
+      document.querySelectorAll<HTMLElement>('[role="tab"]');
+    fireEvent.keyDown(replay, { key: 'ArrowRight' });
+
+    fireEvent.keyDown(live, { key });
+
+    expect(liveFrame()).not.toBeNull();
+  },
+);
