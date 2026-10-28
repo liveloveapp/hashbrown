@@ -1,25 +1,25 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:15.658
+00:00:00.000 --> 00:00:16.652
 Real OpenAI output selects a component from our trusted kit.
 
-00:00:15.658 --> 00:00:20.162
+00:00:16.652 --> 00:00:21.178
 Only Accept plan changes application state.
 
-00:00:20.162 --> 00:00:24.424
+00:00:21.178 --> 00:00:25.418
 Next, readContext will supply the accepted plan.
 
-00:00:24.424 --> 00:00:36.538
+00:00:25.418 --> 00:00:36.616
 The next response renders StepsCard from the same kit.
 
-00:00:36.538 --> 00:00:40.968
+00:00:36.616 --> 00:00:41.076
 Accept the revised proposal to update application state.
 
-00:00:40.968 --> 00:00:45.452
+00:00:41.076 --> 00:00:45.540
 Replay follows captured components and state.
 
-00:00:45.452 --> 00:00:58.296
+00:00:45.540 --> 00:00:58.318
 No requests or application writes during replay.
 
-00:00:58.296 --> 00:01:03.767
+00:00:58.318 --> 00:01:02.000
 Back live.

@@ -1,22 +1,22 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:08.690
+00:00:00.000 --> 00:00:08.726
 QuickJS reads the plan and calculates 30 minutes. No model request.
 
-00:00:08.690 --> 00:00:12.958
+00:00:08.726 --> 00:00:13.054
 Change the estimate to 20 minutes. The plan stays unchanged.
 
-00:00:12.958 --> 00:00:21.258
+00:00:13.054 --> 00:00:21.462
 Browser access fails. Host arguments are validated explicitly.
 
-00:00:21.258 --> 00:00:25.428
+00:00:21.462 --> 00:00:25.654
 Run again in a fresh context to recover.
 
-00:00:25.428 --> 00:00:29.558
+00:00:25.654 --> 00:00:29.796
 Replay follows captured code, host calls and results.
 
-00:00:29.558 --> 00:00:37.776
+00:00:29.796 --> 00:00:37.992
 Playback executes no scripts or application writes.
 
-00:00:37.776 --> 00:00:39.900
+00:00:37.992 --> 00:00:40.300
 Back live.

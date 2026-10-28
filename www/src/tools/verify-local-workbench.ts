@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   type Browser,
   type BrowserContext,
@@ -186,6 +187,8 @@ export async function verifyLocalWorkbench(options: {
     } else await page.waitForTimeout(1000);
     expect(posts).toEqual([]);
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     return {
       framework,
       lesson: 'local-models',

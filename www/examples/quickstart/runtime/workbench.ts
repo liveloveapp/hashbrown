@@ -80,35 +80,11 @@ export interface WorkbenchApplication {
 /** Runtime state for one captured user turn. */
 export type WorkbenchStatus =
   'idle' | 'loading' | 'paused' | 'complete' | 'error' | 'cancelled';
-/** Every origin of an observable change; the runtime source of the kind type. */
-export const workbenchEventKinds = [
-  'kit',
-  'decision',
-  'dismiss',
-  'choose',
-  'request',
-  'event',
-  'tool',
-  'parsed',
-  'accept',
-  'error',
-  'cancel',
-  'complete',
-  'user',
-  'source',
-  'response',
-  'workflow',
-  'production',
-  'form',
-  'pause',
-  'resume',
-  'history',
-  'history-app',
-  'javascript',
-  'local-model',
-] as const;
-/** The origin of an observable change in the canonical example. */
-export type WorkbenchEventKind = (typeof workbenchEventKinds)[number];
+import {
+  type WorkbenchEventKind,
+  workbenchEventKinds,
+} from './workbench-event-kinds';
+export { workbenchEventKinds, type WorkbenchEventKind };
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
   readonly localModel?: WorkbenchLocalModelObservation;

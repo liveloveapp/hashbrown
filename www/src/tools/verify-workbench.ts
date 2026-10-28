@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
 import { assertLocalRecordingAllowed } from './docs-local-models-fixtures';
@@ -1383,6 +1384,14 @@ try {
           : {}),
         passed: true,
       });
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await saveWorkbenchCapture(
+          page,
+          resolve(
+            work,
+            `${framework}-${lesson.id}-${live ? 'live' : 'fixture'}.capture.json`,
+          ),
+        );
       saveCheckpoint();
       const video = page.video();
       await page.close();

@@ -1,10 +1,10 @@
 REACT · agent-decisions
 
-This is a real provider recording of the checked canonical workbench. Real TypeSafe decisions arrive whole and select fixed read-only application handlers. Handler text is application output, not streamed model prose. Confidence is not correctness or authorization. Actual confidence scores: 0.79, 0.94. Scores below 0.75 use the clarification handler. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
+This is a real provider recording of the checked canonical workbench. Real TypeSafe decisions arrive whole and select fixed read-only application handlers. Handler text is application output, not streamed model prose. Confidence is not correctness or authorization. Actual confidence scores: 0.74, 0.94. Scores below 0.75 use the clarification handler. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.
 
 TypeSafe returns a whole outline choice and confidence.
 
-Our outline handler replies. Application state stays unchanged.
+Below 0.75, our clarification handler replies. State is unchanged.
 
 The next whole decision proposes the record route.
 
