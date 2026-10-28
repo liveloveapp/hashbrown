@@ -29,11 +29,17 @@ Modify `packages/core/src/models/{view.models.ts,internal.models.ts,internal_hel
 `packages/core/src/reducers/{ag-ui-message-history.ts,ag-ui-message-accumulator.ts,ag-ui-activity.ts}`;
 their existing specs. Add a focused owner-aware reasoning helper module/spec if needed to share the three projection/index loops.
 
-- [ ] Write failing round-trip tests for assistant/user/call subagentRunId and independent resultSubagentRunId, including client-settled parent results, native restored history, encrypted/provider continuation metadata and frozen inputs.
-- [ ] Add public/internal optional fields with TSDoc; carry them through source projection, cached reconciliation, view conversion and lowering. ToolCall has no native tag, so use its assistant owner; tool-result tag stays independent.
-- [ ] Make reasoning association owner-aware in source indexes, full projection, cached reconciliation and hydration; sibling assistants/results must not consume another owner's pending reasoning. Preserve prior untagged behavior and cancellation/diagnostic barriers.
-- [ ] Make activity recomputation use latest assistant/tool per owner, retaining replacing-snapshot semantics. Add caller/result owner identity barriers to existing call grouping, with a failing cross-owner regression first. Keep shared agent state run-scoped.
-- [ ] Run affected focused core specs with confirmed RED/GREEN and scoped lint; independent spec then quality review; parent commits.
+- [x] Write failing round-trip tests for assistant/user/call subagentRunId and independent resultSubagentRunId, including client-settled parent results, native restored history, encrypted/provider continuation metadata and frozen inputs.
+- [x] Add public/internal optional fields with TSDoc; carry them through source projection, cached reconciliation, view conversion and lowering. ToolCall has no native tag, so use its assistant owner; tool-result tag stays independent.
+- [x] Make reasoning association owner-aware in source indexes, full projection, cached reconciliation and hydration; sibling assistants/results must not consume another owner's pending reasoning. Preserve prior untagged behavior and cancellation/diagnostic barriers.
+- [x] Make activity recomputation use latest assistant/tool per owner, retaining replacing-snapshot semantics. Add caller/result owner identity barriers to existing call grouping, with a failing cross-owner regression first. Keep shared agent state run-scoped.
+- [x] Run affected focused core specs with confirmed RED/GREEN and scoped lint; independent spec then quality review; parent commits.
+
+
+Reviewed fixes also thread the current schema through local provenance indexing
+in messages.reducer.ts and align two existing activity fixtures with same-owner
+link semantics. Full core after all fixes: 102 suites, 2,400 tests, 14 snapshots
+passed; build/lint passed with three pre-existing tool-step warnings.
 
 ## Task 3: Root acceptance, concurrency and resume
 
