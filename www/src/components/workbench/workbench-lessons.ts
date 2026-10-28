@@ -37,12 +37,15 @@ export const PARTIAL_CAPTURE_LESSONS: readonly WorkbenchLessonId[] = [
   'save-text-conversations',
 ];
 
-/** The hosted workbench origin the docs embed and link to. */
+/**
+ * The hosted workbench origin the docs embed and link to, normalized so a
+ * trailing slash or path in the configured value cannot break origin checks.
+ */
 export function workbenchOrigin(): string {
-  return (
+  return new URL(
     process.env.NEXT_PUBLIC_WORKBENCH_ORIGIN ??
-    'https://workbench.hashbrown.dev'
-  );
+      'https://workbench.hashbrown.dev',
+  ).origin;
 }
 
 /**

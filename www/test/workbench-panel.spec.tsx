@@ -25,11 +25,15 @@ const capture = {
 
 /**
  * Stubs the browser APIs the panel reads and returns a trigger for the
- * intersection observer. Cleans up the previous test's render first.
+ * intersection observer. Restores the previous test's render, stubs, env
+ * and timers first, so a failed test cannot leak into the next one.
  */
-function setup({ narrow = false } = {}) {
+function setup({ narrow = false, fakeTimers = false } = {}) {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  if (fakeTimers) vi.useFakeTimers();
   const observers: IntersectionObserverCallback[] = [];
   vi.stubGlobal(
     'matchMedia',
@@ -136,6 +140,55 @@ test('renders nothing heavy until the panel nears the viewport', () => {
   );
 });
 
+test('a capture that takes longer than the load window still loads', async () => {
+  const { fetchMock, intersect } = setup({ fakeTimers: true });
+  fetchMock.mockImplementation(
+    () =>
+      new Promise((resolve) =>
+        setTimeout(
+          () => resolve({ ok: true, json: async () => capture }),
+          9000,
+        ),
+      ),
+  );
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  const post = spyOnFrame(frame);
+  await fromFrame(frame, ready);
+
+  await act(async () => {
+    vi.advanceTimersByTime(9000);
+    for (let tick = 0; tick < 10; tick++) await Promise.resolve();
+  });
+  act(() => vi.advanceTimersByTime(7999));
+
+  expect(post).toHaveBeenCalledWith(
+    { type: 'hb-workbench:load', version: 1, capture },
+    origin,
+  );
+  expect(replayFrame()).not.toBeNull();
+  expect(document.querySelector('video')).toBeNull();
+});
+
+test('a capture fetch that never settles falls back after 30 seconds', async () => {
+  const { fetchMock, intersect } = setup({ fakeTimers: true });
+  fetchMock.mockImplementation(() => new Promise(() => undefined));
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+  await fromFrame(frame, ready);
+
+  act(() => vi.advanceTimersByTime(29999));
+  const before = replayFrame();
+  act(() => vi.advanceTimersByTime(1));
+
+  expect(before).not.toBeNull();
+  expect(replayFrame()).toBeNull();
+  expect(document.querySelector('video')).not.toBeNull();
+});
+
 test('loads the capture into the replay frame after ready', async () => {
   const { fetchMock, intersect } = setup();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
@@ -172,8 +225,7 @@ test('reposts load on a second ready without fetching again', async () => {
 });
 
 test('falls back to the recorded video when ready never arrives', () => {
-  const { intersect } = setup();
-  vi.useFakeTimers();
+  const { intersect } = setup({ fakeTimers: true });
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
   intersect();
 
@@ -184,12 +236,10 @@ test('falls back to the recorded video when ready never arrives', () => {
   expect(before).not.toBeNull();
   expect(replayFrame()).toBeNull();
   expect(document.querySelector('video')).not.toBeNull();
-  vi.useRealTimers();
 });
 
 test('falls back when the capture never finishes loading', async () => {
-  const { intersect } = setup();
-  vi.useFakeTimers();
+  const { intersect } = setup({ fakeTimers: true });
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
   intersect();
   const frame = replayFrame() as HTMLIFrameElement;
@@ -203,12 +253,10 @@ test('falls back when the capture never finishes loading', async () => {
   expect(before).not.toBeNull();
   expect(replayFrame()).toBeNull();
   expect(document.querySelector('video')).not.toBeNull();
-  vi.useRealTimers();
 });
 
 test('keeps the replay once the capture has loaded', async () => {
-  const { intersect } = setup();
-  vi.useFakeTimers();
+  const { intersect } = setup({ fakeTimers: true });
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
   intersect();
   const frame = replayFrame() as HTMLIFrameElement;
@@ -220,7 +268,6 @@ test('keeps the replay once the capture has loaded', async () => {
 
   expect(replayFrame()).not.toBeNull();
   expect(document.querySelector('video')).toBeNull();
-  vi.useRealTimers();
 });
 
 test('falls back when the capture fetch fails', async () => {
@@ -278,7 +325,7 @@ test('ignores messages from other origins or frames', async () => {
 });
 
 test('the embed client dispatches only valid messages from its frame', () => {
-  cleanup();
+  setup();
   const frame = document.createElement('iframe');
   document.body.append(frame);
   const handlers = {
@@ -455,6 +502,7 @@ test('workbenchMediaId maps generative-ui and structured-output to their media n
 });
 
 test('workbenchOrigin defaults to the hosted workbench', () => {
+  setup();
   vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', undefined);
   const fallback = workbenchOrigin();
   vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', 'http://localhost:4300');
@@ -463,4 +511,21 @@ test('workbenchOrigin defaults to the hosted workbench', () => {
 
   expect(fallback).toBe(origin);
   expect(configured).toBe('http://localhost:4300');
+});
+
+test('workbenchOrigin drops a trailing slash or path from the configured value', () => {
+  setup();
+  vi.stubEnv('NEXT_PUBLIC_WORKBENCH_ORIGIN', 'http://localhost:4300/');
+
+  const configured = workbenchOrigin();
+
+  expect(configured).toBe('http://localhost:4300');
+});
+
+test('the replay poster loads lazily', () => {
+  setup();
+
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+
+  expect(document.querySelector('img')?.getAttribute('loading')).toBe('lazy');
 });

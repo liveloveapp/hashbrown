@@ -42,6 +42,8 @@ type Tab = 'replay' | 'live' | 'source';
 const NARROW_QUERY = '(max-width: 799px)';
 // How long the frame gets to say ready, and then to load the capture.
 const LOAD_TIMEOUT_MS = 8000;
+// How long the capture fetch (up to 1.3 MB) may take.
+const FETCH_TIMEOUT_MS = 30_000;
 const TAB_LABELS: Record<Tab, string> = {
   replay: 'Replay',
   live: 'Live',
@@ -128,8 +130,8 @@ function TabbedPanel({
     return () => observer.disconnect();
   }, [near, hasCapture]);
 
-  // Fetch the capture after the frame is ready and load it; any silence,
-  // fetch failure or rejection falls back to the video.
+  // Fetch the capture after the frame is ready and load it. Fall back to the
+  // video on no ready, a failed or hung fetch, no answer to load, or rejected.
   useEffect(() => {
     if (!frame) return;
     let disposed = false;
@@ -137,22 +139,30 @@ function TabbedPanel({
     const fail = () => {
       if (!disposed) setFailed(true);
     };
+    // Bounds ready, then (restarted after posting load) the loaded answer.
     let timer = setTimeout(fail, LOAD_TIMEOUT_MS);
-    const restartTimer = () => {
-      clearTimeout(timer);
-      timer = setTimeout(fail, LOAD_TIMEOUT_MS);
+    let fetchTimer: ReturnType<typeof setTimeout> | undefined;
+    const fetchCapture = () => {
+      // The fetch gets its own limit; a slow capture is not a silent frame.
+      fetchTimer = setTimeout(() => {
+        controller.abort();
+        fail();
+      }, FETCH_TIMEOUT_MS);
+      return fetch(`/video/docs/${mediaId}-capture.json`, {
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json() as Promise<WorkbenchCapture>;
+        })
+        .finally(() => clearTimeout(fetchTimer));
     };
     let capture: Promise<WorkbenchCapture> | null = null;
     const client = createEmbedClient(frame, origin, {
       // StrictMode and reloads can say ready twice; load again each time.
       ready: () => {
-        restartTimer();
-        capture ??= fetch(`/video/docs/${mediaId}-capture.json`, {
-          signal: controller.signal,
-        }).then((response) => {
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.json() as Promise<WorkbenchCapture>;
-        });
+        clearTimeout(timer);
+        capture ??= fetchCapture();
         capture.then((value) => {
           if (disposed) return;
           client.post({
@@ -160,7 +170,8 @@ function TabbedPanel({
             version: 1,
             capture: value,
           });
-          restartTimer();
+          clearTimeout(timer);
+          timer = setTimeout(fail, LOAD_TIMEOUT_MS);
         }, fail);
       },
       loaded: () => clearTimeout(timer),
@@ -170,6 +181,7 @@ function TabbedPanel({
     return () => {
       disposed = true;
       clearTimeout(timer);
+      clearTimeout(fetchTimer);
       controller.abort();
       client.dispose();
     };
@@ -262,6 +274,7 @@ function TabbedPanel({
             width={width}
             height={height}
             alt=""
+            loading="lazy"
           />
         )}
       </div>
