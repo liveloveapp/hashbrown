@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -198,6 +199,14 @@ export async function verifyDecisionWorkbench(options: {
     await expectNoHorizontalOverflow(page);
   }
   expect(errors).toEqual([]);
+  if (process.env['WORKBENCH_RECORD'] === '1')
+    await saveWorkbenchCapture(
+      page,
+      resolve(
+        work,
+        `${framework}-decisions-${live ? 'live' : 'fixture'}.capture.json`,
+      ),
+    );
   const video = page.video();
   await page.close();
   if (video)

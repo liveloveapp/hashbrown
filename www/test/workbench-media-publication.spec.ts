@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -25,14 +26,7 @@ test('does not replace existing media when a staged batch is incomplete', () => 
   ];
   try {
     for (const id of ids)
-      for (const suffix of [
-        '.mp4',
-        '.webm',
-        '.vtt',
-        '-poster.png',
-        '-result.png',
-        '-transcript.txt',
-      ]) {
+      for (const suffix of workbenchMediaSuffixes) {
         writeFileSync(resolve(target, id + suffix), 'existing');
         if (id !== ids[1] || suffix !== '-transcript.txt')
           writeFileSync(resolve(staging, id + suffix), 'new');
@@ -43,14 +37,7 @@ test('does not replace existing media when a staged batch is incomplete', () => 
     );
 
     for (const id of ids)
-      for (const suffix of [
-        '.mp4',
-        '.webm',
-        '.vtt',
-        '-poster.png',
-        '-result.png',
-        '-transcript.txt',
-      ])
+      for (const suffix of workbenchMediaSuffixes)
         expect(readFileSync(resolve(target, id + suffix), 'utf8')).toBe(
           'existing',
         );
@@ -74,6 +61,27 @@ test('publishes complete staged batches only after preflight', () => {
 
     for (const suffix of workbenchMediaSuffixes)
       expect(readFileSync(resolve(target, id + suffix), 'utf8')).toBe(suffix);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('refuses a recording whose capture companion was not staged', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-media-'));
+  const staging = resolve(root, 'staged'),
+    target = resolve(root, 'public');
+  mkdirSync(staging);
+  mkdirSync(target);
+  const id = 'canonical-workbench-ui-react';
+  try {
+    for (const suffix of workbenchMediaSuffixes)
+      if (suffix !== '-capture.json')
+        writeFileSync(resolve(staging, id + suffix), suffix);
+
+    const publish = () => publishWorkbenchMedia(staging, target, [id]);
+
+    expect(publish).toThrow(`Missing staged media: ${id}-capture.json`);
+    expect(existsSync(resolve(target, `${id}.mp4`))).toBe(false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

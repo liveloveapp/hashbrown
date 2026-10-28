@@ -9,6 +9,7 @@ export const workbenchMediaSuffixes = [
   '-poster.png',
   '-result.png',
   '-transcript.txt',
+  '-capture.json',
 ] as const;
 
 /** Preflights every staged companion before replacing any published recording files. */

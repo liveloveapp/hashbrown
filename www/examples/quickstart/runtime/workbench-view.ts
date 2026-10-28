@@ -60,6 +60,10 @@ import {
   type WorkbenchEmbedMode,
 } from './workbench-embed';
 import { attachWorkbenchMessages } from './workbench-messages';
+import {
+  createWorkbenchCapture,
+  type WorkbenchCapture,
+} from './workbench-capture';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
@@ -335,6 +339,34 @@ export function workbenchEventLabel(
       'history-app': `Text ${event.history?.app.action ?? 'action'}`,
     }[event.kind] ?? event.kind
   );
+}
+
+/** The page hook recorders call to save the visible workbench's capture. */
+interface WorkbenchCaptureGlobal {
+  hashbrownWorkbench?: {
+    readonly capture: (recordedAt: string) => WorkbenchCapture;
+  };
+}
+// Retained conversations mount several shells; the visible one is captured.
+const captureSources: {
+  readonly root: HTMLElement;
+  readonly capture: (recordedAt: string) => WorkbenchCapture;
+}[] = [];
+function exposeWorkbenchCapture() {
+  const host = globalThis as WorkbenchCaptureGlobal;
+  if (!captureSources.length) {
+    delete host.hashbrownWorkbench;
+    return;
+  }
+  host.hashbrownWorkbench = {
+    capture: (recordedAt) =>
+      (
+        [...captureSources]
+          .reverse()
+          .find((source) => !source.root.closest('[hidden]')) ??
+        captureSources[captureSources.length - 1]
+      ).capture(recordedAt),
+  };
 }
 
 /** Navigation shared by retained, independent framework conversation instances. */
@@ -1711,14 +1743,27 @@ export function mountWorkbench(
   const unsubscribe = store.subscribe(render);
   render();
   const lessonId = commands.lesson?.id;
+  const captureLesson =
+    workbenchLessons.find((lesson) => lesson.id === lessonId)?.id ??
+    getWorkbenchLesson(globalThis.location?.search ?? '').id;
+  const captureFramework =
+    commands.framework.toLowerCase() === 'angular' ? 'angular' : 'react';
+  const captureSource = {
+    root,
+    capture: (recordedAt: string) =>
+      createWorkbenchCapture(store.getSnapshot(), {
+        lesson: captureLesson,
+        framework: captureFramework,
+        recordedAt,
+      }),
+  };
+  captureSources.push(captureSource);
+  exposeWorkbenchCapture();
   const messages = embed
     ? attachWorkbenchMessages({
         mode: embed,
-        lesson:
-          workbenchLessons.find((lesson) => lesson.id === lessonId)?.id ??
-          getWorkbenchLesson(globalThis.location?.search ?? '').id,
-        framework:
-          commands.framework.toLowerCase() === 'angular' ? 'angular' : 'react',
+        lesson: captureLesson,
+        framework: captureFramework,
         format: commands.lesson?.format,
         store,
         isPlaying: () => playing,
@@ -1739,6 +1784,8 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      captureSources.splice(captureSources.indexOf(captureSource), 1);
+      exposeWorkbenchCapture();
       messages?.dispose();
       detachScrub();
       requestsView.dispose();
