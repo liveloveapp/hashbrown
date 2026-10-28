@@ -424,6 +424,7 @@ export function createWorkbenchStore(
   let localModel: WorkbenchLocalModelObservation | undefined;
   let localPreparationId: string | null = null;
   let localSource = false;
+  let localClockStarted = false;
   let uiKit: WorkbenchUiKitObservation | undefined;
   let uiComponent: WorkbenchUiComponent | undefined;
   let uiRevision = -1;
@@ -572,7 +573,7 @@ export function createWorkbenchStore(
                         ? 'Browser transport'
                         : 'Application',
         elapsedMs:
-          (kind === 'kit' || kind === 'local-model') && turn === 0
+          kind === 'kit' && turn === 0
             ? 0
             : Math.round(Math.max(0, performance.now() - started)),
         application,
@@ -987,6 +988,10 @@ export function createWorkbenchStore(
         status === 'paused'
       )
         return false;
+      if (turn === 0 && !localClockStarted) {
+        started = performance.now();
+        localClockStarted = true;
+      }
       localPreparationId = operationId;
       localModel = next;
       record('local-model', next);
@@ -1033,7 +1038,7 @@ export function createWorkbenchStore(
         );
       localPreparationId = null;
       localSource = false;
-      if (turn === 0) started = performance.now();
+      if (turn === 0 && !localClockStarted) started = performance.now();
       turn++;
       status = 'loading';
       props = null;
@@ -1419,6 +1424,7 @@ export function createWorkbenchStore(
       localPreparationId = null;
       localModel = undefined;
       localSource = false;
+      localClockStarted = false;
       history = undefined;
       javascript = undefined;
       authoring = undefined;

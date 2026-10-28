@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { EventType } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
@@ -496,4 +496,48 @@ test('local metadata capture ignores unknown fields, accessors and superseded re
   await stale;
 
   expect(store.getSnapshot().events).toEqual([]);
+});
+
+test('preparation and inference share one monotonic elapsed clock including after clear', () => {
+  let now = 1000;
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const store = createWorkbenchStore('structured', { localModel: true });
+
+  try {
+    store.beginLocalPreparation('first');
+    now = 1100;
+    store.recordLocalPreparation({
+      operationId: 'first',
+      state: 'preparing',
+      progress: 50,
+    });
+    now = 1300;
+    store.recordLocalPreparation({ operationId: 'first', state: 'ready' });
+    now = 1400;
+    store.send('Plan');
+    now = 1500;
+    store.record('event', {
+      type: 'TEXT_MESSAGE_CONTENT',
+      messageId: 'answer',
+      delta: '{',
+    });
+
+    expect(store.getSnapshot().events.map((event) => event.elapsedMs)).toEqual([
+      0, 100, 300, 400, 500,
+    ]);
+
+    store.clear();
+    now = 2000;
+    store.beginLocalPreparation('second');
+    now = 2100;
+    store.recordLocalPreparation({ operationId: 'second', state: 'ready' });
+    now = 2200;
+    store.send('New plan');
+
+    expect(store.getSnapshot().events.map((event) => event.elapsedMs)).toEqual([
+      0, 100, 200,
+    ]);
+  } finally {
+    clock.mockRestore();
+  }
 });
