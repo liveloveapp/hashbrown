@@ -82,6 +82,12 @@ Earlier WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot,
 
 Retained standalone Threadplane shipping clips and workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
 
+## Accessibility and consistency checks
+
+The 60 active recordings appear in 64 canonical guide embeds. Their caption intervals are ordered, nonempty and at most 20 characters per displayed second. The initial overview, generative UI, tools, schemas, streaming, structured output, debugging, request transformation, decisions and UI-selection captions were shortened where needed, without retiming or replacing footage. Text walkthroughs and recorder sources use the same concise descriptions. Runtime ownership and source disclosures are preserved.
+
+Video players keep native controls and captions, with a visible caption associated to each player and a context-specific text-walkthrough link. Workbench tab strips use one Tab stop with arrow/Home/End navigation; request-detail rebuilds preserve keyboard focus. The bottom range names its turn, event, milestone and elapsed time. Lifecycle status is polite and deduplicated; stream tokens and JSON panels are not live regions. Playback shortcuts leave focused links and interactive controls alone.
+
 ## Reproduction and verification
 
 The workbench source is `www/examples/quickstart`; its shared runtime is under `runtime`, framework clients under `angular` and `react`, and checked server boundaries under `server`. Recorders, fixtures and verification helpers live under `www/src/tools`.

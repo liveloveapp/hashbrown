@@ -8,7 +8,7 @@ Use view: summary saved at revision 1.
 
 Confidence gates the preview.
 
-Show steps manually. Revision 2.
+Show steps. Revision 2.
 
 Replay: no requests or writes.
 
