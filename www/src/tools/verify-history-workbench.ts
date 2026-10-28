@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import { assertWorkbenchSavedTextInspection } from './workbench-history-inspection';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -488,6 +489,8 @@ export async function verifyHistoryWorkbench(options: {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

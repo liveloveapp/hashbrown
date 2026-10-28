@@ -1,0 +1,2838 @@
+{
+  "version": 1,
+  "lesson": "agent-decisions",
+  "framework": "angular",
+  "commit": "c29b05b2d9c7d777b82c814d9ac545e98c6971da",
+  "recordedAt": "2026-10-28T19:37:44.598Z",
+  "events": [
+    {
+      "sequence": 1,
+      "turn": 0,
+      "kind": "history",
+      "payload": {
+        "messages": [],
+        "isLoading": false,
+        "isSending": false,
+        "isReceiving": false,
+        "isGenerating": false,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 161,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 2,
+      "turn": 1,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-1",
+        "role": "user",
+        "content": "Help me outline the trusted UI demo."
+      },
+      "source": "Application",
+      "elapsedMs": 0,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 3,
+      "turn": 1,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          }
+        ],
+        "isLoading": true,
+        "isSending": true,
+        "isReceiving": false,
+        "isGenerating": false,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 12,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 4,
+      "turn": 1,
+      "kind": "request",
+      "payload": {
+        "url": "/api/workbench/agent-decisions",
+        "requestId": "bedd03ad-75a8-4138-b209-f3255928ddc6",
+        "attempt": 1,
+        "input": {
+          "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+          "runId": "bedd03ad-75a8-4138-b209-f3255928ddc6",
+          "messages": [
+            {
+              "id": "31dbeb42-d491-4e0e-9dd0-3768e81d61b1",
+              "role": "system",
+              "content": "Explain the application-owned two-step plan through server-owned read-only routes."
+            },
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "tools": [],
+          "context": [],
+          "forwardedProps": {}
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 158,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 5,
+      "turn": 1,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 183,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 6,
+      "turn": 1,
+      "kind": "response",
+      "payload": {
+        "status": 200,
+        "url": "http://127.0.0.1:50185/api/workbench/agent-decisions",
+        "requestId": "bedd03ad-75a8-4138-b209-f3255928ddc6",
+        "source": "provider"
+      },
+      "source": "Application",
+      "elapsedMs": 184,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 7,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_STARTED",
+        "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+        "runId": "bedd03ad-75a8-4138-b209-f3255928ddc6"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 186,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 8,
+      "turn": 1,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 189,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 9,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "CUSTOM",
+        "name": "workbench.agent-decision",
+        "value": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 306,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 10,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_START",
+        "messageId": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+        "role": "assistant"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 326,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 11,
+      "turn": 1,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 328,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 12,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+        "delta": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+      },
+      "source": "Browser transport",
+      "elapsedMs": 346,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 13,
+      "turn": 1,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 348,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 14,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_END",
+        "messageId": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 365,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 15,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_FINISHED",
+        "metadata": { "hashbrown": { "finishReason": "stop" } },
+        "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+        "runId": "bedd03ad-75a8-4138-b209-f3255928ddc6",
+        "outcome": { "type": "success" }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 387,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 16,
+      "turn": 1,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": false,
+        "isSending": false,
+        "isReceiving": false,
+        "isGenerating": false,
+        "isResuming": false,
+        "finishReason": "stop",
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 390,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": "stop",
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 17,
+      "turn": 1,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 390,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": "stop",
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": true,
+        "agent": {
+          "value": { "route": "outline" },
+          "meta": { "route": { "confidence": 0.72 } },
+          "handler": "clarify",
+          "fallback": "low-confidence"
+        }
+      },
+      "json": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 18,
+      "turn": 2,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-2",
+        "role": "user",
+        "content": "The outline is complete. Help me record the demo."
+      },
+      "source": "Application",
+      "elapsedMs": 4914,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": "stop",
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 19,
+      "turn": 2,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          },
+          {
+            "id": "workbench-0-2",
+            "role": "user",
+            "content": "The outline is complete. Help me record the demo."
+          }
+        ],
+        "isLoading": true,
+        "isSending": true,
+        "isReceiving": false,
+        "isGenerating": false,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 4928,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 20,
+      "turn": 2,
+      "kind": "request",
+      "payload": {
+        "url": "/api/workbench/agent-decisions",
+        "requestId": "b042d8f6-8265-40bf-a5b2-84a83d5db7fc",
+        "attempt": 1,
+        "input": {
+          "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+          "runId": "b042d8f6-8265-40bf-a5b2-84a83d5db7fc",
+          "messages": [
+            {
+              "id": "31dbeb42-d491-4e0e-9dd0-3768e81d61b1",
+              "role": "system",
+              "content": "Explain the application-owned two-step plan through server-owned read-only routes."
+            },
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "tools": [],
+          "context": [],
+          "forwardedProps": {}
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5069,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 21,
+      "turn": 2,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 5093,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 22,
+      "turn": 2,
+      "kind": "response",
+      "payload": {
+        "status": 200,
+        "url": "http://127.0.0.1:50185/api/workbench/agent-decisions",
+        "requestId": "b042d8f6-8265-40bf-a5b2-84a83d5db7fc",
+        "source": "provider"
+      },
+      "source": "Application",
+      "elapsedMs": 5094,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 23,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_STARTED",
+        "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+        "runId": "b042d8f6-8265-40bf-a5b2-84a83d5db7fc"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5096,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": true,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 24,
+      "turn": 2,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          },
+          {
+            "id": "workbench-0-2",
+            "role": "user",
+            "content": "The outline is complete. Help me record the demo."
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 5097,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 25,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "CUSTOM",
+        "name": "workbench.agent-decision",
+        "value": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5216,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 26,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_START",
+        "messageId": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+        "role": "assistant"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5236,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 27,
+      "turn": 2,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          },
+          {
+            "id": "workbench-0-2",
+            "role": "user",
+            "content": "The outline is complete. Help me record the demo."
+          },
+          {
+            "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+            "role": "assistant",
+            "content": "",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 5238,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 28,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+        "delta": "Record handler: Record the demo. Show the prepared outline in one short demo."
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5256,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 29,
+      "turn": 2,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          },
+          {
+            "id": "workbench-0-2",
+            "role": "user",
+            "content": "The outline is complete. Help me record the demo."
+          },
+          {
+            "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+            "role": "assistant",
+            "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": true,
+        "isSending": false,
+        "isReceiving": true,
+        "isGenerating": true,
+        "isResuming": false,
+        "finishReason": null,
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 5259,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 30,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_END",
+        "messageId": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5277,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 31,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_FINISHED",
+        "metadata": { "hashbrown": { "finishReason": "stop" } },
+        "threadId": "d24ee1a6-bdcb-42c4-be30-c061601b4dd4",
+        "runId": "b042d8f6-8265-40bf-a5b2-84a83d5db7fc",
+        "outcome": { "type": "success" }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 5297,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": true,
+          "isSending": false,
+          "isReceiving": true,
+          "isGenerating": true,
+          "isResuming": false,
+          "finishReason": null,
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 32,
+      "turn": 2,
+      "kind": "history",
+      "payload": {
+        "messages": [
+          {
+            "id": "workbench-0-1",
+            "role": "user",
+            "content": "Help me outline the trusted UI demo."
+          },
+          {
+            "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+            "role": "assistant",
+            "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+            "toolCalls": []
+          },
+          {
+            "id": "workbench-0-2",
+            "role": "user",
+            "content": "The outline is complete. Help me record the demo."
+          },
+          {
+            "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+            "role": "assistant",
+            "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+            "toolCalls": []
+          }
+        ],
+        "isLoading": false,
+        "isSending": false,
+        "isReceiving": false,
+        "isGenerating": false,
+        "isResuming": false,
+        "finishReason": "stop",
+        "error": null,
+        "pendingInterrupts": null,
+        "recoveryRequired": false
+      },
+      "source": "SDK history observation",
+      "elapsedMs": 5300,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": "stop",
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": false,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 33,
+      "turn": 2,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 5300,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Help me outline the trusted UI demo."
+        },
+        {
+          "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+          "role": "assistant",
+          "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo."
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The outline is complete. Help me record the demo."
+        },
+        {
+          "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+          "role": "assistant",
+          "content": "Record handler: Record the demo. Show the prepared outline in one short demo."
+        }
+      ],
+      "history": {
+        "replacement": null,
+        "sdk": {
+          "messages": [
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Help me outline the trusted UI demo."
+            },
+            {
+              "id": "workbench-agent-cf75a8d9-7678-4dbe-b63c-b97db931f481",
+              "role": "assistant",
+              "content": "Please clarify whether you want to outline the trusted UI demo or record the prepared demo.",
+              "toolCalls": []
+            },
+            {
+              "id": "workbench-0-2",
+              "role": "user",
+              "content": "The outline is complete. Help me record the demo."
+            },
+            {
+              "id": "workbench-agent-8b33a8af-8042-495a-8401-c15169744ada",
+              "role": "assistant",
+              "content": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+              "toolCalls": []
+            }
+          ],
+          "isLoading": false,
+          "isSending": false,
+          "isReceiving": false,
+          "isGenerating": false,
+          "isResuming": false,
+          "finishReason": "stop",
+          "error": null,
+          "pendingInterrupts": null,
+          "recoveryRequired": false
+        },
+        "app": {
+          "retained": null,
+          "selectedSlot": "Lighthouse",
+          "saved": { "status": "empty", "document": null, "error": null },
+          "action": null,
+          "error": null
+        },
+        "successfulGeneration": true,
+        "agent": {
+          "value": { "route": "record" },
+          "meta": { "route": { "confidence": 0.92 } },
+          "handler": "record",
+          "fallback": null
+        }
+      },
+      "json": "Record handler: Record the demo. Show the prepared outline in one short demo.",
+      "props": null,
+      "status": "complete"
+    }
+  ]
+}

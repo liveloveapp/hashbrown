@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -415,6 +416,8 @@ export async function verifyOnboardingWorkbench(options: {
       root.getByRole('button', { name: 'Accept plan', exact: true }),
     ).toHaveCount(0);
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

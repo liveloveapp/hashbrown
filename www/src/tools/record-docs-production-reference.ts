@@ -7,6 +7,10 @@ import { once } from 'node:events';
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import {
+  saveWorkbenchCapture,
+  stageWorkbenchCaptures,
+} from './workbench-capture-file';
 import { publishWorkbenchMedia } from './workbench-media-publication';
 import {
   productionRecordingCues,
@@ -241,6 +245,11 @@ try {
       expect(errors).toEqual([]);
       const id = `canonical-workbench-production-recovery-${framework}`;
       const base = resolve(staging, id);
+      // Saved while the workbench is still mounted; staged once both pass.
+      await saveWorkbenchCapture(
+        page,
+        resolve(work, `${framework}-production-recovery-live.capture.json`),
+      );
       await page.screenshot({ path: `${base}-result.png` });
       const video = page.video();
       await context.close();
@@ -346,6 +355,20 @@ try {
   }
   if (ids.length !== 2)
     throw new Error('Both frameworks must pass before publication.');
+  // Captures are stamped with the commit the media is published from.
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+  }).trim();
+  stageWorkbenchCaptures(
+    work,
+    staging,
+    (['react', 'angular'] as const).map((framework) => ({
+      id: `canonical-workbench-production-recovery-${framework}`,
+      framework,
+      lesson: 'production-recovery',
+    })),
+    commit,
+  );
   publishWorkbenchMedia(staging, resolve('www/public/video/docs'), ids);
   copyFileSync(
     resolve(work, 'report.json'),

@@ -1,19 +1,19 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:04.462
+00:00:00.000 --> 00:00:04.508
 A local 403 stops before the provider. Revision 0.
 
-00:00:04.462 --> 00:00:11.734
+00:00:04.508 --> 00:00:12.796
 Disable Demo denial and retry in the same conversation. Real model output now streams into the trusted plan card.
 
-00:00:11.734 --> 00:00:15.524
+00:00:12.796 --> 00:00:16.570
 Accept plan: application revision 1.
 
-00:00:15.524 --> 00:00:23.396
+00:00:16.570 --> 00:00:24.642
 The follow-up reads the accepted plan and proposes a shorter second step.
 
-00:00:23.396 --> 00:00:32.268
+00:00:24.642 --> 00:00:33.446
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
-00:00:32.268 --> 00:00:34.300
+00:00:33.446 --> 00:00:35.400
 Back live. Revision 1.

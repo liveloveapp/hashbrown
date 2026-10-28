@@ -1,0 +1,668 @@
+{
+  "version": 1,
+  "lesson": "ui-selection",
+  "framework": "react",
+  "commit": "c29b05b2d9c7d777b82c814d9ac545e98c6971da",
+  "recordedAt": "2026-10-28T19:15:42.722Z",
+  "events": [
+    {
+      "sequence": 1,
+      "turn": 1,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-1",
+        "role": "user",
+        "content": "Show an overview of the plan."
+      },
+      "source": "Application",
+      "elapsedMs": 0,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 2,
+      "turn": 1,
+      "kind": "request",
+      "payload": {
+        "requestId": "workbench-0-1",
+        "input": {
+          "state": {
+            "system": "Choose summary for an overview and steps for an ordered list of the application-owned two-step plan. Choose only a supplied candidate. Selection does not apply the view; the user explicitly chooses it.",
+            "input": {
+              "requestId": "workbench-0-1",
+              "prompt": "Show an overview of the plan.",
+              "application": {
+                "revision": 0,
+                "nextAction": null,
+                "selectedView": null,
+                "acceptedActions": [],
+                "plan": {
+                  "title": "Show how a model renders trusted UI",
+                  "steps": ["Outline the trusted UI demo.", "Record the demo."]
+                }
+              }
+            }
+          },
+          "questions": {
+            "pick": {
+              "type": "choice",
+              "instructions": "Which one fits the input best",
+              "options": {
+                "summary": "Show the plan title and a brief overview of the two-step plan.",
+                "steps": "Show the plan as an ordered list of its two steps."
+              }
+            }
+          }
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 3,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 3,
+      "turn": 1,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 203,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 4,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "kind": "hashbrown.decision",
+        "version": 1,
+        "value": { "pick": "summary" },
+        "meta": {
+          "pick": {
+            "confidence": 0.84,
+            "probabilities": { "summary": 0.92, "steps": 0.08 }
+          }
+        },
+        "usage": { "inputTokens": 474, "outputTokens": 31 }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 206,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 5,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "kind": "selection",
+        "selected": ["summary"],
+        "confidence": 0.84
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 208,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "recipe": {
+        "kind": "selection",
+        "selected": ["summary"],
+        "confidence": 0.84
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 6,
+      "turn": 1,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 209,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": null
+      },
+      "recipe": {
+        "kind": "selection",
+        "selected": ["summary"],
+        "confidence": 0.84
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 7,
+      "turn": 1,
+      "kind": "choose",
+      "payload": { "selectedView": "summary", "manual": false },
+      "source": "Application",
+      "elapsedMs": 1067,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "recipe": {
+        "kind": "selection",
+        "selected": ["summary"],
+        "confidence": 0.84
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 8,
+      "turn": 2,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-2",
+        "role": "user",
+        "content": "Show the plan as ordered steps."
+      },
+      "source": "Application",
+      "elapsedMs": 1922,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 9,
+      "turn": 2,
+      "kind": "request",
+      "payload": {
+        "requestId": "workbench-0-2",
+        "input": {
+          "state": {
+            "system": "Choose summary for an overview and steps for an ordered list of the application-owned two-step plan. Choose only a supplied candidate. Selection does not apply the view; the user explicitly chooses it.",
+            "input": {
+              "requestId": "workbench-0-2",
+              "prompt": "Show the plan as ordered steps.",
+              "application": {
+                "revision": 1,
+                "nextAction": null,
+                "selectedView": "summary",
+                "acceptedActions": [],
+                "plan": {
+                  "title": "Show how a model renders trusted UI",
+                  "steps": ["Outline the trusted UI demo.", "Record the demo."]
+                }
+              }
+            }
+          },
+          "questions": {
+            "pick": {
+              "type": "choice",
+              "instructions": "Which one fits the input best",
+              "options": {
+                "summary": "Show the plan title and a brief overview of the two-step plan.",
+                "steps": "Show the plan as an ordered list of its two steps."
+              }
+            }
+          }
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1923,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 10,
+      "turn": 2,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 1994,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 11,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "kind": "hashbrown.decision",
+        "version": 1,
+        "value": { "pick": "summary" },
+        "meta": {
+          "pick": {
+            "confidence": 0.1,
+            "probabilities": { "summary": 0.55, "steps": 0.45 }
+          }
+        },
+        "usage": { "inputTokens": 476, "outputTokens": 31 }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1996,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 12,
+      "turn": 2,
+      "kind": "parsed",
+      "payload": { "kind": "selection", "selected": [], "confidence": 0.1 },
+      "source": "SDK parsed output",
+      "elapsedMs": 1998,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        },
+        {
+          "id": "recipe-workbench-0-2",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 13,
+      "turn": 2,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 1998,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "summary"
+      },
+      "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        },
+        {
+          "id": "recipe-workbench-0-2",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 14,
+      "turn": 2,
+      "kind": "choose",
+      "payload": { "selectedView": "steps", "manual": true },
+      "source": "Application",
+      "elapsedMs": 2967,
+      "application": {
+        "revision": 2,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null,
+        "selectedView": "steps"
+      },
+      "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Show an overview of the plan."
+        },
+        {
+          "id": "recipe-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.84,\n      \"probabilities\": {\n        \"summary\": 0.92,\n        \"steps\": 0.08\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 474,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": {
+            "kind": "selection",
+            "selected": ["summary"],
+            "confidence": 0.84
+          }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "Show the plan as ordered steps."
+        },
+        {
+          "id": "recipe-workbench-0-2",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+          "recipe": { "kind": "selection", "selected": [], "confidence": 0.1 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"pick\": \"summary\"\n  },\n  \"meta\": {\n    \"pick\": {\n      \"confidence\": 0.1,\n      \"probabilities\": {\n        \"summary\": 0.55,\n        \"steps\": 0.45\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 476,\n    \"outputTokens\": 31\n  }\n}",
+      "props": null,
+      "status": "complete"
+    }
+  ]
+}
