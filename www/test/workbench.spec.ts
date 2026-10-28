@@ -232,6 +232,7 @@ test('lesson queries resolve only allowlisted metadata and safe endpoints', asyn
   expect(workbenchLessons.map((lesson) => lesson.id)).toEqual([
     'generative-ui',
     'tools',
+    'javascript-runtime',
     'structured-output',
     'streaming',
     'schemas',

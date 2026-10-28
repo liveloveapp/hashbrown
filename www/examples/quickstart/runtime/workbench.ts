@@ -1,4 +1,8 @@
 import {
+  normalizeWorkbenchJavaScriptObservation,
+  type WorkbenchJavaScriptObservation,
+} from './workbench-javascript';
+import {
   decodeWorkbenchUiDocument,
   extractWorkbenchUi,
   normalizeWorkbenchUiKit,
@@ -93,13 +97,15 @@ export type WorkbenchEventKind =
   | 'pause'
   | 'resume'
   | 'history'
-  | 'history-app';
+  | 'history-app'
+  | 'javascript';
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
   readonly uiComponent?: WorkbenchUiComponent;
   readonly uiKit?: WorkbenchUiKitObservation;
   readonly history?: WorkbenchHistoryFrame;
   readonly workflow?: WorkbenchWorkflowObservation;
+  readonly javascript?: WorkbenchJavaScriptObservation;
   readonly sequence: number;
   readonly turn: number;
   readonly kind: WorkbenchEventKind;
@@ -169,6 +175,8 @@ export interface WorkbenchStore {
   beginResume(batchId: string): boolean;
   /** Restores the paused form after synchronous SDK validation rejects resume. */
   failResume(): void;
+  /** Captures bounded runtime facts only for the live loading user action. */
+  recordJavaScript(observation: unknown, userId: string): boolean;
   getSnapshot(): WorkbenchSnapshot;
   subscribe(listener: () => void): () => void;
   send(content: string): { id: string; role: 'user'; content: string };
@@ -413,6 +421,7 @@ export function createWorkbenchStore(
   let replacementBaseline = '';
   let replacementObservedBusy = false;
   let workflow: WorkbenchWorkflowObservation | undefined;
+  let javascript: WorkbenchJavaScriptObservation | undefined;
   let resumeIntent = false;
   let decision: WorkbenchDecision | undefined;
   let decisionRevision = -1;
@@ -529,18 +538,20 @@ export function createWorkbenchStore(
         kind,
         payload,
         source:
-          kind === 'kit'
-            ? 'Kit configuration'
-            : kind === 'parsed'
-              ? 'SDK parsed output'
-              : kind === 'history'
-                ? 'SDK history observation'
-                : kind === 'workflow' ||
-                    (kind === 'pause' && raw && 'isLoading' in raw)
-                  ? 'SDK workflow observation'
-                  : kind === 'event' || kind === 'request'
-                    ? 'Browser transport'
-                    : 'Application',
+          kind === 'javascript'
+            ? 'JavaScript runtime observation'
+            : kind === 'kit'
+              ? 'Kit configuration'
+              : kind === 'parsed'
+                ? 'SDK parsed output'
+                : kind === 'history'
+                  ? 'SDK history observation'
+                  : kind === 'workflow' ||
+                      (kind === 'pause' && raw && 'isLoading' in raw)
+                    ? 'SDK workflow observation'
+                    : kind === 'event' || kind === 'request'
+                      ? 'Browser transport'
+                      : 'Application',
         elapsedMs:
           kind === 'kit' && turn === 0
             ? 0
@@ -564,6 +575,7 @@ export function createWorkbenchStore(
             }
           : {}),
         ...(workflow ? { workflow } : {}),
+        ...(javascript ? { javascript } : {}),
         json,
         props,
         status,
@@ -929,6 +941,21 @@ export function createWorkbenchStore(
       status = 'paused';
       record('pause', { synchronousValidationRejected: true });
     },
+    recordJavaScript(observation, userId) {
+      if (
+        format !== 'text' ||
+        cursor !== null ||
+        status !== 'loading' ||
+        latestSentUserId !== userId
+      )
+        return false;
+      const next = normalizeWorkbenchJavaScriptObservation(observation);
+      if (!next || JSON.stringify(next) === JSON.stringify(javascript))
+        return false;
+      javascript = next;
+      record('javascript', javascript);
+      return true;
+    },
     getSnapshot: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);
@@ -969,6 +996,7 @@ export function createWorkbenchStore(
       json = '';
       finishReason = undefined;
       historySuccess = false;
+      javascript = undefined;
       authoring = undefined;
       agent = undefined;
       const message = {
@@ -1314,6 +1342,7 @@ export function createWorkbenchStore(
     clear() {
       generation++;
       history = undefined;
+      javascript = undefined;
       authoring = undefined;
       latestSentUserId = null;
       agent = undefined;

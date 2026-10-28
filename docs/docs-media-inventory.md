@@ -4,7 +4,7 @@ Updated 2026-10-27. This inventory describes the current guides and their record
 
 ## Current canonical coverage
 
-The workbench has 26 lessons, each implemented in Angular and React: 52 framework paths. The shared two-step plan, LLA styling, chat feed, paired inspector and bottom playback keep the teaching context consistent. The two `start/workbench` overview recordings use `canonical-workbench-{react,angular}`.
+The workbench has 27 lessons, each implemented in Angular and React: 54 framework paths. The shared two-step plan, LLA styling, chat feed, paired inspector and bottom playback keep the teaching context consistent. The two `start/workbench` overview recordings use `canonical-workbench-{react,angular}`.
 
 Each lesson below has a separate recording per framework. The media ID is `canonical-workbench-<recording>-<sdk>`, where `<sdk>` is `angular` or `react`. A lesson can introduce more than one guide without requiring another recording.
 
@@ -34,12 +34,15 @@ Each lesson below has a separate recording per framework. The media ID is `canon
 | Decisions in agents | `agent-decisions` | `recipes/decisions-in-agents` |
 | Streaming JSON Parser | `json-parser` | `recipes/json-parser` |
 | Natural language forms | `natural-forms` | `recipes/natural-language-to-structured-data` |
+| JavaScript runtime | `javascript-runtime` | `concept/runtime` |
 | UI Kits | `ui-kits` | `recipes/ui-kits` |
 | UI chatbot | `ui-chatbot` | `recipes/ui-chatbot` |
 
 Every new canonical recording includes MP4, WebM, a poster, a result screenshot, measured WebVTT captions and a text walkthrough. Files live under `www/public/video/docs`; the media registry is `www/src/components/elements/docs-demo-media.ts`.
 
 ## Recording provenance
+
+The JavaScript runtime pair uses actual native framework QuickJS execution of visible application-owned scripts, with real host calls and result/error wrappers. No model/provider request or simulated JSON streaming. The estimates, failed capabilities and recovery preserve application state; replay executes no scripts.
 
 Canonical chat recordings use actual Hashbrown framework APIs, real OpenAI requests and the real tool handlers where registered. Decision and UI-selection lessons use actual TypeSafe decisions, which arrive whole. The Decisions in Agents lesson invokes fixed application-owned handlers after a whole route decision; its reply is not model-generated streaming prose. Confidence is not correctness or authorization.
 
@@ -60,11 +63,10 @@ The latest authoring recordings preserve actual outcomes: a 0.74 agent choice us
 
 ## Remaining standalone guides
 
-These three topic pairs still use their own checked examples and recordings. They are the remaining canonical rollout candidates.
+These two topic pairs still use their own checked examples and recordings. They are the remaining canonical rollout candidates.
 
 | Topic | Current media | Current source and next step |
 | --- | --- | --- |
-| JavaScript runtime | `javascript-runtime` | Real QuickJS runs prewritten basket calculations, rejects browser access and validates host arguments. No model or provider key. Move the task into the plan context with code/result/error inspection. |
 | Local models | `local-models` | Actual browser-native inference extracts a typed trip brief, with preparation, availability, stop and recovery. Keep local inference visibly distinct when adopting the canonical scenario. |
 | Threadplane | `threadplane-angular`, `threadplane-react` | Separately installed framework consumers use actual Threadplane presentation. Recordings use scripted provider-native events through the real Hashbrown adapter. Align the conversation and live streaming with the canonical plan while retaining Threadplane's own chat UI. |
 

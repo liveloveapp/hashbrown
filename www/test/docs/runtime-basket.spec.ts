@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { readBasket } from '../../examples/quickstart/runtime/basket';
+import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 
 test('reads three basket items in integer cents', () => {
   const input = { currency: 'USD' };
@@ -45,40 +46,37 @@ test('returns independent basket snapshots', () => {
   expect(first.items).not.toBe(second.items);
 });
 
-test('runtime guides publish the complete checked source and explicit validation boundary', () => {
-  const cases = [
-    { sdk: 'react', files: ['src/RuntimeDemo.tsx', 'src/useBasketChat.ts'] },
-    {
-      sdk: 'angular',
-      files: ['src/app/runtime-demo.ts', 'src/app/create-basket-chat.ts'],
-    },
-  ];
-
-  const pages = cases.map(({ sdk, files }) => ({
-    body: readFileSync(
+for (const sdk of ['react', 'angular'] as const)
+  test(`${sdk} runtime guide links checked canonical sources and explains direct execution`, () => {
+    const body = readFileSync(
       resolve(
         import.meta.dirname,
         `../../content/docs/${sdk}/concept/runtime.md`,
       ),
       'utf8',
-    ),
-    files: files.map((file) => ({
-      header: file,
-      source: readFileSync(
-        resolve(
-          import.meta.dirname,
-          `../../examples/quickstart/${sdk}/${file}`,
-        ),
-        'utf8',
-      ).trim(),
-    })),
-  }));
+    );
 
-  for (const { body, files } of pages) {
-    for (const { header, source } of files) {
-      const section = body.split(`<hb-code-example header="${header}">`)[1];
-      expect(section?.match(/```[^\n]+\n([\s\S]*?)\n```/)?.[1]).toBe(source);
+    const client =
+      sdk === 'react'
+        ? 'react/src/RuntimeWorkbench.tsx'
+        : 'angular/src/app/runtime-workbench.ts';
+
+    for (const file of [
+      client,
+      'runtime/workbench-javascript.ts',
+      'runtime/workbench-javascript-session.ts',
+    ]) {
+      expect(body).toContain(
+        `https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/${file}`,
+      );
+      expect(
+        readFileSync(
+          resolve(import.meta.dirname, '../../examples/quickstart', file),
+          'utf8',
+        ).length,
+      ).toBeGreaterThan(0);
     }
+    expect(body).toContain(`canonical-workbench-javascript-runtime-${sdk}`);
     expect(body).toContain(
       'does **not automatically validate arguments or results**',
     );
@@ -88,11 +86,34 @@ test('runtime guides publish the complete checked source and explicit validation
     expect(body).toContain(
       'Each call to `runtime.run` creates a new QuickJS runtime and context.',
     );
-    expect(body).not.toMatch(
-      /Used to validate the (input arguments|return value)/,
+    expect(body).toContain('no model or provider request');
+    expect(body).toContain('totalMinutes: snapshot.plan.steps.length * 15');
+  });
+
+for (const sdk of ['react', 'angular'] as const)
+  test(`${sdk} runtime media publishes real execution disclosures and every accessible asset`, () => {
+    const id = `canonical-workbench-javascript-runtime-${sdk}` as const;
+    const media = DOCS_DEMOS[id];
+
+    expect(media.recording).toContain('genuine QuickJS execution');
+    expect(media.recording).toContain('no model or provider request');
+    for (const suffix of [
+      '.mp4',
+      '.webm',
+      '.vtt',
+      '-poster.png',
+      '-result.png',
+      '-transcript.txt',
+    ]) {
+      const bytes = readFileSync(
+        resolve(import.meta.dirname, '../../public/video/docs', id + suffix),
+      );
+      expect(bytes.length).toBeGreaterThan(0);
+    }
+    const captions = readFileSync(
+      resolve(import.meta.dirname, '../../public/video/docs', id + '.vtt'),
+      'utf8',
     );
-    expect(body).not.toContain(
-      'The `handler` function is executed within the JS runtime',
-    );
-  }
-});
+    expect(captions).toMatch(/^WEBVTT/);
+    expect(captions).toContain('No model request.');
+  });

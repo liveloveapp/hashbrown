@@ -66,6 +66,13 @@ export function pinWorkbenchInput(
 ): RunAgentInput {
   if (
     workbenchLessons.find((entry) => entry.id === lesson)?.protocol ===
+    'runtime'
+  )
+    throw new Error(
+      'Direct runtime execution does not use a provider endpoint',
+    );
+  if (
+    workbenchLessons.find((entry) => entry.id === lesson)?.protocol ===
     'decision'
   )
     throw new Error('Use the decision endpoint');

@@ -1,3 +1,4 @@
+import { workbenchJavaScriptRecordingCues } from './workbench-javascript-recording';
 import { workbenchUiRecordingCues } from './workbench-ui-recording';
 import { workbenchAuthoringRecordingCues } from './workbench-authoring-recording';
 import { workbenchServerRecordingCues } from './workbench-server-recording';
@@ -16,7 +17,10 @@ import { resolve } from 'node:path';
 import { workbenchOnboardingRecordingCues } from './workbench-onboarding-recording';
 import { workbenchRecipeRecordingCues } from './workbench-recording-cues';
 
-if (!process.env['OPENAI_API_KEY'] || !process.env['OPENAI_MODEL'])
+if (
+  process.env['WORKBENCH_LESSONS'] !== 'javascript-runtime' &&
+  (!process.env['OPENAI_API_KEY'] || !process.env['OPENAI_MODEL'])
+)
   throw new Error(
     'Recording requires server-only OPENAI_API_KEY and OPENAI_MODEL.',
   );
@@ -66,6 +70,7 @@ const reports = JSON.parse(
   fallbackObserved?: boolean;
 }[];
 const names: Record<string, string> = {
+  'javascript-runtime': 'javascript-runtime',
   'ui-kits': 'ui-kits',
   'ui-chatbot': 'ui-chatbot',
   'agent-decisions': 'agent-decisions',
@@ -96,7 +101,13 @@ const names: Record<string, string> = {
 const timestamp = (seconds: number) =>
   new Date(Math.round(seconds * 1000)).toISOString().slice(11, 23);
 for (const report of reports) {
-  if (!report.passed || report.source !== 'provider' || !names[report.lesson])
+  if (
+    !report.passed ||
+    (report.lesson === 'javascript-runtime'
+      ? report.source !== 'runtime' || report.provider !== 'none'
+      : report.source !== 'provider') ||
+    !names[report.lesson]
+  )
     throw new Error(
       'Only successful allowlisted provider recordings can be published.',
     );
@@ -204,6 +215,7 @@ for (const report of reports) {
     `${base}-result.png`,
   );
   const cues =
+    workbenchJavaScriptRecordingCues(report, duration) ??
     workbenchUiRecordingCues(report, duration) ??
     workbenchAuthoringRecordingCues(report, duration) ??
     workbenchServerRecordingCues(report, duration) ??
@@ -304,6 +316,12 @@ for (const report of reports) {
       `${report.framework.toUpperCase()} · ${report.lesson}\n\nReal OpenAI text through the actual Hashbrown SDK. Unchanged provider events are paced at 20 ms for filming. Footage is slowed to half speed; no narration. The loopback demo session and process-memory repository are application integrations, not production authentication or durable agent checkpoints.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nServer saves are explicit completed-text snapshots with owner and version checks. No tools, generated UI, shared state or paused checkpoints are restored. The competing client makes a real independent HTTP write; a stale save returns 409. Anonymous and foreign-owner checks stop before provider invocation. Refresh clears SDK sessions and captures; loading server text starts no generation. Replay makes no requests or writes.\n`,
     );
   }
+  if (report.lesson === 'javascript-runtime') {
+    writeFileSync(
+      `${base}-transcript.txt`,
+      `${report.framework.toUpperCase()} · JavaScript runtime\n\nReal QuickJS execution through actual Hashbrown framework runtime APIs. Application-owned scripts, actual readPlan host calls and result/error wrappers. No model or provider request; no simulated JSON streaming. Each run creates a fresh context. Footage is slowed to half speed for readability; no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nThe host validates arguments explicitly. Estimates do not modify the plan. The execution deadline interrupts loops but does not roll back host effects or impose a memory limit. Replay executes no scripts, host calls, requests or writes. Refresh clears local captures.\n`,
+    );
+  }
   if (report.lesson === 'generative-ui') {
     for (const suffix of [
       '.mp4',
@@ -321,5 +339,7 @@ for (const report of reports) {
         ),
       );
   }
-  console.log(`${id}: ${duration.toFixed(2)}s; provider source verified`);
+  console.log(
+    `${id}: ${duration.toFixed(2)}s; ${report.source} source verified`,
+  );
 }
