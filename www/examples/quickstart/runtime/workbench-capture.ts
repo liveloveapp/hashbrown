@@ -1,8 +1,5 @@
-import {
-  type WorkbenchEvent,
-  workbenchEventKinds,
-  type WorkbenchSnapshot,
-} from './workbench';
+import type { WorkbenchEvent, WorkbenchSnapshot } from './workbench';
+import { workbenchEventKinds } from './workbench-event-kinds';
 import { type WorkbenchLessonId, workbenchLessons } from './workbench-lessons';
 
 /** The current capture schema version. */
