@@ -12,6 +12,7 @@
 .header {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-3) var(--space-6);
   color: var(--color-code-fg);
   font:
@@ -19,6 +20,7 @@
 }
 
 .header > div {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -59,8 +61,14 @@
   outline-offset: -2px;
 }
 
+/* A long file path gives way to the actions: it shrinks and ends in an
+   ellipsis instead of running under them. */
 .active {
   position: relative;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .active::before {
