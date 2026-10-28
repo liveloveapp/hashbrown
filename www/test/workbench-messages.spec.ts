@@ -35,6 +35,7 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
     .mockImplementation(() => undefined);
   const host = document.createElement('div');
   document.body.append(host);
+  const send = vi.fn();
   const mounted = mountWorkbench(
     host,
     store,
@@ -46,7 +47,7 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
         format: 'ui',
         inspector: 'Requests',
       },
-      send: vi.fn(),
+      send,
       stop: vi.fn(),
       reset: vi.fn(),
     },
@@ -57,7 +58,7 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
     host.remove();
     post.mockRestore();
   });
-  return { host, store, post, dispose: mounted.dispose };
+  return { host, store, post, send, dispose: mounted.dispose };
 }
 
 function fromParent(
@@ -366,5 +367,73 @@ test('a disposed workbench ignores parent messages', () => {
   load();
 
   expect(post).not.toHaveBeenCalled();
+  expect(store.getSnapshot().readOnly).toBe(false);
+});
+
+test('a loaded replay never sends, even through an un-hidden composer', () => {
+  const { host, send } = mountReplay();
+  load();
+  const form = host.querySelector<HTMLFormElement>('.wb-composer');
+  const prompt = host.querySelector<HTMLTextAreaElement>(
+    '.wb-composer textarea',
+  );
+
+  if (form) form.hidden = false;
+  if (prompt) prompt.value = 'Spend a request';
+  form?.requestSubmit();
+  host.querySelector<HTMLButtonElement>('[data-send]')?.click();
+
+  expect(prompt?.value).toBe('Spend a request');
+  expect(send).not.toHaveBeenCalled();
+});
+
+test('the composer refuses a read-only snapshot even without a cursor', () => {
+  const store = createWorkbenchStore();
+  const getSnapshot = store.getSnapshot;
+  vi.spyOn(store, 'getSnapshot').mockImplementation(() => {
+    const snapshot = getSnapshot();
+    return snapshot.readOnly ? { ...snapshot, cursor: null } : snapshot;
+  });
+  const { host, send } = mountReplay(store);
+  load();
+  const form = host.querySelector<HTMLFormElement>('.wb-composer');
+
+  if (form) form.hidden = false;
+  form?.requestSubmit();
+
+  expect(send).not.toHaveBeenCalled();
+});
+
+test('a load whose render throws is rejected once as malformed', () => {
+  const store = createWorkbenchStore();
+  vi.spyOn(store, 'load').mockImplementation(() => {
+    throw new Error('render failed');
+  });
+  const { host, post } = mountReplay(store);
+  post.mockClear();
+
+  load();
+
+  expect(post.mock.calls).toEqual([
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'malformed' },
+      docsOrigin,
+    ],
+  ]);
+  expect(host.textContent).not.toContain('Recorded');
+});
+
+test('a capture recorded in another framework is rejected as a lesson mismatch', () => {
+  const { store, post } = mountReplay();
+  post.mockClear();
+
+  load({ ...recordedCapture(), framework: 'angular' });
+
+  expect(post.mock.calls).toEqual([
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'lesson' },
+      docsOrigin,
+    ],
+  ]);
   expect(store.getSnapshot().readOnly).toBe(false);
 });

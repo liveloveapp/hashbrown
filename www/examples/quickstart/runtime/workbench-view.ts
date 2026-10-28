@@ -577,7 +577,9 @@ export function mountWorkbench(
   form.onsubmit = (event) => {
     event.preventDefault();
     const snapshot = store.getSnapshot();
+    // A read-only replay never reaches the model, whatever the form shows.
     if (
+      snapshot.readOnly ||
       snapshot.cursor !== null ||
       snapshot.status === 'loading' ||
       snapshot.frame?.localModel?.state === 'preparing' ||

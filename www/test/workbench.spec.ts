@@ -451,3 +451,26 @@ test('a read-only store stays seekable and reloadable when the capture ends load
   expect(store.getSnapshot().cursor).toBe(0);
   expect(store.getSnapshot().status).toBe('complete');
 });
+
+test('a read-only snapshot always has a cursor after load, seek and live', () => {
+  const capture = recordedCapture();
+  const store = createWorkbenchStore();
+
+  store.load(capture.events);
+  const loaded = store.getSnapshot();
+  store.seek(2);
+  const sought = store.getSnapshot();
+  store.live();
+  const live = store.getSnapshot();
+
+  expect(
+    [loaded, sought, live].map(({ readOnly, cursor }) => ({
+      readOnly,
+      cursor,
+    })),
+  ).toEqual([
+    { readOnly: true, cursor: 0 },
+    { readOnly: true, cursor: 2 },
+    { readOnly: true, cursor: capture.events.length - 1 },
+  ]);
+});

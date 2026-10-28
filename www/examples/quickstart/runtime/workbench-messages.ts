@@ -101,11 +101,15 @@ export function parseWorkbenchParentMessage(
   }
 }
 
-/** Why a `load` was refused; a wrong message or capture version wins. */
+/**
+ * Why a `load` was refused; a wrong message or capture version wins, and a
+ * capture from another lesson or framework is a lesson mismatch.
+ */
 function loadRejection(
   data: Record<string, unknown>,
   capture: WorkbenchCapture | null,
   lesson: WorkbenchLessonId,
+  framework: 'react' | 'angular',
 ): 'version' | 'lesson' | 'malformed' | null {
   const raw = data['capture'];
   const captureVersion = isRecord(raw) ? raw['version'] : undefined;
@@ -116,7 +120,9 @@ function loadRejection(
   )
     return 'version';
   if (!capture) return 'malformed';
-  return capture.lesson === lesson ? null : 'lesson';
+  return capture.lesson === lesson && capture.framework === framework
+    ? null
+    : 'lesson';
 }
 
 /** What an embedded mount exposes to the message protocol. */
@@ -198,7 +204,7 @@ export function attachWorkbenchMessages(
       if (host.mode !== 'replay') return;
       const capture =
         message?.type === 'hb-workbench:load' ? message.capture : null;
-      const reason = loadRejection(data, capture, host.lesson);
+      const reason = loadRejection(data, capture, host.lesson, host.framework);
       if (reason || !capture) {
         post({
           type: 'hb-workbench:rejected',
@@ -208,13 +214,24 @@ export function attachWorkbenchMessages(
         return;
       }
       const before = host.store.getSnapshot();
-      act(() => {
-        host.pause();
-        host.store.load(capture.events);
-      });
+      let failed = false;
+      try {
+        act(() => {
+          host.pause();
+          host.store.load(capture.events);
+        });
+      } catch {
+        // Loading renders synchronously; a throw there leaves no commit.
+        failed = true;
+      }
       const after = host.store.getSnapshot();
       // The store refuses empty traces (and loads during a live run).
-      if (after === before || !after.readOnly || !after.events.length) {
+      if (
+        failed ||
+        after === before ||
+        !after.readOnly ||
+        !after.events.length
+      ) {
         post({
           type: 'hb-workbench:rejected',
           version: 1,
