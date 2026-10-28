@@ -450,6 +450,36 @@ test('production-recovery links to the b4run reference instead of Live', () => {
   ).not.toBeNull();
 });
 
+test.each([false, true])(
+  'production-recovery renders no hosted workbench link (narrow: %s)',
+  (narrow) => {
+    const { intersect } = setup({ narrow });
+    render(<WorkbenchPanel lesson="production-recovery" sdk="react" />);
+    intersect();
+
+    if (!narrow) fireEvent.click(liveTab());
+
+    expect(document.querySelector('video')).not.toBeNull();
+    expect(document.querySelector(`a[href^="${origin}"]`)).toBeNull();
+    expect(document.body.textContent).not.toContain('Open full workbench');
+  },
+);
+
+test.each([false, true])(
+  'loopback lessons keep their hosted open link (narrow: %s)',
+  (narrow) => {
+    const { intersect } = setup({ narrow });
+    render(<WorkbenchPanel lesson="public-endpoint" sdk="angular" />);
+    intersect();
+
+    const link = document.querySelector(
+      `a[href="${origin}/angular.html?lesson=public-endpoint"]`,
+    );
+
+    expect(link?.textContent).toContain('Open full workbench');
+  },
+);
+
 test('every lesson is either live on the hosted workbench or links to a local run', () => {
   const hosted = new Set(hostedWorkbenchLessons.map((lesson) => lesson.id));
 
@@ -506,11 +536,6 @@ test('lessons without a capture replay the video and never fetch', () => {
     '/video/docs/canonical-workbench-production-recovery-angular-poster.png',
   );
   expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
-  expect(
-    document.querySelector(
-      `a[href="${origin}/angular.html?lesson=production-recovery"]`,
-    ),
-  ).not.toBeNull();
 });
 
 test('partial captures say the replay starts after the reload', () => {

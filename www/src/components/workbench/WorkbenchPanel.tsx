@@ -16,6 +16,7 @@ import { DOCS_DEMOS } from '../elements/docs-demo-media';
 import { DocsDemoVideo } from '../elements/DocsDemoVideo';
 import { createEmbedClient } from './embed-client';
 import {
+  isHostedWorkbenchLesson,
   PARTIAL_CAPTURE_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
   type WorkbenchLessonId,
@@ -71,7 +72,9 @@ function useNarrow(): boolean {
  */
 export function WorkbenchPanel(props: WorkbenchPanelProps) {
   const narrow = useNarrow();
-  const openLink = (
+  // Lessons the hosted workbench does not serve get no hosted link; their
+  // Live tab points at the local instructions instead.
+  const openLink = isHostedWorkbenchLesson(props.lesson) && (
     <a
       className={styles.open}
       href={`${workbenchOrigin()}/${props.sdk}.html?lesson=${props.lesson}`}

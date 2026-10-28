@@ -27,6 +27,16 @@ export const LOOPBACK_LESSONS: readonly WorkbenchLessonId[] = [
   'public-endpoint',
 ];
 
+/**
+ * Whether the hosted workbench serves a lesson at all. Loopback lessons are
+ * served (only their API is local); production-reference lessons are not.
+ *
+ * @param lesson - A workbench lesson id.
+ */
+export function isHostedWorkbenchLesson(lesson: WorkbenchLessonId): boolean {
+  return hostedWorkbenchLessons.some((item) => item.id === lesson);
+}
+
 /** Whether a lesson's Live tab can run, and where to run it otherwise. */
 export type WorkbenchLiveAvailability =
   { readonly live: true } | { readonly live: false; readonly href: string };
@@ -47,8 +57,7 @@ export function workbenchLiveAvailability(
   if (data?.host === 'production-reference') {
     return { live: false, href: `/docs/${sdk}/platform/b4run` };
   }
-  const hosted = hostedWorkbenchLessons.some((item) => item.id === lesson);
-  if (!hosted || LOOPBACK_LESSONS.includes(lesson)) {
+  if (!isHostedWorkbenchLesson(lesson) || LOOPBACK_LESSONS.includes(lesson)) {
     return {
       live: false,
       href: `/docs/${sdk}/start/workbench#run-the-example`,
