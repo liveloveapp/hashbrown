@@ -94,6 +94,10 @@ container tuple, not filename. Do not fabricate a download URL. A file-list
 `index` is not a character offset. Only valid native character spans with an
 established text-part offset produce global spans and quotes; otherwise retain
 the citation/source without invented positions.
+The provider references describe character indices without specifying their
+Unicode unit. New file spans therefore stay absent when code-point and UTF-16
+positions could differ, or interleaved text chunks make a part noncontiguous in
+the merged answer. This does not change existing URL citation behavior.
 
 Generated-file annotations belong to the assistant's `b4.answer`: they name a
 file/container, not a code call. Do not guess a producing call when a container

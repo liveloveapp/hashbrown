@@ -37,23 +37,23 @@ Create `packages/openai/src/stream/openai-code-execution.ts` and
 `packages/azure/src/stream/azure-code-execution.ts` with focused `*.spec.ts`.
 Modify existing provider event modules/specs to delegate SDK code-call events.
 
-- [ ] Write failing state-machine/mapper tests: live START before completion,
+- [x] Write failing state-machine/mapper tests: live START before completion,
   `{code:string}` partial JSON (quotes, slashes, newline and split Unicode),
   argument END once, multiple interleaved IDs, no-delta code, final code suffix,
   contradictory code, missing item-done terminal fallback, duplicate framing,
   terminal outputs, failed/incomplete vs nonterminal statuses, abort and EOF.
   Include native `code:null` (empty argument object when no code was observed)
   and failed-response native details yielded before the enclosing error.
-- [ ] Run focused Nx tests to establish actual RED before helper code.
-- [ ] Implement immutable per-call state with typed native input and contract
+- [x] Run focused Nx tests to establish actual RED before helper code.
+- [x] Implement immutable per-call state with typed native input and contract
   output. Keep argument finality separate from execution settlement. Read the
   actual terminal status; never infer success from an output-item-done frame
   whose status is still nonterminal. Ignore unsupported events without touching
   unrelated text/reasoning/app-tool state. Use shared labels/timing and native
   identity markers. Reconcile terminal output without duplicate unchanged calls.
-- [ ] Validate emitted frames with `EventSchemas`, and add an async consumption
+- [x] Validate emitted frames with `EventSchemas`, and add an async consumption
   test that observes START/partial args while later native events are blocked.
-- [ ] Focused GREEN, package build/lint; independent spec then quality review;
+- [x] Focused GREEN, package build/lint; independent spec then quality review;
   parent commits. No new core export or generic provider engine.
 
 ## Task 3: File annotations and truthful stateless history
@@ -67,6 +67,8 @@ keep normalization separate from event orchestration.
   and file citations; same filename/different IDs or containers; multipart span
   offsets; invalid/missing spans; file-list index not a character span; native
   final-text suffix without duplicate output; no fabricated href/call ownership.
+  Cover astral-text and interleaved-part ambiguity by retaining file references
+  while omitting unprovable global spans, without changing existing URL behavior.
 - [ ] Establish RED, then implement owned native annotation occurrence tracking,
   stable source identity, validated offsets and final native-message enrichment.
   Keep URL matching/UTM behavior covered. Native image output URLs may be call
@@ -123,3 +125,8 @@ were changed. The clean managed checkout was reused on
 Task 1: independent spec and quality review approved. Focused request tests:
 OpenAI 14 passed, Azure 15 passed; both builds and lint passed. RED logs show
 four expected missing-tool failures per provider before implementation.
+
+Task 2: spec and quality review approved after test-first corrections for
+nonterminal argument finality, stable settlement time and JSON-value result
+deduplication. Full OpenAI 118 tests / 7 suites, Azure 108 / 6 passed; both
+builds and lints passed. Sources/results retain native values and array order.

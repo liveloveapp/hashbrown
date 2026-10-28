@@ -11,6 +11,10 @@ import {
   type ɵToolStepSource,
 } from '@hashbrownai/core';
 import type OpenAI from 'openai';
+import {
+  type CodeExecutionState,
+  mapCodeExecution,
+} from './openai-code-execution';
 
 type StreamEvent = OpenAI.Responses.ResponseStreamEvent;
 type WebSearchCall = OpenAI.Responses.ResponseFunctionWebSearch;
@@ -38,6 +42,7 @@ interface ToolCallState {
 }
 
 interface MapperState {
+  readonly codeCalls: ReadonlyMap<string, CodeExecutionState>;
   readonly textStarted: boolean;
   readonly firstMessageItemId?: string;
   readonly reasoningItemIds: readonly string[];
@@ -74,6 +79,7 @@ export interface MapOpenAIEventsOptions {
 }
 
 const initialState: MapperState = {
+  codeCalls: new Map(),
   textStarted: false,
   reasoningItemIds: [],
   openReasoning: new Map(),
@@ -667,6 +673,21 @@ function mapEvent(
   messageId: string,
   event: StreamEvent,
 ): MapperStep {
+  const code = mapCodeExecution(state.codeCalls, event, messageId);
+  if (code) {
+    const next = { ...state, codeCalls: code.calls };
+    if (
+      event.type === 'response.completed' ||
+      event.type === 'response.incomplete'
+    ) {
+      const finished = finishResponse(next, messageId, event.response);
+      return {
+        state: finished.state,
+        events: [...code.events, ...finished.events],
+      };
+    }
+    return { state: next, events: code.events };
+  }
   switch (event.type) {
     case 'response.output_item.added':
       return mapItemAdded(state, messageId, event.item);
@@ -773,6 +794,11 @@ export async function* mapOpenAIEvents(
       if (options.signal?.aborted) {
         return;
       }
+    }
+    if (event.type === 'response.failed') {
+      throw new Error(
+        event.response.error?.message ?? 'OpenAI response failed',
+      );
     }
   }
 
