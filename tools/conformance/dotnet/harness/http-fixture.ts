@@ -11,9 +11,9 @@ import { EventSchemas } from '@ag-ui/core/schemas';
 import { LLMock } from '@copilotkit/aimock';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { StableModelRouter } from './stable-model-router';
 import type { createEventGate } from '../../harness/event-gate';
@@ -269,12 +269,33 @@ export async function withDotnetFixture<T>(
       },
     });
   } catch (error) {
-    const directory = resolve('test-results/conformance/dotnet/diagnostics');
-    mkdirSync(directory, { recursive: true });
-    writeFileSync(
-      resolve(directory, `${provider}-${crypto.randomUUID()}.log`),
-      JSON.stringify({ output, requests }, null, 2),
-    );
+    try {
+      const packageMode = Boolean(host.loaded || host.controlled);
+      const privateEvidence =
+        process.env['HASHBROWN_UPGRADE_EVIDENCE_DIRECTORY'] ??
+        process.env['HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY'];
+      const privateRoot =
+        packageMode && privateEvidence
+          ? realpathSync(privateEvidence)
+          : undefined;
+      const workspace = realpathSync(resolve('.'));
+      const directory = packageMode
+        ? privateRoot &&
+          privateRoot !== workspace &&
+          !privateRoot.startsWith(workspace + sep)
+          ? resolve(privateRoot, 'fixture-diagnostics')
+          : undefined
+        : resolve('test-results/conformance/dotnet/diagnostics');
+      if (directory) {
+        mkdirSync(directory, { recursive: true });
+        writeFileSync(
+          resolve(directory, `${provider}-${crypto.randomUUID()}.log`),
+          JSON.stringify({ output, requests }, null, 2),
+        );
+      }
+    } catch {
+      // Diagnostic failures must not replace the original fixture failure.
+    }
     throw error;
   } finally {
     streamControl?.gate.releaseThrough(0);

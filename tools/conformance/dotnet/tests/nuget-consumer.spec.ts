@@ -290,3 +290,292 @@ assert.equal(selectRuntime(list, '${family}', 'net10.0')[2], '10.0.13');`;
     expect(result.trim()).toBe('passed');
   });
 }
+
+test('acceptance executes each phase once and stops on a real child failure', () => {
+  const result = probe(`
+const {executePhases}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const root=await fs.mkdtemp(path.join(os.tmpdir(),'acceptance-control-'));
+try {
+ const phases=[{name:'pack',argv:['-e','process.exit(0)'],timeout:5000},{name:'npm',argv:['-e','process.exit(7)'],timeout:5000},{name:'matrix',argv:['-e','process.exit(0)'],timeout:5000}];
+ const report={phases:[]};
+ await assert.rejects(()=>executePhases(phases,root,report),/npm.*7/);
+ assert.deepEqual(report.phases.map(x=>x.name),['pack','npm']);
+ assert.equal(report.phases[1].status,7);
+}finally{await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim().split('\n').at(-1)).toBe('passed');
+});
+
+test('acceptance requires current candidate metadata and exact baseline before scheduling children', () => {
+  const result = probe(`
+const {validateAcceptanceInputs}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const root=await fs.mkdtemp(path.join(os.tmpdir(),'acceptance-input-'));
+try {
+ await assert.rejects(()=>validateAcceptanceInputs(root),/baseline|ENOENT/);
+ await assert.rejects(()=>validateAcceptanceInputs(${JSON.stringify(resolve('.'))},path.join(root,'missing.json')),/ENOENT/);
+}finally{await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('CI requires uncached package acceptance for library changes and fails its existing strict gate', () => {
+  const result = probe(`
+const project=JSON.parse(await fs.readFile('tools/conformance/dotnet/project.json','utf8'));
+assert.equal(project.targets['package-acceptance'].cache,false);
+assert.ok(project.implicitDependencies.includes('dotnet-sdk'));
+const workflow=await fs.readFile('.github/workflows/pr-main.yml','utf8');
+assert.ok(workflow.includes('npx nx package-acceptance dotnet-conformance'));
+assert.ok(!workflow.includes('npx nx provider-e2e dotnet-conformance'));
+assert.ok(!workflow.includes('npx nx prepare-live-consumer dotnet-conformance'));
+assert.ok(workflow.includes('needs: [ci, targets, preview]'));
+assert.ok(workflow.includes('if [[ "$CI_RESULT" != "success" ]]'));
+assert.ok(workflow.includes('timeout-minutes: 90'));
+const {spawnSync}=await import('node:child_process');
+const marker='        run: |';
+const gate=workflow.slice(workflow.lastIndexOf(marker)+marker.length).split('\\n').map(line=>line.replace(/^          /,'')).join('\\n');
+for(const result of ['failure','skipped','cancelled'])assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:result,TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped'}}).status,1);
+assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:'success',TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped'}}).status,0);
+
+assert.ok(workflow.includes('packages/dotnet/packages.lock.json'));
+assert.ok(workflow.includes('tests/fixtures/pre-extraction-host.json'));
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('acceptance plan schedules one candidate one npm preparation and exact package gates with no source matrix', () => {
+  const result = probe(`
+const {acceptancePlan}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const plan=acceptancePlan('/tmp/current.json','/tmp/npm.json');
+assert.deepEqual(plan.map(x=>x.name),['candidate','npm','initial-qualification','docs','upgrade','matrix','regressions','final-qualification','final-npm-qualification']);
+assert.equal(plan.filter(x=>x.argv.some(a=>a.endsWith('/nuget-consumer/prepare.mjs'))).length,1);
+assert.equal(plan.filter(x=>x.argv.some(a=>a.endsWith('/live-consumer/prepare.mjs'))).length,1);
+assert.ok(plan.every(x=>!x.argv.some(a=>/provider-e2e|dotnet.playwright|retries/.test(a))));
+for(const name of ['matrix','regressions'])assert.ok(plan.find(x=>x.name===name).argv.includes('/tmp/npm.json'));
+assert.deepEqual(plan.at(-1).argv.slice(-1),['/tmp/npm.json']);
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('acceptance bounds sanitizes diagnostics and fails timed out children without retry', () => {
+  const result = probe(`
+const {executePhases,sanitize}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+assert.equal(sanitize({environment:{SECRET:'hidden'},password:'hidden',safe:'Password=hidden; token=private'}).safe,'Password=[redacted]; token=[redacted]');
+assert.ok(!JSON.stringify(sanitize({environment:{SECRET:'hidden'}})).includes('hidden'));
+assert.ok(!sanitize('Authorization: Bearer abc-secret').includes('abc-secret'));
+assert.ok(!sanitize('"password": "json-secret"').includes('json-secret'));
+assert.ok(!sanitize('Host=db;Password=connection-secret;Database=x').includes('connection-secret'));
+const capability={token:'capability-one',claim_token:'capability-two',capture_token:'capability-three',claimToken:'capability-four',accessToken:'capability-five',inputTokens:12,outputTokens:7,'Microsoft.ML.Tokenizers.dll':'hash-one','BearerToken.dll':'hash-two',tokenHash:'hash-three'};
+const cleaned=sanitize(capability);
+assert.equal(sanitize({PublicKeyToken:'public-assembly-identity'}).PublicKeyToken,'public-assembly-identity');
+assert.ok(sanitize(JSON.stringify({PublicKeyToken:'public-assembly-identity'})).includes('public-assembly-identity'));
+
+for(const key of ['token','claim_token','capture_token','claimToken','accessToken'])assert.ok(!JSON.stringify(cleaned).includes(capability[key]),key);
+for(const key of ['inputTokens','outputTokens','Microsoft.ML.Tokenizers.dll','BearerToken.dll','tokenHash'])assert.equal(cleaned[key],capability[key],key);
+for(const key of ['token','claim_token','capture_token','claimToken','accessToken'])assert.ok(!sanitize(JSON.stringify({[key]:'raw-json-capability'})).includes('raw-json-capability'),key);
+
+
+const root=await fs.mkdtemp(path.join(os.tmpdir(),'acceptance-timeout-'));
+try {
+ const report={phases:[]};
+ await assert.rejects(()=>executePhases([{name:'hung',argv:['-e','console.log("Password=hidden");setInterval(()=>{},1000)'],timeout:100}],root,report),/hung.*timeout/);
+ assert.equal(report.phases.length,1);
+ assert.ok(!(await fs.readFile(path.join(root,'hung.log'),'utf8')).includes('hidden'));
+ assert.ok(sanitize('x'.repeat(5*1024*1024)).length<=4*1024*1024);
+}finally{await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+/** Exercises the actual CLI/finally/export implementation with isolated child and archive adapters. */
+function acceptanceFailureCase(mode: string): string {
+  return probe(`
+const {spawnSync}=await import('node:child_process');
+const repository=${JSON.stringify(resolve('.'))};
+const root=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'acceptance-export-case-')));
+const mode=${JSON.stringify(mode)};
+try {
+ const candidateRoot=path.join(root,'candidate');await fs.mkdir(path.join(candidateRoot,'candidate-feed'),{recursive:true});
+ for(const extension of ['nupkg','snupkg'])await fs.writeFile(path.join(candidateRoot,'candidate-feed','candidate.'+extension),'synthetic archive');
+ const candidate={root:candidateRoot,archive:'candidate-feed/candidate.nupkg',sha256:'synthetic-review-only',loaded:{identity:'synthetic-review-only'}};
+ await fs.writeFile(path.join(root,'config.json'),JSON.stringify({repository,root,candidate,mode}));
+ await fs.writeFile(path.join(root,'adapters.mjs'),\`
+import fs from 'node:fs/promises';import path from 'node:path';import {EventEmitter} from 'node:events';import {createHash} from 'node:crypto';
+const config=JSON.parse(await fs.readFile(new URL('./config.json',import.meta.url),'utf8'));
+export const verifyConsumer=async()=>config.candidate;
+export const hashFile=async file=>createHash('sha256').update(await fs.readFile(file)).digest('hex');
+export const readArchive=()=>({});
+export function spawn(command,argv,options){
+ const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();
+ queueMicrotask(async()=>{
+  let status=0;
+  if(argv[0].endsWith('/nuget-consumer/prepare.mjs'))await fs.writeFile(argv.at(-1),'{}');
+  else if(argv[0].endsWith('/live-consumer/prepare.mjs')){const metadataPath=path.join(config.root,'npm.json');await fs.writeFile(metadataPath,'{}');child.stdout.emit('data',Buffer.from(JSON.stringify({metadataPath})+'\\\\n'));}
+  else if(argv[0].endsWith('/upgrade-runner.mjs')){
+   const raw=options.env.HASHBROWN_UPGRADE_EVIDENCE_DIRECTORY;
+   const gate=path.dirname(raw);const upload=path.join(config.repository,'test-results/dotnet-package',path.basename(gate));
+   await fs.mkdir(raw,{recursive:true});
+   await fs.writeFile(path.join(config.root,'paths.json'),JSON.stringify({raw,gate,upload}));
+   const record={token:'FAILURE_CAPABILITY_SENTINEL',PublicKeyToken:'public-identity',inputTokens:12,outputTokens:7,'Microsoft.ML.Tokenizers.dll':'file-hash'};
+   const text=JSON.stringify(record);
+   await fs.writeFile(path.join(raw,'proof.json'),config.mode==='partial-json'?text.slice(0,-1):text);
+   if(config.mode==='partial-jsonl')await fs.writeFile(path.join(raw,'records.jsonl'),text+'\\\\n'+text.slice(0,-1));
+   if(config.mode==='cancellation')process.kill(process.pid,'SIGKILL');
+   status=7;
+  }
+  child.emit('close',status);
+ });return child;
+}
+\`);
+ let source=await fs.readFile(path.join(repository,'tools/conformance/dotnet/nuget-consumer/run.mjs'),'utf8');
+ source=source.replace("import { spawn } from 'node:child_process';","import { spawn } from './adapters.mjs';").replace("from './verify.mjs'","from './adapters.mjs'").replace("const here = path.dirname(fileURLToPath(import.meta.url));",'const here = '+JSON.stringify(path.join(repository,'tools/conformance/dotnet/nuget-consumer'))+';').replace("const repository = path.resolve(here, '../../../..');",'const repository = '+JSON.stringify(repository)+';');
+ const script=path.join(root,'instrumented-run.mjs');await fs.writeFile(script,source);
+ const result=spawnSync(process.execPath,[script],{encoding:'utf8',timeout:10000});
+ const locations=JSON.parse(await fs.readFile(path.join(root,'paths.json'),'utf8'));
+ try {
+  assert.ok(!locations.raw.startsWith(path.join(repository,'test-results')+path.sep),'raw evidence must stay outside upload ancestry');
+  const files=await v.listFiles(locations.upload);
+  for(const file of files)if(/\\.(json|jsonl|log)$/.test(file))assert.ok(!(await fs.readFile(path.join(locations.upload,file),'utf8')).includes('FAILURE_CAPABILITY_SENTINEL'),'raw capability in uploaded derivative');
+  if(mode==='cancellation'){assert.equal(result.signal,'SIGKILL');assert.ok((await fs.readFile(path.join(locations.raw,'proof.json'),'utf8')).includes('FAILURE_CAPABILITY_SENTINEL'));}
+  else {
+   assert.equal(result.status,1);
+   const report=JSON.parse(await fs.readFile(path.join(locations.upload,'acceptance.json'),'utf8'));
+   assert.equal(report.status,'failed');assert.match(report.failure,/upgrade.*7/);assert.equal(report.phases.at(-1).status,7);
+   assert.ok(report.exportErrors.length>0,'missing expected artifacts must fail export independently');
+   if(mode==='partial-json')assert.ok(report.exportErrors.some(row=>row.code==='INVALID_JSON'));
+   if(mode==='partial-jsonl')assert.ok(report.exportErrors.some(row=>row.code==='INVALID_JSONL'));
+   if(mode!=='partial-json'){
+    const proof=JSON.parse(await fs.readFile(path.join(locations.upload,'upgrade/proof.json'),'utf8'));
+    assert.equal(proof.token,'[redacted]');assert.equal(proof.PublicKeyToken,'public-identity');assert.equal(proof.inputTokens,12);assert.equal(proof.outputTokens,7);assert.equal(proof['Microsoft.ML.Tokenizers.dll'],'file-hash');
+   }
+  }
+ }finally{await fs.rm(locations.upload,{recursive:true,force:true});if(locations.gate!==locations.upload)await fs.rm(locations.gate,{recursive:true,force:true});}
+}finally{await fs.rm(root,{recursive:true,force:true});}
+`);
+}
+
+test('failed child and missing artifact preserve failure and export only safe derivatives', () => {
+  const result = acceptanceFailureCase('missing-artifact');
+
+  expect(result.trim().split('\n').at(-1)).toBe('passed');
+});
+
+test('partial JSON evidence cannot expose raw fragments or mask the original child failure', () => {
+  const result = acceptanceFailureCase('partial-json');
+
+  expect(result.trim().split('\n').at(-1)).toBe('passed');
+});
+
+test('partial JSONL evidence cannot expose raw fragments or mask the original child failure', () => {
+  const result = acceptanceFailureCase('partial-jsonl');
+
+  expect(result.trim().split('\n').at(-1)).toBe('passed');
+});
+
+test('actual process cancellation leaves raw evidence outside the upload tree', () => {
+  const result = acceptanceFailureCase('cancellation');
+
+  expect(result.trim().split('\n').at(-1)).toBe('passed');
+});
+
+test('redirected OS temp beneath uploads is rejected before any child can create raw evidence', () => {
+  const result = probe(`
+const {runAcceptance}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const parent=path.resolve('test-results/dotnet-package');await fs.mkdir(parent,{recursive:true});
+const root=await fs.mkdtemp(path.join(parent,'redirected-temp-'));
+const previous=os.tmpdir;const argv=process.argv;
+try {
+ os.tmpdir=()=>root;process.argv=[process.execPath,'redirected-temp-test'];
+ await assert.rejects(()=>runAcceptance(),/Private raw evidence must remain outside the upload tree/);
+ assert.equal((await v.listFiles(root)).length,0,'no child output or candidate metadata may be created');
+}finally{os.tmpdir=previous;process.argv=argv;await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('successful diagnostic export preserves structured provenance and exposes no raw child text', () => {
+  const result = probe(`
+const {exportDiagnostics}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const root=await fs.mkdtemp(path.join(os.tmpdir(),'acceptance-safe-export-'));
+try {
+ const raw=path.join(root,'private'),output=path.join(root,'export');await fs.mkdir(raw);await fs.mkdir(output);
+ const record={token:'EXPORT_CAPABILITY_SENTINEL',claim_token:'EXPORT_CAPABILITY_SENTINEL',captureToken:'EXPORT_CAPABILITY_SENTINEL',PublicKeyToken:'public-identity',inputTokens:12,outputTokens:7,'Microsoft.ML.Tokenizers.dll':'archive-hash',outcomes:[{identity:['project','file','case'],status:'passed',retry:0}]};
+ await fs.writeFile(path.join(raw,'proof.json'),JSON.stringify(record));await fs.writeFile(path.join(raw,'proof.jsonl'),JSON.stringify(record)+'\\n');
+ const log='unstructured EXPORT_CAPABILITY_SENTINEL and incomplete JSON';await fs.writeFile(path.join(raw,'phase.log'),log);
+ const metadata={rows:Array.from({length:35000},()=> 'x'.repeat(128))};await fs.writeFile(path.join(raw,'large-metadata.json'),JSON.stringify(metadata));
+ const errors=[];await exportDiagnostics(raw,output,errors);assert.deepEqual(errors,[]);
+ assert.equal(JSON.parse(await fs.readFile(path.join(output,'large-metadata.json'),'utf8')).rows.length,35000);
+ const exported=JSON.parse(await fs.readFile(path.join(output,'proof.json'),'utf8'));
+ assert.equal(exported.token,'[redacted]');assert.equal(exported.claim_token,'[redacted]');assert.equal(exported.captureToken,'[redacted]');
+ for(const key of ['PublicKeyToken','inputTokens','outputTokens','Microsoft.ML.Tokenizers.dll','outcomes'])assert.deepEqual(exported[key],record[key]);
+ assert.deepEqual(JSON.parse((await fs.readFile(path.join(output,'proof.jsonl'),'utf8')).trim()),exported);
+ const summary=JSON.parse(await fs.readFile(path.join(output,'phase.log'),'utf8'));assert.equal(summary.sha256,await v.hashFile(path.join(raw,'phase.log')));assert.equal(summary.bytes,Buffer.byteLength(log));
+ for(const name of await fs.readdir(output))assert.ok(!(await fs.readFile(path.join(output,name),'utf8')).includes('EXPORT_CAPABILITY_SENTINEL'));
+ assert.equal(await fs.readFile(path.join(raw,'phase.log'),'utf8'),log);
+}finally{await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('browser child artifacts follow the private evidence root instead of repository failure-upload defaults', () => {
+  const result = probe(`
+const {packagePlaywrightArguments,packageEvidenceEnvironment}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/browser-runner.mjs')}`)});
+for(const kind of ['matrix','regressions']){
+ const evidence='/private/tmp/owned-gate/browser';
+ const argv=packagePlaywrightArguments('package.playwright.config.ts',evidence,kind);
+ const env=packageEvidenceEnvironment(evidence,kind);assert.equal(env.HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY,evidence);assert.equal(env.DOTNET_NATIVE_BROWSER_EVIDENCE,path.join(evidence,kind+'-native'));
+ assert.equal(argv.filter(value=>value==='--output').length,1);
+ assert.equal(argv[argv.indexOf('--output')+1],path.join(evidence,kind+'-playwright'));
+ assert.ok(!argv.some(value=>/test-results|--retries|--grep|--max-failures/.test(value)));
+}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('actual fixture startup failures keep package and historical raw diagnostics private while source routing stays unchanged', () => {
+  const result = probe(`
+const ts=await import('typescript');
+const repository=${JSON.stringify(resolve('.'))};
+const root=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'fixture-diagnostic-failure-')));
+const sourceDirectory=path.join(repository,'test-results/conformance/dotnet/diagnostics');
+await fs.mkdir(sourceDirectory,{recursive:true});
+const originalEnvironment={...process.env};
+try {
+ let source=await fs.readFile(path.join(repository,'tools/conformance/dotnet/harness/http-fixture.ts'),'utf8');
+ for(const original of ['./dotnet-host','@ag-ui/core/schemas','@copilotkit/aimock','node:child_process','./recovery-timings'])source=source.replaceAll("from '"+original+"'","from './adapters.mjs'");
+ const javascript=ts.default.transpileModule(source,{compilerOptions:{module:ts.default.ModuleKind.ESNext,target:ts.default.ScriptTarget.ES2022}}).outputText;
+ await fs.writeFile(path.join(root,'fixture.mjs'),javascript);
+ await fs.writeFile(path.join(root,'adapters.mjs'),\`
+import {EventEmitter} from 'node:events';
+export const resolveDotnetHost=()=>({executable:'fixture-test-only',controlled:process.env.TEST_FIXTURE_MODE==='historical',loaded:process.env.TEST_FIXTURE_MODE==='package'?{}:undefined});
+export const validateHostOverrides=()=>{};export const verifyLoadedDotnetHost=()=>{};export const fixtureChildEnvironment=()=>({});
+export const recoveryRequestRecorder=()=>()=>()=>{};export const traceRecoveryRequest=()=>()=>{};export const EventSchemas={};
+export class LLMock {onMessage(){}async start(){}async stop(){}}
+export function spawn(){const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.exitCode=null;child.signalCode=null;queueMicrotask(()=>{child.stdout.emit('data','PRIVATE_FIXTURE_OUTPUT_SENTINEL');child.exitCode=7;child.emit('exit',7,null);});return child;}
+\`);
+ const {withDotnetFixture}=await import('file://'+path.join(root,'fixture.mjs'));
+ for(const mode of ['package','historical','source']){
+  const privateRoot=path.join(root,mode);await fs.mkdir(privateRoot);
+  const before=new Set(await fs.readdir(sourceDirectory));
+  process.env.TEST_FIXTURE_MODE=mode;process.env.HASHBROWN_PACKAGE_REACT_URL='http://127.0.0.1:4431';process.env.HASHBROWN_PACKAGE_ANGULAR_URL='http://127.0.0.1:4432';
+  process.env.HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY=mode==='source'?path.join(root,'unused-missing-package-directory'):privateRoot;
+  if(mode==='historical')process.env.HASHBROWN_UPGRADE_EVIDENCE_DIRECTORY=privateRoot;else delete process.env.HASHBROWN_UPGRADE_EVIDENCE_DIRECTORY;
+  await assert.rejects(()=>withDotnetFixture('openai',async()=>assert.fail('failed startup must never reach use')),/exited 7/);
+  const added=(await fs.readdir(sourceDirectory)).filter(name=>!before.has(name));
+  try {
+   if(mode==='source'){assert.equal(added.length,1);assert.ok((await fs.readFile(path.join(sourceDirectory,added[0]),'utf8')).includes('PRIVATE_FIXTURE_OUTPUT_SENTINEL'));}
+   else {assert.equal(added.length,0,'raw package/old-worker output cannot reach source diagnostics upload');const files=await v.listFiles(privateRoot);assert.equal(files.length,1);assert.ok((await fs.readFile(path.join(privateRoot,files[0]),'utf8')).includes('PRIVATE_FIXTURE_OUTPUT_SENTINEL'));}
+  }finally{for(const name of added)await fs.rm(path.join(sourceDirectory,name));}
+ }
+}finally{for(const key of Object.keys(process.env))if(!(key in originalEnvironment))delete process.env[key];Object.assign(process.env,originalEnvironment);await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});

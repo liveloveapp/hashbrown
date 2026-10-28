@@ -135,6 +135,14 @@
       "options": {
         "command": "node tools/conformance/dotnet/nuget-consumer/upgrade-runner.mjs"
       }
+    },
+    "package-acceptance": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "node tools/conformance/dotnet/nuget-consumer/run.mjs"
+      }
     }
   }
 }

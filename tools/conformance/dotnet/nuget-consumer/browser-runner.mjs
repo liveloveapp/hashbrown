@@ -11,6 +11,26 @@ import { startLiveStaticServer } from '../harness/live-static-server.ts';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repository = path.resolve(here, '../../../..');
 
+/** Keeps raw Playwright failure artifacts alongside the private package evidence. */
+export function packagePlaywrightArguments(config, evidence, kind) {
+  return [
+    path.join(repository, 'node_modules/playwright/cli.js'),
+    'test',
+    '--config',
+    path.join(here, '..', config),
+    '--output',
+    path.join(evidence, `${kind}-playwright`),
+  ];
+}
+
+/** Propagates the resolved private root to every package fixture and native wire-evidence sink. */
+export function packageEvidenceEnvironment(evidence, kind) {
+  return {
+    HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY: evidence,
+    DOTNET_NATIVE_BROWSER_EVIDENCE: path.join(evidence, `${kind}-native`),
+  };
+}
+
 /** Runs the exact package suite with full NuGet/npm qualification on both sides and bounded owned static origins. */
 export async function runPackageBrowser(args = process.argv.slice(2)) {
   let metadata;
@@ -40,10 +60,15 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
   const npmBefore = await qualifyNpm(npmMetadata);
   const servers = [];
   const kind = regressions ? 'regressions' : 'matrix';
-  const evidence =
+  const evidenceDirectory =
     process.env.HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY ??
     path.join(before.root, 'browser-reports');
-  await fs.mkdir(evidence, { recursive: true });
+  await fs.mkdir(evidenceDirectory, { recursive: true });
+  const evidence = await fs.realpath(evidenceDirectory);
+  assert.ok(
+    evidence !== repository && !evidence.startsWith(repository + path.sep),
+    'Private package evidence must remain outside the workspace',
+  );
   let status = -1;
   let failure;
   try {
@@ -57,6 +82,7 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
     }
     const environment = {
       ...process.env,
+      ...packageEvidenceEnvironment(evidence, kind),
       HASHBROWN_DOTNET_HOST_MODE: 'package',
       HASHBROWN_DOTNET_CONSUMER_METADATA: metadata,
       HASHBROWN_DOTNET_CONSUMER_SHA256: expected,
@@ -80,12 +106,7 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
     status = await new Promise((accept, reject) => {
       const child = spawn(
         process.execPath,
-        [
-          path.join(repository, 'node_modules/playwright/cli.js'),
-          'test',
-          '--config',
-          path.join(here, '..', config),
-        ],
+        packagePlaywrightArguments(config, evidence, kind),
         { cwd: repository, env: environment, stdio: 'inherit' },
       );
       child.once('error', reject);

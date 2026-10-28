@@ -42,12 +42,8 @@
         ],
         "cwd": "packages/dotnet"
       },
-      "dependsOn": [
-        "build"
-      ],
-      "outputs": [
-        "{workspaceRoot}/dist/packages/dotnet/public-api.json"
-      ]
+      "dependsOn": ["build"],
+      "outputs": ["{workspaceRoot}/dist/packages/dotnet/public-api.json"]
     },
     "pack": {
       "executor": "nx:run-commands",
@@ -60,26 +56,18 @@
         ],
         "cwd": "packages/dotnet"
       },
-      "dependsOn": [
-        "api-check"
-      ],
-      "outputs": [
-        "{workspaceRoot}/dist/packages/dotnet"
-      ]
+      "dependsOn": ["api-check"],
+      "outputs": ["{workspaceRoot}/dist/packages/dotnet"]
     },
     "test": {
       "executor": "nx:run-commands",
       "cache": false,
       "options": {
         "parallel": false,
-        "commands": [
-          "node --test tools/package.test.mjs"
-        ],
+        "commands": ["node --test tools/package.test.mjs"],
         "cwd": "packages/dotnet"
       },
-      "dependsOn": [
-        "pack"
-      ]
+      "dependsOn": ["pack"]
     },
     "lint": {
       "executor": "nx:run-commands",
@@ -94,9 +82,7 @@
         ],
         "cwd": "packages/dotnet"
       },
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "restore-lock": {
       "executor": "nx:run-commands",
@@ -109,5 +95,13 @@
         "cwd": "packages/dotnet"
       }
     }
+  },
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/tools/conformance/dotnet/global.json",
+      "{workspaceRoot}/tools/conformance/dotnet/packages.lock.json",
+      "{workspaceRoot}/tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json"
+    ]
   }
 }
