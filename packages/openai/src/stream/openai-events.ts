@@ -894,8 +894,10 @@ function mapEvent(
  *
  * A `web_search_call` becomes a tool call that runs on the provider: its
  * `TOOL_CALL_START` and `TOOL_CALL_RESULT` carry a `b4.step` with the
- * queries, sources and label, and the answer's `url_citation` annotations
- * become `b4.answer` citations on `TEXT_MESSAGE_END`.
+ * queries, sources and label. A `code_interpreter_call` streams code arguments
+ * and settles only from native execution results. URL and file annotations
+ * become `b4.answer` citations on `TEXT_MESSAGE_END`, retaining native file
+ * and container identity without inventing download URLs.
  *
  * The mapper does not emit `RUN_STARTED`, `RUN_FINISHED` or `RUN_ERROR`; it
  * throws on `response.failed` and `error` so the caller can emit

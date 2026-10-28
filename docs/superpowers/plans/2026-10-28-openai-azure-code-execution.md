@@ -90,17 +90,25 @@ Extend OpenAI's existing `text.http.spec.ts`; create
 pattern (Azure's current stream tests mock the SDK). Modify stream specs and
 `www/content/docs/{react,angular}/platform/{openai,azure}.md`.
 
-- [ ] Write failing real-root-store tests with `createStore({reducers,
+Real-store verification exposed an existing same-result-ID canonical merge bug:
+`upsertToolResult` replaced earlier failed metadata on correction. Task 4 also
+owns the minimal fix in `packages/core/src/reducers/ag-ui-messages.reducer.ts`
+and its existing reducer/root specs, with failing tests first. Preserve the
+failed step and readable error while keeping fresh native result content and
+provenance. No streaming reducer change is needed: actual `selectViewMessages`
+already combines the argument-completion state correctly.
+
+- [x] Write failing real-root-store tests with `createStore({reducers,
   prepareAction:ɵprepareRootAction})`. Drive native fixtures through the mapper,
   project calls/answers, restore native history and build a second request.
   Assert success/failure, code arguments, native results, stable citations and
   provider identity before same-name client dispatch. Preserve ordinary app
   calls/results and prove no provider `function_call`/output appears in replay.
-- [ ] At the existing SDK HTTP seam assert the native request's tools/includes,
+- [x] At the existing SDK HTTP seam assert the native request's tools/includes,
   source outputs, default/explicit container config and second-turn input.
   Use deterministic fixtures, no keys or recordings. Fix genuine defects with
   focused RED/GREEN, and review source changes before committing.
-- [ ] Update four guides/options tables: code execution, native configurations,
+- [x] Update four guides/options tables: code execution, native configurations,
   displayed results/outcomes, generated-file IDs and app-owned downloads,
   explicit-container reuse and stateless omission. Keep deferred items absent.
 - [ ] Run `npx nx test openai --runInBand`, `npx nx build openai`,
@@ -108,8 +116,9 @@ pattern (Azure's current stream tests mock the SDK). Modify stream specs and
   `npx nx build-api-report openai`; repeat for Azure. Inspect reports for the
   exact SDK-derived option and no unintended public API changes.
 - [ ] Run `npx nx test core --runInBand`, `npx nx build core`,
-  `npx nx lint core`, then sequential `npx nx build react` and
-  `npx nx build angular`. Run docs test/lint/build. Inspect all logs, report
+  `npx nx lint core`, `npx nx e2e core --runInBand`, then React/Angular unit
+  checks and sequential `npx nx build react` and `npx nx build angular`.
+  Run docs test/lint/build. Inspect all logs, report
   warnings and avoid concurrent dist writers. Existing passing fixtures remain
   baseline coverage, not a claim of live built-in qualification.
 - [ ] Final aggregate review; parent updates verification evidence, commits,
@@ -135,3 +144,12 @@ Task 3: independent spec and quality review approved. Full OpenAI 144 tests,
 Azure 134 tests passed; both builds and lints passed. Test-first follow-ups
 covered SDK annotation ownership, malformed URL titles, empty annotated answers
 and repeated terminal frames, as well as file identity and conservative spans.
+
+Task 4: spec and quality review approved, including aggregate review against
+`c155e8a2`. Real root-store tests exposed a same-result-ID failure correction
+bug; test-first core fixes preserve failed metadata and prior readable errors
+when absent/empty, while accepting fresh nonempty raw errors. Full core:
+2463 tests / 103 suites / 14 snapshots passed. Full OpenAI: 155 / 8; Azure:
+145 / 8 passed. Real HTTP tests: OpenAI 13; Azure 3. Both root conformance
+suites: 8 each. Four guides updated; 14 code-section TypeScript examples parse.
+Final package/framework/docs checks are recorded below after completion.
