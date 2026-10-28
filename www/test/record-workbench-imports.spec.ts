@@ -43,3 +43,16 @@ test('the recorder imports no workspace packages at runtime', () => {
     [],
   );
 });
+
+test('the production recovery recorder imports no workspace packages at runtime', () => {
+  const entry = resolve(
+    __dirname,
+    '../src/tools/record-docs-production-reference.ts',
+  );
+
+  const packages = runtimePackages(entry);
+
+  expect(packages.filter((name) => name.startsWith('@hashbrownai/'))).toEqual(
+    [],
+  );
+});

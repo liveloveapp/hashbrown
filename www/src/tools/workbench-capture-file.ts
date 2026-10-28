@@ -140,3 +140,31 @@ export function prepareWorkbenchCaptures(
     );
   return prepared;
 }
+
+/** A published recording id and the lesson its capture was recorded for. */
+export interface WorkbenchCaptureRecording extends WorkbenchCaptureTarget {
+  readonly id: string;
+}
+
+/**
+ * Validates and stamps every recording's capture, then writes each as the
+ * `<id>-capture.json` media companion. Nothing is written unless all pass.
+ *
+ * @param work - The recording directory holding `<framework>-<lesson>-live.capture.json`.
+ * @param staging - The media staging directory.
+ * @param recordings - The published ids and the lessons they recorded.
+ * @param commit - The commit the media is published from.
+ */
+export function stageWorkbenchCaptures(
+  work: string,
+  staging: string,
+  recordings: readonly WorkbenchCaptureRecording[],
+  commit: string,
+): void {
+  const captures = prepareWorkbenchCaptures(work, recordings, commit);
+  for (const recording of recordings)
+    writeFileSync(
+      resolve(staging, `${recording.id}-capture.json`),
+      captures.get(`${recording.framework}-${recording.lesson}`) ?? '',
+    );
+}

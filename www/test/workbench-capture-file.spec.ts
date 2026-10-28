@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -19,6 +20,7 @@ import {
   prepareWorkbenchCaptures,
   publishWorkbenchCapture,
   saveWorkbenchCapture,
+  stageWorkbenchCaptures,
 } from '../src/tools/workbench-capture-file';
 
 function recordedCapture() {
@@ -210,6 +212,89 @@ test('preparing a batch stamps every capture by report', () => {
       ...capture,
       commit: 'abc123',
     });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('staging writes each stamped capture beside its published id', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const staging = resolve(root, 'media');
+  const capture = {
+    ...recordedCapture(),
+    lesson: 'production-recovery',
+  };
+  writeFileSync(
+    resolve(root, 'react-production-recovery-live.capture.json'),
+    JSON.stringify(capture),
+  );
+  mkdirSync(staging);
+  const recordings = [
+    {
+      id: 'canonical-workbench-production-recovery-react',
+      framework: 'react',
+      lesson: 'production-recovery',
+    },
+  ];
+
+  try {
+    stageWorkbenchCaptures(root, staging, recordings, 'abc123');
+
+    expect(
+      JSON.parse(
+        readFileSync(
+          resolve(
+            staging,
+            'canonical-workbench-production-recovery-react-capture.json',
+          ),
+          'utf8',
+        ),
+      ),
+    ).toEqual({ ...capture, commit: 'abc123' });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('staging writes nothing when any capture is unpublishable', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const staging = resolve(root, 'media');
+  writeFileSync(
+    resolve(root, 'react-production-recovery-live.capture.json'),
+    JSON.stringify({ ...recordedCapture(), lesson: 'production-recovery' }),
+  );
+  mkdirSync(staging);
+  const recordings = [
+    {
+      id: 'canonical-workbench-production-recovery-react',
+      framework: 'react',
+      lesson: 'production-recovery',
+    },
+    {
+      id: 'canonical-workbench-production-recovery-angular',
+      framework: 'angular',
+      lesson: 'production-recovery',
+    },
+  ];
+
+  try {
+    const stage = () =>
+      stageWorkbenchCaptures(root, staging, recordings, 'abc123');
+
+    expect(stage).toThrow(
+      [
+        'Unpublishable captures:',
+        '- Missing capture for angular/production-recovery',
+      ].join('\n'),
+    );
+    expect(
+      existsSync(
+        resolve(
+          staging,
+          'canonical-workbench-production-recovery-react-capture.json',
+        ),
+      ),
+    ).toBe(false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
