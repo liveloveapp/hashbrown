@@ -32,8 +32,13 @@ import {
   workbenchDecisionPlan,
   workbenchDecisionPrompts,
 } from './workbench';
-import { workbenchLayout, type WorkbenchLayoutStore } from './workbench-layout';
 import {
+  createWorkbenchLayoutStore,
+  workbenchLayout,
+  type WorkbenchLayoutStore,
+} from './workbench-layout';
+import {
+  getWorkbenchLesson,
   type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
@@ -50,6 +55,11 @@ import {
   workbenchTurnSegments,
 } from './workbench-player';
 import { renderWorkbenchSidebar } from './workbench-sidebar';
+import {
+  getWorkbenchEmbedMode,
+  type WorkbenchEmbedMode,
+} from './workbench-embed';
+import { attachWorkbenchMessages } from './workbench-messages';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
@@ -58,7 +68,10 @@ import {
   workbenchRecipeEventLabel,
   workbenchRecipeInspection,
 } from './workbench-recipe-view';
-import { workbenchMilestones } from './workbench-timeline';
+import {
+  withWorkbenchMilestoneIds,
+  workbenchMilestones,
+} from './workbench-timeline';
 import {
   isWorkbenchPlan,
   type WorkbenchSnapshot,
@@ -361,6 +374,11 @@ export interface WorkbenchMountOptions {
   readonly disableNewConversation?: boolean;
   /** Names the only hosted topic when this is an isolated consumer shell. */
   readonly fixedSidebarTopic?: string;
+  /**
+   * Embedded in a docs page: no sidebar, no new conversation, and the layout
+   * is read but never saved. Defaults to the page's `?embed=` value.
+   */
+  readonly embed?: WorkbenchEmbedMode;
 }
 
 /**
@@ -383,7 +401,16 @@ export function mountWorkbench(
   readonly navigation: (value: WorkbenchNavigation) => void;
 } {
   const instanceId = crypto.randomUUID();
-  const layoutStore = options.layout ?? workbenchLayout;
+  const embed =
+    options.embed === undefined
+      ? getWorkbenchEmbedMode(globalThis.location?.search ?? '')
+      : options.embed;
+  const sharedLayout = options.layout ?? workbenchLayout;
+  // Embedded mounts start from the saved layout but keep changes in memory.
+  const layoutStore: WorkbenchLayoutStore = embed
+    ? createWorkbenchLayoutStore()
+    : sharedLayout;
+  if (embed) layoutStore.set(sharedLayout.get(), { persist: false });
   const debugging = commands.lesson?.id === 'debugging';
   let debugDenied = debugging;
   const recipePrompts =
@@ -429,6 +456,10 @@ export function mountWorkbench(
               : workbenchPrompts);
   let navigation: WorkbenchNavigation | undefined;
   const root = element('main', '', 'wb');
+  if (embed) {
+    root.classList.add('wb-embed');
+    root.dataset.embed = embed;
+  }
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
@@ -450,13 +481,14 @@ export function mountWorkbench(
     if (key !== sidebarKey) renderNavigation();
   }
   function renderNavigation() {
+    if (embed) return;
     const current = layoutStore.get();
     sidebarKey = JSON.stringify([current.rail, current.collapsed]);
     root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       fixedTopic: options.fixedSidebarTopic,
-      hideCreate: options.disableNewConversation,
+      hideCreate: options.disableNewConversation || !!embed,
       currentLesson: (commands.lesson?.id ??
         'generative-ui') as WorkbenchLessonId,
       conversations: navigation?.conversations ?? [
@@ -549,7 +581,9 @@ export function mountWorkbench(
   form.onsubmit = (event) => {
     event.preventDefault();
     const snapshot = store.getSnapshot();
+    // A read-only replay never reaches the model, whatever the form shows.
     if (
+      snapshot.readOnly ||
       snapshot.cursor !== null ||
       snapshot.status === 'loading' ||
       snapshot.frame?.localModel?.state === 'preparing' ||
@@ -701,21 +735,25 @@ export function mountWorkbench(
   let playing = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let speed = 1;
-  const play = iconButton('Play', 'play', () => {
-    if (playing) {
-      pause();
-      return;
-    }
-    if (!store.getSnapshot().events.length) return;
+  // Commit of the capture loaded into an embedded replay.
+  let recordedCommit: string | null = null;
+  // Tells an embedding docs page that playback started or stopped.
+  let playbackChanged: () => void = () => undefined;
+  const startPlayback = () => {
+    if (playing || !store.getSnapshot().events.length) return;
     playing = true;
     if (
       store.getSnapshot().cursor === null ||
       store.getSnapshot().cursor === store.getSnapshot().events.length - 1
     )
       store.seek(0);
+    playbackChanged();
     schedule();
     render();
-  });
+  };
+  const play = iconButton('Play', 'play', () =>
+    playing ? pause() : startPlayback(),
+  );
   play.classList.add('wb-play');
   const returnLive = button('', () => {
     pause();
@@ -838,6 +876,7 @@ export function mountWorkbench(
     const shortcut = workbenchShortcut(event, event.target);
     if (!shortcut) return;
     if (shortcut === 'toggle-sidebar') {
+      if (embed) return;
       event.preventDefault();
       layoutStore.set({ rail: !layoutStore.get().rail });
       return;
@@ -849,13 +888,16 @@ export function mountWorkbench(
   }
   document.addEventListener('keydown', onShortcut);
   const split = createWorkbenchSplit({ chat, inspector, layout: layoutStore });
-  layout.append(nav, chat, split.element, inspector);
+  if (embed) layout.append(chat, split.element, inspector);
+  else layout.append(nav, chat, split.element, inspector);
   root.append(header, layout, footer);
   host.append(root);
   function pause() {
+    const wasPlaying = playing;
     playing = false;
     clearTimeout(timer);
     syncPlayButton();
+    if (wasPlaying) playbackChanged();
   }
   function syncPlayButton() {
     const label = playing ? 'Pause' : 'Play';
@@ -929,8 +971,9 @@ export function mountWorkbench(
                   ? 'Live model'
                   : 'Awaiting source';
     const historical = snapshot.cursor !== null;
+    // A recording that ended mid-run keeps a captured 'loading' status.
     const busy =
-      snapshot.status === 'loading' ||
+      (snapshot.status === 'loading' && !snapshot.readOnly) ||
       (snapshot.cursor === null && frame?.localModel?.state === 'preparing') ||
       isWorkbenchHistoryBusy(frame?.history?.sdk) ||
       !!frame?.history?.replacement ||
@@ -973,9 +1016,18 @@ export function mountWorkbench(
             String(event.payload.url).includes('demoDenied=1'),
         )
       : debugDenied;
+    const awaitingRecording =
+      embed === 'replay' && (!snapshot.readOnly || !snapshot.events.length);
+    if (embed === 'replay') form.hidden = true;
     first.disabled = historical || blocked;
     followup.disabled = historical || blocked;
-    const statusText = `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
+    const statusText = awaitingRecording
+      ? 'Waiting for recording'
+      : embed === 'replay'
+        ? recordedCommit
+          ? `Recorded at ${recordedCommit.slice(0, 7)}`
+          : 'Recorded'
+        : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     if (status.textContent !== statusText) status.textContent = statusText;
     replay.replaceChildren();
     if (historical && !commands.managedChat) {
@@ -1569,18 +1621,20 @@ export function mountWorkbench(
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
     const milestones = rawEvents
-      ? snapshot.events.map((event, index) => ({
-          index,
-          turn: event.turn,
-          label: workbenchEventLabel(event, commands.lesson?.format),
-        }))
+      ? withWorkbenchMilestoneIds(
+          snapshot.events.map((event, index) => ({
+            index,
+            turn: event.turn,
+            label: workbenchEventLabel(event, commands.lesson?.format),
+          })),
+        )
       : workbenchMilestones(snapshot.events, commands.lesson?.format);
     const activeMilestone = milestones
       .filter((item) => item.index <= selectedIndex)
       .at(-1);
     rebuildKeepingFocus(events, 'data-index', () => {
       events.replaceChildren();
-      milestones.forEach(({ index, label }) => {
+      milestones.forEach(({ index, label, id }) => {
         const event = snapshot.events[index];
         const item = button(label, () => {
           pause();
@@ -1588,6 +1642,7 @@ export function mountWorkbench(
         });
         item.disabled = busy;
         item.dataset.index = String(index);
+        item.dataset.milestone = id;
         item.style.left = `${workbenchTickPercent(index, total)}%`;
         item.setAttribute(
           'aria-label',
@@ -1655,6 +1710,27 @@ export function mountWorkbench(
   const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
   render();
+  const lessonId = commands.lesson?.id;
+  const messages = embed
+    ? attachWorkbenchMessages({
+        mode: embed,
+        lesson:
+          workbenchLessons.find((lesson) => lesson.id === lessonId)?.id ??
+          getWorkbenchLesson(globalThis.location?.search ?? '').id,
+        framework:
+          commands.framework.toLowerCase() === 'angular' ? 'angular' : 'react',
+        format: commands.lesson?.format,
+        store,
+        isPlaying: () => playing,
+        play: startPlayback,
+        pause,
+        loaded: (commit) => {
+          recordedCommit = commit;
+          render();
+        },
+      })
+    : null;
+  if (messages) playbackChanged = messages.playbackChanged;
   return {
     live,
     pause,
@@ -1663,6 +1739,7 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
+      messages?.dispose();
       detachScrub();
       requestsView.dispose();
       inspectorTabs.dispose();
