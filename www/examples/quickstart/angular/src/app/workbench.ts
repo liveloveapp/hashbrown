@@ -1,3 +1,4 @@
+import { ProductionWorkbenchConversation } from './production-workbench';
 import { LocalModelsWorkbenchConversation } from './local-models-workbench';
 import { RuntimeWorkbenchConversation } from './runtime-workbench';
 import { UiKitWorkbenchConversation } from './ui-kit-workbench';
@@ -349,6 +350,7 @@ export class WorkbenchConversation implements AfterViewInit {
     HistoryWorkbenchConversation,
     AuthoringWorkbenchConversation,
     ServerWorkbenchConversation,
+    ProductionWorkbenchConversation,
     StructuredWorkbenchConversation,
     LocalModelsWorkbenchConversation,
     DecisionWorkbenchConversation,
@@ -358,7 +360,13 @@ export class WorkbenchConversation implements AfterViewInit {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (conversation of conversations(); track conversation.id) {
-    @if (javascriptRuntime) {
+    @if (production) {
+      <app-production-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
+    } @else if (javascriptRuntime) {
       <app-runtime-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
@@ -440,6 +448,8 @@ export class WorkbenchConversation implements AfterViewInit {
   }`,
 })
 export class Workbench {
+  readonly production =
+    getWorkbenchLesson(window.location.search).id === 'production-recovery';
   protected readonly javascriptRuntime =
     getWorkbenchLesson(window.location.search).id === 'javascript-runtime';
   protected readonly uiKit = ['ui-kits', 'ui-chatbot'].includes(
