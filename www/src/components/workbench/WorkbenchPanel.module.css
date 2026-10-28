@@ -55,6 +55,7 @@
   width: 100%;
   height: auto;
   border: 0;
+  object-fit: contain;
   border-radius: var(--radius-card);
   background: var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-rule);

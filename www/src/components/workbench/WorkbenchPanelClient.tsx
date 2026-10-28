@@ -55,6 +55,9 @@ type Tab = 'replay' | 'live' | 'source';
 type Ready = Extract<WorkbenchChildMessage, { type: 'hb-workbench:ready' }>;
 
 const NARROW_QUERY = '(max-width: 799px)';
+// Taller than the 16:10 recordings: a docs column is narrow, and the embed
+// needs room for chat, inspector and player. The poster holds the same box.
+const FRAME_RATIO = '4 / 3';
 // How long a frame gets to say ready, and then to load the capture.
 const LOAD_TIMEOUT_MS = 8000;
 // How long the capture fetch (up to 1.3 MB) may take.
@@ -283,7 +286,6 @@ function TabbedPanel({
     hidden: tab !== name,
     className: styles.view,
   });
-  const aspectRatio = `${width} / ${height}`;
 
   return (
     <div className={styles.panel} ref={panel}>
@@ -324,7 +326,7 @@ function TabbedPanel({
             <iframe
               ref={setFrame}
               className={styles.frame}
-              style={{ aspectRatio }}
+              style={{ aspectRatio: FRAME_RATIO }}
               src={`${origin}/${sdk}.html?lesson=${lesson}&embed=replay`}
               title={`Hashbrown workbench replay: ${title}`}
             />
@@ -338,7 +340,7 @@ function TabbedPanel({
         ) : (
           <img
             className={styles.frame}
-            style={{ aspectRatio }}
+            style={{ aspectRatio: FRAME_RATIO }}
             src={`/video/docs/${mediaId}-poster.png`}
             width={width}
             height={height}
@@ -370,7 +372,7 @@ function TabbedPanel({
           <iframe
             ref={setLiveFrame}
             className={styles.frame}
-            style={{ aspectRatio }}
+            style={{ aspectRatio: FRAME_RATIO }}
             src={`${origin}/${sdk}.html?lesson=${lesson}&embed=live`}
             title={`Hashbrown workbench live: ${title}`}
             allow="language-model; clipboard-write"
