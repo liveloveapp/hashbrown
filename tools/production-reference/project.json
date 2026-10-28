@@ -1,0 +1,47 @@
+{
+  "name": "production-reference",
+  "projectType": "application",
+  "sourceRoot": "www/examples/quickstart/server/production",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config tools/production-reference/vitest.config.mts"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p tools/production-reference/tsconfig.json"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint www/examples/quickstart/server/production tools/production-reference"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "node --import tsx www/examples/quickstart/server/production/host.ts"
+      }
+    },
+    "demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [{ "projects": ["www"], "target": "workbench-build" }],
+      "options": {
+        "command": "node --import tsx www/src/tools/record-docs-production-reference.ts"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config tools/production-reference/vitest.integration.config.mts"
+      }
+    }
+  }
+}

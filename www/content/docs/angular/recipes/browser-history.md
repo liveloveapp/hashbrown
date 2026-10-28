@@ -33,10 +33,16 @@ The recording makes three provider requests across independent live instances. T
 The browser document has `version: 1` and messages with only `role` and string `content`:
 
 ```ts
-const savedText = { version: 1, messages: [
-  { role: 'user', content: 'Name our plan Lighthouse.' },
-  { role: 'assistant', content: 'Lighthouse has two steps: outline, then record.' },
-] };
+const savedText = {
+  version: 1,
+  messages: [
+    { role: 'user', content: 'Name our plan Lighthouse.' },
+    {
+      role: 'assistant',
+      content: 'Lighthouse has two steps: outline, then record.',
+    },
+  ],
+};
 ```
 
 The helper permits at most 40 messages, 2,000 characters per message, and 64,000 serialized UTF-8 bytes. It rejects oversized data instead of truncating it. Those limits leave room for the workbench server's request envelope and another user message.
@@ -84,9 +90,9 @@ The shared action helper checks the actual SDK observation as well as the select
 
 ```ts
 const savable = () =>
-    mutable() &&
-    observation().finishReason === 'stop' &&
-    canSaveWorkbenchHistory(store.getSnapshot());
+  mutable() &&
+  observation().finishReason === 'stop' &&
+  canSaveWorkbenchHistory(store.getSnapshot());
 ```
 
 </hb-code-example>
@@ -106,3 +112,5 @@ Browser storage belongs to this origin and browser profile. It is plain text ava
 The Lighthouse and Harbor labels are application lookup keys. They are independent of the new SDK thread ID after refresh. Supplying an old `threadId` does not load a transcript or make a text document resumable.
 
 Use [Message history](/docs/angular/concept/message-history) to understand the setter, [Threads](/docs/angular/recipes/threads) for application-owned server storage, and [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) for live workflow ownership.
+
+For a runnable TypeScript/Postgres reference that survives a server restart, see [Durable recovery with b4.run](/docs/angular/platform/b4run). It separates conversation checkpoints, native approval grants, and the application’s accepted plan.

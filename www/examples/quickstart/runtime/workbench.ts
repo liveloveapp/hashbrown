@@ -1,3 +1,4 @@
+import type { ProductionClientState } from './workbench-production-client';
 import {
   normalizeWorkbenchLocalModelObservation,
   type WorkbenchLocalModelObservation,
@@ -97,6 +98,7 @@ export const workbenchEventKinds = [
   'source',
   'response',
   'workflow',
+  'production',
   'form',
   'pause',
   'resume',
@@ -113,6 +115,7 @@ export interface WorkbenchFrame {
   readonly uiComponent?: WorkbenchUiComponent;
   readonly uiKit?: WorkbenchUiKitObservation;
   readonly history?: WorkbenchHistoryFrame;
+  readonly production?: ProductionClientState;
   readonly workflow?: WorkbenchWorkflowObservation;
   readonly javascript?: WorkbenchJavaScriptObservation;
   readonly sequence: number;
@@ -184,6 +187,8 @@ export interface WorkbenchStore {
   ): boolean;
   /** Releases failed/cancelled replacement intent without claiming the SDK transcript changed. */
   failHistoryReplacement(error?: unknown): boolean;
+  /** Captures authoritative production application reads separately from SDK events. */
+  recordProduction(state: ProductionClientState): boolean;
   /** Captures actual SDK state, messages, activities, pending batch and lifecycle flags. */
   recordWorkflow(observation: WorkbenchWorkflowObservationInput): boolean;
   /** Records intent before calling the synchronous SDK resume API; adds no user message. */
@@ -442,6 +447,7 @@ export function createWorkbenchStore(
   let historySuccess = false;
   let replacementBaseline = '';
   let replacementObservedBusy = false;
+  let production: ProductionClientState | undefined;
   let workflow: WorkbenchWorkflowObservation | undefined;
   let javascript: WorkbenchJavaScriptObservation | undefined;
   let resumeIntent = false;
@@ -488,6 +494,21 @@ export function createWorkbenchStore(
         kind !== 'kit' &&
         kind !== 'local-model' &&
         kind !== 'workflow' &&
+        kind !== 'production' &&
+        !(
+          production &&
+          [
+            'pause',
+            'resume',
+            'request',
+            'response',
+            'source',
+            'event',
+            'complete',
+            'error',
+            'cancel',
+          ].includes(kind)
+        ) &&
         kind !== 'history' &&
         kind !== 'history-app' &&
         !(format === 'workflow' && kind === 'form')) ||
@@ -604,6 +625,7 @@ export function createWorkbenchStore(
               },
             }
           : {}),
+        ...(production ? { production } : {}),
         ...(workflow ? { workflow } : {}),
         ...(javascript ? { javascript } : {}),
         json,
@@ -923,18 +945,53 @@ export function createWorkbenchStore(
       record('history-app', { action, error: message });
       return true;
     },
+    recordProduction(state) {
+      if (readOnly || cursor !== null || format !== 'workflow') return false;
+      if (JSON.stringify(state) === JSON.stringify(production)) return false;
+      production = copy(state);
+      record('production', state);
+      return true;
+    },
     recordWorkflow(observation) {
-      if (format !== 'workflow' || cursor !== null) return false;
-      const next = normalizeWorkbenchWorkflowObservation(observation);
+      if (readOnly || format !== 'workflow' || cursor !== null) return false;
+      const normalized = normalizeWorkbenchWorkflowObservation(observation);
+      const next = production
+        ? {
+            ...normalized,
+            productionState: copy(observation.state),
+            ...(observation.pendingInterrupts
+              ? { pendingInterrupts: copy(observation.pendingInterrupts) }
+              : {}),
+          }
+        : normalized;
       const observedUser = next.messages
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
       const currentUser = messages
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
-      if (turn > 0 && observedUser !== currentUser) return false;
+      if (
+        turn > 0 &&
+        observedUser !== currentUser &&
+        (!production || status === 'loading')
+      )
+        return false;
       if (JSON.stringify(next) === JSON.stringify(workflow)) return false;
       workflow = next;
+      if (production) {
+        messages = next.messages.flatMap((message) =>
+          (message.role === 'user' || message.role === 'assistant') &&
+          typeof message.content === 'string'
+            ? [
+                {
+                  id: message.id,
+                  role: message.role as 'user' | 'assistant',
+                  content: message.content,
+                },
+              ]
+            : [],
+        );
+      }
       if (next.isResuming || next.error || next.recoveryRequired)
         resumeIntent = false;
       const paused =
@@ -943,6 +1000,14 @@ export function createWorkbenchStore(
         !next.isResuming &&
         !next.recoveryRequired &&
         !resumeIntent;
+      if (
+        production &&
+        status === 'paused' &&
+        !next.pendingInterrupts &&
+        !next.isLoading &&
+        !next.isResuming
+      )
+        status = 'idle';
       if (paused) {
         status = 'paused';
         resumeIntent = false;

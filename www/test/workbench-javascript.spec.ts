@@ -159,7 +159,7 @@ test('runtime lesson resolves in concepts with no provider endpoint and explicit
     inspector: 'Runtime',
     endpoint: '',
   });
-  expect(workbenchLessons).toHaveLength(28);
+  expect(workbenchLessons).toHaveLength(29);
   expect(
     workbenchLessonGroups.find((group) => group.id === 'concepts')?.lessons,
   ).toContain('javascript-runtime');

@@ -32,7 +32,7 @@ test.each(['ui-kits', 'ui-chatbot'] as const)(
       getWorkbenchUiPrompts(lesson)[0],
     );
     expect(host.querySelector('.wb-player')).not.toBeNull();
-    expect(host.querySelectorAll('.wb-nav a')).toHaveLength(28);
+    expect(host.querySelectorAll('.wb-nav a')).toHaveLength(29);
     shell.dispose();
   },
 );

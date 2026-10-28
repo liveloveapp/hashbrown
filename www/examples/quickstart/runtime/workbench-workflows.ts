@@ -50,6 +50,8 @@ export interface WorkbenchWorkflowObservationInput {
 }
 /** Immutable, normalized SDK facts stored on every workflow frame. */
 export interface WorkbenchWorkflowObservation {
+  /** Unmodified SDK state observed by the opt-in production client. */
+  readonly productionState?: unknown;
   readonly state: WorkbenchWorkflowState | null;
   readonly messages: readonly WorkbenchWorkflowMessage[];
   readonly activities: readonly WorkbenchWorkflowMessage[];
