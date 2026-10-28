@@ -2,7 +2,7 @@ using System.Collections;
 using System.Security.Cryptography;
 using System.Text.Json;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Npgsql;
 
 namespace Hashbrown.Conformance.Testing;
@@ -48,9 +48,9 @@ public static class FixtureServerIdentityControls
                     var destination = (IDictionary)field.GetValue(current)!;
                     foreach (DictionaryEntry entry in (IDictionary)field.GetValue(original)!)
                     {
-                        var record = (InterruptRecord)entry.Value!;
-                        if (originalIdentity is not null) fingerprintBound &= !record.Fingerprint.SequenceEqual(legacyFingerprint);
-                        destination.Add(entry.Key, body.TryGetProperty("unavailable", out var unavailable) && unavailable.GetBoolean() ? record with { OriginalRequest = null } : record);
+                        var record = entry.Value!;
+                        if (originalIdentity is not null) fingerprintBound &= !FixtureIntegrationReflection.Read<byte[]>(record, "Fingerprint").SequenceEqual(legacyFingerprint);
+                        destination.Add(entry.Key, body.TryGetProperty("unavailable", out var unavailable) && unavailable.GetBoolean() ? FixtureIntegrationReflection.Copy(record, ("OriginalRequest", null)) : record);
                     }
                 }
                 else
@@ -142,13 +142,15 @@ public static class FixtureServerIdentityControls
                 command.Parameters.AddWithValue("id", freshBatch.Id);
                 storedFingerprint = (byte[])(await command.ExecuteScalarAsync())!;
             }
-            var v2NewRowResume = LegacyV2Admission("migration-test", freshResume, new(freshBatch, "migration-test", fresh.ThreadId, fresh.RunId, storedFingerprint), DateTimeOffset.UtcNow);
+            var v2NewRowResume = LegacyV2Admission("migration-test", freshResume, new LegacyInterruptRecord(freshBatch, "migration-test", fresh.ThreadId, storedFingerprint, "Pending", null), DateTimeOffset.UtcNow);
             return Results.Json(new { beforeVersion, afterVersion, before, after, identity = identity == DBNull.Value ? null : identity, boundRecovery = boundRecovery.Status, boundResume = boundResume.Status, legacyRecovery = legacyRecovery.Status, legacyResume = legacyResume.Status, v2NewRowResume });
         });
     }
 
+    private sealed record LegacyInterruptRecord(PendingInterrupt Batch, string Scope, string ThreadId, byte[] Fingerprint, string State, DateTimeOffset? LeaseUntil);
+
     // The pre-v3 admission algorithm, intentionally without a compatibility-identity check.
-    private static int LegacyV2Admission(string scope, RunAgentInput input, InterruptRecord record, DateTimeOffset now)
+    private static int LegacyV2Admission(string scope, RunAgentInput input, LegacyInterruptRecord record, DateTimeOffset now)
     {
         if (record.Scope != scope || record.ThreadId != input.ThreadId || record.Batch.ExpiresAt <= now) return 410;
         if (record.State != "Pending" && !(record.State == "Claimed" && record.LeaseUntil <= now)) return 409;

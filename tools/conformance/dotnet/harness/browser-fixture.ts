@@ -1,3 +1,4 @@
+import { selectDotnetHost } from './dotnet-host';
 import { test } from '@playwright/test';
 import {
   type DotnetFixture,
@@ -30,10 +31,18 @@ export function withDotnetFixture<T>(
   streamControl?: ModelStreamControl,
   environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
-  return withHttpFixture(provider, use, workflow, streamControl, {
-    ModelApi: projectModelApi(),
-    ...environment,
-  });
+  return withHttpFixture(
+    provider,
+    use,
+    workflow,
+    streamControl,
+    {
+      ModelApi: projectModelApi(),
+      ...environment,
+    },
+    undefined,
+    selectDotnetHost(),
+  );
 }
 
 /** Propagates the project API through every durable worker and restart. */

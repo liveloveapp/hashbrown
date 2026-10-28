@@ -43,6 +43,7 @@ export async function localNativeApprovalStats(
 /** Rejects bounded local startup on a spawn error or early exit without exposing process output. */
 export async function waitForLocalNativeApprovalServer(
   worker: ChildProcess,
+  verifyLoaded?: (output: string) => void,
 ): Promise<string> {
   const outputStream = worker.stdout;
   if (!outputStream) throw new Error('LOCAL_NATIVE_STDOUT_UNAVAILABLE');
@@ -59,7 +60,14 @@ export async function waitForLocalNativeApprovalServer(
         const match = output.match(
           /Local native approval browser URL: (http:\/\/127\.0\.0\.1:\d+)/,
         );
-        if (match) accept(match[1]);
+        if (match) {
+          try {
+            verifyLoaded?.(output);
+            accept(match[1]);
+          } catch (error) {
+            reject(error);
+          }
+        }
       };
       onExit = () => reject(new Error('LOCAL_NATIVE_EARLY_EXIT'));
       onError = () => reject(new Error('LOCAL_NATIVE_SPAWN_FAILED'));

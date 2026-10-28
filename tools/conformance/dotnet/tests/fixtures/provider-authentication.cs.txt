@@ -1,6 +1,6 @@
 using Azure.Core;
 using Azure.Identity;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.Configuration;
 
 var failures = new List<string>();

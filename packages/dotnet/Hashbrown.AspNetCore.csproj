@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <PackageId>Hashbrown.AspNetCore</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Hashbrown</Authors>
+    <Description>ASP.NET Core integration for Hashbrown generative UI.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/liveloveapp/hashbrown</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <DebugType>portable</DebugType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EnablePackageValidation>true</EnablePackageValidation>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="[1.26.0-preview.261023.1]" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="[1.26.0]" />
+    <PackageReference Include="AGUI.Abstractions" Version="[1.0.1]" />
+    <PackageReference Include="AGUI.Server" Version="[1.0.1]" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="[10.10.1]" />
+    <PackageReference Include="OpenAI" Version="[2.14.0]" />
+    <PackageReference Include="Azure.Core" Version="[1.63.0]" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="[2.1.0]" />
+    <PackageReference Include="Npgsql" Version="[10.0.3]" />
+  </ItemGroup>
+</Project>

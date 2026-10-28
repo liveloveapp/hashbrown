@@ -1,3 +1,5 @@
+process.env['HASHBROWN_DOTNET_HOST_MODE'] ??= 'source';
+
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 

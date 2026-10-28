@@ -74,19 +74,17 @@ Run the recorder after preparation:
 
 ```sh
 DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-demo www
-npx nx docs-threadplane-demo www
+DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-live-demo www
+npx nx docs-threadplane-live-demo www
 ```
 
-The first command verifies browser behavior without replacing public captures.
-The second produces separate React and Angular recordings. `DOCS_DEMO_MODES`
+The first command verifies standalone keyboard, error, cancellation and mobile behavior using labelled fixtures, without replacing public captures. The second verifies the canonical shell with real provider output without publishing footage. The third records both frameworks. Both real-provider commands require server-only `OPENAI_API_KEY` and explicit `OPENAI_MODEL` and use separate real React and Angular consumers with the canonical workbench shell. `DOCS_DEMO_MODES`
 selects `threadplane-react`, `threadplane-angular`, or both as a comma-separated
 list. Unknown modes fail before recording.
 
-The recorder uses the checked server and real Hashbrown OpenAI adapter with a
-local provider-native response fixture. It checks package versions, realpaths,
-framework runtime identity, installed CSS exports, and browser behavior. There
-is no live provider key or live-model claim. Presentation styles added by the
-recorder are separate from the checked consumers.
+The standalone verifier uses the checked server and real Hashbrown OpenAI adapter with a
+local provider-native response fixture. Fixture publication is rejected; its test responses never supply the current videos. The live recorder uses actual provider output, the canonical two-step plan and follow-up, and real installed controls inside the LLA shell, inspector and bottom timeline. It verifies request history, shorter second step, unchanged state and inert replay. Both recordings are staged until both real framework conversations pass. It checks package versions, realpaths,
+framework runtime identity, installed CSS exports, and browser behavior. The fixture verifier requires no provider key. The optional shell is bundled separately and does not supply framework aliases or packages to the installed consumers. Current clips run at actual speed with reading pauses, measured captions and no narration. They are not additional hosted workbench lesson routes.
 
 Run preparation, recording, and other generated-output targets sequentially.
 Preserve `dist/docs-threadplane` capture masters and reports when cleaning up a

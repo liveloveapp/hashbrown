@@ -26,7 +26,7 @@ test.each(SDKS)(
   '%s Threadplane recipe opens with its own installed-consumer recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'threadplane'])?.body ?? '';
-    const id = `threadplane-${sdk}`;
+    const id = `canonical-workbench-threadplane-${sdk}`;
 
     const opening = body.indexOf(`<hb-docs-demo demo="${id}">`);
 
@@ -34,7 +34,9 @@ test.each(SDKS)(
     expect(opening).toBeLessThan(body.indexOf('\n## '));
     expect(body).toContain(`/video/docs/${id}-result.png`);
     expect(body).toContain('installed');
-    expect(body).toContain('scripted');
+    expect(body).toContain('real provider output');
+    expect(body).toContain('application revision stays at zero');
+    expect(body).toContain('actual protocol events');
   },
 );
 
@@ -162,7 +164,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['migrations', 'threadplane'])?.body ?? '';
 
     expect(body).toContain(`/docs/${sdk}/recipes/threadplane`);
-    expect(body).toContain(`threadplane-${sdk}`);
+    expect(body).toContain(`canonical-workbench-threadplane-${sdk}`);
   },
 );
 

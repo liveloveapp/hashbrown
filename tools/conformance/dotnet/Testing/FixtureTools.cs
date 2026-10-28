@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Npgsql;
 
 namespace Hashbrown.Conformance.Testing;
@@ -85,13 +85,14 @@ public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = nul
     public async Task<object> LookupProtectedNativeAirport(string code, CancellationToken cancellationToken = default)
     {
         if (source is null) throw new InvalidOperationException("Native fixture requires PostgreSQL.");
-        var context = NativeSessionContext.Get(nativeContext?.Invoke()) ?? throw new InvalidOperationException("Owned native fixture context required.");
-        var evidence = context.ApprovalEvidence ?? throw new InvalidOperationException("Admitted native fixture evidence required.");
+        var contextType = FixtureIntegrationReflection.Type("NativeSessionContext");
+        var context = FixtureIntegrationReflection.Call(null, contextType, "Get", nativeContext?.Invoke()) ?? throw new InvalidOperationException("Owned native fixture context required.");
+        var evidence = FixtureIntegrationReflection.Read<NativeApprovalEvidence?>(context, "ApprovalEvidence") ?? throw new InvalidOperationException("Admitted native fixture evidence required.");
         // Fixture scripts use distinct codes, correlating an actual executor to an immutable trusted captured call.
         var descriptor = evidence.Batch.Batch.ProtectedRequests.Single(item => item.Call.Name == "lookupAirport" && item.Call.Arguments.GetProperty("code").GetString() == code);
         await using (var command = source.CreateCommand($"INSERT INTO \"{schema}\".fixture_native_approval_effects(session_id,call_id,request_id,batch_id,admitted_generation,admitted_revision,code) VALUES(@session,@call,@request,@batch,@generation,@revision,@code)"))
         {
-            command.Parameters.AddWithValue("session", context.Lease.Key.Id);
+            command.Parameters.AddWithValue("session", FixtureIntegrationReflection.Read<NativeSessionLease>(context, "Lease").Key.Id);
             command.Parameters.AddWithValue("call", descriptor.Call.Id);
             command.Parameters.AddWithValue("request", descriptor.RequestId);
             command.Parameters.AddWithValue("batch", evidence.Batch.Batch.BatchId);

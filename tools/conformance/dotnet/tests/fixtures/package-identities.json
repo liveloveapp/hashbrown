@@ -1,0 +1,3325 @@
+{
+  "baseline": "8f0a710a75cb907c1a07e34eb5527b1834da90ed",
+  "identities": [
+    [
+      "angular-azure",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-azure",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-azure",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "angular-azure",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "angular-azure",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "angular-azure",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "angular-azure",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "angular-azure",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "angular-azure",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "angular-azure",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "angular-azure",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "angular-azure",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "angular-azure",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "angular-azure-responses",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-azure-responses",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-azure-responses",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "angular-azure-responses",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "angular-azure-responses",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "angular-azure-responses",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "angular-azure-responses",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "angular-azure-responses",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "angular-azure-responses",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-azure-responses",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "angular-azure-responses",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "angular-azure-responses",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "angular-openai",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-openai",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-openai",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "angular-openai",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "angular-openai",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "angular-openai",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "angular-openai",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "angular-openai",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "angular-openai",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "angular-openai",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "angular-openai",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "angular-openai",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "angular-openai",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "angular-openai-responses",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-openai-responses",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "angular-openai-responses",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "angular-openai-responses",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "angular-openai-responses",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "angular-openai-responses",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "angular-openai-responses",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "angular-openai-responses",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "angular-openai-responses",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "angular-openai-responses",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "angular-openai-responses",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "angular-openai-responses",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "react-azure",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-azure",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-azure",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "react-azure",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "react-azure",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "react-azure",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "react-azure",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "react-azure",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "react-azure",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "react-azure",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "react-azure",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "react-azure",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "react-azure",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "react-azure-responses",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-azure-responses",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-azure-responses",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "react-azure-responses",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "react-azure-responses",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "react-azure-responses",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "react-azure-responses",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "react-azure-responses",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "react-azure-responses",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-azure-responses",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "react-azure-responses",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "react-azure-responses",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "react-azure-responses",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "react-azure-responses",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "react-openai",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-openai",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-openai",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "react-openai",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "react-openai",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "react-openai",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "react-openai",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "react-openai",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "react-openai",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "react-openai",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "react-openai",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "react-openai",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "react-openai",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ],
+    [
+      "react-openai-responses",
+      "cold-history.spec.ts",
+      "cold structured history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-openai-responses",
+      "cold-history.spec.ts",
+      "cold ui history preserves cancellation as inert diagnostics through pending and completed recovery"
+    ],
+    [
+      "react-openai-responses",
+      "cold-history.spec.ts",
+      "native historical assistant HTML remains escaped text after completed structured recovery"
+    ],
+    [
+      "react-openai-responses",
+      "durable.spec.ts",
+      "a competing instance cannot claim the live browser resume with its identical run ID"
+    ],
+    [
+      "react-openai-responses",
+      "durable.spec.ts",
+      "a live browser resumes its durable batch on another instance after restart"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "continues a browser tool, confirmation, and server tool without replay"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "does not mount invalid component props from native model output"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "does not mount unexposed components from native model output"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "does not replay an earlier server effect across browser tool and confirmation"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "executes a browser tool and resumes through the .NET agent"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "exposes native interrupts and resumes through the public API"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "handles cancel through the public resume API"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "handles decline through the public resume API"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "keeps the browser batch while resume is held and rejects its replay over HTTP"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with browser first"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "preserves mixed tool ownership with server first"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "rejects an expired browser resume before model or protected effects"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "renders a trusted component with an actual user action"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "renders partial text before the native model finishes"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "renders structured using the exact native output schema"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "renders ui using the exact native output schema"
+    ],
+    [
+      "react-openai-responses",
+      "integration.spec.ts",
+      "streams text through the real .NET provider"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop cancels the native provider connection without late completion"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed after-effect checkpoint prevents late work"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "Stop during resumed before-effect checkpoint prevents late work"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "rejects real .NET SSE cut off before its terminal event"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "renders partial structured output before native JSON completion"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "renders partial ui output before native JSON completion"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "repeated browser calls execute freshly across conversational turns"
+    ],
+    [
+      "react-openai-responses",
+      "lifecycle.spec.ts",
+      "reports native model failure without hanging or retrying"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first approve preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first cancel preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native browser-first decline preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending approve renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending cancel renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native cold pending decline renews local ownership and completed history stays inert"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native delayed pending lookup cannot overwrite a newer thread ownership or history"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native live browser decision raw bytes survive real worker death without recovery lookup"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed real persisted pending reload omits snapshot and blocks work until a fresh thread"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects actual-sdk unresolved browser snapshot"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects raw unresolved browser snapshot"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects server-time unresolved browser snapshot"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native mixed supplied-response SDK guard rejects untimed unresolved browser snapshot"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only approve preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only cancel preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native native-only decline preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected approve preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native sequential-browser-then-protected decline preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first approve preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first cancel preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native server-first decline preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native stale public commands cannot replace current local batch ownership or history"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native three protected decisions approve decline cancel through the public batch"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing approve has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing cancel has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two cold tabs opposing decline has one admitted envelope and one continuation"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected approve preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected cancel preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native two-browser-two-protected decline preserves public and model identity"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native-only pending after-save-before-publication never publishes premature controls"
+    ],
+    [
+      "react-openai-responses",
+      "native-approvals.spec.ts",
+      "native-only pending before-pending-save never publishes premature controls"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native browser-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native completed cold recovery restores canonical history without historical tool execution"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native multiple-siblings waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native pending callback survives process death and continues unchanged on another instance"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native reload reports missing browser results without rerunning tools and allows a fresh thread"
+    ],
+    [
+      "react-openai-responses",
+      "native-sessions.spec.ts",
+      "native server-first waits for durable publication and preserves exact history"
+    ],
+    [
+      "react-openai-responses",
+      "native-wire.spec.ts",
+      "retains exact native browser and server history after recovered approval and a subsequent turn"
+    ],
+    [
+      "react-openai-responses",
+      "native-wire.spec.ts",
+      "selects the project API and preserves browser tool schemas and exact native history"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed answer restores after reload with zero additional model or effect calls"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a completed effect with unavailable final output shows status without inventing an answer"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "a delayed real recovery lookup cannot replace a newer thread or its status"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "acknowledged application-progress stream failure recovers pre-effect work only after explicit lease refresh"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "another authenticated principal receives nondisclosing 404 and no restored history"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "historical browser tools stay inert through recovered approval and a later complete generation"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "native preparation without a progress prelude recovers its unacknowledged claim after worker death"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "reload after worker death recovers on another instance without model or effect work"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "structured assistant history restores through the trusted schema without replaying an action"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "two reloaded tabs compete for one effect and the conflict loser refreshes explicitly"
+    ],
+    [
+      "react-openai-responses",
+      "recovery-lifecycle.spec.ts",
+      "unknown effects require separate operator authority and terminal reconciliation fences late output"
+    ],
+    [
+      "react-openai-responses",
+      "recovery.spec.ts",
+      "reload restores fresh pending ownership and resumes the exact original native request explicitly"
+    ],
+    [
+      "react-openai-responses",
+      "recovery.spec.ts",
+      "unknown recovery dispositions fail closed before enabling decisions"
+    ]
+  ]
+}

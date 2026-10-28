@@ -1,27 +1,14 @@
-import {
-  cpSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  validateRecipePackage,
+  compileRecipes,
+  metadataArgument,
+} from './nuget-consumer/recipes.mjs';
 
 const source = dirname(fileURLToPath(import.meta.url));
 const root = resolve(source, '../../..');
-
-/** Reads complete pinned package identities from a project or documented XML. */
-const packages = (text) =>
-  [
-    ...text.matchAll(
-      /<PackageReference Include="([^"]+)" Version="([^"]+)"\s*\/>/g,
-    ),
-  ]
-    .map((match) => `${match[1]}@${match[2]}`)
-    .sort();
 
 /** Extracts exact native C# examples, rejecting framework drift or dependency substitutions. */
 export function readNativeRecipes(workspace = root) {
@@ -44,21 +31,7 @@ export function readNativeRecipes(workspace = root) {
     throw new Error(
       'Native framework recipes must contain the same three tested C# examples.',
     );
-  const locked = packages(
-    readFileSync(
-      join(workspace, 'tools/conformance/dotnet/Hashbrown.Conformance.csproj'),
-      'utf8',
-    ),
-  );
-  if (
-    locked.length === 0 ||
-    texts.some(
-      (text) => JSON.stringify(packages(text)) !== JSON.stringify(locked),
-    )
-  )
-    throw new Error(
-      'Native recipe pins must match the complete locked reference project.',
-    );
+  texts.forEach(validateRecipePackage);
   return blocks[0];
 }
 
@@ -102,44 +75,17 @@ export function nativeRecipePrograms([
   );
 }
 
-/** Compiles documented programs against an isolated copy of the actual locked Integration source. */
-export function compileNativeRecipes() {
-  const variants = nativeRecipePrograms(readNativeRecipes());
-  const directory = mkdtempSync(
-    join(tmpdir(), 'hashbrown-dotnet-native-recipe-'),
+/** Compiles the sixteen native programs using mandatory immutable candidate metadata. */
+export async function compileNativeRecipes(metadata) {
+  await compileRecipes(
+    nativeRecipePrograms(readNativeRecipes()),
+    metadata,
+    'native',
   );
-  try {
-    for (const name of [
-      'global.json',
-      'nuget.config',
-      'Hashbrown.Conformance.csproj',
-      'packages.lock.json',
-      'Integration',
-    ])
-      cpSync(join(source, name), join(directory, name), { recursive: true });
-    execFileSync(
-      process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
-      ['restore', '--locked-mode'],
-      { cwd: directory, stdio: 'inherit' },
-    );
-    for (const { provider, api, recovery, approvals, program } of variants) {
-      console.log(
-        `Compiling native ${provider} ${api} recipe, recovery=${recovery}, approvals=${approvals}`,
-      );
-      writeFileSync(join(directory, 'Program.cs'), program);
-      execFileSync(
-        process.env['DOTNET_HOST_PATH'] ?? 'dotnet',
-        ['build', '--no-restore'],
-        { cwd: directory, stdio: 'inherit' },
-      );
-    }
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
 }
 
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 )
-  compileNativeRecipes();
+  await compileNativeRecipes(metadataArgument());

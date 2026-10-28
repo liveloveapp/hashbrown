@@ -1,3 +1,8 @@
+import {
+  type HistoricalDotnetHostSelection,
+  resolveDotnetHost,
+  selectDotnetHost,
+} from './dotnet-host';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createStableModelRouter } from './stable-model-router';
@@ -7,6 +12,13 @@ const execute = promisify(execFile);
 
 /** Independent integration processes sharing one isolated PostgreSQL schema. */
 export interface DurableFixtureCluster {
+  /** Fresh owned PostgreSQL namespace; exposed only to independent test observation. */
+  readonly schema: string;
+  readonly connectionString: string;
+  /** Starts only the explicitly supplied, hash-verified immutable historical test executable. */
+  readonly startHistorical: (
+    environment?: Readonly<Record<string, string>>,
+  ) => Promise<DotnetFixture>;
   readonly start: (
     environment?: Readonly<Record<string, string>>,
   ) => Promise<DotnetFixture>;
@@ -69,7 +81,10 @@ export async function withDurableCluster<T>(
   provider: 'openai' | 'azure',
   use: (cluster: DurableFixtureCluster) => Promise<T>,
   environment: Readonly<Record<string, string>> = {},
+  historicalHost?: HistoricalDotnetHostSelection,
 ): Promise<T> {
+  const hostSelection = selectDotnetHost();
+  resolveDotnetHost(hostSelection);
   const database = await postgres();
   const router = await createStableModelRouter().catch(async (error) => {
     await database.dispose();
@@ -81,6 +96,8 @@ export async function withDurableCluster<T>(
   const workers: DotnetFixture[] = [];
   const start = async (
     workerEnvironment: Readonly<Record<string, string>> = {},
+    selection:
+      typeof hostSelection | HistoricalDotnetHostSelection = hostSelection,
   ) => {
     let ready!: (fixture: DotnetFixture) => void;
     let fail!: (error: unknown) => void;
@@ -105,6 +122,7 @@ export async function withDurableCluster<T>(
         InterruptSchema: schema,
       },
       router,
+      selection,
     );
     running.push(task);
     void task.catch(fail);
@@ -114,7 +132,17 @@ export async function withDurableCluster<T>(
   let failed = false;
   let result!: T;
   try {
-    result = await use({ start });
+    result = await use({
+      schema,
+      connectionString: database.connectionString,
+      start,
+      startHistorical: (values = {}) => {
+        if (!historicalHost)
+          throw new Error('Explicit historical test host required');
+        resolveDotnetHost(historicalHost);
+        return start(values, historicalHost);
+      },
+    });
   } catch (error) {
     failure = error;
     failed = true;

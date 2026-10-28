@@ -1,13 +1,13 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native host owns sessions, fences effects and withholds durable terminals', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-native-host-'));
+  const directory = await createDotnetProbeDirectory('hashbrown-native-host-');
   const source = await readFile(resolve('tools/conformance/dotnet/tests/fixtures/native-session-host.cs.txt'), 'utf8');
   const project = resolve('tools/conformance/dotnet/Hashbrown.Conformance.csproj');
 

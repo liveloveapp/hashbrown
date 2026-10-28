@@ -338,6 +338,28 @@ export interface WorkbenchNavigation {
 export interface WorkbenchMountOptions {
   /** The layout preference store; defaults to the shared `workbenchLayout`. */
   readonly layout?: WorkbenchLayoutStore;
+  /** The installed UI owns its composer; omit the shell composer. */
+  readonly externalComposer?: boolean;
+  /** Render captured assistant messages as plain text in replay. */
+  readonly plainTextReplay?: boolean;
+  /** An explicit set of inspector tabs for an externally owned runtime. */
+  readonly inspectorTabs?: readonly string[];
+  /** Projects actual runtime observations into the selected inspector. */
+  readonly inspection?: (
+    tab: string,
+    snapshot: WorkbenchSnapshot,
+  ) =>
+    | {
+        readonly heading: string;
+        readonly value: unknown;
+        readonly detailHeading: string;
+        readonly detail: unknown;
+      }
+    | undefined;
+  /** Omits the new-conversation action when no reset adapter is installed. */
+  readonly disableNewConversation?: boolean;
+  /** Names the only hosted topic when this is an isolated consumer shell. */
+  readonly fixedSidebarTopic?: string;
 }
 
 /**
@@ -432,6 +454,8 @@ export function mountWorkbench(
     root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
+      fixedTopic: options.fixedSidebarTopic,
+      hideCreate: options.disableNewConversation,
       currentLesson: (commands.lesson?.id ??
         'generative-ui') as WorkbenchLessonId,
       conversations: navigation?.conversations ?? [
@@ -556,7 +580,7 @@ export function mountWorkbench(
     ...(debugging ? [debugControls] : []),
     live,
     replay,
-    form,
+    ...(options.externalComposer ? [] : [form]),
   );
   const inspector = element('section', '', 'wb-panel wb-inspector');
   inspector.setAttribute('aria-label', 'Inspector');
@@ -599,49 +623,57 @@ export function mountWorkbench(
   detail.dataset.detail = '';
   pair.append(captured, detail);
   let tab = commands.lesson?.inspector ?? 'JSON';
-  const tabButtons = [
-    ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
-      ? 'JSON'
-      : ['text', 'workflow', 'history'].includes(commands.lesson?.format ?? '')
-        ? commands.lesson?.id === 'magic-text'
-          ? 'Markdown'
-          : 'Text'
-        : 'JSON',
-    'Requests',
-    ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
-    ...(commands.lesson?.id === 'javascript-runtime'
-      ? ['Code', 'Runtime']
-      : []),
-    ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
-      ? ['Kit', 'Schema']
-      : []),
-    ...(commands.lesson?.format === 'history'
-      ? commands.lesson.id === 'agent-decisions'
-        ? ['History', 'Agent']
-        : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
-          ? [
-              'History',
-              'Parser',
-              ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
-              'Schema',
-            ]
-          : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
-            ? ['History', 'Server', 'Access']
-            : ['History', 'Saved text']
-      : []),
-    ...(['structured', 'predictions', 'selection'].includes(
-      commands.lesson?.format ?? '',
-    )
-      ? ['Schema']
-      : []),
-    ...(commands.lesson?.id === 'request-transformation' ? ['Transform'] : []),
-    ...(commands.lesson?.id === 'system-instructions' ? ['Instructions'] : []),
-    'UI',
-    'State',
-    ...(commands.lesson?.format === 'workflow'
-      ? ['Activities', 'Interrupts']
-      : []),
-  ].map((name) => {
+  const tabButtons = (
+    options.inspectorTabs ?? [
+      ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
+        ? 'JSON'
+        : ['text', 'workflow', 'history'].includes(
+              commands.lesson?.format ?? '',
+            )
+          ? commands.lesson?.id === 'magic-text'
+            ? 'Markdown'
+            : 'Text'
+          : 'JSON',
+      'Requests',
+      ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
+      ...(commands.lesson?.id === 'javascript-runtime'
+        ? ['Code', 'Runtime']
+        : []),
+      ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
+        ? ['Kit', 'Schema']
+        : []),
+      ...(commands.lesson?.format === 'history'
+        ? commands.lesson.id === 'agent-decisions'
+          ? ['History', 'Agent']
+          : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
+            ? [
+                'History',
+                'Parser',
+                ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
+                'Schema',
+              ]
+            : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+              ? ['History', 'Server', 'Access']
+              : ['History', 'Saved text']
+        : []),
+      ...(['structured', 'predictions', 'selection'].includes(
+        commands.lesson?.format ?? '',
+      )
+        ? ['Schema']
+        : []),
+      ...(commands.lesson?.id === 'request-transformation'
+        ? ['Transform']
+        : []),
+      ...(commands.lesson?.id === 'system-instructions'
+        ? ['Instructions']
+        : []),
+      'UI',
+      'State',
+      ...(commands.lesson?.format === 'workflow'
+        ? ['Activities', 'Interrupts']
+        : []),
+    ]
+  ).map((name) => {
     const item = button(name, () => {
       tab = name;
       render();
@@ -905,6 +937,7 @@ export function mountWorkbench(
       !!frame?.history?.sdk.pendingInterrupts ||
       !!frame?.history?.sdk.recoveryRequired;
     live.hidden = historical && !commands.managedChat;
+    live.inert = historical && options.externalComposer === true;
     replay.hidden = !historical || !!commands.managedChat;
     prompt.disabled = historical || blocked;
     const server = frame?.history?.app.server;
@@ -973,6 +1006,10 @@ export function mountWorkbench(
             element('p', 'Replay is read-only.', 'wb-muted'),
           );
           replay.append(card);
+          continue;
+        }
+        if (options.plainTextReplay) {
+          replay.append(element('p', message.content, 'wb-assistant'));
           continue;
         }
         const props = message.props;
@@ -1179,6 +1216,7 @@ export function mountWorkbench(
         : undefined;
     const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      options.inspection?.(tab, snapshot) ??
       workbenchLocalInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchJavaScriptInspection(tab, snapshot, commands.lesson?.id) ??
       uiView ??
@@ -1452,15 +1490,17 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? commands.lesson?.id === 'javascript-runtime'
-            ? 'Captured native QuickJS values and application-owned state.'
-            : uiView
-              ? tab === 'UI'
-                ? 'SDK component observations and application-owned state.'
-                : 'Framework kit configuration and checked application policy.'
-              : workflowView
-                ? 'Captured SDK observations and separately recorded application form drafts.'
-                : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? options.inspection
+            ? 'Captured protocol and runtime observations.'
+            : commands.lesson?.id === 'javascript-runtime'
+              ? 'Captured native QuickJS values and application-owned state.'
+              : uiView
+                ? tab === 'UI'
+                  ? 'SDK component observations and application-owned state.'
+                  : 'Framework kit configuration and checked application policy.'
+                : workflowView
+                  ? 'Captured SDK observations and separately recorded application form drafts.'
+                  : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),

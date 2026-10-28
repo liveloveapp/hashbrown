@@ -1,6 +1,6 @@
 #pragma warning disable MAAI001 // Fixture forwards pinned native keyed-store/partition APIs without replacing authority.
 using Microsoft.Agents.AI;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.AI;
 using Hashbrown.Conformance.Testing;
 using Npgsql;

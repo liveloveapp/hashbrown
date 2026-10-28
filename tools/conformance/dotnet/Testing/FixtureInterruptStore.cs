@@ -1,6 +1,6 @@
 using System.Data.Common;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 
 namespace Hashbrown.Conformance.Testing;
 
