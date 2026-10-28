@@ -1,5 +1,6 @@
 /** The checked, server-owned workbench lessons. */
 export type WorkbenchLessonId =
+  | 'javascript-runtime'
   | 'ui-kits'
   | 'ui-chatbot'
   | 'agent-decisions'
@@ -39,7 +40,7 @@ export interface WorkbenchLesson {
     | 'selection'
     | 'workflow'
     | 'history';
-  readonly protocol: 'chat' | 'decision';
+  readonly protocol: 'chat' | 'decision' | 'runtime';
   readonly inspector:
     | 'Agent'
     | 'Parser'
@@ -57,7 +58,8 @@ export interface WorkbenchLesson {
     | 'History'
     | 'Saved text'
     | 'Server'
-    | 'Access';
+    | 'Access'
+    | 'Runtime';
   readonly endpoint: string;
 }
 /** The sidebar sections; conversations are listed above the lesson groups. */
@@ -80,6 +82,7 @@ export const workbenchLessonGroups: readonly {
     lessons: [
       'generative-ui',
       'tools',
+      'javascript-runtime',
       'structured-output',
       'streaming',
       'schemas',
@@ -134,6 +137,15 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     protocol: 'chat',
     endpoint: '/api/workbench/tools',
   },
+  {
+    id: 'javascript-runtime',
+    title: 'JavaScript runtime',
+    format: 'text',
+    protocol: 'runtime',
+    inspector: 'Runtime',
+    endpoint: '',
+  },
+
   {
     id: 'structured-output',
     title: 'Structured output',
