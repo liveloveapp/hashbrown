@@ -457,6 +457,7 @@ export function ɵfoldAgUiSubagents(
           if (bucket.has(id)) owner = associate(bucket, id, owner);
           const parentId =
             (event['parentMessageId'] as string | undefined) ??
+            toolIdentities.get(id)?.['parentMessageId'] ??
             lanes.get(owner)?.assistantMessageId ??
             `assistant-${id}`;
           if (owners.message.has(parentId)) {

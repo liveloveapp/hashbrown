@@ -2996,8 +2996,14 @@ test('accepts a compatible snapshotted reasoning start without resetting it', ()
           content: 'Plan',
           encryptedValue: 'opaque',
           metadata: { initial: true },
+          subagentRunId: 'subagent-1',
         },
-        { id: 'assistant-1', role: 'assistant', content: '' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          subagentRunId: 'subagent-1',
+        },
       ],
     }),
   );
@@ -4776,22 +4782,21 @@ test('prepared success commits the exact attempt-owned decorated tool objects', 
     effects: [],
     prepareAction: ɵprepareRootAction,
   });
-  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  const lookup = {
+    name: 'lookup',
+    description: 'Look up a value.',
+    schema: s.object('Lookup input', { value: s.number('Value') }),
+    handler: async () => 'result',
+  };
+  store.dispatch(
+    devActions.init({ system: '', canonicalMessages: [], tools: [lookup] }),
+  );
   store.dispatch(
     internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
   );
   store.dispatch(
     apiActions.generateMessageStart({
-      toolsByName: {
-        lookup: {
-          name: 'lookup',
-          description: 'Look up a value.',
-          schema: s.object('Lookup input', {
-            value: s.number('Value'),
-          }),
-          handler: async () => 'result',
-        },
-      },
+      toolsByName: { lookup },
     }),
   );
   store.dispatch(internalActions.generationAttemptStarted());

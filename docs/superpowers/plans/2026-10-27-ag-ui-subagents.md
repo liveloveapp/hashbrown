@@ -45,13 +45,20 @@ passed; build/lint passed with three pre-existing tool-step warnings.
 
 Modify `packages/core/src/reducers/{ag-ui-messages.reducer.ts,index.ts,streaming-message.reducer.ts}` and existing root/streaming specs. Add focused `packages/core/src/reducers/subagent-integration.spec.ts` (real root store) as useful. Use small leaf helpers rather than growing the existing large reducers unnecessarily.
 
-- [ ] Write root-store failing tests using `createStore({reducers,prepareAction:ɵprepareRootAction})`: siblings and parent interleave text/tool/reasoning chunks, unknown tags, parent/sole/ambiguous chunks, mismatches rejected without changing any projections, owned steps and attributed shared state.
-- [ ] Integrate the pure fold before canonical application; remove reliance on global pointers for correlation. Apply normalized events/implicit chunk ends atomically; expose internal accepted event batches for streaming consumers as needed. Keep normal single-owner selectors and canonical ID behavior compatible.
-- [ ] Store committed and speculative lifecycle data with existing attempt ownership. Commit on accepted completion/interruption; discard rejected/retried/stopped speculative work. RUN_FINISHED validates announced invocations are closed; RUN_ERROR can abort them. Subagent errors do not fail enclosing runs or invent tool-step outcomes.
-- [ ] Retain one parser accumulator per assistant message; aggregate all partial view/tool projections, preserving legacy foreground selectors for tests. Snapshot replacement reseeds all accumulators; closure only affects the owning lane. Test partial structured JSON and tool arguments across owner switches, not only plain text.
-- [ ] Track the exact claimed resume batch. At matching resume acknowledgement resolve waiting records through interrupt IDs, including suspended ancestors; reused IDs continue their rows and new IDs do not leave old rows waiting. Commit answered-wait resolution so post-ack rollback cannot resurrect answered approvals; pre-ack failures retain waiting. Ignore stale claims/acknowledgements.
-- [ ] Seed unknown records on restored history and awaiting owners from restored native interrupt batches. Clear/reseed on replacement/thread reset. Add no lifecycle wire/storage fields.
-- [ ] Run focused root, projection, streaming, interrupt/runtime regressions and complete core test/lint/build; independent spec then quality review; parent commits.
+- [x] Write root-store failing tests using `createStore({reducers,prepareAction:ɵprepareRootAction})`: siblings and parent interleave text/tool/reasoning chunks, unknown tags, parent/sole/ambiguous chunks, mismatches rejected without changing any projections, owned steps and attributed shared state.
+- [x] Integrate the pure fold before canonical application; remove reliance on global pointers for correlation. Apply normalized events/implicit chunk ends atomically; expose internal accepted event batches for streaming consumers as needed. Keep normal single-owner selectors and canonical ID behavior compatible.
+- [x] Store committed and speculative lifecycle data with existing attempt ownership. Commit on accepted completion/interruption; discard rejected/retried/stopped speculative work. RUN_FINISHED validates announced invocations are closed; RUN_ERROR can abort them. Subagent errors do not fail enclosing runs or invent tool-step outcomes.
+- [x] Retain one parser accumulator per assistant message; aggregate all partial view/tool projections, preserving legacy foreground selectors for tests. Snapshot replacement reseeds all accumulators; closure only affects the owning lane. Test partial structured JSON and tool arguments across owner switches, not only plain text.
+- [x] Track the exact claimed resume batch. At matching resume acknowledgement resolve waiting records through interrupt IDs, including suspended ancestors; reused IDs continue their rows and new IDs do not leave old rows waiting. Commit answered-wait resolution so post-ack rollback cannot resurrect answered approvals; pre-ack failures retain waiting. Ignore stale claims/acknowledgements.
+- [x] Seed unknown records on restored history and awaiting owners from restored native interrupt batches. Clear/reseed on replacement/thread reset. Add no lifecycle wire/storage fields.
+- [x] Run focused root, projection, streaming, interrupt/runtime regressions and complete core test/lint/build; independent spec then quality review; parent commits.
+
+
+Task 3 reviewed fixes include known-ID parent reuse, schema removal/provider
+parsing guards, partial hydration, exact resume ownership and stable partial-tool
+references. Full core before the last isolated guards: 103 suites / 2,440 tests /
+14 snapshots passed. Final seven focused suites: 378 tests passed; core build
+and lint passed with three pre-existing warnings. Root suite has 46 cases.
 
 ## Task 4: Reactive public state, docs and verification
 

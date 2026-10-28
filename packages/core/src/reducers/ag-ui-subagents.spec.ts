@@ -559,7 +559,7 @@ test('reopens snapshot tool IDs in their established owner lane when tag and par
 
   expect(next.events[0]).toMatchObject({
     subagentRunId: 'child',
-    parentMessageId: 'assistant-t',
+    parentMessageId: 'child-m',
   });
 });
 
@@ -1014,3 +1014,29 @@ test.each([{ toolCallName: 'different' }, { parentMessageId: 'b' }])(
     expect(identity).toEqual({ toolCallName: 'lookup', parentMessageId: 'a' });
   },
 );
+
+test('restored tool starts retain their known parent when omitted', () => {
+  const state = create([
+    {
+      id: 'answer',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call',
+          type: 'function',
+          function: { name: 'search', arguments: '' },
+        },
+      ],
+    },
+  ]);
+
+  const result = fold(state, {
+    type: EventType.TOOL_CALL_START,
+    toolCallId: 'call',
+    toolCallName: 'search',
+    metadata: { phase: 'remote' },
+  });
+
+  expect(result.events.at(-1)).toMatchObject({ parentMessageId: 'answer' });
+});
