@@ -6,6 +6,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="nuget-consumer/**/*.cs" />
     <ProjectReference Include="../../../packages/dotnet/Hashbrown.AspNetCore.csproj" />
   </ItemGroup>
 </Project>

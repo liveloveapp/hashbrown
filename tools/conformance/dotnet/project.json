@@ -65,8 +65,13 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "tools/conformance/dotnet",
-        "command": "dotnet format --verify-no-changes --no-restore",
-        "forwardAllArgs": false
+        "forwardAllArgs": false,
+        "parallel": false,
+        "commands": [
+          "dotnet format --verify-no-changes --no-restore",
+          "eslint nuget-consumer/*.mjs tests/nuget-consumer.spec.ts",
+          "prettier --check \"nuget-consumer/*.mjs\" tests/nuget-consumer.spec.ts"
+        ]
       },
       "dependsOn": [
         "build"
@@ -131,6 +136,13 @@
       ],
       "options": {
         "command": "playwright test --config tools/conformance/dotnet/local-native-approval.playwright.config.ts"
+      }
+    },
+    "package-prepare": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/conformance/dotnet/nuget-consumer/prepare.mjs"
       }
     }
   }

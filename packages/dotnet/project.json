@@ -88,7 +88,9 @@
         "parallel": false,
         "commands": [
           "dotnet format Hashbrown.AspNetCore.csproj --verify-no-changes --no-restore",
-          "dotnet format tools/ApiSnapshot.csproj --verify-no-changes --no-restore"
+          "dotnet format tools/ApiSnapshot.csproj --verify-no-changes --no-restore",
+          "eslint tools/*.mjs",
+          "prettier --check \"tools/*.mjs\""
         ],
         "cwd": "packages/dotnet"
       },
