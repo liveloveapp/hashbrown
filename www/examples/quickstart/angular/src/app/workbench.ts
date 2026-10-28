@@ -1,3 +1,4 @@
+import { LocalModelsWorkbenchConversation } from './local-models-workbench';
 import { RuntimeWorkbenchConversation } from './runtime-workbench';
 import { UiKitWorkbenchConversation } from './ui-kit-workbench';
 import { AuthoringWorkbenchConversation } from './authoring-workbench';
@@ -349,6 +350,7 @@ export class WorkbenchConversation implements AfterViewInit {
     AuthoringWorkbenchConversation,
     ServerWorkbenchConversation,
     StructuredWorkbenchConversation,
+    LocalModelsWorkbenchConversation,
     DecisionWorkbenchConversation,
     MagicTextWorkbenchConversation,
     PredictionsWorkbenchConversation,
@@ -416,6 +418,12 @@ export class WorkbenchConversation implements AfterViewInit {
         [active]="conversation.id === activeId()"
         [navigation]="navigation(conversation.id)"
       />
+    } @else if (localModels) {
+      <app-local-models-workbench-conversation
+        [hidden]="conversation.id !== activeId()"
+        [active]="conversation.id === activeId()"
+        [navigation]="navigation(conversation.id)"
+      />
     } @else if (structured) {
       <app-structured-workbench-conversation
         [hidden]="conversation.id !== activeId()"
@@ -448,6 +456,8 @@ export class Workbench {
   protected readonly format = getWorkbenchLesson(window.location.search).format;
   protected readonly decision =
     getWorkbenchLesson(window.location.search).format === 'decision';
+  protected readonly localModels =
+    getWorkbenchLesson(window.location.search).id === 'local-models';
   protected readonly structured =
     getWorkbenchLesson(window.location.search).format === 'structured';
   protected readonly conversations = signal([
