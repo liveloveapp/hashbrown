@@ -1,0 +1,2748 @@
+{
+  "version": 1,
+  "lesson": "production-recovery",
+  "framework": "react",
+  "commit": "c155e8a23a7529c26054283e9940fae19c6f2caa",
+  "recordedAt": "2026-10-28T21:42:05.273Z",
+  "events": [
+    {
+      "sequence": 1,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "",
+        "disposition": "unread",
+        "application": null,
+        "busy": false,
+        "operation": "Thread selected; explicitly read recovery before sending.",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 36,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "",
+        "disposition": "unread",
+        "application": null,
+        "busy": false,
+        "operation": "Thread selected; explicitly read recovery before sending.",
+        "error": ""
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 2,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 43,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "",
+        "disposition": "unread",
+        "application": null,
+        "busy": false,
+        "operation": "Thread selected; explicitly read recovery before sending.",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 3,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "",
+        "disposition": "unread",
+        "application": null,
+        "busy": true,
+        "operation": "Reading authoritative recovery",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 95,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "",
+        "disposition": "unread",
+        "application": null,
+        "busy": true,
+        "operation": "Reading authoritative recovery",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 4,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unread",
+        "application": null,
+        "busy": true,
+        "operation": "Reading authoritative recovery",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 177,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unread",
+        "application": null,
+        "busy": true,
+        "operation": "Reading authoritative recovery",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 5,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "paused",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Recovery read: paused.",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 177,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "paused",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Recovery read: paused.",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "idle"
+    },
+    {
+      "sequence": 6,
+      "turn": 0,
+      "kind": "pause",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 178,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "paused",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Recovery read: paused.",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "paused"
+    },
+    {
+      "sequence": 7,
+      "turn": 0,
+      "kind": "resume",
+      "payload": {
+        "batchId": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+        "intent": true
+      },
+      "source": "Application",
+      "elapsedMs": 3700,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "paused",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Recovery read: paused.",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 8,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 3702,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 9,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 3704,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 10,
+      "turn": 0,
+      "kind": "request",
+      "payload": {
+        "url": "/api/production/run",
+        "requestId": "c1e687b2-34e8-48fe-8b83-ab3c61511642",
+        "attempt": 1,
+        "input": {
+          "threadId": "t-410f0325",
+          "runId": "c1e687b2-34e8-48fe-8b83-ab3c61511642",
+          "messages": [
+            {
+              "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+              "role": "user",
+              "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+            },
+            {
+              "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+              "role": "assistant",
+              "content": "",
+              "toolCalls": [
+                {
+                  "id": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                  "type": "function",
+                  "function": { "name": "acceptPlan", "arguments": "{}" }
+                }
+              ]
+            }
+          ],
+          "tools": [],
+          "context": [],
+          "state": { "revision": 0, "plan": null },
+          "forwardedProps": {},
+          "resume": [
+            {
+              "interruptId": "perm-1793223697099-25z6bw",
+              "status": "resolved",
+              "payload": "once",
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 3857,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 11,
+      "turn": 0,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 4453,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 12,
+      "turn": 0,
+      "kind": "response",
+      "payload": {
+        "status": 200,
+        "url": "http://127.0.0.1:4372/api/production/run",
+        "requestId": "c1e687b2-34e8-48fe-8b83-ab3c61511642",
+        "source": "provider"
+      },
+      "source": "Application",
+      "elapsedMs": 4453,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 13,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_STARTED",
+        "threadId": "t-410f0325",
+        "runId": "c1e687b2-34e8-48fe-8b83-ab3c61511642",
+        "protocolVersion": "1.0"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4457,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null },
+        "pendingInterrupts": {
+          "id": "865517a0-29c5-42b5-9d83-7900e04aaa0b",
+          "interrupts": [
+            {
+              "id": "perm-1793223697099-25z6bw",
+              "reason": "tool",
+              "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+              "responseSchema": { "type": "string", "enum": ["once", "deny"] },
+              "metadata": {
+                "interruptId": "perm-1793223697099-25z6bw",
+                "type": "permission-request",
+                "kind": "tool",
+                "allowAlways": false,
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "detail": {
+                  "toolName": "acceptPlan",
+                  "argsPreview": "{}",
+                  "suggestedPattern": "acceptPlan"
+                },
+                "grant": "b4ag_2nspuUIDaX02HZ2Bv5wJlglfAEvODu2NwTXY4lcC63E"
+              }
+            }
+          ]
+        }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 14,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 4461,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 15,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "CUSTOM",
+        "name": "b4.step",
+        "value": {
+          "v": 1,
+          "kind": "server",
+          "status": "running",
+          "startedAt": 1793223710582,
+          "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1"
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4538,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {}
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 16,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "running",
+                    "startedAt": 1793223710582
+                  }
+                },
+                "kind": "server",
+                "timing": { "startedAt": 1793223710582 }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 4541,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "running",
+                    "startedAt": 1793223710582
+                  }
+                },
+                "kind": "server",
+                "timing": { "startedAt": 1793223710582 }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 17,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "CUSTOM",
+        "name": "b4.step",
+        "value": {
+          "v": 1,
+          "kind": "server",
+          "status": "completed",
+          "startedAt": 1793223710582,
+          "settledAt": 1793223710611,
+          "decision": "once",
+          "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1"
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4574,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "inProgress",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "running",
+                    "startedAt": 1793223710582
+                  }
+                },
+                "kind": "server",
+                "timing": { "startedAt": 1793223710582 }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 18,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 4577,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 19,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "TOOL_CALL_START",
+        "metadata": {
+          "b4.step": {
+            "v": 1,
+            "kind": "server",
+            "status": "completed",
+            "startedAt": 1793223710582,
+            "settledAt": 1793223710611,
+            "decision": "once"
+          }
+        },
+        "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+        "toolCallName": "acceptPlan"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4579,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 20,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "TOOL_CALL_END",
+        "metadata": {
+          "b4.step": {
+            "v": 1,
+            "kind": "server",
+            "status": "completed",
+            "startedAt": 1793223710582,
+            "settledAt": 1793223710611,
+            "decision": "once"
+          }
+        },
+        "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4582,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 21,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "TOOL_CALL_RESULT",
+        "metadata": {
+          "b4.step": {
+            "v": 1,
+            "kind": "server",
+            "status": "completed",
+            "startedAt": 1793223710582,
+            "settledAt": 1793223710611,
+            "decision": "once"
+          }
+        },
+        "messageId": "tr-9ab85588-026e-42f8-8c70-0425bbc3bc14",
+        "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+        "content": "Accepted the two-step recording plan."
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4584,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 22,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 4586,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 23,
+      "turn": 0,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_FINISHED",
+        "threadId": "t-410f0325",
+        "runId": "c1e687b2-34e8-48fe-8b83-ab3c61511642",
+        "result": {
+          "messages": [
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "HumanMessage"],
+              "kwargs": {
+                "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval.",
+                "additional_kwargs": {},
+                "response_metadata": {},
+                "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef"
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "AIMessage"],
+              "kwargs": {
+                "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+                "name": "model",
+                "content": "",
+                "additional_kwargs": {
+                  "tool_calls": [
+                    {
+                      "index": 0,
+                      "id": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                      "type": "function",
+                      "function": { "name": "acceptPlan", "arguments": "{}" }
+                    }
+                  ]
+                },
+                "response_metadata": {
+                  "model_provider": "openai",
+                  "usage": {
+                    "prompt_tokens": 182,
+                    "completion_tokens": 10,
+                    "total_tokens": 192,
+                    "prompt_tokens_details": {
+                      "cached_tokens": 0,
+                      "audio_tokens": 0
+                    },
+                    "completion_tokens_details": {
+                      "reasoning_tokens": 0,
+                      "audio_tokens": 0,
+                      "accepted_prediction_tokens": 0,
+                      "rejected_prediction_tokens": 0
+                    }
+                  }
+                },
+                "tool_calls": [
+                  {
+                    "name": "acceptPlan",
+                    "args": {},
+                    "id": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                    "type": "tool_call"
+                  }
+                ],
+                "invalid_tool_calls": [],
+                "usage_metadata": {
+                  "input_tokens": 182,
+                  "output_tokens": 10,
+                  "total_tokens": 192,
+                  "input_token_details": { "audio": 0, "cache_read": 0 },
+                  "output_token_details": { "audio": 0, "reasoning": 0 }
+                }
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "ToolMessage"],
+              "kwargs": {
+                "tool_call_id": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "success",
+                "additional_kwargs": {
+                  "b4_step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "content": "Accepted the two-step recording plan.",
+                "response_metadata": {},
+                "id": "4ea787c4-3f7e-47c2-be48-5153ae2a341d"
+              }
+            }
+          ],
+          "jumpTo": "end",
+          "plan": {
+            "title": "Record a Hashbrown demo",
+            "steps": ["Outline the demo", "Record the demo"]
+          },
+          "revision": 1
+        },
+        "outcome": { "type": "success" }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 4738,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": true,
+        "isResuming": true,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 24,
+      "turn": 0,
+      "kind": "workflow",
+      "payload": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "source": "SDK workflow observation",
+      "elapsedMs": 4742,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 25,
+      "turn": 0,
+      "kind": "complete",
+      "payload": { "status": "complete" },
+      "source": "Application",
+      "elapsedMs": 4743,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": false,
+        "operation": "Explicit approval submitted",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 26,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": true,
+        "operation": "Reading application receipt",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 5016,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "unknown",
+        "application": { "revision": 0, "plan": null },
+        "busy": true,
+        "operation": "Reading application receipt",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 27,
+      "turn": 0,
+      "kind": "production",
+      "payload": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "idle",
+        "application": {
+          "revision": 1,
+          "plan": {
+            "steps": ["Outline the demo", "Record the demo"],
+            "title": "Record a Hashbrown demo"
+          }
+        },
+        "busy": false,
+        "operation": "Application receipt observed; SDK history unchanged.",
+        "error": ""
+      },
+      "source": "Application",
+      "elapsedMs": 5067,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+          "role": "user",
+          "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+        },
+        {
+          "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+          "role": "assistant",
+          "content": ""
+        }
+      ],
+      "production": {
+        "threadId": "t-410f0325",
+        "attachedThreadId": "t-410f0325",
+        "disposition": "idle",
+        "application": {
+          "revision": 1,
+          "plan": {
+            "steps": ["Outline the demo", "Record the demo"],
+            "title": "Record a Hashbrown demo"
+          }
+        },
+        "busy": false,
+        "operation": "Application receipt observed; SDK history unchanged.",
+        "error": ""
+      },
+      "workflow": {
+        "state": null,
+        "messages": [
+          {
+            "id": "8103fab5-3538-49d8-b7cb-f6bbb5a4b6ef",
+            "role": "user",
+            "content": "Propose the fixed recording plan using acceptPlan. The runtime will ask for my approval."
+          },
+          {
+            "id": "chatcmpl-Ee5gmmBEY78TnXton07k7kNqfMHJU",
+            "role": "assistant",
+            "content": "",
+            "serverToolCalls": [
+              {
+                "toolCallId": "call_Phuly3Q0jJNWXJiDGmpLrrp1",
+                "name": "acceptPlan",
+                "status": "complete",
+                "args": {},
+                "result": {
+                  "status": "fulfilled",
+                  "value": "Accepted the two-step recording plan."
+                },
+                "metadata": {
+                  "b4.step": {
+                    "v": 1,
+                    "kind": "server",
+                    "status": "completed",
+                    "startedAt": 1793223710582,
+                    "settledAt": 1793223710611,
+                    "decision": "once"
+                  }
+                },
+                "outcome": "success",
+                "kind": "server",
+                "timing": {
+                  "startedAt": 1793223710582,
+                  "settledAt": 1793223710611
+                }
+              }
+            ],
+            "toolCalls": []
+          }
+        ],
+        "activities": [],
+        "isLoading": false,
+        "isResuming": false,
+        "recoveryRequired": false,
+        "productionState": { "revision": 0, "plan": null }
+      },
+      "json": "",
+      "props": null,
+      "status": "complete"
+    }
+  ]
+}
