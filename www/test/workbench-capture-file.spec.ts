@@ -1,10 +1,25 @@
+import type { Page } from '@playwright/test';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import {
   createWorkbenchCapture,
   parseWorkbenchCapture,
 } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
-import { publishWorkbenchCapture } from '../src/tools/workbench-capture-file';
+import {
+  assertPublishableCapture,
+  prepareWorkbenchCaptures,
+  publishWorkbenchCapture,
+  saveWorkbenchCapture,
+} from '../src/tools/workbench-capture-file';
 
 function recordedCapture() {
   const store = createWorkbenchStore();
@@ -68,4 +83,134 @@ test('publishing refuses malformed captures', () => {
   const publish = () => publishWorkbenchCapture(raw, 'abc123');
 
   expect(publish).toThrow('Capture is not a valid workbench capture');
+});
+
+test('publishing refuses a capture recorded for another lesson', () => {
+  const raw = JSON.stringify(recordedCapture());
+
+  const publish = () =>
+    publishWorkbenchCapture(raw, 'abc123', {
+      framework: 'angular',
+      lesson: 'tools',
+    });
+
+  expect(publish).toThrow(
+    'Capture for angular/tools was recorded as react/generative-ui',
+  );
+});
+
+test('a capture that ended in error is not publishable', () => {
+  const capture = recordedCapture();
+  const last = capture.events[capture.events.length - 1];
+  const failed = {
+    ...capture,
+    events: [...capture.events, { ...last, status: 'error' as const }],
+  };
+
+  const assert = () => assertPublishableCapture(failed);
+
+  expect(assert).toThrow('Capture for react/generative-ui ended in error');
+});
+
+test('saving refuses an unpublishable capture without writing it', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const path = resolve(root, 'react-generative-ui-live.capture.json');
+  const capture = recordedCapture();
+  const last = capture.events[capture.events.length - 1];
+  const page = {
+    evaluate: async () => ({
+      ...capture,
+      events: [...capture.events, { ...last, status: 'error' }],
+    }),
+  } as unknown as Page;
+
+  try {
+    const save = saveWorkbenchCapture(page, path);
+
+    await expect(save).rejects.toThrow(
+      'Capture for react/generative-ui ended in error',
+    );
+    expect(existsSync(path)).toBe(false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('saving writes a publishable capture', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const path = resolve(root, 'react-generative-ui-live.capture.json');
+  const capture = recordedCapture();
+  const page = { evaluate: async () => capture } as unknown as Page;
+
+  try {
+    await saveWorkbenchCapture(page, path);
+
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(capture);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('preparing a batch lists every unpublishable capture before publishing', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const capture = recordedCapture();
+  const last = capture.events[capture.events.length - 1];
+  writeFileSync(
+    resolve(root, 'react-generative-ui-live.capture.json'),
+    JSON.stringify({
+      ...capture,
+      events: [...capture.events, { ...last, status: 'error' }],
+    }),
+  );
+  writeFileSync(resolve(root, 'react-tools-live.capture.json'), '{');
+  writeFileSync(
+    resolve(root, 'angular-tools-live.capture.json'),
+    JSON.stringify(capture),
+  );
+  const reports = [
+    { framework: 'react', lesson: 'generative-ui' },
+    { framework: 'react', lesson: 'tools' },
+    { framework: 'angular', lesson: 'tools' },
+    { framework: 'angular', lesson: 'streaming' },
+  ] as const;
+
+  try {
+    const prepare = () => prepareWorkbenchCaptures(root, reports, 'abc123');
+
+    expect(prepare).toThrow(
+      [
+        'Unpublishable captures:',
+        '- Capture for react/generative-ui ended in error',
+        '- Capture for react/tools is not a valid workbench capture',
+        '- Capture for angular/tools was recorded as react/generative-ui',
+        '- Missing capture for angular/streaming',
+      ].join('\n'),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('preparing a batch stamps every capture by report', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'workbench-capture-'));
+  const capture = recordedCapture();
+  writeFileSync(
+    resolve(root, 'react-generative-ui-live.capture.json'),
+    JSON.stringify(capture),
+  );
+
+  try {
+    const prepared = prepareWorkbenchCaptures(
+      root,
+      [{ framework: 'react', lesson: 'generative-ui' }],
+      'abc123',
+    );
+
+    expect(JSON.parse(prepared.get('react-generative-ui') ?? 'null')).toEqual({
+      ...capture,
+      commit: 'abc123',
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

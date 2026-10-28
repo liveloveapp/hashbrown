@@ -19,7 +19,7 @@ import {
   workbenchMediaSuffixes,
 } from './workbench-media-publication';
 import { resolve } from 'node:path';
-import { publishWorkbenchCapture } from './workbench-capture-file';
+import { prepareWorkbenchCaptures } from './workbench-capture-file';
 import { workbenchOnboardingRecordingCues } from './workbench-onboarding-recording';
 import {
   validateWorkbenchRecordingCues,
@@ -114,6 +114,8 @@ const names: Record<string, string> = {
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
   encoding: 'utf8',
 }).trim();
+// Every capture is checked before any encoding, so one bad lesson fails fast.
+const captures = prepareWorkbenchCaptures(work, reports, commit);
 const timestamp = (seconds: number) =>
   new Date(Math.round(seconds * 1000)).toISOString().slice(11, 23);
 const staging = resolve(work, 'encoded');
@@ -147,13 +149,7 @@ for (const report of reports) {
   publishIds.push(id);
   writeFileSync(
     `${base}-capture.json`,
-    publishWorkbenchCapture(
-      readFileSync(
-        resolve(work, `${report.framework}-${report.lesson}-live.capture.json`),
-        'utf8',
-      ),
-      commit,
-    ),
+    captures.get(`${report.framework}-${report.lesson}`) ?? '',
   );
   for (const [extension, codec] of [
     [

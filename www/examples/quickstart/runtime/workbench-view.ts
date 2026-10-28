@@ -1784,7 +1784,8 @@ export function mountWorkbench(
       renderNavigation();
     },
     dispose: () => {
-      captureSources.splice(captureSources.indexOf(captureSource), 1);
+      const captureIndex = captureSources.indexOf(captureSource);
+      if (captureIndex >= 0) captureSources.splice(captureIndex, 1);
       exposeWorkbenchCapture();
       messages?.dispose();
       detachScrub();

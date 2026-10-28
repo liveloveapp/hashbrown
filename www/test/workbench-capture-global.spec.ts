@@ -65,3 +65,17 @@ test('retained conversations capture the visible workbench', () => {
 
   expect(capture?.events[0].messages[0].content).toBe('First');
 });
+
+test('disposing twice leaves other mounts captured', () => {
+  const first = mount('First');
+  const second = mount('Second');
+
+  second.mounted.dispose();
+  second.mounted.dispose();
+  const capture = (globalThis as CaptureHost).hashbrownWorkbench?.capture(
+    '2026-10-28T00:00:00.000Z',
+  );
+  first.mounted.dispose();
+
+  expect(capture?.events[0].messages[0].content).toBe('First');
+});
