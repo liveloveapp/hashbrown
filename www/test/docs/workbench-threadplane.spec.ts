@@ -22,7 +22,7 @@ const events = [
   { type: 'TEXT_MESSAGE_END', messageId: 'a1' },
   { type: 'RUN_FINISHED', ...identity },
 ];
-const sse = (items = events) =>
+const sse = (items: readonly unknown[] = events) =>
   items.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('');
 const request = () =>
   new Request('https://example.test/api/chat', {
