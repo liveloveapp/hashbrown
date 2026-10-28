@@ -81,10 +81,56 @@ Select an activity event in the bottom timeline. The chat and the paired Activit
 
 An activity does not execute an action or prove an external task succeeded. Emit stages when the underlying work actually reaches them. Continue with [Tools](/docs/angular/concept/functions) or [Shared Agent State](/docs/angular/concept/shared-agent-state).
 
-
 ## Group Activities by Turn
 
-Use `groupTurns` from `@hashbrownai/core` when an activity belongs beside its assistant message or tool call. Each turn exposes `activitiesByAssistant`, `activitiesByToolCall`, and `unlinkedActivities`, alongside its user, assistants, and errors. The helper is pure and preserves input order in each group. Messages before the first user form a turn without a user.
+Use `groupTurns` from `@hashbrownai/angular` when an activity belongs beside its assistant message or tool call. Each turn exposes `activitiesByAssistant`, `activitiesByToolCall`, and `unlinkedActivities`, alongside its user, assistants, and errors. The helper is pure and preserves input order in each group. Messages before the first user form a turn without a user.
+
+### Derive a Work Summary
+
+`groupTurns` accepts UI chat messages directly. `summarizeTurn` returns plain
+`text`, `meta`, lifecycle `status`, `live`, tool/outcome counts, source counts,
+and an optional `durationMs`. These helpers render no components. Derive these values with `computed`; no effect or duplicated state is needed.
+
+```ts
+import { computed, input } from '@angular/core';
+import {
+  groupTurns,
+  summarizeTurn,
+  type TurnSummaryOptions,
+  type UiChatMessage,
+} from '@hashbrownai/angular';
+
+// Members of your standalone component:
+readonly messages = input.required<readonly UiChatMessage<never>[]>();
+readonly currentTurnUserId = input.required<string>();
+readonly currentTurnOptions = input.required<TurnSummaryOptions>();
+readonly summaries = computed(() => groupTurns(this.messages()).map((turn) =>
+  summarizeTurn(
+    turn,
+    turn.user?.id === this.currentTurnUserId()
+      ? this.currentTurnOptions()
+      : undefined,
+  ),
+));
+```
+
+Here `currentTurnOptions` comes from application-owned run state. Pass
+`{ status: 'working' }` while text is streaming, including turns with no tool
+calls; messages alone cannot distinguish that state from a settled answer.
+Pass `status: 'awaiting'` for approval or `status: 'cancelled'` after stopping a
+run. `live` is true only for `working`; awaiting approval is not live.
+
+An explicit status wins over inference, including run errors. Without it,
+turn errors take precedence over pending calls, then pending client or open
+server calls imply `working`, and otherwise the turn is `complete`. Individual
+tool failures, denials, and cancellations contribute counts without making the
+whole run failed. Activities do not count as tool calls.
+
+Duration comes only from the application's explicit turn clock: supply
+`startedAt` with `now` for an active turn, or `startedAt` with `settledAt` for a
+settled turn, all from the same clock. Tool timestamps never stand in for a
+turn clock. Missing or invalid timing stays unknown; restored history needs no
+invented duration. See [tool display and timing policy](/docs/angular/concept/functions#display-tool-steps) for optional presentation helpers.
 
 ## Receive or Produce Activity Events
 
