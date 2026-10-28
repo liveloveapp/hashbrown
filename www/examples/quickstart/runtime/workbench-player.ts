@@ -151,6 +151,7 @@ export function workbenchShortcut(
           'switch',
           'tab',
           'tablist',
+          'tabpanel',
           'textbox',
           'tree',
           'treegrid',

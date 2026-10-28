@@ -198,3 +198,25 @@ test('leaves links, summaries and ARIA widgets their own keyboard controls', () 
     }
   }
 });
+
+test('keeps readable tab panels and their content outside playback shortcuts', () => {
+  const panel = document.createElement('div');
+  panel.setAttribute('role', 'tabpanel');
+  panel.tabIndex = 0;
+  const code = document.createElement('pre');
+  code.textContent = '{ "ready": true }';
+  panel.append(code);
+
+  for (const target of [panel, code]) {
+    for (const key of ['ArrowLeft', 'ArrowRight', ' ', 'l']) {
+      expect(workbenchShortcut({ ...keys, key }, target)).toBeNull();
+    }
+  }
+
+  expect(workbenchShortcut({ ...keys, key: 'ArrowRight' }, document.body)).toBe(
+    'next-event',
+  );
+  expect(workbenchShortcut({ ...keys, key: ' ' }, document.body)).toBe(
+    'toggle-play',
+  );
+});
