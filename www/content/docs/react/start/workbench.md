@@ -18,6 +18,8 @@ The React and Angular versions use the same example, styles, and capture model. 
 
 Try it without installing anything at [workbench.hashbrown.dev/react.html](https://workbench.hashbrown.dev/react.html). Each lesson's local URL in the table below works there too, for example `/react.html?lesson=tools`. The hosted version runs the same server code with a rate limit per visitor. Server-owned threads and Public endpoints run only on the local server, because their demo sessions live in one process.
 
+The [production recovery reference](/docs/react/platform/b4run) uses a separate TypeScript/Postgres server. Run that host to restore native checkpoints and approvals; the public anonymous backend does not expose its endpoints.
+
 To run it yourself, clone the [Hashbrown repository](https://github.com/liveloveapp/hashbrown), install its dependencies, and set `OPENAI_API_KEY` and `OPENAI_MODEL` in the server environment. Keep the key out of browser code.
 
 ```sh
