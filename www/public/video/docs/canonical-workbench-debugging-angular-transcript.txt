@@ -2,16 +2,16 @@ ANGULAR · debugging
 
 This is a real provider recording of the checked canonical workbench. Footage is slowed to half speed for readability. Unchanged provider events are paced at 20 milliseconds for filming; the normal host does not add this delay. The initial HTTP 403 is a deliberate local demo denial before provider work, not authentication or a provider failure. Recovery uses the same SDK conversation. There is no narration.
 
-A deliberate local HTTP 403 denies the request before provider work. The plan stays at revision 0.
+A local 403 stops before the provider. Revision 0.
 
 Disable Demo denial and retry in the same conversation. Real model output now streams into the trusted plan card.
 
-Review the completed plan. Accept plan updates application state to revision 1.
+Accept plan: application revision 1.
 
 The follow-up reads the accepted plan and proposes a shorter second step.
 
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
-Back live. The accepted plan remains at revision 1.
+Back live. Revision 1.
 
 The source is OpenAI through the real Hashbrown SDK, including the browser readContext tool. The UI-chat API renders the exposed SummaryCard from resolved props. Accept plan is an explicit application action. Refresh clears local sessions.

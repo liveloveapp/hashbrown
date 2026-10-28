@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
-import { workbenchMilestones } from '../examples/quickstart/runtime/workbench-timeline';
+import {
+  findWorkbenchMilestone,
+  withWorkbenchMilestoneIds,
+  workbenchMilestones,
+} from '../examples/quickstart/runtime/workbench-timeline';
 
 test('groups stream chunks into milestones while retaining their exact captured indices', () => {
   const store = createWorkbenchStore();
@@ -149,5 +153,69 @@ test('keeps effective provider policy as a distinct captured milestone', () => {
 
   const milestones = workbenchMilestones(store.getSnapshot().events, 'text');
 
-  expect(milestones.at(-1)).toMatchObject({ index: 1, label: 'Policy observed' });
+  expect(milestones.at(-1)).toMatchObject({
+    index: 1,
+    label: 'Policy observed',
+  });
+});
+
+function twoTurnToolsRun() {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: { revision: 0 } });
+  store.parsed({
+    ui: [
+      {
+        SummaryCard: { props: { title: 'Demo', steps: ['Outline', 'Record'] } },
+      },
+    ],
+  });
+  store.settle('complete', 'stop');
+  store.accept({ title: 'Demo', steps: ['Outline', 'Record'] });
+  store.send('Shorter');
+  store.record('tool', { name: 'readContext', result: { revision: 1 } });
+  store.settle('complete', 'stop');
+  return store.getSnapshot().events;
+}
+
+test('milestones carry readable ids unique within a capture', () => {
+  const events = twoTurnToolsRun();
+
+  const ids = workbenchMilestones(events).map((item) => item.id);
+
+  expect(ids).toEqual(
+    expect.arrayContaining([
+      'prompt-1',
+      'tool-result-1',
+      'plan-accepted-1',
+      'prompt-2',
+      'tool-result-2',
+    ]),
+  );
+  expect(new Set(ids).size).toBe(ids.length);
+});
+
+test('suffixes later same-turn duplicates', () => {
+  const items = withWorkbenchMilestoneIds([
+    { index: 0, turn: 1, label: 'Streaming JSON' },
+    { index: 1, turn: 1, label: 'Streaming JSON' },
+    { index: 2, turn: 1, label: 'Streaming JSON' },
+  ]);
+
+  expect(items.map((item) => item.id)).toEqual([
+    'streaming-json-1',
+    'streaming-json-1-2',
+    'streaming-json-1-3',
+  ]);
+});
+
+test('findWorkbenchMilestone returns the milestone by id and null for unknown ids', () => {
+  const events = twoTurnToolsRun();
+
+  const found = findWorkbenchMilestone(events, 'prompt-2');
+  const missing = findWorkbenchMilestone(events, 'nope-9');
+
+  expect(found?.label).toBe('Prompt');
+  expect(found?.turn).toBe(2);
+  expect(missing).toBeNull();
 });

@@ -4,7 +4,7 @@ WEBVTT
 The actual provider callback adds server-owned instructions while preserving the mapped model, tools and response schema.
 
 00:00:08.430 --> 00:00:13.632
-Review the completed plan. Accept plan updates application state to revision 1.
+Accept plan: application revision 1.
 
 00:00:13.632 --> 00:00:21.940
 The follow-up reads the accepted plan and proposes a shorter second step.
@@ -13,4 +13,4 @@ The follow-up reads the accepted plan and proposes a shorter second step.
 Replay follows captured chat, JSON, UI and state. It makes no new requests.
 
 00:00:30.916 --> 00:00:32.967
-Back live. The accepted plan remains at revision 1.
+Back live. Revision 1.
