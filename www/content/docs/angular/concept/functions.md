@@ -306,3 +306,25 @@ tool land in `serverToolCalls`.
 ## Next steps
 
 Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workbench.ts), or return to the [workbench](/docs/angular/start/workbench). Continue with [Structured output](/docs/angular/concept/structured-output) to use the same tool with typed plan data, or [Generative UI](/docs/angular/concept/components) to focus on the trusted component.
+
+## Connect tools to native subagents
+
+Native [AG-UI subagents](https://docs.ag-ui.com/concepts/subagents) can expose which invocation requested a tool and which invocation produced its result. Import `SubagentRun` from `@hashbrownai/angular` to type the records exposed by the chat's `subagents` property (a readonly array in React, a signal of a readonly array in Angular). Plain, structured, and UI chat share this projection; see [Activities](/docs/angular/concept/activities#follow-native-subagent-invocations) for reactive grouping examples and lifecycle states.
+
+```ts
+import type { SubagentRun, UiChatMessage } from '@hashbrownai/angular';
+
+function callsRequestedBy(message: UiChatMessage<never>, run: SubagentRun) {
+  return message.role === 'assistant'
+    ? (message.serverToolCalls ?? []).filter(
+        (call) => call.subagentRunId === run.subagentRunId,
+      )
+    : [];
+}
+```
+
+An assistant message's `subagentRunId` identifies its producer. Each projected tool call's `subagentRunId` identifies the requester; `resultSubagentRunId` independently identifies the result producer. A child can request a tool that the parent or another child executes. When a result exists and `resultSubagentRunId` is absent, its producer is the parent; do not inherit the requester's ID. An absent result is not evidence that the parent executed anything. Compare opaque IDs directly, including empty strings.
+
+The producer supplies `parentSubagentRunId`, `parentToolCallId`, and `parentMessageId` when it can link the child to its enclosing invocation, spawning call, and message. Reusable names are labels, not invocation IDs. Hashbrown does not orchestrate these agents, infer tool success from a child finishing, or create per-child shared state. A child error does not settle tool outcomes or fail the whole run.
+
+Suspended children can appear as `awaiting`; approval handling still belongs to `pendingInterrupts` and `resume()`. A resume acknowledgement resolves the answered waits without proving tool execution or child completion, even if a subsequent continuation uses a new ID or fails. Native snapshots retain message/result provenance; restored lifecycle details are unknown unless explicit retained interrupts establish a wait.

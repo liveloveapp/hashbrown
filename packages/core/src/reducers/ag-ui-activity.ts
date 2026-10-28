@@ -36,12 +36,13 @@ type Metadata = Readonly<Record<string, unknown>>;
  *
  * A snapshot with a new id appends an activity message and records its links.
  * A missing `replace` (or `replace: true`) overwrites the content, type and
- * `subagentRunId` in place and keeps the links. `replace: false` on an existing
+ * `subagentRunId` in place. It keeps links within the same owner lane and uses
+ * incoming arrival links when the owner changes. `replace: false` on an existing
  * activity keeps its content and only merges `metadata`.
  *
  * @param messages - Canonical history the snapshot applies to.
  * @param event - The activity snapshot.
- * @param arrival - Run facts used to link a newly created activity.
+ * @param arrival - Owner-local run facts for a new or re-owned activity.
  * @returns The next history, or `messages` itself when nothing changed.
  * @throws TypeError when the id belongs to a non-activity message or tool
  *   call, or when the content is not a JSON object.
@@ -76,9 +77,10 @@ export function applyActivitySnapshot(
   const content = ownContent(event.content);
   const subagentRunId =
     typeof event.subagentRunId === 'string' ? event.subagentRunId : undefined;
-  const links = existing
-    ? relinkSubagent(existing.hashbrownLinks, subagentRunId)
-    : createLinks(arrival, subagentRunId);
+  const links =
+    existing && existing.subagentRunId === subagentRunId
+      ? existing.hashbrownLinks
+      : createLinks(arrival, subagentRunId);
   const record = withMetadata(
     {
       ...(existing ?? {}),
@@ -189,7 +191,8 @@ export function readActivityLinks(
  * Used for activities that arrive through `MESSAGES_SNAPSHOT`, `setMessages`
  * or initial `messages`, whose incoming `hashbrownLinks` are never trusted.
  * `assistantMessageId` is the nearest assistant message before the activity
- * in the same turn (a user message clears it), `toolCallId` is that
+ * in the same owner lane and turn (a parent user message clears every lane),
+ * `toolCallId` is that
  * assistant's last tool call, and `subagentRunId` comes from the activity
  * message itself. `runId` is stamped only on activities after the last user
  * message; the run of earlier turns is unknown.
@@ -210,21 +213,26 @@ export function recomputeActivityLinks(
   const lastUserIndex = messages.findLastIndex(
     (message) => message.role === 'user',
   );
-  let assistant: Extract<Message, { role: 'assistant' }> | undefined;
+  const assistants = new Map<
+    string | undefined,
+    Extract<Message, { role: 'assistant' }>
+  >();
   return Object.freeze(
     messages.map((message, index) => {
       if (message.role === 'user') {
-        assistant = undefined;
+        if (message.subagentRunId === undefined) assistants.clear();
+        else assistants.delete(message.subagentRunId);
         return message;
       }
       if (message.role === 'assistant') {
-        assistant = message;
+        assistants.set(message.subagentRunId, message);
         return message;
       }
       if (message.role !== 'activity') {
         return message;
       }
       const record = message as ActivityRecord;
+      const assistant = assistants.get(record.subagentRunId);
       return withMetadata(
         {
           ...record,
@@ -314,17 +322,6 @@ function createLinks(
       : { toolCallId: arrival.toolCallId }),
     ...(subagentRunId === undefined ? {} : { subagentRunId }),
   });
-}
-
-/** Keeps recorded links; only `subagentRunId` follows a replacing snapshot. */
-function relinkSubagent(
-  links: ActivityLinks | undefined,
-  subagentRunId: string | undefined,
-): ActivityLinks | undefined {
-  if (links === undefined || links.subagentRunId === subagentRunId) {
-    return links;
-  }
-  return createLinks(links, subagentRunId);
 }
 
 function ownContent(value: unknown): ActivityRecord['content'] {

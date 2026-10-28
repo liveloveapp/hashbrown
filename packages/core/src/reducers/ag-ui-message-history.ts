@@ -65,6 +65,7 @@ export function lowerViewMessagesToAgUi(
         {
           id: message.id ?? options.createId(),
           role: 'user',
+          ...copySubagentOwner(message),
           content: lowerUserContent(message.content),
         },
       ];
@@ -79,9 +80,18 @@ export function lowerViewMessagesToAgUi(
             {
               id: options.createId(),
               role: 'reasoning' as const,
+              ...copySubagentOwner(message),
               content: message.reasoning,
             },
           ]);
+    for (const call of message.toolCalls) {
+      if (
+        typeof call.subagentRunId === 'string' &&
+        call.subagentRunId !== message.subagentRunId
+      ) {
+        throw new TypeError('Tool call owner must match its assistant owner');
+      }
+    }
     const toolCalls = message.toolCalls.map((toolCall) => ({
       id: toolCall.toolCallId,
       type: 'function' as const,
@@ -99,6 +109,7 @@ export function lowerViewMessagesToAgUi(
     const assistant: Message = {
       id,
       role: 'assistant',
+      ...copySubagentOwner(message),
       ...(message.content !== undefined
         ? { content: serializeContent(message.content) }
         : {}),
@@ -122,6 +133,9 @@ export function lowerViewMessagesToAgUi(
           id: options.createId(),
           role: 'tool',
           toolCallId: toolCall.toolCallId,
+          ...(typeof toolCall.resultSubagentRunId === 'string'
+            ? { subagentRunId: toolCall.resultSubagentRunId }
+            : {}),
           content,
           ...(toolCall.result.status === 'rejected' ? { error: content } : {}),
         },
@@ -455,19 +469,26 @@ function projectActivity(
 /** Indexes canonical message sources and projection dependencies. @internal */
 export function ɵindexAgUiCanonicalMessageSources(
   messages: readonly Readonly<Message>[],
+  responseSchema?: s.HashbrownType,
 ): Readonly<Record<string, ɵAgUiCanonicalMessageSource>> {
   const sources: Record<string, ɵAgUiCanonicalMessageSource> = {};
-  let pendingReasoning: Array<
-    Readonly<Extract<Message, { role: 'reasoning' }>>
-  > = [];
+  let pendingReasoning: ReadonlyMap<
+    string | undefined,
+    readonly Readonly<Extract<Message, { role: 'reasoning' }>>[]
+  > = new Map();
 
   for (const message of messages) {
-    if (ɵisCancelledTurnMarker(message)) {
-      pendingReasoning = [];
+    if (
+      ɵisCancelledTurnMarker(message) ||
+      readHistoryDiagnostic(message, responseSchema)
+    ) {
+      pendingReasoning = new Map();
       continue;
     }
+    const association = associateReasoning(pendingReasoning, message);
+    pendingReasoning = association.pending;
+    const reasoning = association.reasoning;
     if (message.role === 'reasoning') {
-      pendingReasoning = [...pendingReasoning, message];
       continue;
     }
     if (message.role === 'activity') {
@@ -478,14 +499,13 @@ export function ɵindexAgUiCanonicalMessageSources(
       Object.defineProperty(sources, message.id, {
         value: {
           message,
-          reasoning: message.role === 'assistant' ? pendingReasoning : [],
+          reasoning,
         },
         enumerable: true,
         configurable: true,
         writable: true,
       });
     }
-    pendingReasoning = [];
   }
 
   return sources;
@@ -582,20 +602,23 @@ export function projectAgUiMessages(
   );
   const projectedMessages: Chat.Internal.Message[] = [];
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
-  let pendingReasoning: Array<
-    Readonly<Extract<Message, { role: 'reasoning' }>>
-  > = [];
+  let pendingReasoning: ReadonlyMap<
+    string | undefined,
+    readonly Readonly<Extract<Message, { role: 'reasoning' }>>[]
+  > = new Map();
 
   for (const message of messages) {
     if (
       ɵisCancelledTurnMarker(message) ||
       readHistoryDiagnostic(message, responseSchema)
     ) {
-      pendingReasoning = [];
+      pendingReasoning = new Map();
       continue;
     }
+    const association = associateReasoning(pendingReasoning, message);
+    pendingReasoning = association.pending;
+    const reasoning = association.reasoning;
     if (message.role === 'reasoning') {
-      pendingReasoning = [...pendingReasoning, message];
       continue;
     }
 
@@ -605,6 +628,7 @@ export function projectAgUiMessages(
         Chat.helpers.ɵwithInternalMessageId(
           {
             role: 'assistant',
+            ...copySubagentOwner(message),
             ...(message.content !== undefined
               ? { content: message.content }
               : {}),
@@ -623,11 +647,11 @@ export function projectAgUiMessages(
             ...(message.metadata !== undefined
               ? { metadata: structuredClone(message.metadata) }
               : {}),
-            ...(pendingReasoning.length > 0
+            ...(reasoning.length > 0
               ? {
                   reasoning: {
                     kind: 'details' as const,
-                    details: pendingReasoning.map(cloneReasoningMessage),
+                    details: reasoning.map(cloneReasoningMessage),
                   },
                 }
               : {}),
@@ -641,10 +665,10 @@ export function projectAgUiMessages(
             toolCall,
             resultsByToolCallId.get(toolCall.id),
             toolsByName,
+            message.subagentRunId,
           ),
         ),
       );
-      pendingReasoning = [];
       continue;
     }
 
@@ -654,12 +678,12 @@ export function projectAgUiMessages(
       continue;
     }
 
-    pendingReasoning = [];
     if (message.role === 'user') {
       projectedMessages.push(
         Chat.helpers.ɵwithInternalMessageId(
           {
             role: 'user',
+            ...copySubagentOwner(message),
             content: structuredClone(
               message.content,
             ) as Chat.Internal.UserMessage['content'],
@@ -702,20 +726,23 @@ export function ɵreconcileAgUiMessageProjection(
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
   const messageSources: Record<string, ɵAgUiCanonicalMessageSource> = {};
   const toolCallSources: Record<string, ɵAgUiCanonicalToolCallSource> = {};
-  let pendingReasoning: Array<
-    Readonly<Extract<Message, { role: 'reasoning' }>>
-  > = [];
+  let pendingReasoning: ReadonlyMap<
+    string | undefined,
+    readonly Readonly<Extract<Message, { role: 'reasoning' }>>[]
+  > = new Map();
 
   for (const source of messages) {
     if (
       ɵisCancelledTurnMarker(source) ||
       readHistoryDiagnostic(source, responseSchema)
     ) {
-      pendingReasoning = [];
+      pendingReasoning = new Map();
       continue;
     }
+    const association = associateReasoning(pendingReasoning, source);
+    pendingReasoning = association.pending;
+    const reasoning = association.reasoning;
     if (source.role === 'reasoning') {
-      pendingReasoning.push(source);
       continue;
     }
     if (
@@ -723,7 +750,6 @@ export function ɵreconcileAgUiMessageProjection(
       source.role !== 'user' &&
       source.role !== 'activity'
     ) {
-      pendingReasoning = [];
       continue;
     }
     if (source.role === 'activity') {
@@ -738,7 +764,6 @@ export function ɵreconcileAgUiMessageProjection(
       continue;
     }
 
-    const reasoning = Object.freeze(pendingReasoning);
     const toolResults =
       source.role === 'assistant'
         ? (source.toolCalls ?? []).map((toolCall) =>
@@ -785,7 +810,6 @@ export function ɵreconcileAgUiMessageProjection(
         });
       }
     }
-    pendingReasoning = [];
   }
 
   const projection: AgUiMessageProjection = {
@@ -843,6 +867,7 @@ function createProjectionEntry(
       message: Chat.helpers.ɵwithInternalMessageId(
         {
           role: 'user',
+          ...copySubagentOwner(source),
           content: structuredClone(
             source.content,
           ) as Chat.Internal.UserMessage['content'],
@@ -860,6 +885,7 @@ function createProjectionEntry(
     message: Chat.helpers.ɵwithInternalMessageId(
       {
         role: 'assistant',
+        ...copySubagentOwner(source),
         ...(source.content !== undefined ? { content: source.content } : {}),
         ...(responseSchema && source.content !== undefined
           ? {
@@ -888,7 +914,12 @@ function createProjectionEntry(
       source.id,
     ),
     toolCalls: sourceToolCalls.map((toolCall, index) =>
-      projectToolCall(toolCall, toolResults[index], toolsByName),
+      projectToolCall(
+        toolCall,
+        toolResults[index],
+        toolsByName,
+        source.subagentRunId,
+      ),
     ),
   };
 }
@@ -920,6 +951,7 @@ function projectToolCall(
   >[number],
   result: Extract<Message, { role: 'tool' }> | undefined,
   toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+  subagentRunId: string | undefined,
 ): Chat.Internal.ToolCall {
   const tool =
     !isProviderToolCall(toolCall) &&
@@ -944,6 +976,10 @@ function projectToolCall(
 
   return {
     id: toolCall.id,
+    ...copySubagentOwner({ subagentRunId }),
+    ...(typeof result?.subagentRunId === 'string'
+      ? { resultSubagentRunId: result.subagentRunId }
+      : {}),
     name: toolCall.function.name,
     arguments: toolCall.function.arguments,
     ...(argumentsResolved !== undefined ? { argumentsResolved } : {}),
@@ -1015,4 +1051,51 @@ function parseJsonOrUndefined(text: string): JsonValue | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Copies an optional canonical owner without conflating the empty owner with the parent. */
+function copySubagentOwner(value: { readonly subagentRunId?: string }): {
+  readonly subagentRunId?: string;
+} {
+  return typeof value.subagentRunId === 'string'
+    ? { subagentRunId: value.subagentRunId }
+    : {};
+}
+
+/** Associates reasoning within one owner lane without changing prior pending state. */
+function associateReasoning(
+  pending: ReadonlyMap<
+    string | undefined,
+    readonly Readonly<Extract<Message, { role: 'reasoning' }>>[]
+  >,
+  message: Readonly<Message>,
+): {
+  readonly pending: ReadonlyMap<
+    string | undefined,
+    readonly Readonly<Extract<Message, { role: 'reasoning' }>>[]
+  >;
+  readonly reasoning: readonly Readonly<
+    Extract<Message, { role: 'reasoning' }>
+  >[];
+} {
+  const owner = 'subagentRunId' in message ? message.subagentRunId : undefined;
+  if (message.role === 'activity') return { pending, reasoning: [] };
+  if (message.role === 'reasoning') {
+    const next = new Map(pending);
+    next.set(owner, Object.freeze([...(pending.get(owner) ?? []), message]));
+    return { pending: next, reasoning: [] };
+  }
+  const reasoning =
+    message.role === 'assistant' ? (pending.get(owner) ?? []) : [];
+  if (
+    (message.role === 'user' || message.role === 'system') &&
+    owner === undefined
+  ) {
+    return { pending: new Map(), reasoning };
+  }
+  if (!pending.has(owner))
+    return { pending, reasoning: Object.freeze(reasoning) };
+  const next = new Map(pending);
+  next.delete(owner);
+  return { pending: next, reasoning: Object.freeze(reasoning) };
 }

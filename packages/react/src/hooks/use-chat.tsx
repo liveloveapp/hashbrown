@@ -10,6 +10,7 @@ import {
   type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
+  type SubagentRun,
   type TokenUsage,
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
@@ -88,6 +89,8 @@ export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
    */
   readonly state: State | undefined;
 
+  /** Observed native subagent invocations in the current conversation. */
+  readonly subagents: readonly SubagentRun[];
   /** The complete pending interrupt batch, including while claimed. */
   readonly pendingInterrupts: PendingInterruptBatch | undefined;
 
@@ -347,6 +350,7 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
     getRuntime().messages,
   );
   const recovery = useHashbrownSignal(getRuntime().recovery);
+  const subagents = useHashbrownSignal(getRuntime().subagents);
   const pendingInterrupts = useHashbrownSignal(getRuntime().pendingInterrupts);
   const isResuming = useHashbrownSignal(getRuntime().isResuming);
   const state = useHashbrownSignal<State | undefined>(getRuntime().state);
@@ -420,6 +424,7 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   }, []);
 
   return {
+    subagents,
     pendingInterrupts,
     isResuming,
     resume: getRuntime().resume,
