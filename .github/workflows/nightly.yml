@@ -42,3 +42,48 @@ jobs:
           AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
+
+  dotnet:
+    name: Full .NET browser matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: fixture-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+          cache: true
+          cache-dependency-path: tools/conformance/dotnet/packages.lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx nx provider-e2e dotnet-conformance
+      - name: Upload .NET diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-conformance-diagnostics
+          path: |
+            test-results/conformance/dotnet
+            playwright-report/conformance/dotnet
+          retention-days: 7
+          if-no-files-found: ignore

@@ -41,6 +41,21 @@ traces are under `test-results/conformance/dotnet` and
 `playwright-report/conformance/dotnet`. Failed fixtures preserve bounded process
 logs and native model request evidence under the test-results diagnostics folder.
 
+## CI cost and browser coverage
+
+PR and main validation use `npx nx provider-smoke dotnet-conformance`: eight
+browser journeys (partial and complete text, structured output, trusted UI,
+browser tools, approval, decline and cancel) across all eight
+framework/provider/model API combinations, for 64 cases. HTTP contract tests
+retain the detailed protocol, ownership, recovery and durability regressions.
+`npx nx provider-e2e dotnet-conformance` remains the complete browser matrix
+and runs nightly. Neither browser target caches its results.
+
+Disposable HTTP fixture hosts are killed immediately during final cleanup;
+tests that exercise lifecycle or recovery explicitly initiate their own stop.
+NuGet restore always runs before cached builds so machine-specific assets are
+resolved locally; compiled outputs and deterministic checks can be reused.
+
 ## Native mixed-tool sessions
 
 The opt-in native composition is documented in the identical compiled

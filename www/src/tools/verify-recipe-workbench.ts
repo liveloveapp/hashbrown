@@ -29,6 +29,7 @@ export async function verifyRecipeWorkbench(options: {
   work: string;
   live: boolean;
   recording: boolean;
+  preview: () => () => void;
   requests: readonly RunAgentInput[];
   decisionRequests: readonly Decision.Request[];
   outcome: (value: RecipeOutcome) => void;
@@ -156,6 +157,8 @@ export async function verifyRecipeWorkbench(options: {
       process.env['WORKBENCH_SELECTION_FIRST_LOW'] === '1'
     )
       options.decisionOutcome('low');
+    const releasePreview =
+      !live && lesson !== 'ui-selection' ? options.preview() : undefined;
     await send.click();
     const text = root.getByRole('article', {
       name: 'Markdown explanation',
@@ -197,6 +200,7 @@ export async function verifyRecipeWorkbench(options: {
         0,
       );
     }
+    releasePreview?.();
     await complete();
     if (lesson === 'ui-selection' && !live) options.decisionOutcome('success');
     await expect(root.locator('[data-source]')).toHaveText(
@@ -706,12 +710,15 @@ export async function verifyRecipeWorkbench(options: {
         }
         await newConversation();
         options.outcome('success');
+        const releaseCancellation = options.preview();
+        const beforeCancellation = requestCount();
         await send.click();
+        await expect.poll(requestCount).toBeGreaterThan(beforeCancellation);
         await expect(
           root.getByRole('button', { name: 'Stop', exact: true }),
         ).toBeEnabled();
-        await page.waitForTimeout(200);
         await root.getByRole('button', { name: 'Stop', exact: true }).click();
+        releaseCancellation();
         await expect(chatStatus).toContainText('cancelled');
         await revision(0);
         await root

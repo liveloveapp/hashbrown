@@ -24,6 +24,7 @@ export async function verifyOnboardingWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly preview: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly instructions: readonly WorkbenchInstructionsTrace[];
   readonly nativeRequests: readonly Record<string, unknown>[];
@@ -361,11 +362,14 @@ export async function verifyOnboardingWorkbench(options: {
       }
       options.outcome('success');
       await newConversation();
+      const releaseCancellation = options.preview();
+      const beforeCancellation = count();
       await send.click();
+      await expect.poll(count).toBeGreaterThan(beforeCancellation);
       const stop = root.getByRole('button', { name: 'Stop', exact: true });
       await expect(stop).toBeEnabled();
-      await page.waitForTimeout(200);
       await stop.click();
+      releaseCancellation();
       await expect(status).toContainText('cancelled');
       await revision();
       await root

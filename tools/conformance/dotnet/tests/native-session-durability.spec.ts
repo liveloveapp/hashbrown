@@ -1,3 +1,4 @@
+import { waitForNativeRecovery } from '../harness/wait-for-native-recovery';
 import { withDurableCluster } from '../harness/durable-fixture';
 import { postRun, runInput } from '../harness/http-fixture';
 
@@ -189,7 +190,13 @@ test('failed native pending save withholds terminal and browser publication', as
 
     expect(observed.body()).not.toMatch(/RUN_FINISHED|RUN_ERROR/);
     expect(await nativeEffects(fixture)).toEqual({ count: 0, rows: [] });
-    expect(await (await recover(fixture)).json()).toMatchObject({ disposition: 'FailedBeforeEffect' });
+    // Client-side response abortion precedes the server's async cleanup.
+    const recovery = await waitForNativeRecovery(async () => {
+      const response = await recover(fixture);
+      expect(response.status).toBe(200);
+      return response.json() as Promise<{ disposition: string }>;
+    });
+    expect(recovery).toMatchObject({ disposition: 'FailedBeforeEffect' });
   }, nativeEnvironment);
 }, 60_000);
 

@@ -30,18 +30,6 @@ jobs:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: fixture-only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
     env:
       DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
     steps:
@@ -63,20 +51,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Select .NET conformance
-        id: dotnet
+      - name: Select required CI fixtures
+        id: setup
         shell: bash
         run: |
           set -euo pipefail
-          affected="$(npx nx show projects --affected --json)"
-          required="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).includes("dotnet-conformance") ? "true" : "false")' "$affected")"
-          if [[ -n "$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- .github/workflows/pr-main.yml)" ]]; then
-            required=true
-          fi
-          echo "required=$required" >> "$GITHUB_OUTPUT"
+          npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e,example-e2e,provider-smoke --graph="$RUNNER_TEMP/ci-tasks.json"
+          npx tsx tools/conformance/harness/select-ci-setup.ts "$RUNNER_TEMP/ci-tasks.json" >> "$GITHUB_OUTPUT"
+          echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Setup .NET for affected integration
-        if: steps.dotnet.outputs.required == 'true'
+        if: steps.setup.outputs.dotnet == 'true'
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: tools/conformance/dotnet/global.json
@@ -88,14 +73,41 @@ jobs:
             packages/dotnet/global.json
             tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
 
+      - name: Start PostgreSQL for .NET contracts
+        if: steps.setup.outputs.dotnet == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres
+          exit 1
+
       - name: Cache Playwright browsers
+        if: steps.setup.outputs.browser == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup.outputs.playwright }}
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install and check Playwright Chromium
+        if: steps.setup.outputs.browser == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          # Hosted runners usually have the runtime libraries. Install OS
+          # dependencies only if launching Chromium proves they are missing.
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
 
       - name: Validate dependency tree
         run: npm ls --all
@@ -107,17 +119,24 @@ jobs:
         run: npx nx affected -t example-e2e --parallel=1
 
       - name: Run required .NET package acceptance
-        if: steps.dotnet.outputs.required == 'true'
+        if: steps.setup.outputs.dotnet == 'true'
         run: npx nx package-acceptance dotnet-conformance
 
       - name: Upload .NET package acceptance and bounded provenance
-        if: always() && steps.dotnet.outputs.required == 'true'
+        if: always() && steps.setup.outputs.dotnet == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: dotnet-package-acceptance
           path: test-results/dotnet-package
           retention-days: 7
           if-no-files-found: error
+      - name: Run .NET provider conformance
+        if: steps.setup.outputs.dotnet == 'true'
+        run: npx nx provider-smoke dotnet-conformance
+
+      - name: Stop PostgreSQL
+        if: always() && steps.setup.outputs.dotnet == 'true'
+        run: docker rm --force hashbrown-postgres || true
 
       - name: Upload runtime smoke diagnostics
         if: failure()
@@ -130,6 +149,7 @@ jobs:
             test-results/conformance
             playwright-report/conformance
             test-results/atc
+            dist/docs-workbench/verification
             playwright-report/atc
           retention-days: 7
           if-no-files-found: ignore
@@ -138,6 +158,7 @@ jobs:
     name: Select deployment targets
     if: >-
       (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'preview') &&
        github.event.pull_request.head.repo.full_name == github.repository &&
        github.event.pull_request.user.login != 'dependabot[bot]') ||
       (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')

@@ -41,21 +41,48 @@
         "cwd": "tools/conformance/dotnet",
         "parallel": false,
         "commands": [
-          "dotnet restore --locked-mode",
           "dotnet build --no-restore -c Release -o ../../../dist/tools/conformance/dotnet",
           "tsc --noEmit -p tsconfig.spec.json",
           "tsc --noEmit -p tsconfig.playwright.json"
         ]
-      }
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{projectRoot}/harness/terminate-fixture.ts",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        }
+      ],
+      "dependsOn": ["restore"]
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "cache": false,
+      "cache": true,
       "dependsOn": ["build"],
       "options": {
         "jestConfig": "tools/conformance/dotnet/jest.config.ts",
         "runInBand": true
-      }
+      },
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{projectRoot}/harness/terminate-fixture.ts",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        }
+      ]
     },
     "lint": {
       "executor": "nx:run-commands",
@@ -65,11 +92,27 @@
         "parallel": false,
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
+          "eslint harness/terminate-fixture.ts harness/wait-for-native-recovery.ts harness/browser-smoke-selection.ts tests/terminate-fixture.spec.ts tests/wait-for-native-recovery.spec.ts tests/browser-smoke-selection.spec.ts smoke.playwright.config.ts",
           "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
           "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
         ]
       },
-      "dependsOn": ["build"]
+      "dependsOn": ["build"],
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{projectRoot}/harness/terminate-fixture.ts",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        },
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
     },
     "provider-e2e": {
       "executor": "nx:run-commands",
@@ -87,8 +130,20 @@
     },
     "check-docs": {
       "executor": "nx:run-commands",
-      "cache": false,
-      "inputs": ["default", "^default"],
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{projectRoot}/harness/terminate-fixture.ts",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        }
+      ],
       "dependsOn": ["build"],
       "options": {
         "command": "node tools/conformance/dotnet/verify-recipe.mjs --all"
@@ -142,6 +197,29 @@
       "inputs": ["default", "^default"],
       "options": {
         "command": "node tools/conformance/dotnet/nuget-consumer/run.mjs"
+      }
+    },
+    "provider-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        "build",
+        "check-docs",
+        {
+          "projects": ["runtime-smoke-react", "runtime-smoke-angular"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/dotnet/smoke.playwright.config.ts"
+      }
+    },
+    "restore": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "tools/conformance/dotnet",
+        "command": "dotnet restore --locked-mode"
       }
     }
   }

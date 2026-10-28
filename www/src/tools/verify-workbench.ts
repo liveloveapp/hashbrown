@@ -18,6 +18,10 @@ import { workbenchAuthoringFixtureText } from './workbench-authoring-fixture';
 import { createWorkbenchAgentStream } from '../../examples/quickstart/server/workbench-agent';
 import { DecisionError } from '@hashbrownai/typesafe';
 import { verifyServerWorkbench } from './verify-server-workbench';
+import {
+  createWorkbenchPreview,
+  workbenchVerificationTiming,
+} from './workbench-verification-timing';
 import { verifyHistoryWorkbench } from './verify-history-workbench';
 import { workbenchHistoryFixtureText } from './workbench-history-fixture';
 import { verifyWorkflowWorkbench } from './verify-workflow-workbench';
@@ -49,6 +53,7 @@ import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-le
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
+const recording = process.env['WORKBENCH_RECORD'] === '1';
 const eventDelayMs = process.env['WORKBENCH_RECORD'] === '1' ? 20 : 0;
 async function* pacedProvider(
   events: AsyncIterable<AGUIEvent>,
@@ -60,6 +65,16 @@ async function* pacedProvider(
     if (signal.aborted) return;
     yield event;
   }
+}
+let pendingPreview: ReturnType<typeof createWorkbenchPreview> | undefined;
+/** Starts a single provisional-output checkpoint for the current serial scenario. */
+function holdPreview(): () => void {
+  const preview = createWorkbenchPreview();
+  pendingPreview = preview;
+  return () => {
+    preview.release();
+    if (pendingPreview === preview) pendingPreview = undefined;
+  };
 }
 const requests: RunAgentInput[] = [];
 const agentRequests: { state: string }[] = [];
@@ -107,7 +122,12 @@ async function* fixture(
     const messageId = `${input.runId}-answer`;
     yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
     for (let index = 0; index < onboardingText.length; index += 10) {
-      await new Promise((done) => setTimeout(done, 80));
+      await new Promise((done) =>
+        setTimeout(
+          done,
+          workbenchVerificationTiming(recording, lessonId).chunkMs,
+        ),
+      );
       if (signal.aborted) return;
       yield {
         type: EventType.TEXT_MESSAGE_CONTENT,
@@ -116,7 +136,13 @@ async function* fixture(
       };
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId };
-    await new Promise((done) => setTimeout(done, 400));
+    await pendingPreview?.wait(signal);
+    await new Promise((done) =>
+      setTimeout(
+        done,
+        workbenchVerificationTiming(recording, lessonId).verdictMs,
+      ),
+    );
     yield outcome === 'error'
       ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
       : {
@@ -217,7 +243,12 @@ async function* fixture(
       : valid;
   yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
   for (let index = 0; index < json.length; index += 14) {
-    await new Promise((done) => setTimeout(done, 80));
+    await new Promise((done) =>
+      setTimeout(
+        done,
+        workbenchVerificationTiming(recording, lessonId).chunkMs,
+      ),
+    );
     if (signal.aborted) return;
     yield {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -226,8 +257,15 @@ async function* fixture(
     };
   }
   yield { type: EventType.TEXT_MESSAGE_END, messageId };
+  // The browser releases the first preview after asserting its disabled action.
+  await pendingPreview?.wait(signal);
   // Leave a visible complete-looking preview before the terminal verdict.
-  await new Promise((done) => setTimeout(done, 400));
+  await new Promise((done) =>
+    setTimeout(
+      done,
+      workbenchVerificationTiming(recording, lessonId).verdictMs,
+    ),
+  );
   yield verdict === 'error'
     ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
     : {
@@ -572,6 +610,8 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     'Cache-Control': 'no-store',
   });
   for (const [sequence_number, event] of events.entries()) {
+    if ((hasContext || onboarding) && event.type === 'response.completed')
+      await pendingPreview?.wait(new AbortController().signal);
     if (outcome === 'no-finish' && event.type === 'response.completed')
       continue;
     if (res.destroyed) return;
@@ -579,9 +619,14 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
     );
     if (event.type === 'response.output_text.delta')
-      await new Promise((done) => setTimeout(done, 80));
+      await new Promise((done) =>
+        setTimeout(done, workbenchVerificationTiming(recording).chunkMs),
+      );
   }
-  if (hasContext) await new Promise((done) => setTimeout(done, 400));
+  if (hasContext)
+    await new Promise((done) =>
+      setTimeout(done, workbenchVerificationTiming(recording).verdictMs),
+    );
   res.end();
 });
 const server = createServer(app);
@@ -594,7 +639,9 @@ const browser = await chromium.launch({ headless: true }).catch((error) => {
   if (process.env['CI']) throw error;
   return chromium.launch({ headless: true, channel: 'chrome' });
 });
-const requestedLessons = process.env['WORKBENCH_LESSONS']?.split(',');
+const requestedLessons = process.env['WORKBENCH_LESSONS']
+  ? process.env['WORKBENCH_LESSONS'].split(',')
+  : undefined;
 if (
   requestedLessons?.some(
     (id) => !workbenchLessons.some((lesson) => lesson.id === id),
@@ -796,6 +843,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             instructions,
             nativeRequests,
@@ -817,6 +865,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             decisionRequests,
             outcome: (value) => {
@@ -966,7 +1015,7 @@ try {
         await page.getByRole('tab', { name: 'JSON', exact: true }).click();
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(800);
-      await page.waitForTimeout(100);
+      if (recording) await page.waitForTimeout(100);
       expect(requests).toHaveLength(start);
       expect(browserRequests).toBe(0);
       if (lesson.id === 'debugging') {
@@ -1012,6 +1061,7 @@ try {
           await page.waitForTimeout(500);
       }
       mark('firstRequest');
+      if (!live) pendingPreview = createWorkbenchPreview();
       await send.click();
       const card = page.getByRole('article', { name: 'Summary card' }).last();
       await expect(card).toBeVisible({ timeout: 60_000 });
@@ -1022,6 +1072,8 @@ try {
       if (!live) await expect(accept).toBeDisabled();
       if (lesson.id === 'streaming' && !live)
         await expect(card.locator('h2')).not.toHaveText('Building your plan…');
+      pendingPreview?.release();
+      pendingPreview = undefined;
       await expect(accept)
         .toBeEnabled({ timeout: 15_000 })
         .catch(async (error) => {
@@ -1422,6 +1474,7 @@ try {
   console.log(JSON.stringify(report));
 } finally {
   await nativeLocal?.close();
+  pendingPreview?.release();
   await browser.close();
   await new Promise<void>((done) => server.close(() => done()));
 }
