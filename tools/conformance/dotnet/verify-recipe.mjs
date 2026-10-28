@@ -1,14 +1,14 @@
-import {
-  cpSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import {
+  validateRecipePackage,
+  compileRecipes,
+  metadataArgument,
+} from './nuget-consumer/recipes.mjs';
+export { validateRecipePackage } from './nuget-consumer/recipes.mjs';
 
 const source = dirname(fileURLToPath(import.meta.url));
 const root = resolve(source, '../../..');
@@ -17,58 +17,27 @@ const replaceExactlyOnce = (text, target, replacement) => {
     throw new Error(`Expected exactly one recipe insertion target: ${target}`);
   return text.replace(target, replacement);
 };
-const blocks = (sdk) =>
-  [
-    ...readFileSync(
-      join(root, `www/content/docs/${sdk}/platform/dotnet.md`),
+
+/** Reads framework-identical standard recipes with the exact package contract. */
+export function readRecipes(workspace = root) {
+  const blocks = ['react', 'angular'].map((sdk) => {
+    const text = readFileSync(
+      join(workspace, `www/content/docs/${sdk}/platform/dotnet.md`),
       'utf8',
-    ).matchAll(/```csharp\n([\s\S]*?)\n```/g),
-  ].map((match) => match[1]);
-/** Reads the exact package set documented and compiled by the reference recipe. */
-const packageReferences = (text) =>
-  [
-    ...text.matchAll(
-      /<PackageReference Include="([^"]+)" Version="([^"]+)"\s*\/>/g,
-    ),
-  ]
-    .map((match) => `${match[1]}@${match[2]}`)
-    .sort();
-const referencePackages = packageReferences(
-  readFileSync(join(source, 'Hashbrown.Conformance.csproj'), 'utf8'),
-);
-for (const sdk of ['react', 'angular']) {
-  const documentedPackages = packageReferences(
-    readFileSync(
-      join(root, `www/content/docs/${sdk}/platform/dotnet.md`),
-      'utf8',
-    ),
-  );
-  if (
-    referencePackages.length === 0 ||
-    JSON.stringify(documentedPackages) !== JSON.stringify(referencePackages)
-  )
-    throw new Error(
-      `${sdk} recipe package pins must match the locked reference project.`,
     );
+    validateRecipePackage(text);
+    return [...text.matchAll(/```csharp\n([\s\S]*?)\n```/g)].map(
+      (match) => match[1],
+    );
+  });
+  assert.equal(blocks[0].length, 4, 'Four standard recipes required');
+  assert.deepEqual(blocks[0], blocks[1], 'Standard framework recipes differ');
+  return blocks[0];
 }
-const react = blocks('react');
-if (
-  react.length !== 4 ||
-  JSON.stringify(react) !== JSON.stringify(blocks('angular'))
-)
-  throw new Error(
-    'Both framework recipes must contain the same four tested server examples.',
-  );
-const directory = mkdtempSync(join(tmpdir(), 'hashbrown-dotnet-recipe-'));
-try {
-  for (const name of [
-    'global.json',
-    'nuget.config',
-    'Hashbrown.Conformance.csproj',
-    'packages.lock.json',
-    'Integration',
-  ])
-    cpSync(join(source, name), join(directory, name), { recursive: true });
+
+/** Generates all sixteen exact standard program identities. */
+export function recipePrograms(react) {
+  const variants = [];
   for (const api of ['responses', 'chat-completions']) {
     for (const durable of [false, true]) {
       for (const confirmation of [false, true]) {
@@ -102,22 +71,43 @@ try {
               'await app.RunAsync();',
               `${react[3]}\n\nawait app.RunAsync();`,
             );
-          console.log(
-            `Compiling ${api} ${durable ? 'PostgreSQL' : 'memory'} recipe, confirmation=${confirmation}, recovery=${recovery}`,
-          );
-          writeFileSync(join(directory, 'Program.cs'), program);
-          execFileSync('dotnet', ['restore', '--locked-mode'], {
-            cwd: directory,
-            stdio: 'inherit',
-          });
-          execFileSync('dotnet', ['build', '--no-restore'], {
-            cwd: directory,
-            stdio: 'inherit',
-          });
+          variants.push({ api, durable, confirmation, recovery, program });
         }
       }
     }
   }
-} finally {
-  rmSync(directory, { recursive: true, force: true });
+  return variants;
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  const metadata = metadataArgument();
+  if (process.argv.includes('--all'))
+    execFileSync(
+      process.execPath,
+      ['--test', join(source, 'native-recipe.test.mjs')],
+      { stdio: 'inherit' },
+    );
+  if (process.argv.includes('--all')) {
+    const { readNativeRecipes, nativeRecipePrograms } =
+      await import('./verify-native-recipe.mjs');
+    await compileRecipes(
+      [
+        ...recipePrograms(readRecipes()).map((variant) => ({
+          kind: 'standard',
+          ...variant,
+        })),
+        ...nativeRecipePrograms(readNativeRecipes()).map((variant) => ({
+          kind: 'native',
+          ...variant,
+        })),
+      ],
+      metadata,
+      'all',
+    );
+  } else {
+    await compileRecipes(recipePrograms(readRecipes()), metadata, 'standard');
+  }
 }

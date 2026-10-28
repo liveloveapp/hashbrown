@@ -1,15 +1,13 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native PostgreSQL schema2 migration preserves v1 authority and fails closed', async () => {
-  const directory = await mkdtemp(
-    join(tmpdir(), 'hashbrown-native-approval-store-'),
-  );
+  const directory = await createDotnetProbeDirectory('hashbrown-native-approval-store-');
   const source = await readFile(
     resolve(
       'tools/conformance/dotnet/tests/fixtures/native-approval-store.cs.txt',

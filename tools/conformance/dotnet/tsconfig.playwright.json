@@ -5,6 +5,7 @@
   },
   "include": [
     "dotnet.playwright.config.ts",
+    "package.playwright.config.ts",
     "harness/**/*.ts",
     "specs/**/*.ts",
     "live.playwright.config.ts",

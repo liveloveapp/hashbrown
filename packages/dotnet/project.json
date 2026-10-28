@@ -1,0 +1,107 @@
+{
+  "name": "dotnet-sdk",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/dotnet/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "dotnet restore Hashbrown.AspNetCore.csproj --locked-mode",
+          "dotnet build Hashbrown.AspNetCore.csproj --no-restore -c Release",
+          "dotnet restore tools/ApiSnapshot.csproj",
+          "dotnet build tools/ApiSnapshot.csproj --no-restore -c Release"
+        ],
+        "cwd": "packages/dotnet"
+      },
+      "outputs": [
+        "{projectRoot}/bin",
+        "{projectRoot}/obj",
+        "{projectRoot}/tools/bin",
+        "{projectRoot}/tools/obj"
+      ],
+      "inputs": [
+        "default",
+        {
+          "runtime": "git rev-parse HEAD"
+        }
+      ]
+    },
+    "api-check": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "mkdir -p ../../dist/packages/dotnet",
+          "dotnet tools/bin/Release/net10.0/ApiSnapshot.dll bin/Release/net10.0/Hashbrown.AspNetCore.dll Hashbrown.AspNetCore ../../dist/packages/dotnet/public-api.json bin/Release/net10.0/Hashbrown.AspNetCore.xml",
+          "node tools/verify-package.mjs --api-only"
+        ],
+        "cwd": "packages/dotnet"
+      },
+      "dependsOn": ["build"],
+      "outputs": ["{workspaceRoot}/dist/packages/dotnet/public-api.json"]
+    },
+    "pack": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "dotnet pack Hashbrown.AspNetCore.csproj --no-build --no-restore -c Release -p:PackageOutputPath=../../dist/packages/dotnet",
+          "node tools/verify-package.mjs"
+        ],
+        "cwd": "packages/dotnet"
+      },
+      "dependsOn": ["api-check"],
+      "outputs": ["{workspaceRoot}/dist/packages/dotnet"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": ["node --test tools/package.test.mjs"],
+        "cwd": "packages/dotnet"
+      },
+      "dependsOn": ["pack"]
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "dotnet format Hashbrown.AspNetCore.csproj --verify-no-changes --no-restore",
+          "dotnet format tools/ApiSnapshot.csproj --verify-no-changes --no-restore",
+          "eslint tools/*.mjs",
+          "prettier --check \"tools/*.mjs\""
+        ],
+        "cwd": "packages/dotnet"
+      },
+      "dependsOn": ["build"]
+    },
+    "restore-lock": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "dotnet restore Hashbrown.AspNetCore.csproj --use-lock-file"
+        ],
+        "cwd": "packages/dotnet"
+      }
+    }
+  },
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/tools/conformance/dotnet/global.json",
+      "{workspaceRoot}/tools/conformance/dotnet/packages.lock.json",
+      "{workspaceRoot}/tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json"
+    ]
+  }
+}

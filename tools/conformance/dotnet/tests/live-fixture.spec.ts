@@ -1,3 +1,4 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -9,7 +10,7 @@ import { promisify } from 'node:util';
 const execute = promisify(execFile);
 
 test('live native fixture enforces dispatch, options, gate, cancellation, and wire bounds without cloud access', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-probe-'));
+  const directory = await createDotnetProbeDirectory('hashbrown-live-probe-');
   let redirectRequests = 0;
   let redirectedRequests = 0;
   const redirectServer = createServer((request, response) => {

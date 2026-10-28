@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
@@ -541,8 +541,8 @@ sealed class Host(WebApplication app, HttpClient client, TaskCompletionSource te
         builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders(); builder.Services.AddRouting(); builder.Services.AddAuthentication("test").AddScheme<AuthenticationSchemeOptions, TestAuthentication>("test", _ => { }); builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
         var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
-        var endpoint = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionEndpointConfiguration");
-        var factory = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.Conformance.Integration.NativeSessionAgentFactory");
+        var endpoint = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.AspNetCore.NativeSessionEndpointConfiguration");
+        var factory = typeof(HashbrownRequestClient).Assembly.GetType("Hashbrown.AspNetCore.NativeSessionAgentFactory");
         AIAgent agent;
         if (endpoint is null || factory is null || stateless)
         {

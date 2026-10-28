@@ -1,20 +1,18 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 /* eslint-disable @nx/enforce-module-boundaries -- Exercises real HTTP recovery snapshots through both recipe readers and the unchanged source SDK restoration guard. */
 import { createChatRuntime } from '../../../../packages/core/src/chat-runtime';
 import { s } from '../../../../packages/core/src/schema';
 import * as reactRecovery from '../../hosts/react/src/recovery';
 import * as angularRecovery from '../../hosts/angular/src/recovery';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
 
 test('native approval host enforces the protected boundary', async () => {
-  const directory = await mkdtemp(
-    join(tmpdir(), 'hashbrown-native-approval-host-'),
-  );
+  const directory = await createDotnetProbeDirectory('hashbrown-native-approval-host-');
   const source = await readFile(
     resolve(
       'tools/conformance/dotnet/tests/fixtures/native-approval-host.cs.txt',

@@ -1,7 +1,7 @@
 #pragma warning disable OPENAI001 // Tests the pinned experimental native Responses options.
 using System.Runtime.CompilerServices;
 using System.ClientModel.Primitives;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.AI;
 using OpenAI.Responses;
 

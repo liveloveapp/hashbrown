@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Npgsql;
 
 namespace Hashbrown.Conformance.Testing;
@@ -132,16 +132,16 @@ public static class FixtureRetentionControls
             {
                 var clock = new FixtureClock();
                 var memory = new PendingInterruptStore(clock, registry, options with { Capacity = 5, TerminalRetention = TimeSpan.FromMinutes(1), SnapshotRetention = TimeSpan.FromMinutes(1) });
-                var owned = (Dictionary<string, InterruptRecord>)typeof(PendingInterruptStore).GetField("_pending", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(memory)!;
+                var owned = (System.Collections.IDictionary)typeof(PendingInterruptStore).GetField("_pending", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(memory)!;
                 foreach (var state in new[] { "EffectStarted", "FailedAfterEffect" })
                 {
                     var input = new RunAgentInput { ThreadId = state, RunId = "origin", Messages = [] };
                     var batch = await memory.CreateAsync("fixture", input, new("fixture", 1, JsonSerializer.SerializeToElement(new { })), cancellationToken);
-                    owned[batch.Id] = owned[batch.Id] with { State = state, CompletedAt = clock.GetUtcNow(), OriginalRequest = null, TerminalSnapshot = "terminal-only" };
+                    owned[batch.Id] = FixtureIntegrationReflection.Copy(owned[batch.Id]!, ("State", state), ("CompletedAt", clock.GetUtcNow()), ("OriginalRequest", null), ("TerminalSnapshot", "terminal-only"));
                 }
                 clock.Advance();
                 await memory.CreateAsync("fixture", new RunAgentInput { ThreadId = "trigger", RunId = "new", Messages = [] }, new("fixture", 1, JsonSerializer.SerializeToElement(new { })), cancellationToken);
-                return Results.Json(new { ambiguous = owned.Values.Count(record => record.State is "EffectStarted" or "FailedAfterEffect"), privateSnapshots = owned.Values.Count(record => record.ThreadId != "trigger" && (record.OriginalRequest is not null || record.TerminalSnapshot is not null)) });
+                return Results.Json(new { ambiguous = owned.Values.Cast<object>().Count(record => FixtureIntegrationReflection.Read<string>(record, "State") is "EffectStarted" or "FailedAfterEffect"), privateSnapshots = owned.Values.Cast<object>().Count(record => FixtureIntegrationReflection.Read<string>(record, "ThreadId") != "trigger" && (FixtureIntegrationReflection.Read<string?>(record, "OriginalRequest") is not null || FixtureIntegrationReflection.Read<string?>(record, "TerminalSnapshot") is not null)) });
             }
             if (scenario == "scheduler-failure")
             {

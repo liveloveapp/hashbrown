@@ -1,6 +1,6 @@
+import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { nativeStats } from '../harness/live-browser-fixture';
@@ -15,7 +15,7 @@ for (const fault of [
   'public-arguments',
 ])
   test(`public genuine MAF live proof covers real journal, SDK and ${fault}`, async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-proof-'));
+    const directory = await createDotnetProbeDirectory('hashbrown-live-proof-');
     const source = await readFile(
       resolve(
         'tools/conformance/dotnet/tests/fixtures/live-approval-journal.cs.txt',

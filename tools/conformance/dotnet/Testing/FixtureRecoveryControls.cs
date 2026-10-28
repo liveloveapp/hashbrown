@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using AGUI.Abstractions;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Npgsql;
 
 namespace Hashbrown.Conformance.Testing;
@@ -19,27 +19,28 @@ public static class FixtureRecoveryControls
             var input = JsonSerializer.Deserialize(body.GetProperty("original"), AGUIJsonSerializerContext.Default.RunAgentInput)!;
             var options = new InterruptStoreOptions { TerminalSnapshotBytes = body.TryGetProperty("maximumBytes", out var maximum) ? maximum.GetInt32() : 1024 * 1024 };
             var claim = new InterruptClaim("fixture", "fixture", 1, new("fixture", 1, JsonSerializer.SerializeToElement(new { })), "fixture");
-            var handle = new CheckpointCaptureHandle(claim, JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput), options);
+            var handle = (CheckpointCaptureHandle)FixtureIntegrationReflection.Create(typeof(CheckpointCaptureHandle), claim, JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput), options);
             string? outcome = null;
             string? snapshot = null;
             var committed = false;
             var committedBeforeTerminal = false;
             var output = new MemoryStream();
             string? error = null;
-            var observer = new CheckpointSseObserver(handle, (terminal, final) => { if (body.TryGetProperty("failCommit", out var fail) && fail.GetBoolean()) throw new IOException("Fixture terminal persistence failure"); outcome = terminal; snapshot = final; committed = true; return ValueTask.CompletedTask; });
+            var observerType = FixtureIntegrationReflection.Type("CheckpointSseObserver");
+            var observer = FixtureIntegrationReflection.Create(observerType, handle, (Func<string, string?, ValueTask>)((terminal, final) => { if (body.TryGetProperty("failCommit", out var fail) && fail.GetBoolean()) throw new IOException("Fixture terminal persistence failure"); outcome = terminal; snapshot = final; committed = true; return ValueTask.CompletedTask; }));
             try
             {
                 foreach (var chunk in body.GetProperty("chunks").EnumerateArray())
-                    await observer.ObserveAsync(Convert.FromBase64String(chunk.GetString()!), bytes =>
+                    await (ValueTask)FixtureIntegrationReflection.Call(observer, observerType, "ObserveAsync", (ReadOnlyMemory<byte>)Convert.FromBase64String(chunk.GetString()!), (Func<ReadOnlyMemory<byte>, ValueTask>)(bytes =>
                     {
                         if (Encoding.UTF8.GetString(bytes.Span).Contains("RUN_FINISHED", StringComparison.Ordinal)) committedBeforeTerminal = committed;
                         output.Write(bytes.Span);
                         return ValueTask.CompletedTask;
-                    }, context.RequestAborted);
-                await observer.FinishAsync(context.RequestAborted);
+                    }), context.RequestAborted)!;
+                await (ValueTask)FixtureIntegrationReflection.Call(observer, observerType, "FinishAsync", context.RequestAborted)!;
             }
             catch (IOException exception) { error = exception.Message; }
-            var retained = (System.Text.Json.Nodes.JsonArray)typeof(CheckpointSseObserver).GetField("_messages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(observer)!;
+            var retained = (System.Text.Json.Nodes.JsonArray)observerType.GetField("_messages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(observer)!;
             return Results.Json(new { error, retainedBytes = Encoding.UTF8.GetByteCount(retained.ToJsonString()), outcome, snapshot = snapshot is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(snapshot), forwarded = Encoding.UTF8.GetString(output.ToArray()), committedBeforeTerminal });
         });
         app.MapPost("/__test/store-capture-validation", async (HttpContext context) =>

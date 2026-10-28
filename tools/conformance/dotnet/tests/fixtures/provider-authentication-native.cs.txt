@@ -1,6 +1,6 @@
 using Azure;
 using Azure.Core;
-using Hashbrown.Conformance.Integration;
+using Hashbrown.AspNetCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
