@@ -164,9 +164,7 @@ test('mounts the genuine app, omits duplicate composer and replays captured text
   expect(
     [...host.querySelectorAll('[role=tab]')].map((node) => node.textContent),
   ).toEqual(['JSON', 'Text', 'Requests', 'UI', 'State']);
-  expect(
-    host.querySelector<HTMLButtonElement>('[data-nav-key="cta"]')?.disabled,
-  ).toBe(true);
+  expect(host.querySelector('[data-nav-key="cta"]')).toBeNull();
   shell.dispose();
 });
 
@@ -251,4 +249,22 @@ test('provenance remains unknown without a source header and records the actual 
   expect(JSON.stringify(unknown.store.getSnapshot())).not.toContain(
     '"fixture":false',
   );
+});
+
+test('isolated Threadplane navigation lists its current topic without unhosted lesson links or reset controls', () => {
+  const host = document.createElement('div');
+  const app = document.createElement('div');
+  const capture = createThreadplaneCapture({
+    framework: 'React',
+    origin: 'https://example.test',
+    fetch: vi.fn(),
+  });
+
+  const shell = mountThreadplaneWorkbench(host, app, capture);
+
+  expect(host.querySelector('.wb-nav')?.textContent).toContain('Threadplane');
+  expect(host.querySelectorAll('.wb-nav a')).toHaveLength(0);
+  expect(host.querySelector('[data-nav-key="cta"]')).toBeNull();
+  expect(host.querySelectorAll('.wb-lessons')).toHaveLength(1);
+  shell.dispose();
 });

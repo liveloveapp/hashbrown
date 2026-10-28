@@ -287,6 +287,7 @@ export function mountThreadplaneWorkbench(
       inspection: (tab, snapshot) =>
         threadplaneInspection(tab, snapshot, capture.framework),
       disableNewConversation: true,
+      fixedSidebarTopic: 'Threadplane',
     },
   );
   app.classList.add('wb-threadplane-app');

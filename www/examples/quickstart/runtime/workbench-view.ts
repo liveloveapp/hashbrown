@@ -356,8 +356,10 @@ export interface WorkbenchMountOptions {
         readonly detail: unknown;
       }
     | undefined;
-  /** Disables the new-conversation action when no reset adapter is installed. */
+  /** Omits the new-conversation action when no reset adapter is installed. */
   readonly disableNewConversation?: boolean;
+  /** Names the only hosted topic when this is an isolated consumer shell. */
+  readonly fixedSidebarTopic?: string;
 }
 
 /**
@@ -452,6 +454,8 @@ export function mountWorkbench(
     root.classList.toggle('wb-rail', current.rail);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
+      fixedTopic: options.fixedSidebarTopic,
+      hideCreate: options.disableNewConversation,
       currentLesson: (commands.lesson?.id ??
         'generative-ui') as WorkbenchLessonId,
       conversations: navigation?.conversations ?? [
@@ -484,12 +488,6 @@ export function mountWorkbench(
         });
       },
     });
-    if (options.disableNewConversation) {
-      const create = nav.querySelector<HTMLButtonElement>(
-        '[data-nav-key="cta"]',
-      );
-      if (create) create.disabled = true;
-    }
   }
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
