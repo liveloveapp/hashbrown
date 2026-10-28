@@ -23,12 +23,15 @@ type WebSearchCall = OpenAI.Responses.ResponseFunctionWebSearch;
 const PROVIDER = 'openai';
 const WEB_SEARCH = 'web_search';
 
-/** A `url_citation`, with its span resolved against the whole message. */
 interface CitationState {
-  readonly url: string;
-  readonly title: string;
-  readonly start: number;
+  readonly part: string;
+  readonly annotation: Record<string, unknown>;
+}
+
+interface TextPart {
+  readonly text: string;
   readonly end: number;
+  readonly contiguous: boolean;
 }
 
 interface ReasoningItemState {
@@ -44,6 +47,7 @@ interface ToolCallState {
 interface MapperState {
   readonly codeCalls: ReadonlyMap<string, CodeExecutionState>;
   readonly textStarted: boolean;
+  readonly textEnded: boolean;
   readonly firstMessageItemId?: string;
   readonly reasoningItemIds: readonly string[];
   readonly openReasoning: ReadonlyMap<string, ReasoningItemState>;
@@ -54,9 +58,10 @@ interface MapperState {
   readonly text: string;
   /** Where each output text part (`<itemId>:<contentIndex>`) starts in `text`. */
   readonly partOffsets: ReadonlyMap<string, number>;
-  /** `url_citation` annotations collected for the assistant message. */
-  readonly annotations: readonly CitationState[];
-  /** Source id by url, for every web search source seen so far. */
+  /** Native annotations keyed by item, content and annotation index. */
+  readonly annotations: ReadonlyMap<string, CitationState>;
+  readonly parts: ReadonlyMap<string, TextPart>;
+  /** Source id by URL for known web search and code image sources. */
   readonly sourceIndex: ReadonlyMap<string, string>;
   readonly calledTools: boolean;
   readonly refused: boolean;
@@ -81,13 +86,15 @@ export interface MapOpenAIEventsOptions {
 const initialState: MapperState = {
   codeCalls: new Map(),
   textStarted: false,
+  textEnded: false,
   reasoningItemIds: [],
   openReasoning: new Map(),
   toolCalls: new Map(),
   webSearches: new Map(),
   text: '',
   partOffsets: new Map(),
-  annotations: [],
+  annotations: new Map(),
+  parts: new Map(),
   sourceIndex: new Map(),
   calledTools: false,
   refused: false,
@@ -129,6 +136,14 @@ function mapTextDelta(
   const state: MapperState = {
     ...previous,
     text: previous.text + delta,
+    parts: withEntry(previous.parts, key, {
+      text: (previous.parts.get(key)?.text ?? '') + delta,
+      end: previous.text.length + delta.length,
+      contiguous:
+        (previous.parts.get(key)?.contiguous ?? true) &&
+        (previous.parts.get(key)?.end ?? previous.text.length) ===
+          previous.text.length,
+    }),
     partOffsets: previous.partOffsets.has(key)
       ? previous.partOffsets
       : withEntry(previous.partOffsets, key, previous.text.length),
@@ -319,38 +334,75 @@ function isUrlCitation(
 
 function mapAnnotation(
   state: MapperState,
-  event: OpenAI.Responses.ResponseOutputTextAnnotationAddedEvent,
+  event: Pick<
+    OpenAI.Responses.ResponseOutputTextAnnotationAddedEvent,
+    'item_id' | 'content_index' | 'annotation_index' | 'annotation'
+  >,
 ): MapperStep {
-  const annotation = event.annotation;
-  if (!isUrlCitation(annotation)) {
-    return { state, events: [] };
-  }
-
-  const offset = state.partOffsets.get(
-    partKey(event.item_id, event.content_index),
-  );
-  if (offset === undefined) {
-    return { state, events: [] };
-  }
-
+  const value: unknown = event.annotation;
+  if (typeof value !== 'object' || value === null) return { state, events: [] };
+  const annotation = { ...(value as Record<string, unknown>) };
+  const file =
+    (annotation['type'] === 'file_citation' ||
+      annotation['type'] === 'container_file_citation') &&
+    typeof annotation['file_id'] === 'string' &&
+    annotation['file_id'].length > 0;
+  if (!file && !isUrlCitation(annotation)) return { state, events: [] };
+  const part = partKey(event.item_id, event.content_index);
   return {
     state: {
       ...state,
-      annotations: [
-        ...state.annotations,
-        {
-          url: annotation.url,
-          title:
-            typeof annotation.title === 'string' && annotation.title
-              ? annotation.title
-              : annotation.url,
-          start: offset + annotation.start_index,
-          end: offset + annotation.end_index,
-        },
-      ],
+      annotations: withEntry(
+        state.annotations,
+        JSON.stringify([
+          event.item_id,
+          event.content_index,
+          event.annotation_index,
+        ]),
+        { part, annotation },
+      ),
     },
     events: [],
   };
+}
+
+function mapMessageDone(
+  state: MapperState,
+  messageId: string,
+  item: OpenAI.Responses.ResponseOutputMessage,
+): MapperStep {
+  let next = {
+    ...state,
+    firstMessageItemId: state.firstMessageItemId ?? item.id,
+  };
+  const events: AGUIEvent[] = [];
+  for (const [index, part] of item.content.entries()) {
+    if (part.type !== 'output_text') continue;
+    const observed = next.parts.get(partKey(item.id, index))?.text ?? '';
+    if (!part.text.startsWith(observed))
+      throw new Error('Inconsistent native response text');
+    const text = mapTextDelta(
+      next,
+      messageId,
+      item.id,
+      index,
+      part.text.slice(observed.length),
+    );
+    next = { ...text.state, firstMessageItemId: next.firstMessageItemId };
+    events.push(...text.events);
+    for (const [annotationIndex, annotation] of part.annotations.entries()) {
+      next = {
+        ...mapAnnotation(next, {
+          item_id: item.id,
+          content_index: index,
+          annotation_index: annotationIndex,
+          annotation,
+        }).state,
+        firstMessageItemId: next.firstMessageItemId,
+      };
+    }
+  }
+  return { state: next, events };
 }
 
 /**
@@ -395,51 +447,84 @@ function answerAnnotations(
   state: MapperState,
   messageId: string,
 ): ɵAnswerAnnotations | undefined {
-  if (state.annotations.length === 0) {
-    return undefined;
-  }
-
-  const result = state.annotations.reduce<{
-    readonly citations: NonNullable<ɵAnswerAnnotations['citations']>;
-    readonly sources: readonly ɵToolStepSource[];
-  }>(
-    (acc, citation, index) => {
-      const known = findSourceId(state.sourceIndex, citation.url);
-      const existing = acc.sources.find(
-        (source) => source.href === citation.url,
-      );
-      const source: ɵToolStepSource | undefined =
-        known === undefined && existing === undefined
+  const citations: NonNullable<ɵAnswerAnnotations['citations']> = [];
+  const sources: ɵToolStepSource[] = [];
+  const fileIds = new Map<string, string>();
+  for (const [index, { part, annotation }] of [
+    ...state.annotations.values(),
+  ].entries()) {
+    const offset = state.partOffsets.get(part);
+    const textPart = state.parts.get(part);
+    const url = isUrlCitation(annotation) ? annotation : undefined;
+    if (url && offset === undefined) continue;
+    const fileKey = JSON.stringify([
+      annotation['file_id'],
+      annotation['container_id'] ?? null,
+    ]);
+    const known = url
+      ? (findSourceId(state.sourceIndex, url.url) ??
+        sources.find((s) => s.href === url.url)?.id)
+      : fileIds.get(fileKey);
+    const sourceId = known ?? `${messageId}:cite:${index}`;
+    if (known === undefined) {
+      sources.push(
+        url
           ? {
-              id: `${messageId}:cite:${index}`,
+              id: sourceId,
               kind: 'url',
-              title: citation.title,
-              href: citation.url,
+              title:
+                typeof url.title === 'string' && url.title
+                  ? url.title
+                  : url.url,
+              href: url.url,
             }
-          : undefined;
-      const sourceId = known ?? existing?.id ?? source?.id ?? '';
-      return {
-        citations: [
-          ...acc.citations,
-          {
+          : {
+              id: sourceId,
+              kind: 'file',
+              fileId: annotation['file_id'] as string,
+              title:
+                typeof annotation['filename'] === 'string'
+                  ? annotation['filename']
+                  : (annotation['file_id'] as string),
+              ...(typeof annotation['container_id'] === 'string'
+                ? { containerId: annotation['container_id'] }
+                : {}),
+            },
+      );
+      if (!url) fileIds.set(fileKey, sourceId);
+    }
+    const start = annotation['start_index'];
+    const end = annotation['end_index'];
+    const safe =
+      url ||
+      (offset !== undefined &&
+        textPart?.contiguous &&
+        !/[\u{10000}-\u{10FFFF}\uD800-\uDFFF]/u.test(textPart.text) &&
+        typeof start === 'number' &&
+        typeof end === 'number' &&
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        start >= 0 &&
+        end > start &&
+        end <= textPart.text.length);
+    citations.push(
+      safe && offset !== undefined
+        ? {
             sourceId,
-            quote: state.text.slice(citation.start, citation.end),
+            quote: state.text.slice(
+              offset + (start as number),
+              offset + (end as number),
+            ),
             block: 0,
-            start: citation.start,
-            end: citation.end,
-          },
-        ],
-        sources: source ? [...acc.sources, source] : acc.sources,
-      };
-    },
-    { citations: [], sources: [] },
-  );
-
-  return {
-    v: 1,
-    citations: result.citations,
-    ...(result.sources.length > 0 ? { sources: [...result.sources] } : {}),
-  };
+            start: offset + (start as number),
+            end: offset + (end as number),
+          }
+        : { sourceId },
+    );
+  }
+  return citations.length
+    ? { v: 1, citations, ...(sources.length ? { sources } : {}) }
+    : undefined;
 }
 
 function mapItemAdded(
@@ -651,14 +736,29 @@ function finishResponse(
 }
 
 function endText(state: MapperState, messageId: string): MapperStep {
-  if (!state.textStarted) {
+  if (state.textEnded) return { state, events: [] };
+  const answer = answerAnnotations(state, messageId);
+  if (!state.textStarted && !answer) {
     return { state, events: [] };
   }
-
-  const answer = answerAnnotations(state, messageId);
   return {
-    state: { ...state, textStarted: false },
+    state: { ...state, textStarted: false, textEnded: true },
     events: [
+      ...(!state.textStarted
+        ? [
+            {
+              type: EventType.TEXT_MESSAGE_START as const,
+              messageId,
+              role: 'assistant' as const,
+              metadata: {
+                openai: {
+                  itemId: state.firstMessageItemId,
+                  reasoningItemIds: [...state.reasoningItemIds],
+                },
+              },
+            },
+          ]
+        : []),
       {
         type: EventType.TEXT_MESSAGE_END,
         messageId,
@@ -674,25 +774,59 @@ function mapEvent(
   event: StreamEvent,
 ): MapperStep {
   const code = mapCodeExecution(state.codeCalls, event, messageId);
+  const terminal =
+    event.type === 'response.completed' ||
+    event.type === 'response.incomplete' ||
+    event.type === 'response.failed';
+  const messages = terminal
+    ? (event.response.output ?? []).filter((item) => item.type === 'message')
+    : event.type === 'response.output_item.done' &&
+        event.item.type === 'message'
+      ? [event.item]
+      : [];
+  const enrichment: AGUIEvent[] = [];
+  for (const item of messages) {
+    const mapped = mapMessageDone(state, messageId, item);
+    state = mapped.state;
+    enrichment.push(...mapped.events);
+  }
   if (code) {
-    const next = { ...state, codeCalls: code.calls };
+    const sourceIndex = code.events.reduce((index, event) => {
+      if (event.type !== EventType.TOOL_CALL_RESULT) return index;
+      const metadata = event.metadata as Record<string, ɵToolStep> | undefined;
+      return (metadata?.[ɵTOOL_STEP_METADATA_KEY]?.sources ?? []).reduce(
+        (all, source) =>
+          source.href
+            ? urlKeys(source.href).reduce(
+                (keys, key) =>
+                  keys.has(key) ? keys : withEntry(keys, key, source.id),
+                all,
+              )
+            : all,
+        index,
+      );
+    }, state.sourceIndex);
+    const next = { ...state, codeCalls: code.calls, sourceIndex };
     if (
       event.type === 'response.completed' ||
-      event.type === 'response.incomplete'
+      event.type === 'response.incomplete' ||
+      event.type === 'response.failed'
     ) {
       const finished = finishResponse(next, messageId, event.response);
       return {
         state: finished.state,
-        events: [...code.events, ...finished.events],
+        events: [...code.events, ...enrichment, ...finished.events],
       };
     }
-    return { state: next, events: code.events };
+    return { state: next, events: [...code.events, ...enrichment] };
   }
   switch (event.type) {
     case 'response.output_item.added':
       return mapItemAdded(state, messageId, event.item);
-    case 'response.output_item.done':
-      return mapItemDone(state, event.item);
+    case 'response.output_item.done': {
+      const done = mapItemDone(state, event.item);
+      return { state: done.state, events: [...enrichment, ...done.events] };
+    }
     case 'response.reasoning_summary_text.delta':
       return mapSummaryDelta(state, event);
     case 'response.output_text.delta':
@@ -736,8 +870,13 @@ function mapEvent(
       };
     }
     case 'response.completed':
-    case 'response.incomplete':
-      return finishResponse(state, messageId, event.response);
+    case 'response.incomplete': {
+      const finished = finishResponse(state, messageId, event.response);
+      return {
+        state: finished.state,
+        events: [...enrichment, ...finished.events],
+      };
+    }
     case 'response.failed':
       throw new Error(
         event.response.error?.message ?? 'OpenAI response failed',

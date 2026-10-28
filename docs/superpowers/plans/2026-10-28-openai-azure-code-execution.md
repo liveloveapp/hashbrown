@@ -62,23 +62,23 @@ Files: existing `packages/{openai,azure}/src/stream/*-events.ts`, `*-input.ts`
 and their specs. Add small provider-local annotation helpers if necessary to
 keep normalization separate from event orchestration.
 
-- [ ] Test first: streamed/final-only file and container-file annotations;
+- [x] Test first: streamed/final-only file and container-file annotations;
   repeated delivery vs distinct occurrences; annotation before text; mixed URL
   and file citations; same filename/different IDs or containers; multipart span
   offsets; invalid/missing spans; file-list index not a character span; native
   final-text suffix without duplicate output; no fabricated href/call ownership.
   Cover astral-text and interleaved-part ambiguity by retaining file references
   while omitting unprovable global spans, without changing existing URL behavior.
-- [ ] Establish RED, then implement owned native annotation occurrence tracking,
+- [x] Establish RED, then implement owned native annotation occurrence tracking,
   stable source identity, validated offsets and final native-message enrichment.
   Keep URL matching/UTM behavior covered. Native image output URLs may be call
   sources; container-file annotations remain answer sources.
-- [ ] Test provider omission with missing/malformed/unknown step metadata using
+- [x] Test provider omission with missing/malformed/unknown step metadata using
   the native `itemType:'code_interpreter_call'` marker, while same-name ordinary
   app calls/results and replayable reasoning retain existing behavior.
-- [ ] Establish RED and extend provider recognition. Do not add a response-history
+- [x] Establish RED and extend provider recognition. Do not add a response-history
   footer, storage API, file-search option, or change `store:false`.
-- [ ] Focused GREEN, build/lint; independent spec then quality review; parent
+- [x] Focused GREEN, build/lint; independent spec then quality review; parent
   commits. Report any spec conflict instead of weakening a contract assertion.
 
 ## Task 4: Real store, HTTP seam, docs and delivery
@@ -130,3 +130,8 @@ Task 2: spec and quality review approved after test-first corrections for
 nonterminal argument finality, stable settlement time and JSON-value result
 deduplication. Full OpenAI 118 tests / 7 suites, Azure 108 / 6 passed; both
 builds and lints passed. Sources/results retain native values and array order.
+
+Task 3: independent spec and quality review approved. Full OpenAI 144 tests,
+Azure 134 tests passed; both builds and lints passed. Test-first follow-ups
+covered SDK annotation ownership, malformed URL titles, empty annotated answers
+and repeated terminal frames, as well as file identity and conservative spans.
