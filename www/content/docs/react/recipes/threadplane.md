@@ -7,16 +7,18 @@ meta:
 
 # Chat with Threadplane
 
-Let's keep our Hashbrown conversation and give it a Threadplane message list and composer. Hashbrown will send the request and receive the response. Threadplane will display the text and give us Send and Stop controls.
-
-We'll build a text conversation. If you already have a custom Hashbrown chat screen, use the [migration checklist](/docs/react/migrations/threadplane) to decide which parts to replace.
-
-<hb-docs-demo demo="threadplane-react">
+<hb-docs-demo demo="canonical-workbench-threadplane-react">
 </hb-docs-demo>
 
-<img src="/video/docs/threadplane-react-result.png" alt="The React Threadplane conversation shows a shipping question, its reply, and a follow-up about delivery estimates." width="920" height="552" loading="lazy" />
+Let's give our plan a chat screen. We'll ask for two steps, read the response as it arrives, and make the second step shorter.
 
-This walkthrough uses a separately installed React consumer and the actual Hashbrown OpenAI server adapter. Provider-native Responses events are scripted over local HTTP; there is no live model call or provider key. Presentation styles, header, and footer are added for the recording. The React footage uses its own components and input controls.
+Hashbrown owns the React conversation. Threadplane gives us the transcript, composer, and Send and Stop controls. If you're replacing an existing screen, start with the [migration checklist](/docs/react/migrations/threadplane).
+
+<img src="/video/docs/canonical-workbench-threadplane-react-result.png" alt="The React Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
+
+The recording uses the actual separately installed React consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
+
+This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
 
 ## Before we start
 
@@ -82,7 +84,7 @@ import { ChatInput, TextTranscript } from '@threadplane/react/chat';
 export function ThreadplaneChat() {
   const chat = useChat({
     system:
-      'Help with general product questions. Ask when a detail is missing.',
+      'Help a developer discuss a two-step plan for a trusted UI demo. Keep replies short.',
     debugName: 'threadplane-chat',
   });
   const busy =
@@ -96,7 +98,7 @@ export function ThreadplaneChat() {
 
   return (
     <main className="tp-chat">
-      <h1>Ask a product question</h1>
+      <h1>A plan, built together</h1>
       <TextTranscript messages={rows} label="Conversation" />
       {chat.error && (
         <p role="alert">
@@ -105,7 +107,7 @@ export function ThreadplaneChat() {
       )}
       <ChatInput
         label="Your message"
-        defaultValue="Where can I find shipping information?"
+        defaultValue="Create a two-step plan for a trusted UI demo."
         busy={busy}
         onSubmit={(text) => {
           if (busy || !text.trim()) return false;
@@ -168,11 +170,17 @@ No Threadplane server or extra browser endpoint is needed.
 
 ## Send, stop, and try again
 
-Select **Send**. You should see your message followed by a streaming assistant reply. Then send **Does that include delivery estimates?** The same `useChat` instance sends the first question and completed assistant reply with that follow-up. Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer.
+Send **Create a two-step plan for a trusted UI demo.** You should see your message followed by a streaming assistant reply. Then send **Make the second step shorter. Keep the title and first step exactly the same.** The same `useChat` instance sends the first question and completed assistant reply with that follow-up. Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer.
 
 Select **Stop** during a response to cancel the active request. With the tested Hashbrown **0.8.0** client, the unfinished assistant reply is removed; completed turns stay in the conversation. If a request fails, the page displays an error; restore the connection and explicitly send again. There is no automatic message on page load or automatic retry in this component.
 
-The scripted walkthrough answers “Shipping information is on the Shipping page in Help,” then confirms that it includes delivery estimates and tracking information. A live model's wording and content depend on the instructions and product information your server supplies. The recording demonstrates the installed UI and request path, not a model's knowledge of your product.
+Follow the two turns in the workbench. **Text** shows the response as it arrives. **Requests** shows the actual `/api/chat` envelope, response, and decoded events. Inspect the second request: it includes the first user message, the completed assistant reply, and the follow-up.
+
+Select **UI** to see which components display the conversation and which runtime owns it. Select **State**: the application revision stays at zero. Explaining a plan doesn't accept it. Use the bottom timeline to revisit a turn; the live composer is hidden while replay is selected. Return to live to continue.
+
+The server instructions ask for a short title, two numbered steps, and a follow-up that preserves the title and first step. The recording checks that the second step is shorter. Your model's wording can vary; inspect the actual response before relying on its content.
+
+The workbench shell is an optional teaching layer around the installed consumer. The component and mounting code above work without it. Its [capture and playback source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-threadplane.ts) observes the actual response bytes; it doesn't supply replies. The [checked server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/threadplane-consumers/server/threadplane-app.ts) pins this lesson's plan instructions after request mapping.
 
 The server still owns authentication, authorization, provider credentials, and model selection. The browser `system` option supplies model instructions; it isn't an access-control boundary. Use the [public endpoint pattern](/docs/react/recipes/public-endpoint) for an application that accesses customer data, and [server request customization](/docs/react/concept/transform-request-options) for trusted instructions and context.
 

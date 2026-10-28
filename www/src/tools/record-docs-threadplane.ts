@@ -26,6 +26,7 @@ import {
 type Sdk = 'react' | 'angular';
 const selected = selectThreadplaneModes(process.env['DOCS_DEMO_MODES']);
 const record = process.env['DOCS_SKIP_RECORDING'] !== '1';
+if (record) throw new Error('Fixture footage cannot be published. Use npx nx docs-threadplane-live-demo www for real provider recordings, or DOCS_SKIP_RECORDING=1 to verify installed consumers.');
 const work = resolve('dist/docs-threadplane');
 const assets = resolve('www/public/video/docs');
 const captureWork = resolve(work, 'captures', randomUUID());
@@ -234,7 +235,7 @@ provider.post('/v1/responses', async (req, res) => {
   const index = providerRequests.length;
   providerRequests = [...providerRequests, req.body];
   expect(req.body.store).toBe(false);
-  expect(req.body.instructions).toContain('general product questions');
+  expect(req.body.instructions).toContain('two-step plan');
   res.once('close', () => {
     if (!res.writableEnded) abortedProviders += 1;
   });
@@ -381,7 +382,7 @@ async function open(page: Page, sdk: Sdk) {
   const before = rawRequests.length;
   await page.goto(origins[sdk]);
   await page
-    .getByRole('heading', { name: 'Ask a product question', exact: true })
+    .getByRole('heading', { name: 'A plan, built together', exact: true })
     .waitFor();
   await expect(composer(page, sdk)).toBeVisible();
   await page.waitForTimeout(300);

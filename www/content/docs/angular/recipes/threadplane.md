@@ -7,16 +7,18 @@ meta:
 
 # Chat with Threadplane
 
-Let's use Threadplane for the chat screen and keep Hashbrown on the server. Threadplane's AG-UI adapter will send the conversation to our existing `/api/chat` endpoint and render the streamed response through `<chat>`.
-
-We'll start with text messages. If you're replacing an existing `chatResource` screen, follow the [migration checklist](/docs/angular/migrations/threadplane) before removing its tools or saved history.
-
-<hb-docs-demo demo="threadplane-angular">
+<hb-docs-demo demo="canonical-workbench-threadplane-angular">
 </hb-docs-demo>
 
-<img src="/video/docs/threadplane-angular-result.png" alt="The Angular Threadplane conversation shows a shipping question, its reply, and a follow-up about delivery estimates." width="920" height="626" loading="lazy" />
+Let's give our plan a chat screen. We'll ask for two steps, read the response as it arrives, and make the second step shorter.
 
-This walkthrough uses a separately installed Angular consumer and the actual Hashbrown OpenAI server adapter. Provider-native Responses events are scripted over local HTTP; there is no live model call or provider key. Presentation styles, header, and footer are added for the recording. The Angular footage uses its own components and input controls.
+Threadplane owns the Angular chat screen and its AG-UI frontend runtime. Hashbrown streams the response from our server. If you're replacing a `chatResource` screen, start with the [migration checklist](/docs/angular/migrations/threadplane).
+
+<img src="/video/docs/canonical-workbench-threadplane-angular-result.png" alt="The Angular Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
+
+The recording uses the actual separately installed Angular consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
+
+This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
 
 ## Before we start
 
@@ -67,7 +69,7 @@ import { ChatComponent } from '@threadplane/chat';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main>
-      <h1>Ask a product question</h1>
+      <h1>A plan, built together</h1>
       <chat [agent]="agent" />
     </main>
   `,
@@ -128,7 +130,7 @@ This standalone screen doesn't need `provideHashbrown`; retain that provider if 
 
 ## Try the conversation
 
-Type **Where can I find shipping information?** and select **Send message**. You should see the question and a streaming assistant reply. Then send **Does that include delivery estimates?** The adapter sends the earlier conversation with this follow-up to the same endpoint.
+Type **Create a two-step plan for a trusted UI demo.** and select **Send message**. You should see the question and a streaming assistant reply. Then send **Make the second step shorter. Keep the title and first step exactly the same.** The adapter sends the earlier conversation with this follow-up to the same endpoint.
 
 Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer. The welcome composer becomes the conversation's composer after the first message.
 
@@ -136,7 +138,13 @@ Select **Stop generating** during a response to cancel the active request. Text 
 
 No request is required to display an empty chat. A failed run is displayed through the adapter's error state. Check the frontend proxy, server process, and provider configuration before sending another message.
 
-The scripted walkthrough answers “Shipping information is on the Shipping page in Help,” then confirms that it includes delivery estimates and tracking information. A live model's wording and content depend on the instructions and product information your server supplies. The recording demonstrates the installed UI and request path, not a model's knowledge of your product.
+Follow the two turns in the workbench. **Text** shows the response as it arrives. **Requests** shows the actual `/api/chat` envelope, response, and decoded events. Inspect the second request: it includes the first user message, the completed assistant reply, and the follow-up.
+
+Select **UI** to see which components display the conversation and which runtime owns it. Select **State**: the application revision stays at zero. Explaining a plan doesn't accept it. Use the bottom timeline to revisit a turn; the live composer is hidden while replay is selected. Return to live to continue.
+
+The server instructions ask for a short title, two numbered steps, and a follow-up that preserves the title and first step. The recording checks that the second step is shorter. Your model's wording can vary; inspect the actual response before relying on its content.
+
+The workbench shell is an optional teaching layer around the installed consumer. The component and mounting code above work without it. Its [capture and playback source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-threadplane.ts) observes the actual response bytes; it doesn't supply replies. The [checked server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/threadplane-consumers/server/threadplane-app.ts) pins this lesson's plan instructions after request mapping.
 
 ## Keep policy on the server
 

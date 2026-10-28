@@ -80,7 +80,7 @@ async function fixture() {
   };
 }
 
-test('installed-consumer endpoint pins generic server instructions and preserves completed conversation history', async () => {
+test('installed-consumer endpoint pins canonical plan instructions and preserves completed conversation history', async () => {
   const f = await fixture();
   const body = {
     ...input,
@@ -111,7 +111,7 @@ test('installed-consumer endpoint pins generic server instructions and preserves
     expect(f.bodies[0]).toMatchObject({
       model: 'gpt-5-mini',
       store: false,
-      instructions: expect.stringContaining('general product questions'),
+      instructions: expect.stringContaining('two-step plan'),
     });
     expect(JSON.stringify(f.bodies)).not.toContain('ATTACK');
     expect(f.bodies[0].input).toEqual([

@@ -11,7 +11,7 @@ We can replace the transcript and composer in a Hashbrown chat screen while keep
 
 The [Threadplane recipe](/docs/react/recipes/threadplane) contains the complete component, mounting code, and local source-package setup. At the referenced revision, the React components are private source packages; follow those build and local-install steps rather than assuming an npm registry package exists.
 
-The recipe opens with the separate **`threadplane-react`** walkthrough: install the React dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
+The recipe opens with the separate **`canonical-workbench-threadplane-react`** walkthrough: install the React dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
 
 ## 1. Keep the conversation owner
 

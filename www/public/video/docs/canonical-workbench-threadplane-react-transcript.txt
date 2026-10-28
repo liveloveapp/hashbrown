@@ -1,0 +1,19 @@
+REACT · Threadplane
+
+Actual separately installed Threadplane react presentation with the real Hashbrown OpenAI server adapter and real provider output. Hashbrown useChat owns execution; TextTranscript and ChatInput present text. The optional canonical shell observes actual requests and decoded protocol events without rewriting response bytes. Actual-speed footage with reading pauses; no narration, fixture answers or invented tokens. No structured plan or generated component is claimed.
+
+Threadplane shows the real streaming reply.
+
+The first turn stays in this conversation.
+
+A follow-up shortens the second step.
+
+Inspect actual requests and protocol JSON.
+
+The application plan remains unchanged.
+
+Replay uses captured text. No requests.
+
+Back live. State is unchanged.
+
+Application state remains at revision zero. Replay uses captured text and makes no requests or writes. Refresh clears these local captures.
