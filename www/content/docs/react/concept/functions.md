@@ -27,17 +27,17 @@ The recording uses this checked React client with real provider requests. The lo
 <hb-code-example header="react/src/Workbench.tsx">
 
 ```ts
-  const readContext = useTool({
-    name: 'readContext',
-    description:
-      'Read the current accepted plan and application revision. This tool never changes state.',
-    handler: async () => {
-      const result = store.getSnapshot().application;
-      store.record('tool', { name: 'readContext', result });
-      return result;
-    },
-    deps: [store],
-  });
+const readContext = useTool({
+  name: 'readContext',
+  description:
+    'Read the current accepted plan and application revision. This tool never changes state.',
+  handler: async () => {
+    const result = store.getSnapshot().application;
+    store.record('tool', { name: 'readContext', result });
+    return result;
+  },
+  deps: [store],
+});
 ```
 
 </hb-code-example>
@@ -187,6 +187,57 @@ records into the matching `serverToolCalls` entry, so any server that emits
 appear automatically, with no client code to add. Servers that do not emit it
 keep working: the fields are simply absent.
 
+### Display Tool Steps
+
+`getServerToolCallLabel` and `groupServerToolCalls` provide pure display data.
+They render no components and preserve original calls and sources. Application
+callbacks override producer labels; missing or invalid wording falls back to a
+bounded lifecycle label without exposing arguments or results.
+
+```ts
+import {
+  getServerToolCallLabel,
+  groupServerToolCalls,
+  type ServerToolCallLabelOverrides,
+  type UiAssistantMessage,
+} from '@hashbrownai/react';
+
+const labels: ServerToolCallLabelOverrides = {
+  lookup: {
+    label: (call) =>
+      call.status === 'complete' ? undefined : 'Checking context…',
+    group: (calls) => `Checked context ${calls.length} times`,
+  },
+};
+
+function stepRows(answer: UiAssistantMessage<never>) {
+  return groupServerToolCalls(answer.serverToolCalls ?? [], {
+    labels,
+    exclude: ['task', 'writeTodos'],
+  }).map((row) => ({
+    item: row,
+    label:
+      row.kind === 'group' ? row.label : getServerToolCallLabel(row, labels),
+  }));
+}
+```
+
+Only adjacent successful, complete calls with matching name, kind, built-in,
+provider identity, and parent call can group. Open, failed, denied, cancelled,
+or excluded calls remain individual rows and break groups. The exclusions above
+are application policy: no tool names are hardcoded by the helper. Groups keep
+all original calls, and collect sources by ID with the first occurrence winning.
+
+`formatDuration`, `noFlashRemaining`, `NO_FLASH_MS` (300 ms), and
+`ELAPSED_TICK_MS` (one second) are also available from
+`@hashbrownai/react`. These are optional caller presentation policy.
+`noFlashRemaining(startedAt, now)` computes a remaining delay; it never reads a
+clock, starts a timer, hides a row, or discards calls. Both timestamps must use
+the same clock. Skip the delay for restored history or unknown timing. If your
+application refreshes elapsed labels, it owns the clock and scheduling; the
+one-second constant does not install a timer. `formatDuration(undefined)` leaves
+unknown duration unknown. See [turn summaries](/docs/react/concept/activities#derive-a-work-summary) for explicit turn-clock options.
+
 ### Citations
 
 When the answer cites its sources, the assistant message carries `citations`.
@@ -196,6 +247,34 @@ citation may carry `block` and, only when the provider gives true offsets,
 `start` and `end`. Some providers also require an `attribution` to be shown
 with the answer; each one has `mustRender: true`, so show it unmodified. Show
 citations clearly and make them clickable.
+
+Collect turn sources separately from required provider attribution:
+
+```ts
+import {
+  groupTurns,
+  collectTurnSources,
+  collectTurnAttributions,
+  type UiChatMessage,
+} from '@hashbrownai/react';
+
+function answerAnnotations(messages: readonly UiChatMessage<never>[]) {
+  return groupTurns(messages).map((turn) => ({
+    sources: collectTurnSources(turn),
+    attributions: collectTurnAttributions(turn),
+  }));
+}
+```
+
+`collectTurnSources` walks assistants in order, visiting each answer's own
+sources before its server-call sources. It deduplicates by ID and preserves the
+first original source object. `collectTurnAttributions` keeps separate records
+for every attribution, including duplicates, with the owning
+`assistantMessageId`. Render each required attribution beside that answer,
+unmodified, at full width, without link tracking. Preserve provider HTML and
+widget tokens verbatim. Use trusted provider/backend data and the provider's
+supported rendering integration; the collector does not sanitize, interpret,
+or authorize markup. A deduplicated source list does not replace attribution.
 
 Because `args` resolve progressively, a component can paint from a server
 call before it finishes, the way it does for streaming text.

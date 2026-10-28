@@ -65,6 +65,12 @@ export function pinWorkbenchInput(
   lesson: WorkbenchLessonId = 'generative-ui',
 ): RunAgentInput {
   if (
+    workbenchLessons.find((entry) => entry.id === lesson)?.protocol === 'local'
+  )
+    throw new Error(
+      'Browser-local inference does not use a hosted provider endpoint',
+    );
+  if (
     workbenchLessons.find((entry) => entry.id === lesson)?.protocol ===
     'runtime'
   )

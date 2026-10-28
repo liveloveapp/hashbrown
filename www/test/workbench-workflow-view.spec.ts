@@ -28,7 +28,7 @@ test('activity and approval lessons focus their actual SDK inspector with applic
     expect(host.querySelector('.wb-pair [data-detail]')).not.toBeNull();
     expect(host.querySelector('[role=separator]')).not.toBeNull();
     expect(host.querySelector('.wb-player')).not.toBeNull();
-    expect(host.querySelectorAll('.wb-nav a')).toHaveLength(27);
+    expect(host.querySelectorAll('.wb-nav a')).toHaveLength(28);
     expect(
       host.querySelector(`[data-section=concepts] a[href$="lesson=${id}"]`),
     ).not.toBeNull();

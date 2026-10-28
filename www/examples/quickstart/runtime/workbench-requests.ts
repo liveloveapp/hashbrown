@@ -309,8 +309,12 @@ export function workbenchExchanges(
             ? 'cancelled'
             : 'pending',
       ...(httpStatus === undefined ? {} : { httpStatus }),
-      method: 'POST',
-      ...(path === undefined ? {} : { path }),
+      method: draft.request?.['url'] === 'native:chrome' ? 'LOCAL' : 'POST',
+      ...(draft.request?.['url'] === 'native:chrome'
+        ? { path: 'Chrome Prompt API' }
+        : path === undefined
+          ? {}
+          : { path }),
       pathConfigured:
         capturedPath === undefined && configuredPath !== undefined,
       request: draft.request,

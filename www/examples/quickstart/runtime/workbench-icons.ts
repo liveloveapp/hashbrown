@@ -156,6 +156,7 @@ export const workbenchLessonIcons: Readonly<
 > = {
   'ui-kits': 'layout',
   'javascript-runtime': 'file-code',
+  'local-models': 'braces',
   'ui-chatbot': 'messages',
   'generative-ui': 'layout',
   tools: 'wrench',

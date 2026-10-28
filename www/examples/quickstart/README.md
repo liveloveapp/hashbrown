@@ -179,7 +179,7 @@ Run sequentially with other recorders that share compiled output.
 
 ## Canonical workbench lessons
 
-The workbench now has twenty-seven allowlisted lessons in both framework hosts:
+The workbench now has twenty-eight allowlisted lessons in both framework hosts:
 
 - `?lesson=generative-ui`: real UI-chat, trusted SummaryCard, streamed props.
 - `?lesson=tools`: the same conversation, initially focused on requests and readContext.
@@ -273,7 +273,7 @@ completion events may be paced only for filming; TypeSafe decisions arrive whole
 Replay reads immutable frames, never repeats a request or action, and disables
 handlers while rendering the captured Markdown or trusted view registry.
 
-All twenty-seven lessons (54 framework paths) are covered by `npx nx workbench-e2e www`.
+All twenty-eight lessons (56 framework paths) are covered by `npx nx workbench-e2e www`.
 The optional selected-lesson filter is also available for local verification.
 
 
@@ -383,3 +383,20 @@ The two `canonical-workbench-javascript-runtime-{react,angular}` recordings use
 actual execution, both codecs, measured captions, poster/result and transcripts.
 Record with `WORKBENCH_LESSONS=javascript-runtime npx nx workbench-demo www`.
 Legacy basket sources and media remain for old links and independent checks.
+
+## Canonical local models
+
+`?lesson=local-models` prepares a browser-native model explicitly, then runs real
+framework structured chat over `experimental_chrome`. Requests shows LOCAL
+Chrome Prompt API, actual envelopes/events and native metadata; it does not
+fabricate HTTP status. Original JSON, successful current stream completion and
+explicit acceptance guard each application revision. Replay prepares nothing,
+opens no native sessions, prompts nothing and writes no application state.
+
+`canonical-workbench-local-models-{react,angular}` contains separate actual native
+recordings with both codecs, measured captions, posters/results and transcripts.
+Unlike the hosted recordings, footage runs at actual speed with reading pauses.
+The existing dedicated test profile uses requested v4 configuration and must
+already report available; recording starts no model download and no hosted call.
+`WORKBENCH_LESSONS=local-models npx nx workbench-demo www` records locally only.
+CI uses clearly labelled native API fixtures. Legacy trip examples remain.

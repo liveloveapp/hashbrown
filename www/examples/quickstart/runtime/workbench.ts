@@ -1,4 +1,8 @@
 import {
+  normalizeWorkbenchLocalModelObservation,
+  type WorkbenchLocalModelObservation,
+} from './workbench-local-models';
+import {
   normalizeWorkbenchJavaScriptObservation,
   type WorkbenchJavaScriptObservation,
 } from './workbench-javascript';
@@ -98,9 +102,11 @@ export type WorkbenchEventKind =
   | 'resume'
   | 'history'
   | 'history-app'
-  | 'javascript';
+  | 'javascript'
+  | 'local-model';
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
+  readonly localModel?: WorkbenchLocalModelObservation;
   readonly uiComponent?: WorkbenchUiComponent;
   readonly uiKit?: WorkbenchUiKitObservation;
   readonly history?: WorkbenchHistoryFrame;
@@ -148,6 +154,10 @@ export interface WorkbenchSnapshot {
 }
 /** The shared recording boundary used by the two real SDK clients. */
 export interface WorkbenchStore {
+  /** Starts a distinct live preparation origin without generating a user turn. */
+  beginLocalPreparation(operationId: string): boolean;
+  /** Captures only fresh preparation observations; replay and superseded origins are inert. */
+  recordLocalPreparation(observation: unknown): boolean;
   /** Captures safe metadata from the actual normalized SDK kit, deduplicated across renders. */
   recordUiKit(input: WorkbenchUiKitInput): boolean;
   /** Captures actual parser values against the current SDK assistant identity. */
@@ -386,6 +396,7 @@ export function createWorkbenchStore(
     | 'workflow'
     | 'history' = 'ui',
   options: {
+    readonly localModel?: boolean;
     readonly authoringMode?: 'parser' | 'form';
     readonly uiLesson?: WorkbenchUiLesson;
   } = {},
@@ -410,6 +421,10 @@ export function createWorkbenchStore(
         : { revision: 0, plan: null },
     );
   let application = initialApplication();
+  let localModel: WorkbenchLocalModelObservation | undefined;
+  let localPreparationId: string | null = null;
+  let localSource = false;
+  let localClockStarted = false;
   let uiKit: WorkbenchUiKitObservation | undefined;
   let uiComponent: WorkbenchUiComponent | undefined;
   let uiRevision = -1;
@@ -461,6 +476,7 @@ export function createWorkbenchStore(
     if (
       (turn === 0 &&
         kind !== 'kit' &&
+        kind !== 'local-model' &&
         kind !== 'workflow' &&
         kind !== 'history' &&
         kind !== 'history-app' &&
@@ -478,6 +494,7 @@ export function createWorkbenchStore(
       return;
     }
     const raw = object(payload);
+    if (kind === 'source') localSource = raw?.['source'] === 'local-model';
     if ((format === 'decision' || format === 'selection') && kind === 'event')
       json = JSON.stringify(payload, null, 2);
     if (kind === 'request') {
@@ -531,6 +548,7 @@ export function createWorkbenchStore(
     }
     const frame: WorkbenchFrame = freeze(
       copy({
+        ...(localModel ? { localModel } : {}),
         ...(uiKit ? { uiKit } : {}),
         ...(uiComponent ? { uiComponent } : {}),
         sequence: events.length + 1,
@@ -538,20 +556,22 @@ export function createWorkbenchStore(
         kind,
         payload,
         source:
-          kind === 'javascript'
-            ? 'JavaScript runtime observation'
-            : kind === 'kit'
-              ? 'Kit configuration'
-              : kind === 'parsed'
-                ? 'SDK parsed output'
-                : kind === 'history'
-                  ? 'SDK history observation'
-                  : kind === 'workflow' ||
-                      (kind === 'pause' && raw && 'isLoading' in raw)
-                    ? 'SDK workflow observation'
-                    : kind === 'event' || kind === 'request'
-                      ? 'Browser transport'
-                      : 'Application',
+          kind === 'local-model'
+            ? 'Native model preparation'
+            : kind === 'javascript'
+              ? 'JavaScript runtime observation'
+              : kind === 'kit'
+                ? 'Kit configuration'
+                : kind === 'parsed'
+                  ? 'SDK parsed output'
+                  : kind === 'history'
+                    ? 'SDK history observation'
+                    : kind === 'workflow' ||
+                        (kind === 'pause' && raw && 'isLoading' in raw)
+                      ? 'SDK workflow observation'
+                      : kind === 'event' || kind === 'request'
+                        ? 'Browser transport'
+                        : 'Application',
         elapsedMs:
           kind === 'kit' && turn === 0
             ? 0
@@ -956,6 +976,42 @@ export function createWorkbenchStore(
       record('javascript', javascript);
       return true;
     },
+    beginLocalPreparation(operationId) {
+      const next = normalizeWorkbenchLocalModelObservation({
+        operationId,
+        state: 'preparing',
+      });
+      if (
+        !next ||
+        cursor !== null ||
+        status === 'loading' ||
+        status === 'paused'
+      )
+        return false;
+      if (turn === 0 && !localClockStarted) {
+        started = performance.now();
+        localClockStarted = true;
+      }
+      localPreparationId = operationId;
+      localModel = next;
+      record('local-model', next);
+      return true;
+    },
+    recordLocalPreparation(observation) {
+      const next = normalizeWorkbenchLocalModelObservation(observation);
+      if (
+        !next ||
+        cursor !== null ||
+        !localPreparationId ||
+        next.operationId !== localPreparationId
+      )
+        return false;
+      if (JSON.stringify(next) === JSON.stringify(localModel)) return false;
+      localModel = next;
+      if (next.state !== 'preparing') localPreparationId = null;
+      record('local-model', next);
+      return true;
+    },
     getSnapshot: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);
@@ -980,7 +1036,9 @@ export function createWorkbenchStore(
         throw new Error(
           'Return to live mode and finish the current turn before sending.',
         );
-      if (turn === 0) started = performance.now();
+      localPreparationId = null;
+      localSource = false;
+      if (turn === 0 && !localClockStarted) started = performance.now();
       turn++;
       status = 'loading';
       props = null;
@@ -1285,6 +1343,27 @@ export function createWorkbenchStore(
       return true;
     },
     accept(proposal) {
+      let localOriginal: WorkbenchFrame['props'] = null;
+      if (options.localModel) {
+        try {
+          localOriginal = workbenchStructuredProps(JSON.parse(json));
+        } catch {
+          return false;
+        }
+        if (
+          format !== 'structured' ||
+          localModel?.state !== 'ready' ||
+          !localSource ||
+          uiRevision !== application.revision ||
+          !isWorkbenchPlan(localOriginal) ||
+          localOriginal.title !== props?.title ||
+          localOriginal.steps.length !== props?.steps?.length ||
+          localOriginal.steps.some(
+            (step, index) => step !== props?.steps?.[index],
+          )
+        )
+          return false;
+      }
       const original = options.uiLesson
         ? decodeWorkbenchUiDocument(json, options.uiLesson)
         : null;
@@ -1332,6 +1411,7 @@ export function createWorkbenchStore(
         index >= events.length
       )
         return;
+      localPreparationId = null;
       cursor = index;
       notify();
     },
@@ -1341,6 +1421,10 @@ export function createWorkbenchStore(
     },
     clear() {
       generation++;
+      localPreparationId = null;
+      localModel = undefined;
+      localSource = false;
+      localClockStarted = false;
       history = undefined;
       javascript = undefined;
       authoring = undefined;
