@@ -27,6 +27,7 @@ export function createAzureRequestOptions(
   const resolvedReasoning = resolveReasoning(model, reasoning);
   const responseSchema = input.forwardedProps?.hashbrown?.responseSchema;
   const webSearch = builtInTools?.webSearch;
+  const codeExecution = builtInTools?.codeExecution;
   const functionTools = input.tools.map(
     (tool): OpenAI.Responses.FunctionTool => ({
       type: 'function',
@@ -49,10 +50,21 @@ export function createAzureRequestOptions(
           },
         ]
       : []),
+    ...(codeExecution
+      ? [
+          {
+            type: 'code_interpreter' as const,
+            ...(codeExecution === true
+              ? { container: { type: 'auto' as const } }
+              : structuredClone(codeExecution)),
+          },
+        ]
+      : []),
   ];
   const include: OpenAI.Responses.ResponseIncludable[] = [
     ...(resolvedReasoning ? (['reasoning.encrypted_content'] as const) : []),
     ...(webSearch ? (['web_search_call.action.sources'] as const) : []),
+    ...(codeExecution ? (['code_interpreter_call.outputs'] as const) : []),
   ];
 
   return {

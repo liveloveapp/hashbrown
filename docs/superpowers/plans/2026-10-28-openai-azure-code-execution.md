@@ -20,15 +20,15 @@ store/two-turn conformance. Public chat/core shapes already cover these fields.
 Files: `packages/{openai,azure}/src/stream/types.ts`, the existing
 `{openai,azure}-request.ts` and corresponding `-request.spec.ts`.
 
-- [ ] Add failing tests for `codeExecution:true`, native explicit/automatic
+- [x] Add failing tests for `codeExecution:true`, native explicit/automatic
   configuration cloning, app-tool + web-search coexistence, reasoning includes,
   structured schema and off behavior. A fresh config cannot mutate frozen input.
-- [ ] Confirm RED using `npx nx test openai --testFile=openai-request.spec.ts
+- [x] Confirm RED using `npx nx test openai --testFile=openai-request.spec.ts
   --runInBand` and the equivalent Azure target. Record logs.
-- [ ] Add the spec's SDK-derived optional type and TSDoc. Append the native
+- [x] Add the spec's SDK-derived optional type and TSDoc. Append the native
   `code_interpreter` tool and `code_interpreter_call.outputs` include; `true`
   resolves to `{container:{type:'auto'}}`. Preserve all existing options.
-- [ ] Run focused tests, package build/lint; independent spec then quality
+- [x] Run focused tests, package build/lint; independent spec then quality
   review, fix findings, and parent commits reviewed files only.
 
 ## Task 2: Provider code-call lifecycle and partial arguments
@@ -119,3 +119,7 @@ OpenAI and Azure unit suites passed before implementation. Logs:
 `/private/tmp/code-execution-{openai,azure}-baseline.log`. No dependency manifests
 were changed. The clean managed checkout was reused on
 `blove/openai-azure-code-execution`, based on current main `c155e8a2`.
+
+Task 1: independent spec and quality review approved. Focused request tests:
+OpenAI 14 passed, Azure 15 passed; both builds and lint passed. RED logs show
+four expected missing-tool failures per provider before implementation.

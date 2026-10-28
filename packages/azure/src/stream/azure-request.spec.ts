@@ -178,3 +178,131 @@ test('no builtInTools leaves the request unchanged', () => {
   expect('tools' in options).toBe(false);
   expect('include' in options).toBe(false);
 });
+
+test('codeExecution enables an automatic container and requests outputs', () => {
+  const input = createInput();
+  const builtInTools = { codeExecution: true as const };
+
+  const options = createAzureRequestOptions(
+    input,
+    'gpt-4.1',
+    undefined,
+    builtInTools,
+  );
+
+  expect(options.tools).toEqual([
+    { type: 'code_interpreter', container: { type: 'auto' } },
+  ]);
+  expect(options.include).toEqual(['code_interpreter_call.outputs']);
+  expect(options.stream).toBe(true);
+  expect(options.store).toBe(false);
+});
+
+test('codeExecution deeply clones frozen automatic container configuration', () => {
+  const fileIds = ['file-1'];
+  const container = {
+    type: 'auto' as const,
+    file_ids: fileIds,
+    memory_limit: '4g' as const,
+  };
+  const allowedCallers: 'direct'[] = ['direct'];
+  const config = { container, allowed_callers: allowedCallers };
+  const builtInTools = { codeExecution: config };
+  const input = createInput();
+  Object.freeze(fileIds);
+  Object.freeze(container);
+  Object.freeze(allowedCallers);
+  Object.freeze(config);
+  Object.freeze(builtInTools);
+  Object.freeze(input);
+
+  const options = createAzureRequestOptions(
+    input,
+    'gpt-4.1',
+    undefined,
+    builtInTools,
+  );
+
+  expect(options.tools).toEqual([{ type: 'code_interpreter', ...config }]);
+  const tool = options.tools?.[0];
+  expect(tool).not.toBe(config);
+  if (tool?.type !== 'code_interpreter' || typeof tool.container === 'string') {
+    throw new Error('Expected an automatic code interpreter container');
+  }
+  expect(tool.container).not.toBe(container);
+  expect(tool.container.file_ids).not.toBe(fileIds);
+  expect(tool.allowed_callers).not.toBe(allowedCallers);
+  tool.container.file_ids?.push('file-2');
+  tool.allowed_callers?.push('direct');
+  expect(fileIds).toEqual(['file-1']);
+  expect(allowedCallers).toEqual(['direct']);
+});
+
+test('codeExecution preserves an explicit native container ID', () => {
+  const config = Object.freeze({ container: 'cntr-retained' });
+  const builtInTools = Object.freeze({
+    codeExecution: config,
+  });
+
+  const options = createAzureRequestOptions(
+    createInput(),
+    'gpt-4.1',
+    undefined,
+    builtInTools,
+  );
+
+  expect(options.tools).toEqual([
+    { type: 'code_interpreter', container: 'cntr-retained' },
+  ]);
+  expect(options.tools?.[0]).not.toBe(config);
+  expect(options.include).toEqual(['code_interpreter_call.outputs']);
+});
+
+test('codeExecution coexists with app tools, web search, reasoning and structured output', () => {
+  const schema = { type: 'object', properties: { answer: { type: 'string' } } };
+  const parameters = { type: 'object', properties: {} };
+  const input = createInput({
+    tools: [{ name: 'code_interpreter', description: 'App tool', parameters }],
+    forwardedProps: { hashbrown: { responseSchema: schema } },
+  });
+
+  const options = createAzureRequestOptions(input, 'gpt-5-mini', undefined, {
+    webSearch: true,
+    codeExecution: true,
+  });
+
+  expect(options.tools).toEqual([
+    {
+      type: 'function',
+      name: 'code_interpreter',
+      description: 'App tool',
+      parameters,
+      strict: true,
+    },
+    { type: 'web_search' },
+    { type: 'code_interpreter', container: { type: 'auto' } },
+  ]);
+  expect(options.include).toEqual([
+    'reasoning.encrypted_content',
+    'web_search_call.action.sources',
+    'code_interpreter_call.outputs',
+  ]);
+  expect(options.reasoning).toEqual({ summary: 'auto' });
+  expect(options.text).toEqual({
+    format: { type: 'json_schema', name: 'schema', schema, strict: true },
+  });
+  expect(
+    options.text?.format?.type === 'json_schema' && options.text.format.schema,
+  ).not.toBe(schema);
+  expect(options.stream).toBe(true);
+  expect(options.store).toBe(false);
+});
+
+test('omitting codeExecution adds no tools or includes', () => {
+  const input = createInput();
+
+  const options = createAzureRequestOptions(input, 'gpt-4.1', undefined, {});
+
+  expect('tools' in options).toBe(false);
+  expect('include' in options).toBe(false);
+});
