@@ -5,6 +5,21 @@ import { createWorkbenchApp } from '../examples/quickstart/server/workbench-app'
 import { createServer } from 'node:http';
 import { EventType } from '@ag-ui/core';
 
+test('direct runtime lessons cannot be submitted to the provider boundary', () => {
+  const input = {
+    threadId: 't',
+    runId: 'r',
+    messages: [{ id: 'u', role: 'user', content: 'Run code' }],
+    tools: [],
+    context: [],
+    state: {},
+  };
+
+  expect(() => pinWorkbenchInput(input, 'javascript-runtime')).toThrow(
+    'runtime',
+  );
+});
+
 test('pins the model instructions, tool catalog and native UI schema on the server', () => {
   const input = {
     threadId: 't',

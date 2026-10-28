@@ -1,0 +1,19 @@
+REACT · JavaScript runtime
+
+Real QuickJS execution through actual Hashbrown framework runtime APIs. Application-owned scripts, actual readPlan host calls and result/error wrappers. No model or provider request; no simulated JSON streaming. Each run creates a fresh context. Footage is slowed to half speed for readability; no narration.
+
+QuickJS reads the plan and calculates 30 minutes. No model request.
+
+Change the estimate to 20 minutes. The plan stays unchanged.
+
+Browser access fails. Host arguments are validated explicitly.
+
+Run again in a fresh context to recover.
+
+Replay follows captured code, host calls and results.
+
+Playback executes no scripts or application writes.
+
+Back live.
+
+The host validates arguments explicitly. Estimates do not modify the plan. The execution deadline interrupts loops but does not roll back host effects or impose a memory limit. Replay executes no scripts, host calls, requests or writes. Refresh clears local captures.

@@ -155,6 +155,7 @@ export const workbenchLessonIcons: Readonly<
   Record<WorkbenchLessonId, WorkbenchIconName>
 > = {
   'ui-kits': 'layout',
+  'javascript-runtime': 'file-code',
   'ui-chatbot': 'messages',
   'generative-ui': 'layout',
   tools: 'wrench',

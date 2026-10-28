@@ -1,3 +1,5 @@
+import { workbenchJavaScriptInspection } from './workbench-javascript-inspection';
+import { workbenchJavaScriptScripts } from './workbench-javascript';
 import { workbenchUiInspection } from './workbench-ui-inspection';
 import { getWorkbenchUiPrompts } from './workbench-ui-kits';
 import { workbenchAuthoringInspection } from './workbench-authoring-view';
@@ -298,6 +300,7 @@ export function workbenchEventLabel(
       request: 'Request',
       tool: 'Tool result',
       kit: 'Kit configured',
+      javascript: 'QuickJS observed',
       parsed: 'Resolved props',
       accept: 'Plan accepted',
       complete: 'Complete',
@@ -376,6 +379,9 @@ export function mountWorkbench(
       ? getWorkbenchUiPrompts(commands.lesson.id)
       : undefined;
   const prompts =
+    (commands.lesson?.id === 'javascript-runtime'
+      ? [workbenchJavaScriptScripts[0].code, workbenchJavaScriptScripts[1].code]
+      : undefined) ??
     uiPrompts ??
     onboardingPrompts ??
     recipePrompts ??
@@ -455,7 +461,15 @@ export function mountWorkbench(
   chat.setAttribute('aria-label', 'Conversation');
   const chatHeader = element('div', '', 'wb-panel-head');
   const status = element('span', 'Ready', 'wb-muted');
-  chatHeader.append(element('h1', 'A plan, built together'), status);
+  chatHeader.append(
+    element(
+      'h1',
+      commands.lesson?.id === 'javascript-runtime'
+        ? 'Calculate from your plan'
+        : 'A plan, built together',
+    ),
+    status,
+  );
   const live = element('div', '', 'wb-feed');
   let following = true;
   live.onscroll = () => {
@@ -487,6 +501,15 @@ export function mountWorkbench(
   });
   actions.append(first, followup, send, stop);
   form.append(label, prompt, actions);
+  if (commands.lesson?.id === 'javascript-runtime') {
+    label.hidden =
+      prompt.hidden =
+      first.hidden =
+      followup.hidden =
+      send.hidden =
+        true;
+    form.classList.add('wb-runtime-bar');
+  }
   form.onsubmit = (event) => {
     event.preventDefault();
     const snapshot = store.getSnapshot();
@@ -576,6 +599,9 @@ export function mountWorkbench(
           : 'Text'
         : 'JSON',
     'Requests',
+    ...(commands.lesson?.id === 'javascript-runtime'
+      ? ['Code', 'Runtime']
+      : []),
     ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
       ? ['Kit', 'Schema']
       : []),
@@ -840,17 +866,19 @@ export function mountWorkbench(
         ? payload.source
         : undefined;
     provenance.textContent =
-      commands.lesson?.id === 'agent-decisions' &&
-      frame?.history?.agent?.fallback === 'unavailable' &&
-      source === 'provider'
-        ? 'Classifier unavailable'
-        : source === 'demo-failure'
-          ? 'Local demo failure'
-          : source === 'test-fixture'
-            ? 'Test fixture'
-            : source === 'provider'
-              ? 'Live model'
-              : 'Awaiting source';
+      commands.lesson?.id === 'javascript-runtime'
+        ? 'Real QuickJS · no model'
+        : commands.lesson?.id === 'agent-decisions' &&
+            frame?.history?.agent?.fallback === 'unavailable' &&
+            source === 'provider'
+          ? 'Classifier unavailable'
+          : source === 'demo-failure'
+            ? 'Local demo failure'
+            : source === 'test-fixture'
+              ? 'Test fixture'
+              : source === 'provider'
+                ? 'Live model'
+                : 'Awaiting source';
     const historical = snapshot.cursor !== null;
     const busy =
       snapshot.status === 'loading' ||
@@ -1133,6 +1161,7 @@ export function mountWorkbench(
         : undefined;
     const uiView = workbenchUiInspection(tab, snapshot, commands.lesson?.id);
     const recipeView =
+      workbenchJavaScriptInspection(tab, snapshot, commands.lesson?.id) ??
       uiView ??
       workbenchAuthoringInspection(tab, snapshot, commands.lesson?.id) ??
       workbenchServerInspection(tab, history?.app.server) ??
@@ -1404,13 +1433,15 @@ export function mountWorkbench(
       element(
         'span',
         frame
-          ? uiView
-            ? tab === 'UI'
-              ? 'SDK component observations and application-owned state.'
-              : 'Framework kit configuration and checked application policy.'
-            : workflowView
-              ? 'Captured SDK observations and separately recorded application form drafts.'
-              : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
+          ? commands.lesson?.id === 'javascript-runtime'
+            ? 'Captured native QuickJS values and application-owned state.'
+            : uiView
+              ? tab === 'UI'
+                ? 'SDK component observations and application-owned state.'
+                : 'Framework kit configuration and checked application policy.'
+              : workflowView
+                ? 'Captured SDK observations and separately recorded application form drafts.'
+                : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
           : 'Waiting for captured data.',
         'wb-section-sub',
       ),

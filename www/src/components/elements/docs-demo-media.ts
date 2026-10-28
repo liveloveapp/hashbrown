@@ -1,5 +1,22 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-javascript-runtime-react': {
+    title: 'React workbench: JavaScript runtime.',
+    caption:
+      'Run visible JavaScript against the plan, inspect actual host calls and recover from errors.',
+    recording:
+      'Recorded with actual Hashbrown React runtime APIs and genuine QuickJS execution. The scripts are application-owned; there is no model or provider request and no simulated JSON streaming. Each run uses a fresh context. The host validates arguments explicitly. Estimates leave the plan unchanged. Footage is slowed to half speed for readability. Replay executes no scripts, host functions, requests or application writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-javascript-runtime-angular': {
+    title: 'Angular workbench: JavaScript runtime.',
+    caption:
+      'Run visible JavaScript against the plan, inspect actual host calls and recover from errors.',
+    recording:
+      'Recorded with actual Hashbrown Angular runtime APIs and genuine QuickJS execution. The scripts are application-owned; there is no model or provider request and no simulated JSON streaming. Each run uses a fresh context. The host validates arguments explicitly. Estimates leave the plan unchanged. Footage is slowed to half speed for readability. Replay executes no scripts, host functions, requests or application writes. No narration.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+
   'canonical-workbench-ui-kits-react': {
     title: 'React workbench: UI Kits.',
     caption:

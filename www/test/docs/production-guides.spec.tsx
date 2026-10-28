@@ -35,10 +35,7 @@ test.each(SDKS)(
   '%s production guides begin with the behavior they demonstrate',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo:
-        demo === 'javascript-runtime'
-          ? demo
-          : `canonical-workbench-${demo}-${sdk}`,
+      demo: `canonical-workbench-${demo}-${sdk}`,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
