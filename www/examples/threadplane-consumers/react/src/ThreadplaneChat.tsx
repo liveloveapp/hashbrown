@@ -5,7 +5,7 @@ import { ChatInput, TextTranscript } from '@threadplane/react/chat';
 export function ThreadplaneChat() {
   const chat = useChat({
     system:
-      'Help with general product questions. Ask when a detail is missing.',
+      'Help a developer discuss a two-step plan for a trusted UI demo. Keep replies short.',
     debugName: 'threadplane-chat',
   });
   const busy =
@@ -19,7 +19,7 @@ export function ThreadplaneChat() {
 
   return (
     <main className="tp-chat">
-      <h1>Ask a product question</h1>
+      <h1>A plan, built together</h1>
       <TextTranscript messages={rows} label="Conversation" />
       {chat.error && (
         <p role="alert">
@@ -28,7 +28,7 @@ export function ThreadplaneChat() {
       )}
       <ChatInput
         label="Your message"
-        defaultValue="Where can I find shipping information?"
+        defaultValue="Create a two-step plan for a trusted UI demo."
         busy={busy}
         onSubmit={(text) => {
           if (busy || !text.trim()) return false;

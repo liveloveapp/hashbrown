@@ -11,7 +11,7 @@ Let's keep the Hashbrown server and replace our custom Angular chat screen with 
 
 The [Threadplane recipe](/docs/angular/recipes/threadplane) includes the complete component, install command, theme, root element, and bootstrap code. Work through the boundaries below before removing an existing `chatResource` screen.
 
-The recipe opens with the separate **`threadplane-angular`** walkthrough: install the Angular dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
+The recipe opens with the separate **`canonical-workbench-threadplane-angular`** walkthrough: install the Angular dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
 
 ## 1. Replace one conversation owner
 

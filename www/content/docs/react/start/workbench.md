@@ -115,3 +115,9 @@ Continue with [Exposing components](/docs/react/concept/components), [Tool calli
 Open `/react.html?lesson=message-history` to keep, clear, and restore a completed exchange. The History inspector distinguishes the SDK transcript from the app's in-memory text copy. Open `/react.html?lesson=save-text-conversations` to save Lighthouse and Harbor explicitly, refresh, and load text into a new runtime.
 
 Only successful completed text is saved. Browser slots do not restore shared state, activities, tools, or pending interrupts. The timeline after refresh starts a new capture; replay never requests or writes storage. See [Message history](/docs/react/concept/message-history) and [Save text conversations](/docs/react/recipes/browser-history).
+
+## Add a chat screen with Threadplane
+
+The [Threadplane walkthrough](/docs/react/recipes/threadplane) uses the same two-step plan in a separately installed application. Its recording keeps Threadplane's actual chat controls inside the canonical inspector and timeline. Inspect the streamed text, request history, and unchanged application state together.
+
+Threadplane is an installed integration pair alongside the 28 bundled lessons. It isn't another `?lesson=` route in the hosted workbench. Follow the checked installation instructions to run the consumer locally.
