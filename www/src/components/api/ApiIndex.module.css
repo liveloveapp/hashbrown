@@ -1,14 +1,23 @@
 /* Port of the styles in www/analog/src/app/pages/api/index.page.ts. */
 .index {
+  /* One column width for the controls, filters and lists, so their right
+     edges line up. */
+  --index-width: 767px;
   display: flex;
   flex-direction: column;
   flex: 1 auto;
 }
 
+.index > * {
+  width: 100%;
+  max-width: var(--index-width);
+}
+
 .controls {
   display: flex;
-  align-items: flex-end;
-  padding: 16px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--page-top) var(--gutter) 0;
   width: 100%;
   justify-content: space-between;
 }
@@ -54,8 +63,8 @@
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--gutter) 0;
 }
 
 .kinds {
@@ -68,16 +77,16 @@
 .index > hr {
   border: 0;
   border-top: 1px solid var(--color-rule);
-  margin: 32px 32px;
+  width: auto;
+  margin: var(--space-8) var(--gutter);
+  max-width: calc(var(--index-width) - 2 * var(--gutter));
 }
 
 .packages {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  width: 100%;
-  max-width: 767px;
-  padding: 16px;
+  gap: var(--space-8);
+  padding: 0 var(--gutter) var(--section-gap);
 }
 
 .packages > h2 {
@@ -93,13 +102,13 @@
 
 .symbols {
   width: 100%;
-  padding: 0 24px;
+  /* Under its package, the kind badges in line with the filter chips'. */
+  padding: 0 var(--space-4);
   display: grid;
   /* minmax(0, 1fr): a long name wraps instead of widening its track past the
      panel, which hides overflow. */
   grid-template-columns: minmax(0, 1fr);
-  column-gap: 16px;
-  border-left: 1px solid var(--color-code-rule);
+  column-gap: var(--gutter);
 }
 
 /* Each name is a full-height touch target; rows sit flush instead of gapped. */
@@ -110,26 +119,14 @@
 }
 
 @media screen and (min-width: 768px) {
-  .controls {
-    padding: 24px;
-  }
-
-  .filters {
-    padding: 24px;
-  }
-
-  .packages {
-    padding: 24px;
-  }
-
   .symbols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media screen and (min-width: 1281px) {
-  .packages {
-    max-width: 1024px;
+  .index {
+    --index-width: 1024px;
   }
 
   .symbols {

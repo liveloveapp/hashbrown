@@ -1,9 +1,10 @@
 /**
- * Mobile layout report (part of the site's `e2e` target): renders a sample of
- * every page type at phone, tablet and landscape sizes and fails on sideways
- * scroll, clipped content, small touch targets, small text, fields that make
- * iOS zoom, controls drawn over in the open mobile menu, and controls left
- * under the floating announcement at the end of a page.
+ * Layout report (part of the site's `e2e` target): renders a sample of every
+ * page type at phone, tablet, landscape and desktop sizes and fails on
+ * sideways scroll, clipped content, small touch targets, small text, fields
+ * that make iOS zoom, controls drawn over in the open mobile menu, controls
+ * left under the floating announcement at the end of a page, and page edges
+ * (logo, header controls, first heading, sidebar, footer) off the gutter.
  * Run after a build: `npx nx e2e www`.
  */
 import { spawn } from 'node:child_process';
@@ -25,7 +26,7 @@ const ORIGIN = `http://localhost:${PORT}`;
 const PAGES = [
   '/',
   '/blog',
-  '/blog/building-atc',
+  '/blog/2026-10-10-building-atc',
   '/brand',
   '/privacy',
   '/unstuck',
@@ -39,10 +40,13 @@ const PAGES = [
   '/docs/angular/concept/structured-output',
 ];
 
-/** The page the open mobile menu is checked on. */
-const MENU_PAGE = '/docs/react/start/quick';
+/** Pages the open mobile menu is checked on: it opens on their menu. */
+const MENU_PAGES = ['/docs/react/start/quick', '/api'];
 
-type Measured = Omit<LayoutSnapshot, 'page' | 'viewport' | 'covered'>;
+type Measured = Omit<
+  LayoutSnapshot,
+  'page' | 'viewport' | 'covered' | 'gutter' | 'edges'
+>;
 
 /** Runs in the browser: measures the page for {@link layoutIssues}. */
 function measure(): Measured {
@@ -91,7 +95,7 @@ function measure(): Measured {
 
   const clipped: Measured['clipped'][number][] = [];
   for (const el of document.body.querySelectorAll('*')) {
-    if (!visible(el) || getComputedStyle(el).position === 'absolute') {
+    if (!visible(el) || /^(absolute|fixed)$/.test(getComputedStyle(el).position)) {
       continue;
     }
     const r = el.getBoundingClientRect();
@@ -100,7 +104,11 @@ function measure(): Measured {
       p && p !== document.body;
       p = p.parentElement
     ) {
-      const overflow = getComputedStyle(p).overflowX;
+      const style = getComputedStyle(p);
+      const overflow = style.overflowX;
+      // Inside something fixed to the window (the table of contents), which
+      // its overflow-hidden ancestors don't clip.
+      if (style.position === 'fixed') break;
       if (overflow === 'auto' || overflow === 'scroll') break;
       if (overflow === 'hidden' || overflow === 'clip') {
         const edge = Math.min(p.getBoundingClientRect().right, vw);
@@ -160,6 +168,116 @@ function measure(): Measured {
     texts: unique(texts),
     inputs: unique(inputs),
   };
+}
+
+/**
+ * Runs in the browser: the page's gutter and how far in each page edge
+ * starts. `root` scopes the search, e.g. to the open mobile menu.
+ */
+function edges(root: string | null): Pick<LayoutSnapshot, 'gutter' | 'edges'> {
+  const scope = root ? document.querySelector(root) : document.body;
+  const vw = document.documentElement.clientWidth;
+  const gutter = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--gutter'),
+  );
+  const firstText = (el: Element | null | undefined) => {
+    if (!el) return null;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (r.width) return { rect: r, el: node.parentElement as Element };
+    }
+    return null;
+  };
+  // The column an element sits in: its nearest scroller, else the window.
+  const column = (el: Element) => {
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(p).overflowY)) {
+        const r = p.getBoundingClientRect();
+        return { left: r.left, right: r.left + p.clientWidth, el: p };
+      }
+    }
+    return { left: 0, right: vw, el: document.body };
+  };
+  // A box narrower than its parent with equal room either side is centred,
+  // and its content is placed by the centring, not the gutter.
+  const centred = (el: Element, stop: Element) => {
+    for (let a = el.parentElement; a && a !== stop; a = a.parentElement) {
+      const p = a.parentElement;
+      if (!p) break;
+      const s = getComputedStyle(p);
+      const pr = p.getBoundingClientRect();
+      const left = pr.left + parseFloat(s.paddingLeft) + parseFloat(s.borderLeftWidth);
+      const right = pr.right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth);
+      const r = a.getBoundingClientRect();
+      if (
+        r.width < right - left - 2 &&
+        r.left - left > 1 &&
+        Math.abs(r.left - left - (right - r.right)) <= 1
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const visible = (el: Element | null | undefined): el is Element =>
+    !!el && el.getBoundingClientRect().width > 0;
+  const header = scope?.querySelector('header, [class*="_header"]');
+  const logo = header?.querySelector('a svg, a img');
+  const controls = [...(header?.querySelectorAll('a, button') ?? [])].filter(visible);
+  // The open menu's close button floats over its header row.
+  const end = root
+    ? scope?.querySelector('button[aria-label="Close menu"]')
+    : controls.at(-1);
+  const endIcon = end?.querySelector('svg') ?? end;
+  const h1 = [...(scope?.querySelectorAll('h1') ?? [])].find(visible);
+  const side = root
+    ? null
+    : document.querySelector('main[class*="_grid"] > [class*="_menu"]');
+  const footer = root ? null : document.querySelector('footer');
+
+  const found: LayoutSnapshot['edges'][number][] = [];
+  const left = (
+    label: string,
+    el: Element | null | undefined,
+    box: DOMRect | null | undefined,
+    from = el ? column(el) : null,
+  ) => {
+    if (!el || !box || !from || centred(el, from.el)) return;
+    found.push({ label, inset: box.left - from.left });
+  };
+  if (visible(logo)) left('logo', logo, logo.getBoundingClientRect());
+  if (visible(endIcon) && !centred(endIcon, document.body)) {
+    found.push({
+      label: `header end "${end?.getAttribute('aria-label') ?? end?.textContent?.trim()}"`,
+      inset: column(endIcon).right - endIcon.getBoundingClientRect().right,
+    });
+  }
+  // The heading's box, not its text, which may be centred in it.
+  if (h1) {
+    left(`h1 "${h1.textContent?.trim().slice(0, 24)}"`, h1, h1.getBoundingClientRect());
+  }
+  // The first heading or link row; the framework picker above it is a
+  // bordered control, so its text sits inside its box.
+  const row = [...(side?.querySelectorAll('h2, summary, a, li > button') ?? [])].find(
+    visible,
+  );
+  const rowText = firstText(row);
+  if (side && rowText) {
+    // From the sidebar column, not the menu scroller inside its padding.
+    const r = side.getBoundingClientRect();
+    left('sidebar', rowText.el, rowText.rect, {
+      left: r.left,
+      right: r.right,
+      el: document.body,
+    });
+  }
+  const footerText = visible(footer) ? firstText(footer) : null;
+  left('footer', footerText?.el, footerText?.rect);
+  return { gutter, edges: found };
 }
 
 /** Runs in the browser: controls in the open menu that something covers. */
@@ -269,22 +387,30 @@ try {
       await page.goto(ORIGIN + path, { waitUntil: 'load' });
       await settle(page);
       const measured = await page.evaluate(measure);
+      const aligned = await page.evaluate(edges, null);
       const covered = await page.evaluate(coveredAtEnd);
       issues.push(
-        ...layoutIssues({ page: path, viewport, covered, ...measured }),
+        ...layoutIssues({
+          page: path,
+          viewport,
+          covered,
+          ...measured,
+          ...aligned,
+        }),
       );
     }
-    if (viewport.width <= PHONE_MAX_WIDTH) {
-      await page.goto(ORIGIN + MENU_PAGE, { waitUntil: 'load' });
+    for (const path of viewport.width <= PHONE_MAX_WIDTH ? MENU_PAGES : []) {
+      await page.goto(ORIGIN + path, { waitUntil: 'load' });
       await settle(page);
       await page.getByRole('button', { name: 'Open menu' }).click();
       await settle(page);
       issues.push(
         ...layoutIssues({
-          page: `${MENU_PAGE} (menu open)`,
+          page: `${path} (menu open)`,
           viewport,
           covered: await page.evaluate(coveredInMenu),
           ...(await page.evaluate(measure)),
+          ...(await page.evaluate(edges, '[role="dialog"]')),
         }),
       );
     }
@@ -296,7 +422,7 @@ try {
 }
 
 console.log(
-  `Mobile layout: ${PAGES.length} pages at ${LAYOUT_VIEWPORTS.map((v) => `${v.width}x${v.height}`).join(', ')}`,
+  `Layout: ${PAGES.length} pages at ${LAYOUT_VIEWPORTS.map((v) => `${v.width}x${v.height}`).join(', ')}`,
 );
 for (const issue of issues) {
   console.log(

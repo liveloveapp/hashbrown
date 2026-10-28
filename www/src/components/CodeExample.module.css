@@ -52,6 +52,13 @@
   margin-right: calc((var(--control-lg) - 18px) / -2);
 }
 
+/* Overhanging targets draw their focus ring inside, clear of the panel's
+   rounded edge. */
+.header button:focus-visible,
+.header a:focus-visible {
+  outline-offset: -2px;
+}
+
 .active {
   position: relative;
 }

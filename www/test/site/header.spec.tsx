@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { Header } from '../../src/components/site/Header';
-import { MobileMenuPanel } from '../../src/components/site/MobileMenu';
+import {
+  MobileMenuPanel,
+  mobileMenuTabFor,
+} from '../../src/components/site/MobileMenu';
 import {
   docsUrl,
   isActivePath,
@@ -131,4 +134,12 @@ test('isActivePath matches the link and its children, like routerLinkActive', ()
   ];
 
   expect(results).toEqual([true, true, false, false]);
+});
+
+test('the mobile menu opens on the menu for the page being read', () => {
+  const paths = ['/api', '/api/react/useUiChat', '/docs/react/start/quick', '/'];
+
+  const tabs = paths.map(mobileMenuTabFor);
+
+  expect(tabs).toEqual(['api', 'api', 'docs', 'docs']);
 });

@@ -14,9 +14,11 @@
 }
 
 .kindChip {
-  padding: 8px 16px;
+  /* Less the border, so the badge sits a step in from the gutter like the
+     symbol lists' badges below. */
+  padding: var(--space-2) calc(var(--space-4) - 1px);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-input);
 }
 
 .kindChip:hover {

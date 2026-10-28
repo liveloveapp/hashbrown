@@ -19,6 +19,13 @@
   border-radius: var(--radius-pill);
 }
 
+/* The target overhangs the gutter, so an outside ring would meet the edge of
+   the screen; draw it inside. */
+.trigger:focus-visible,
+.close:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Replaces the CDK overlay's `.fullscreen-panel`. */
 .panel {
   position: fixed;
@@ -31,10 +38,12 @@
   display: flex;
 }
 
+/* Exactly where the menu button was: centred in the header row, its icon
+   on the gutter. */
 .close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: calc((var(--header-height) - var(--control-lg)) / 2);
+  right: var(--gutter);
   z-index: 1;
 }
 

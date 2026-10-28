@@ -98,10 +98,18 @@
   --space-16: 64px;
   --space-24: 96px;
 
-  /* Layout: one gutter and one section rhythm for every page. */
+  /*
+   * Layout grid. Every column's content starts one gutter in from its edge
+   * (the logo, page headings, sidebar rows, the footer); every page starts
+   * --page-top below the header and ends a section gap above the footer;
+   * every card pads its content by --card-padding.
+   */
   --gutter: var(--space-4);
   --section-gap: var(--space-16);
+  --page-top: var(--space-8);
+  --card-padding: var(--space-6);
   --container: 1180px;
+  --toc-width: 192px;
   --header-height: 64px;
   --control-sm: 32px;
   --control-md: 36px;
@@ -119,6 +127,8 @@
 @media screen and (min-width: 768px) {
   :root {
     --gutter: var(--space-6);
+    --page-top: var(--space-10);
+    --card-padding: var(--space-8);
   }
 }
 
@@ -126,6 +136,7 @@
   :root {
     --gutter: var(--space-8);
     --section-gap: var(--space-24);
+    --page-top: var(--space-12);
   }
 }
 
