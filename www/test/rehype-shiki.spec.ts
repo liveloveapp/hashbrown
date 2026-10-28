@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Root } from 'hast';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
@@ -68,7 +69,8 @@ for (const language of ['csharp', 'cs', 'c#']) {
 }
 
 test('highlights fenced XML with distinct syntax colors and preserves markup as text', async () => {
-  const markdown = '```xml\n<Project Sdk="Microsoft.NET.Sdk">Hello</Project>\n```';
+  const markdown =
+    '```xml\n<Project Sdk="Microsoft.NET.Sdk">Hello</Project>\n```';
 
   const tree = await toHast(markdown);
   const colors = new Set(
@@ -87,7 +89,9 @@ for (const language of ['csharp', 'cs', 'c#']) {
 
     const html = await highlightCode(code, language);
     const colors = new Set(
-      [...html.matchAll(/<span style="color:([^";]+)/g)].map((match) => match[1]),
+      [...html.matchAll(/<span style="color:([^";]+)/g)].map(
+        (match) => match[1],
+      ),
     );
 
     expect(html).toContain('class="shiki hashbrown"');
@@ -102,3 +106,45 @@ test('highlightCode rejects unknown languages', async () => {
 
   await expect(highlighted).rejects.toThrow();
 });
+
+for (const sdk of ['react', 'angular']) {
+  for (const name of ['dotnet', 'dotnet-native-tools']) {
+    test(`renders intact C# and XML with distinct colors for ${sdk}/${name}`, async () => {
+      const markdown = readFileSync(
+        `www/content/docs/${sdk}/platform/${name}.md`,
+        'utf8',
+      );
+      const blocks = [
+        ...markdown.matchAll(/```(csharp|xml)\n([\s\S]*?)\n```/g),
+      ];
+
+      for (const [, language, code] of blocks) {
+        const html = await highlightCode(code, language);
+        const colors = new Set(
+          [...html.matchAll(/<span style="color:([^";]+)/g)].map(
+            (match) => match[1],
+          ),
+        );
+        const tree = JSON.parse(
+          await toHast(`\`\`\`${language}\n${code}\n\`\`\``),
+        );
+        const text = (node: {
+          type: string;
+          value?: string;
+          children?: unknown[];
+        }): string =>
+          node.type === 'text'
+            ? (node.value ?? '')
+            : (node.children ?? [])
+                .map((child) => text(child as Parameters<typeof text>[0]))
+                .join('');
+
+        expect(colors.size).toBeGreaterThan(1);
+        expect(text(tree).trim()).toBe(code.trim());
+      }
+      expect(blocks.some(([, language]) => language === 'xml')).toBe(true);
+      expect(blocks.some(([, language]) => language === 'csharp')).toBe(true);
+      expect(markdown).toContain('not published to NuGet.org');
+    });
+  }
+}

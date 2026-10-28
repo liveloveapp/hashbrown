@@ -17,7 +17,8 @@ npx nx build dotnet-conformance
 npx nx test dotnet-conformance
 npx nx lint dotnet-conformance
 npx nx provider-e2e dotnet-conformance
-npx nx check-docs dotnet-conformance
+npx nx package-prepare dotnet-conformance --metadata=/private/tmp/hashbrown-nuget-candidate.json
+npx nx check-docs dotnet-conformance --metadata=/private/tmp/hashbrown-nuget-candidate.json
 ```
 
 The build restores with `--locked-mode`. Only deliberate dependency updates use
@@ -71,9 +72,12 @@ off/on: 16 native programs, retaining the original eight and adding eight protec
 programs, for 32 intended actual compiler programs overall. Identical framework
 blocks share those compilations; framework parity does not double the count.
 Current compiler logs, rather than this matrix description, establish passes.
-Both verifiers copy the locked actual project and Integration source into isolated
-temporary projects; they do not invoke providers. The native structural tests also
-check framework parity, complete dependency pins and authenticated initialization.
+Both verifiers require an explicit anchored `--metadata` candidate pointer and compile
+isolated PackageReference applications. They never pack independently or copy the
+implementation. Each exact source variant is hashed and qualified against the immutable
+candidate before and after compilation; the combined 32-program check restores the
+identical project and dependency closure once in locked mode. They do not invoke providers. The native structural tests also
+check framework parity, the single exact candidate pin and authenticated initialization.
 
 Native recovery uses a complete trusted key, current configuration and server
 revision. Native-only Pending approval snapshots restore with a fresh local batch
@@ -132,7 +136,7 @@ opt-in target and published npm clients; default aimock tests remain determinist
 
 ## Reference source
 
-`Integration/` contains the recipe's reusable C# source. `Testing/`, `Program.cs`,
+`packages/dotnet/src/` contains the single maintained library implementation. `Testing/`, `Program.cs`,
 and the TypeScript harness are test infrastructure. Never copy the fixture's
 header-based test identities, test controls, or localhost model setup into an
 application. Applications supply authentication, authorization, tool permissions,
@@ -237,7 +241,7 @@ status without inventing assistant text or repeating the effect.
 
 The exact four C# blocks in both framework recipes are compared and compiled in all
 sixteen Responses/Chat Completions × memory/PostgreSQL × confirmation/no-confirmation × optional recovery mapping
-combinations by `check-docs`, using the actual Integration source and locked packages
+combinations by `check-docs`, using the exact candidate PackageReference and locked package closure
 without a database. Checked insertion targets reject drift instead of compiling an
 unintended combination.
 
@@ -262,7 +266,7 @@ Set `InterruptStoreOptions.CompatibilityIdentity` from `ServerConfigurationIdent
 
 **Stop and drain all older workers before migrating to schema 3.** Overlapping mixed-version rolling operation is unsupported. Older binaries cannot start afterward; already-running older workers can still read new rows without identity checks, write legacy rows or use previously issued claims. Bound fingerprints fence their old admission validator from new rows, but cannot retrofit a running process. Identity-bound stores reject unbound legacy recovery/resume with 409; protected inspection/reconciliation remains available. Plan pending approvals and unknown effects before upgrading rather than backfilling browser-selected identities or replaying work.
 
-The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 54 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. The 2026-10-27 qualification passed all 54 cases and three preflights on the frozen published 0.8.3 consumer with gpt-4.1-mini, using 93 actual calls without retries. All six native MAF approval cases completed their three phases with 18 complete native usage calls and six matched protected effects; overall usage completeness remains unknown for legacy cancellation. This bounded service result does not broaden the deterministic compatibility contract. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
+The default compatibility guarantee comes from deterministic suites. The separate opt-in runner below qualifies a bounded six-project live baseline when its preflights and all 54 scenarios succeed; deterministic aimock coverage alone is not live OpenAI/Azure service qualification. The historical source-integration qualification on 2026-10-27 passed all 54 cases and three preflights on the frozen published 0.8.3 consumer with gpt-4.1-mini, using 93 actual calls without retries. All six native MAF approval cases completed their three phases with 18 complete native usage calls and six matched protected effects; overall usage completeness remains unknown for legacy cancellation. This bounded service result does not broaden the deterministic compatibility contract. Older .NET runtimes, provider-hosted tools, reasoning-model continuation state, activities, arbitrary agent/session-store compositions and provider finish-reason metadata remain outside this guarantee. Hashbrown's existing Node providers keep their own behavior and tests.
 
 ## Provider-free native approval browser regression
 
@@ -392,3 +396,31 @@ injection is rejected; source mode is explicitly selected by the semantic-test a
 original source-browser configurations. Package mode cannot resolve `dist`.
 Outcome, qualification, and per-launch provenance reports are retained in the
 candidate root's `browser-reports`, or `HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY`.
+
+
+## Local package documentation qualification
+
+`Hashbrown.AspNetCore` version `0.1.0-preview.1` targets .NET 10 (SDK 10.0.402)
+and uses namespace `Hashbrown.AspNetCore`. This milestone produces release-ready
+local `.nupkg` and `.snupkg` artifacts; it is **not published to NuGet.org**.
+Use an owned local feed with exclusive candidate package source mapping and one
+exact `PackageReference` (`Version="[0.1.0-preview.1]"`); rely on the nuspec for
+dependencies. Commit the application lockfile and restore with `--locked-mode`.
+
+```sh
+npx nx check-docs dotnet-conformance --metadata=/absolute/path/candidate.json
+```
+
+Missing or changed metadata fails closed. The check requires an already prepared
+candidate, retains sixteen standard and sixteen native program identities, and
+checks React/Angular parity. It does not create a replacement candidate.
+The recorded 54-case live result remains historical source-integration evidence;
+it is not live NuGet qualification.
+
+Applications own authentication, authorization, PostgreSQL, configuration and
+provider secrets. For a source-to-package upgrade, remove copied Integration files
+and update imports, stop and drain old workers, and retain the original agent,
+catalog, scope and configuration identities. Workflow schema 3 and native schema 2
+remain separate from package version. Recovery lookup is read-only, pending mixed
+browser work cannot cold restore, uncertain effects are not automatically retried,
+and mixed-version rolling operation is not guaranteed.

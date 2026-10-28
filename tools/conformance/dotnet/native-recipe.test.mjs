@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
   readFileSync,
   existsSync,
@@ -28,7 +29,7 @@ const packages = (text) =>
     .map((match) => `${match[1]}@${match[2]}`)
     .sort();
 
-test('publishes identical native examples and the complete locked package set', () => {
+test('publishes identical native examples with exactly the candidate package', () => {
   const project = readFileSync(
     resolve(root, 'tools/conformance/dotnet/Hashbrown.Conformance.csproj'),
     'utf8',
@@ -41,8 +42,9 @@ test('publishes identical native examples and the complete locked package set', 
 
   assert.equal(csharp(react).length, 3);
   assert.deepEqual(csharp(react), csharp(angular));
-  assert.deepEqual(packages(react), packages(project));
-  assert.deepEqual(packages(angular), packages(project));
+  assert.deepEqual(packages(react), ['Hashbrown.AspNetCore@[0.1.0-preview.1]']);
+  assert.deepEqual(packages(angular), packages(react));
+  assert.ok(project.includes('ProjectReference'));
 });
 
 test('bootstraps authenticated PostgreSQL native composition from exact registered schemas', () => {
@@ -267,7 +269,7 @@ test('rejects missing extra drifted or malformed blocks and dependency substitut
     text.replace(/```csharp\n[\s\S]*?\n```/, ''),
     `${text}\n\n\`\`\`csharp\nextra\n\`\`\``,
     text.replace('```csharp', '```cs'),
-    text.replace('Version="1.0.1"', 'Version="999.0.0"'),
+    text.replace('Version="[0.1.0-preview.1]"', 'Version="999.0.0"'),
   ];
   const temporary = mkdtempSync(join(tmpdir(), 'native-recipe-test-'));
 
@@ -297,7 +299,7 @@ test('rejects missing extra drifted or malformed blocks and dependency substitut
 
       assert.throws(
         () => readNativeRecipes(workspace),
-        /three tested C# examples|complete locked reference project/,
+        /three tested C# examples|Recipe must reference exactly the candidate package/,
       );
     }
   } finally {
@@ -384,10 +386,145 @@ test('keeps native routes discoverable and baseline recipe blocks unchanged in c
     );
   }
   assert.ok(menu.includes("path: 'platform/dotnet-native-tools'"));
-  assert.deepEqual(project.targets['check-docs'].options.commands, [
-    'node --test tools/conformance/dotnet/native-recipe.test.mjs',
-    'node tools/conformance/dotnet/verify-recipe.mjs',
-    'node tools/conformance/dotnet/verify-native-recipe.mjs',
-  ]);
-  assert.equal(project.targets['check-docs'].options.parallel, false);
+  assert.equal(
+    project.targets['check-docs'].options.command,
+    'node tools/conformance/dotnet/verify-recipe.mjs --all',
+  );
+  assert.equal(project.targets['check-docs'].cache, false);
+});
+
+test('documents package consumption on all four routes without implementation fallback or public availability claims', () => {
+  for (const sdk of ['react', 'angular'])
+    for (const name of ['dotnet', 'dotnet-native-tools']) {
+      const text = readFileSync(
+        resolve(root, `www/content/docs/${sdk}/platform/${name}.md`),
+        'utf8',
+      );
+
+      assert.deepEqual(packages(text), [
+        'Hashbrown.AspNetCore@[0.1.0-preview.1]',
+      ]);
+      assert.ok(text.includes('using Hashbrown.AspNetCore;'));
+      assert.ok(text.includes('not published to NuGet.org'));
+      assert.doesNotMatch(
+        text,
+        /Hashbrown.Conformance.Integration|<ProjectReference|<HintPath|Copy the C# files|This is a source recipe|available on NuGet.org/i,
+      );
+    }
+});
+
+test('compiler verifiers require metadata and remove copied implementation mode', () => {
+  for (const name of ['verify-recipe.mjs', 'verify-native-recipe.mjs']) {
+    const text = readFileSync(
+      resolve(root, 'tools/conformance/dotnet', name),
+      'utf8',
+    );
+
+    assert.ok(text.includes('metadata'));
+    assert.doesNotMatch(
+      text,
+      /cpSync|['"]Integration['"]|Hashbrown.Conformance.csproj/,
+    );
+  }
+});
+
+test('standard recipes retain sixteen distinct identities and reject ambiguous anchors', async () => {
+  const { readRecipes, recipePrograms } = await import('./verify-recipe.mjs');
+  const recipes = readRecipes(root);
+
+  const variants = recipePrograms(recipes);
+
+  assert.equal(variants.length, 16);
+  assert.equal(
+    new Set(
+      variants.map(
+        ({ api, durable, confirmation, recovery }) =>
+          `${api}/${durable}/${confirmation}/${recovery}`,
+      ),
+    ).size,
+    16,
+  );
+  for (const target of [
+    'builder.Configuration["ModelApi"] ??= "responses";',
+    'await app.RunAsync();',
+    'HashbrownEndpointConfiguration.Map(',
+    'IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry, checkpointOptions);',
+  ])
+    for (const changed of [
+      recipes[0].replace(target, ''),
+      `${recipes[0]}\n${target}`,
+    ])
+      assert.throws(
+        () => recipePrograms([changed, ...recipes.slice(1)]),
+        /Expected exactly one recipe insertion target/,
+      );
+});
+
+test('artifact compiler commands reject missing and changed metadata before building', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'recipe-metadata-test-'));
+  const metadata = join(temporary, 'candidate.json');
+  writeFileSync(metadata, '{}');
+  writeFileSync(metadata + '.sha256', '0'.repeat(64));
+
+  try {
+    for (const name of ['verify-recipe.mjs', 'verify-native-recipe.mjs'])
+      for (const args of [[], [`--metadata=${metadata}`]]) {
+        const result = spawnSync(
+          process.execPath,
+          [resolve(root, 'tools/conformance/dotnet', name), ...args],
+          { encoding: 'utf8' },
+        );
+
+        assert.notEqual(result.status, 0);
+        assert.match(
+          result.stderr,
+          /Absolute --metadata is required|Pointer anchor differs/,
+        );
+      }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('rejects docs that claim public NuGet availability during local qualification', async () => {
+  const { validateRecipePackage } = await import('./verify-recipe.mjs');
+  const text = readFileSync(page('react'), 'utf8');
+
+  assert.throws(
+    () =>
+      validateRecipePackage(
+        text.replace('not published to NuGet.org', 'available on NuGet.org'),
+      ),
+    /Local artifact must remain unpublished/,
+  );
+});
+
+test('combined CLI reaches mandatory metadata validation without an import deadlock', () => {
+  if (process.env['HASHBROWN_DOCS_CLI_TEST_CHILD']) return;
+  const metadata = join(
+    mkdtempSync(join(tmpdir(), 'recipe-cli-test-')),
+    'missing.json',
+  );
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        resolve(root, 'tools/conformance/dotnet/verify-recipe.mjs'),
+        '--all',
+        `--metadata=${metadata}`,
+      ],
+      {
+        encoding: 'utf8',
+        timeout: 10000,
+        env: { ...process.env, HASHBROWN_DOCS_CLI_TEST_CHILD: '1' },
+      },
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ENOENT/);
+    assert.doesNotMatch(result.stderr, /unsettled top-level await/);
+  } finally {
+    rmSync(dirname(metadata), { recursive: true, force: true });
+  }
 });

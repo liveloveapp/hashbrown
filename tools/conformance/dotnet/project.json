@@ -65,8 +65,8 @@
         "parallel": false,
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
-          "eslint nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
-          "prettier --check \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
+          "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
+          "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
         ]
       },
       "dependsOn": ["build"]
@@ -76,7 +76,6 @@
       "cache": false,
       "dependsOn": [
         "build",
-        "check-docs",
         {
           "projects": ["runtime-smoke-react", "runtime-smoke-angular"],
           "target": "build"
@@ -92,12 +91,7 @@
       "inputs": ["default", "^default"],
       "dependsOn": ["build"],
       "options": {
-        "parallel": false,
-        "commands": [
-          "node --test tools/conformance/dotnet/native-recipe.test.mjs",
-          "node tools/conformance/dotnet/verify-recipe.mjs",
-          "node tools/conformance/dotnet/verify-native-recipe.mjs"
-        ]
+        "command": "node tools/conformance/dotnet/verify-recipe.mjs --all"
       }
     },
     "prepare-live-consumer": {
