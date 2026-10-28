@@ -122,11 +122,11 @@ new conversation; no history restoration endpoint is exposed. Local signing
 keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
 
 **Package compatibility:** the optional agent backend uses the published
-[b4.run 0.15.5 package set](https://github.com/cacheplane/b4run/releases/tag/v0.15.5)
+[b4.run 0.15.7 package set](https://github.com/cacheplane/b4run/releases/tag/v0.15.7)
 for the output-token cap, browser-tool replay, and request-owned Postgres
 client-tool store. Keep the b4.run dependency pins aligned when updating them.
 The runtime guard rejects an SDK that drops `agent({ maxOutputTokens })`.
-Release and registry-validation evidence is recorded in the
+Earlier release and registry-validation evidence is recorded in the
 [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
 
 Both apps use the shared chat transport factory and core's opt-in HTTP response
