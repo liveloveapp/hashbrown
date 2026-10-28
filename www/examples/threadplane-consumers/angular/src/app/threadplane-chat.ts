@@ -10,7 +10,7 @@ import { ChatComponent } from '@threadplane/chat';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main>
-      <h1>Ask a product question</h1>
+      <h1>A plan, built together</h1>
       <chat [agent]="agent" />
     </main>
   `,

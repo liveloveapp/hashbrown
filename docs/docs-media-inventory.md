@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-27. This inventory describes the current guides and their recording sources. Historical captures remain available for bookmarks and independent tests; they are not the current walkthroughs unless listed below.
+Updated 2026-10-28. This inventory describes the current guides and their recording sources. Historical captures remain available for bookmarks and independent tests; they are not the current walkthroughs unless listed below.
 
 ## Current canonical coverage
 
@@ -64,21 +64,23 @@ The latest authoring recordings preserve actual outcomes: a 0.74 agent choice us
 - **Debugging and request transformation:** the deliberate local 403 happens before provider work. Transformation traces come from the actual adapter callback after mapping, with safe public fields only.
 - **Playback:** immutable captured values drive requests, JSON, components and state together. Replay makes no provider calls, invokes no component callbacks and performs no application writes.
 
-## Remaining standalone guides
+## Canonical installed integrations
 
-This topic pair still use their own checked examples and recordings. They are the remaining canonical rollout candidates.
+Threadplane completes the primary standalone guide rollout. Its separately installed Angular and React consumers use the same two-step trusted UI plan, follow-up, LLA workbench shell, paired inspector and bottom timeline. They retain Threadplane's own transcript and composer. The media IDs are `canonical-workbench-threadplane-{angular,react}`.
 
-| Topic | Current media | Current source and next step |
-| --- | --- | --- |
-| Threadplane | `threadplane-angular`, `threadplane-react` | Separately installed framework consumers use actual Threadplane presentation. Recordings use scripted provider-native events through the real Hashbrown adapter. Align the conversation and live streaming with the canonical plan while retaining Threadplane's own chat UI. |
+These are two installed integration paths alongside the 28 bundled lessons / 56 framework paths. They do not add a hosted `?lesson=threadplane` route or force external package installation into the normal workbench build. The optional shell is built separately after installed-consumer compilation and served by checked local hosts. Public documentation embeds the recordings; installation instructions reproduce the actual consumer.
 
-The Threadplane migration guides keep runtime, presentation, identity, history, tools and component ownership explicit. Their installation instructions must be checked against the corresponding framework consumer; do not infer one framework's package/API from the other.
+Both replacement recordings use real provider output through the actual Hashbrown OpenAI server adapter. React retains Hashbrown `useChat` behind Threadplane `TextTranscript` / `ChatInput`; Angular uses Threadplane's AG-UI frontend and `ChatComponent`. Actual protocol JSON and streamed text are distinct views. No generated component or parsed plan is claimed, and application state stays at revision zero. Replay makes no requests or writes. Footage runs at actual speed with measured captions and reading pauses.
+
+The Threadplane migration guides keep runtime, presentation, identity, history, tools and component ownership explicit. Installation is checked against each framework's own consumer. Labelled provider-native fixtures verify keyboard interaction, failures, truncation, cancellation, recovery and standalone mobile layout; fixture publication is rejected. Real recording is a separate credentialed target.
+
+No primary guide pair remains on standalone scripted footage. Next is a consistency and accessibility review across the full set; durable agent state, production identity and storage remain separate integrations.
 
 ## Retained legacy assets
 
 Earlier WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, shopping-list, parser, decisions, assisted-interface and ATC recordings remain for old links and independent fixtures. Their source disclosures still apply. A retained asset is not evidence that the current guide uses it.
 
-Standalone workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
+Retained standalone Threadplane shipping clips and workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
 
 ## Reproduction and verification
 
@@ -88,6 +90,8 @@ Set server-only `OPENAI_API_KEY` and `OPENAI_MODEL` for chat recordings. TypeSaf
 
 ```sh
 WORKBENCH_LESSONS=ui-kits,ui-chatbot npx nx workbench-demo www
+DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-demo www
+npx nx docs-threadplane-live-demo www
 npx nx workbench-e2e www
 npx nx build www
 npx nx test www

@@ -377,6 +377,14 @@
           "WORKBENCH_OUTPUT": "dist/docs-workbench/verification"
         }
       }
+    },
+    "docs-threadplane-live-demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx www/src/tools/record-docs-threadplane-live.ts"
+      },
+      "dependsOn": ["workbench-build"]
     }
   },
   "namedInputs": {

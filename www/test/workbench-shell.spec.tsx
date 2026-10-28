@@ -1054,3 +1054,37 @@ test('history Text and UI views describe the actual selected text without genera
   shell.dispose();
   host.remove();
 });
+
+test.each([false, true])(
+  'managed chat preserves historical interaction handlers unless the composer is external: %s',
+  (externalComposer) => {
+    const host = document.createElement('div');
+    const store = createWorkbenchStore('text');
+    const shell = mountWorkbench(
+      host,
+      store,
+      {
+        framework: 'React',
+        managedChat: true,
+        lesson: {
+          id: 'magic-text',
+          title: 'Magic Text',
+          format: 'text',
+          inspector: 'Text',
+        },
+        send: vi.fn(),
+        stop: vi.fn(),
+        reset: vi.fn(),
+      },
+      { externalComposer },
+    );
+    store.send('A two-step plan');
+    store.settle('complete');
+
+    store.seek(0);
+
+    expect(shell.live.hidden).toBe(false);
+    expect(shell.live.inert).toBe(externalComposer);
+    shell.dispose();
+  },
+);
