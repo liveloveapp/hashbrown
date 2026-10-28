@@ -33,6 +33,17 @@ export interface Tool {
  * @public
  */
 export interface ToolCall {
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
+  /**
+   * The subagent invocation that produced the result. An absent owner means
+   * the parent when a result exists; a pending call has no result provenance yet.
+   */
+  readonly resultSubagentRunId?: string;
+
   id: string;
   name: string;
   arguments: string;
@@ -57,6 +68,12 @@ export interface ToolCall {
  * @public
  */
 export interface AssistantMessage {
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
+
   /** Opaque canonical AG-UI identifier used for projection reconciliation. */
   readonly id?: string;
   role: 'assistant';
@@ -80,6 +97,12 @@ export interface AssistantMessage {
  * @public
  */
 export interface UserMessage {
+  /**
+   * The subagent invocation that produced this message or requested this call.
+   * Calls inherit their enclosing assistant's owner when omitted.
+   */
+  readonly subagentRunId?: string;
+
   /** Opaque canonical AG-UI identifier used for projection reconciliation. */
   readonly id?: string;
   role: 'user';

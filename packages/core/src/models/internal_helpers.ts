@@ -159,6 +159,7 @@ export function toInternalMessagesFromView(
         {
           ...(message.id !== undefined ? { id: message.id } : {}),
           role: 'user',
+          ...copySubagentOwner(message),
           content: message.content,
         },
       ];
@@ -178,6 +179,7 @@ export function toInternalMessagesFromView(
         {
           ...(message.id !== undefined ? { id: message.id } : {}),
           role: 'assistant',
+          ...copySubagentOwner(message),
           content,
           contentResolved,
           toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
@@ -277,6 +279,7 @@ function toServerToolCalls(
       return [
         {
           toolCallId,
+          ...copyCallOwners(toolCall),
           name: toolCall.name,
           status,
           args:
@@ -366,6 +369,7 @@ export function toViewMessagesFromInternal(
         {
           ...toViewId(message.id),
           role: 'user',
+          ...copySubagentOwner(message),
           content: message.content,
         },
       ];
@@ -388,6 +392,7 @@ export function toViewMessagesFromInternal(
         {
           ...toViewId(message.id),
           role: 'assistant',
+          ...copySubagentOwner(message),
           content,
           ...(message.encryptedValue !== undefined
             ? { encryptedValue: message.encryptedValue }
@@ -428,6 +433,7 @@ export function toViewMessagesFromInternal(
                       status: 'done',
                       name: toolCall.name,
                       toolCallId,
+                      ...copyCallOwners(toolCall),
                       ...(toolCall.encryptedValue !== undefined
                         ? { encryptedValue: toolCall.encryptedValue }
                         : {}),
@@ -453,6 +459,7 @@ export function toViewMessagesFromInternal(
                       status: 'pending',
                       name: toolCall.name,
                       toolCallId,
+                      ...copyCallOwners(toolCall),
                       progress: toolCall.progress,
                       ...(toolCall.encryptedValue !== undefined
                         ? { encryptedValue: toolCall.encryptedValue }
@@ -720,6 +727,8 @@ export function toInternalToolCallsFromView(
         case 'done': {
           return {
             id: toolCall.toolCallId,
+            ...copySubagentOwner(message),
+            ...copyCallOwners(toolCall),
             name: toolCall.name,
             arguments: JSON.stringify(toolCall.args),
             argumentsResolved: toolCall.args,
@@ -736,6 +745,8 @@ export function toInternalToolCallsFromView(
         case 'pending': {
           return {
             id: toolCall.toolCallId,
+            ...copySubagentOwner(message),
+            ...copyCallOwners(toolCall),
             name: toolCall.name,
             status: 'pending',
             arguments: JSON.stringify(toolCall.args),
@@ -805,4 +816,26 @@ export function toInternalMessagesFromApi(
       ...(reasoning ? { reasoning } : {}),
     },
   ];
+}
+
+/** Copies an optional owner while preserving the empty-string lane. */
+function copySubagentOwner(value: { readonly subagentRunId?: string }): {
+  readonly subagentRunId?: string;
+} {
+  return typeof value.subagentRunId === 'string'
+    ? { subagentRunId: value.subagentRunId }
+    : {};
+}
+
+/** Copies independent requester and result provenance for a local call. */
+function copyCallOwners(value: {
+  readonly subagentRunId?: string;
+  readonly resultSubagentRunId?: string;
+}): { readonly subagentRunId?: string; readonly resultSubagentRunId?: string } {
+  return {
+    ...copySubagentOwner(value),
+    ...(typeof value.resultSubagentRunId === 'string'
+      ? { resultSubagentRunId: value.resultSubagentRunId }
+      : {}),
+  };
 }

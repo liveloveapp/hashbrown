@@ -23,6 +23,7 @@ import {
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type SubagentRun,
   type TokenUsage,
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
@@ -54,6 +55,8 @@ export interface StructuredChatResourceRef<
 > extends Resource<Chat.Message<Output, Tools>[]> {
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
+  /** Observed native subagent invocations in the current conversation. */
+  readonly subagents: Signal<readonly SubagentRun[]>;
   /** The complete pending interrupt batch, including while claimed. */
   readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
   /** Whether the resumed interaction is still running. */
@@ -349,6 +352,7 @@ export function structuredChatResource<
     runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
   );
+  const subagents = toNgSignal(runtime.subagents);
   const pendingInterrupts = toNgSignal(runtime.pendingInterrupts);
   const isResuming = toNgSignal(runtime.isResuming);
   const state = toNgSignal(
@@ -490,6 +494,7 @@ export function structuredChatResource<
   }
 
   return {
+    subagents,
     pendingInterrupts,
     isResuming,
     resume: runtime.resume,

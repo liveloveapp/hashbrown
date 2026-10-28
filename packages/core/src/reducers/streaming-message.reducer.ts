@@ -19,6 +19,8 @@ import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
+  /** Leaf parser states; the foreground state never nests this collection. */
+  readonly accumulators?: ReadonlyMap<string, StreamingMessageState>;
   readonly snapshotReasoningMessageIds?: readonly string[];
 };
 
@@ -176,20 +178,30 @@ function findCanonicalAssistantIdForEvent(
       (message) => message.role === 'assistant' && message.id === messageId,
     )?.id;
   const assistantByReasoningMessageId = (messageId: string | undefined) => {
-    const pending = new Set<string>();
+    const pending = new Map<string, string | undefined>();
     for (const message of messages) {
       if (message.role === 'reasoning') {
-        pending.add(message.id);
+        pending.set(message.id, message.subagentRunId);
         continue;
       }
-      if (message.role === 'assistant' && messageId && pending.has(messageId)) {
+      if (
+        message.role === 'assistant' &&
+        messageId !== undefined &&
+        pending.has(messageId) &&
+        pending.get(messageId) === message.subagentRunId
+      ) {
         return message.id;
       }
       if (message.role === 'activity') {
         // An activity never separates reasoning from its assistant message.
         continue;
       }
-      pending.clear();
+      if (
+        message.role === 'user' ||
+        message.role === 'system' ||
+        message.role === 'developer'
+      )
+        pending.clear();
     }
     return undefined;
   };
@@ -254,13 +266,22 @@ function reconcilePreparedStreaming(
       const streamed = state.toolCalls.find(
         (current) => current.id === toolCall.id,
       );
-      return streamed?.status === 'pending' &&
+      const candidate =
+        streamed?.status === 'pending' &&
         toolCall.status === 'pending' &&
         streamed.name === toolCall.name &&
         streamed.arguments === toolCall.arguments &&
         streamed.argumentsResolved !== undefined
-        ? { ...toolCall, argumentsResolved: streamed.argumentsResolved }
-        : toolCall;
+          ? { ...toolCall, argumentsResolved: streamed.argumentsResolved }
+          : toolCall;
+      return streamed &&
+        Object.keys(candidate).length === Object.keys(streamed).length &&
+        Object.entries(candidate).every(
+          ([key, value]) =>
+            streamed[key as keyof Chat.Internal.ToolCall] === value,
+        )
+        ? streamed
+        : candidate;
     });
   const baseline = needsPreparedStructuralHydration(state, message)
     ? hydrateSnapshot(state, message, toolCalls)
@@ -274,8 +295,18 @@ function reconcilePreparedStreaming(
     streamedMessage.contentResolved !== undefined
       ? streamedMessage.contentResolved
       : undefined;
-  const structuralMessage =
+  const candidate =
     contentResolved === undefined ? message : { ...message, contentResolved };
+  const structuralMessage =
+    baseline.message &&
+    Object.keys(candidate).length === Object.keys(baseline.message).length &&
+    Object.entries(candidate).every(
+      ([key, value]) =>
+        baseline.message?.[key as keyof Chat.Internal.AssistantMessage] ===
+        value,
+    )
+      ? baseline.message
+      : candidate;
 
   if (
     structuralMessage === baseline.message &&
@@ -362,7 +393,7 @@ function hydrateAssistantForEvent(
   }
 }
 
-export const reducer = createReducer(
+const foregroundReducer = createReducer(
   initialState,
   on(devActions.restoreConversation, () => initialState),
   on(
@@ -486,6 +517,161 @@ export const reducer = createReducer(
   ),
 );
 
+/** Retains independent streaming parsers for every canonical assistant. @internal */
+export function reducer(
+  state: StreamingMessageState | undefined,
+  action: Parameters<typeof foregroundReducer>[1],
+): StreamingMessageState {
+  const current = state ?? initialState;
+  if (action.type !== apiActions.generateMessageEvent.type) {
+    return foregroundReducer(state, action);
+  }
+  const decision = ɵreadAgUiMessageEventDecision(action);
+  if (!decision) return foregroundReducer(state, action);
+  if (decision.kind !== 'accepted' || !current.attemptActive) return current;
+  const projection = readPreparedProjection(action);
+  if (!projection) return foregroundReducer(state, action);
+  if (
+    decision.event.type === EventType.REASONING_MESSAGE_START &&
+    decision.event.metadata === undefined &&
+    decision.state.draft === decision.priorState.draft &&
+    current.accumulators?.has(
+      findAssistantForEvent(projection.projection.messages, decision.event)
+        ?.id ?? '',
+    )
+  )
+    return current;
+  let accumulators = new Map(current.accumulators);
+  const { accumulators: cached, ...baseline } = current;
+  void cached;
+  let foreground = current.messageId
+    ? (accumulators.get(current.messageId) ?? baseline)
+    : baseline;
+  const implicitReasoningEnds = new Set(
+    decision.events
+      .slice(0, -1)
+      .flatMap((event) =>
+        event.type === EventType.REASONING_MESSAGE_END ? [event.messageId] : [],
+      ),
+  );
+  for (const event of decision.events) {
+    if (event.type === EventType.MESSAGES_SNAPSHOT) {
+      accumulators = new Map();
+      for (const message of projection.projection.messages) {
+        if (message.role !== 'assistant' || message.id === undefined) continue;
+        const hydrated = hydrateSnapshot(
+          current,
+          message,
+          projection.projection.toolCalls.filter((call) =>
+            message.toolCallIds.includes(call.id),
+          ),
+        );
+        accumulators.set(message.id, hydrated);
+        foreground = hydrated;
+      }
+      if (!accumulators.size) foreground = hydrateSnapshot(current, null, []);
+      continue;
+    }
+    if (
+      event.type === EventType.RUN_FINISHED ||
+      event.type === EventType.RUN_ERROR
+    ) {
+      for (const [id, accumulator] of accumulators) {
+        const normalizedAction = {
+          ...action,
+          payload: event,
+          ɵagUiMessageEventDecision: { ...decision, event },
+        };
+        const next = foregroundReducer(accumulator, normalizedAction);
+        accumulators.set(id, next);
+        if (foreground.messageId === id) foreground = next;
+      }
+      continue;
+    }
+    // A later event in this transaction may create the assistant. Do not
+    // hydrate its final text before its first chunk has been accumulated.
+    if (
+      event.type === EventType.REASONING_MESSAGE_END &&
+      implicitReasoningEnds.has(event.messageId) &&
+      findCanonicalAssistantIdForEvent(decision.priorState.draft, event) ===
+        undefined
+    )
+      continue;
+    const assistant = findAssistantForEvent(
+      projection.projection.messages,
+      event,
+    );
+    const reasoning = event.type.startsWith('REASONING_MESSAGE_');
+    if (!assistant && reasoning) continue;
+    const target =
+      assistant?.id !== undefined
+        ? (accumulators.get(assistant.id) ?? {
+            ...initialState,
+            configSnapshot: current.configSnapshot,
+            attemptActive: true,
+          })
+        : foreground;
+    const normalizedAction = {
+      ...action,
+      payload: event,
+      ɵagUiMessageEventDecision: { ...decision, event },
+    };
+    const next = foregroundReducer(target, normalizedAction);
+    foreground = next;
+    if (next.messageId && next.message) accumulators.set(next.messageId, next);
+  }
+  // Canonical metadata and provenance remain authoritative even off foreground.
+  for (const [id, accumulator] of accumulators) {
+    let next = reconcilePreparedStreaming(
+      accumulator,
+      { type: EventType.TEXT_MESSAGE_END, messageId: id },
+      projection,
+    );
+    const completed = [...implicitReasoningEnds].filter(
+      (messageId) => next.reasoningMessageStatusById[messageId] === 'active',
+    );
+    if (completed.length)
+      next = {
+        ...next,
+        reasoningMessageStatusById: {
+          ...next.reasoningMessageStatusById,
+          ...Object.fromEntries(
+            completed.map((messageId) => [messageId, 'complete' as const]),
+          ),
+        },
+        snapshotReasoningMessageIds: next.snapshotReasoningMessageIds?.filter(
+          (messageId) => !implicitReasoningEnds.has(messageId),
+        ),
+      };
+    accumulators.set(id, next);
+    if (foreground.messageId === id) foreground = next;
+  }
+  if (
+    current.accumulators?.size === accumulators.size &&
+    [...accumulators].every(
+      ([id, value]) => current.accumulators?.get(id) === value,
+    ) &&
+    Object.entries(foreground).every(
+      ([key, value]) =>
+        key === 'accumulators' ||
+        current[key as keyof StreamingMessageState] === value,
+    )
+  )
+    return current;
+  return { ...foreground, accumulators };
+}
+
+/** Selects all active assistant parsers in canonical arrival order. @internal */
+export const ɵselectStreamingMessages = (state: StreamingMessageState) => {
+  if (state.accumulators)
+    return [...state.accumulators.values()].flatMap((accumulator) => {
+      const message = selectStreamingMessage(accumulator);
+      return message ? [message] : [];
+    });
+  const message = selectStreamingMessage(state);
+  return message ? [message] : [];
+};
+
 export const selectRawStreamingMessage = (
   state: StreamingMessageState,
 ): Chat.Internal.AssistantMessage | null =>
@@ -497,10 +683,17 @@ export const selectStreamingMessageId = (state: StreamingMessageState) =>
   state.messageId;
 
 export const selectRawStreamingToolCalls = (state: StreamingMessageState) =>
-  state.toolCalls;
+  state.accumulators
+    ? [...state.accumulators.values()].flatMap(
+        (accumulator) => accumulator.toolCalls,
+      )
+    : state.toolCalls;
 
 export const selectStreamingMessageError = (state: StreamingMessageState) =>
-  state.error;
+  state.error ??
+  [...(state.accumulators?.values() ?? [])].find(
+    (accumulator) => accumulator.error,
+  )?.error;
 
 export const selectStreamingMessage = select(
   selectRawStreamingMessage,
@@ -637,6 +830,9 @@ function hydrateSnapshot(
     ...hydrated,
     message: {
       ...message,
+      ...(hydrated.message?.contentResolved === undefined
+        ? {}
+        : { contentResolved: hydrated.message.contentResolved }),
       ...(hydrated.message?.reasoning === undefined
         ? {}
         : { reasoning: hydrated.message.reasoning }),
