@@ -16,11 +16,11 @@ import { DOCS_DEMOS } from '../elements/docs-demo-media';
 import { DocsDemoVideo } from '../elements/DocsDemoVideo';
 import { createEmbedClient } from './embed-client';
 import {
-  LOOPBACK_LESSONS,
   PARTIAL_CAPTURE_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
   type WorkbenchLessonId,
   workbenchLessonTitle,
+  workbenchLiveAvailability,
   workbenchMediaId,
   workbenchOrigin,
   type WorkbenchSourceData,
@@ -215,6 +215,7 @@ function TabbedPanel({
   const { width, height } =
     'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
   const aspectRatio = `${width} / ${height}`;
+  const availability = workbenchLiveAvailability(lesson, sdk);
 
   return (
     <div className={styles.panel} ref={panel}>
@@ -279,13 +280,10 @@ function TabbedPanel({
         )}
       </div>
       <div {...panelProps('live')}>
-        {LOOPBACK_LESSONS.includes(lesson) ? (
+        {!availability.live ? (
           <p className={styles.loopback}>
             This lesson runs only on a local server.{' '}
-            <a href={`/docs/${sdk}/start/workbench#run-the-example`}>
-              Run the example locally
-            </a>
-            .
+            <a href={availability.href}>Run the example locally</a>.
           </p>
         ) : (
           liveMounted && (

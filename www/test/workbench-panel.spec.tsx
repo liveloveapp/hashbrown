@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
-import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
+import {
+  hostedWorkbenchLessons,
+  workbenchLessons,
+} from '../examples/quickstart/runtime/workbench-lessons';
 import { DOCS_DEMOS } from '../src/components/elements/docs-demo-media';
 import { WorkbenchPanel } from '../src/components/workbench/WorkbenchPanel';
 import { createEmbedClient } from '../src/components/workbench/embed-client';
@@ -9,6 +12,7 @@ import {
   assertWorkbenchLesson,
   LOOPBACK_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
+  workbenchLiveAvailability,
   workbenchMediaId,
   workbenchOrigin,
 } from '../src/components/workbench/workbench-lessons';
@@ -430,6 +434,47 @@ test('loopback lessons link to running locally instead of Live', () => {
   ).not.toBeNull();
 });
 
+test('production-recovery links to the b4run reference instead of Live', () => {
+  const { intersect } = setup();
+  render(<WorkbenchPanel lesson="production-recovery" sdk="angular" />);
+  intersect();
+
+  fireEvent.click(liveTab());
+
+  expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
+  expect(document.body.textContent).toContain(
+    'This lesson runs only on a local server',
+  );
+  expect(
+    document.querySelector('a[href="/docs/angular/platform/b4run"]'),
+  ).not.toBeNull();
+});
+
+test('every lesson is either live on the hosted workbench or links to a local run', () => {
+  const hosted = new Set(hostedWorkbenchLessons.map((lesson) => lesson.id));
+
+  const availability = workbenchLessons.map((lesson) => ({
+    lesson,
+    react: workbenchLiveAvailability(lesson.id, 'react'),
+  }));
+
+  for (const { lesson, react } of availability) {
+    const live = hosted.has(lesson.id) && !LOOPBACK_LESSONS.includes(lesson.id);
+    expect(react.live, lesson.id).toBe(live);
+    if (react.live) continue;
+    expect(react.href, lesson.id).toBe(
+      lesson.host === 'production-reference'
+        ? '/docs/react/platform/b4run'
+        : '/docs/react/start/workbench#run-the-example',
+    );
+  }
+  expect(workbenchLiveAvailability('production-recovery', 'react')).toEqual({
+    live: false,
+    href: '/docs/react/platform/b4run',
+  });
+  expect(workbenchLiveAvailability('tools', 'react')).toEqual({ live: true });
+});
+
 test('narrow viewports get the video and an open link', () => {
   setup({ narrow: true });
   render(<WorkbenchPanel lesson="structured-output" sdk="react" />);
@@ -460,7 +505,7 @@ test('lessons without a capture replay the video and never fetch', () => {
   expect(document.querySelector('video')?.getAttribute('poster')).toBe(
     '/video/docs/canonical-workbench-production-recovery-angular-poster.png',
   );
-  expect(document.querySelector('iframe[src*="embed=live"]')).not.toBeNull();
+  expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
   expect(
     document.querySelector(
       `a[href="${origin}/angular.html?lesson=production-recovery"]`,
