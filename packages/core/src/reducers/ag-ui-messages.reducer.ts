@@ -1,3 +1,16 @@
+import {
+  ɵacknowledgeSubagentResume,
+  ɵassociateSubagentInterrupts,
+  ɵfreezeSubagentState,
+  ɵseedSubagentState,
+  type ɵSubagentResumeClaim,
+} from './ag-ui-subagent-resume';
+import type { PendingInterruptBatch } from '../models/interrupt';
+import {
+  type ɵAgUiSubagentsState,
+  ɵcreateAgUiSubagentsState,
+  ɵfoldAgUiSubagents,
+} from './ag-ui-subagents';
 import { restoreHistoryDiagnostics } from '../models/history-diagnostics';
 import { ɵrestoreCancelledTurnProvenance } from '../models/cancelled-turn';
 import {
@@ -49,6 +62,9 @@ const NO_PENDING_STEPS: Readonly<Record<string, ɵToolStep>> = Object.freeze({})
 
 /** Canonical AG-UI history synchronized transactionally with an agent run. @internal */
 export interface AgUiMessagesState {
+  readonly subagentResumeClaim?: ɵSubagentResumeClaim;
+  readonly committedSubagents: ɵAgUiSubagentsState;
+  readonly subagents: ɵAgUiSubagentsState;
   readonly committed: readonly Readonly<Message>[];
   readonly draft: readonly Readonly<Message>[];
   readonly attemptActive: boolean;
@@ -69,7 +85,7 @@ export interface AgUiMessagesState {
   readonly lastToolCallId: string | undefined;
   /**
    * The last assistant message started in the current attempt, by text or by
-   * a tool call's parent. Used only to link activities.
+   * a tool call's parent. Retained for legacy foreground selectors.
    */
   readonly lastAssistantMessageId: string | undefined;
   /** Why the last event, an `ACTIVITY_DELTA`, was dropped; logged by the effect. */
@@ -86,6 +102,7 @@ export type ɵAgUiMessageEventDecision =
   | {
       readonly kind: 'accepted';
       readonly event: AGUIEvent;
+      readonly events: readonly AGUIEvent[];
       readonly priorState: AgUiMessagesState;
       readonly state: AgUiMessagesState;
     }
@@ -94,6 +111,8 @@ export type ɵAgUiMessageEventDecision =
 
 /** Initial canonical AG-UI message state. @internal */
 export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
+  committedSubagents: ɵseedSubagentState([]),
+  subagents: ɵseedSubagentState([]),
   committed: Object.freeze([]),
   draft: Object.freeze([]),
   attemptActive: false,
@@ -119,6 +138,7 @@ export const reducer = createReducer(
   initialAgUiMessagesState,
   on(devActions.restoreConversation, (_state, action): AgUiMessagesState => ({
     ...initialAgUiMessagesState,
+    ...seedSubagents(action.payload.canonicalMessages, action.payload.batch),
     committed: action.payload.canonicalMessages,
     systemMessage: action.payload.systemMessage,
   })),
@@ -127,6 +147,7 @@ export const reducer = createReducer(
     const committed = ownRestored(action.payload.canonicalMessages);
 
     return {
+      ...seedSubagents(committed),
       committed: withoutSystemOverlay(committed, systemMessage),
       draft: Object.freeze([]),
       attemptActive: false,
@@ -138,7 +159,76 @@ export const reducer = createReducer(
       ...inactiveAttempt(),
     };
   }),
+  on(
+    internalActions.interruptsPublished,
+    (state, action): AgUiMessagesState => ({
+      ...state,
+      subagents: ɵassociateSubagentInterrupts(
+        state.subagents,
+        action.payload.batch,
+      ),
+      ...(!state.attemptActive
+        ? {
+            committedSubagents: ɵassociateSubagentInterrupts(
+              state.committedSubagents,
+              action.payload.batch,
+            ),
+          }
+        : {}),
+    }),
+  ),
+  on(devActions.resume, (state, action): AgUiMessagesState => {
+    if (!(action as unknown as { ɵacceptedResume?: boolean }).ɵacceptedResume)
+      return state;
+    return {
+      ...state,
+      subagentResumeClaim: {
+        claimId: action.payload.claimId,
+        generationId: action.payload.claimId,
+        batch: action.payload.batch,
+        options: action.payload.options,
+      },
+    };
+  }),
+  on(internalActions.resumeAcknowledged, (state, action): AgUiMessagesState => {
+    const claim = state.subagentResumeClaim;
+    if (
+      !(action as unknown as { ɵacceptedResume?: boolean }).ɵacceptedResume ||
+      !claim ||
+      claim.claimId !== action.payload.claimId ||
+      claim.generationId !== action.payload.generationId
+    )
+      return state;
+    return {
+      ...state,
+      subagentResumeClaim: undefined,
+      committedSubagents: ɵacknowledgeSubagentResume(
+        state.committedSubagents,
+        claim,
+      ),
+      subagents: ɵacknowledgeSubagentResume(state.subagents, claim),
+    };
+  }),
+  on(
+    internalActions.logicalGenerationStarted,
+    (state, action): AgUiMessagesState =>
+      state.subagentResumeClaim &&
+      state.subagentResumeClaim.generationId !== action.payload.generationId
+        ? { ...state, subagentResumeClaim: undefined }
+        : state,
+  ),
+  on(internalActions.resumeSettled, (state, action): AgUiMessagesState =>
+    state.subagentResumeClaim?.generationId === action.payload.generationId
+      ? { ...state, subagentResumeClaim: undefined }
+      : state,
+  ),
   on(devActions.updateOptions, (state, action): AgUiMessagesState => {
+    if ((action as unknown as { ɵthreadReplaced?: boolean }).ɵthreadReplaced)
+      state = {
+        ...state,
+        ...seedSubagents(state.committed),
+        subagentResumeClaim: undefined,
+      };
     if (!Object.hasOwn(action.payload, 'systemMessage')) {
       return state;
     }
@@ -152,6 +242,10 @@ export const reducer = createReducer(
     return {
       ...state,
       draft: state.committed,
+      subagents: ɵcreateAgUiSubagentsState(
+        state.committed,
+        state.committedSubagents.records,
+      ),
       attemptActive: true,
       protocolError: undefined,
       attemptStartToolCallIds: freezeStrings(findToolCallIds(state.committed)),
@@ -173,6 +267,7 @@ export const reducer = createReducer(
     return {
       ...state,
       committed: state.draft,
+      committedSubagents: state.subagents,
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
@@ -199,8 +294,14 @@ export const reducer = createReducer(
       const appended = own(action.payload.canonicalMessages);
       ɵassertAgUiMessageAppendCompatibility(state.committed, appended);
       const committed = Object.freeze([...state.committed, ...appended]);
+      const subagents = ɵfreezeSubagentState(
+        ɵcreateAgUiSubagentsState(committed, state.committedSubagents.records),
+      );
       return {
         ...state,
+        subagents,
+        committedSubagents: subagents,
+        subagentResumeClaim: undefined,
         committed,
         draft: Object.freeze([]),
         attemptActive: false,
@@ -223,6 +324,7 @@ export const reducer = createReducer(
     const committed = ownRestored(action.payload.canonicalMessages);
     return {
       ...state,
+      ...seedSubagents(committed),
       committed: withoutSystemOverlay(committed, state.systemMessage),
       draft: Object.freeze([]),
       attemptActive: false,
@@ -245,6 +347,7 @@ export const reducer = createReducer(
 
       return {
         ...state,
+        ...reseedCommittedSubagents(state, canonicalMessages),
         committed: canonicalMessages,
         draft: Object.freeze([]),
         attemptActive: false,
@@ -312,59 +415,36 @@ export function ɵdecideAgUiMessageEvent(
   }
 
   try {
-    const event = correlateEvent(state, input);
-    const activityDelta =
-      event.type === EventType.ACTIVITY_DELTA
-        ? applyActivityDelta(state.draft, event)
-        : undefined;
-    const draft =
-      activityDelta?.messages ??
-      applyCanonicalMessageEvent(state.draft, event, {
-        finishedTextMessageIds: state.draftFinishedTextMessageIds,
-        activityArrival: {
-          runId: state.currentRunId,
-          assistantMessageId: state.lastAssistantMessageId,
-          toolCallId: state.lastToolCallId,
-        },
-        pendingToolSteps: state.pendingToolSteps,
-        attemptScope: {
-          startToolCallIds: state.attemptStartToolCallIds,
-          committed: state.committed,
-        },
-      });
-    const lifecycle = {
-      ...nextLifecycle(state, event, draft),
-      activityDeltaDropReason: activityDelta?.dropped,
-      pendingToolSteps: nextPendingToolSteps(state, event, draft),
-    };
-    const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
-      state,
-      event,
-      draft,
-    );
-    const lifecycleChanged = Object.entries(lifecycle).some(
-      ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
-    );
-    if (isIgnoredEvent(event, draft)) {
+    if (input.type === EventType.MESSAGES_SNAPSHOT)
+      ɵreadAgUiMessageSnapshot(input);
+    if (
+      input.type === EventType.TOOL_CALL_CHUNK &&
+      input.toolCallId &&
+      input.toolCallName === undefined &&
+      !findToolCall(state.draft, input.toolCallId)
+    )
       return { kind: 'ignored', state };
+    const folded = ɵfoldAgUiSubagents(state.subagents, input);
+    let next = state;
+    for (const event of folded.events) {
+      const prior = next;
+      next = applyNormalizedEvent(next, event);
+      if (event !== folded.events[folded.events.length - 1])
+        next = {
+          ...next,
+          activeTextMessageId: prior.activeTextMessageId,
+          activeReasoningMessageId: prior.activeReasoningMessageId,
+          activeToolCallId: prior.activeToolCallId,
+        };
     }
+    const event = folded.events[folded.events.length - 1];
+    if (isIgnoredEvent(event, next.draft)) return { kind: 'ignored', state };
     return {
       kind: 'accepted',
       event,
+      events: folded.events,
       priorState: state,
-      state:
-        draft === state.draft &&
-        !lifecycleChanged &&
-        !state.protocolError &&
-        draftFinishedTextMessageIds === state.draftFinishedTextMessageIds
-          ? state
-          : {
-              ...state,
-              draft,
-              protocolError: undefined,
-              draftFinishedTextMessageIds,
-              ...lifecycle,
-            },
+      state: { ...next, subagents: ɵfreezeSubagentState(folded.state) },
     };
   } catch (error) {
     return {
@@ -567,6 +647,132 @@ export function applyCanonicalMessageEvent(
   }
 }
 
+/** Seeds ownership independently from active stream lanes. */
+function seedSubagents(
+  messages: readonly Readonly<Message>[],
+  batch?: PendingInterruptBatch,
+) {
+  const subagents = ɵseedSubagentState(messages, batch);
+  return {
+    subagents,
+    committedSubagents: subagents,
+    subagentResumeClaim: undefined,
+  };
+}
+
+/** Reseeds ownership after local canonical settlement while retaining committed lifecycle rows. */
+function reseedCommittedSubagents(
+  state: AgUiMessagesState,
+  history: readonly Readonly<Message>[],
+) {
+  const subagents = ɵfreezeSubagentState(
+    ɵcreateAgUiSubagentsState(history, state.committedSubagents.records),
+  );
+  return {
+    subagents,
+    committedSubagents: subagents,
+    subagentResumeClaim: undefined,
+  };
+}
+
+/** Finds activity arrival within the event's canonical owner lane. */
+function activityArrival(
+  state: AgUiMessagesState,
+  event: AGUIEvent,
+): ActivityArrival {
+  const owner = (event as { subagentRunId?: string }).subagentRunId;
+  const boundary = state.draft.findLastIndex(
+    (message) =>
+      message.role === 'user' &&
+      (message.subagentRunId === undefined || message.subagentRunId === owner),
+  );
+  const messages = state.draft.slice(boundary + 1);
+  const assistant = messages.findLast(
+    (message) =>
+      message.role === 'assistant' && message.subagentRunId === owner,
+  );
+  const toolAssistant = messages.findLast(
+    (message) =>
+      message.role === 'assistant' &&
+      message.subagentRunId === owner &&
+      message.toolCalls?.length,
+  );
+  const lane = state.subagents.lanes.get(owner);
+  return {
+    assistantMessageId: messages.some(
+      (message) =>
+        message.role === 'assistant' && message.id === lane?.assistantMessageId,
+    )
+      ? lane?.assistantMessageId
+      : assistant?.id,
+    toolCallId: messages.some(
+      (message) =>
+        message.role === 'assistant' &&
+        message.toolCalls?.some((tool) => tool.id === lane?.toolCallId),
+    )
+      ? lane?.toolCallId
+      : toolAssistant?.role === 'assistant'
+        ? toolAssistant.toolCalls?.at(-1)?.id
+        : undefined,
+  };
+}
+
+/** Applies one already normalized event to the speculative canonical state. */
+function applyNormalizedEvent(
+  state: AgUiMessagesState,
+  event: AGUIEvent,
+): AgUiMessagesState {
+  const activityDelta =
+    event.type === EventType.ACTIVITY_DELTA
+      ? applyActivityDelta(state.draft, event)
+      : undefined;
+  const draft =
+    activityDelta?.messages ??
+    applyCanonicalMessageEvent(state.draft, event, {
+      finishedTextMessageIds: state.draftFinishedTextMessageIds,
+      activityArrival: {
+        runId: state.currentRunId,
+        ...(event.type === EventType.ACTIVITY_SNAPSHOT
+          ? activityArrival(state, event)
+          : {}),
+      },
+      pendingToolSteps: state.pendingToolSteps,
+      attemptScope: {
+        startToolCallIds: state.attemptStartToolCallIds,
+        committed: state.committed,
+      },
+    });
+  const lifecycle = {
+    ...nextLifecycle(state, event, draft),
+    activityDeltaDropReason: activityDelta?.dropped,
+    pendingToolSteps: nextPendingToolSteps(state, event, draft),
+  };
+  const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
+    state,
+    event,
+    draft,
+  );
+  const lifecycleChanged = Object.entries(lifecycle).some(
+    ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
+  );
+  return draft === state.draft &&
+    !lifecycleChanged &&
+    !state.protocolError &&
+    draftFinishedTextMessageIds === state.draftFinishedTextMessageIds
+    ? state
+    : {
+        ...state,
+        draft,
+        protocolError: undefined,
+        draftFinishedTextMessageIds,
+        ...lifecycle,
+      };
+}
+
+/** Selects immutable native lifecycle display records. @internal */
+export const ɵselectSubagents = (state: AgUiMessagesState) =>
+  (state.attemptActive ? state.subagents : state.committedSubagents).records;
+
 function rollback(state: AgUiMessagesState): AgUiMessagesState {
   if (!state.attemptActive) {
     return state;
@@ -575,6 +781,7 @@ function rollback(state: AgUiMessagesState): AgUiMessagesState {
   return {
     ...state,
     draft: state.committed,
+    subagents: state.committedSubagents,
     attemptActive: false,
     protocolError: undefined,
     attemptStartToolCallIds: Object.freeze([]),
@@ -603,51 +810,6 @@ function inactiveLifecycle() {
     activeToolCallName: undefined,
     activeAssistantMessageId: undefined,
   } as const;
-}
-
-function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
-  switch (event.type) {
-    case EventType.TEXT_MESSAGE_CHUNK:
-      return event.messageId || !state.activeTextMessageId
-        ? event
-        : { ...event, messageId: state.activeTextMessageId };
-    case EventType.REASONING_MESSAGE_CHUNK:
-      return event.messageId || !state.activeReasoningMessageId
-        ? event
-        : { ...event, messageId: state.activeReasoningMessageId };
-    case EventType.TOOL_CALL_CHUNK:
-      if (event.toolCallId) {
-        const existing = findToolCall(state.draft, event.toolCallId);
-        return {
-          ...event,
-          parentMessageId:
-            event.parentMessageId ??
-            (existing ? undefined : state.activeAssistantMessageId),
-          toolCallName:
-            event.toolCallName ??
-            (event.toolCallId === state.activeToolCallId
-              ? state.activeToolCallName
-              : existing?.tool.function.name),
-        };
-      }
-      return !state.activeToolCallId
-        ? event
-        : {
-            ...event,
-            toolCallId: state.activeToolCallId,
-            toolCallName: event.toolCallName ?? state.activeToolCallName,
-            parentMessageId:
-              event.parentMessageId ?? state.activeAssistantMessageId,
-          };
-    case EventType.TOOL_CALL_START:
-      return event.parentMessageId ||
-        !state.activeAssistantMessageId ||
-        findToolCall(state.draft, event.toolCallId)
-        ? event
-        : { ...event, parentMessageId: state.activeAssistantMessageId };
-    default:
-      return event;
-  }
 }
 
 function nextLifecycle(
@@ -971,6 +1133,9 @@ function startToolCall(
           id: parentId,
           role: 'assistant',
           content: '',
+          ...('subagentRunId' in event && event.subagentRunId !== undefined
+            ? { subagentRunId: event.subagentRunId }
+            : {}),
           toolCalls: [],
         } as Message)
       : messages[index];
@@ -1269,7 +1434,9 @@ function mergeEventFields<T extends Record<string, unknown>>(
           }),
         }),
     ...(typeof name === 'string' ? { name } : {}),
-    ...(typeof subagentRunId === 'string' ? { subagentRunId } : {}),
+    ...(typeof subagentRunId === 'string' && !('function' in message)
+      ? { subagentRunId }
+      : {}),
   }) as T;
   return Object.isFrozen(message) &&
     JSON.stringify(next) === JSON.stringify(message)

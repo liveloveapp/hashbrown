@@ -77,10 +77,12 @@ export const reducer = createReducer(
       localProvenance: createLocalProvenance(
         action.payload.localProjection,
         action.payload.canonicalMessages,
+        action.payload.responseSchema,
       ),
       committedLocalProvenance: createLocalProvenance(
         action.payload.localProjection,
         action.payload.canonicalMessages,
+        action.payload.responseSchema,
       ),
     };
   }),
@@ -110,10 +112,12 @@ export const reducer = createReducer(
         localProvenance: createLocalProvenance(
           action.payload.localProjection,
           action.payload.canonicalMessages,
+          action.payload.responseSchema,
         ),
         committedLocalProvenance: createLocalProvenance(
           action.payload.localProjection,
           action.payload.canonicalMessages,
+          action.payload.responseSchema,
         ),
       };
     },
@@ -587,10 +591,14 @@ function createLocalProvenance(
   localProjection:
     { readonly messages: readonly Chat.Internal.Message[] } | undefined,
   canonicalMessages: readonly Readonly<Message>[],
+  responseSchema?: s.SchemaOutput,
 ): Readonly<Record<string, LocalMessageProvenance>> {
   if (!localProjection) return {};
 
-  const sources = ɵindexAgUiCanonicalMessageSources(canonicalMessages);
+  const sources = ɵindexAgUiCanonicalMessageSources(
+    canonicalMessages,
+    responseSchema ? s.normalizeSchemaOutput(responseSchema) : undefined,
+  );
   return localProjection.messages.reduce<
     Record<string, LocalMessageProvenance>
   >((provenance, message) => {

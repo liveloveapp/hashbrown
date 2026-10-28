@@ -317,6 +317,9 @@ function startReasoningMessage(
   };
   const message = state.message ?? {
     role: 'assistant' as const,
+    ...(typeof event.subagentRunId === 'string'
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
     content: '',
     toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
   };
@@ -498,6 +501,9 @@ function startTextMessage(
 
   const message = state.message ?? {
     role: 'assistant' as const,
+    ...(typeof event.subagentRunId === 'string'
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
     content: '',
     toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
   };
@@ -645,10 +651,14 @@ function startToolCall(
     ),
     event.timestamp,
   );
+  const subagentRunId = state.message
+    ? state.message.subagentRunId
+    : event.subagentRunId;
   const toolCalls = [
     ...state.toolCalls,
     {
       id: event.toolCallId,
+      ...(typeof subagentRunId === 'string' ? { subagentRunId } : {}),
       name: event.toolCallName,
       arguments: '',
       status: 'pending' as const,
@@ -657,6 +667,9 @@ function startToolCall(
   ];
   const message = state.message ?? {
     role: 'assistant' as const,
+    ...(typeof event.subagentRunId === 'string'
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
     content: '',
     toolCallIds: [],
   };

@@ -30,7 +30,7 @@ import {
   registerRuntimeBinder,
 } from './growth/runtime-binding';
 import effects from './effects';
-import { Chat } from './models';
+import { Chat, type SubagentRun } from './models';
 import {
   reducers,
   selectDebounce,
@@ -65,6 +65,7 @@ import {
   ɵselectEffectiveCommittedAgUiMessages,
   ɵselectInterrupts,
   ɵselectStateWriteLocked,
+  ɵselectSubagents,
   ɵselectToolTurnOwnership,
   ɵselectVisibleAgentState,
 } from './reducers';
@@ -176,6 +177,8 @@ export interface ChatRuntime<
     snapshot: ConversationSnapshot<State>,
     options: ConversationRestoreOptions,
   ): void;
+  /** Observed native subagent invocations in the current conversation. */
+  readonly subagents: StateSignal<readonly SubagentRun[]>;
   /** The current batch, retained until the server acknowledges resume. */
   readonly pendingInterrupts: StateSignal<PendingInterruptBatch | undefined>;
   /** Whether the whole resumed interaction is still executing. */
@@ -965,6 +968,7 @@ export function createChatRuntime(init: {
     start,
     state: state.createSignal(ɵselectVisibleAgentState),
     messages: state.createSignal(selectViewMessages),
+    subagents: state.createSignal(ɵselectSubagents),
     error: state.createSignal(selectUnifiedError),
     isReceiving: state.createSignal(selectIsReceiving),
     isSending: state.createSignal(selectIsSending),
