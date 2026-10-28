@@ -85,8 +85,9 @@ test('replay, inactive sessions, and oversized scripts perform no execution or w
 
 test('captures rejected host arguments as an actual error and permits recovery', async () => {
   const store = createWorkbenchStore('text');
-  const execute = vi.fn(async (_code: string, signal: AbortSignal) =>
-    session.readPlan({ revision: -1 }, signal),
+  const execute = vi.fn(
+    async (_code: string, signal: AbortSignal): Promise<unknown> =>
+      session.readPlan({ revision: -1 }, signal),
   );
   const session: ReturnType<typeof createWorkbenchJavaScriptSession> =
     createWorkbenchJavaScriptSession({
