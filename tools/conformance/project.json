@@ -10,17 +10,31 @@
         "parallel": false,
         "commands": [
           "tsc --noEmit -p tools/conformance/tsconfig.playwright.json",
-          "tsc --noEmit -p tools/conformance/tsconfig.spec.json",
-          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.playwright.json",
-          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.spec.json"
+          "tsc --noEmit -p tools/conformance/tsconfig.spec.json"
         ]
-      }
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
     },
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint tools/conformance --ignore-pattern 'tools/conformance/hosts/**'"
-      }
+        "command": "eslint tools/conformance --ignore-pattern 'tools/conformance/hosts/**' --ignore-pattern 'tools/conformance/dotnet/**'"
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
     },
     "test": {
       "executor": "@nx/jest:jest",
@@ -28,7 +42,15 @@
       "options": {
         "jestConfig": "tools/conformance/jest.config.ts",
         "passWithNoTests": false
-      }
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tsconfig.base.json",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
     },
     "conformance-e2e": {
       "executor": "nx:run-commands",

@@ -26,7 +26,10 @@ import {
 type Sdk = 'react' | 'angular';
 const selected = selectThreadplaneModes(process.env['DOCS_DEMO_MODES']);
 const record = process.env['DOCS_SKIP_RECORDING'] !== '1';
-if (record) throw new Error('Fixture footage cannot be published. Use npx nx docs-threadplane-live-demo www for real provider recordings, or DOCS_SKIP_RECORDING=1 to verify installed consumers.');
+if (record)
+  throw new Error(
+    'Fixture footage cannot be published. Use npx nx docs-threadplane-live-demo www for real provider recordings, or DOCS_SKIP_RECORDING=1 to verify installed consumers.',
+  );
 const work = resolve('dist/docs-threadplane');
 const assets = resolve('www/public/video/docs');
 const captureWork = resolve(work, 'captures', randomUUID());
@@ -403,7 +406,8 @@ async function demonstrate(
   // completed fetch after RUN_FINISHED, making Chromium's response body unavailable.
   const firstWireRequest = rawRequests.at(-1);
   if (!firstWireRequest) throw new Error('Missing first wire request');
-  const events = firstWireRequest.output.join('')
+  const events = firstWireRequest.output
+    .join('')
     .split('\n')
     .filter((line) => line.startsWith('data:'))
     .map((line) => JSON.parse(line.slice(5)));

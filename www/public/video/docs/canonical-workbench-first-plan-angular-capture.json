@@ -1,1 +1,1953 @@
-{"version":1,"lesson":"first-plan","framework":"angular","commit":"c29b05b2d9c7d777b82c814d9ac545e98c6971da","recordedAt":"2026-10-28T19:16:04.975Z","events":[{"sequence":1,"turn":1,"kind":"user","payload":{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},"source":"Application","elapsedMs":0,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":2,"turn":1,"kind":"request","payload":{"url":"/api/workbench/first-plan","requestId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876","attempt":1,"input":{"threadId":"c320f641-4317-4fd5-828e-d34815346758","runId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876","messages":[{"id":"aa3e7d0b-4415-48a0-a909-844e60d727ea","role":"system","content":"Help a developer create a small two-step plan for a trusted UI demo. Render exactly one SummaryCard with a short title and exactly two concise steps: outline the demo, then record it. Do not call tools. Rendering is a preview and does not change application state."},{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"tools":[],"context":[],"forwardedProps":{"hashbrown":{"responseSchema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"ui":{"type":"array","items":{"anyOf":[{"type":"object","properties":{"SummaryCard":{"type":"object","properties":{"props":{"type":"object","properties":{"title":{"type":"string","description":"A concise plan title"},"steps":{"type":"array","items":{"type":"string","description":"A concise action"},"description":"The ordered plan steps"}},"required":["title","steps"],"additionalProperties":false,"description":"Component Props"}},"required":["props"],"additionalProperties":false,"description":"SummaryCard node"}},"required":["SummaryCard"],"additionalProperties":false,"description":"Show a concise two-step plan as a preview."}]},"description":"List of elements"}},"required":["ui"],"additionalProperties":false,"description":"Return a JSON object with a single key \"ui\" that matches the schema below. Use only these components."},"ui":true}}}},"source":"Browser transport","elapsedMs":156,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":3,"turn":1,"kind":"source","payload":{"source":"provider"},"source":"Application","elapsedMs":184,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":4,"turn":1,"kind":"response","payload":{"status":200,"url":"http://127.0.0.1:54161/api/workbench/first-plan","requestId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876","source":"provider"},"source":"Application","elapsedMs":184,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":5,"turn":1,"kind":"event","payload":{"type":"RUN_STARTED","threadId":"c320f641-4317-4fd5-828e-d34815346758","runId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876"},"source":"Browser transport","elapsedMs":187,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":6,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_START","metadata":{"openai":{"itemId":"msg_035939e828bc6789016ae249f0938c87d08e6e81eacbb9a4b3","reasoningItemIds":[]}},"messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant"},"source":"Browser transport","elapsedMs":736,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."}],"json":"","props":null,"status":"loading"},{"sequence":7,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"{\""},"source":"Browser transport","elapsedMs":755,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\""}],"json":"{\"","props":null,"status":"loading"},{"sequence":8,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"ui"},"source":"Browser transport","elapsedMs":775,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui"}],"json":"{\"ui","props":null,"status":"loading"},{"sequence":9,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\":["},"source":"Browser transport","elapsedMs":795,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":["}],"json":"{\"ui\":[","props":null,"status":"loading"},{"sequence":10,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"{\""},"source":"Browser transport","elapsedMs":816,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\""}],"json":"{\"ui\":[{\"","props":null,"status":"loading"},{"sequence":11,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"Summary"},"source":"Browser transport","elapsedMs":837,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"Summary"}],"json":"{\"ui\":[{\"Summary","props":null,"status":"loading"},{"sequence":12,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"Card"},"source":"Browser transport","elapsedMs":857,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard"}],"json":"{\"ui\":[{\"SummaryCard","props":null,"status":"loading"},{"sequence":13,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\":{\""},"source":"Browser transport","elapsedMs":877,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\""}],"json":"{\"ui\":[{\"SummaryCard\":{\"","props":null,"status":"loading"},{"sequence":14,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"props"},"source":"Browser transport","elapsedMs":897,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props"}],"json":"{\"ui\":[{\"SummaryCard\":{\"props","props":null,"status":"loading"},{"sequence":15,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\":{\""},"source":"Browser transport","elapsedMs":918,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\""}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"","props":null,"status":"loading"},{"sequence":16,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{}}}}]},"source":"SDK parsed output","elapsedMs":919,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"","props":{}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"","props":{},"status":"loading"},{"sequence":17,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"title"},"source":"Browser transport","elapsedMs":937,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title","props":{}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title","props":{},"status":"loading"},{"sequence":18,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\":\""},"source":"Browser transport","elapsedMs":959,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"","props":{}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"","props":{},"status":"loading"},{"sequence":19,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"Trusted"},"source":"Browser transport","elapsedMs":979,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted","props":{}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted","props":{},"status":"loading"},{"sequence":20,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted"}}}}]},"source":"SDK parsed output","elapsedMs":980,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted","props":{"title":"Trusted"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted","props":{"title":"Trusted"},"status":"loading"},{"sequence":21,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" UI"},"source":"Browser transport","elapsedMs":999,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI","props":{"title":"Trusted"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI","props":{"title":"Trusted"},"status":"loading"},{"sequence":22,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI"}}}}]},"source":"SDK parsed output","elapsedMs":1001,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI","props":{"title":"Trusted UI"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI","props":{"title":"Trusted UI"},"status":"loading"},{"sequence":23,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" Demo"},"source":"Browser transport","elapsedMs":1020,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo","props":{"title":"Trusted UI"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo","props":{"title":"Trusted UI"},"status":"loading"},{"sequence":24,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI Demo"}}}}]},"source":"SDK parsed output","elapsedMs":1022,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo","props":{"title":"Trusted UI Demo"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo","props":{"title":"Trusted UI Demo"},"status":"loading"},{"sequence":25,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" Plan"},"source":"Browser transport","elapsedMs":1041,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan","props":{"title":"Trusted UI Demo"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan","props":{"title":"Trusted UI Demo"},"status":"loading"},{"sequence":26,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI Demo Plan"}}}}]},"source":"SDK parsed output","elapsedMs":1042,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan","props":{"title":"Trusted UI Demo Plan"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan","props":{"title":"Trusted UI Demo Plan"},"status":"loading"},{"sequence":27,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\",\""},"source":"Browser transport","elapsedMs":1061,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"","props":{"title":"Trusted UI Demo Plan"}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"","props":{"title":"Trusted UI Demo Plan"},"status":"loading"},{"sequence":28,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI Demo Plan"},"value":{"title":"Trusted UI Demo Plan","steps":[]}}}}]},"source":"SDK parsed output","elapsedMs":1063,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":29,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"steps"},"source":"Browser transport","elapsedMs":1081,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":30,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\":[\""},"source":"Browser transport","elapsedMs":1102,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":31,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"Outline"},"source":"Browser transport","elapsedMs":1122,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":32,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" the"},"source":"Browser transport","elapsedMs":1144,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":33,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" demo"},"source":"Browser transport","elapsedMs":1164,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":34,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" objectives"},"source":"Browser transport","elapsedMs":1185,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":35,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" and"},"source":"Browser transport","elapsedMs":1206,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":36,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" flow"},"source":"Browser transport","elapsedMs":1227,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":37,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":".\",\""},"source":"Browser transport","elapsedMs":1247,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"","props":{"title":"Trusted UI Demo Plan","steps":[]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"","props":{"title":"Trusted UI Demo Plan","steps":[]},"status":"loading"},{"sequence":38,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.",null]},"value":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}}}]},"source":"SDK parsed output","elapsedMs":1249,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":39,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"Record"},"source":"Browser transport","elapsedMs":1267,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":40,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" the"},"source":"Browser transport","elapsedMs":1288,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":41,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" demo"},"source":"Browser transport","elapsedMs":1308,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":42,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" showcasing"},"source":"Browser transport","elapsedMs":1327,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":43,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" the"},"source":"Browser transport","elapsedMs":1348,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":44,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" UI"},"source":"Browser transport","elapsedMs":1369,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":45,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":" features"},"source":"Browser transport","elapsedMs":1390,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":46,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"."},"source":"Browser transport","elapsedMs":1410,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":47,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"\"]"},"source":"Browser transport","elapsedMs":1430,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow."]},"status":"loading"},{"sequence":48,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":false,"partialValue":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"value":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}}}]},"source":"SDK parsed output","elapsedMs":1431,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":49,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"}}"},"source":"Browser transport","elapsedMs":1450,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":50,"turn":1,"kind":"parsed","payload":{"ui":[{"SummaryCard":{"props":{"complete":true,"partialValue":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"value":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}}}]},"source":"SDK parsed output","elapsedMs":1452,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":51,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"}"},"source":"Browser transport","elapsedMs":1471,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":52,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_CONTENT","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","delta":"]}"},"source":"Browser transport","elapsedMs":1491,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":53,"turn":1,"kind":"event","payload":{"type":"TEXT_MESSAGE_END","messageId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant"},"source":"Browser transport","elapsedMs":1512,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":54,"turn":1,"kind":"event","payload":{"type":"RUN_FINISHED","metadata":{"hashbrown":{"finishReason":"stop"},"openai":{"status":"completed"}},"threadId":"c320f641-4317-4fd5-828e-d34815346758","runId":"d29ccd80-1178-4ce7-a25c-bfb47f44d876","usage":[{"provider":"openai","model":"gpt-4.1-mini-2025-04-14","inputTokens":195,"outputTokens":38,"totalTokens":233,"reasoningTokens":0,"cachedInputTokens":0}]},"source":"Browser transport","elapsedMs":1533,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"loading"},{"sequence":55,"turn":1,"kind":"complete","payload":{"status":"complete","finishReason":"stop"},"source":"Application","elapsedMs":1537,"application":{"revision":0,"plan":null},"dismissedPredictions":[],"messages":[{"id":"workbench-0-1","role":"user","content":"Create a two-step plan for a trusted UI demo."},{"id":"d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant","role":"assistant","content":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]}}],"json":"{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}","props":{"title":"Trusted UI Demo Plan","steps":["Outline the demo objectives and flow.","Record the demo showcasing the UI features."]},"status":"complete"}]}
+{
+  "version": 1,
+  "lesson": "first-plan",
+  "framework": "angular",
+  "commit": "c29b05b2d9c7d777b82c814d9ac545e98c6971da",
+  "recordedAt": "2026-10-28T19:16:04.975Z",
+  "events": [
+    {
+      "sequence": 1,
+      "turn": 1,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-1",
+        "role": "user",
+        "content": "Create a two-step plan for a trusted UI demo."
+      },
+      "source": "Application",
+      "elapsedMs": 0,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 2,
+      "turn": 1,
+      "kind": "request",
+      "payload": {
+        "url": "/api/workbench/first-plan",
+        "requestId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876",
+        "attempt": 1,
+        "input": {
+          "threadId": "c320f641-4317-4fd5-828e-d34815346758",
+          "runId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876",
+          "messages": [
+            {
+              "id": "aa3e7d0b-4415-48a0-a909-844e60d727ea",
+              "role": "system",
+              "content": "Help a developer create a small two-step plan for a trusted UI demo. Render exactly one SummaryCard with a short title and exactly two concise steps: outline the demo, then record it. Do not call tools. Rendering is a preview and does not change application state."
+            },
+            {
+              "id": "workbench-0-1",
+              "role": "user",
+              "content": "Create a two-step plan for a trusted UI demo."
+            }
+          ],
+          "tools": [],
+          "context": [],
+          "forwardedProps": {
+            "hashbrown": {
+              "responseSchema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                  "ui": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "SummaryCard": {
+                              "type": "object",
+                              "properties": {
+                                "props": {
+                                  "type": "object",
+                                  "properties": {
+                                    "title": {
+                                      "type": "string",
+                                      "description": "A concise plan title"
+                                    },
+                                    "steps": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "description": "A concise action"
+                                      },
+                                      "description": "The ordered plan steps"
+                                    }
+                                  },
+                                  "required": ["title", "steps"],
+                                  "additionalProperties": false,
+                                  "description": "Component Props"
+                                }
+                              },
+                              "required": ["props"],
+                              "additionalProperties": false,
+                              "description": "SummaryCard node"
+                            }
+                          },
+                          "required": ["SummaryCard"],
+                          "additionalProperties": false,
+                          "description": "Show a concise two-step plan as a preview."
+                        }
+                      ]
+                    },
+                    "description": "List of elements"
+                  }
+                },
+                "required": ["ui"],
+                "additionalProperties": false,
+                "description": "Return a JSON object with a single key \"ui\" that matches the schema below. Use only these components."
+              },
+              "ui": true
+            }
+          }
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 156,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 3,
+      "turn": 1,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 184,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 4,
+      "turn": 1,
+      "kind": "response",
+      "payload": {
+        "status": 200,
+        "url": "http://127.0.0.1:54161/api/workbench/first-plan",
+        "requestId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876",
+        "source": "provider"
+      },
+      "source": "Application",
+      "elapsedMs": 184,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 5,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_STARTED",
+        "threadId": "c320f641-4317-4fd5-828e-d34815346758",
+        "runId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 187,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 6,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_START",
+        "metadata": {
+          "openai": {
+            "itemId": "msg_035939e828bc6789016ae249f0938c87d08e6e81eacbb9a4b3",
+            "reasoningItemIds": []
+          }
+        },
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "role": "assistant"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 736,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 7,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "{\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 755,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\""
+        }
+      ],
+      "json": "{\"",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 8,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "ui"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 775,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui"
+        }
+      ],
+      "json": "{\"ui",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 9,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\":["
+      },
+      "source": "Browser transport",
+      "elapsedMs": 795,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":["
+        }
+      ],
+      "json": "{\"ui\":[",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 10,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "{\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 816,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\""
+        }
+      ],
+      "json": "{\"ui\":[{\"",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 11,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "Summary"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 837,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"Summary"
+        }
+      ],
+      "json": "{\"ui\":[{\"Summary",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 12,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "Card"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 857,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard"
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 13,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\":{\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 877,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\""
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 14,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "props"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 897,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props"
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 15,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\":{\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 918,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\""
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 16,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": { "complete": false, "partialValue": {} }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 919,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"",
+          "props": {}
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"",
+      "props": {},
+      "status": "loading"
+    },
+    {
+      "sequence": 17,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "title"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 937,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title",
+          "props": {}
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title",
+      "props": {},
+      "status": "loading"
+    },
+    {
+      "sequence": 18,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\":\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 959,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"",
+          "props": {}
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"",
+      "props": {},
+      "status": "loading"
+    },
+    {
+      "sequence": 19,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "Trusted"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 979,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted",
+          "props": {}
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted",
+      "props": {},
+      "status": "loading"
+    },
+    {
+      "sequence": 20,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": { "title": "Trusted" }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 980,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted",
+          "props": { "title": "Trusted" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted",
+      "props": { "title": "Trusted" },
+      "status": "loading"
+    },
+    {
+      "sequence": 21,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " UI"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 999,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI",
+          "props": { "title": "Trusted" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI",
+      "props": { "title": "Trusted" },
+      "status": "loading"
+    },
+    {
+      "sequence": 22,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": { "title": "Trusted UI" }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1001,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI",
+          "props": { "title": "Trusted UI" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI",
+      "props": { "title": "Trusted UI" },
+      "status": "loading"
+    },
+    {
+      "sequence": 23,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " Demo"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1020,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo",
+          "props": { "title": "Trusted UI" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo",
+      "props": { "title": "Trusted UI" },
+      "status": "loading"
+    },
+    {
+      "sequence": 24,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": { "title": "Trusted UI Demo" }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1022,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo",
+          "props": { "title": "Trusted UI Demo" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo",
+      "props": { "title": "Trusted UI Demo" },
+      "status": "loading"
+    },
+    {
+      "sequence": 25,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " Plan"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1041,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan",
+          "props": { "title": "Trusted UI Demo" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan",
+      "props": { "title": "Trusted UI Demo" },
+      "status": "loading"
+    },
+    {
+      "sequence": 26,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": { "title": "Trusted UI Demo Plan" }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1042,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan",
+          "props": { "title": "Trusted UI Demo Plan" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan",
+      "props": { "title": "Trusted UI Demo Plan" },
+      "status": "loading"
+    },
+    {
+      "sequence": 27,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\",\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1061,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"",
+          "props": { "title": "Trusted UI Demo Plan" }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"",
+      "props": { "title": "Trusted UI Demo Plan" },
+      "status": "loading"
+    },
+    {
+      "sequence": 28,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": { "title": "Trusted UI Demo Plan" },
+                "value": { "title": "Trusted UI Demo Plan", "steps": [] }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1063,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 29,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "steps"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1081,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 30,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\":[\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1102,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 31,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "Outline"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1122,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 32,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " the"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1144,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 33,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " demo"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1164,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 34,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " objectives"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1185,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 35,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " and"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1206,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 36,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " flow"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1227,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 37,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": ".\",\""
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1247,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"",
+          "props": { "title": "Trusted UI Demo Plan", "steps": [] }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"",
+      "props": { "title": "Trusted UI Demo Plan", "steps": [] },
+      "status": "loading"
+    },
+    {
+      "sequence": 38,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": ["Outline the demo objectives and flow.", null]
+                },
+                "value": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": ["Outline the demo objectives and flow."]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1249,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 39,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "Record"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1267,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 40,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " the"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1288,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 41,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " demo"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1308,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 42,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " showcasing"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1327,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 43,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " the"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1348,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 44,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " UI"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1369,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 45,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": " features"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1390,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 46,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "."
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1410,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 47,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "\"]"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1430,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": ["Outline the demo objectives and flow."]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": ["Outline the demo objectives and flow."]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 48,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": false,
+                "partialValue": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": [
+                    "Outline the demo objectives and flow.",
+                    "Record the demo showcasing the UI features."
+                  ]
+                },
+                "value": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": [
+                    "Outline the demo objectives and flow.",
+                    "Record the demo showcasing the UI features."
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1431,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 49,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "}}"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1450,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 50,
+      "turn": 1,
+      "kind": "parsed",
+      "payload": {
+        "ui": [
+          {
+            "SummaryCard": {
+              "props": {
+                "complete": true,
+                "partialValue": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": [
+                    "Outline the demo objectives and flow.",
+                    "Record the demo showcasing the UI features."
+                  ]
+                },
+                "value": {
+                  "title": "Trusted UI Demo Plan",
+                  "steps": [
+                    "Outline the demo objectives and flow.",
+                    "Record the demo showcasing the UI features."
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "source": "SDK parsed output",
+      "elapsedMs": 1452,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 51,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "}"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1471,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 52,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+        "delta": "]}"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1491,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 53,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "TEXT_MESSAGE_END",
+        "messageId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant"
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1512,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 54,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "type": "RUN_FINISHED",
+        "metadata": {
+          "hashbrown": { "finishReason": "stop" },
+          "openai": { "status": "completed" }
+        },
+        "threadId": "c320f641-4317-4fd5-828e-d34815346758",
+        "runId": "d29ccd80-1178-4ce7-a25c-bfb47f44d876",
+        "usage": [
+          {
+            "provider": "openai",
+            "model": "gpt-4.1-mini-2025-04-14",
+            "inputTokens": 195,
+            "outputTokens": 38,
+            "totalTokens": 233,
+            "reasoningTokens": 0,
+            "cachedInputTokens": 0
+          }
+        ]
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1533,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "loading"
+    },
+    {
+      "sequence": 55,
+      "turn": 1,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 1537,
+      "application": { "revision": 0, "plan": null },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "Create a two-step plan for a trusted UI demo."
+        },
+        {
+          "id": "d29ccd80-1178-4ce7-a25c-bfb47f44d876:assistant",
+          "role": "assistant",
+          "content": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+          "props": {
+            "title": "Trusted UI Demo Plan",
+            "steps": [
+              "Outline the demo objectives and flow.",
+              "Record the demo showcasing the UI features."
+            ]
+          }
+        }
+      ],
+      "json": "{\"ui\":[{\"SummaryCard\":{\"props\":{\"title\":\"Trusted UI Demo Plan\",\"steps\":[\"Outline the demo objectives and flow.\",\"Record the demo showcasing the UI features.\"]}}}]}",
+      "props": {
+        "title": "Trusted UI Demo Plan",
+        "steps": [
+          "Outline the demo objectives and flow.",
+          "Record the demo showcasing the UI features."
+        ]
+      },
+      "status": "complete"
+    }
+  ]
+}
