@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { computed, signal } from '@angular/core';
 import { expect, test, vi } from 'vitest';
 import ts from 'typescript';
+import type { structuredChatResource } from '@hashbrownai/angular';
 import * as capture from '../examples/quickstart/runtime/workbench';
 import * as controls from '../examples/quickstart/runtime/workbench-local-controls';
 import * as local from '../examples/quickstart/runtime/workbench-local-models';
@@ -29,7 +30,12 @@ test('Angular native resource prepares explicitly, retains history and guards in
     stop: vi.fn(),
     setMessages: vi.fn(),
   };
-  const resource = vi.fn(() => chat);
+  const resource = vi.fn(
+    (options: Parameters<typeof structuredChatResource>[0]) => {
+      void options;
+      return chat;
+    },
+  );
   const availability = vi.fn(async () => 'available');
   vi.stubGlobal('LanguageModel', { availability, create: vi.fn() });
   const source = readFileSync(
@@ -107,7 +113,9 @@ test('Angular native resource prepares explicitly, retains history and guards in
   const events = session.store.getSnapshot().events.length;
   effects.forEach((effect) => effect());
   expect(session.store.getSnapshot().events).toHaveLength(events);
-  expect(resource.mock.calls[0][0].tools ?? []).toHaveLength(0);
+  const resourceOptions = resource.mock.calls[0]?.[0];
+  expect(resourceOptions).toBeDefined();
+  expect(resourceOptions?.tools ?? []).toHaveLength(0);
   cleanup.forEach((dispose) => dispose());
   vi.unstubAllGlobals();
 });
