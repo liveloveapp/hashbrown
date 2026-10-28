@@ -756,6 +756,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             agentRequests,
             authoringOutcome: (value) => {
@@ -820,6 +821,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             outcome: (value) => {
               outcome = value;

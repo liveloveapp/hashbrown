@@ -31,6 +31,7 @@ export async function verifyAuthoringWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly preview: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly agentRequests: readonly { readonly state: string }[];
   readonly authoringOutcome: (value: AuthoringFixtureOutcome) => void;
@@ -480,10 +481,13 @@ export async function verifyAuthoringWorkbench(options: {
           expect((await form()).revision).toBe(1);
         }
         await newConversation();
+        const beforeCancellation = count();
+        const releaseCancellation = options.preview();
         await send.click();
+        await expect.poll(count).toBeGreaterThan(beforeCancellation);
         await expect(button('Stop')).toBeEnabled();
-        await page.waitForTimeout(150);
         await button('Stop').click();
+        releaseCancellation();
         await expect(root.locator('.wb-chat .wb-panel-head')).toContainText(
           'cancelled',
         );
