@@ -143,8 +143,30 @@ await runManagedTimeout(context, independentlyReviewedExpected, {
 `platformProof` is required and must honor its supplied abort/deadline bounds.
 Accepted proof has `source: 'owned-deployment-request-logs'`, the exact
 `deploymentId`, `origin`, and HTTP `requestId` captured from `x-vercel-id`,
-`code: 'FUNCTION_INVOCATION_TIMEOUT'`, and numeric `timestampMs` within that
-request's observed start/end. The caller must establish that its adapter really
+and numeric `timestampMs` within that request's observed start/end. Two distinct
+representations are accepted:
+
+- Raw platform-code proof has `code: 'FUNCTION_INVOCATION_TIMEOUT'` and none
+  of the normalization fields below.
+- Normalized runtime-log proof has no `code` field, explicitly records
+  `rawErrorCode: null`, and uses
+  `normalizedClassification: 'platform-invocation-duration-exceeded'` with
+  `normalizationRule: 'vercel-regional-header-native-id-epoch-and-exact-one-second-runtime-log-v1'`.
+  `rawHeaderRequestId` must exactly equal `requestId`, with two regional prefixes
+  (three lowercase letters and one nonzero digit each), separated by `::`, then
+  `nativeLogRequestId` (five lowercase alphanumeric characters, a 13-digit epoch
+  in milliseconds, and twelve lowercase hexadecimal characters, separated by
+  hyphens). The native ID must exactly match the authenticated log request ID;
+  its embedded epoch must equal `timestampMs`. `responseStatusCode` must equal
+  the observed HTTP status, either 200 or 504. `timeoutSeconds` must be exactly
+  1, and `platformMessageSha256` must be
+  `aea360dd5096ef9c4511698bb6ceb6b4ab6158cd2a2da3e488d6c9f2a57030e5`, the SHA-256
+  of the exact untruncated platform line
+  `Vercel Runtime Timeout Error: Task timed out after 1 seconds`.
+
+Receipts retain these normalization fields, including the explicit absence of a
+raw error code; a normalized classification never creates a raw platform code.
+The caller must establish that its adapter really
 queries those owned platform logs. A structured object alone is not hosted
 proof. Request receipts retain status, Vercel request/error headers, bounded
 error-body digest/truncation and transport-failure classification. Attempts retain run/ordinal identities and

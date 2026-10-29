@@ -112,6 +112,139 @@ function fixture({
   return { io, control, platformProof, calls };
 }
 
+const nativeLogRequestId = '6nx2j-1793315776487-85549e553123';
+const regionalRequestId = 'pdx1::iad1::' + nativeLogRequestId;
+const normalizedProof = {
+  source: 'owned-deployment-request-logs',
+  deploymentId: 'fault',
+  origin: 'https://fault.example',
+  requestId: regionalRequestId,
+  timestampMs: 1793315776487,
+  normalizedClassification: 'platform-invocation-duration-exceeded',
+  rawErrorCode: null,
+  rawHeaderRequestId: regionalRequestId,
+  nativeLogRequestId,
+  responseStatusCode: 200,
+  timeoutSeconds: 1,
+  platformMessageSha256:
+    'aea360dd5096ef9c4511698bb6ceb6b4ab6158cd2a2da3e488d6c9f2a57030e5',
+  normalizationRule:
+    'vercel-regional-header-native-id-epoch-and-exact-one-second-runtime-log-v1',
+};
+const normalizedRequest = {
+  requestId: regionalRequestId,
+  startedAtMs: 1793315776000,
+  endedAtMs: 1793315778000,
+  clientAborted: false,
+  status: 200,
+};
+
+for (const status of [200, 504]) {
+  test(
+    'accepts distinct normalized runtime log evidence for status ' + status,
+    () => {
+      const proof = { ...normalizedProof, responseStatusCode: status };
+      const request = { ...normalizedRequest, status };
+      const deployment = { id: 'fault', origin: normalizedProof.origin };
+
+      const accepted = validatePlatformTimeoutProof(proof, request, deployment);
+
+      assert.equal(accepted, true);
+    },
+  );
+}
+
+for (const [name, changes, requestChanges = {}] of [
+  [
+    'native ID mismatch',
+    { nativeLogRequestId: 'other-1793315776487-85549e553123' },
+  ],
+  ['embedded epoch mismatch', { timestampMs: 1793315776488 }],
+  [
+    'invalid regional prefix',
+    {
+      requestId: 'fake::' + nativeLogRequestId,
+      rawHeaderRequestId: 'fake::' + nativeLogRequestId,
+    },
+    { requestId: 'fake::' + nativeLogRequestId },
+  ],
+  [
+    'trailing header newline',
+    {
+      requestId: regionalRequestId + '\n',
+      rawHeaderRequestId: regionalRequestId + '\n',
+    },
+    { requestId: regionalRequestId + '\n' },
+  ],
+  [
+    'trailing native ID bytes',
+    { nativeLogRequestId: nativeLogRequestId + '-extra' },
+  ],
+  ['raw header mismatch', { rawHeaderRequestId: 'pdx1::iad1::other' }],
+  ['wrong message digest', { platformMessageSha256: 'a'.repeat(64) }],
+  ['wrong rule', { normalizationRule: 'inferred-timeout' }],
+  ['wrong duration', { timeoutSeconds: 2 }],
+  ['wrong status', { responseStatusCode: 500 }],
+  ['status mismatch', { responseStatusCode: 504 }],
+  ['missing status', {}, { status: undefined }],
+  ['invented raw code', { code: 'FUNCTION_INVOCATION_TIMEOUT' }],
+  ['invented raw error code', { rawErrorCode: 'FUNCTION_INVOCATION_TIMEOUT' }],
+  ['missing raw error absence', { rawErrorCode: undefined }],
+  ['wrong classification', { normalizedClassification: 'client-abort' }],
+  ['wrong deployment', { deploymentId: 'unowned' }],
+  ['wrong origin', { origin: 'https://other.example' }],
+  ['outside request window', {}, { startedAtMs: 1793315776488 }],
+  ['client abort', {}, { clientAborted: true }],
+]) {
+  test('rejects normalized timeout evidence with ' + name, () => {
+    const proof = { ...normalizedProof, ...changes };
+    const request = { ...normalizedRequest, ...requestChanges };
+    const deployment = { id: 'fault', origin: normalizedProof.origin };
+
+    const accepted = validatePlatformTimeoutProof(proof, request, deployment);
+
+    assert.equal(accepted, false);
+  });
+}
+
+test('normalized proof receipts retain original evidence without inventing raw codes', async () => {
+  const f = fixture();
+  const originalRequest = f.io.request;
+  f.io.request = async (kind, options) =>
+    kind === 'fault'
+      ? { ...normalizedRequest, completed: false }
+      : originalRequest(kind, options);
+  f.platformProof = async () => ({
+    ...normalizedProof,
+    privateLogBody: 'not retained',
+  });
+
+  const result = await runTimeoutProtocol(f);
+
+  assert.equal(result.classification, 'graceful-timeout-cleanup');
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.platformProof)),
+    normalizedProof,
+  );
+  assert.equal(Object.hasOwn(result.platformProof, 'code'), false);
+  assert(f.calls.includes('75s'));
+});
+
+test('normalized log evidence without an observed owner stays inconclusive', async () => {
+  const f = fixture({ observed: false });
+  const originalRequest = f.io.request;
+  f.io.request = async (kind, options) =>
+    kind === 'fault'
+      ? { ...normalizedRequest, completed: false }
+      : originalRequest(kind, options);
+  f.platformProof = async () => normalizedProof;
+
+  const result = await runTimeoutProtocol(f);
+
+  assert.equal(result.classification, 'inconclusive');
+  assert(!f.calls.includes('75s'));
+});
+
 test('client cancellation cannot establish a platform timeout', () => {
   const request = {
     requestId: 'req',

@@ -15,6 +15,41 @@ import { createManagedTimeoutIO, timeoutBound } from './managed-timeout-io.mjs';
 
 /** Accept only exact owned request/deployment log evidence, never client cancellation. */
 export function validatePlatformTimeoutProof(proof, request, deployment) {
+  const normalizedFields = [
+    'normalizedClassification',
+    'rawErrorCode',
+    'rawHeaderRequestId',
+    'nativeLogRequestId',
+    'responseStatusCode',
+    'timeoutSeconds',
+    'platformMessageSha256',
+    'normalizationRule',
+  ];
+  const hasNormalization =
+    proof && normalizedFields.some((key) => Object.hasOwn(proof, key));
+  const regionalId =
+    typeof proof?.rawHeaderRequestId === 'string'
+      ? /^[a-z]{3}[1-9]::[a-z]{3}[1-9]::([a-z0-9]{5}-([0-9]{13})-[a-f0-9]{12})$/.exec(
+          proof.rawHeaderRequestId,
+        )
+      : null;
+  const validClassification = hasNormalization
+    ? !Object.hasOwn(proof, 'code') &&
+      proof.normalizedClassification ===
+        'platform-invocation-duration-exceeded' &&
+      proof.rawErrorCode === null &&
+      proof.rawHeaderRequestId === proof.requestId &&
+      regionalId !== null &&
+      regionalId[1] === proof.nativeLogRequestId &&
+      Number(regionalId[2]) === proof.timestampMs &&
+      proof.responseStatusCode === request.status &&
+      (proof.responseStatusCode === 200 || proof.responseStatusCode === 504) &&
+      proof.timeoutSeconds === 1 &&
+      proof.platformMessageSha256 ===
+        'aea360dd5096ef9c4511698bb6ceb6b4ab6158cd2a2da3e488d6c9f2a57030e5' &&
+      proof.normalizationRule ===
+        'vercel-regional-header-native-id-epoch-and-exact-one-second-runtime-log-v1'
+    : proof?.code === 'FUNCTION_INVOCATION_TIMEOUT';
   return Boolean(
     proof &&
     !request.clientAborted &&
@@ -23,7 +58,7 @@ export function validatePlatformTimeoutProof(proof, request, deployment) {
     proof.deploymentId === deployment.id &&
     proof.origin === deployment.origin &&
     proof.requestId === request.requestId &&
-    proof.code === 'FUNCTION_INVOCATION_TIMEOUT' &&
+    validClassification &&
     Number.isFinite(proof.timestampMs) &&
     proof.timestampMs >= request.startedAtMs &&
     proof.timestampMs <= request.endedAtMs,
@@ -142,7 +177,17 @@ export async function runTimeoutProtocol({
             'requestId',
             'code',
             'timestampMs',
-          ].map((key) => [key, proof[key]]),
+            'normalizedClassification',
+            'rawErrorCode',
+            'rawHeaderRequestId',
+            'nativeLogRequestId',
+            'responseStatusCode',
+            'timeoutSeconds',
+            'platformMessageSha256',
+            'normalizationRule',
+          ]
+            .filter((key) => Object.hasOwn(proof, key))
+            .map((key) => [key, proof[key]]),
         )
       : null;
     const qualified =
