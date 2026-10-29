@@ -3,6 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { parseMarkdown } from '../../src/lib/markdown';
 import { CONCEPT_DIAGRAMS } from '../../src/components/elements/ConceptDiagram';
+import { DOCS_DIAGRAMS } from '../../src/components/diagrams/diagram-catalog';
 
 const root = resolve(import.meta.dirname, '../../content/docs');
 const files = (directory: string): string[] =>
@@ -46,6 +47,13 @@ test('every authored diagram selects a supported architecture flow', () => {
   const used = new Set<string>();
 
   for (const { path, source } of pages) {
+    for (const match of source.matchAll(/<hb-diagram\s+diagram="([^"]+)"/g)) {
+      expect(
+        Object.hasOwn(DOCS_DIAGRAMS, match[1]),
+        `${path}: ${match[1]}`,
+      ).toBe(true);
+      used.add(`diagram:${match[1]}`);
+    }
     for (const match of source.matchAll(
       /<hb-concept-diagram\s+concept="([^"]+)"/g,
     )) {

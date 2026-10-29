@@ -14,7 +14,7 @@ A server-owned thread stores a conversation under an authenticated owner. Use it
 
 Let’s save completed text with an expected version. When two clients edit the same conversation, the version check preserves the unsaved conversation and exposes the conflict instead of silently overwriting another client’s work.
 
-<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-thread-version-conflict"> </hb-diagram>
 
 ## Save with an expected version
 

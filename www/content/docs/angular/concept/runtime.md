@@ -14,7 +14,7 @@ The JavaScript runtime evaluates a script in a separate QuickJS context and retu
 
 The context has no browser `window`, `document`, or `fetch`. Host functions are capabilities you explicitly provide. Keep them narrow, validate their arguments in the handler, and bound their work. A runtime deadline interrupts JavaScript evaluation; it does not roll back a host side effect or impose a memory limit.
 
-<hb-concept-diagram concept="runtime"> </hb-concept-diagram>
+<hb-diagram diagram="concept-runtime-capabilities"> </hb-diagram>
 
 ## Evaluate a calculation before adding host access
 

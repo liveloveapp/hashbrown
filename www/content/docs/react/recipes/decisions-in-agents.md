@@ -14,7 +14,7 @@ An agent decision maps a request to a small set of application-owned handlers. U
 
 Let’s route a support question. The server will decode a closed decision schema, check its confidence, then select a fixed read-only response. Uncertain input gets a clarification question.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-decision-routing"> </hb-diagram>
 
 ## Route a support request on the server
 

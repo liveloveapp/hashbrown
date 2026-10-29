@@ -18,8 +18,7 @@ The React and Angular versions use the same example, styles, and capture model. 
 
 An application can observe several layers of one interaction: the user's message, request input, protocol events, parsed values, rendered components, and application state. Those layers answer different questions. A parsed value tells us what became available; an application receipt tells us what was saved.
 
-<hb-concept-diagram concept="conversation">
-</hb-concept-diagram>
+<hb-diagram diagram="workbench-observations"> </hb-diagram>
 
 Use the normal Hashbrown APIs to build the interface first. The [Quickstart](/docs/react/start/quick) supplies a complete standalone implementation. An inspector and a recording store are optional application tooling, not prerequisites for using the SDK.
 

@@ -14,8 +14,8 @@ Use Azure OpenAI when your application calls a deployment managed in Azure. The 
 
 The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate an Azure deployment or Microsoft Entra authentication.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
 
 ## Install the server adapter
 
@@ -139,6 +139,9 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 The examples below host `/run` in an ordinary application. Configure your Angular client to call that route, using the [Quickstart](/docs/angular/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 

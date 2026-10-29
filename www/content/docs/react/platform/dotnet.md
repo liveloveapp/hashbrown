@@ -12,8 +12,8 @@ meta:
 
 The teaser demonstrates the OpenAI-backed browser flow using the TypeScript server. It does not demonstrate ASP.NET Core, Microsoft Agent Framework, Azure authentication, or the local NuGet candidate.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="dotnet-agent-boundary">
+</hb-diagram>
 
 Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same Hashbrown APIs as a Node-backed application; the .NET server chooses the model, holds credentials, and runs its own tools.
 

@@ -14,7 +14,7 @@ Shared agent state is a JSON value exchanged alongside a conversation. It gives 
 
 Use it when both sides need to observe and update the same small document. Your agent must explicitly validate and map that value into the model context. Passing state to a direct provider adapter does not automatically turn it into instructions, and setting state does not start a request.
 
-<hb-concept-diagram concept="workflow"> </hb-concept-diagram>
+<hb-diagram diagram="concept-shared-state"> </hb-diagram>
 
 ## Share a small editing document
 

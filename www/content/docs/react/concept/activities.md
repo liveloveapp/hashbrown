@@ -14,7 +14,7 @@ Activities describe work an agent is performing without asking the model to call
 
 A tool result supplies information for the model’s next step. An activity supplies information for the interface and stays out of the outgoing model conversation. Emit progress from the code doing the work, and update it when that work reaches the reported stage. A timer or optimistic label is not evidence of completion.
 
-<hb-concept-diagram concept="workflow"> </hb-concept-diagram>
+<hb-diagram diagram="concept-activity-audience"> </hb-diagram>
 
 ## Group progress with the conversation
 

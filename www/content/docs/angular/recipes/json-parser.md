@@ -14,7 +14,7 @@ A streaming JSON parser resolves useful values before the whole document arrives
 
 Let’s preview a shopping list. The parser will receive the full JSON string so far. The preview helps the user read; a separate check of the original completed document decides whether it can be used. If you already use structured chat, consume its parsed content directly.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-parser-preview-validation"> </hb-diagram>
 
 ## Preview an existing JSON source
 

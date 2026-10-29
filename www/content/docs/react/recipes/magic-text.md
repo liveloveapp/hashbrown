@@ -14,7 +14,7 @@ Streaming Markdown turns a growing assistant string into readable headings, list
 
 Let’s build a help panel that explains a returns policy. We will render the original assistant text as it grows, and finish parsing when the request stops, including a stopped or failed partial answer.
 
-<hb-concept-diagram concept="streaming"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-markdown-finalization"> </hb-diagram>
 
 ## Render a help reply
 

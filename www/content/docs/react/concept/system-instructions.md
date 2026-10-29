@@ -14,7 +14,7 @@ System instructions describe the assistant’s job, relevant context, and respon
 
 Start with a specific task and a small amount of relevant context. Add constraints when examples show they are needed. Browser configuration is useful for feature behavior, but policy your application relies on belongs in your endpoint. Instructions guide a model; authentication, authorization, and validation must still be enforced by code.
 
-<hb-concept-diagram concept="client-server"> </hb-concept-diagram>
+<hb-diagram diagram="concept-system-policy"> </hb-diagram>
 
 ## Give a feature one clear job
 

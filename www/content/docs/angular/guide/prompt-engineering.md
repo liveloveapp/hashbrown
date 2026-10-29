@@ -14,6 +14,8 @@ A prompt is the instruction and context we give a model for a task. Good prompts
 
 Let's start with a support assistant. Its job is to explain a supplied order status. It should ask for clarification when the order is unknown, and it should never claim that reading an order changed it.
 
+<hb-diagram diagram="prompt-context-boundary"> </hb-diagram>
+
 <a id="system-prompts"></a>
 
 ## Describe a bounded task

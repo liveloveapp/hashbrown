@@ -14,7 +14,7 @@ A schema is a contract for values: which fields exist, what each field means, an
 
 Skillet is exported as `s` from `@hashbrownai/core`. Its schemas also infer TypeScript types, so you can describe a value once and reuse that description in your UI. Use descriptions to explain meaning, constraints to bound values, and ordinary application checks for facts a schema cannot establish, such as whether a delivery date is available.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="concept-schema-consumers"> </hb-diagram>
 
 ## Describe an application contract
 
