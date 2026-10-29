@@ -9,8 +9,8 @@ meta:
 
 <p class="subtitle">Show the work your agent actually performed.</p>
 
-<hb-docs-demo demo="canonical-workbench-activities-react">
-</hb-docs-demo>
+<hb-workbench lesson="activities">
+</hb-workbench>
 
 Let's explain our two-step plan and show the work around the reply. The agent validates the plan context, creates an activity, and updates that activity when the provider finishes its explanation. A second turn gets a new activity ID.
 

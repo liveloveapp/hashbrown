@@ -151,6 +151,10 @@ body {
     minmax(280px, var(--wb-chat, 44fr)) 14px
     minmax(320px, var(--wb-inspector, 56fr));
 }
+/* Embedded: fill the docs frame, however short, instead of the page minimum. */
+.wb.wb-embed {
+  min-height: 0;
+}
 .wb-layout:has(.wb-dragging) {
   transition: none;
 }
@@ -1695,6 +1699,22 @@ app-workflow-workbench-conversation[hidden] {
   }
   .wb-time {
     margin-left: auto;
+  }
+}
+/* A docs column is under 800px, but the docs page shows its video below
+   800px, so an embed keeps the side-by-side layout inside its frame. */
+@media (max-width: 800px) {
+  .wb.wb-embed {
+    height: 100dvh;
+  }
+  .wb-embed .wb-layout {
+    gap: 0;
+  }
+  .wb-embed .wb-split {
+    display: grid;
+  }
+  .wb-embed .wb-chat {
+    min-height: 0;
   }
 }
 

@@ -9,8 +9,8 @@ meta:
 
 Who can start a reply? Let's make that boundary visible. We'll reject an anonymous request, load our own thread through a local demo session, and stream a real reply. Then we'll try a thread owned by someone else.
 
-<hb-docs-demo demo="canonical-workbench-public-endpoint-react">
-</hb-docs-demo>
+<hb-workbench lesson="public-endpoint">
+</hb-workbench>
 
 <img src="/video/docs/canonical-workbench-public-endpoint-react-result.png" alt="The React workbench shows the authorized conversation beside captured access checks, including anonymous and foreign-owner denials." width="1600" height="1000" loading="lazy" />
 

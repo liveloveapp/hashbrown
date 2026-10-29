@@ -68,7 +68,7 @@ test.each(SDKS)(
     for (const [section, slug, lesson] of lessons) {
       const body = readDoc(sdk, [section, slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
-      const marker = `<hb-docs-demo demo="${id}">`;
+      const marker = `<hb-workbench lesson="${lesson}">`;
 
       expect(body.indexOf(marker)).toBeGreaterThan(-1);
       expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));

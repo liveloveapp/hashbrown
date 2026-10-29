@@ -9,8 +9,8 @@ meta:
 
 Let's estimate how long our plan will take. We have two steps. At 15 minutes per step, that's **30 minutes**. Change the estimate to 10 minutes per step and run it again: **20 minutes**. The plan hasn't changed. We've calculated a result from it.
 
-<hb-docs-demo demo="canonical-workbench-javascript-runtime-angular">
-</hb-docs-demo>
+<hb-workbench lesson="javascript-runtime">
+</hb-workbench>
 
 ![The Angular workbench shows submitted code, the actual QuickJS result, and application state at revision zero.](/video/docs/canonical-workbench-javascript-runtime-angular-result.png)
 

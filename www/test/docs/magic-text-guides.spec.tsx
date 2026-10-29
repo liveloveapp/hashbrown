@@ -7,7 +7,7 @@ test.each(SDKS)(
   '%s magic-text guide opens with its canonical framework recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'magic-text'])?.body ?? '';
-    const marker = `<hb-docs-demo demo="canonical-workbench-magic-text-${sdk}">`;
+    const marker = `<hb-workbench lesson="magic-text">`;
 
     expect(body.indexOf(marker)).toBeGreaterThan(-1);
     expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));

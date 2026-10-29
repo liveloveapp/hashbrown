@@ -35,18 +35,14 @@ test.each(SDKS)(
   '%s production guides begin with the behavior they demonstrate',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo: `canonical-workbench-${demo}-${sdk}`,
+      demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
     for (const { demo, body } of pages) {
-      expect(
-        body.indexOf(`<hb-docs-demo demo="${demo}">`),
-        demo,
-      ).toBeGreaterThan(-1);
-      expect(body.indexOf(`<hb-docs-demo demo="${demo}">`), demo).toBeLessThan(
-        body.indexOf('\n## '),
-      );
+      const marker = `<hb-workbench lesson="${demo}">`;
+      expect(body.indexOf(marker), demo).toBeGreaterThan(-1);
+      expect(body.indexOf(marker), demo).toBeLessThan(body.indexOf('\n## '));
     }
   },
 );

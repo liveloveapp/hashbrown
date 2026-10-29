@@ -7,8 +7,8 @@ meta:
 
 # Request transformation
 
-<hb-docs-demo demo="canonical-workbench-request-transformation-react">
-</hb-docs-demo>
+<hb-workbench lesson="request-transformation">
+</hb-workbench>
 
 Our browser knows the conversation. Our server may know workspace context that belongs in the model request. Let’s add that context to the same two-step plan and inspect exactly what changed.
 

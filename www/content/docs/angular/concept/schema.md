@@ -7,8 +7,8 @@ meta:
 
 # Skillet schemas
 
-<hb-docs-demo demo="canonical-workbench-schemas-angular">
-</hb-docs-demo>
+<hb-workbench lesson="schemas">
+</hb-workbench>
 
 A schema describes the data our application expects. Let’s use the same two-step plan: a title and an array of steps. We can use this contract for typed model output and inspect it beside the values Hashbrown resolves.
 

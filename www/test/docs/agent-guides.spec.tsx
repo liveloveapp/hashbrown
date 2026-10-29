@@ -8,9 +8,7 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'decisions-in-agents'])?.body ?? '';
 
-    const demo = body.indexOf(
-      `<hb-docs-demo demo="canonical-workbench-agent-decisions-${sdk}">`,
-    );
+    const demo = body.indexOf(`<hb-workbench lesson="agent-decisions">`);
 
     expect(demo).toBeGreaterThan(-1);
     expect(demo).toBeLessThan(body.indexOf('\n## '));

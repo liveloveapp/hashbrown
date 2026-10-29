@@ -9,8 +9,8 @@ meta:
 
 Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
 
-<hb-docs-demo demo="canonical-workbench-first-plan-angular">
-</hb-docs-demo>
+<hb-workbench lesson="first-plan">
+</hb-workbench>
 
 The recording uses the same `PlanCard` and registration as this example, inside the [conversation workbench](/docs/angular/start/workbench). The model knows that component as `SummaryCard`. The inspector and timeline are workbench features; our app needs only the component, @hashbrownai/angular!uiChatResource:function, and an endpoint.
 

@@ -7,8 +7,8 @@ meta:
 
 # Streaming
 
-<hb-docs-demo demo="canonical-workbench-streaming-react">
-</hb-docs-demo>
+<hb-workbench lesson="streaming">
+</hb-workbench>
 
 We do not need to wait for the whole two-step plan before showing useful feedback. Let’s stream the title, then show steps as their values resolve. We’ll keep **Accept plan** disabled until the response finishes successfully.
 

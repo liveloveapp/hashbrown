@@ -7,8 +7,8 @@ meta:
 
 # Predictive suggestions
 
-<hb-docs-demo demo="canonical-workbench-predictions-react">
-</hb-docs-demo>
+<hb-workbench lesson="predictions">
+</hb-workbench>
 
 Let's suggest what to do next with our two-step plan. The model can propose recording, reviewing, or clarifying progress. Our application owns those actions. **Only Accept applies one.**
 

@@ -10,9 +10,7 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['start', 'quick'])?.body ?? '';
 
-    const video = body.indexOf(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    const video = body.indexOf(`<hb-workbench lesson="first-plan">`);
     const firstSection = body.indexOf('\n## ');
 
     expect(video).toBeGreaterThan(-1);
@@ -39,9 +37,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['start', 'intro'])?.body ?? '';
 
     expect(body).toContain('two-step plan');
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    expect(body).toContain(`<hb-workbench lesson="first-plan">`);
     expect(body).toContain('start/quick');
     expect(body).not.toContain('Getting started and text generation');
   },
@@ -97,9 +93,7 @@ test.each(SDKS)(
     expect(snippet?.trim()).toBe(
       readFileSync(resolve(examples, file), 'utf8').trim(),
     );
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-conversation-${sdk}">`,
-    );
+    expect(body).toContain(`<hb-workbench lesson="conversation">`);
     expect(body).toContain('threadId');
     expect(body).toContain('runId');
     expect(body).toContain('page refresh');
@@ -114,14 +108,12 @@ test.each(SDKS)(
     const instructions =
       readDoc(sdk, ['concept', 'system-instructions'])?.body ?? '';
 
-    expect(path).toContain(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    expect(path).toContain(`<hb-workbench lesson="first-plan">`);
     expect(path).toContain('SummaryCard');
     expect(path).toContain('AG-UI');
     expect(path).not.toContain('WelcomeCard');
     expect(instructions).toContain(
-      `<hb-docs-demo demo="canonical-workbench-system-instructions-${sdk}">`,
+      `<hb-workbench lesson="system-instructions">`,
     );
     expect(instructions).toContain('provider');
     expect(instructions).toContain('browser');

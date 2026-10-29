@@ -9,8 +9,8 @@ meta:
 
 Let's put a decision inside our agent. We'll ask which part of the same two-step plan the user wants explained, then call our own outline or recording handler. When the choice is uncertain, we'll ask for clarification.
 
-<hb-docs-demo demo="canonical-workbench-agent-decisions-angular">
-</hb-docs-demo>
+<hb-workbench lesson="agent-decisions">
+</hb-workbench>
 
 <img src="/video/docs/canonical-workbench-agent-decisions-angular-result.png" alt="The Angular conversation shows an application handler reply beside the actual server route decision, confidence, and fallback state." width="1600" height="1000" loading="lazy" />
 

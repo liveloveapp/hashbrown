@@ -9,8 +9,8 @@ meta:
 
 <p class="subtitle">Pause for a decision, then continue the same turn.</p>
 
-<hb-docs-demo demo="canonical-workbench-interrupts-angular">
-</hb-docs-demo>
+<hb-workbench lesson="interrupts">
+</hb-workbench>
 
 Let's explain the same two-step plan, pause for two approvals, and continue once both answers are ready. The chat keeps the original user turn. Resume sends decisions; it does not add a pretend user message.
 

@@ -39,13 +39,8 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const id =
-        demo === 'persistence'
-          ? `canonical-workbench-message-history-${sdk}`
-          : ['interrupts', 'shared-state', 'activities', 'ui-kits'].includes(demo)
-            ? `canonical-workbench-${demo}-${sdk}`
-            : demo;
-      const media = body.indexOf(`<hb-docs-demo demo="${id}">`);
+      const lesson = demo === 'persistence' ? 'message-history' : demo;
+      const media = body.indexOf(`<hb-workbench lesson="${lesson}">`);
 
       expect(media, demo).toBeGreaterThan(-1);
       expect(media, demo).toBeLessThan(body.indexOf('\n## '));

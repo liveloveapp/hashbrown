@@ -7,8 +7,8 @@ meta:
 
 # Save text conversations
 
-<hb-docs-demo demo="canonical-workbench-save-text-conversations-react">
-</hb-docs-demo>
+<hb-workbench lesson="save-text-conversations">
+</hb-workbench>
 
 Let's keep our two-step plan after a refresh. We'll save a completed Lighthouse exchange, save a second conversation as **Harbor**, then refresh and load Lighthouse into a new chat. A follow-up will show which text actually reached the model.
 

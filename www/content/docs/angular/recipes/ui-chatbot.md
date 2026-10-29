@@ -9,8 +9,8 @@ meta:
 
 Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
 
-<hb-docs-demo demo="canonical-workbench-ui-chatbot-angular">
-</hb-docs-demo>
+<hb-workbench lesson="ui-chatbot">
+</hb-workbench>
 
 <img src="/video/docs/canonical-workbench-ui-chatbot-angular-result.png" alt="The Angular conversation shows an accepted SummaryCard followed by a read-only PlanReading, beside the application plan and revision." width="1600" height="1000" loading="lazy" />
 

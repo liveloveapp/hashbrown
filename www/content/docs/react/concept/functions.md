@@ -7,8 +7,8 @@ meta:
 
 # Tool calling
 
-<hb-docs-demo demo="canonical-workbench-tools-react">
-</hb-docs-demo>
+<hb-workbench lesson="tools">
+</hb-workbench>
 
 Our two-step plan has an accepted version and a revision number. Before proposing a change, the model needs to read both. Let’s give it one small browser tool: `readContext`.
 

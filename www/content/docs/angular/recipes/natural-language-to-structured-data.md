@@ -9,8 +9,8 @@ meta:
 
 Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
 
-<hb-docs-demo demo="canonical-workbench-natural-forms-angular">
-</hb-docs-demo>
+<hb-workbench lesson="natural-forms">
+</hb-workbench>
 
 <img src="/video/docs/canonical-workbench-natural-forms-angular-result.png" alt="The Angular workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />
 

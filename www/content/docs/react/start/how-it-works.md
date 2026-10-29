@@ -9,8 +9,8 @@ meta:
 
 Let's follow the two-step plan from the [Quickstart](/docs/react/start/quick). We send one user message, the provider streams a response, and Hashbrown renders our trusted `SummaryCard`.
 
-<hb-docs-demo demo="canonical-workbench-first-plan-react">
-</hb-docs-demo>
+<hb-workbench lesson="first-plan">
+</hb-workbench>
 
 The recording uses the real React client and OpenAI adapter. The workbench adds inspection and replay around the same component used by the standalone Quickstart.
 

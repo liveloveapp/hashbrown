@@ -9,8 +9,8 @@ meta:
 
 System instructions describe the assistant's task across a conversation. The user message asks for the work we want in the current turn. Let's inspect both while we explain our two-step plan.
 
-<hb-docs-demo demo="canonical-workbench-system-instructions-react">
-</hb-docs-demo>
+<hb-workbench lesson="system-instructions">
+</hb-workbench>
 
 Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The recording follows the real React text-chat API and OpenAI adapter.
 

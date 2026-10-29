@@ -7,8 +7,8 @@ meta:
 
 # Structured output
 
-<hb-docs-demo demo="canonical-workbench-structured-angular">
-</hb-docs-demo>
+<hb-workbench lesson="structured-output">
+</hb-workbench>
 
 Let’s use the same two-step plan, this time as typed data. The model returns a title and two steps. Hashbrown parses the response as it streams, and our application renders those values.
 

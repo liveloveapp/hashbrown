@@ -7,7 +7,7 @@ test.each(SDKS)(
   '%s selection guide opens with its canonical framework recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
-    const marker = `<hb-docs-demo demo="canonical-workbench-ui-selection-${sdk}">`;
+    const marker = `<hb-workbench lesson="ui-selection">`;
 
     expect(body.indexOf(marker)).toBeGreaterThan(-1);
     expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));

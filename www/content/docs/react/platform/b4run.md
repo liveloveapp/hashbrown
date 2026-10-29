@@ -9,8 +9,8 @@ meta:
 
 Let's pause our two-step recording plan, restart the server, and restore the conversation. Then we'll approve the plan and inspect the database result. The conversation checkpoint and the accepted plan each have their own job.
 
-<hb-docs-demo demo="canonical-workbench-production-recovery-react">
-</hb-docs-demo>
+<hb-workbench lesson="production-recovery">
+</hb-workbench>
 
 This reference uses Hashbrown React, TypeScript, b4.run 0.15.5, and Postgres. It is an opt-in local server with its own database and identity boundary. Run it separately from the public anonymous [conversation workbench](/docs/react/start/workbench).
 

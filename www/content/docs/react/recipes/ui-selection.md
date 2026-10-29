@@ -7,8 +7,8 @@ meta:
 
 # UI Selection
 
-<hb-docs-demo demo="canonical-workbench-ui-selection-react">
-</hb-docs-demo>
+<hb-workbench lesson="ui-selection">
+</hb-workbench>
 
 I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 
