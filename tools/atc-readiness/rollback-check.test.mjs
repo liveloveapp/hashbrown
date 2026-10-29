@@ -391,6 +391,8 @@ test('Vercel API restores then removes exactly the owned alias and verifies abse
       assert.equal(new URL(url).hostname, 'api.vercel.com');
       assert.equal(new URL(url).searchParams.get('teamId'), 't');
       calls.push(options.method + ' ' + new URL(url).pathname);
+      if (new URL(url).pathname === '/v9/projects/p')
+        return Response.json({ id: 'p', accountId: 't' });
       if (options.method === 'POST') {
         assert.equal(JSON.parse(options.body).alias, plan.alias);
         mapping = 'b4';
@@ -1018,4 +1020,157 @@ test('pool resolving beyond initialization cleanup grace remains owned and close
     resolveOpening?.(f.context);
     await rm(f.stage, { recursive: true, force: true });
   }
+});
+
+function projectOwnerFixture({
+  project = { id: 'p', accountId: 't' },
+  aliasFields = {},
+} = {}) {
+  const calls = [];
+  const inspectProject = { ...project };
+  Object.defineProperty(inspectProject, 'env', {
+    get: () => {
+      throw Error('environment values must not be read');
+    },
+  });
+  const adapter = createVercelAlias({
+    token: 'offline-fixture-token',
+    plan,
+    persist: async () => undefined,
+    fetch: async (url, options) => {
+      const request = new URL(url);
+      calls.push({
+        path: request.pathname,
+        method: options.method,
+        query: [...request.searchParams],
+      });
+      assert.equal(request.hostname, 'api.vercel.com');
+      assert.deepEqual([...request.searchParams], [['teamId', 't']]);
+      assert(!request.pathname.includes('/env'));
+      if (request.pathname === '/v9/projects/p')
+        return { ok: true, status: 200, json: async () => inspectProject };
+      if (options.method === 'GET')
+        return Response.json({
+          alias: plan.alias,
+          created: '2026-10-29T00:00:00Z',
+          createdAt: 0,
+          creator: { uid: 'fixture-user' },
+          deletedAt: null,
+          deployment: { id: 'b4' },
+          deploymentId: 'b4',
+          projectId: 'p',
+          redirect: null,
+          redirectStatusCode: null,
+          uid: 'alias',
+          updatedAt: 0,
+          ...aliasFields,
+        });
+      throw Error('unexpected mutation');
+    },
+  });
+  return { adapter, calls };
+}
+
+test('actual alias metadata without team fields requires fresh authenticated project ownership', async () => {
+  const f = projectOwnerFixture();
+
+  const snapshot = await f.adapter.inspect(bounds());
+
+  assert.deepEqual(snapshot, {
+    aliasId: 'alias',
+    alias: plan.alias,
+    deploymentId: 'b4',
+    projectId: 'p',
+    ownerId: 't',
+  });
+  assert.deepEqual(
+    f.calls.map((call) => call.path),
+    ['/v4/aliases/' + plan.alias, '/v9/projects/p'],
+  );
+  assert(f.calls.every((call) => call.method === 'GET'));
+});
+
+for (const project of [
+  { id: 'foreign-project', accountId: 't' },
+  { id: 'p', accountId: 'foreign-owner' },
+  { id: 'p' },
+]) {
+  test(
+    'alias mutation rejects unproven project ownership ' +
+      JSON.stringify(project),
+    async () => {
+      const f = projectOwnerFixture({ project });
+
+      await assert.rejects(
+        f.adapter.assign('b4', bounds()),
+        /project ownership/,
+      );
+
+      assert(f.calls.some((call) => call.path === '/v9/projects/p'));
+      assert(f.calls.every((call) => call.method === 'GET'));
+    },
+  );
+}
+
+for (const aliasFields of [
+  { teamId: 'foreign' },
+  { team: { id: 'foreign' } },
+  { teamId: 't', team: { id: 'foreign' } },
+  { teamId: null, team: { id: 't' } },
+]) {
+  test(
+    'conflicting optional alias team identity cannot override project ownership ' +
+      JSON.stringify(aliasFields),
+    async () => {
+      const f = projectOwnerFixture({ aliasFields });
+
+      await assert.rejects(f.adapter.assign('b4', bounds()), /alias identity/);
+
+      assert(f.calls.every((call) => call.method === 'GET'));
+    },
+  );
+}
+
+test('cleanup freshly verifies project ownership and refuses mutations after ownership changes', async () => {
+  const f = fixture();
+  const receipt = {};
+  const methods = [];
+  let owner = 't';
+  let projectReads = 0;
+  const alias = createVercelAlias({
+    token: 'offline-fixture-token',
+    plan,
+    persist: async () => undefined,
+    fetch: async (url, options) => {
+      const path = new URL(url).pathname;
+      methods.push(options.method);
+      assert.equal(new URL(url).searchParams.get('teamId'), 't');
+      if (path === '/v9/projects/p') {
+        projectReads++;
+        return Response.json({ id: 'p', accountId: owner });
+      }
+      if (options.method === 'POST') return Response.json({ uid: 'alias' });
+      return Response.json({
+        uid: 'alias',
+        alias: plan.alias,
+        projectId: 'p',
+        deploymentId: 'b4',
+      });
+    },
+  });
+  f.io.request = async () => {
+    owner = 'foreign';
+    throw Error('owned request stopped');
+  };
+
+  await assert.rejects(
+    runRollbackProtocol({ ...f, alias, receipt }),
+    /project ownership/,
+  );
+
+  assert(projectReads >= 4);
+  assert.equal(methods.filter((method) => method === 'POST').length, 1);
+  assert(!methods.includes('DELETE'));
+  assert.equal(receipt.aliasRemoved, false);
+  assert(receipt.aliasCleanupError);
 });

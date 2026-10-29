@@ -364,3 +364,13 @@ The wrapper waits for initialization ownership to settle before reporting clean
 resource closure; each actual storage resource gets its own fresh five-second
 close bound even after phase abort or expiry. Later closure does not silently
 turn a previously uncertain receipt into successful cleanup.
+
+Vercel alias metadata can omit team fields. Every successful alias inspection
+also fetches authenticated `GET /v9/projects/{projectId}` scoped by the exact
+`teamId`, requiring the returned project ID to match both the alias and expected
+project and its `accountId` to match the expected owner. The normalized
+snapshot's `ownerId` comes from that project `accountId`; no raw alias team field
+is invented. Optional alias `teamId` or `team.id` fields, when present, must still
+agree. Restore/delete cleanup uses this same fresh ownership proof each time.
+No environment/decryption endpoint or decrypt option is used, and returned
+project environment fields are ignored.

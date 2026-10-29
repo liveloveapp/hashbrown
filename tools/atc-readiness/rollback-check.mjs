@@ -136,7 +136,8 @@ export function createVercelAlias({
         value.uid === plan.aliasId &&
         value.alias === plan.alias &&
         value.projectId === plan.projectId &&
-        (value.teamId ?? value.team?.id) === plan.ownerId,
+        (!Object.hasOwn(value, 'teamId') || value.teamId === plan.ownerId) &&
+        (!Object.hasOwn(value, 'team') || value.team?.id === plan.ownerId),
       'rollback alias identity mismatch',
     );
     const deploymentId = value.deploymentId ?? value.deployment?.id;
@@ -144,12 +145,26 @@ export function createVercelAlias({
       [plan.b4.id, plan.openai.id].includes(deploymentId),
       'rollback alias maps to unexpected deployment',
     );
+    // Alias responses can omit team fields. Require fresh authenticated project ownership.
+    // This metadata request never uses an environment/decryption endpoint or reads env fields.
+    const project = await api(
+      '/v9/projects/' + encodeURIComponent(plan.projectId),
+      'GET',
+      bounds,
+    );
+    assert(
+      project &&
+        project.id === plan.projectId &&
+        project.id === value.projectId &&
+        project.accountId === plan.ownerId,
+      'rollback alias project ownership mismatch',
+    );
     return {
       aliasId: value.uid,
       alias: value.alias,
       deploymentId,
       projectId: value.projectId,
-      ownerId: plan.ownerId,
+      ownerId: project.accountId,
     };
   };
   return {
