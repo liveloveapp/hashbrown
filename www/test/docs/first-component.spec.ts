@@ -10,7 +10,9 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['start', 'quick'])?.body ?? '';
 
-    const video = body.indexOf(`<hb-workbench lesson="first-plan">`);
+    const video = body.indexOf(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     const firstSection = body.indexOf('\n## ');
 
     expect(video).toBeGreaterThan(-1);
@@ -25,6 +27,9 @@ test.each(SDKS)(
     expect(body).toContain('OPENAI_MODEL');
     expect(body).toContain('/api/chat');
     expect(body).toContain('## Before we start');
+    expect(body.indexOf('<hb-workbench lesson="first-plan">')).toBeGreaterThan(
+      body.indexOf('## Explore it in the workbench'),
+    );
     expect(body).toContain('## If the card does not appear');
     expect(body).not.toContain('UseChatOptions');
     expect(body).not.toContain('## Beyond Chat');
@@ -37,7 +42,9 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['start', 'intro'])?.body ?? '';
 
     expect(body).toContain('two-step plan');
-    expect(body).toContain(`<hb-workbench lesson="first-plan">`);
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     expect(body).toContain('start/quick');
     expect(body).not.toContain('Getting started and text generation');
   },
@@ -81,19 +88,18 @@ test.each(SDKS)(
 );
 
 test.each(SDKS)(
-  '%s fundamentals uses the checked conversation example',
+  '%s fundamentals separates the reusable conversation from the workbench walkthrough',
   (sdk) => {
     const body = readDoc(sdk, ['concept', 'ai-basics'])?.body ?? '';
-    const file =
-      sdk === 'react'
-        ? 'react/src/ConversationBasics.tsx'
-        : 'angular/src/app/conversation-basics.ts';
-    const snippet = body.match(/```(?:tsx|ts)\n([\s\S]*?)\n```/)?.[1];
+    const sections = body.split('## Explore it in the workbench');
 
-    expect(snippet?.trim()).toBe(
-      readFileSync(resolve(examples, file), 'utf8').trim(),
+    expect(sections).toHaveLength(2);
+    expect(sections[0]).toContain('book club');
+    expect(sections[0]).toMatch(/```(?:tsx|ts)\nimport /);
+    expect(sections[1]).toContain('two-step plan');
+    expect(body).toContain(
+      `<hb-docs-demo demo="canonical-workbench-conversation-${sdk}">`,
     );
-    expect(body).toContain(`<hb-workbench lesson="conversation">`);
     expect(body).toContain('threadId');
     expect(body).toContain('runId');
     expect(body).toContain('page refresh');
@@ -108,12 +114,14 @@ test.each(SDKS)(
     const instructions =
       readDoc(sdk, ['concept', 'system-instructions'])?.body ?? '';
 
-    expect(path).toContain(`<hb-workbench lesson="first-plan">`);
+    expect(path).toContain(
+      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
+    );
     expect(path).toContain('SummaryCard');
     expect(path).toContain('AG-UI');
     expect(path).not.toContain('WelcomeCard');
     expect(instructions).toContain(
-      `<hb-workbench lesson="system-instructions">`,
+      `<hb-docs-demo demo="canonical-workbench-system-instructions-${sdk}">`,
     );
     expect(instructions).toContain('provider');
     expect(instructions).toContain('browser');

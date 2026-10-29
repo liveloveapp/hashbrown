@@ -2,10 +2,74 @@
 title: 'Tool Calling: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Read application state through a browser tool and follow its result into the next model request.'
+    content: 'Give a model focused access to current application data through tools.'
 ---
 
 # Tool calling
+
+<hb-docs-demo demo="canonical-workbench-tools-react">
+</hb-docs-demo>
+
+A tool is an application function a model can ask to call. Its name, description, and argument schema tell the model when to use it. Your handler supplies the actual result, and the model can use that result in its next request.
+
+Use tools when an answer depends on current application data or a checked action. A model cannot infer today’s inventory from its training data. Give it a focused way to read inventory instead of pasting every product into every prompt. Keep reads separate from writes so a useful lookup does not also change application state.
+
+<hb-concept-diagram concept="tools"> </hb-concept-diagram>
+
+## Give the assistant a current value
+
+Use the endpoint and client configuration from the [Quickstart](/docs/react/start/quick). Render the component below inside the existing `HashbrownProvider`.
+
+Here the application owns a selected book. The read-only tool returns that selection when the model needs it. Returning a detached value keeps the tool result focused; no workbench store or recording helper is needed.
+
+```tsx
+import { useChat, useTool } from '@hashbrownai/react';
+
+export function ReadingAssistant() {
+  const selectedBook = 'Pride and Prejudice';
+  const readSelectedBook = useTool({
+    name: 'readSelectedBook',
+    description: 'Read the title of the book currently selected in the app.',
+    handler: async () => ({ title: selectedBook }),
+    deps: [selectedBook],
+  });
+  const chat = useChat({
+    system:
+      'Use readSelectedBook before answering questions about the selected book.',
+    tools: [readSelectedBook],
+  });
+  return (
+    <main>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'Who wrote the selected book?',
+          })
+        }
+      >
+        Ask about this book
+      </button>
+      {chat.error && <p role="alert">The request failed.</p>}
+      {chat.messages.map((message, index) =>
+        message.role === 'assistant' ? (
+          <p key={index}>
+            {typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content)}
+          </p>
+        ) : null,
+      )}
+    </main>
+  );
+}
+```
+
+The model chooses whether to call a tool; the system instruction makes the lookup part of this feature’s expected behavior. For tools that accept arguments, add a `schema`. Forward the handler’s `AbortSignal` to cancellable I/O. Enforce access to remote data on the server even when the browser tool initiates the lookup.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="tools">
 </hb-workbench>
@@ -14,13 +78,13 @@ Our two-step plan has an accepted version and a revision number. Before proposin
 
 The same conversation appears in [Generative UI](/docs/react/concept/components). In this lesson, we’ll follow the request, the tool result, and the continuation that produces the card.
 
-## Run the same conversation
+### Run the same conversation
 
 Use the [conversation workbench](/docs/react/start/workbench) with the server environment from the [Quickstart](/docs/react/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=tools`. Selecting a lesson does not send a request.
 
 The recording uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
-## Read application state
+### Read application state
 
 `useTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
@@ -44,7 +108,7 @@ const readContext = useTool({
 
 The React version uses `deps` to keep handler dependencies current; the Angular version reads the session store inside its handler. Both pass this tool in the `tools` collection supplied to `useUiChat()`.
 
-## Follow the round trip
+### Follow the round trip
 
 1. Send the first prompt. The server streams a `readContext` call.
 2. Hashbrown runs the browser handler. Its result contains `revision: 0` and `plan: null`.
@@ -56,7 +120,7 @@ Select **Requests** to see each request and tool result in a table grouped by tu
 
 <img src="/video/docs/canonical-workbench-tools-react-result.png" alt="The Requests view lists model requests and readContext results from both plan turns." width="1600" height="1000" loading="lazy" />
 
-## Keep reads and writes deliberate
+### Keep reads and writes deliberate
 
 A handler runs when the model calls it. Keep a read like `readContext` separate from a write like accepting the plan. A schema describes values; application code decides whether an action is allowed.
 
@@ -64,11 +128,13 @@ The workbench checks the current turn, application revision, successful completi
 
 For a remote write, enforce identity, authorization, and validation on the server. See [Securing a public endpoint](/docs/react/recipes/public-endpoint).
 
-## Tool options and arguments
+### Tool options and arguments
 
 This tool needs no arguments. Add `schema` when the model must supply values, and validate application rules inside the handler. Pass the provided `AbortSignal` to any asynchronous work that supports cancellation.
 
-### `UseToolOptions`
+<a id="usetooloptions"></a>
+
+#### `UseToolOptions`
 
 | Option        | Type                   | Required | Description                                                                    |
 | ------------- | ---------------------- | -------- | ------------------------------------------------------------------------------ |
@@ -80,7 +146,9 @@ This tool needs no arguments. Add `schema` when the model must supply values, an
 
 ---
 
-### Schema Inputs
+<a id="schema-inputs"></a>
+
+#### Schema Inputs
 
 The `schema` option accepts:
 
@@ -92,7 +160,9 @@ Standard JSON Schema inputs are normalized to Skillet (draft-07) before streamin
 
 ---
 
-### API Reference
+<a id="api-reference"></a>
+
+#### API Reference
 
 <hb-next-steps>
   <hb-next-step link="/api/react/useTool">
@@ -108,7 +178,7 @@ Standard JSON Schema inputs are normalized to Skillet (draft-07) before streamin
 
 ---
 
-#### Handler Signatures
+##### Handler Signatures
 
 **With `input` Arguments:**
 
@@ -133,7 +203,7 @@ handler: (abortSignal: AbortSignal) => Promise<Result>;
 
 ---
 
-## Server-Executed Tool Calls
+### Server-Executed Tool Calls
 
 Not every tool the model calls runs in the browser. An agent server can
 execute its own tools and stream only the call and its result to Hashbrown.
@@ -177,7 +247,9 @@ always `complete`. `outcome` says how it ended:
 A `provider` call is never dispatched to a client tool, even one with the
 same name.
 
-### The `b4.step` Contract
+<a id="the-b4.step-contract"></a>
+
+#### The `b4.step` Contract
 
 An AG-UI server describes its tool calls by sending a `b4.step` step record
 (version `1`) in one of two carriers: the `metadata['b4.step']` key on the
@@ -187,7 +259,9 @@ records into the matching `serverToolCalls` entry, so any server that emits
 appear automatically, with no client code to add. Servers that do not emit it
 keep working: the fields are simply absent.
 
-### Display Tool Steps
+<a id="display-tool-steps"></a>
+
+#### Display Tool Steps
 
 `getServerToolCallLabel` and `groupServerToolCalls` provide pure display data.
 They render no components and preserve original calls and sources. Application
@@ -238,7 +312,9 @@ application refreshes elapsed labels, it owns the clock and scheduling; the
 one-second constant does not install a timer. `formatDuration(undefined)` leaves
 unknown duration unknown. See [turn summaries](/docs/react/concept/activities#derive-a-work-summary) for explicit turn-clock options.
 
-### Citations
+<a id="citations"></a>
+
+#### Citations
 
 When the answer cites its sources, the assistant message carries `citations`.
 Each citation's `sourceId` is the `id` of a source on one of the message's
@@ -304,11 +380,11 @@ Tools you register with @hashbrownai/react!useTool:function keep appearing in
 
 ---
 
-## Next steps
+### Next steps
 
 Read the [complete React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workbench.tsx), or return to the [workbench](/docs/react/start/workbench). Continue with [Structured output](/docs/react/concept/structured-output) to use the same tool with typed plan data, or [Generative UI](/docs/react/concept/components) to focus on the trusted component.
 
-## Connect tools to native subagents
+### Connect tools to native subagents
 
 Native [AG-UI subagents](https://docs.ag-ui.com/concepts/subagents) can expose which invocation requested a tool and which invocation produced its result. Import `SubagentRun` from `@hashbrownai/react` to type the records exposed by the chat's `subagents` property (a readonly array in React, a signal of a readonly array in Angular). Plain, structured, and UI chat share this projection; see [Activities](/docs/react/concept/activities#follow-native-subagent-invocations) for reactive grouping examples and lifecycle states.
 

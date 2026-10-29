@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -7,10 +8,7 @@ test.each(SDKS)(
   '%s predictive guide opens with its canonical framework recording',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'predictive-actions'])?.body ?? '';
-    const marker = `<hb-workbench lesson="predictions">`;
-
-    expect(body.indexOf(marker)).toBeGreaterThan(-1);
-    expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
+    expectConceptFirstWorkbench(body, sdk, 'predictions');
     expect(body).toContain(
       `/video/docs/canonical-workbench-predictions-${sdk}-result.png`,
     );

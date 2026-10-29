@@ -5,6 +5,7 @@ import { CodeExample } from './CodeExample';
 import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
+import { ConceptDiagram } from './elements/ConceptDiagram';
 import { DocsDemoVideo } from './elements/DocsDemoVideo';
 import { MagicTextDemo } from './elements/MagicTextDemo';
 import { ScrollTable } from './elements/ScrollTable';
@@ -54,6 +55,7 @@ export function docsComponents(
     'hb-carousel': Carousel,
     'www-atc-demo-video': AtcDemoVideo,
     'hb-docs-demo': DocsDemoVideo,
+    'hb-concept-diagram': ConceptDiagram,
     'hb-workbench': DocsWorkbench,
     'hb-magic-text-demo': MagicTextDemo,
     'hb-next-steps': NextSteps,

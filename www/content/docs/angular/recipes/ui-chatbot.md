@@ -2,15 +2,99 @@
 title: 'Build a Generative UI Chatbot: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Propose a two-step plan, explicitly accept it, and read the accepted state in a second Angular conversation turn.'
+    content: 'Build a conversation with trusted application components and separate generated proposals from accepted state.'
 ---
 
 # Build a generative UI conversation
 
-Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
+<hb-docs-demo demo="canonical-workbench-ui-chatbot-angular">
+</hb-docs-demo>
+
+A generative UI conversation answers with application components as well as text. Use it when a card, list, or other trusted view makes the response easier to understand and act on. The model chooses from exposed components and supplies their props; your application controls rendering and every action.
+
+Let’s make a delivery assistant that can display a status card. The first implementation is read-only. Adding an Accept or Save button later requires a separate handler that checks completion, current data, and permission.
+
+<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+
+## Build a conversation with a trusted card
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component, input } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import {
+  createUiKit,
+  exposeComponent,
+  RenderMessageComponent,
+  uiChatResource,
+} from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-delivery-card',
+  template: `<article aria-label="Delivery status">
+    <h2>Delivery</h2>
+    <p>{{ status() }}</p>
+  </article>`,
+})
+export class DeliveryCard {
+  readonly status = input.required<string>();
+}
+const deliveryKit = createUiKit({
+  components: [
+    exposeComponent(DeliveryCard, {
+      name: 'DeliveryCard',
+      description:
+        'Display a read-only delivery status. Do not use for changing an order.',
+      input: { status: s.string('A short delivery status') },
+      children: false,
+    }),
+  ],
+});
+
+@Component({
+  selector: 'app-delivery-assistant',
+  imports: [RenderMessageComponent],
+  template: `
+    <button [disabled]="chat.isLoading()" (click)="show()">
+      Show delivery
+    </button>
+    @if (chat.error()) {
+      <p role="alert">The reply could not finish.</p>
+    } @else {
+      @for (message of chat.value(); track $index) {
+        @if (message.role === 'assistant') {
+          <hb-render-message [message]="message" />
+        }
+      }
+    }
+  `,
+})
+export class DeliveryAssistant {
+  readonly chat = uiChatResource({
+    system:
+      'Demonstrate the delivery card with this public example: the parcel is due Friday.',
+    components: [deliveryKit],
+  });
+  show() {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'Show the delivery status.',
+    });
+  }
+}
+```
+
+The delivery date is public example data supplied in the instructions. For a real order, retrieve its status through an authorized read-only tool and keep the authoritative result in application state. The model can misreport a tool result, so a generated status card is a presentation, not a database record.
+
+Send a follow-up through the same chat instance to retain the exchange. If a later card proposes a change, keep its draft separate from accepted state. Require a current completed response and an explicit application action; the next read tool should return what the application actually accepted.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="ui-chatbot">
 </hb-workbench>
+
+Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
 
 <img src="/video/docs/canonical-workbench-ui-chatbot-angular-result.png" alt="The Angular conversation shows an accepted SummaryCard followed by a read-only PlanReading, beside the application plan and revision." width="1600" height="1000" loading="lazy" />
 

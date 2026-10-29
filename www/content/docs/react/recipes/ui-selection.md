@@ -2,10 +2,69 @@
 title: 'UI Selection: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Choose between trusted plan views with UI decision candidates, inspect confidence, and keep application data and manual control in the app.'
+    content: 'Choose among application-owned views with typed candidates, confidence filtering, and manual control.'
 ---
 
 # UI Selection
+
+<hb-docs-demo demo="canonical-workbench-ui-selection-react">
+</hb-docs-demo>
+
+Sometimes the data and components are already known, and only the choice of view needs language understanding. UI selection lets a model choose a candidate ID while the application supplies the element and all its data. Use it for a compact summary versus a detailed list, or another small set of equivalent views.
+
+Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
+
+<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+
+## Choose among application views
+
+Start with the [React Quickstart](/docs/react/start/quick) and a configured [TypeSafe decision endpoint](/docs/react/platform/typesafe). Decisions use the provider’s `decision.url` (normally `/api/decide`), separately from AG-UI chat. Pin the matching candidate schema on the server and keep TypeSafe credentials there. Mount this component beneath `HashbrownProvider`.
+
+```tsx
+import { useState } from 'react';
+import { useUiDecision } from '@hashbrownai/react';
+
+const candidates = [
+  {
+    id: 'summary',
+    description: 'A brief delivery overview',
+    element: <p>Due Friday · 2 items</p>,
+  },
+  {
+    id: 'items',
+    description: 'A detailed item list',
+    element: (
+      <ul>
+        <li>Notebook</li>
+        <li>Pen</li>
+      </ul>
+    ),
+  },
+];
+export function DeliveryView() {
+  const [input, setInput] = useState<string | null>(null);
+  const choice = useUiDecision({
+    input,
+    system: 'Choose a delivery view matching the request.',
+    candidates,
+    select: 'one',
+    minConfidence: 0.75,
+  });
+  return (
+    <section>
+      <button onClick={() => setInput('Show the individual items')}>
+        Choose a view
+      </button>
+      {choice.ui}
+      {choice.error && <p role="alert">Choose a view manually or try again.</p>}
+    </section>
+  );
+}
+```
+
+This example previews a choice and never changes delivery data. The candidate IDs, descriptions, order, and application-owned data must agree with the server contract. Confidence below `0.75` can leave the preview empty; display manual summary and item controls alongside it in a full screen. Confidence is a model score, not calibrated accuracy. If you persist the selected view, require a separate action and recheck the current request and application revision.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="ui-selection">
 </hb-workbench>
