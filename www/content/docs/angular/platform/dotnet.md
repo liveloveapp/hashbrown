@@ -7,6 +7,14 @@ meta:
 
 # .NET with OpenAI and Azure OpenAI
 
+<hb-docs-demo demo="canonical-workbench-first-plan-angular">
+</hb-docs-demo>
+
+The teaser demonstrates the OpenAI-backed browser flow using the TypeScript server. It does not demonstrate ASP.NET Core, Microsoft Agent Framework, Azure authentication, or the local NuGet candidate.
+
+<hb-concept-diagram concept="client-server">
+</hb-concept-diagram>
+
 Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same Hashbrown APIs as a Node-backed application; the .NET server chooses the model, holds credentials, and runs its own tools.
 
 The tested reference uses .NET 10, Microsoft Agent Framework, and the upstream AG-UI SDK. It covers Responses and Chat Completions with both OpenAI and Azure OpenAI, streaming JSON and trusted UI, browser/server tools, and application confirmation with interrupt/resume. The maintained server library is `Hashbrown.AspNetCore`.
@@ -516,3 +524,9 @@ Initialize `threadId` from the same router selector on reload. Add these explici
 The [internal conformance suite](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) runs both React and Angular against both genuine provider clients with aimock replacing only the model API. It checks native paths/authentication, exact schemas, partial text/JSON/UI, tools, interrupt decisions, duplicate/concurrent/expired resume, failure/cancellation behavior, and durable restart, reload recovery, competing tabs, authenticated isolation, stale lookup guards, retained answers, historical browser-tool inertness and protected reconciliation across both APIs and all eight framework/provider/API combinations.
 
 Entra authentication, live cloud-account qualification, .NET 8/9, automatic native tool approval, provider-hosted tools, general chat-session persistence, reasoning/continuation recovery, activities, and Hashbrown finish-reason metadata are outside this tested baseline. The deterministic suite uses aimock for the model API; passing it does not establish live OpenAI or Azure account behavior. Other AG-UI backends can use the [custom provider contract](/docs/angular/platform/custom); AG-UI transport compatibility by itself does not establish all Hashbrown features.
+
+## Explore it in the workbench
+
+Open `/angular.html?lesson=first-plan` in the [conversation workbench](/docs/angular/start/workbench). Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+
+The bundled workbench uses a TypeScript server. It demonstrates the browser contract your .NET endpoint must satisfy, not qualification of the .NET library. Connect your application to the endpoint configured above and run the linked conformance checks for the selected provider, tool mode, confirmation, and recovery paths. Keep the tested package and SDK version boundaries on this page when doing so.

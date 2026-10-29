@@ -7,7 +7,17 @@ meta:
 
 # TypeSafe
 
-<p class="subtitle">Answer Hashbrown decision requests with TypeSafe's Jev model.</p>
+<hb-docs-demo demo="canonical-workbench-decisions-react">
+</hb-docs-demo>
+
+A decision selects from questions and choices our application defines. Use TypeSafe's Jev model when you need a complete typed answer, such as a routing choice or score, rather than a streamed chat reply. The server validates the request, calls TypeSafe, and returns JSON; the application decides what to do with the answer.
+
+The teaser shows the Decisions client flow backed by the TypeSafe route. Generation lessons elsewhere in the workbench use OpenAI and a different streaming contract.
+
+<hb-concept-diagram concept="decisions">
+</hb-concept-diagram>
+
+## Install the adapter
 
 Install the adapter. It uses the global `fetch`, so it needs no other dependency:
 
@@ -254,6 +264,12 @@ Responses with HTTP 429 or 529 are retried up to twice.
 When the client sends `options: { longContext: true }`, the adapter adds TypeSafe's `TypeSafe-Danger-Zone-Long-Context: true` header. That raises the request and per-question context limits to 262k tokens. Long context is slower and less accurate, so enable it only for requests that need it. See [TypeSafe models](https://docs.typesafe.ai/models.md).
 
 ---
+
+## Explore it in the workbench
+
+Open `/react.html?lesson=decisions` in the [conversation workbench](/docs/react/start/workbench). For a live local run, supply `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL` on the server as described there. This lesson starts with a fixed application-owned plan.
+
+Request a decision and compare the complete response with the typed choice and confidence in the inspector. The response arrives as one JSON value, rather than chat tokens. Inspect **State** before and after explicit application: receiving a decision does not apply it. The [workbench server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) supplies the application boundary around the same `HashbrownTypeSafe.decide` call used above. Deterministic fixture reports establish client behavior; use a live run to verify provider access.
 
 ## Next Steps
 

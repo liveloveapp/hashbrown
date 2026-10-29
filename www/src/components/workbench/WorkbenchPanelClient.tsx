@@ -19,8 +19,13 @@ import type {
   WorkbenchLessonId,
   WorkbenchLiveAvailability,
   WorkbenchSourceData,
+  WorkbenchSourceHtml,
 } from './workbench-lessons';
 import styles from './WorkbenchPanel.module.css';
+import {
+  type WorkbenchSourceLoad,
+  WorkbenchSourceView,
+} from './WorkbenchSourceView';
 
 /**
  * Plain values for {@link WorkbenchPanelClient}, computed on the server by
@@ -45,7 +50,10 @@ export interface WorkbenchPanelClientProps {
   readonly openHref: string | null;
   /** The recorded video, rendered on the server. */
   readonly fallback: ReactNode;
-  /** Highlighted lesson source; the Source tab is hidden without it. */
+  /**
+   * The lesson's files and the page's highlights; the Source tab is hidden
+   * without it. The highlighted files load when the tab first opens.
+   */
   readonly source?: WorkbenchSourceData;
   /** Milestones the page's prose refers to (unused until moments land). */
   readonly moments?: readonly string[];
@@ -151,6 +159,10 @@ function TabbedPanel({
   const [liveFailed, setLiveFailed] = useState(false);
   const [frame, setFrame] = useState<HTMLIFrameElement | null>(null);
   const [liveFrame, setLiveFrame] = useState<HTMLIFrameElement | null>(null);
+  const [sourceLoad, setSourceLoad] = useState<WorkbenchSourceLoad>({
+    status: 'idle',
+  });
+  const sourceRequested = useRef(false);
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
 
@@ -254,11 +266,35 @@ function TabbedPanel({
     };
   }, [liveFrame, origin, lesson, sdk]);
 
+  // The highlighted source loads the first time the reader opens the Source
+  // tab, never before, and only once.
+  const openSource = () => {
+    if (sourceRequested.current) return;
+    sourceRequested.current = true;
+    setSourceLoad({ status: 'loading' });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    fetch(`/workbench-source/${sdk}/${lesson}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<WorkbenchSourceHtml>;
+      })
+      .then((value) => {
+        if (!Array.isArray(value?.files)) throw new Error('No files');
+        setSourceLoad({ status: 'loaded', files: value.files });
+      })
+      .catch(() => setSourceLoad({ status: 'failed' }))
+      .finally(() => clearTimeout(timer));
+  };
   // Focus and selection move freely; only an explicit activation (a click,
-  // Enter or Space) mounts the live frame and so spends anything.
-  const select = (next: Tab) => setTab(next);
-  const activate = (next: Tab) => {
+  // Enter or Space) mounts the live frame and so spends anything. Showing
+  // Source by any means loads it, so its panel is never blank.
+  const select = (next: Tab) => {
     setTab(next);
+    if (next === 'source') openSource();
+  };
+  const activate = (next: Tab) => {
+    select(next);
     if (next === 'live') setLiveMounted(true);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -391,13 +427,11 @@ function TabbedPanel({
       </div>
       {source && (
         <div {...panelProps('source')}>
-          {source.files.map((file) => (
-            <figure key={file.path} className={styles.file}>
-              <figcaption>{file.path}</figcaption>
-              {/* Highlighted at build time from checked-in example source. */}
-              <div dangerouslySetInnerHTML={{ __html: file.html }} />
-            </figure>
-          ))}
+          <WorkbenchSourceView
+            source={source}
+            load={sourceLoad}
+            visible={tab === 'source'}
+          />
         </div>
       )}
     </div>

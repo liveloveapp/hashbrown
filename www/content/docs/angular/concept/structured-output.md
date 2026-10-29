@@ -2,10 +2,78 @@
 title: 'Structured output: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Stream a typed two-step plan, review it, and accept it explicitly.'
+    content: 'Turn model responses into typed application data for display and review.'
 ---
 
 # Structured output
+
+<hb-docs-demo demo="canonical-workbench-structured-angular">
+</hb-docs-demo>
+
+Structured output gives an application typed data instead of prose it must interpret. A response schema describes the fields you need. Hashbrown parses the arriving response into that shape, and your application decides how to display or use it.
+
+Use it for extracting form values, classifying a request with explanations, or producing a proposal for review. Choose [generative UI](/docs/angular/concept/components) when the model should also choose components. A valid shape is one part of accepting a result: completion, business rules, and permission to perform a write still belong to the application.
+
+<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+
+## Extract a book request
+
+Use the endpoint and client configuration from the [Quickstart](/docs/angular/start/quick). Keep `provideHashbrown` in `appConfig` and the `<app-root>` host. Import the standalone class below into `main.ts` and pass it to `bootstrapApplication()` with that same `appConfig`. The endpoint must preserve the client response schema and use a provider that supports it.
+
+```ts
+import { Component } from '@angular/core';
+import { structuredChatResource } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
+
+const readingSchema = s.object('A request for a book', {
+  title: s.string('The requested book title'),
+  author: s.string('The author named by the user'),
+  copies: s.integer('How many copies are requested', {
+    minimum: 1,
+    maximum: 20,
+  }),
+});
+
+@Component({
+  selector: 'app-root',
+  template: `
+    <button type="button" [disabled]="chat.isLoading()" (click)="request()">
+      Generate
+    </button>
+    @if (chat.isLoading()) {
+      <p role="status">Preview — still generating</p>
+    }
+    @if (chat.error()) {
+      <p role="alert">The request failed.</p>
+    }
+    @for (message of chat.value(); track $index) {
+      @if (message.role === 'assistant') {
+        <p>{{ message.content?.title }} — {{ message.content?.author }}</p>
+        <p>Requested copies: {{ message.content?.copies }}</p>
+      }
+    }
+  `,
+})
+export class ReadingRequest {
+  readonly chat = structuredChatResource({
+    system:
+      'Extract the title, author, and requested copy count from the user message.',
+    schema: readingSchema,
+  });
+  request(): void {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'I need two copies of Pride and Prejudice by Jane Austen.',
+    });
+  }
+}
+```
+
+This interface displays the extracted data for review. It does not reserve books. Before adding a reservation action, require successful completion, check the finish reason and current request, validate inventory and counts, and authorize the server write.
+
+For incomplete input, define an explicit clarification branch with `s.anyOf` rather than forcing the model to fill missing required fields. The [schema guide](/docs/angular/concept/schema) shows tagged response alternatives.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="structured-output">
 </hb-workbench>
@@ -14,13 +82,13 @@ Let’s use the same two-step plan, this time as typed data. The model returns a
 
 I like keeping the example familiar. In [Generative UI](/docs/angular/concept/components), the model selects `SummaryCard` from a catalog. Here, `structuredChatResource()` returns plan data and the application chooses how to display it.
 
-## Run the same conversation
+### Run the same conversation
 
 Use the [conversation workbench](/docs/angular/start/workbench) with the server environment from the [Quickstart](/docs/angular/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=structured-output`. Selecting a lesson does not send a request.
 
 The recording uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
-## Describe the plan
+### Describe the plan
 
 The shared schema describes a title and a streaming array of step strings. Both frameworks and the server use this same contract.
 
@@ -40,7 +108,7 @@ export const workbenchPlanSchema = s.object('A two-step plan proposal', {
 
 `s.streaming.array` lets resolved steps appear before the whole response finishes. It does not mean the plan is ready to accept. The workbench also checks application rules: a nonempty title of at most 120 characters and exactly two nonempty steps, each at most 200 characters.
 
-## Request typed data
+### Request typed data
 
 The checked Angular client uses `structuredChatResource()` with the plan schema, the same read-only `readContext` tool, and the capturing transport:
 
@@ -78,13 +146,13 @@ The latest assistant message exposes its parsed plan in `content`. The applicati
 
 [Read the checked Angular implementation](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/structured-workbench.ts). It includes the rendered card, captured origins, cancellation, and explicit acceptance.
 
-## Watch the preview become a result
+### Watch the preview become a result
 
 Send the first prompt. Keep **JSON** selected to see response text arrive beside the plan. The **Typed plan** section beside it shows values resolved by the SDK. Select **State** before accepting: the application still has revision `0` and no accepted plan.
 
 <img src="/video/docs/canonical-workbench-structured-angular-result.png" alt="The model streams a plain title and steps while the application renders a plan preview beside the typed data." width="1600" height="1000" loading="lazy" />
 
-## Accept a completed plan
+### Accept a completed plan
 
 Select **Accept plan** after the successful response completes. The handler rechecks the plan at the action boundary, copies only validated fields, and advances the application revision. Then send “Make the second step shorter.” The tool reads the accepted plan and the response proposes a revision.
 
@@ -92,12 +160,12 @@ A partial response is a preview. A failed, cancelled, truncated, stale, or alrea
 
 This example stores the accepted plan in browser memory. Enforce authorization and validation separately for any server write.
 
-## Keep the response schema intact
+### Keep the response schema intact
 
 Hashbrown sends the schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`. The [provider adapter](/docs/angular/start/platforms) uses that schema, while the client parses streamed text into typed content. Hashbrown does not add an `output` tool to request structured output.
 
 The local workbench endpoint pins its own schema for each lesson. If you customize your endpoint, preserve the schema your feature needs. The [secured text-only endpoint](/docs/angular/recipes/public-endpoint) deliberately removes browser-supplied schemas as part of its different policy.
 
-## Next steps
+### Next steps
 
 Use [Streaming](/docs/angular/concept/streaming) to explore the streaming markers, then [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data) to connect typed data to a form. See [Skillet schemas](/docs/angular/concept/schema) for supported schema inputs and constraints, or [Tools](/docs/angular/concept/functions) to follow the plan’s context read.

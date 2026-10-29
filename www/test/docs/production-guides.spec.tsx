@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -40,9 +41,7 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const marker = `<hb-workbench lesson="${demo}">`;
-      expect(body.indexOf(marker), demo).toBeGreaterThan(-1);
-      expect(body.indexOf(marker), demo).toBeLessThan(body.indexOf('\n## '));
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

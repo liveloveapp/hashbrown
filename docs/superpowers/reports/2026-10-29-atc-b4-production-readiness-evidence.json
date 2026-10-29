@@ -1,0 +1,3117 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-29",
+  "status": "passed",
+  "version": "0.15.7",
+  "runtimeSourceCommit": "6d414a37d25ab336192e52fd4d00b26321758ee7",
+  "harnessCommit": "b85d8b3ae5ab6ff420166fe7c15c55f243560af4",
+  "registryManifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+  "packages": {
+    "@b4run/cli": {
+      "version": "0.15.7",
+      "integrity": "sha512-0gw1AU76M3FYWNm+KuUYd+P7aU27fH3R6F9ziExx7FHkVU+EDULHZWJzyQwPV69MSt+gs7jhdcVeIxdEiw2AJQ=="
+    },
+    "@b4run/core": {
+      "version": "0.15.7",
+      "integrity": "sha512-aKUXgZW9y7uprf+CsGAiuAXhy7IK5SIA9DwL4XZ0fuzr0bmkzBneAST40/JBMLb/0aN4f1afZ5JlMY9e7n5odw=="
+    },
+    "@b4run/sdk": {
+      "version": "0.15.7",
+      "integrity": "sha512-6hOWKpVOWGPIcoQuBFd/4tKadoRjjEzjJq6OWgWWWcQ+690LXQU50ZUXJqaHMHu/OYNGiF2CPveo1dQUamzf9Q=="
+    },
+    "@b4run/postgres-storage": {
+      "version": "0.15.7",
+      "integrity": "sha512-+veynXK4B4vVCU0ZxO/uCTHujC9DPfB2KUL2jRLBS6SbUMq4QlTn1smfJaGy8AdWh9BVo5ev2y4ZMrgnEf1V8g=="
+    }
+  },
+  "artifact": {
+    "sha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "functionTreeSha256": "7e7584369e3f7d06c452ae639cc7e87ea39d2936b1695281de795848b8f43802",
+    "outputTreeSha256": "707995a20ddc7e16019b7cff8a5971132451dd6b73e9cc9d7cc9da8afde2c376",
+    "lockSha256": "8e371794b4c3679c2dcd39f26ba4810a702cc7a31784d2131399d1436cc09b94",
+    "treeHashAlgorithm": "common.hashTree/v1 complete directories/files/modes/content; symlinks rejected",
+    "provenanceLimit": "Verified exact prebuilt upload provenance; not independent remote byte attestation"
+  },
+  "profile": {
+    "provider": "openai",
+    "modelAlias": "gpt-5-mini",
+    "reasoningEffort": "low",
+    "maxOutputTokens": 4096,
+    "source": "Frozen authored route defaults; preview model/reasoning/base-URL overrides absent"
+  },
+  "project": {
+    "id": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+    "name": "hashbrown-atc",
+    "ownerId": "team_DjeixPtTYBQG210UovUdTJW8",
+    "owner": "blovedev"
+  },
+  "deployments": [
+    {
+      "id": "dpl_Ei9MzPX8zMowrZiRyNob8LRUW4At",
+      "origin": "https://hashbrown-becuokooa-blovedev.vercel.app",
+      "target": "preview",
+      "readyState": "READY"
+    },
+    {
+      "id": "dpl_SiQsXawNy9xfduJU3HGktT2udeFP",
+      "origin": "https://hashbrown-5qahwymvj-blovedev.vercel.app",
+      "target": "preview",
+      "readyState": "READY"
+    }
+  ],
+  "database": {
+    "target": "dedicated-preview",
+    "normalizedVerifyFullConnectionSha256": "70f8fc273c7540583f029977a2e1119dc0aeec57e64814204797fe20a6ab59d2"
+  },
+  "manifestReceipt": {
+    "file": "verified-deployments.json",
+    "sha256": "c2ab987b93ef87adb33a169d247ea6377b30f660c5886d3acdc9e3011115ef94"
+  },
+  "schemaSha256": "6b96d06fb6cca19f693dceaacba4e1fa5ed337f6d9f2a9e2292e8c24e75f4d40",
+  "storage": {
+    "cases": [
+      {
+        "kind": "natural-heartbeat-renewal",
+        "threadId": "renew-557072c0-10b0-4e5c-9e15-c1f9effa6c8b",
+        "initial": {
+          "ownerSha256": "4706867c5d030e8c80d8389e3b338b144099adbdd7bc7fd575b3feadf86ffae8",
+          "expiresAt": "2026-10-29T17:11:55.578Z",
+          "databaseNow": "2026-10-29T17:11:49.658Z"
+        },
+        "renewed": {
+          "ownerSha256": "4706867c5d030e8c80d8389e3b338b144099adbdd7bc7fd575b3feadf86ffae8",
+          "expiresAt": "2026-10-29T17:12:02.142Z",
+          "databaseNow": "2026-10-29T17:11:56.733Z"
+        },
+        "successorAcquiredAfterRelease": true,
+        "safe": true
+      },
+      {
+        "kind": "sigkill-natural-expiry-takeover",
+        "threadId": "killed-3ed8449c-5194-4f72-b645-fe15f017afc4",
+        "signal": "SIGKILL",
+        "before": {
+          "ownerSha256": "8257902a2f87f8bcbb73bc57e26a9fb9af485aa000c8eb836fa842bc17aa9c2b",
+          "expiresAt": "2026-10-29T17:12:07.158Z",
+          "databaseNow": "2026-10-29T17:12:01.907Z"
+        },
+        "finalLease": {
+          "ownerSha256": "8257902a2f87f8bcbb73bc57e26a9fb9af485aa000c8eb836fa842bc17aa9c2b",
+          "expiresAt": "2026-10-29T17:12:07.158Z",
+          "databaseNow": "2026-10-29T17:12:01.986Z"
+        },
+        "after": {
+          "ownerSha256": "6290a033225f40a3a96bf6ac8c88be683a672bae5e4048f8d8495a82a236f097",
+          "expiresAt": "2026-10-29T17:12:13.301Z",
+          "databaseNow": "2026-10-29T17:12:07.456Z"
+        },
+        "takeover": {
+          "conflicts": 17,
+          "elapsedMs": 4798
+        },
+        "safe": true
+      },
+      {
+        "kind": "sigstop-expiry-takeover-sigcont-stale-write",
+        "threadId": "paused-ec3d51ca-be4a-4962-bd19-74385abb14a1",
+        "before": {
+          "ownerSha256": "f19b40c083ee283106d8567d5ab44b0fa10e86fdb7da49551e6794cc731eebb9",
+          "expiresAt": "2026-10-29T17:12:18.668Z",
+          "databaseNow": "2026-10-29T17:12:13.494Z"
+        },
+        "winner": {
+          "ownerSha256": "78ef317007b8b5ae8b6c3e37f17a00595ddc9f4c180f26e629d6c8ec5ec81948",
+          "expiresAt": "2026-10-29T17:12:24.743Z",
+          "databaseNow": "2026-10-29T17:12:19.498Z"
+        },
+        "takeover": {
+          "conflicts": 19,
+          "elapsedMs": 4492
+        },
+        "stale": {
+          "id": 4,
+          "ok": false,
+          "error": "postgres-storage: run admission ownership lost or released",
+          "beforeAborted": false,
+          "afterAborted": true
+        },
+        "safe": true
+      },
+      {
+        "kind": "injected-expiry-active-owner-db-fence",
+        "threadId": "fence-ecdbdf04-79c3-4bca-af56-621b1266e2dd",
+        "before": {
+          "ownerSha256": "7f15271def6e42b069dc26c259a27ab75e80c0cab7010ec93a5890b2a8c0cba7",
+          "expiresAt": "2026-10-29T17:22:22.974Z",
+          "databaseNow": "2026-10-29T17:12:23.739Z"
+        },
+        "winner": {
+          "ownerSha256": "311fd2703189c87a8bb39369a36a2b596bb9e50b1ad9fd7bd1f7201fb0a828ed",
+          "expiresAt": "2026-10-29T17:12:30.359Z",
+          "databaseNow": "2026-10-29T17:12:25.111Z"
+        },
+        "oldSignalActiveBeforeWrite": true,
+        "oldSignalAbortedAfterFence": true,
+        "staleReleasePreservesSuccessor": true,
+        "safe": true
+      },
+      {
+        "kind": "late-commit-rolls-back-and-unblocks-successor",
+        "threadId": "commit-3811a2f8-c611-47cf-bd92-94fa89b146ad",
+        "commit": {
+          "id": 4,
+          "ok": false,
+          "error": "postgres-storage: run admission lease expired or replaced",
+          "beforeAborted": false,
+          "afterAborted": true
+        },
+        "databaseBlockers": [
+          {
+            "pid": 733,
+            "wait_event_type": "Lock",
+            "wait_event": "transactionid",
+            "blockers": [623]
+          }
+        ],
+        "successorWaitedThroughExpiryForTransaction": true,
+        "effectsRolledBack": true,
+        "safe": true
+      }
+    ],
+    "quiescentElapsedMs": 75001,
+    "immediateSha256": "95e63c15ae66bfcae68c5a9399e7dee5da7b03fa5a158ae49c401ea71e5c5c26",
+    "after75SecondsSha256": "95e63c15ae66bfcae68c5a9399e7dee5da7b03fa5a158ae49c401ea71e5c5c26",
+    "cleanup": {
+      "ownedWorkersTerminated": true,
+      "errors": []
+    },
+    "receipt": {
+      "file": "storage-failure-atcfence_f75cecad13f0415b.json",
+      "sha256": "aa5d300999fc5a417a96c2bb073724f999a5f9f76ec220f2abfb8aa0e1a580c3"
+    }
+  },
+  "kill": {
+    "threadId": "readiness-kill-127818d6-281a-4b01-acc2-439aedf7e575",
+    "checks": {
+      "inputCommitObserved": false,
+      "managed409WhollyBeforeNaturalExpiry": true,
+      "managedSuccessorAfterNaturalExpiry": true,
+      "committedPrefixPreserved": true,
+      "completeMessageAndCheckpointWritePrefixPreserved": true,
+      "latestFollowupExactlyOnce": true,
+      "pinnedSchema": true,
+      "cap4096": true,
+      "canonicalUnchangedAfter75Seconds": true,
+      "noAdmissionLeak": true
+    },
+    "conflict": {
+      "ordinal": 5,
+      "label": "before-expiry-conflict",
+      "runId": "6973524d-f07d-4694-9c99-43b8b860b38f",
+      "dispatchMonotonicMs": 18460.347583,
+      "status": 409,
+      "retryAfter": "1",
+      "databaseBefore": "2026-10-29T17:25:38.501Z",
+      "databaseAfter": "2026-10-29T17:25:39.079Z"
+    },
+    "oldLease": {
+      "ownerSha256": "30cc061bc1096be707df5b15dcae1e86b89f81e65ba7254846c91fe399d0b045",
+      "expiresAt": "2026-10-29T17:26:01.228Z",
+      "databaseNow": "2026-10-29T17:25:38.418Z"
+    },
+    "successorDispatchDatabaseTime": "2026-10-29T17:26:01.621Z",
+    "quiescentElapsedMs": 75003,
+    "firstPostEofAdmissions": [0, 0],
+    "immediateCanonicalSha256": "dd7e4169e0c59b33f1eb7817864b70db56e8c9ee4117840e24dd564205d9d957",
+    "settledCanonicalSha256": "dd7e4169e0c59b33f1eb7817864b70db56e8c9ee4117840e24dd564205d9d957",
+    "checkpointCount": 6,
+    "cleanup": {
+      "ownedWorkerExited": true,
+      "proxyClosed": true,
+      "wasStopped": false,
+      "errors": []
+    },
+    "receipt": {
+      "file": "runtime-kill-readiness-kill-127818d6-281a-4b01-acc2-439aedf7e575.json",
+      "sha256": "b6af255ae0c45e030de03b7161dc6e63ad41d39865fc504efa46bf1bf25a4aad"
+    }
+  },
+  "suspend": {
+    "threadId": "readiness-suspend-febbc471-00cd-468e-9031-aa97267f233f",
+    "checks": {
+      "inputCommitObserved": true,
+      "admissionUnlockedAfterStop": true,
+      "managed409WhollyBeforeNaturalExpiry": true,
+      "managedSuccessorAfterNaturalExpiry": true,
+      "committedPrefixPreserved": true,
+      "completeMessageAndCheckpointWritePrefixPreserved": true,
+      "completedProviderBytesHeldBeforeSuccessor": true,
+      "latestFollowupExactlyOnce": true,
+      "pinnedSchema": true,
+      "cap4096": true,
+      "canonicalUnchangedAfter75Seconds": true,
+      "noAdmissionLeak": true
+    },
+    "conflict": {
+      "ordinal": 9,
+      "label": "before-expiry-conflict",
+      "runId": "50ca4d1c-8bed-4d97-9317-a2ab5a6b54cc",
+      "dispatchMonotonicMs": 23019.69275,
+      "status": 409,
+      "retryAfter": "1",
+      "databaseBefore": "2026-10-29T17:28:52.158Z",
+      "databaseAfter": "2026-10-29T17:28:52.510Z"
+    },
+    "oldLease": {
+      "ownerSha256": "d0c4c03b18edcfc81575af4e412ddec19e5031ed422134df5a0b1479b90cf542",
+      "expiresAt": "2026-10-29T17:29:19.408Z",
+      "databaseNow": "2026-10-29T17:28:52.076Z"
+    },
+    "successorDispatchDatabaseTime": "2026-10-29T17:29:19.604Z",
+    "quiescentElapsedMs": 75000,
+    "firstPostEofAdmissions": [0, 0],
+    "immediateCanonicalSha256": "4782d8b84420e7764d5af30257c3b9bf96d919476180d583fc4e6b58df054058",
+    "settledCanonicalSha256": "4782d8b84420e7764d5af30257c3b9bf96d919476180d583fc4e6b58df054058",
+    "checkpointCount": 8,
+    "cleanup": {
+      "ownedWorkerExited": true,
+      "proxyClosed": true,
+      "wasStopped": false,
+      "errors": []
+    },
+    "ownerTerminal": {
+      "event": "terminal",
+      "kind": "end",
+      "recognizedTerminal": true,
+      "unexplainedTerminal": false,
+      "admissionLossObserved": true,
+      "completedBytesConsumed": true,
+      "providerAbortedBeforeCompletion": false
+    },
+    "ownerObservations": [
+      {
+        "event": "provider-completed-bytes-consumed"
+      },
+      {
+        "event": "provider-consumption-end",
+        "completedBytesConsumed": true,
+        "bodySha256": "77c9c352a475e7a81749b45db3a1c1e215561115c44306cf5d1bec682b6ad208"
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": true,
+          "databaseFenceExpiredOrReplaced": false,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      },
+      {
+        "event": "admission-abort",
+        "classification": {
+          "renewalExpired": true,
+          "databaseFenceExpiredOrReplaced": false,
+          "ownershipLost": false,
+          "abort": false,
+          "admissionLoss": true
+        }
+      }
+    ],
+    "staleProvider": {
+      "completedMonotonicMs": 29472.957875,
+      "responseId": "resp_0bb82f825fb0581f006ae382546e5087d28d057e6668de9768",
+      "responseSha256": "77c9c352a475e7a81749b45db3a1c1e215561115c44306cf5d1bec682b6ad208",
+      "requestSha256": "3bc0b4fe1851ab767401dd90465ca625573c8d9749cc35ae5abbae1e4517c871",
+      "maxOutputTokens": 4096,
+      "completed": true
+    },
+    "providerBytesHeldConfirmedMonotonicMs": 29473.388583,
+    "successorDispatchMonotonicMs": 50445.061041,
+    "providerBytesReleasedMonotonicMs": 61153.889333,
+    "ownerResumedMonotonicMs": 61153.933916,
+    "operationAttribution": "Generic admission observer establishes ownership cancellation; it does not prove which checkpoint or write attempted a commit. Previously streamed owner bytes are permitted.",
+    "receipt": {
+      "file": "runtime-suspend-readiness-suspend-febbc471-00cd-468e-9031-aa97267f233f.json",
+      "sha256": "ba2be65f8b350281e7cdea05034d082c0a46bc7a2f1c5f757a1fd121d7211e08"
+    }
+  },
+  "earlierAttempts": {
+    "kill": {
+      "status": "failed-harness-assumption-before-planned-kill",
+      "receipt": {
+        "file": "runtime-kill-readiness-kill-9d2263d5-12e2-4880-b4dd-4174e6f2b4d2.json",
+        "sha256": "27b5beb3ee6521de0dae310f7e9ebc206b39095cc713b7bb746913e3048cc3cb"
+      },
+      "error": {
+        "name": "AssertionError",
+        "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    '419cdf2228cdbcbc5f79271a8bca423d30c54ea22ff58be093146f1bcbfd70ba',\n-   'b38d01e48b97a0b795a2ce8a8065ed0b27b5617c7238c6495491919dad091f8b'\n  ]\n"
+      },
+      "cleanup": {
+        "ownedWorkerExited": true,
+        "proxyClosed": true,
+        "wasStopped": false,
+        "errors": []
+      },
+      "explanation": "Provider capture preceded queued async checkpoint commit. Corrected harness observes durable state after SIGKILL; suspend explicitly waits for commit. No runtime durability/lease change."
+    },
+    "load": {
+      "status": "interrupted-at-idle-for-pacing-correction",
+      "attempted": 29,
+      "finished": 29,
+      "applicationFailures": 0,
+      "receipt": {
+        "file": "load-74123b1a-91a1-49f0-80d2-7c3934458d22.json",
+        "sha256": "50c5a726f6667de023f4bba0e1580ac4dd44e2fd843e08c30dac237d67a9790c"
+      },
+      "interruptionReceipt": {
+        "file": "load-first-attempt-interruption.json",
+        "sha256": "df1a970fb5f7a46ece1ace6e5d3c7b9bf68edbc32acf5c90796aef4b48691336"
+      },
+      "cleanupVerification": {
+        "file": "load-first-attempt-cleanup-verification.json",
+        "sha256": "9bffcc5bbf472f04b6df1f89f4cb09f34a3639765b67e8a0f7296c9fef4cafab"
+      },
+      "minimumActualDispatchGapMs": 19978.922457999957,
+      "poolEndCallbackObserved": false,
+      "canonicalUnchangedAfter75Seconds": true,
+      "allAdmissionsZero": true
+    }
+  },
+  "load": {
+    "status": "passed",
+    "startedAt": "2026-10-29T17:50:58.878Z",
+    "finishedAt": "2026-10-29T18:07:41.809Z",
+    "limits": {
+      "levels": [1, 2, 4],
+      "stageDurationMs": 300000,
+      "minStartGapMs": 30000,
+      "minimumAllowedStartGapMs": 20000,
+      "maxAttempts": 120,
+      "priorReservedAttempts": 29,
+      "maxAttemptsThisRun": 91,
+      "requestTimeoutMs": 55000,
+      "phaseTimeoutMs": 1200000
+    },
+    "scheduleElapsedMs": 900003.428958,
+    "settledAfterMs": 1002950.5795839999,
+    "minimumObservedPerUserHttpDispatchGapMs": 30033.713791000002,
+    "metrics": [
+      {
+        "level": 1,
+        "attempted": 10,
+        "finished": 10,
+        "failed": 0,
+        "startsPerSecond": 0.03333333333333333,
+        "completedDuringLevel": 10,
+        "completionsPerScheduledSecond": 0.03333333333333333,
+        "completionMs": {
+          "p50": 5788.106166999991,
+          "p95": 10678.34712500003,
+          "max": 10678.34712500003
+        },
+        "firstByteMs": {
+          "p50": 511.6636670000007,
+          "p95": 2021.7877909999988
+        },
+        "firstContentMs": {
+          "p50": 5199.877916999976,
+          "p95": 10075.315500000026
+        }
+      },
+      {
+        "level": 2,
+        "attempted": 20,
+        "finished": 20,
+        "failed": 0,
+        "startsPerSecond": 0.06666666666666667,
+        "completedDuringLevel": 20,
+        "completionsPerScheduledSecond": 0.06666666666666667,
+        "completionMs": {
+          "p50": 4967.290458000032,
+          "p95": 6650.527624999988,
+          "max": 8181.840082999959
+        },
+        "firstByteMs": {
+          "p50": 427.8969999999972,
+          "p95": 707.4082500000368
+        },
+        "firstContentMs": {
+          "p50": 4224.597124999971,
+          "p95": 6053.779082999914
+        }
+      },
+      {
+        "level": 4,
+        "attempted": 40,
+        "finished": 40,
+        "failed": 0,
+        "startsPerSecond": 0.13333333333333333,
+        "completedDuringLevel": 40,
+        "completionsPerScheduledSecond": 0.13333333333333333,
+        "completionMs": {
+          "p50": 5319.871833000099,
+          "p95": 7347.251750000054,
+          "max": 8457.475167000084
+        },
+        "firstByteMs": {
+          "p50": 450.06420899997465,
+          "p95": 572.15379199991
+        },
+        "firstContentMs": {
+          "p50": 4654.933542000013,
+          "p95": 6807.353624999989
+        }
+      }
+    ],
+    "concurrency": [
+      {
+        "atMs": 0.2913330000000087,
+        "active": 1
+      },
+      {
+        "atMs": 9780.968792,
+        "active": 0
+      },
+      {
+        "atMs": 30034.901583,
+        "active": 1
+      },
+      {
+        "atMs": 37784.619958,
+        "active": 0
+      },
+      {
+        "atMs": 60078.575125,
+        "active": 1
+      },
+      {
+        "atMs": 66757.303625,
+        "active": 0
+      },
+      {
+        "atMs": 90111.82058300001,
+        "active": 1
+      },
+      {
+        "atMs": 97380.090708,
+        "active": 0
+      },
+      {
+        "atMs": 120167.411958,
+        "active": 1
+      },
+      {
+        "atMs": 128014.248417,
+        "active": 0
+      },
+      {
+        "atMs": 150209.613208,
+        "active": 1
+      },
+      {
+        "atMs": 155360.59983300001,
+        "active": 0
+      },
+      {
+        "atMs": 180268.568167,
+        "active": 1
+      },
+      {
+        "atMs": 184879.880917,
+        "active": 0
+      },
+      {
+        "atMs": 210328.37354200002,
+        "active": 1
+      },
+      {
+        "atMs": 217267.120875,
+        "active": 0
+      },
+      {
+        "atMs": 240390.40812500002,
+        "active": 1
+      },
+      {
+        "atMs": 245969.85666700001,
+        "active": 0
+      },
+      {
+        "atMs": 270463.676,
+        "active": 1
+      },
+      {
+        "atMs": 282382.845875,
+        "active": 0
+      },
+      {
+        "atMs": 300002.07554199995,
+        "active": 1
+      },
+      {
+        "atMs": 300541.572083,
+        "active": 2
+      },
+      {
+        "atMs": 305421.794083,
+        "active": 1
+      },
+      {
+        "atMs": 306162.583667,
+        "active": 0
+      },
+      {
+        "atMs": 330075.87854199996,
+        "active": 1
+      },
+      {
+        "atMs": 330607.505625,
+        "active": 2
+      },
+      {
+        "atMs": 335027.23425,
+        "active": 1
+      },
+      {
+        "atMs": 338949.43808299996,
+        "active": 0
+      },
+      {
+        "atMs": 360152.882542,
+        "active": 1
+      },
+      {
+        "atMs": 360690.262208,
+        "active": 2
+      },
+      {
+        "atMs": 367560.453542,
+        "active": 1
+      },
+      {
+        "atMs": 368176.42549999995,
+        "active": 0
+      },
+      {
+        "atMs": 390229.327458,
+        "active": 1
+      },
+      {
+        "atMs": 390771.056583,
+        "active": 2
+      },
+      {
+        "atMs": 396373.63954199996,
+        "active": 1
+      },
+      {
+        "atMs": 396974.325708,
+        "active": 0
+      },
+      {
+        "atMs": 420322.91312499996,
+        "active": 1
+      },
+      {
+        "atMs": 420853.83125,
+        "active": 2
+      },
+      {
+        "atMs": 426347.224917,
+        "active": 1
+      },
+      {
+        "atMs": 426576.786667,
+        "active": 0
+      },
+      {
+        "atMs": 450426.774958,
+        "active": 1
+      },
+      {
+        "atMs": 450944.924833,
+        "active": 2
+      },
+      {
+        "atMs": 454671.814792,
+        "active": 1
+      },
+      {
+        "atMs": 456320.08879199997,
+        "active": 0
+      },
+      {
+        "atMs": 480530.49504199997,
+        "active": 1
+      },
+      {
+        "atMs": 481044.95741699997,
+        "active": 2
+      },
+      {
+        "atMs": 485155.985,
+        "active": 1
+      },
+      {
+        "atMs": 486200.32341699995,
+        "active": 0
+      },
+      {
+        "atMs": 510628.879875,
+        "active": 1
+      },
+      {
+        "atMs": 511119.62170799996,
+        "active": 2
+      },
+      {
+        "atMs": 516309.88666699996,
+        "active": 1
+      },
+      {
+        "atMs": 518112.23441699997,
+        "active": 0
+      },
+      {
+        "atMs": 540749.107042,
+        "active": 1
+      },
+      {
+        "atMs": 541232.544083,
+        "active": 2
+      },
+      {
+        "atMs": 547111.914542,
+        "active": 1
+      },
+      {
+        "atMs": 547814.7737080001,
+        "active": 0
+      },
+      {
+        "atMs": 570859.4653330001,
+        "active": 1
+      },
+      {
+        "atMs": 571347.4384580001,
+        "active": 2
+      },
+      {
+        "atMs": 577762.963125,
+        "active": 1
+      },
+      {
+        "atMs": 578841.823542,
+        "active": 0
+      },
+      {
+        "atMs": 600001.032333,
+        "active": 1
+      },
+      {
+        "atMs": 600107.714667,
+        "active": 2
+      },
+      {
+        "atMs": 600982.8300000001,
+        "active": 3
+      },
+      {
+        "atMs": 601464.611167,
+        "active": 4
+      },
+      {
+        "atMs": 606387.6010830001,
+        "active": 3
+      },
+      {
+        "atMs": 606959.8387920001,
+        "active": 2
+      },
+      {
+        "atMs": 607552.0296250001,
+        "active": 1
+      },
+      {
+        "atMs": 607977.7649170001,
+        "active": 0
+      },
+      {
+        "atMs": 630108.009958,
+        "active": 1
+      },
+      {
+        "atMs": 630245.2497500001,
+        "active": 2
+      },
+      {
+        "atMs": 631105.3477500001,
+        "active": 3
+      },
+      {
+        "atMs": 631591.884875,
+        "active": 4
+      },
+      {
+        "atMs": 635221.9544170001,
+        "active": 3
+      },
+      {
+        "atMs": 635323.315083,
+        "active": 2
+      },
+      {
+        "atMs": 636716.3638330001,
+        "active": 1
+      },
+      {
+        "atMs": 637765.574875,
+        "active": 0
+      },
+      {
+        "atMs": 660247.172583,
+        "active": 1
+      },
+      {
+        "atMs": 660382.765792,
+        "active": 2
+      },
+      {
+        "atMs": 661238.14775,
+        "active": 3
+      },
+      {
+        "atMs": 661690.438042,
+        "active": 4
+      },
+      {
+        "atMs": 666413.689792,
+        "active": 3
+      },
+      {
+        "atMs": 666525.359667,
+        "active": 2
+      },
+      {
+        "atMs": 667109.527625,
+        "active": 1
+      },
+      {
+        "atMs": 667452.1681250001,
+        "active": 0
+      },
+      {
+        "atMs": 690384.512625,
+        "active": 1
+      },
+      {
+        "atMs": 690533.6220420001,
+        "active": 2
+      },
+      {
+        "atMs": 691375.896792,
+        "active": 3
+      },
+      {
+        "atMs": 691823.9348330001,
+        "active": 4
+      },
+      {
+        "atMs": 697091.025958,
+        "active": 3
+      },
+      {
+        "atMs": 697843.2068330001,
+        "active": 2
+      },
+      {
+        "atMs": 698038.0091670001,
+        "active": 1
+      },
+      {
+        "atMs": 699010.4637920001,
+        "active": 0
+      },
+      {
+        "atMs": 720534.73,
+        "active": 1
+      },
+      {
+        "atMs": 720686.7077500001,
+        "active": 2
+      },
+      {
+        "atMs": 721515.3390830001,
+        "active": 3
+      },
+      {
+        "atMs": 721970.1898330001,
+        "active": 4
+      },
+      {
+        "atMs": 728024.260125,
+        "active": 3
+      },
+      {
+        "atMs": 729135.5065830001,
+        "active": 2
+      },
+      {
+        "atMs": 729815.6626670001,
+        "active": 1
+      },
+      {
+        "atMs": 729938.535375,
+        "active": 0
+      },
+      {
+        "atMs": 750688.3780830001,
+        "active": 1
+      },
+      {
+        "atMs": 750856.430958,
+        "active": 2
+      },
+      {
+        "atMs": 751672.8410830001,
+        "active": 3
+      },
+      {
+        "atMs": 752125.6528330001,
+        "active": 4
+      },
+      {
+        "atMs": 756641.560167,
+        "active": 3
+      },
+      {
+        "atMs": 757562.377833,
+        "active": 2
+      },
+      {
+        "atMs": 757874.309458,
+        "active": 1
+      },
+      {
+        "atMs": 758557.39125,
+        "active": 0
+      },
+      {
+        "atMs": 780858.697,
+        "active": 1
+      },
+      {
+        "atMs": 781030.499417,
+        "active": 2
+      },
+      {
+        "atMs": 781841.8157500001,
+        "active": 3
+      },
+      {
+        "atMs": 782292.335708,
+        "active": 4
+      },
+      {
+        "atMs": 786349.963375,
+        "active": 3
+      },
+      {
+        "atMs": 789476.626083,
+        "active": 2
+      },
+      {
+        "atMs": 790560.6174580001,
+        "active": 1
+      },
+      {
+        "atMs": 790707.198,
+        "active": 0
+      },
+      {
+        "atMs": 811031.5085420001,
+        "active": 1
+      },
+      {
+        "atMs": 811209.2514170001,
+        "active": 2
+      },
+      {
+        "atMs": 812017.253208,
+        "active": 3
+      },
+      {
+        "atMs": 812465.837167,
+        "active": 4
+      },
+      {
+        "atMs": 817189.226917,
+        "active": 3
+      },
+      {
+        "atMs": 817559.851667,
+        "active": 2
+      },
+      {
+        "atMs": 818235.930208,
+        "active": 1
+      },
+      {
+        "atMs": 818971.061,
+        "active": 0
+      },
+      {
+        "atMs": 841208.790458,
+        "active": 1
+      },
+      {
+        "atMs": 841404.7420000001,
+        "active": 2
+      },
+      {
+        "atMs": 842197.6977080001,
+        "active": 3
+      },
+      {
+        "atMs": 842652.026333,
+        "active": 4
+      },
+      {
+        "atMs": 849270.7866250001,
+        "active": 3
+      },
+      {
+        "atMs": 849432.932625,
+        "active": 2
+      },
+      {
+        "atMs": 850052.095833,
+        "active": 1
+      },
+      {
+        "atMs": 850286.637833,
+        "active": 0
+      },
+      {
+        "atMs": 871404.536875,
+        "active": 1
+      },
+      {
+        "atMs": 871576.87575,
+        "active": 2
+      },
+      {
+        "atMs": 872387.32175,
+        "active": 3
+      },
+      {
+        "atMs": 872843.74075,
+        "active": 4
+      },
+      {
+        "atMs": 877030.194583,
+        "active": 3
+      },
+      {
+        "atMs": 878193.010125,
+        "active": 2
+      },
+      {
+        "atMs": 878515.797167,
+        "active": 1
+      },
+      {
+        "atMs": 879370.08125,
+        "active": 0
+      }
+    ],
+    "requests": [
+      {
+        "index": 0,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 0.2913330000000087,
+        "httpDispatchMs": 33.439750000000004,
+        "verificationFinishedMs": 9780.960375,
+        "threadId": "readiness-load-ef51f743-f364-4aaf-9a0c-ab4c520b4b50",
+        "runId": "e0f8fffd-fefe-4051-afbc-642c3c80788c",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 1843.042208,
+        "firstContentMs": 7958.211833,
+        "eofAtScheduleMs": 8528.439708,
+        "totalMs": 8494.999958,
+        "providerId": "resp_0bade71fbd973f92006ae3878529b087d280456295c3f4f172",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 390,
+          "total_tokens": 1826
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "e515efdae9dca74d49f611dfe8d7ab7d1634adba5803a66b2b4c4e50675c486d",
+        "settledCanonicalSha256": "e515efdae9dca74d49f611dfe8d7ab7d1634adba5803a66b2b4c4e50675c486d"
+      },
+      {
+        "index": 1,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 30034.901583,
+        "httpDispatchMs": 30075.637416999998,
+        "verificationFinishedMs": 37784.608417,
+        "threadId": "readiness-load-db184151-0d44-45c7-a923-ea7250677355",
+        "runId": "d6e3f87c-9064-4c25-966a-a8fe9e49338b",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 2021.7877909999988,
+        "firstContentMs": 5572.542291000002,
+        "eofAtScheduleMs": 36645.581000000006,
+        "totalMs": 6569.943583000004,
+        "providerId": "resp_0ae3574cde143c65006ae387a32d1c87d2a98d63bf56b6726e",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 340,
+          "total_tokens": 1777
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "e787e1e6abc8fbcbbb193ee401ce8920c941e2254c438fefd0647bfc55460f99",
+        "settledCanonicalSha256": "e787e1e6abc8fbcbbb193ee401ce8920c941e2254c438fefd0647bfc55460f99"
+      },
+      {
+        "index": 2,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 60078.575125,
+        "httpDispatchMs": 60109.351208,
+        "verificationFinishedMs": 66757.293917,
+        "threadId": "readiness-load-bb8f75c1-f07d-4b04-b250-184a4d54f040",
+        "runId": "1bbe5fdd-7b94-4ac4-a130-1ee6c9572ad2",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 1738.3842920000025,
+        "firstContentMs": 4924.595625000002,
+        "eofAtScheduleMs": 65654.5025,
+        "totalMs": 5545.151292000002,
+        "providerId": "resp_035003db6faa0360006ae387c0ef0487d2b0dbe1d0d177d91c",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 270,
+          "total_tokens": 1707
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "a1547c8880765b538b5c6f1c3b5a01841b57708960552b8efb9af9dbfcdcb37a",
+        "settledCanonicalSha256": "a1547c8880765b538b5c6f1c3b5a01841b57708960552b8efb9af9dbfcdcb37a"
+      },
+      {
+        "index": 3,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 90111.82058300001,
+        "httpDispatchMs": 90165.276167,
+        "verificationFinishedMs": 97380.085083,
+        "threadId": "readiness-load-c764ef95-c3f8-413f-8bc5-eac150af0281",
+        "runId": "20937a44-d4e1-40db-8c16-2eee3b6ad678",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 1729.8902499999967,
+        "firstContentMs": 5403.257041000004,
+        "eofAtScheduleMs": 96255.677667,
+        "totalMs": 6090.401499999993,
+        "providerId": "resp_0e76f8afeea27ce5006ae387deefc887d29f6791374751df0f",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 335,
+          "total_tokens": 1770
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "4cf4335790ea72b1a53c9c88d2388755208caee90993b96375576c1ee4eafa0e",
+        "settledCanonicalSha256": "4cf4335790ea72b1a53c9c88d2388755208caee90993b96375576c1ee4eafa0e"
+      },
+      {
+        "index": 4,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 120167.411958,
+        "httpDispatchMs": 120207.83962500001,
+        "verificationFinishedMs": 128014.242042,
+        "threadId": "readiness-load-d92f0739-c7fc-4f1d-ae07-e6d06e044bdf",
+        "runId": "eccb81c4-a76b-433b-ab80-1c4899bdc923",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 511.6636670000007,
+        "firstContentMs": 5349.683541999999,
+        "eofAtScheduleMs": 126919.678792,
+        "totalMs": 6711.839166999998,
+        "providerId": "resp_03eb4e3648999c55006ae387fccab487d28491c562e606feb4",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 373,
+          "total_tokens": 1810
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "af67d5fc0c24537e92dd29941559efcd0816786f16fe8af965cf75ec98f32158",
+        "settledCanonicalSha256": "af67d5fc0c24537e92dd29941559efcd0816786f16fe8af965cf75ec98f32158"
+      },
+      {
+        "index": 5,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 150209.613208,
+        "httpDispatchMs": 150265.579875,
+        "verificationFinishedMs": 155360.59433300002,
+        "threadId": "readiness-load-306d1e44-98c7-4eeb-8d32-09ed5143b01b",
+        "runId": "3f9d72ea-7ec3-4146-8297-48607ebf41a9",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 586.3595000000205,
+        "firstContentMs": 3135.8935829999973,
+        "eofAtScheduleMs": 154281.828375,
+        "totalMs": 4016.248500000016,
+        "providerId": "resp_05db7abdd727712d006ae38819eb0087d2b563e88db4e26d96",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 264,
+          "total_tokens": 1699
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "2847e60e34838c56f3395449245cac22486e1c36d2ae1bfa2f6fe08b76888881",
+        "settledCanonicalSha256": "2847e60e34838c56f3395449245cac22486e1c36d2ae1bfa2f6fe08b76888881"
+      },
+      {
+        "index": 6,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 180268.568167,
+        "httpDispatchMs": 180325.711583,
+        "verificationFinishedMs": 184879.870042,
+        "threadId": "readiness-load-be6aacf4-61f2-4bff-8c3d-f78757909967",
+        "runId": "0e2598d6-4161-4240-b6c1-88b44371c346",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 343.7633340000175,
+        "firstContentMs": 2906.566709000006,
+        "eofAtScheduleMs": 183805.523792,
+        "totalMs": 3479.812208999996,
+        "providerId": "resp_04ecbd7fe749b3c0006ae38837b8e887d2bc16ffa79dd1b9b5",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 296,
+          "total_tokens": 1731
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "1db47aae37b544200fcca0beddae9d578ca16202775bdde36920cc9dd053f265",
+        "settledCanonicalSha256": "1db47aae37b544200fcca0beddae9d578ca16202775bdde36920cc9dd053f265"
+      },
+      {
+        "index": 7,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 210328.37354200002,
+        "httpDispatchMs": 210388.26925,
+        "verificationFinishedMs": 217267.116375,
+        "threadId": "readiness-load-8a8db880-225f-4e87-875b-964a030e4839",
+        "runId": "f26b5733-9c48-43df-b7d4-58af23caed80",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 358.6152920000022,
+        "firstContentMs": 5199.877916999976,
+        "eofAtScheduleMs": 216176.375417,
+        "totalMs": 5788.106166999991,
+        "providerId": "resp_01215cefdac39356006ae38855bf1887d291e8c9fea39364f8",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 334,
+          "total_tokens": 1770
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "f6be1db416988dbcaaff22308b44d8a7d51630711fe9bbe93e897996959f8f05",
+        "settledCanonicalSha256": "f6be1db416988dbcaaff22308b44d8a7d51630711fe9bbe93e897996959f8f05"
+      },
+      {
+        "index": 8,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 240390.40812500002,
+        "httpDispatchMs": 240462.243792,
+        "verificationFinishedMs": 245969.84825,
+        "threadId": "readiness-load-6835dba5-7c14-4dbc-bfe5-dfb60b61d5bd",
+        "runId": "42839cfe-396d-421b-b9f6-5ec47960f8b9",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 349.1512079999957,
+        "firstContentMs": 3664.3032079999975,
+        "eofAtScheduleMs": 244852.973167,
+        "totalMs": 4390.729374999995,
+        "providerId": "resp_0b1bf171df4011ab006ae38873ed4087d2afb19fe1aeb03809",
+        "usage": {
+          "input_tokens": 1432,
+          "output_tokens": 261,
+          "total_tokens": 1693
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "7833373570f26384888e04f7d3b8f6506688c52ff9dee5be944a84b847f2a161",
+        "settledCanonicalSha256": "7833373570f26384888e04f7d3b8f6506688c52ff9dee5be944a84b847f2a161"
+      },
+      {
+        "index": 9,
+        "worker": 0,
+        "level": 1,
+        "status": "passed",
+        "slotStartMs": 270463.676,
+        "httpDispatchMs": 270538.99262499996,
+        "verificationFinishedMs": 282382.83849999995,
+        "threadId": "readiness-load-cdb51da1-745a-4613-86e8-c235d7a6042c",
+        "runId": "dfe90808-b36f-42f7-97c1-027151329f3f",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 382.47487500001444,
+        "firstContentMs": 10075.315500000026,
+        "eofAtScheduleMs": 281217.33975,
+        "totalMs": 10678.34712500003,
+        "providerId": "resp_0f5b5ec92ca1f1a2006ae38891f2a487d2b6e5fe1e7c24719c",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 365,
+          "total_tokens": 1800
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "81526f139b44a0d3e1ffb5f6e05d43dc81abda32ff8f8f5bc8b9d25feac878e4",
+        "settledCanonicalSha256": "81526f139b44a0d3e1ffb5f6e05d43dc81abda32ff8f8f5bc8b9d25feac878e4"
+      },
+      {
+        "index": 10,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 300002.07554199995,
+        "httpDispatchMs": 300074.43762499996,
+        "verificationFinishedMs": 306162.581875,
+        "threadId": "readiness-load-feee731d-90a3-470c-85c8-59958e4450d5",
+        "runId": "a9c585db-0459-443f-b705-a2404095dc62",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 707.4082500000368,
+        "firstContentMs": 4211.6167499999865,
+        "eofAtScheduleMs": 305099.479167,
+        "totalMs": 5025.041542000021,
+        "providerId": "resp_072c0f1410b95970006ae388afd35487d292033d808891a00d",
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 334,
+          "total_tokens": 1767
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "fad20d3f78b21db75a0b48246fbd7ede91933bf135de1a82e06d9a1e41ee6ac8",
+        "settledCanonicalSha256": "fad20d3f78b21db75a0b48246fbd7ede91933bf135de1a82e06d9a1e41ee6ac8"
+      },
+      {
+        "index": 11,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 300541.572083,
+        "httpDispatchMs": 300605.24533299997,
+        "verificationFinishedMs": 305421.793542,
+        "threadId": "readiness-load-9a4c2b6a-0f35-4977-9f10-b044c6eb2f0b",
+        "runId": "bdc8c545-9313-41a1-b6fe-15984160b2a6",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 401.93150000000605,
+        "firstContentMs": 2932.5616670000018,
+        "eofAtScheduleMs": 304346.774917,
+        "totalMs": 3741.5295840000035,
+        "providerId": "resp_0a7e382de5752c83006ae388b007b887d2b421010449fb349c",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 251,
+          "total_tokens": 1685
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "68709ffb2f4cf12fc4ef19fbd9059f8639b9fa4b8bd783b1d74e1a165186f653",
+        "settledCanonicalSha256": "68709ffb2f4cf12fc4ef19fbd9059f8639b9fa4b8bd783b1d74e1a165186f653"
+      },
+      {
+        "index": 12,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 330075.87854199996,
+        "httpDispatchMs": 330149.938875,
+        "verificationFinishedMs": 338949.43429199996,
+        "threadId": "readiness-load-e2fe8be9-4678-4250-9efb-2a584e9adba5",
+        "runId": "3e75852d-248a-42ea-8854-7fb23fa96c0f",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 425.6295829999726,
+        "firstContentMs": 7509.773249999969,
+        "eofAtScheduleMs": 338331.77895799995,
+        "totalMs": 8181.840082999959,
+        "providerId": "resp_0094f635bd425572006ae388cd9be487d2b11aaabddf61e95f",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 312,
+          "total_tokens": 1746
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "38b75d195d970a443d78471e6745e21a54e9d9abbd7565804680e1087db595e2",
+        "settledCanonicalSha256": "38b75d195d970a443d78471e6745e21a54e9d9abbd7565804680e1087db595e2"
+      },
+      {
+        "index": 13,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 330607.505625,
+        "httpDispatchMs": 330686.67754199996,
+        "verificationFinishedMs": 335027.23299999995,
+        "threadId": "readiness-load-3bb89fb2-e105-4ba7-8389-a670fa9b05f2",
+        "runId": "3e274409-4ce8-413b-a4c8-319cdaed39e3",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 371.7024579999852,
+        "firstContentMs": 2518.137875000015,
+        "eofAtScheduleMs": 333932.76195799996,
+        "totalMs": 3246.084415999998,
+        "providerId": "resp_01f3b1b249e13a6d006ae388ce12b487d2ba24b958fb1c0781",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 219,
+          "total_tokens": 1655
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "410ecb7e93e548dcb0bb4067af91220b22186efff0dde882938743df774f5cfa",
+        "settledCanonicalSha256": "410ecb7e93e548dcb0bb4067af91220b22186efff0dde882938743df774f5cfa"
+      },
+      {
+        "index": 14,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 360152.882542,
+        "httpDispatchMs": 360228.754583,
+        "verificationFinishedMs": 367560.45220799994,
+        "threadId": "readiness-load-a037c6f2-8c89-49c2-bc1f-e3be28c349f2",
+        "runId": "93156036-508e-445c-829a-9622fe960a57",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 377.28595900000073,
+        "firstContentMs": 5270.6095000000205,
+        "eofAtScheduleMs": 366508.439417,
+        "totalMs": 6279.684834000014,
+        "providerId": "resp_024746c256827823006ae388ebbae087d29f494684fb1f1bd6",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 366,
+          "total_tokens": 1802
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "f8ca5f82b9e90910e319ea7434428c8972e6f38b52931266133421f83e1c80e5",
+        "settledCanonicalSha256": "f8ca5f82b9e90910e319ea7434428c8972e6f38b52931266133421f83e1c80e5"
+      },
+      {
+        "index": 15,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 360690.262208,
+        "httpDispatchMs": 360769.11566699995,
+        "verificationFinishedMs": 368176.422125,
+        "threadId": "readiness-load-675a34e1-fbb9-4a0b-9a0e-46074a9103a2",
+        "runId": "33955aa5-280b-467d-a18f-6162cdf887f3",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 427.8969999999972,
+        "firstContentMs": 5057.948625000019,
+        "eofAtScheduleMs": 367073.669792,
+        "totalMs": 6304.554125000024,
+        "providerId": "resp_0b46066b3eaf5b6a006ae388ec420487d2a622a5379fd5137d",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 413,
+          "total_tokens": 1849
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "4a5e0840478e29a727ef115b4245ec382bdc9bb7c5f45ea12fedd823d4514ea8",
+        "settledCanonicalSha256": "4a5e0840478e29a727ef115b4245ec382bdc9bb7c5f45ea12fedd823d4514ea8"
+      },
+      {
+        "index": 16,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 390229.327458,
+        "httpDispatchMs": 390319.59987499996,
+        "verificationFinishedMs": 396373.635625,
+        "threadId": "readiness-load-f3ff6b67-f6d5-4b48-ba2a-232165bde418",
+        "runId": "ad94f463-3b4a-4a4e-8234-b11423ea0f13",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 533.3949170000269,
+        "firstContentMs": 4428.419292000006,
+        "eofAtScheduleMs": 395299.56408299995,
+        "totalMs": 4979.96420799999,
+        "providerId": "resp_0c1eeb5f8a87975f006ae38909d60087d283e07031c1725533",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 322,
+          "total_tokens": 1756
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "2d014c0aafc41d98213a82cddab83dad1a434dfa0c8171f0110c35d1ca19cd11",
+        "settledCanonicalSha256": "2d014c0aafc41d98213a82cddab83dad1a434dfa0c8171f0110c35d1ca19cd11"
+      },
+      {
+        "index": 17,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 390771.056583,
+        "httpDispatchMs": 390851.78624999995,
+        "verificationFinishedMs": 396974.321708,
+        "threadId": "readiness-load-eb228359-6ef4-4258-bd2b-95b11516e1e3",
+        "runId": "6f1bc40f-4527-4052-bacc-fccd9fed209d",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 735.4792920000036,
+        "firstContentMs": 4335.692292000051,
+        "eofAtScheduleMs": 395819.076708,
+        "totalMs": 4967.290458000032,
+        "providerId": "resp_06d190f1272e157a006ae3890aa0c087d28b794743718cb4d2",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 362,
+          "total_tokens": 1801
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "bc33dbe9a2df05d127763512992a4614e26f2341f95bbe3eaf4e70e2c2af174f",
+        "settledCanonicalSha256": "bc33dbe9a2df05d127763512992a4614e26f2341f95bbe3eaf4e70e2c2af174f"
+      },
+      {
+        "index": 18,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 420322.91312499996,
+        "httpDispatchMs": 420425.244875,
+        "verificationFinishedMs": 426347.22329199995,
+        "threadId": "readiness-load-dc3225bc-c09d-4a2a-9d76-e3f7dd6abdac",
+        "runId": "91a01d54-1e20-41e7-a934-adf1317dd589",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 361.43349999998463,
+        "firstContentMs": 4224.597124999971,
+        "eofAtScheduleMs": 425232.45416699996,
+        "totalMs": 4807.209291999985,
+        "providerId": "resp_04d6dde91f88c0c5006ae38927eb1887d29d794e8b9e4b12ca",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 285,
+          "total_tokens": 1719
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "e7688da7b9b7c04a56f93502bbcab916379e56ada7b8718252c91e963ce5f939",
+        "settledCanonicalSha256": "e7688da7b9b7c04a56f93502bbcab916379e56ada7b8718252c91e963ce5f939"
+      },
+      {
+        "index": 19,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 420853.83125,
+        "httpDispatchMs": 420943.871917,
+        "verificationFinishedMs": 426576.784292,
+        "threadId": "readiness-load-13361c82-680e-464c-8a5f-a69dd38ccbee",
+        "runId": "c90f5792-1106-47d4-9686-4da3eac29df9",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 443.41445799998473,
+        "firstContentMs": 3950.7586250000168,
+        "eofAtScheduleMs": 425484.786208,
+        "totalMs": 4540.914290999994,
+        "providerId": "resp_035a874375588639006ae389288d7087d2baa010fea820fb53",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 226,
+          "total_tokens": 1663
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "3db9e4ec8a4e2793347fa302acab51638f4c1e4c141eaf8125dd2a1c775eb36f",
+        "settledCanonicalSha256": "3db9e4ec8a4e2793347fa302acab51638f4c1e4c141eaf8125dd2a1c775eb36f"
+      },
+      {
+        "index": 20,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 450426.774958,
+        "httpDispatchMs": 450529.177667,
+        "verificationFinishedMs": 454671.81354199996,
+        "threadId": "readiness-load-0600ee79-8d97-4284-85e6-06eef791145f",
+        "runId": "ce0b8bc7-3016-4a93-9838-f794ee9e85b0",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 408.06475000001956,
+        "firstContentMs": 2435.664583000005,
+        "eofAtScheduleMs": 453577.05299999996,
+        "totalMs": 3047.8753329999745,
+        "providerId": "resp_0f690c083eb7ea54006ae38945f6f887d2be7f7f4a309ee984",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 226,
+          "total_tokens": 1662
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "3088aa058a6b3bbec081be84c4e22561c4855f03432de3f0dde0d1759bb84912",
+        "settledCanonicalSha256": "3088aa058a6b3bbec081be84c4e22561c4855f03432de3f0dde0d1759bb84912"
+      },
+      {
+        "index": 21,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 450944.924833,
+        "httpDispatchMs": 451042.503875,
+        "verificationFinishedMs": 456320.084375,
+        "threadId": "readiness-load-f33395b0-823c-4cc5-8567-877c13498b3d",
+        "runId": "6ea89926-14c2-4c14-8759-9d98172dfe14",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 435.23541699995985,
+        "firstContentMs": 4019.1812079999945,
+        "eofAtScheduleMs": 455685.334958,
+        "totalMs": 4642.831082999997,
+        "providerId": "resp_0e265d6cfcaf6010006ae38946735087d283b250845a298886",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 263,
+          "total_tokens": 1697
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "f363d196f7b52b872207844deded8c3b7c7f2a99c795e01f54aec2bb3a3059a7",
+        "settledCanonicalSha256": "f363d196f7b52b872207844deded8c3b7c7f2a99c795e01f54aec2bb3a3059a7"
+      },
+      {
+        "index": 22,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 480530.49504199997,
+        "httpDispatchMs": 480626.75012499996,
+        "verificationFinishedMs": 486200.32249999995,
+        "threadId": "readiness-load-f59c00b2-585c-43dd-aedf-bcad708b8cf6",
+        "runId": "fc13f6ec-e484-4811-9152-fd6a8edfdf35",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 378.17137500003446,
+        "firstContentMs": 4208.491833000036,
+        "eofAtScheduleMs": 485585.54466699995,
+        "totalMs": 4958.794541999989,
+        "providerId": "resp_0152475edca0e6ba006ae3896417b487d29bcfd0baf676caf5",
+        "usage": {
+          "input_tokens": 1440,
+          "output_tokens": 314,
+          "total_tokens": 1754
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "51a390b70d018d8bf82571c9237d2024b641fa1e283ea3d51a5d84d1e93cbd83",
+        "settledCanonicalSha256": "51a390b70d018d8bf82571c9237d2024b641fa1e283ea3d51a5d84d1e93cbd83"
+      },
+      {
+        "index": 23,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 481044.95741699997,
+        "httpDispatchMs": 481116.040458,
+        "verificationFinishedMs": 485155.9825,
+        "threadId": "readiness-load-5144e06b-8b1a-436c-bccd-3c4642a22777",
+        "runId": "53b970a8-208e-4906-8045-158322713fcf",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 345.6691250000149,
+        "firstContentMs": 2365.0309170000255,
+        "eofAtScheduleMs": 484056.21016699995,
+        "totalMs": 2940.16970899998,
+        "providerId": "resp_0d3edcb319e486df006ae389647c1087d2a95e9a81c553cffe",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 212,
+          "total_tokens": 1646
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "b15a310121e19da30d90fc1623ba9930ee543f5e5b0a09b5516a4d437d68b36a",
+        "settledCanonicalSha256": "b15a310121e19da30d90fc1623ba9930ee543f5e5b0a09b5516a4d437d68b36a"
+      },
+      {
+        "index": 24,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 510628.879875,
+        "httpDispatchMs": 510747.044708,
+        "verificationFinishedMs": 518112.2325,
+        "threadId": "readiness-load-a9e66c78-acc2-47c0-bcd4-e6e9b2164362",
+        "runId": "e31d1326-61de-4a48-a723-687ede60357a",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 483.88441699999385,
+        "firstContentMs": 6042.371584000008,
+        "eofAtScheduleMs": 517391.262208,
+        "totalMs": 6644.217500000028,
+        "providerId": "resp_068e3af727e3edb1006ae3898228ec87d2bf8019f123a28555",
+        "usage": {
+          "input_tokens": 1432,
+          "output_tokens": 329,
+          "total_tokens": 1761
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "b70c23e596160b01ee0d50eb9e19b90b62d8c583b5e2cabb6b08c0a9d4e9385f",
+        "settledCanonicalSha256": "b70c23e596160b01ee0d50eb9e19b90b62d8c583b5e2cabb6b08c0a9d4e9385f"
+      },
+      {
+        "index": 25,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 511119.62170799996,
+        "httpDispatchMs": 511229.98358299996,
+        "verificationFinishedMs": 516309.88520799996,
+        "threadId": "readiness-load-dfd058e9-62d7-440e-9928-f8dc007e8f43",
+        "runId": "f31088b4-657a-4e9b-88f1-5f0c10e66005",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 352.8245839999872,
+        "firstContentMs": 3112.6528340000077,
+        "eofAtScheduleMs": 515179.07849999995,
+        "totalMs": 3949.0949169999803,
+        "providerId": "resp_03c351aa152e0ff6006ae3898295ec87d2913052fbb0c02ee4",
+        "usage": {
+          "input_tokens": 1432,
+          "output_tokens": 268,
+          "total_tokens": 1700
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "8682ea2ffdcf607d9eae0c402ad317518746f550fe23a683d79bb6bd6cf76ce5",
+        "settledCanonicalSha256": "8682ea2ffdcf607d9eae0c402ad317518746f550fe23a683d79bb6bd6cf76ce5"
+      },
+      {
+        "index": 26,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 540749.107042,
+        "httpDispatchMs": 540855.70475,
+        "verificationFinishedMs": 547111.9114580001,
+        "threadId": "readiness-load-9fba457f-648b-4cbe-a89e-4705542ae2c1",
+        "runId": "481566e2-7d23-441f-9033-96c1c012718d",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 502.2301669999724,
+        "firstContentMs": 4561.912041999982,
+        "eofAtScheduleMs": 545985.256625,
+        "totalMs": 5129.551875000005,
+        "providerId": "resp_066371cf6840313d006ae389a081a487d28c99004b9ab6f9ab",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 341,
+          "total_tokens": 1775
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "884c169a74697a8ac4d5d07c1bc5fdb930ac9c6148f38f6a8d828d5738008abf",
+        "settledCanonicalSha256": "884c169a74697a8ac4d5d07c1bc5fdb930ac9c6148f38f6a8d828d5738008abf"
+      },
+      {
+        "index": 27,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 541232.544083,
+        "httpDispatchMs": 541344.190917,
+        "verificationFinishedMs": 547814.7726670001,
+        "threadId": "readiness-load-5e96f52e-f38e-4b22-a859-fcfdf043a7dd",
+        "runId": "f888882e-6e1c-4112-bafd-d4374fc1f8d2",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 476.3024580000201,
+        "firstContentMs": 4625.694999999949,
+        "eofAtScheduleMs": 546647.4170830001,
+        "totalMs": 5303.226166000008,
+        "providerId": "resp_025d0b5bd665b6a5006ae389a0da6487d2ad600038b9443ad3",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 306,
+          "total_tokens": 1741
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "42a1190c8e029a5f41cb19a21229b0e3984f6f04b981a6fbed9681c9c5fa304b",
+        "settledCanonicalSha256": "42a1190c8e029a5f41cb19a21229b0e3984f6f04b981a6fbed9681c9c5fa304b"
+      },
+      {
+        "index": 28,
+        "worker": 1,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 570859.4653330001,
+        "httpDispatchMs": 570980.6157920001,
+        "verificationFinishedMs": 578841.819333,
+        "threadId": "readiness-load-216c4d2d-21b4-45db-9ac6-f6e064168879",
+        "runId": "04d1a6fd-7c65-401d-b6ae-1eea5b186197",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 574.8816249999218,
+        "firstContentMs": 6053.779082999914,
+        "eofAtScheduleMs": 577631.1434170001,
+        "totalMs": 6650.527624999988,
+        "providerId": "resp_05555e0c91dce67f006ae389be91ac87d29f92e8d885c49808",
+        "usage": {
+          "input_tokens": 1431,
+          "output_tokens": 296,
+          "total_tokens": 1727
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "16987e3d25b7f1a81b25ac28688e21a408ed0dbacbbc1c784b2eca2a6ce3c652",
+        "settledCanonicalSha256": "16987e3d25b7f1a81b25ac28688e21a408ed0dbacbbc1c784b2eca2a6ce3c652"
+      },
+      {
+        "index": 29,
+        "worker": 0,
+        "level": 2,
+        "status": "passed",
+        "slotStartMs": 571347.4384580001,
+        "httpDispatchMs": 571462.367708,
+        "verificationFinishedMs": 577762.961875,
+        "threadId": "readiness-load-a100d03b-322a-4062-b398-d2febed9316c",
+        "runId": "50403ece-6d6d-41cc-bcbe-df03c4e0da2a",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 540.842667000019,
+        "firstContentMs": 4261.179542000056,
+        "eofAtScheduleMs": 576649.099292,
+        "totalMs": 5186.731584000052,
+        "providerId": "resp_03149de64f1cb8bf006ae389bf036c87d29b0182022f68e85d",
+        "usage": {
+          "input_tokens": 1441,
+          "output_tokens": 320,
+          "total_tokens": 1761
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "77b93ebf4e8180db84d478397090e917beea635074eaa489bcba89160030d321",
+        "settledCanonicalSha256": "77b93ebf4e8180db84d478397090e917beea635074eaa489bcba89160030d321"
+      },
+      {
+        "index": 30,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 600001.032333,
+        "httpDispatchMs": 600106.8058750001,
+        "verificationFinishedMs": 606387.60025,
+        "threadId": "readiness-load-6ed389b5-b774-42f1-84b2-d006758babde",
+        "runId": "dd8e4a2f-4e7a-4b9d-af38-8920ec84736b",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 572.15379199991,
+        "firstContentMs": 4530.58354199992,
+        "eofAtScheduleMs": 605256.744958,
+        "totalMs": 5149.939082999947,
+        "providerId": "resp_071acd7f43094f60006ae389dbb69887d2962e0f4507253adc",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 307,
+          "total_tokens": 1741
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "c87822d83e4f24bc9c1db8e5b3534755f13a3ee8cfc5119aaa9e9ac092d3528c",
+        "settledCanonicalSha256": "c87822d83e4f24bc9c1db8e5b3534755f13a3ee8cfc5119aaa9e9ac092d3528c"
+      },
+      {
+        "index": 31,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 600107.714667,
+        "httpDispatchMs": 600193.7881250001,
+        "verificationFinishedMs": 606959.837667,
+        "threadId": "readiness-load-076c9678-0de1-4dad-8c39-e1b1668cd3d1",
+        "runId": "02589dd4-a744-4068-b5b1-2637272b5a2a",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 453.13483299990185,
+        "firstContentMs": 4638.954457999906,
+        "eofAtScheduleMs": 605814.770625,
+        "totalMs": 5620.9824999999255,
+        "providerId": "resp_03c6666dbc7c94c8006ae389dbbb7887d2a8d3d1a39a7ae17a",
+        "usage": {
+          "input_tokens": 1438,
+          "output_tokens": 406,
+          "total_tokens": 1844
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "bc66745831ebdce89a43a71df891703e01d29636ee730d69b42b5e1767c4bdf1",
+        "settledCanonicalSha256": "bc66745831ebdce89a43a71df891703e01d29636ee730d69b42b5e1767c4bdf1"
+      },
+      {
+        "index": 32,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 600982.8300000001,
+        "httpDispatchMs": 601103.343167,
+        "verificationFinishedMs": 607977.764125,
+        "threadId": "readiness-load-4ef8a12b-9f92-499e-9688-1ee8ec071916",
+        "runId": "779377bb-41b8-4385-8e9a-0b2543e98e54",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 351.4269580000546,
+        "firstContentMs": 5741.5364160001045,
+        "eofAtScheduleMs": 607368.600667,
+        "totalMs": 6265.257500000065,
+        "providerId": "resp_0b7076f5b07838cb006ae389dc83d487d2ba1b8b62eae7d02d",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 399,
+          "total_tokens": 1838
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "e311732daa12a524262975fe75a448f6dff734a1331a835e5e3ca32c8a2ffdc6",
+        "settledCanonicalSha256": "e311732daa12a524262975fe75a448f6dff734a1331a835e5e3ca32c8a2ffdc6"
+      },
+      {
+        "index": 33,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 601464.611167,
+        "httpDispatchMs": 601579.1751250001,
+        "verificationFinishedMs": 607552.026125,
+        "threadId": "readiness-load-57e847d7-a929-4792-8b74-9a78c5d7a8d3",
+        "runId": "03297084-1ad3-4ed0-8ce6-25f7cf8baaf1",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 422.1743749999441,
+        "firstContentMs": 3855.777124999906,
+        "eofAtScheduleMs": 606241.513042,
+        "totalMs": 4662.337916999939,
+        "providerId": "resp_034fb8364ad50ddf006ae389dd0b8887d297ef34c24700a5ef",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 337,
+          "total_tokens": 1773
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "1c27aca51b5c73b5dc62bfd8e8bb788fae47b09fefd34c7f8d13abebeda15876",
+        "settledCanonicalSha256": "1c27aca51b5c73b5dc62bfd8e8bb788fae47b09fefd34c7f8d13abebeda15876"
+      },
+      {
+        "index": 34,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 630108.009958,
+        "httpDispatchMs": 630244.5222080001,
+        "verificationFinishedMs": 635221.95125,
+        "threadId": "readiness-load-187a0878-1290-49ad-a9c3-27b4ed95e6e5",
+        "runId": "d451fbe0-a6d8-4163-8925-bb657b60a341",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 523.7902919999324,
+        "firstContentMs": 3083.9910839999793,
+        "eofAtScheduleMs": 634148.634208,
+        "totalMs": 3904.1119999999646,
+        "providerId": "resp_08cc845e3d9feaeb006ae389f9c58487d2837f722dbbfd8831",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 251,
+          "total_tokens": 1687
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "3be4575f5b345c46d1b6452502f28683b9661cb9314614d1427f8cf7e3b5ff00",
+        "settledCanonicalSha256": "3be4575f5b345c46d1b6452502f28683b9661cb9314614d1427f8cf7e3b5ff00"
+      },
+      {
+        "index": 35,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 630245.2497500001,
+        "httpDispatchMs": 630339.7279170001,
+        "verificationFinishedMs": 635323.313958,
+        "threadId": "readiness-load-f0380032-7557-494e-b6f0-2fc14e835aa0",
+        "runId": "2d983218-fba8-497a-a459-bc7b19a97dcd",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 419.7772499999264,
+        "firstContentMs": 2742.8360000000102,
+        "eofAtScheduleMs": 634202.438333,
+        "totalMs": 3862.710415999987,
+        "providerId": "resp_0036bd348d7ae85a006ae389f9cc2c87d2ad72dcfa41c44d5d",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 220,
+          "total_tokens": 1659
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "7e9bde6514e4c174995ed1af801c2585fcc2481556230aa3be098be38e6a20bc",
+        "settledCanonicalSha256": "7e9bde6514e4c174995ed1af801c2585fcc2481556230aa3be098be38e6a20bc"
+      },
+      {
+        "index": 36,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 631105.3477500001,
+        "httpDispatchMs": 631235.1142920001,
+        "verificationFinishedMs": 637765.571625,
+        "threadId": "readiness-load-64a5142d-605c-43a6-8089-08ff7c3cf446",
+        "runId": "ab6c82d4-3b0f-499e-abe4-6d8b7bd1d2ef",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 323.5145410000114,
+        "firstContentMs": 5232.404582999996,
+        "eofAtScheduleMs": 637147.714333,
+        "totalMs": 5912.60004099994,
+        "providerId": "resp_062fd4d58d9e798c006ae389fa8ff487d292fea6becb9e46d1",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 409,
+          "total_tokens": 1848
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "b036af19c8658a4a5e2f2390375db14b1a1d88ff65314ed11d09264c32653fcb",
+        "settledCanonicalSha256": "b036af19c8658a4a5e2f2390375db14b1a1d88ff65314ed11d09264c32653fcb"
+      },
+      {
+        "index": 37,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 631591.884875,
+        "httpDispatchMs": 631687.069625,
+        "verificationFinishedMs": 636716.363125,
+        "threadId": "readiness-load-5a2bb88e-a917-4582-8832-69da6b90a547",
+        "runId": "8f08dc4b-1c78-4895-ab77-63defd2a5a4d",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 436.79087500006426,
+        "firstContentMs": 3931.9917500000447,
+        "eofAtScheduleMs": 636111.271875,
+        "totalMs": 4424.202249999973,
+        "providerId": "resp_08134710995a12a3006ae389fb30b887d29fdb959835700ea7",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 239,
+          "total_tokens": 1676
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "385b2335008a720a1ea9fd5f3fc6564eafb623f95f63e3c4d6f67b549fa06892",
+        "settledCanonicalSha256": "385b2335008a720a1ea9fd5f3fc6564eafb623f95f63e3c4d6f67b549fa06892"
+      },
+      {
+        "index": 38,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 660247.172583,
+        "httpDispatchMs": 660381.9665420001,
+        "verificationFinishedMs": 666525.3588330001,
+        "threadId": "readiness-load-b5e23ff3-8640-41df-8e82-f00e50445c78",
+        "runId": "d983d3d3-7dbd-4c9a-b303-de7da34a9b08",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 475.3797079999931,
+        "firstContentMs": 3994.492708000005,
+        "eofAtScheduleMs": 665344.988042,
+        "totalMs": 4963.021499999915,
+        "providerId": "resp_0aa2b7b82ff55e9a006ae38a17fe9087d2ac8fec0fa11aa98e",
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 361,
+          "total_tokens": 1794
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "630eca1d8f71d13f1e67234a2d6fca9ba0a6e04ef911b8d583b50b3562d436b8",
+        "settledCanonicalSha256": "630eca1d8f71d13f1e67234a2d6fca9ba0a6e04ef911b8d583b50b3562d436b8"
+      },
+      {
+        "index": 39,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 660382.765792,
+        "httpDispatchMs": 660483.564042,
+        "verificationFinishedMs": 666413.688208,
+        "threadId": "readiness-load-1f2f5390-8329-45e1-9b52-fe70e3a0f6de",
+        "runId": "79878f23-4ee6-4a27-868f-34e770bae747",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 412.27391600003466,
+        "firstContentMs": 3922.1266250000335,
+        "eofAtScheduleMs": 665291.0537500001,
+        "totalMs": 4807.489708000096,
+        "providerId": "resp_063081ad58511ed5006ae38a18003887d2a41927d53dafee69",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 365,
+          "total_tokens": 1802
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "1029c5a610e4ffeeaaf6a36ed328cf92f1bf45e79967309fce653f7504126efc",
+        "settledCanonicalSha256": "1029c5a610e4ffeeaaf6a36ed328cf92f1bf45e79967309fce653f7504126efc"
+      },
+      {
+        "index": 40,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 661238.14775,
+        "httpDispatchMs": 661372.891333,
+        "verificationFinishedMs": 667452.166042,
+        "threadId": "readiness-load-5fed09e6-f5bf-4299-90b5-5264f5f62588",
+        "runId": "4084976a-5525-4a4f-8519-0885c30b64c3",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 532.8125,
+        "firstContentMs": 4081.5911250000354,
+        "eofAtScheduleMs": 666164.62925,
+        "totalMs": 4791.737916999962,
+        "providerId": "resp_05d97dc167a7db58006ae38a192b5c87d281f289103e68eac5",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 348,
+          "total_tokens": 1783
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "684f681c7336bc956fb4b51a3dbb146d60d3b5937ee5fa620c25261dda4e2882",
+        "settledCanonicalSha256": "684f681c7336bc956fb4b51a3dbb146d60d3b5937ee5fa620c25261dda4e2882"
+      },
+      {
+        "index": 41,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 661690.438042,
+        "httpDispatchMs": 661821.278208,
+        "verificationFinishedMs": 667109.524667,
+        "threadId": "readiness-load-a42a352f-0f30-40bb-969f-577b20217e15",
+        "runId": "e6080823-805b-41d6-8ec8-2199c902b1c9",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 348.45187500002794,
+        "firstContentMs": 2628.9478339999914,
+        "eofAtScheduleMs": 665869.479667,
+        "totalMs": 4048.2014590000035,
+        "providerId": "resp_0f2dc72a53592161006ae38a19412487d281ce187c70c1e9d5",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 225,
+          "total_tokens": 1661
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "1f46cbac3df6f04f365e9f636d85b60d4a8ec5aa040b719cc871374536eda1e1",
+        "settledCanonicalSha256": "1f46cbac3df6f04f365e9f636d85b60d4a8ec5aa040b719cc871374536eda1e1"
+      },
+      {
+        "index": 42,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 690384.512625,
+        "httpDispatchMs": 690532.826833,
+        "verificationFinishedMs": 699010.461042,
+        "threadId": "readiness-load-a72406f6-1639-4fa2-ade2-49526e909154",
+        "runId": "686c9738-1e15-4055-b441-e4e8008506d6",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 455.65291699999943,
+        "firstContentMs": 6677.556250000023,
+        "eofAtScheduleMs": 697788.27225,
+        "totalMs": 7255.445416999981,
+        "providerId": "resp_0052edc6c6619d26006ae38a3601f087d2ae8622593539f7bd",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 302,
+          "total_tokens": 1741
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "e597d2b9eb8baebef7b7041fc6d2a6cc93704e57ce795ac254697116b2fc30a5",
+        "settledCanonicalSha256": "e597d2b9eb8baebef7b7041fc6d2a6cc93704e57ce795ac254697116b2fc30a5"
+      },
+      {
+        "index": 43,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 690533.6220420001,
+        "httpDispatchMs": 690646.272625,
+        "verificationFinishedMs": 697091.0229580001,
+        "threadId": "readiness-load-4743a040-12fa-491e-bb3e-3e542b133b1e",
+        "runId": "f2136894-2dfb-45c4-8cf9-34b96a35a243",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 444.2067500000121,
+        "firstContentMs": 4665.022417000029,
+        "eofAtScheduleMs": 695966.1444580001,
+        "totalMs": 5319.871833000099,
+        "providerId": "resp_0bc8778d739050e2006ae38a3628c487d29140b1d1daa1dee5",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 291,
+          "total_tokens": 1725
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "64618d6f1a144f7d9299d7470d4df9e6f253b5224c050dec9df5a1c03aad02f9",
+        "settledCanonicalSha256": "64618d6f1a144f7d9299d7470d4df9e6f253b5224c050dec9df5a1c03aad02f9"
+      },
+      {
+        "index": 44,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 691375.896792,
+        "httpDispatchMs": 691512.205042,
+        "verificationFinishedMs": 697843.201333,
+        "threadId": "readiness-load-8336cc7f-1cb5-4ff7-848b-a55e80967b98",
+        "runId": "70e2d182-a2aa-46fd-a84e-e83330891cf0",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 455.4088749999646,
+        "firstContentMs": 4578.654708000016,
+        "eofAtScheduleMs": 696623.327542,
+        "totalMs": 5111.1224999999395,
+        "providerId": "resp_0d1827b609fa9cbe006ae38a36d7bc87d28b98546d5d003821",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 302,
+          "total_tokens": 1736
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "4586cc79ffe75fdf9a33cfa6352d13146fb0db75290e85971051f3be96d18ddc",
+        "settledCanonicalSha256": "4586cc79ffe75fdf9a33cfa6352d13146fb0db75290e85971051f3be96d18ddc"
+      },
+      {
+        "index": 45,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 691823.9348330001,
+        "httpDispatchMs": 691966.6952920001,
+        "verificationFinishedMs": 698038.008625,
+        "threadId": "readiness-load-07e3d7ae-bf7e-4798-b6aa-cf6684f882e4",
+        "runId": "08f70f5c-294b-4202-9ad6-82499a56f15d",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 466.15387499995995,
+        "firstContentMs": 4833.216165999998,
+        "eofAtScheduleMs": 697357.2445,
+        "totalMs": 5390.549207999953,
+        "providerId": "resp_0f086b6884aeeaae006ae38a37539887d2ba2a3140581078cd",
+        "usage": {
+          "input_tokens": 1438,
+          "output_tokens": 310,
+          "total_tokens": 1748
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "22bf021354678fa197af2f1efa9f6b23dafbcf6a3b7b8a13e3e6460a0cb2b136",
+        "settledCanonicalSha256": "22bf021354678fa197af2f1efa9f6b23dafbcf6a3b7b8a13e3e6460a0cb2b136"
+      },
+      {
+        "index": 46,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 720534.73,
+        "httpDispatchMs": 720685.994833,
+        "verificationFinishedMs": 728024.2580830001,
+        "threadId": "readiness-load-ac7a1197-5d37-40f6-a772-281bca3e7b5d",
+        "runId": "6b8836af-18d9-47f6-a24e-a8d9100a8b6e",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 618.0247090000194,
+        "firstContentMs": 5727.474625000032,
+        "eofAtScheduleMs": 726841.055042,
+        "totalMs": 6155.0602090000175,
+        "providerId": "resp_08552db7e02ee481006ae38a54562c87d2829c39a29ba36d58",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 359,
+          "total_tokens": 1798
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "f3019b6555f6a0c924018313b2aef297e548f00d066a7957b80e8dbc0525835b",
+        "settledCanonicalSha256": "f3019b6555f6a0c924018313b2aef297e548f00d066a7957b80e8dbc0525835b"
+      },
+      {
+        "index": 47,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 720686.7077500001,
+        "httpDispatchMs": 720808.709958,
+        "verificationFinishedMs": 729815.6615,
+        "threadId": "readiness-load-7f49ea0d-7f22-4162-b433-6a6899ec7756",
+        "runId": "8ba9be0f-d00e-4b8e-9df1-d22cf9832b43",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 400.3535840000259,
+        "firstContentMs": 7849.145209000097,
+        "eofAtScheduleMs": 729266.1851250001,
+        "totalMs": 8457.475167000084,
+        "providerId": "resp_07e82dc6f86c6b76006ae38a54516c87d2bd832fedbacf35c8",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 305,
+          "total_tokens": 1740
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "d4373e0305401fc83025ff1d386a8de49418ce80c142ea1ec4c7ffe6db6dcec4",
+        "settledCanonicalSha256": "d4373e0305401fc83025ff1d386a8de49418ce80c142ea1ec4c7ffe6db6dcec4"
+      },
+      {
+        "index": 48,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 721515.3390830001,
+        "httpDispatchMs": 721670.291833,
+        "verificationFinishedMs": 729938.535,
+        "threadId": "readiness-load-c28dbc65-0f82-4487-8089-3b4af62c4112",
+        "runId": "e2b2d46d-f183-4c66-9452-ec578f186e18",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 453.58270899998024,
+        "firstContentMs": 6212.142542000045,
+        "eofAtScheduleMs": 728534.660167,
+        "totalMs": 6864.368333999999,
+        "providerId": "resp_090c2f7ea3ed6ca1006ae38a550c7887d29455e56b675bfaee",
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 434,
+          "total_tokens": 1867
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "349abde6aef00728b01853afcd62017a5fa42232c6cdc9f954742748a984c4a8",
+        "settledCanonicalSha256": "349abde6aef00728b01853afcd62017a5fa42232c6cdc9f954742748a984c4a8"
+      },
+      {
+        "index": 49,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 721970.1898330001,
+        "httpDispatchMs": 722122.804792,
+        "verificationFinishedMs": 729135.503875,
+        "threadId": "readiness-load-6b502052-30f0-406f-a7cc-7b46a9dcbd2b",
+        "runId": "8c362e77-bbcb-45c3-b167-96ff5e43cfff",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 470.34304100007284,
+        "firstContentMs": 5807.707916000043,
+        "eofAtScheduleMs": 728518.0665000001,
+        "totalMs": 6395.261708000093,
+        "providerId": "resp_0c4e06a1977f2380006ae38a55a70087d2aad89ee9d9c8eed5",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 408,
+          "total_tokens": 1845
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "08c2bfebd5933c1fd5cbac8b92a3c14855092650185e7fe4f8afa32b0328f6d0",
+        "settledCanonicalSha256": "08c2bfebd5933c1fd5cbac8b92a3c14855092650185e7fe4f8afa32b0328f6d0"
+      },
+      {
+        "index": 50,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 750688.3780830001,
+        "httpDispatchMs": 750855.490917,
+        "verificationFinishedMs": 757874.3080000001,
+        "threadId": "readiness-load-deb0cdda-9bfe-41da-8355-1052b2bc1d38",
+        "runId": "c4086404-2305-43cd-86f0-1d0e0923516f",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 480.83729100006167,
+        "firstContentMs": 5265.966375000076,
+        "eofAtScheduleMs": 756598.287,
+        "totalMs": 5742.796083000023,
+        "providerId": "resp_03e815fa417d4488006ae38a72745c87d2b19a1a7c737dc702",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 315,
+          "total_tokens": 1752
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "da7f77101af2cfad2e51d4552a546903f4bedd74c851724d85206f86ce99e69d",
+        "settledCanonicalSha256": "da7f77101af2cfad2e51d4552a546903f4bedd74c851724d85206f86ce99e69d"
+      },
+      {
+        "index": 51,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 750856.430958,
+        "httpDispatchMs": 750993.165542,
+        "verificationFinishedMs": 756641.5590830001,
+        "threadId": "readiness-load-45b1180d-4727-4b88-86e4-738ab47f27bc",
+        "runId": "b5fdad14-3cf1-4b2d-a884-4037b76d1f20",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 381.14616600004956,
+        "firstContentMs": 3695.563458000077,
+        "eofAtScheduleMs": 755518.5672500001,
+        "totalMs": 4525.401708000107,
+        "providerId": "resp_07d62d2bbcc757c3006ae38a72645c87d2bb57f1b5ded7da78",
+        "usage": {
+          "input_tokens": 1439,
+          "output_tokens": 251,
+          "total_tokens": 1690
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "7b43e7f848ef3475bf95f84703e22c647fb2952eb56fc6df959642a2c4d198aa",
+        "settledCanonicalSha256": "7b43e7f848ef3475bf95f84703e22c647fb2952eb56fc6df959642a2c4d198aa"
+      },
+      {
+        "index": 52,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 751672.8410830001,
+        "httpDispatchMs": 751839.934583,
+        "verificationFinishedMs": 758557.390125,
+        "threadId": "readiness-load-2ecde7c5-03e8-4e34-b04b-77a51709d416",
+        "runId": "181088a8-b4f5-4e8d-b128-4484f17cb67b",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 450.06420899997465,
+        "firstContentMs": 5474.929417000036,
+        "eofAtScheduleMs": 758008.0090000001,
+        "totalMs": 6168.074417000054,
+        "providerId": "resp_0826768ff91d3189006ae38a734a4087d296206d65236cbaed",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 279,
+          "total_tokens": 1715
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "c853a8c27a5b42caea3c726a8834b8e7e499cab91c0da1901894edfd26b9955d",
+        "settledCanonicalSha256": "c853a8c27a5b42caea3c726a8834b8e7e499cab91c0da1901894edfd26b9955d"
+      },
+      {
+        "index": 53,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 752125.6528330001,
+        "httpDispatchMs": 752289.187458,
+        "verificationFinishedMs": 757562.3762500001,
+        "threadId": "readiness-load-6d8e3df1-842b-408b-8204-226867d307d4",
+        "runId": "e10fa3b6-9695-49fa-a581-d98b8d8e39cd",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 346.1335840000538,
+        "firstContentMs": 3275.4888339999598,
+        "eofAtScheduleMs": 756361.042333,
+        "totalMs": 4071.854874999961,
+        "providerId": "resp_09cc77a4912d9611006ae38a73a63c87d2b64a040ed5e9adbe",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 253,
+          "total_tokens": 1689
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "7333a062c10c0218cb324172f3f1b5bdc509f356d52e05a39a902efcd545c5dc",
+        "settledCanonicalSha256": "7333a062c10c0218cb324172f3f1b5bdc509f356d52e05a39a902efcd545c5dc"
+      },
+      {
+        "index": 54,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 780858.697,
+        "httpDispatchMs": 781029.690417,
+        "verificationFinishedMs": 790707.1975830001,
+        "threadId": "readiness-load-78b42d81-280d-4e3f-9479-9e410bf81efc",
+        "runId": "fcd016cd-f597-4b88-acb5-fda28876f9a1",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 739.6421660000924,
+        "firstContentMs": 7189.740416000015,
+        "eofAtScheduleMs": 789384.067625,
+        "totalMs": 8354.377208000049,
+        "providerId": "resp_0f3780bd0884f7f8006ae38a90c6b887d2ab6482085b3bf398",
+        "usage": {
+          "input_tokens": 1437,
+          "output_tokens": 424,
+          "total_tokens": 1861
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "25a07df08baf4b5a36894f2415b3b37380375a07b11e687673026e3b452f1b2c",
+        "settledCanonicalSha256": "25a07df08baf4b5a36894f2415b3b37380375a07b11e687673026e3b452f1b2c"
+      },
+      {
+        "index": 55,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 781030.499417,
+        "httpDispatchMs": 781172.265958,
+        "verificationFinishedMs": 786349.9585000001,
+        "threadId": "readiness-load-7f024acc-abc8-4cf2-838e-897d7aa04ed5",
+        "runId": "db4b440a-6bf2-4c79-8cc0-d820e613fef9",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 393.8947090000147,
+        "firstContentMs": 3169.086292000022,
+        "eofAtScheduleMs": 785068.6828330001,
+        "totalMs": 3896.4168750001118,
+        "providerId": "resp_0b1d3df38ea9fae5006ae38a90b08487d2ad1b021186105902",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 257,
+          "total_tokens": 1693
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "4d4be94c848d571d8713b53be645b139c1f6d94a39fab9d6a0c4ac20ec571a8a",
+        "settledCanonicalSha256": "4d4be94c848d571d8713b53be645b139c1f6d94a39fab9d6a0c4ac20ec571a8a"
+      },
+      {
+        "index": 56,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 781841.8157500001,
+        "httpDispatchMs": 782016.336042,
+        "verificationFinishedMs": 790560.615833,
+        "threadId": "readiness-load-f8adf9b2-8540-4368-ab84-f7bcfacc9749",
+        "runId": "60a93474-20a1-4628-b91f-7d54b35e3a9a",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 447.1791660001036,
+        "firstContentMs": 6616.553625000059,
+        "eofAtScheduleMs": 789363.587792,
+        "totalMs": 7347.251750000054,
+        "providerId": "resp_0bb78d48d80ce19c006ae38a915d0887d2a37087d947bb50b0",
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 392,
+          "total_tokens": 1825
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "3ee3e967b6d9b75fd355cb7dfcfdbc6132560666b2940fe29730d5fe57c623a4",
+        "settledCanonicalSha256": "3ee3e967b6d9b75fd355cb7dfcfdbc6132560666b2940fe29730d5fe57c623a4"
+      },
+      {
+        "index": 57,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 782292.335708,
+        "httpDispatchMs": 782462.630167,
+        "verificationFinishedMs": 789476.623167,
+        "threadId": "readiness-load-1993432e-c016-4031-9ba8-cfe98e9ffde7",
+        "runId": "7d9e2737-d0f0-46a2-b026-0af261dd7e20",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 422.5407080000732,
+        "firstContentMs": 5498.8317910000915,
+        "eofAtScheduleMs": 788857.0014170001,
+        "totalMs": 6394.371250000084,
+        "providerId": "resp_03083abc5aa7f1f3006ae38a91e29487d2ad664b94f0506411",
+        "usage": {
+          "input_tokens": 1438,
+          "output_tokens": 313,
+          "total_tokens": 1751
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "8f08a7f4974741812fa992403ae91dfa60f257a637be3767e5ebcb942544acbb",
+        "settledCanonicalSha256": "8f08a7f4974741812fa992403ae91dfa60f257a637be3767e5ebcb942544acbb"
+      },
+      {
+        "index": 58,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 811031.5085420001,
+        "httpDispatchMs": 811208.337958,
+        "verificationFinishedMs": 818235.929292,
+        "threadId": "readiness-load-54a21d81-3fbc-4476-b847-ec61140cf391",
+        "runId": "0dc5dd6a-1582-4ed2-a576-00a4e6cfb8d8",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 505.47637499996927,
+        "firstContentMs": 5837.36487499997,
+        "eofAtScheduleMs": 817708.286375,
+        "totalMs": 6499.948417000007,
+        "providerId": "resp_0205bd5a4b6d3c16006ae38aaeb88487d2b52ee039fe8ae1b8",
+        "usage": {
+          "input_tokens": 1438,
+          "output_tokens": 330,
+          "total_tokens": 1768
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "410dfe92fd3f99dcbaa4f20960d366898f2178001de00adb59dd6164596fc433",
+        "settledCanonicalSha256": "410dfe92fd3f99dcbaa4f20960d366898f2178001de00adb59dd6164596fc433"
+      },
+      {
+        "index": 59,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 811209.2514170001,
+        "httpDispatchMs": 811358.933708,
+        "verificationFinishedMs": 817559.850542,
+        "threadId": "readiness-load-156fcac1-b8fb-4450-ba25-f0417459cff6",
+        "runId": "2e93081e-bf87-431c-8d81-6e706f73ae4e",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 399.4563339999877,
+        "firstContentMs": 3976.4133750000037,
+        "eofAtScheduleMs": 816374.309042,
+        "totalMs": 5015.375333999982,
+        "providerId": "resp_00f1dd49fca1561f006ae38aaecd8087d299ed706c0cfa36af",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 280,
+          "total_tokens": 1714
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "560456ef976657681d798fd55a244dce4819a7a01f0b9265684b245179993110",
+        "settledCanonicalSha256": "560456ef976657681d798fd55a244dce4819a7a01f0b9265684b245179993110"
+      },
+      {
+        "index": 60,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 812017.253208,
+        "httpDispatchMs": 812194.9197920001,
+        "verificationFinishedMs": 817189.2229170001,
+        "threadId": "readiness-load-5e0aa873-0e83-44db-b603-ad7d75dd391d",
+        "runId": "9d65b07b-d6e2-4144-85bd-2c29bc3d5981",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 455.2175409999909,
+        "firstContentMs": 2908.806499999948,
+        "eofAtScheduleMs": 816040.5927500001,
+        "totalMs": 3845.672957999981,
+        "providerId": "resp_0e6b392e27a7a07a006ae38aaf8d4c87d2ba3ce2074ee4f451",
+        "usage": {
+          "input_tokens": 1440,
+          "output_tokens": 202,
+          "total_tokens": 1642
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "951d23fc92da2c8ba26f03f70a178a903ab113486e6d1bb1d8d294ae9fc4ef1b",
+        "settledCanonicalSha256": "951d23fc92da2c8ba26f03f70a178a903ab113486e6d1bb1d8d294ae9fc4ef1b"
+      },
+      {
+        "index": 61,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 812465.837167,
+        "httpDispatchMs": 812649.2693330001,
+        "verificationFinishedMs": 818971.058042,
+        "threadId": "readiness-load-7e806126-1e67-435c-a01c-050370b98d0b",
+        "runId": "39940e68-bada-4ff8-b1d4-6ff7af4f8dc5",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 365.11999999999534,
+        "firstContentMs": 5227.524833999923,
+        "eofAtScheduleMs": 818428.827917,
+        "totalMs": 5779.558583999984,
+        "providerId": "resp_08bf0d3e5e84616c006ae38ab0032087d2b896b72faa016b10",
+        "usage": {
+          "input_tokens": 1435,
+          "output_tokens": 335,
+          "total_tokens": 1770
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "47a0c4c1fcb13232687ccb5450d2c7164d815da4089d13a38b769007fa6f30ac",
+        "settledCanonicalSha256": "47a0c4c1fcb13232687ccb5450d2c7164d815da4089d13a38b769007fa6f30ac"
+      },
+      {
+        "index": 62,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 841208.790458,
+        "httpDispatchMs": 841403.793167,
+        "verificationFinishedMs": 850052.093125,
+        "threadId": "readiness-load-5be724eb-9983-4d61-ae63-756e22124b35",
+        "runId": "876b6477-3f85-403e-bd47-fc3ed8f2c61e",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 524.4933329999913,
+        "firstContentMs": 6807.353624999989,
+        "eofAtScheduleMs": 848686.3697500001,
+        "totalMs": 7282.576583000016,
+        "providerId": "resp_0fb0e9095b9c4c72006ae38acd0c7487d2827e6abc567dcd5e",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 321,
+          "total_tokens": 1757
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "669e2a365cac35a072c2adb154f7600dc1450c46404aeda9f656a52989b0e101",
+        "settledCanonicalSha256": "669e2a365cac35a072c2adb154f7600dc1450c46404aeda9f656a52989b0e101"
+      },
+      {
+        "index": 63,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 841404.7420000001,
+        "httpDispatchMs": 841564.402292,
+        "verificationFinishedMs": 850286.636458,
+        "threadId": "readiness-load-0145794e-167e-498f-b812-dd25591d94e6",
+        "runId": "993f618d-46e7-4e87-84cd-8986c67a3674",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 526.0789580000564,
+        "firstContentMs": 6464.9536249999655,
+        "eofAtScheduleMs": 848769.078375,
+        "totalMs": 7204.676083000028,
+        "providerId": "resp_0851e94ce192708d006ae38acd1d9887d287d6eeaf38ac7234",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 424,
+          "total_tokens": 1860
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "1e14686994b67dcc2859f692dd778c75e070aa3c0b2c5eb1d2681d34191dc0d2",
+        "settledCanonicalSha256": "1e14686994b67dcc2859f692dd778c75e070aa3c0b2c5eb1d2681d34191dc0d2"
+      },
+      {
+        "index": 64,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 842197.6977080001,
+        "httpDispatchMs": 842384.836625,
+        "verificationFinishedMs": 849432.931833,
+        "threadId": "readiness-load-8ab1eb38-010c-4182-b467-d237f3272bbb",
+        "runId": "9530f855-800d-46e0-bb11-603b7bcd7311",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 456.6626249999972,
+        "firstContentMs": 4799.854917000048,
+        "eofAtScheduleMs": 848179.078875,
+        "totalMs": 5794.24225000001,
+        "providerId": "resp_0115115d89c60cc3006ae38acde6d087d29da38ce3483bc655",
+        "usage": {
+          "input_tokens": 1436,
+          "output_tokens": 216,
+          "total_tokens": 1652
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "abc6ca3f57b333e13c975c81b13d4f084b95d2cfa8b697d809a72cd55a5a5884",
+        "settledCanonicalSha256": "abc6ca3f57b333e13c975c81b13d4f084b95d2cfa8b697d809a72cd55a5a5884"
+      },
+      {
+        "index": 65,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 842652.026333,
+        "httpDispatchMs": 842840.428125,
+        "verificationFinishedMs": 849270.7849580001,
+        "threadId": "readiness-load-9f9d6688-82cf-4103-8c25-afb05fbf5a24",
+        "runId": "53e78168-9ae9-4616-b15a-d6ad68bf82ca",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 423.74995800002944,
+        "firstContentMs": 4711.89991700009,
+        "eofAtScheduleMs": 848193.855917,
+        "totalMs": 5353.427792000002,
+        "providerId": "resp_0bbd1d9f236e94e7006ae38ace4a6c87d29bd4ba0bd3530428",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 310,
+          "total_tokens": 1744
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "c2426d37bad7da51f1c0b0a1fd5d0d9f9665d986feec7cc0faeccd7588b3c0a2",
+        "settledCanonicalSha256": "c2426d37bad7da51f1c0b0a1fd5d0d9f9665d986feec7cc0faeccd7588b3c0a2"
+      },
+      {
+        "index": 66,
+        "worker": 2,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 871404.536875,
+        "httpDispatchMs": 871575.9087500001,
+        "verificationFinishedMs": 877030.1928750001,
+        "threadId": "readiness-load-2a3ef85c-2190-43b7-8ab6-76dedc3fbddd",
+        "runId": "866aeb6b-7ca7-4df5-94d0-c1245864d316",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 519.545124999946,
+        "firstContentMs": 3763.0165419999976,
+        "eofAtScheduleMs": 875939.971125,
+        "totalMs": 4364.0623749999795,
+        "providerId": "resp_076ca222a8670f57006ae38aeb176087d2847d874697072031",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 245,
+          "total_tokens": 1679
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "7e7672125eddeed79aa78347c9879b9544bcdf181c7099f1ddd643b9c9d4a75a",
+        "settledCanonicalSha256": "7e7672125eddeed79aa78347c9879b9544bcdf181c7099f1ddd643b9c9d4a75a"
+      },
+      {
+        "index": 67,
+        "worker": 3,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 871576.87575,
+        "httpDispatchMs": 871743.3492500001,
+        "verificationFinishedMs": 878193.007417,
+        "threadId": "readiness-load-89e4ee57-2eb3-4ee4-af0a-69f04241f0d9",
+        "runId": "401fdd45-1b97-4225-8233-5c617ea2cd2f",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 362.4647499999264,
+        "firstContentMs": 4364.881374999997,
+        "eofAtScheduleMs": 876970.9069170001,
+        "totalMs": 5227.557666999986,
+        "providerId": "resp_03a870a7a9d32c88006ae38aeb1b6487d2bd4ea5f6f2d78d34",
+        "usage": {
+          "input_tokens": 1441,
+          "output_tokens": 386,
+          "total_tokens": 1827
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "a9aee56142ba8eec4eaaee294950de8a8abf0e7b7005a55fc973c88d566ddc66",
+        "settledCanonicalSha256": "a9aee56142ba8eec4eaaee294950de8a8abf0e7b7005a55fc973c88d566ddc66"
+      },
+      {
+        "index": 68,
+        "worker": 1,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 872387.32175,
+        "httpDispatchMs": 872591.788208,
+        "verificationFinishedMs": 878515.796292,
+        "threadId": "readiness-load-f23ad145-0363-44c2-9fdf-4169a923eda2",
+        "runId": "3ccb5e3f-5150-41c0-bca4-27e64b99f378",
+        "deploymentIndex": 0,
+        "httpStatus": 200,
+        "firstByteMs": 451.33299999998417,
+        "firstContentMs": 4654.933542000013,
+        "eofAtScheduleMs": 877794.601,
+        "totalMs": 5202.8127920000115,
+        "providerId": "resp_0c6c928ebbb71be6006ae38aebeddc87d2af800e6183fd21e4",
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 296,
+          "total_tokens": 1729
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "ff531706c66382c09fa0ab2223e059bba53d6116ecde3ed4373cb63fff833612",
+        "settledCanonicalSha256": "ff531706c66382c09fa0ab2223e059bba53d6116ecde3ed4373cb63fff833612"
+      },
+      {
+        "index": 69,
+        "worker": 0,
+        "level": 4,
+        "status": "passed",
+        "slotStartMs": 872843.74075,
+        "httpDispatchMs": 873042.176958,
+        "verificationFinishedMs": 879370.078875,
+        "threadId": "readiness-load-4c21d6dc-2823-4c02-b3a7-22e20c167b4f",
+        "runId": "c3e60ea1-dd5e-4df2-9cce-03988b429351",
+        "deploymentIndex": 1,
+        "httpStatus": 200,
+        "firstByteMs": 433.29508399998304,
+        "firstContentMs": 4156.583458999987,
+        "eofAtScheduleMs": 878096.347792,
+        "totalMs": 5054.17083399999,
+        "providerId": "resp_09f003640b59bcd8006ae38aec64bc87d2a96634e78d54073f",
+        "usage": {
+          "input_tokens": 1434,
+          "output_tokens": 360,
+          "total_tokens": 1794
+        },
+        "pinnedCap": 4096,
+        "firstPostEofAdmissions": 0,
+        "checkpointCount": 3,
+        "pendingWriteCount": 3,
+        "immediateCanonicalSha256": "647183c656210e86dc71538e53cc26edc4f38d90e18155965263177890039ca8",
+        "settledCanonicalSha256": "647183c656210e86dc71538e53cc26edc4f38d90e18155965263177890039ca8"
+      }
+    ],
+    "failedRequests": [],
+    "cleanup": {
+      "ownedRequestsSettled": true,
+      "errors": []
+    },
+    "databaseErrors": [],
+    "receipt": {
+      "file": "load-026bd92d-ad9e-49b0-b039-43413d5ab285.json",
+      "sha256": "2e8b0067fa720066a7a2ed84eccfead385207be7f550ab9c7fcca3317dc4c49b"
+    }
+  },
+  "laterMain": {
+    "observedSha": "973639e81602f5b720bb14b5bb49f8c076a46add",
+    "commitsAhead": 3,
+    "comparisonReceipt": {
+      "file": "later-main-scope.json",
+      "sha256": "c032ea274a247d68f3e6e11f5af45c75f9984750d6fc1593f3f9ad7b425ba763"
+    },
+    "coverage": "Later main changes are not automatically qualified by the frozen6d hosted experiment"
+  },
+  "budgets": {
+    "load": {
+      "limit": 120,
+      "reserved": 99,
+      "priorInterrupted": 29,
+      "replacement": 70
+    },
+    "recovery": {
+      "limit": 16,
+      "reserved": 10
+    }
+  },
+  "localValidation": {
+    "runtimeSource": "6d414a37d25ab336192e52fd4d00b26321758ee7",
+    "atcServerBuildTestLint": "passed",
+    "atcServerTestsPassed": 163,
+    "optInDatabaseTestsSkipped": 1,
+    "completeB4Build": "passed",
+    "harnessTestsPassed": 76,
+    "harnessLint": "passed"
+  },
+  "cleanup": {
+    "temporaryPreviewCredentialsRemoved": true,
+    "originalUserEnvTouched": false,
+    "productionBackendChanged": false,
+    "credentialAbsenceVerifiedAt": "2026-10-29T18:09:14.358Z",
+    "exactCredentialValueScanPassed": true,
+    "ownedResourcesClosed": true
+  },
+  "limits": [
+    "Owned local process failure over hosted storage with managed preview successor; not managed Vercel worker termination or database failover.",
+    "Synthetic fresh one-turn prose load; no browser UI/tool-callback load, production SLO or maximum-throughput claim.",
+    "Completed provider IDs/usage are not complete upstream retry/request-count telemetry. No surfaced throttle failure is not proof that no internal retry occurred.",
+    "Canonical snapshots are sampled; upload provenance is not independent remote byte attestation.",
+    "Default30s runtime leases; storage probes deliberately use accelerated lease timings."
+  ]
+}

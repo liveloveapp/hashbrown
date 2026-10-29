@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -8,10 +9,7 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'decisions-in-agents'])?.body ?? '';
 
-    const demo = body.indexOf(`<hb-workbench lesson="agent-decisions">`);
-
-    expect(demo).toBeGreaterThan(-1);
-    expect(demo).toBeLessThan(body.indexOf('\n## '));
+    expectConceptFirstWorkbench(body, sdk, 'agent-decisions');
     expect(body).toContain(
       `canonical-workbench-agent-decisions-${sdk}-result.png`,
     );

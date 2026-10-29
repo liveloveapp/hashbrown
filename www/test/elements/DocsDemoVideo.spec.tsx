@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from '../docs/concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -148,15 +149,8 @@ test.each(SDKS)(
       body: readDoc(sdk, ['concept', slug])?.body ?? '',
     }));
 
-    const positions = pages.map(({ demo, body }) => ({
-      demo,
-      video: body.indexOf(`<hb-workbench lesson="${demo}">`),
-      section: body.indexOf('\n## '),
-    }));
-
-    for (const position of positions) {
-      expect(position.video, position.demo).toBeGreaterThan(-1);
-      expect(position.video, position.demo).toBeLessThan(position.section);
+    for (const { demo, body } of pages) {
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

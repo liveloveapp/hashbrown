@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -19,12 +20,7 @@ test.each(SDKS)(
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
 
-      expect(body.indexOf(`<hb-workbench lesson="${lesson}">`)).toBeGreaterThan(
-        -1,
-      );
-      expect(body.indexOf(`<hb-workbench lesson="${lesson}">`)).toBeLessThan(
-        body.indexOf('\n## '),
-      );
+      expectConceptFirstWorkbench(body, sdk, lesson);
       expect(body).toContain(`/video/docs/${id}-result.png`);
       expect(body).toContain(`/${sdk}.html?lesson=${lesson}`);
       expect(body).toContain('two-step plan');
