@@ -7,19 +7,26 @@ meta:
 
 # atc Example
 
-atc is a live map of the air traffic over the Pacific Northwest, with an assistant that answers in the app's own React components.
-It's Hashbrown's flagship example, and it's built twice, in Angular and React, on one shared core.
-
-Here's the whole thing in about a minute:
-
 <www-atc-demo-video>
 </www-atc-demo-video>
+
+atc is a live map of the air traffic over the Pacific Northwest, with an assistant that answers in the app's own React components.
+It's Hashbrown's flagship example, and it's built twice, in Angular and React, on one shared core.
 
 The hosted app at [atc.hashbrown.dev](https://atc.hashbrown.dev/angular/) is the Angular
 version; the React version is the same app, and it runs locally (see [Run Locally](#run-locally)).
 Or [read the source](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc).
 
 ---
+
+## Build around application-owned data
+
+An assistant can help a user navigate an existing application without replacing its data model or interface. Expose a small set of read operations, render results in trusted components, and keep actions such as selection and filtering in application code.
+
+Here the domain is live air traffic. A tool searches aircraft already loaded by the application, and a component displays a live aircraft reference. In your app, the same design could use an inventory record or support ticket. Start with [Tools](/docs/react/concept/functions) and [Generative UI](/docs/react/concept/components) for reusable implementations before reading the complete ATC source below.
+
+<hb-concept-diagram concept="tools">
+</hb-concept-diagram>
 
 ## Three Steps
 
@@ -88,3 +95,9 @@ npx nx serve atc-react
 
 Open http://127.0.0.1:4342/react/.
 The [README](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md) has the rest: every variable, a tour of the code by step, hosting and troubleshooting.
+
+## Explore it in the workbench
+
+ATC combines multiple features in a full application. The [canonical workbench](/docs/react/start/workbench) separates those features into focused lessons using one plan. Open **Tools** to follow a read and continuation, **Generative UI** to inspect component props, and **Decisions** to observe a whole choice.
+
+Compare the application-owned aircraft data and actions above with the workbench's application-owned plan and explicit acceptance. The domain changes; the boundary between model output and application behavior stays visible. Both teaching tools offer inspection, but their request traces and recordings belong to their own runs.

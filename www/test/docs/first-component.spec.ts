@@ -27,6 +27,9 @@ test.each(SDKS)(
     expect(body).toContain('OPENAI_MODEL');
     expect(body).toContain('/api/chat');
     expect(body).toContain('## Before we start');
+    expect(body.indexOf('<hb-workbench lesson="first-plan">')).toBeGreaterThan(
+      body.indexOf('## Explore it in the workbench'),
+    );
     expect(body).toContain('## If the card does not appear');
     expect(body).not.toContain('UseChatOptions');
     expect(body).not.toContain('## Beyond Chat');
@@ -85,18 +88,15 @@ test.each(SDKS)(
 );
 
 test.each(SDKS)(
-  '%s fundamentals uses the checked conversation example',
+  '%s fundamentals separates the reusable conversation from the workbench walkthrough',
   (sdk) => {
     const body = readDoc(sdk, ['concept', 'ai-basics'])?.body ?? '';
-    const file =
-      sdk === 'react'
-        ? 'react/src/ConversationBasics.tsx'
-        : 'angular/src/app/conversation-basics.ts';
-    const snippet = body.match(/```(?:tsx|ts)\n([\s\S]*?)\n```/)?.[1];
+    const sections = body.split('## Explore it in the workbench');
 
-    expect(snippet?.trim()).toBe(
-      readFileSync(resolve(examples, file), 'utf8').trim(),
-    );
+    expect(sections).toHaveLength(2);
+    expect(sections[0]).toContain('book club');
+    expect(sections[0]).toMatch(/```(?:tsx|ts)\nimport /);
+    expect(sections[1]).toContain('two-step plan');
     expect(body).toContain(
       `<hb-docs-demo demo="canonical-workbench-conversation-${sdk}">`,
     );

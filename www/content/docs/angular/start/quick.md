@@ -7,14 +7,15 @@ meta:
 
 # Angular Quickstart
 
-Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
-
 <hb-docs-demo demo="canonical-workbench-first-plan-angular">
 </hb-docs-demo>
 
-The recording uses the same `PlanCard` and registration as this example, inside the [conversation workbench](/docs/angular/start/workbench). The model knows that component as `SummaryCard`. The inspector and timeline are workbench features; our app needs only the component, @hashbrownai/angular!uiChatResource:function, and an endpoint.
+Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
 
-<img src="/video/docs/canonical-workbench-first-plan-angular-result.png" alt="The Angular first-plan lesson renders a trusted card with a title and two steps, without applying it to application state." width="1600" height="1000" loading="lazy" />
+Generative UI means the model selects a component you expose and supplies schema-shaped values for its props. It does not write the component implementation. We'll build the complete application before looking at how the workbench records the same interaction.
+
+<hb-concept-diagram concept="client-server">
+</hb-concept-diagram>
 
 ## Before we start
 
@@ -295,8 +296,6 @@ npx ng serve --proxy-config proxy.conf.json
 
 Open the frontend URL and choose **Generate a plan**. Watch the title and steps appear as the response arrives. The model's wording can vary.
 
-To inspect the same interaction, open `http://127.0.0.1:4370/angular.html?lesson=first-plan` after starting the [workbench](/docs/angular/start/workbench). Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.
-
 <a id="debugging"></a>
 
 ## If the card does not appear
@@ -307,6 +306,19 @@ To inspect the same interaction, open `http://127.0.0.1:4370/angular.html?lesson
 - **A response arrives without a card:** compare the exposed `SummaryCard` name, prop schema, and UI renderer. A text-chat response uses a different renderer.
 
 After fixing the cause, send again. Continue with [Debugging](/docs/angular/concept/debugging) when you need to inspect the request.
+
+## Explore it in the workbench
+
+<hb-workbench lesson="first-plan">
+</hb-workbench>
+
+Now we have a standalone app, let's inspect a second implementation of the same component contract. The recording uses `PlanCard`, registered as `SummaryCard`, inside the [conversation workbench](/docs/angular/start/workbench). Its endpoint and capturing transport are specific to that teaching app; your standalone endpoint remains `/api/chat`.
+
+To inspect the same interaction, open `http://127.0.0.1:4370/angular.html?lesson=first-plan` after starting the [workbench](/docs/angular/start/workbench). Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.
+
+Compare the declared schema with the resolved props, then scrub the bottom timeline back to the first response values. The workbench captures these observations for inspection. Replaying them sends no provider request and does not write application state.
+
+<img src="/video/docs/canonical-workbench-first-plan-angular-result.png" alt="The Angular first-plan lesson renders a trusted card with a title and two steps, without applying it to application state." width="1600" height="1000" loading="lazy" />
 
 ## Keep the conversation going
 

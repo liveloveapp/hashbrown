@@ -7,6 +7,14 @@ meta:
 
 # Native .NET mixed tools
 
+<hb-docs-demo demo="canonical-workbench-interrupts-angular">
+</hb-docs-demo>
+
+The teaser shows the workbench's client interrupt controls and explicit continuation. It does not demonstrate .NET native mixed tools, Microsoft Agent Framework approvals, or PostgreSQL session ownership. Those need the separate server configuration and verification below.
+
+<hb-concept-diagram concept="workflow">
+</hb-concept-diagram>
+
 Use this opt-in recipe when one model response needs both browser tools and registered .NET functions. Microsoft Agent Framework (MAF) retains its native pending function state while Hashbrown executes browser tools. PostgreSQL owns each continuation and fences server dispatch across replicas and restarts.
 
 The [stateless .NET recipe](/docs/angular/platform/dotnet) remains available for separate browser/server model turns and application workflow confirmations. This native composition also supports genuine MAF `ApprovalRequiredAIFunction` requests through Hashbrown's generic interrupt controls. Application workflow confirmation and its checkpoint store remain a separate composition.
@@ -228,3 +236,9 @@ Fresh initialization uses native schema 2. Stop, drain and establish quiescence 
 For cookie authentication, keep secure/HTTP-only cookies, API 401/403 behavior, same-origin deployment and application request-forgery validation. If cross-origin hosting is necessary, allowlist exact trusted HTTPS origins, configure credentialed requests and your cookie/CSRF policy together; never combine credentials with wildcard CORS. Test those application policies with the browser before deployment.
 
 The compiled documentation check is configured to compare identical framework C# blocks and build both provider/API choices with and without native approvals and recovery against the exact local package candidate. Its intended matrix retains the original eight native programs and adds eight approval programs; the separate stateless/application verifier retains its sixteen programs, for thirty-two compiler programs in total. Compilation results must be read from the current check output. Deterministic strict-provider tests establish protocol behavior; actual live provider and published-SDK qualification are recorded separately in the [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet).
+
+## Explore it in the workbench
+
+Open `/angular.html?lesson=interrupts` in the [conversation workbench](/docs/angular/start/workbench). Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
+
+The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed local package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.

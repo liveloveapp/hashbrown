@@ -10,15 +10,11 @@ meta:
 <hb-docs-demo demo="canonical-workbench-threadplane-angular">
 </hb-docs-demo>
 
-Let's give our plan a chat screen. We'll ask for two steps, read the response as it arrives, and make the second step shorter.
+A chat screen needs a transcript, a composer, and controls for an active response. Threadplane supplies those presentation pieces. Use it when you want a composed chat experience and want to keep model policy and credentials in your Hashbrown server.
+
+Angular uses Threadplane’s AG-UI agent runtime, rather than a Hashbrown chat resource. The two integrations have different runtime and installation requirements. Follow the matching framework instructions below.
 
 Threadplane owns the Angular chat screen and its AG-UI frontend runtime. Hashbrown streams the response from our server. If you're replacing a `chatResource` screen, start with the [migration checklist](/docs/angular/migrations/threadplane).
-
-<img src="/video/docs/canonical-workbench-threadplane-angular-result.png" alt="The Angular Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
-
-The recording uses the actual separately installed Angular consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
-
-This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
 
 ## Before we start
 
@@ -137,6 +133,14 @@ Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return 
 Select **Stop generating** during a response to cancel the active request. Text already received stays in the conversation with the tested Threadplane **0.3.3** adapter. Wait for **Send message** to return, then send a new message explicitly when you're ready to continue.
 
 No request is required to display an empty chat. A failed run is displayed through the adapter's error state. Check the frontend proxy, server process, and provider configuration before sending another message.
+
+## Explore it in the workbench
+
+<img src="/video/docs/canonical-workbench-threadplane-angular-result.png" alt="The Angular Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
+
+The recording uses the actual separately installed Angular consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
+
+This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
 
 Follow the two turns in the workbench. **Text** shows the response as it arrives. **Requests** shows the actual `/api/chat` envelope, response, and decoded events. Inspect the second request: it includes the first user message, the completed assistant reply, and the follow-up.
 

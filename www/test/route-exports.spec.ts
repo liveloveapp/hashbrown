@@ -10,6 +10,7 @@ import * as webhook from '../src/app/%5F/webhooks/resend/route';
 import * as postSquareCard from '../src/app/blog/[slug]/square-card/route';
 import * as docsCard from '../src/app/og/docs/[sdk]/[...slug]/route';
 import * as squareCard from '../src/app/square-card/route';
+import * as workbenchSource from '../src/app/workbench-source/[sdk]/[lesson]/route';
 
 test.each([
   ['inbox recovery', recovery, ['GET', 'maxDuration']],
@@ -31,6 +32,11 @@ test.each([
     ['GET', 'dynamic', 'dynamicParams', 'generateStaticParams'],
   ],
   ['square card', squareCard, ['GET', 'dynamic']],
+  [
+    'workbench source',
+    workbenchSource,
+    ['GET', 'dynamic', 'dynamicParams', 'generateStaticParams'],
+  ],
 ] as const)(
   '%s entry exports only its Next.js handlers and configuration',
   (_name, entry, expected) => {

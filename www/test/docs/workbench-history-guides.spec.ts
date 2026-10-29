@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -68,10 +69,7 @@ test.each(SDKS)(
     for (const [section, slug, lesson] of lessons) {
       const body = readDoc(sdk, [section, slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
-      const marker = `<hb-docs-demo demo="${id}">`;
-
-      expect(body.indexOf(marker)).toBeGreaterThan(-1);
-      expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
+      expectConceptFirstWorkbench(body, sdk, lesson);
       expect(body).toContain(`/video/docs/${id}-result.png`);
       expect(body).toContain(`/${sdk}.html?lesson=${lesson}`);
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
