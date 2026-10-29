@@ -2,6 +2,7 @@ import type { Element, ElementContent, Root } from 'hast';
 import {
   createHighlighter,
   type Highlighter,
+  type ShikiTransformer,
   type ThemeRegistration,
 } from 'shiki';
 import type { Plugin } from 'unified';
@@ -109,15 +110,18 @@ export const rehypeShiki: Plugin<[], Root> = () => async (tree) => {
  *
  * @param code - The source to highlight.
  * @param lang - A language the site loads, such as `typescript`, `tsx` or `html`.
+ * @param options - Optional Shiki transformers applied to the output.
  * @returns The highlighted HTML.
  */
 export async function highlightCode(
   code: string,
   lang: string,
+  options: { readonly transformers?: readonly ShikiTransformer[] } = {},
 ): Promise<string> {
   const hl = await getHighlighter();
   return hl.codeToHtml(code, {
     lang: ALIASES[lang] ?? lang,
     theme: 'hashbrown',
+    transformers: [...(options.transformers ?? [])],
   });
 }

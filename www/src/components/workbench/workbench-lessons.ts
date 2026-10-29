@@ -10,15 +10,37 @@ import { workbenchMediaName } from './workbench-media';
 
 export type { WorkbenchLessonId };
 
-/** Highlighted lesson source shown in the panel's Source tab. */
+/** A 1-based, inclusive line range in a lesson source file. */
+export interface WorkbenchLineRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * A page's view of its lesson source, built at build time and small enough to
+ * inline: the commit, the lesson's files (paths under
+ * `www/examples/quickstart/`) and the lines the page's snippets cover. The
+ * highlighted file text is fetched from `/workbench-source/<sdk>/<lesson>`
+ * only when the reader opens the Source tab.
+ */
 export interface WorkbenchSourceData {
+  /** The commit GitHub links point at. */
   readonly commit: string;
   readonly files: readonly {
     readonly path: string;
-    /** Build-time highlighted HTML. */
-    readonly html: string;
-    readonly highlights: readonly { start: number; end: number }[];
+    /** Lines the page's snippets cover, in order; empty for none. */
+    readonly highlights: readonly WorkbenchLineRange[];
   }[];
+}
+
+/**
+ * The JSON `/workbench-source/<sdk>/<lesson>` serves: each lesson file
+ * highlighted with the site's Shiki theme, one `<span class="line"
+ * data-line="N">` per source line.
+ */
+export interface WorkbenchSourceHtml {
+  readonly commit: string;
+  readonly files: readonly { readonly path: string; readonly html: string }[];
 }
 
 /** Lessons whose Live mode needs a local server, so docs never embed it. */

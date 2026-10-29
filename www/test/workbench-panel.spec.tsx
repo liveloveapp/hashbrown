@@ -413,6 +413,140 @@ test('the tabs are Replay and Live, with Source only when there is source', () =
   ).toBe('true');
 });
 
+const pageSource = {
+  commit: 'abc',
+  files: [
+    { path: 'react/src/Workbench.tsx', highlights: [{ start: 2, end: 3 }] },
+    { path: 'runtime/workbench.ts', highlights: [] },
+  ],
+};
+const lineHtml = (count: number) =>
+  `<pre class="shiki hashbrown"><code>${Array.from(
+    { length: count },
+    (_, index) =>
+      `<span class="line" data-line="${index + 1}">line ${index + 1}</span>`,
+  ).join('\n')}</code></pre>`;
+const sourceJson = {
+  commit: 'abc',
+  files: [
+    { path: 'react/src/Workbench.tsx', html: lineHtml(4) },
+    { path: 'runtime/workbench.ts', html: lineHtml(2) },
+  ],
+};
+const blob =
+  'https://github.com/liveloveapp/hashbrown/blob/abc/www/examples/quickstart';
+
+function sourceTab() {
+  return [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (tab) => tab.textContent === 'Source',
+  ) as HTMLElement;
+}
+
+async function settle() {
+  await act(async () => {
+    for (let tick = 0; tick < 10; tick++) await Promise.resolve();
+  });
+}
+
+test('Source tab shows files, marks highlighted lines and links to GitHub at the commit', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  const fetchedBefore = fetchMock.mock.calls.length;
+  fireEvent.click(sourceTab());
+  await settle();
+  const panel = document.getElementById(
+    sourceTab().getAttribute('aria-controls') as string,
+  ) as HTMLElement;
+  const files = [...panel.querySelectorAll('button')].map(
+    (button) => button.textContent,
+  );
+  const highlighted = [...panel.querySelectorAll('[data-highlighted]')];
+  const link = () =>
+    [...panel.querySelectorAll('a')].find((anchor) =>
+      anchor.textContent?.includes('View on GitHub'),
+    );
+  const firstLink = link()?.getAttribute('href');
+  fireEvent.click(
+    [...panel.querySelectorAll('button')].find(
+      (button) => button.textContent === 'runtime/workbench.ts',
+    ) as HTMLElement,
+  );
+
+  expect(fetchedBefore).toBe(0);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/workbench-source/react/tools',
+    expect.anything(),
+  );
+  expect(files).toEqual(['react/src/Workbench.tsx', 'runtime/workbench.ts']);
+  expect(highlighted.map((line) => line.getAttribute('data-line'))).toEqual([
+    '2',
+    '3',
+  ]);
+  expect(highlighted.map((line) => line.textContent)).toEqual([
+    'highlightedline 2',
+    'highlightedline 3',
+  ]);
+  expect(
+    panel.querySelector('[data-line="1"]')?.hasAttribute('data-highlighted'),
+  ).toBe(false);
+  expect(firstLink).toBe(`${blob}/react/src/Workbench.tsx#L2-L3`);
+  expect(link()?.textContent).toBe('View on GitHub ↗');
+  expect(link()?.getAttribute('href')).toBe(`${blob}/runtime/workbench.ts`);
+  expect(panel.querySelectorAll('[data-highlighted]')).toHaveLength(0);
+});
+
+test('Source fetches once, however often the tab is opened', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  fireEvent.click(sourceTab());
+  await settle();
+  fireEvent.click(document.querySelector('[role="tab"]') as HTMLElement);
+  fireEvent.click(sourceTab());
+  await settle();
+
+  expect(
+    (fetchMock.mock.calls as unknown[][]).filter(([url]) =>
+      String(url).startsWith('/workbench-source/'),
+    ),
+  ).toHaveLength(1);
+});
+
+test('Source shows a note and GitHub links when the source cannot load', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(async () => ({
+    ok: false,
+    json: async () => ({}),
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  fireEvent.click(sourceTab());
+  await settle();
+  const panel = document.getElementById(
+    sourceTab().getAttribute('aria-controls') as string,
+  ) as HTMLElement;
+
+  expect(panel.textContent).toContain("Couldn't load the source");
+  expect(
+    [...panel.querySelectorAll('a')].map((anchor) =>
+      anchor.getAttribute('href'),
+    ),
+  ).toEqual([
+    `${blob}/react/src/Workbench.tsx#L2-L3`,
+    `${blob}/runtime/workbench.ts`,
+  ]);
+});
+
 test('arrow keys move between tabs', () => {
   setup();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);

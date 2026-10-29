@@ -18,7 +18,10 @@ import { WorkbenchPanelLoader } from './WorkbenchPanelLoader';
 export interface WorkbenchPanelProps {
   readonly lesson: WorkbenchLessonId;
   readonly sdk: Sdk;
-  /** Highlighted lesson source; the Source tab is hidden without it. */
+  /**
+   * The lesson's files and the page's highlights (see `workbenchPageData`);
+   * the Source tab is hidden without it.
+   */
   readonly source?: WorkbenchSourceData;
   /** Milestones the page's prose refers to (unused until moments land). */
   readonly moments?: readonly string[];
