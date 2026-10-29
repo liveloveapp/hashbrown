@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Sdk } from '../lib/content';
 import type { MarkdownComponents } from '../lib/markdown';
+import type { WorkbenchPageData } from '../lib/workbench-source-files';
 import { CodeExample } from './CodeExample';
 import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
@@ -32,10 +33,14 @@ import { assertWorkbenchLesson } from './workbench/workbench-lessons';
  * @param popovers - Server-rendered popover bodies by canonical reference, for
  *   the symbol links this page contains (see `renderDocsMarkdown`). Links
  *   without an entry render without a popover.
+ * @param workbench - The page's workbench data (see `workbenchPageData`):
+ *   the Source tab's files and highlights for its `hb-workbench` lesson. A
+ *   panel without it has no Source tab.
  */
 export function docsComponents(
   sdk: string,
   popovers: ReadonlyMap<string, ReactNode> = new Map(),
+  workbench?: WorkbenchPageData,
 ): MarkdownComponents {
   const DocsNextStep = (props: { link?: string; children?: ReactNode }) => (
     <NextStep {...props} sdk={sdk} />
@@ -45,9 +50,18 @@ export function docsComponents(
   );
   // Blog posts and API summaries render as React.
   const panelSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
-  const DocsWorkbench = ({ lesson = '' }: { lesson?: string }) => (
-    <WorkbenchPanel lesson={assertWorkbenchLesson(lesson)} sdk={panelSdk} />
-  );
+  const DocsWorkbench = ({ lesson = '' }: { lesson?: string }) => {
+    const id = assertWorkbenchLesson(lesson);
+    const page = workbench?.lesson === id ? workbench : undefined;
+    return (
+      <WorkbenchPanel
+        lesson={id}
+        sdk={panelSdk}
+        source={page?.source}
+        moments={page?.moments}
+      />
+    );
+  };
   return {
     table: ScrollTable,
     'hb-code-example': CodeExample,

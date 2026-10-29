@@ -4,6 +4,7 @@ import {
   renderMarkdownTree,
 } from '../lib/markdown';
 import { collectSymbolReferences } from '../lib/symbol-references';
+import { workbenchPageData } from '../lib/workbench-source-files';
 import { symbolPopovers } from './api/symbol-context';
 import { docsComponents } from './docs-components';
 
@@ -11,7 +12,9 @@ import { docsComponents } from './docs-components';
  * Render docs or blog markdown with hover popovers on its symbol links. The
  * page's `hb-symbol-link` references are collected from the parsed tree and
  * only those symbols' popovers are built, so each page carries data for the
- * symbols it mentions and nothing else. Runs at build time.
+ * symbols it mentions and nothing else. A page with an `hb-workbench` panel
+ * also gets its lesson source data, which checks the page's workbench
+ * snippets against the example source. Runs at build time.
  *
  * @param source - Markdown without frontmatter.
  * @param sdk - The SDK whose docs are rendering (blog posts use `react`).
@@ -22,5 +25,6 @@ export async function renderDocsMarkdown(
 ): Promise<RenderedMarkdown> {
   const parsed = await parseMarkdown(source);
   const popovers = await symbolPopovers(collectSymbolReferences(parsed.tree));
-  return renderMarkdownTree(parsed, docsComponents(sdk, popovers));
+  const workbench = workbenchPageData(parsed.tree, sdk);
+  return renderMarkdownTree(parsed, docsComponents(sdk, popovers, workbench));
 }
