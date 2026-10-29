@@ -12,14 +12,7 @@ const base = {
 
 /** Tabler "code" icon. */
 export const CodeIcon = (p: IconProps) => (
-  <svg
-    {...base}
-    stroke="currentColor"
-    strokeWidth={2}
-    height="24"
-    width="24"
-    {...p}
-  >
+  <svg {...base} stroke="currentColor" strokeWidth={2} height="24" width="24" {...p}>
     <path d="M7 8l-4 4l4 4" />
     <path d="M17 8l4 4l-4 4" />
     <path d="M14 4l-4 16" />
@@ -47,14 +40,7 @@ export const FunctionsIcon = (p: IconProps) => (
 
 /** Tabler "send" icon. */
 export const SendIcon = (p: IconProps) => (
-  <svg
-    {...base}
-    stroke="currentColor"
-    strokeWidth={1}
-    height="24"
-    width="24"
-    {...p}
-  >
+  <svg {...base} stroke="currentColor" strokeWidth={1} height="24" width="24" {...p}>
     <path d="M10 14l11 -11" />
     <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" />
   </svg>
@@ -62,28 +48,14 @@ export const SendIcon = (p: IconProps) => (
 
 /** Tabler "chevron-down" icon. */
 export const ChevronDownIcon = (p: IconProps) => (
-  <svg
-    {...base}
-    stroke="currentColor"
-    strokeWidth={2}
-    height="16"
-    width="16"
-    {...p}
-  >
+  <svg {...base} stroke="currentColor" strokeWidth={2} height="16" width="16" {...p}>
     <path d="M6 9l6 6l6 -6" />
   </svg>
 );
 
 /** Tabler "copy" icon. */
 export const CopyIcon = (p: IconProps) => (
-  <svg
-    {...base}
-    stroke="currentColor"
-    strokeWidth={2}
-    height="18"
-    width="18"
-    {...p}
-  >
+  <svg {...base} stroke="currentColor" strokeWidth={2} height="18" width="18" {...p}>
     <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
     <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
   </svg>

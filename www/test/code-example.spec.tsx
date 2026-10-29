@@ -35,3 +35,17 @@ test('a code example without a moment has no See it run', () => {
   expect(queryByText('See it run')).toBeNull();
   vi.restoreAllMocks();
 });
+
+test('See it run names its snippet file', () => {
+  cleanup();
+
+  const { getByRole } = render(
+    <CodeExample header="src/tools.ts" id="code-example-0" moment="tool-call">
+      <pre>code</pre>
+    </CodeExample>,
+  );
+
+  expect(
+    getByRole('button', { name: 'See src/tools.ts run in the workbench' }),
+  ).toBeTruthy();
+});

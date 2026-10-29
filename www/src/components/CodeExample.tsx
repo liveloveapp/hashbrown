@@ -39,7 +39,7 @@ export function CodeExample({
         <span className={styles.active}>{header}</span>
         <div>
           {moment && id ? (
-            <SeeItRunButton moment={moment} snippet={id} />
+            <SeeItRunButton moment={moment} snippet={id} header={header} />
           ) : null}
           {run ? <a href={run}>run</a> : null}
           {copyable === 'false' ? null : <CopyButton />}

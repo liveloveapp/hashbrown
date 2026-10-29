@@ -268,3 +268,37 @@ test('the Tools pages link readContext to the tool result', async () => {
     expect(body).toMatch(/moment="tool-result-1"/);
   }
 });
+
+test('a moment on a page without a workbench fails with its header and moment', async () => {
+  const parsed = await parseMarkdown(
+    '<hb-code-example header="react/src/Workbench.tsx" moment="tool-result-1">\n\n```ts\ncode\n```\n\n</hb-code-example>',
+  );
+
+  const build = () => workbenchPageData(parsed.tree, 'react');
+
+  expect(build).toThrow(
+    'react/src/Workbench.tsx: moment "tool-result-1" needs an hb-workbench lesson on the page',
+  );
+});
+
+test('a moment on a snippet outside the workbench files fails with its header and moment', async () => {
+  const parsed = await parseMarkdown(
+    [
+      '<hb-workbench lesson="tools"></hb-workbench>',
+      '',
+      '<hb-code-example header="src/app.ts" moment="tool-result-1">',
+      '',
+      '```ts',
+      'code',
+      '```',
+      '',
+      '</hb-code-example>',
+    ].join('\n'),
+  );
+
+  const build = () => workbenchPageData(parsed.tree, 'react');
+
+  expect(build).toThrow(
+    'src/app.ts: moment "tool-result-1" is only allowed on workbench snippets',
+  );
+});

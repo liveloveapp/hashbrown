@@ -307,12 +307,20 @@ function captureMilestoneIds(
   const mediaId = workbenchMediaId(lesson, sdk);
   const cached = milestoneIdCache.get(mediaId);
   if (cached) return cached;
-  const capture = JSON.parse(
-    readFileSync(
-      join(repoRoot(), 'www/public/video/docs', `${mediaId}-capture.json`),
-      'utf8',
-    ),
-  ) as WorkbenchCapture;
+  const path = join(
+    repoRoot(),
+    'www/public/video/docs',
+    `${mediaId}-capture.json`,
+  );
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    throw new Error(
+      `The ${lesson} lesson has no ${sdk} capture for moments (${path})`,
+    );
+  }
+  const capture = JSON.parse(text) as WorkbenchCapture;
   const format = workbenchLessons.find((item) => item.id === lesson)?.format;
   const ids = workbenchMilestones(capture.events, format).map(
     (milestone) => milestone.id,
@@ -374,7 +382,31 @@ export function workbenchPageData(
         .map((node) => String(node.properties['lesson'] ?? '')),
     ),
   ];
-  if (lessons.length === 0) return undefined;
+  const moments = all
+    .filter(
+      (node) =>
+        node.tagName === 'hb-code-example' &&
+        typeof node.properties['moment'] === 'string' &&
+        node.properties['moment'] !== '',
+    )
+    .map((node) => ({
+      header: String(node.properties['header'] ?? ''),
+      moment: node.properties['moment'] as string,
+    }));
+  const stray = moments.find(({ header }) => !isWorkbenchHeader(header));
+  if (stray) {
+    throw new Error(
+      `${stray.header}: moment "${stray.moment}" is only allowed on workbench snippets`,
+    );
+  }
+  if (lessons.length === 0) {
+    if (moments[0]) {
+      throw new Error(
+        `${moments[0].header}: moment "${moments[0].moment}" needs an hb-workbench lesson on the page`,
+      );
+    }
+    return undefined;
+  }
   if (lessons.length > 1) {
     throw new Error(
       `A docs page shows one workbench lesson per page; found ${lessons.join(', ')}`,
@@ -392,18 +424,6 @@ export function workbenchPageData(
       code: textOf(node),
     }));
   const docsSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
-  const moments = all
-    .filter(
-      (node) =>
-        node.tagName === 'hb-code-example' &&
-        isWorkbenchHeader(node.properties['header']) &&
-        typeof node.properties['moment'] === 'string' &&
-        node.properties['moment'] !== '',
-    )
-    .map((node) => ({
-      header: node.properties['header'] as string,
-      moment: node.properties['moment'] as string,
-    }));
   assertWorkbenchMoments(lesson, docsSdk, moments);
   return {
     lesson,

@@ -91,7 +91,7 @@ export function WorkbenchSourceView({
   );
   // Adjust state while rendering, not in an effect: a new request selects
   // its file before the next paint.
-  const [handledSeq, setHandledSeq] = useState(select?.seq);
+  const [handledSeq, setHandledSeq] = useState<number | undefined>(undefined);
   if (select && select.seq !== handledSeq) {
     setHandledSeq(select.seq);
     if (source.files.some((item) => item.path === select.path)) {

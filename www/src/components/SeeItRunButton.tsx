@@ -17,11 +17,17 @@ export interface SeeItRunDetail {
  *
  * @param moment - The replay milestone this snippet runs at.
  * @param snippet - The id of the code example element.
+ * @param header - The code example's header (its file), for the accessible name.
  */
-export function SeeItRunButton({ moment, snippet }: SeeItRunDetail) {
+export function SeeItRunButton({
+  moment,
+  snippet,
+  header,
+}: SeeItRunDetail & { readonly header: string }) {
   return (
     <button
       type="button"
+      aria-label={`See ${header} run in the workbench`}
       onClick={(event) =>
         event.currentTarget.dispatchEvent(
           new CustomEvent<SeeItRunDetail>(SEE_IT_RUN_EVENT, {

@@ -43,6 +43,9 @@ const capture = {
  */
 function setup({ narrow = false, fakeTimers = false } = {}) {
   cleanup();
+  vi.restoreAllMocks();
+  // jsdom has no scrollIntoView; tests spy on this stub.
+  Element.prototype.scrollIntoView ??= () => undefined;
   document
     .querySelectorAll('[data-component="code-example"]')
     .forEach((element) => element.remove());
@@ -964,7 +967,9 @@ function seeItRun(moment = 'tool-call') {
 test('See it run scrolls to the panel, seeks the replay and highlights the snippet', async () => {
   const { intersect } = setup();
   const scrollIntoView = vi.fn();
-  Element.prototype.scrollIntoView = scrollIntoView;
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(
+    scrollIntoView,
+  );
   const snippet = addSnippet();
   const stale = addSnippet();
   stale.id = 'code-example-1';
@@ -988,14 +993,12 @@ test('See it run scrolls to the panel, seeks the replay and highlights the snipp
   );
   expect(snippet.hasAttribute('data-highlighted')).toBe(true);
   expect(stale.hasAttribute('data-highlighted')).toBe(false);
-  snippet.remove();
-  stale.remove();
 });
 
 test('See it run before the replay loads seeks once loaded', async () => {
   const { intersect } = setup();
-  Element.prototype.scrollIntoView = vi.fn();
-  const snippet = addSnippet();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
   const post = vi.fn();
 
@@ -1018,13 +1021,12 @@ test('See it run before the replay loads seeks once loaded', async () => {
   expect(seeks).toEqual([
     [{ type: 'hb-workbench:seek', version: 1, milestone: 'tool-call' }, origin],
   ]);
-  snippet.remove();
 });
 
 test('See it run selects the snippet file in Source without opening it', async () => {
   const { intersect } = setup();
-  Element.prototype.scrollIntoView = vi.fn();
-  const snippet = addSnippet('runtime/workbench.ts');
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet('runtime/workbench.ts');
   render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
   intersect();
 
@@ -1035,13 +1037,14 @@ test('See it run selects the snippet file in Source without opening it', async (
   expect(
     document.querySelector('[role="tab"][aria-selected="true"]')?.textContent,
   ).toBe('Replay');
-  snippet.remove();
 });
 
 test('See it run on a failed replay still scrolls and highlights', async () => {
   const { intersect } = setup();
   const scrollIntoView = vi.fn();
-  Element.prototype.scrollIntoView = scrollIntoView;
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(
+    scrollIntoView,
+  );
   const snippet = addSnippet();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
   intersect();
@@ -1061,13 +1064,14 @@ test('See it run on a failed replay still scrolls and highlights', async () => {
     expect.objectContaining({ type: 'hb-workbench:seek' }),
     origin,
   );
-  snippet.remove();
 });
 
 test('See it run on a narrow screen scrolls and highlights', () => {
   setup({ narrow: true });
   const scrollIntoView = vi.fn();
-  Element.prototype.scrollIntoView = scrollIntoView;
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(
+    scrollIntoView,
+  );
   const snippet = addSnippet();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
 
@@ -1075,5 +1079,33 @@ test('See it run on a narrow screen scrolls and highlights', () => {
 
   expect(scrollIntoView).toHaveBeenCalled();
   expect(snippet.hasAttribute('data-highlighted')).toBe(true);
-  snippet.remove();
+});
+
+test('See it run moves focus to the Replay tab without scrolling again', () => {
+  const { intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+
+  seeItRun();
+
+  const replay = document.querySelector('[role="tab"][aria-selected="true"]');
+  expect(document.activeElement).toBe(replay);
+  expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+  focus.mockRestore();
+});
+
+test('See it run on a narrow screen moves focus to the panel', () => {
+  setup({ narrow: true });
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+
+  seeItRun();
+
+  expect(document.activeElement?.getAttribute('data-component')).toBe(
+    'workbench-panel',
+  );
 });

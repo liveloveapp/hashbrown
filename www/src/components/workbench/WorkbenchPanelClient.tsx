@@ -163,10 +163,18 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
 function NarrowPanel({ children }: { children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
   useSeeItRun(
-    useCallback((detail) => revealSnippet(panel.current, detail), []),
+    useCallback((detail) => {
+      revealSnippet(panel.current, detail);
+      panel.current?.focus({ preventScroll: true });
+    }, []),
   );
   return (
-    <div className={styles.panel} ref={panel}>
+    <div
+      className={styles.panel}
+      data-component="workbench-panel"
+      tabIndex={-1}
+      ref={panel}
+    >
       {children}
     </div>
   );
@@ -210,6 +218,7 @@ function TabbedPanel({
   const client = useRef<EmbedClient | null>(null);
   const isLoaded = useRef(false);
   const pendingMoment = useRef<string | null>(null);
+  const lastMoment = useRef<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
 
@@ -264,6 +273,8 @@ function TabbedPanel({
       ready: (message) => {
         clearTimeout(timer);
         isLoaded.current = false;
+        // A reload restarts the replay: seek back to where the reader was.
+        pendingMoment.current = lastMoment.current;
         if (!readyFor(message, 'replay', lesson, sdk)) return fail();
         capture ??= fetchCapture();
         capture.then((value) => {
@@ -314,6 +325,8 @@ function TabbedPanel({
       (detail) => {
         const snippet = revealSnippet(panel.current, detail);
         setTab('replay');
+        // The reader jumped away from the button: carry focus to the Replay.
+        tabRefs.current.get('replay')?.focus({ preventScroll: true });
         const header = snippet?.dataset['header'];
         if (header)
           setSnippetFile((last) => ({
@@ -321,6 +334,7 @@ function TabbedPanel({
             seq: (last?.seq ?? 0) + 1,
           }));
         if (!hasCapture || failed) return;
+        lastMoment.current = detail.moment;
         setNear(true);
         if (isLoaded.current && client.current) {
           client.current.post({
@@ -419,7 +433,7 @@ function TabbedPanel({
   });
 
   return (
-    <div className={styles.panel} ref={panel}>
+    <div className={styles.panel} data-component="workbench-panel" ref={panel}>
       <div className={styles.bar}>
         <div
           role="tablist"
