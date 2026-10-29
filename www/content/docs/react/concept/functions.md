@@ -132,6 +132,8 @@ For a remote write, enforce identity, authorization, and validation on the serve
 
 This tool needs no arguments. Add `schema` when the model must supply values, and validate application rules inside the handler. Pass the provided `AbortSignal` to any asynchronous work that supports cancellation.
 
+<a id="usetooloptions"></a>
+
 #### `UseToolOptions`
 
 | Option        | Type                   | Required | Description                                                                    |
@@ -144,6 +146,8 @@ This tool needs no arguments. Add `schema` when the model must supply values, an
 
 ---
 
+<a id="schema-inputs"></a>
+
 #### Schema Inputs
 
 The `schema` option accepts:
@@ -155,6 +159,8 @@ The `schema` option accepts:
 Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
 
 ---
+
+<a id="api-reference"></a>
 
 #### API Reference
 
@@ -241,6 +247,8 @@ always `complete`. `outcome` says how it ended:
 A `provider` call is never dispatched to a client tool, even one with the
 same name.
 
+<a id="the-b4.step-contract"></a>
+
 #### The `b4.step` Contract
 
 An AG-UI server describes its tool calls by sending a `b4.step` step record
@@ -250,6 +258,8 @@ records into the matching `serverToolCalls` entry, so any server that emits
 `b4.step`, such as a [B4.run](https://b4.run/docs/ag-ui) agent, has its steps
 appear automatically, with no client code to add. Servers that do not emit it
 keep working: the fields are simply absent.
+
+<a id="display-tool-steps"></a>
 
 #### Display Tool Steps
 
@@ -301,6 +311,8 @@ the same clock. Skip the delay for restored history or unknown timing. If your
 application refreshes elapsed labels, it owns the clock and scheduling; the
 one-second constant does not install a timer. `formatDuration(undefined)` leaves
 unknown duration unknown. See [turn summaries](/docs/react/concept/activities#derive-a-work-summary) for explicit turn-clock options.
+
+<a id="citations"></a>
 
 #### Citations
 

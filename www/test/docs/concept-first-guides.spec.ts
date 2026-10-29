@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { expect, test } from 'vitest';
+import { parseMarkdown } from '../../src/lib/markdown';
 import { CONCEPT_DIAGRAMS } from '../../src/components/elements/ConceptDiagram';
 
 const root = resolve(import.meta.dirname, '../../content/docs');
@@ -58,3 +59,36 @@ test('every authored diagram selects a supported architecture flow', () => {
 
   expect(used.size).toBeGreaterThanOrEqual(8);
 });
+
+test.each(['angular', 'react'])(
+  '%s keeps deep section bookmarks after nesting workbench headings',
+  async (sdk) => {
+    const required = {
+      activities: ['derive-a-work-summary'],
+      functions: [
+        sdk === 'react' ? 'usetooloptions' : 'createtooloptions',
+        'schema-inputs',
+        'api-reference',
+        'the-b4.step-contract',
+        'display-tool-steps',
+        'citations',
+      ],
+    };
+    for (const [slug, anchors] of Object.entries(required)) {
+      const source = readFileSync(
+        join(root, sdk, 'concept', `${slug}.md`),
+        'utf8',
+      );
+      const { tree } = await parseMarkdown(source);
+      const ids = new Set<string>();
+      const visit = (node: typeof tree | (typeof tree.children)[number]) => {
+        if (node.type === 'element' && typeof node.properties.id === 'string')
+          ids.add(node.properties.id);
+        if ('children' in node) for (const child of node.children) visit(child);
+      };
+      visit(tree);
+      for (const anchor of anchors)
+        expect(ids.has(anchor), `${sdk}/${slug}#${anchor}`).toBe(true);
+    }
+  },
+);

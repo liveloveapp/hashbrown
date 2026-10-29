@@ -127,6 +127,8 @@ An activity does not execute an action or prove an external task succeeded. Emit
 
 Use `groupTurns` from `@hashbrownai/react` when an activity belongs beside its assistant message or tool call. Each turn exposes `activitiesByAssistant`, `activitiesByToolCall`, and `unlinkedActivities`, alongside its user, assistants, and errors. The helper is pure and preserves input order in each group. Messages before the first user form a turn without a user.
 
+<a id="derive-a-work-summary"></a>
+
 #### Derive a Work Summary
 
 `groupTurns` accepts UI chat messages directly. `summarizeTurn` returns plain
