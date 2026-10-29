@@ -149,7 +149,8 @@ export const WORKBENCH_LESSON_FILES: Readonly<
       'runtime/workbench-javascript-session.ts',
     ],
   ),
-  // The page teaches the standalone LocalModels example the wrapper wraps.
+  // The wrapper first, then the page's standalone example files, which its
+  // snippets quote but the wrapper does not import.
   'local-models': lesson(
     [react('LocalModelsWorkbench.tsx'), react('LocalModels.tsx')],
     [angular('local-models-workbench.ts'), angular('local-models.ts')],

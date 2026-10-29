@@ -111,7 +111,7 @@ export function WorkbenchSourceView({
   if (load.status === 'failed') {
     return (
       <div className={styles.loopback}>
-        <p>Couldn&apos;t load the source. Read it on GitHub:</p>
+        <p role="status">Couldn&apos;t load the source. Read it on GitHub:</p>
         <ul className={styles.links}>
           {source.files.map((item) => (
             <li key={item.path}>
@@ -136,7 +136,7 @@ export function WorkbenchSourceView({
             <button
               type="button"
               className={styles.tab}
-              aria-pressed={item.path === selected}
+              aria-current={item.path === selected || undefined}
               onClick={() => setSelected(item.path)}
             >
               {item.path}
@@ -160,11 +160,15 @@ export function WorkbenchSourceView({
             <div
               ref={code}
               className={styles.code}
+              // Focusable so keyboard users can scroll a long file.
+              tabIndex={0}
+              role="region"
+              aria-label={`${file.path} source`}
               // Highlighted at build time from checked-in example source.
               dangerouslySetInnerHTML={{ __html: marked }}
             />
           ) : (
-            <p className={styles.note}>
+            <p className={styles.note} role="status">
               {load.status === 'loaded'
                 ? "This file isn't in the published source."
                 : 'Loading source…'}

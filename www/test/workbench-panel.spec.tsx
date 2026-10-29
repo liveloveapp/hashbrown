@@ -471,6 +471,9 @@ test('Source tab shows files, marks highlighted lines and links to GitHub at the
       anchor.textContent?.includes('View on GitHub'),
     );
   const firstLink = link()?.getAttribute('href');
+  const region = panel.querySelector('[role="region"]');
+  const regionLabel = region?.getAttribute('aria-label');
+  const current = panel.querySelector('[aria-current="true"]')?.textContent;
   fireEvent.click(
     [...panel.querySelectorAll('button')].find(
       (button) => button.textContent === 'runtime/workbench.ts',
@@ -496,6 +499,9 @@ test('Source tab shows files, marks highlighted lines and links to GitHub at the
     panel.querySelector('[data-line="1"]')?.hasAttribute('data-highlighted'),
   ).toBe(false);
   expect(firstLink).toBe(`${blob}/react/src/Workbench.tsx#L2-L3`);
+  expect(region?.getAttribute('tabindex')).toBe('0');
+  expect(regionLabel).toBe('react/src/Workbench.tsx source');
+  expect(current).toBe('react/src/Workbench.tsx');
   expect(link()?.textContent).toBe('View on GitHub ↗');
   expect(link()?.getAttribute('href')).toBe(`${blob}/runtime/workbench.ts`);
   expect(panel.querySelectorAll('[data-highlighted]')).toHaveLength(0);
