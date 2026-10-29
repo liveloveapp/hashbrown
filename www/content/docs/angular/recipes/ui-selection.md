@@ -146,7 +146,7 @@ This is different from [Generative UI](/docs/angular/concept/components), where 
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="angular/src/app/selection-workbench.ts">
+<hb-code-example header="angular/src/app/selection-workbench.ts" moment="selection-result-1">
 
 ```ts
 protected readonly resource = uiDecisionResource({

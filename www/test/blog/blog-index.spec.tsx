@@ -30,6 +30,16 @@ test('the blog index renders every post, newest first', () => {
   expect(postHrefs(html)[0]).toBe('/blog/2026-10-27-decision-models-with-hashbrown');
 });
 
+test('the blog index is titled by one h1', () => {
+  const posts = listBlogPosts();
+
+  const html = renderToStaticMarkup(<BlogIndex posts={posts} />);
+
+  expect([...html.matchAll(/<h1[^>]*>([^<]*)<\/h1>/g)].map((m) => m[1])).toEqual([
+    'Blog',
+  ]);
+});
+
 test('the blog index renders the filter buttons with all blogs selected', () => {
   const posts = listBlogPosts();
 

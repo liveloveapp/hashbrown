@@ -15,6 +15,25 @@
   max-width: 1024px;
 }
 
+/* The page title and the filters share a row, as on the API index. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Longhands: Next's minifier drops font-variation-settings next to `font`. */
+.controls > h1 {
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 32px;
+  font-variation-settings: 'wght' 750;
+}
+
 .filters {
   display: none;
   align-items: center;
@@ -96,10 +115,6 @@
 }
 
 @media screen and (min-width: 1024px) {
-  .bleed {
-    padding: 64px 32px;
-  }
-
   .filters {
     display: flex;
   }

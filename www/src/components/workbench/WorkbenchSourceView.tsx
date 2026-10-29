@@ -64,6 +64,11 @@ export interface WorkbenchSourceViewProps {
   readonly load: WorkbenchSourceLoad;
   /** Whether the Source tab is showing, so it can scroll to a highlight. */
   readonly visible: boolean;
+  /**
+   * A file to show, from a code example's See it run. Each new `seq` selects
+   * `path` again, even after the reader chose another file.
+   */
+  readonly select?: { readonly path: string; readonly seq: number } | null;
 }
 
 /**
@@ -75,6 +80,7 @@ export function WorkbenchSourceView({
   source,
   load,
   visible,
+  select,
 }: WorkbenchSourceViewProps) {
   const [selected, setSelected] = useState(
     () =>
@@ -83,6 +89,15 @@ export function WorkbenchSourceView({
         source.files[0]
       )?.path,
   );
+  // Adjust state while rendering, not in an effect: a new request selects
+  // its file before the next paint.
+  const [handledSeq, setHandledSeq] = useState<number | undefined>(undefined);
+  if (select && select.seq !== handledSeq) {
+    setHandledSeq(select.seq);
+    if (source.files.some((item) => item.path === select.path)) {
+      setSelected(select.path);
+    }
+  }
   const file = source.files.find((item) => item.path === selected);
   const html =
     load.status === 'loaded'
