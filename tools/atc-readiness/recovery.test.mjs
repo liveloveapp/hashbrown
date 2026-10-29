@@ -1,0 +1,196 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { EventEmitter } from 'node:events';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createProviderProxy } from './provider-proxy.mjs';
+import { ownedWorker, childEnvironment, bounded } from './owner-worker.mjs';
+import { reserveRecoveryRequest } from './runtime-recovery.mjs';
+
+test('child environment excludes ambient credentials', () => {
+  process.env.DATABASE_URL = 'ambient-secret';
+  process.env.OPENAI_API_KEY = 'ambient-key';
+  assert.deepEqual(childEnvironment(), {
+    PATH: process.env.PATH,
+    NODE_NO_WARNINGS: '1',
+  });
+});
+test('bounded rejects a stalled cleanup', async () => {
+  await assert.rejects(
+    bounded(
+      new Promise(() => {
+        /* Deliberately stalled fixture. */
+      }),
+      10,
+      'cleanup',
+    ),
+    /cleanup timed out/,
+  );
+});
+test('IPC timeout and worker exit reject pending operations and cleanup resumes owned PID', async () => {
+  const child = new EventEmitter();
+  child.exitCode = null;
+  child.signalCode = null;
+  const signals = [];
+  child.send = () => {
+    /* Deliberately unresponsive IPC fixture. */
+  };
+  child.kill = (s) => {
+    signals.push(s);
+    if (s === 'SIGKILL') {
+      child.signalCode = s;
+      child.emit('exit', null, s);
+    }
+    return true;
+  };
+  const worker = ownedWorker(child, { timeoutMs: 10 });
+  await assert.rejects(worker.command('stalled'), /timed out/);
+  const pending = worker.command('pending');
+  child.emit('exit', 1, null);
+  await assert.rejects(pending, /exited/);
+  await worker.close();
+  assert.equal(signals[0], 'SIGCONT');
+  assert.equal(signals.at(-1), 'SIGKILL');
+});
+test('recovery budget survives separate invocations and stops at sixteen', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'recovery-budget-'));
+  try {
+    for (let i = 1; i <= 16; i++)
+      assert.equal(await reserveRecoveryRequest(dir, 'case'), i);
+    await assert.rejects(reserveRecoveryRequest(dir, 'case'), /budget/);
+    assert.equal(
+      JSON.parse(await readFile(join(dir, 'recovery-budget.json'), 'utf8'))
+        .attempts.length,
+      16,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test('proxy forwards authentication and exact bytes only on explicit forward, holds reply until release, closes sockets', async () => {
+  const bytes = Buffer.from(
+    'data: {"type":"response.completed","response":{"id":"resp_real","status":"completed","max_output_tokens":4096,"output":[]}}\n\n',
+  );
+  let forwarded = 0;
+  const proxy = await createProviderProxy({
+    apiKey: 'private-key',
+    schema: { type: 'object' },
+    upstreamBase: 'https://provider.example/v1',
+    fetchImpl: async (url, init) => {
+      forwarded++;
+      assert.equal(url, 'https://provider.example/v1/responses');
+      assert.equal(init.headers.get('authorization'), 'Bearer private-key');
+      assert.equal(
+        init.body.toString(),
+        JSON.stringify({
+          stream: true,
+          max_output_tokens: 4096,
+          text: { format: { schema: { type: 'object' } } },
+        }),
+      );
+      return new Response(bytes, {
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    },
+  });
+  try {
+    const response = fetch(proxy.baseUrl + '/responses', {
+      method: 'POST',
+      headers: { authorization: 'Bearer private-key' },
+      body: JSON.stringify({
+        stream: true,
+        max_output_tokens: 4096,
+        text: { format: { schema: { type: 'object' } } },
+      }),
+    });
+    await proxy.waitCaptured();
+    assert.equal(forwarded, 0);
+    await proxy.forward();
+    assert.equal(forwarded, 1);
+    await proxy.release();
+    assert.deepEqual(Buffer.from(await (await response).arrayBuffer()), bytes);
+    assert.equal(proxy.receipt().responseId, 'resp_real');
+  } finally {
+    await proxy.close();
+  }
+});
+test('proxy rejects incorrect authentication without forwarding', async () => {
+  let forwarded = false;
+  const proxy = await createProviderProxy({
+    apiKey: 'right',
+    schema: {},
+    upstreamBase: 'https://provider.example/v1',
+    fetchImpl: async () => {
+      forwarded = true;
+    },
+  });
+  try {
+    const response = await fetch(proxy.baseUrl + '/responses', {
+      method: 'POST',
+      headers: { authorization: 'Bearer wrong' },
+      body: '{}',
+    });
+    assert.equal(response.status, 502);
+    assert.equal(forwarded, false);
+  } finally {
+    await proxy.close();
+  }
+});
+
+test('manifest mismatch rejects before dependency lookup or database access', async () => {
+  const { storageContext } = await import('./storage.mjs');
+  await assert.rejects(
+    storageContext({ manifest: {}, runtimeRoot: '/does-not-exist' }, {}),
+    /initialization rejected/,
+  );
+});
+test('schema mismatch rejects before any runtime, credential or database access', async () => {
+  const { runRuntimeRecovery } = await import('./runtime-recovery.mjs');
+  const dir = await mkdtemp(join(tmpdir(), 'recovery-schema-'));
+  try {
+    const { writeFile } = await import('node:fs/promises');
+    const schemaPath = join(dir, 'schema.json');
+    await writeFile(schemaPath, '{}');
+    await assert.rejects(
+      runRuntimeRecovery(
+        'kill',
+        { schemaPath, runtimeRoot: '/does-not-exist' },
+        { schemaSha256: 'wrong' },
+      ),
+      /Expected values/,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test('proxy incomplete real provider result cannot be released and cleanup still closes', async () => {
+  const proxy = await createProviderProxy({
+    apiKey: 'key',
+    schema: {},
+    upstreamBase: 'https://provider.example/v1',
+    fetchImpl: async () =>
+      new Response('data: {"type":"response.incomplete"}\n\n', {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+  });
+  const request = fetch(proxy.baseUrl + '/responses', {
+    method: 'POST',
+    headers: { authorization: 'Bearer key' },
+    body: JSON.stringify({
+      stream: true,
+      max_output_tokens: 4096,
+      text: { format: { schema: {} } },
+    }),
+  }).catch(() => {
+    /* Expected aborted loopback request on cleanup. */
+  });
+  try {
+    await proxy.waitCaptured();
+    await assert.rejects(proxy.forward());
+    assert.throws(() => proxy.release(), /real completed/);
+  } finally {
+    await proxy.close();
+    await request;
+  }
+});
