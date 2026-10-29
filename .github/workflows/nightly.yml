@@ -6,6 +6,10 @@ on:
     # Runs every night at 00:00 UTC (midnight)
     - cron: '0 0 * * *'
 
+env:
+  # Manual runs on other refs must not receive shared-cache write access.
+  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && github.ref_protected && secrets.NX_CLOUD_ACCESS_TOKEN || '' }}
+
 jobs:
   build:
     name: Build and Test
