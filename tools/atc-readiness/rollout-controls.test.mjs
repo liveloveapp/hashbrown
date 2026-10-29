@@ -87,6 +87,7 @@ function fixture(t, capUsd = 100) {
     }),
   };
   const options = {
+    phase: 'timeout',
     runId: randomUUID(),
     observationSource,
     now: () => time,
@@ -288,7 +289,7 @@ test('fixed aggregate and phase caps exhaust at 6/6/4 without resetting', async 
     await withRolloutRun(
       f.stage,
       f.expected,
-      { ...f.options, runId: randomUUID() },
+      { ...f.options, phase, runId: randomUUID() },
       async (control) => {
         for (let index = 0; index < count; index++)
           await control.dispatch(f.request(phase), pass);
@@ -361,11 +362,14 @@ test('phase deadline blocks dispatch and cleanup always runs', async (t) => {
     closed = true;
   };
 
-  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
-    await control.dispatch(f.request(), pass);
-    f.advance(1200000);
-    await assert.rejects(control.dispatch(f.request(), pass), /deadline/);
-  });
+  await assert.rejects(
+    withRolloutRun(f.stage, f.expected, f.options, async (control) => {
+      await control.dispatch(f.request(), pass);
+      f.advance(1200000);
+      await assert.rejects(control.dispatch(f.request(), pass), /deadline/);
+    }),
+    /deadline/,
+  );
 
   assert.equal(closed, true);
 });
@@ -757,4 +761,117 @@ test('phase deadline and two-fault ceiling remain durable across separate runs',
   );
 
   assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 2);
+});
+
+test('durable phase deadline bounds drain and snapshots across separate CLI runs', async (t) => {
+  const f = fixture(t);
+  f.options.phase = 'timeout';
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  await withRolloutRun(f.stage, f.expected, f.options, (control) =>
+    control.dispatch(f.request(), pass),
+  );
+  f.advance(1180000);
+  let cleaned = false;
+  f.options.cleanup = async () => {
+    cleaned = true;
+  };
+
+  await assert.rejects(
+    withRolloutRun(
+      f.stage,
+      f.expected,
+      { ...f.options, runId: randomUUID() },
+      async (control) => {
+        await control.dispatch(f.request(), pass);
+        f.advance(60000);
+        return { passed: true };
+      },
+    ),
+    /deadline/,
+  );
+
+  assert.equal(cleaned, true);
+});
+
+test('late cleanup cannot turn an expired phase into a successful result', async (t) => {
+  const f = fixture(t);
+  f.options.phase = 'timeout';
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  f.options.cleanup = async () => {
+    f.advance(1200001);
+  };
+
+  await assert.rejects(
+    withRolloutRun(f.stage, f.expected, f.options, async () => ({
+      passed: true,
+    })),
+    /deadline/,
+  );
+});
+
+test('one owned run is explicitly bound to exactly one phase', async (t) => {
+  const f = fixture(t);
+  f.options.phase = 'timeout';
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+
+  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
+    await assert.rejects(
+      control.dispatch(f.request('rollback'), pass),
+      /phase/,
+    );
+  });
+
+  assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 0);
+});
+
+test('existing phase deadline bounds a stalled drain with actual timer cancellation', async (t) => {
+  const f = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  await withRolloutRun(f.stage, f.expected, f.options, (control) =>
+    control.dispatch(f.request(), pass),
+  );
+  f.advance(1180000);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let entered;
+  const ready = new Promise((resolve) => {
+    entered = resolve;
+  });
+  let aborted = false;
+  const run = withRolloutRun(
+    f.stage,
+    f.expected,
+    { ...f.options, runId: randomUUID() },
+    async (control) => {
+      control.signal.addEventListener(
+        'abort',
+        () => {
+          aborted = true;
+        },
+        { once: true },
+      );
+      entered();
+      return new Promise(() => undefined);
+    },
+  );
+  await ready;
+
+  t.mock.timers.tick(20000);
+
+  await assert.rejects(run, /deadline/);
+  assert.equal(aborted, true);
+});
+
+test('mutating caller options cannot change the phase owned by an active run', async (t) => {
+  const f = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+
+  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
+    f.options.phase = 'rollback';
+    await assert.rejects(
+      control.dispatch(f.request('rollback'), pass),
+      /phase/,
+    );
+  });
+
+  assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 0);
 });

@@ -375,17 +375,19 @@ function bounded(operation, durationMs, signal) {
  * All reservations remain outstanding conservatively, including successful/failed/inconclusive ones.
  * @param {string} stage - Private ledger directory.
  * @param {object} expected - Independent approval and source evidence (same as initialization).
- * @param {object} options - UUID runId, reviewed observationSource, cleanup; optional test clock/sleep.
- * @param {Function} execute - Receives dispatch(request, operation); operation receives signal/deadlineMs/ordinal.
+ * @param {object} options - Required phase, UUID runId, reviewed observationSource, cleanup; optional test clock/sleep.
+ * @param {Function} execute - Receives phase signal/deadlineMs and dispatch(request, operation); operation receives signal/deadlineMs/ordinal.
  * @returns {Promise<unknown>} Scenario result after owned-resource cleanup.
  */
 export async function withRolloutRun(stage, expected, options, execute) {
   const unlock = lock(stage);
+  const phase = options?.phase;
+  const runId = options?.runId;
   const now = options?.now ?? Date.now;
   const sleep =
     options?.sleep ?? ((ms, signal) => delay(ms, undefined, { signal }));
   const runController = new AbortController();
-  const runDeadline = now() + 1200000;
+  let runDeadline = now() + 1200000;
   const pending = new Set();
   let busy = false;
   let stopped = false;
@@ -395,7 +397,7 @@ export async function withRolloutRun(stage, expected, options, execute) {
     try {
       await bounded(
         () => options?.cleanup?.(),
-        Math.min(55000, runDeadline - now()),
+        runDeadline > now() ? Math.min(55000, runDeadline - now()) : 55000,
       );
     } catch (error) {
       retainLock = true;
@@ -403,12 +405,14 @@ export async function withRolloutRun(stage, expected, options, execute) {
     } finally {
       unlock(retainLock);
     }
+    if (now() >= runDeadline) fail('phase deadline exhausted during cleanup');
   };
   try {
-    load(stage, expected);
+    const initial = load(stage, expected);
     const source = options?.observationSource;
+    if (!Object.hasOwn(CAPS, phase)) fail('run phase identity invalid');
     if (
-      !UUID.test(options?.runId) ||
+      !UUID.test(runId) ||
       typeof options?.cleanup !== 'function' ||
       typeof execute !== 'function' ||
       typeof source?.read !== 'function' ||
@@ -417,6 +421,21 @@ export async function withRolloutRun(stage, expected, options, execute) {
       source.adapterSha256 !== expected.spend.adapterSha256
     )
       fail('spend adapter/run identity invalid');
+    const phaseState = initial.phases[phase];
+    const phaseStart = phaseState.startedAtMs ?? now();
+    runDeadline = Math.min(runDeadline, phaseStart + 1200000);
+    if (now() < phaseStart || now() >= runDeadline)
+      fail('phase deadline exhausted');
+    if (phaseState.stopped) fail('phase stopped');
+    if (phaseState.startedAtMs === null) {
+      save(stage, {
+        ...initial,
+        phases: {
+          ...initial.phases,
+          [phase]: { ...phaseState, startedAtMs: phaseStart },
+        },
+      });
+    }
     const dispatchOne = async (request, operation) => {
       if (busy) {
         stopped = true;
@@ -431,6 +450,7 @@ export async function withRolloutRun(stage, expected, options, execute) {
         if (
           !keys(request, 'phase,id,kind,threadId') ||
           !Object.hasOwn(CAPS, request.phase) ||
+          request.phase !== phase ||
           !UUID.test(request.id) ||
           !['normal', 'fault', 'conflict'].includes(request.kind) ||
           (request.kind === 'fault' && request.phase !== 'timeout') ||
@@ -438,7 +458,7 @@ export async function withRolloutRun(stage, expected, options, execute) {
           !request.threadId ||
           typeof operation !== 'function'
         )
-          fail('request identity invalid');
+          fail('request phase/identity invalid');
         const rows = ledger.attempts.filter(
           (row) => row.phase === request.phase,
         );
@@ -502,7 +522,7 @@ export async function withRolloutRun(stage, expected, options, execute) {
         const row = {
           ordinal: ledger.attempts.length + 1,
           id: request.id,
-          runId: options.runId,
+          runId,
           phase: request.phase,
           kind: request.kind,
           threadId: request.threadId,
@@ -577,10 +597,18 @@ export async function withRolloutRun(stage, expected, options, execute) {
       return promise;
     };
     const result = await bounded(
-      () => execute(Object.freeze({ dispatch })),
+      () =>
+        execute(
+          Object.freeze({
+            dispatch,
+            signal: runController.signal,
+            deadlineMs: runDeadline,
+          }),
+        ),
       runDeadline - now(),
       runController.signal,
     );
+    if (now() >= runDeadline) fail('phase deadline exhausted after execution');
     if (pending.size) fail('unawaited request; run stopped');
     return result;
   } finally {
