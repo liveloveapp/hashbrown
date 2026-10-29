@@ -250,6 +250,15 @@ function percentile(values, p) {
   return sorted.length ? sorted[Math.ceil(sorted.length * p) - 1] : null;
 }
 
+/** Capture a final budget diagnostic without preventing owned-resource cleanup evidence. */
+export function readFinalLoadBudget(stage, read = readLoadBudget) {
+  try {
+    return { budget: read(stage), error: null };
+  } catch {
+    return { budget: null, error: 'load budget unavailable during cleanup' };
+  }
+}
+
 /** Run the fixed approved load envelope after validating independent deployment/source evidence. */
 export async function runLoad(options, expected, externalSignal) {
   const initialBudget = initializeLoadBudgetFromReceipts(
@@ -499,7 +508,12 @@ export async function runLoad(options, expected, externalSignal) {
         errors.push('owned pool/store close failed');
       }
     }
-    evidence.budget = readLoadBudget(options.stagingDirectory);
+    const finalBudget = readFinalLoadBudget(options.stagingDirectory);
+    evidence.budget = finalBudget.budget;
+    if (finalBudget.error) {
+      evidence.budgetError = finalBudget.error;
+      errors.push(finalBudget.error);
+    }
     evidence.databaseErrors = readinessPoolErrors(pool);
     if (evidence.databaseErrors.length)
       errors.push('owned database emitted idle-client errors');

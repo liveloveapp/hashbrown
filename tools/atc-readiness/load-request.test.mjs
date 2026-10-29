@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runLoadRequest, completionCountInWindow } from './load.mjs';
+import {
+  runLoadRequest,
+  completionCountInWindow,
+  readFinalLoadBudget,
+} from './load.mjs';
 
 function fixture({
   admissions = 0,
@@ -347,4 +351,16 @@ test('published reasoning-plus-text messages retain full snapshots while validat
 
   assert.equal(result.firstPostEofAdmissions, 0);
   assert.equal(result.pinnedCap, 4096);
+});
+
+test('budget failure during final evidence capture cannot escape cleanup recording', () => {
+  const read = () => {
+    throw Error('fixture-token ledger locked');
+  };
+
+  const result = readFinalLoadBudget('/private/not-read', read);
+
+  assert.equal(result.budget, null);
+  assert.equal(result.error, 'load budget unavailable during cleanup');
+  assert(!JSON.stringify(result).includes('fixture-token'));
 });
