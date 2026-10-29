@@ -94,3 +94,9 @@
 .content pre {
   margin: 0;
 }
+
+/* The snippet a reader just jumped from: See it run marks it. */
+.example[data-highlighted] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

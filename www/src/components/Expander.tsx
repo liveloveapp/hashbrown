@@ -15,7 +15,9 @@ export function Expander({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className={open ? `${styles.expander} ${styles.open}` : styles.expander}>
+    <div
+      className={open ? `${styles.expander} ${styles.open}` : styles.expander}
+    >
       <button
         type="button"
         className={styles.title}
