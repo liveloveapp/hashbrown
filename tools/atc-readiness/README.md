@@ -76,3 +76,106 @@ checkpoint write, and stale streams may emit bytes before their terminal outcome
 
 Owned synthetic rows are retained. No global pruning, production backend change,
 package publication, or production enablement is part of these commands.
+
+## Managed platform timeout (programmatic, reviewed operator only)
+
+`managed-timeout.mjs` is import-safe. Its `runManagedTimeout(options, expected,
+adapters)` entry point uses `withRolloutRun` for every POST: a normal seed, one
+fault attempt, an optional conflict, and a normal successor. Reservations and
+spend observations use the existing reviewed timeout-phase ledger (at most six
+phase requests and two fault reservations); there are no retries. The module
+creates no approval, budget observation, platform log API, or token authority.
+There is no standalone hosted CLI until a private operator supplies reviewed
+spend and exact-request platform-log adapters.
+
+Keep normal expected provenance independent of the candidate normal manifest.
+The normal context is the context above, plus `faultFunctionTreePath` (the fault
+copy's complete `functions` directory), `faultOutputTreePath` (its complete
+`.vercel/output`), `faultArtifactPath` (its unchanged bundled runtime), and
+`faultManifest` (a separate candidate fault provenance object). Independent
+expected provenance adds `fault`:
+
+```js
+{
+  sourceCommit, project, // exactly the normal reviewed source/project/team
+  deployment: { id, origin, target: 'preview', readyState: 'READY' },
+  normalTreeSha256, faultTreeSha256,
+  normalConfigSha256, faultConfigSha256,
+  outputTreeSha256, artifactSha256,
+}
+```
+
+The fault preview ID and HTTPS origin must differ from both normal READY
+previews. The module checks the entire copied output's paths, file types, modes,
+and bytes, the shared `verifyTimeoutVariant` verifier, raw full output/function
+hashes, and unchanged runtime artifact. Only
+`functions/api/run.func/.vc-config.json` may change, with the exact literal
+`maxDuration` value changing from 60 to 1. Normal source cleanliness, lock and
+installed packages, manifests and dedicated DSN remain guarded by
+`storageContext` before pool creation. No fake provider, artificial delay, or
+product fault endpoint is used.
+
+The private operator must supply:
+
+```js
+await runManagedTimeout(context, independentlyReviewedExpected, {
+  expectedBudget,
+  runId,
+  observationSource,
+  platformProof: async ({ deployment, request, signal, deadlineMs }) => {
+    // Query authenticated logs for this exact owned deployment/request.
+    // Return null when proof is absent; never infer timeout from client abort.
+    return proof;
+  },
+});
+```
+
+`expectedBudget` and `observationSource` follow `rollout-controls.mjs`.
+`platformProof` is required and must honor its supplied abort/deadline bounds.
+Accepted proof has `source: 'owned-deployment-request-logs'`, the exact
+`deploymentId`, `origin`, and HTTP `requestId` captured from `x-vercel-id`,
+`code: 'FUNCTION_INVOCATION_TIMEOUT'`, and numeric `timestampMs` within that
+request's observed start/end. The caller must establish that its adapter really
+queries those owned platform logs. A structured object alone is not hosted
+proof. Request receipts retain status, Vercel request/error headers, bounded
+error-body digest/truncation and transport-failure classification. Attempts retain run/ordinal identities and
+genuine terminal/checkpoint provider usage, model and response IDs where present.
+Unavailable usage remains `null`; HTTP counts do not establish upstream billed
+attempts or spend. Response text
+and signed cookies are recursively redacted and never persisted.
+
+The fault request must be observed pending with an actual active admission and
+its durable new input. Missing log proof or an observed owner, client timeout,
+and naturally fast valid completion are `inconclusive` and consume the fault
+reservation. A proven timeout with immediate admission release is
+`graceful-timeout-cleanup`. A surviving same-owner lease requires one real 409
+with `Retry-After: 1`, bounded wholly before expiry using DB clocks, followed by
+a normal managed successor only after natural DB-clock expiry; this is
+`orphan-lease-recovered`. Unexpected failures stop qualification and preserve a
+partial receipt. Check `qualified === true` and successful cleanup, never the
+classification label alone.
+
+After successful EOF, the first DB query snapshots admissions once; a nonzero
+count fails without polling. Complete tuple/thread hashes, physical checkpoint
+and pending-write records, full message prefixes, exactly-once new input,
+isolated provider response IDs and the 4096 token cap must remain valid. The
+same full snapshot must be unchanged after at least 75 seconds. The control's
+signal/deadline bounds reads, drains, precondition polling and waits. Owned HTTP
+requests and storage resources close even after partial initialization or
+protocol failure; no workers are created. Synthetic audit rows remain intact.
+Receipts are private `managed-timeout-RUN_UUID.json` files. Keep the caller,
+credentials and pulled environment private, then remove temporary credentials
+and environment files after receipt review and the credential-value scan.
+
+Offline verification (no hosted/model calls):
+
+```sh
+node --test tools/atc-readiness/*.test.mjs
+npx eslint tools/atc-readiness/*.mjs
+node --check tools/atc-readiness/managed-timeout.mjs
+node --check tools/atc-readiness/managed-timeout-io.mjs
+npx prettier --check tools/atc-readiness/managed-timeout*.mjs tools/atc-readiness/README.md
+```
+
+The controlled loopback HTTP and dependency-spy tests exercise protocol/IO
+ordering and failure handling. They do not establish hosted timeout proof.
