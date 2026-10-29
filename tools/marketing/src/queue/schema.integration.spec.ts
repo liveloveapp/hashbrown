@@ -35,7 +35,9 @@ async function insertWeek(): Promise<string> {
      returning id`,
     [WEEK_START],
   );
-  return rows[0]!.id;
+  const [week] = rows;
+  if (!week) throw new Error('marketing_weeks upsert returned no row');
+  return week.id;
 }
 
 function insertPost(weekId: string, status = 'draft') {
