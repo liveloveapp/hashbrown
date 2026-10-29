@@ -191,7 +191,11 @@ export function preparedRecord(output, field) {
 }
 
 /** Defines the closed ordered acceptance graph; every command is executed at most once. */
-export function acceptancePlan(pointer, npmMetadata) {
+export function acceptancePlan(pointer, npmMetadata, profile = 'full') {
+  assert.ok(
+    profile === 'full' || profile === 'pr',
+    'Explicit acceptance profile required',
+  );
   const metadata = ['--metadata', pointer];
   const shared = [...metadata, '--npm-metadata', npmMetadata];
   const browser = [
@@ -217,7 +221,9 @@ export function acceptancePlan(pointer, npmMetadata) {
       10,
     ),
     phase('upgrade', [path.join(here, 'upgrade-runner.mjs'), ...metadata], 10),
-    phase('matrix', [...browser, ...shared], 60),
+    profile === 'pr'
+      ? phase('smoke', [...browser, ...shared, '--smoke'], 15)
+      : phase('matrix', [...browser, ...shared], 60),
     phase('regressions', [...browser, ...shared, '--regressions'], 7),
     phase(
       'final-qualification',
@@ -428,13 +434,20 @@ function failureMessage(error) {
     : sanitize(error.message);
 }
 
-/** Qualifies one fresh candidate through every approved external consumer acceptance boundary. */
-export async function runAcceptance() {
-  assert.equal(
-    process.argv.length,
-    2,
+/** Selects only the full or bounded PR profile; candidate reuse and arbitrary phase selection remain forbidden. */
+export function acceptanceProfile(args) {
+  if (args.length === 0) return 'full';
+  assert.deepEqual(
+    args,
+    ['--pr'],
     'Package acceptance accepts no candidate reuse or phase-selection arguments',
   );
+  return 'pr';
+}
+
+/** Qualifies one fresh candidate through every approved external consumer acceptance boundary. */
+export async function runAcceptance() {
+  const profile = acceptanceProfile(process.argv.slice(2));
   await validateAcceptanceInputs(repository);
   const temporary = await fs.realpath(
     await fs.mkdtemp(path.join(os.tmpdir(), 'hashbrown-package-gate-')),
@@ -454,6 +467,7 @@ export async function runAcceptance() {
   const pointer = path.join(temporary, 'candidate.json');
   const report = {
     schema: 1,
+    profile,
     started: new Date().toISOString(),
     phases: [],
     status: 'failed',
@@ -481,7 +495,7 @@ export async function runAcceptance() {
       ) + '\n',
     );
   try {
-    const preparation = acceptancePlan(pointer, '').slice(0, 2);
+    const preparation = acceptancePlan(pointer, '', profile).slice(0, 2);
     preparation[0].after = async () => {
       report.packInvocations++;
       candidate = await validateAcceptanceInputs(repository, pointer);
@@ -505,7 +519,7 @@ export async function runAcceptance() {
     };
     await executePhases(preparation, temporary, report, environment);
     await executePhases(
-      acceptancePlan(pointer, npm.metadataPath).slice(2),
+      acceptancePlan(pointer, npm.metadataPath, profile).slice(2),
       temporary,
       report,
       environment,
@@ -514,7 +528,7 @@ export async function runAcceptance() {
     assert.equal(await hashFile(pointer), report.candidate.descriptorSha256);
     const outcomes = {};
     for (const [kind, count] of [
-      ['matrix', 664],
+      profile === 'pr' ? ['smoke', 64] : ['matrix', 664],
       ['regressions', 6],
     ]) {
       const result = JSON.parse(
@@ -579,7 +593,7 @@ export async function runAcceptance() {
     report.outcomes = outcomes;
     report.documentationPrograms = 32;
     report.guardTiming = {};
-    for (const kind of ['matrix', 'regressions']) {
+    for (const kind of [profile === 'pr' ? 'smoke' : 'matrix', 'regressions']) {
       const rows = (
         await fs.readFile(
           path.join(temporary, 'browser', `${kind}-spawns.jsonl`),

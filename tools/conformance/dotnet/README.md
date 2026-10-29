@@ -41,6 +41,28 @@ traces are under `test-results/conformance/dotnet` and
 `playwright-report/conformance/dotnet`. Failed fixtures preserve bounded process
 logs and native model request evidence under the test-results diagnostics folder.
 
+## CI cost and browser coverage
+
+PR and main validation use `npx nx package-pr-acceptance dotnet-conformance`.
+This explicit PR profile prepares fresh NuGet and npm consumers, qualifies their
+actual loaded identities, compiles all 32 documented programs, runs upgrade
+checks, and verifies 64 essential browser cases across all eight
+framework/provider/model API combinations. All six native approval browser
+regressions and final consumer qualifications remain required. Reports identify
+this profile as `pr`; it does not claim full-matrix acceptance.
+
+`npx nx package-acceptance dotnet-conformance` retains the original complete
+664-case browser matrix and runs nightly. HTTP contract tests retain detailed
+protocol, ownership, recovery and durability regressions. The manual
+`npx nx provider-smoke dotnet-conformance` target runs the same eight essential
+source-host journeys per combination. Neither browser nor package acceptance
+target caches its results.
+
+Disposable HTTP fixture hosts are killed immediately during final cleanup;
+tests that exercise lifecycle or recovery explicitly initiate their own stop.
+NuGet restore always runs before cached builds so machine-specific assets are
+resolved locally; compiled outputs and deterministic checks can be reused.
+
 ## Native mixed-tool sessions
 
 The opt-in native composition is documented in the identical compiled

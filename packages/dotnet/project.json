@@ -80,7 +80,8 @@
           "eslint tools/*.mjs",
           "prettier --check \"tools/*.mjs\""
         ],
-        "cwd": "packages/dotnet"
+        "cwd": "packages/dotnet",
+        "forwardAllArgs": false
       },
       "dependsOn": ["build"]
     },
