@@ -18,20 +18,23 @@ export function BlogIndex({ posts }: { posts: readonly PostSummary[] }) {
   return (
     <div className={styles.host}>
       <div className={styles.bleed}>
-        <div className={styles.filters}>
-          {BLOG_FILTERS.map((filter) => (
-            <button
-              key={filter.query}
-              type="button"
-              className={filter === selected ? styles.selected : undefined}
-              aria-pressed={filter === selected}
-              onClick={() =>
-                setSelected((current) => toggleFilter(current, filter))
-              }
-            >
-              {filter.text}
-            </button>
-          ))}
+        <div className={styles.controls}>
+          <h1>Blog</h1>
+          <div className={styles.filters}>
+            {BLOG_FILTERS.map((filter) => (
+              <button
+                key={filter.query}
+                type="button"
+                className={filter === selected ? styles.selected : undefined}
+                aria-pressed={filter === selected}
+                onClick={() =>
+                  setSelected((current) => toggleFilter(current, filter))
+                }
+              >
+                {filter.text}
+              </button>
+            ))}
+          </div>
         </div>
         <div className={styles.posts}>
           {visible.map((post, i) => (
