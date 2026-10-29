@@ -1,19 +1,25 @@
 import type { RuntimeContext } from '@b4run/sdk';
 
+import {
+  createDispatchDependencies,
+  dispatchMarketing,
+} from '../../dispatcher.ts';
 import type { DispatchState } from './state.ts';
 
 /**
  * The dispatch workflow: one marketing tick per run, triggered by the cron.
- * It publishes nothing yet; it returns the current state with an empty
- * result.
+ * It leases the due approved posts, publishes them and returns the current
+ * state with the tick's result.
+ *
+ * @throws When a required environment variable is missing, or the lease fails.
  */
 export async function workflow(
   current: DispatchState,
   context: RuntimeContext,
 ): Promise<DispatchState> {
-  void context;
-  return {
-    ...current,
-    result: { leased: 0, published: 0, failed: 0, held: 0, operatorAlerts: [] },
-  };
+  const result = await dispatchMarketing(
+    createDispatchDependencies(process.env),
+    context.signal,
+  );
+  return { ...current, result };
 }
