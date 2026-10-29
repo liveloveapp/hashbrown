@@ -10,8 +10,8 @@
 .bleed {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 16px 16px 64px;
+  gap: var(--space-6);
+  padding: var(--page-top) var(--gutter) var(--section-gap);
   width: 100%;
 }
 
@@ -211,9 +211,8 @@
 
 @media screen and (min-width: 768px) {
   .bleed {
-    padding: 64px 32px;
     max-width: 768px;
-    gap: 64px;
+    gap: var(--space-16);
   }
 
   .title > h1 {

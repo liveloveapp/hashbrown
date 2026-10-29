@@ -197,7 +197,7 @@ that protects the published packages, not examples.
   - `npx nx serve www`
   - `npx nx test www`
   - `npx nx lint www`
-  - `npx nx e2e www` (route report: every element and public URL is rendered; mobile layout report: no clipping, small targets or small text at 320, 375, 768 and landscape)
+  - `npx nx e2e www` (route report: every element and public URL is rendered; layout report: no clipping, small targets, small text or content off the gutter at 320, 375, 768, landscape, 1024 and 1440)
   - `npx nx collect-docs www`
   - `npx nx generate-llms www`
   - `npx nx review-docs www`

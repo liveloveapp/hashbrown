@@ -105,6 +105,12 @@
       justify-content: center;
       width: var(--control-lg);
       height: var(--control-lg);
+      border-radius: var(--radius-pill);
+
+      /* The last target overhangs the gutter; keep its ring on screen. */
+      &:focus-visible {
+        outline-offset: -2px;
+      }
     }
   }
 }

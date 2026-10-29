@@ -611,13 +611,14 @@ function urlCitation(
   title: string,
   start: number,
   end: number,
+  annotationIndex = 0,
 ): StreamEvent {
   return event({
     type: 'response.output_text.annotation.added',
     item_id: itemId,
     output_index: 1,
     content_index: 0,
-    annotation_index: 0,
+    annotation_index: annotationIndex,
     annotation: {
       type: 'url_citation',
       url,
@@ -775,7 +776,7 @@ test('url_citation annotations become b4.answer citations pointing at source ids
       13,
       24,
     ),
-    urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
+    urlCitation('msg_1', 'https://a.example', 'A', 0, 9, 1),
     completed,
   ];
   const clock = mockClock(1000, 2000);
@@ -825,7 +826,7 @@ test('a citation matches a source that alone carries utm_source', async () => {
     messageAdded('msg_1'),
     textDelta('msg_1', 'Hashbrown is a framework.'),
     urlCitation('msg_1', 'https://b.example/page', 'B', 13, 24),
-    urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
+    urlCitation('msg_1', 'https://a.example', 'A', 0, 9, 1),
     completed,
   ];
   const clock = mockClock(1000, 2000);
@@ -865,7 +866,7 @@ test('a url_citation with no matching source adds an answer-level source', async
     messageAdded('msg_1'),
     textDelta('msg_1', 'See the docs.'),
     urlCitation('msg_1', 'https://docs.example', 'Docs', 4, 12),
-    urlCitation('msg_1', 'https://docs.example', 'Docs', 0, 3),
+    urlCitation('msg_1', 'https://docs.example', 'Docs', 0, 3, 1),
     completed,
   ];
 
@@ -968,7 +969,7 @@ test('a web_search_call added via transformRequestOptions still maps, without so
   ).not.toHaveProperty('sources');
 });
 
-test('ignores non-url annotations', async () => {
+test('ignores unsupported annotations', async () => {
   const input = [
     messageAdded('msg_1'),
     textDelta('msg_1', 'Text.'),
@@ -979,7 +980,7 @@ test('ignores non-url annotations', async () => {
       content_index: 0,
       annotation_index: 0,
       annotation: {
-        type: 'file_citation',
+        type: 'unsupported',
         file_id: 'f',
         filename: 'f',
         index: 0,
@@ -1082,4 +1083,436 @@ test('maps a live-captured web search turn to a provider step, sources and citat
     expect(typeof citation.end).toBe('number');
     expect(citation.quote).toBe(text.slice(citation.start, citation.end));
   }
+});
+
+function nativeMessage(text: string, annotations: unknown[] = []) {
+  return {
+    type: 'message',
+    id: 'native',
+    role: 'assistant',
+    status: 'completed',
+    content: [{ type: 'output_text', text, annotations }],
+  };
+}
+
+function fileAnnotation(fields: Record<string, unknown> = {}) {
+  return {
+    type: 'container_file_citation',
+    file_id: 'file',
+    container_id: 'container',
+    filename: 'report.csv',
+    start_index: 0,
+    end_index: 4,
+    ...fields,
+  };
+}
+
+function nativeAnnotation(annotation: unknown, index = 0, contentIndex = 0) {
+  return event({
+    type: 'response.output_text.annotation.added',
+    item_id: 'native',
+    content_index: contentIndex,
+    annotation_index: index,
+    annotation,
+  });
+}
+
+function answerOf(events: AGUIEvent[]) {
+  return (events.at(-1) as { metadata?: Record<string, unknown> }).metadata?.[
+    'b4.answer'
+  ] as {
+    sources: Record<string, unknown>[];
+    citations: Record<string, unknown>[];
+  };
+}
+
+test('reconciles final-only text and native file annotations once per occurrence', async () => {
+  const annotation = fileAnnotation();
+  const item = nativeMessage('File ready', [annotation, annotation]);
+  const input = [
+    nativeAnnotation(annotation),
+    event({ type: 'response.output_item.done', item }),
+    event({ type: 'response.completed', response: { output: [item] } }),
+  ];
+
+  const events = await collectEvents(input);
+  const answer = answerOf(events);
+
+  expect(
+    events
+      .filter((e) => e.type === EventType.TEXT_MESSAGE_CONTENT)
+      .map((e) => e.delta)
+      .join(''),
+  ).toBe('File ready');
+  expect(answer.sources).toEqual([
+    {
+      id: `${messageId}:cite:0`,
+      kind: 'file',
+      title: 'report.csv',
+      fileId: 'file',
+      containerId: 'container',
+    },
+  ]);
+  expect(answer.citations).toHaveLength(2);
+  expect(answer.citations[0]).toEqual({
+    sourceId: `${messageId}:cite:0`,
+    quote: 'File',
+    block: 0,
+    start: 0,
+    end: 4,
+  });
+});
+
+test('appends only the final native suffix for each text part', async () => {
+  const input = [
+    textDelta('native', 'File'),
+    event({
+      type: 'response.output_item.done',
+      item: nativeMessage('File ready', [fileAnnotation()]),
+    }),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(
+    events
+      .filter((e) => e.type === EventType.TEXT_MESSAGE_CONTENT)
+      .map((e) => e.delta),
+  ).toEqual(['File', ' ready']);
+  expect(answerOf(events).citations[0]['quote']).toBe('File');
+});
+
+test('rejects contradictory final text without exposing native text', async () => {
+  const input = [
+    textDelta('native', 'File'),
+    event({
+      type: 'response.output_item.done',
+      item: nativeMessage('PRIVATE'),
+    }),
+    completed,
+  ];
+
+  const result = collectEvents(input);
+
+  await expect(result).rejects.toThrow('Inconsistent native response text');
+});
+
+for (const fields of [
+  {
+    type: 'file_citation',
+    index: 0,
+    start_index: undefined,
+    end_index: undefined,
+  },
+  { start_index: -1 },
+  { end_index: 100 },
+  { start_index: 1.5 },
+  { end_index: 0 },
+]) {
+  test(`retains file source without invalid span ${JSON.stringify(fields)}`, async () => {
+    const input = [
+      textDelta('native', 'File'),
+      nativeAnnotation(fileAnnotation(fields)),
+      completed,
+    ];
+
+    const events = await collectEvents(input);
+
+    expect(answerOf(events).sources[0]['fileId']).toBe('file');
+    expect(answerOf(events).citations).toEqual([
+      { sourceId: `${messageId}:cite:0` },
+    ]);
+  });
+}
+
+test('uses file and container identity and keeps mixed URL occurrences', async () => {
+  const annotations = [
+    fileAnnotation(),
+    fileAnnotation({ filename: 'renamed.csv' }),
+    fileAnnotation({ container_id: 'other' }),
+    {
+      type: 'url_citation',
+      url: 'https://example.com',
+      title: 'Web',
+      start_index: 0,
+      end_index: 4,
+    },
+  ];
+  const input = [
+    event({
+      type: 'response.completed',
+      response: { output: [nativeMessage('File', annotations)] },
+    }),
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).sources.map((s) => s['kind'])).toEqual([
+    'file',
+    'file',
+    'url',
+  ]);
+  expect(answerOf(events).citations).toHaveLength(4);
+  expect(answerOf(events).citations[0]['sourceId']).toBe(
+    answerOf(events).citations[1]['sourceId'],
+  );
+});
+
+test('omits file spans for astral text', async () => {
+  const input = [
+    textDelta('native', 'File 😀'),
+    nativeAnnotation(fileAnnotation()),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).citations).toEqual([
+    { sourceId: `${messageId}:cite:0` },
+  ]);
+});
+
+test('omits file spans for interleaved parts but keeps separate part positions', async () => {
+  const second = event({
+    type: 'response.output_text.delta',
+    item_id: 'native',
+    content_index: 1,
+    delta: 'Second',
+  });
+  const input = [
+    textDelta('native', 'Fi'),
+    second,
+    textDelta('native', 'le'),
+    nativeAnnotation(fileAnnotation()),
+    nativeAnnotation(fileAnnotation({ file_id: 'second', end_index: 6 }), 0, 1),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).citations[0]).toEqual({
+    sourceId: `${messageId}:cite:0`,
+  });
+  expect(answerOf(events).citations[1]).toEqual({
+    sourceId: `${messageId}:cite:1`,
+    quote: 'Second',
+    block: 0,
+    start: 2,
+    end: 8,
+  });
+});
+
+test('retains annotations on an empty native message without inventing text', async () => {
+  const input = [
+    event({
+      type: 'response.completed',
+      response: { output: [nativeMessage('', [fileAnnotation()])] },
+    }),
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.map((e) => e.type)).toEqual([
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_END,
+  ]);
+  expect(answerOf(events).citations).toEqual([
+    { sourceId: `${messageId}:cite:0` },
+  ]);
+});
+
+test('retains streamed annotation before text and deduplicates repeated delivery', async () => {
+  const annotation = nativeAnnotation(fileAnnotation());
+  const input = [
+    annotation,
+    annotation,
+    textDelta('native', 'File'),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).citations).toHaveLength(1);
+  expect(answerOf(events).citations[0]['quote']).toBe('File');
+});
+
+test('keeps file annotations with unknown part offsets without positions', async () => {
+  const input = [
+    textDelta('native', 'File'),
+    nativeAnnotation(fileAnnotation(), 0, 5),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).citations).toEqual([
+    { sourceId: `${messageId}:cite:0` },
+  ]);
+});
+
+test('reconciles final multipart suffix and annotation offsets', async () => {
+  const item = {
+    ...nativeMessage('First', []),
+    content: [
+      { type: 'output_text', text: 'First', annotations: [] },
+      {
+        type: 'output_text',
+        text: 'File ready',
+        annotations: [fileAnnotation()],
+      },
+    ],
+  };
+  const input = [
+    textDelta('native', 'First'),
+    event({
+      type: 'response.output_text.delta',
+      item_id: 'native',
+      content_index: 1,
+      delta: 'File',
+    }),
+    event({ type: 'response.completed', response: { output: [item] } }),
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(
+    events
+      .filter((e) => e.type === EventType.TEXT_MESSAGE_CONTENT)
+      .map((e) => e.delta)
+      .join(''),
+  ).toBe('FirstFile ready');
+  expect(answerOf(events).citations[0]).toEqual({
+    sourceId: `${messageId}:cite:0`,
+    quote: 'File',
+    block: 0,
+    start: 5,
+    end: 9,
+  });
+});
+
+test('matches real code image URLs to call sources without assigning files to a call', async () => {
+  const item = {
+    type: 'code_interpreter_call',
+    id: 'code',
+    code: null,
+    container_id: 'container',
+    status: 'completed',
+    outputs: [{ type: 'image', url: 'https://image.example/file' }],
+  };
+  const annotations = [
+    {
+      type: 'url_citation',
+      url: 'https://image.example/file?utm_source=openai',
+      title: 'Image',
+      start_index: 0,
+      end_index: 4,
+    },
+    fileAnnotation(),
+  ];
+  const input = [
+    event({
+      type: 'response.completed',
+      response: { output: [item, nativeMessage('File', annotations)] },
+    }),
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(answerOf(events).citations[0]['sourceId']).toBe('code:image:0');
+  expect(answerOf(events).sources).toEqual([
+    {
+      id: `${messageId}:cite:1`,
+      kind: 'file',
+      title: 'report.csv',
+      fileId: 'file',
+      containerId: 'container',
+    },
+  ]);
+});
+
+test('yields valid partial answer annotations before the enclosing failed response error', async () => {
+  const input = [
+    textDelta('native', 'File'),
+    event({
+      type: 'response.failed',
+      response: {
+        error: { message: 'run failure' },
+        output: [nativeMessage('File', [fileAnnotation()])],
+      },
+    }),
+  ];
+  const events: AGUIEvent[] = [];
+
+  const result = (async () => {
+    for await (const output of mapOpenAIEvents({
+      events: source(input),
+      messageId,
+    }))
+      events.push(output);
+  })();
+
+  await expect(result).rejects.toThrow('run failure');
+  expect(answerOf(events).citations[0]['quote']).toBe('File');
+});
+
+test('owns annotation values independently of subsequent SDK object mutation', async () => {
+  const file = fileAnnotation();
+  const url = {
+    type: 'url_citation',
+    url: 'https://original.example',
+    title: 'Original',
+    start_index: 0,
+    end_index: 4,
+  };
+  async function* input() {
+    yield textDelta('native', 'File');
+    yield nativeAnnotation(file);
+    yield nativeAnnotation(url, 1);
+    file.file_id = 'mutated';
+    url.url = 'https://mutated.example';
+    yield completed;
+  }
+  const events: AGUIEvent[] = [];
+
+  for await (const output of mapOpenAIEvents({ events: input(), messageId }))
+    events.push(output);
+
+  expect(answerOf(events).sources.map((s) => s['fileId'] ?? s['href'])).toEqual(
+    ['file', 'https://original.example'],
+  );
+});
+
+for (const title of [123, { invalid: true }, '']) {
+  test(`uses URL as title for invalid annotation title ${JSON.stringify(title)}`, async () => {
+    const input = [
+      textDelta('native', 'File'),
+      nativeAnnotation({
+        type: 'url_citation',
+        url: 'https://example.com',
+        title,
+        start_index: 0,
+        end_index: 4,
+      }),
+      completed,
+    ];
+
+    const events = await collectEvents(input);
+
+    expect(answerOf(events).sources[0]['title']).toBe('https://example.com');
+  });
+}
+
+test('does not repeat an annotation-only answer on repeated terminal delivery', async () => {
+  const terminal = event({
+    type: 'response.completed',
+    response: { output: [nativeMessage('', [fileAnnotation()])] },
+  });
+
+  const events = await collectEvents([terminal, terminal]);
+
+  expect(events.map((e) => e.type)).toEqual([
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_END,
+  ]);
 });

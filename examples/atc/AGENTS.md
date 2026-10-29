@@ -89,7 +89,7 @@ Keep browser tools and component selection in Hashbrown. No server tools,
 subagents, history restoration, or UI backend selector are part of this example.
 Retain schema narrowing across the full browser-tool turn in both frameworks.
 The backend browser checks in `e2e/src/backends.spec.ts` use a native Node fixture
-and the real `/api/run` path. Use the coherent published b4.run 0.15.5 package
+and the real `/api/run` path. Use the coherent published b4.run 0.15.7 package
 set for validation; do not rely on a local source overlay. Dependency-pin
 updates still require approval.
 

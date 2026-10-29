@@ -7,6 +7,7 @@ import {
   validateHostOverrides,
   verifyLoadedDotnetHost,
 } from './dotnet-host';
+import { terminateFixture } from './terminate-fixture';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import { LLMock } from '@copilotkit/aimock';
 import { spawn } from 'node:child_process';
@@ -304,12 +305,8 @@ export async function withDotnetFixture<T>(
       child.exitCode === null &&
       child.signalCode === null
     ) {
-      const exited = once(child, 'exit');
       workerTrace('stop');
-      child.kill('SIGTERM');
-      const force = setTimeout(() => child.kill('SIGKILL'), 3_000);
-      await exited;
-      clearTimeout(force);
+      await terminateFixture(child);
     }
     route?.dispose();
     proxy.closeAllConnections();

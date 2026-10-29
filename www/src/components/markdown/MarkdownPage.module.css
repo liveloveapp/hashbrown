@@ -4,7 +4,7 @@
 .page {
   display: block;
   position: relative;
-  padding: var(--space-8) var(--gutter) var(--space-16);
+  padding: var(--page-top) var(--gutter) var(--section-gap);
   overflow: hidden;
 }
 
@@ -222,10 +222,11 @@
 /* Table of contents */
 .toc {
   display: none;
-  width: 186px;
+  width: var(--toc-width);
   flex-direction: column;
   position: fixed;
-  top: calc(var(--header-height) + var(--space-12));
+  /* Level with the page's first heading. */
+  top: calc(var(--header-height) + var(--page-top));
   right: var(--gutter);
   margin: 0;
   padding: 0;
@@ -264,16 +265,9 @@
   height: 1px;
 }
 
-@media screen and (min-width: 768px) {
-  .page {
-    padding: var(--space-10) var(--space-10) var(--space-16);
-  }
-}
-
 @media screen and (min-width: 1024px) {
   .page {
     max-width: 840px;
-    padding: var(--space-12) var(--space-16) var(--space-24);
   }
 
   .article h1 {
@@ -282,8 +276,9 @@
 }
 
 @media screen and (min-width: 1281px) {
+  /* Room on the right for the contents: a gutter either side of it. */
   .page {
-    padding-right: 272px;
+    padding-right: calc(var(--toc-width) + 2 * var(--gutter));
     max-width: 1080px;
   }
 

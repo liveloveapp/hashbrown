@@ -2,7 +2,7 @@
 .navigationList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   list-style: none;
 
   &.hasActive {
@@ -18,11 +18,16 @@
   > li {
     display: flex;
 
+    /* The package list and its symbol list side by side, each as wide as
+       the menu less its inset, so sliding the window by the menu's width
+       brings the second into the first's place. --nav-inset puts the row
+       text on the gutter in the sidebar; the mobile menu pads its own. */
     &.section {
       display: grid;
       grid-template-columns: repeat(2, 100%);
-      column-gap: 32px;
-      padding: 0 16px;
+      column-gap: calc(2 * var(--nav-inset, 0px));
+      align-items: flex-start;
+      padding: 0 var(--nav-inset, 0px);
     }
 
     a,
@@ -30,7 +35,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: var(--control-sm);
+      min-height: var(--nav-row, var(--control-sm));
       padding: var(--space-1) var(--space-3);
       color: var(--color-muted);
       width: 100%;
@@ -39,6 +44,10 @@
       text-decoration: none;
       font: 400 14px/20px var(--font-sans);
       justify-content: flex-start;
+      /* Long symbol names break rather than run past the narrow sidebar. */
+      min-width: 0;
+      overflow-wrap: anywhere;
+      text-align: left;
       transition:
         background-color var(--duration-fast) var(--ease-out),
         color var(--duration-fast) var(--ease-out);
@@ -56,7 +65,7 @@
     > .children {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--space-1);
 
       > button {
         justify-content: flex-start;
@@ -65,30 +74,9 @@
   }
 }
 
-@media (min-width: 768px) {
+/* Rows match the docs menu's: 44px targets on a phone. */
+@media screen and (max-width: 767px) {
   .navigationList {
-    > li.section {
-      grid-template-columns: repeat(2, 160px);
-      column-gap: 32px;
-      align-items: flex-start;
-    }
-  }
-}
-
-@media screen and (min-width: 1024px) {
-  .navigationList {
-    > li.section {
-      grid-template-columns: repeat(2, 224px);
-      align-items: flex-start;
-    }
-  }
-}
-
-@media screen and (min-width: 1281px) {
-  .navigationList {
-    > li.section {
-      grid-template-columns: repeat(2, 288px);
-      align-items: flex-start;
-    }
+    --nav-row: var(--control-lg);
   }
 }

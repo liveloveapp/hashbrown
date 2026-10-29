@@ -15,11 +15,15 @@
   "targets": {
     "prepare": {
       "executor": "nx:run-commands",
-      "inputs": ["{projectRoot}/package.json"],
+      "inputs": [
+        "{projectRoot}/package.json",
+        "{workspaceRoot}/tools/growth/install/write-package-version.mjs"
+      ],
       "outputs": ["{projectRoot}/src/package-version.ts"],
       "options": {
         "command": "node tools/growth/install/write-package-version.mjs react"
-      }
+      },
+      "cache": true
     },
     "compile": {
       "executor": "@nx/rollup:rollup",
@@ -62,15 +66,12 @@
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": ["compile"],
-      "inputs": [
-        "{workspaceRoot}/tools/growth/install/*.cjs",
-        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
-        "{projectRoot}/package.json"
-      ],
+      "inputs": ["production", "^production", "libraryTooling"],
       "outputs": ["{workspaceRoot}/dist/packages/react"],
       "options": {
         "command": "node tools/growth/install/assemble-package.mjs react"
-      }
+      },
+      "cache": true
     },
     "e2e": {
       "executor": "@nx/jest:jest",
