@@ -152,20 +152,28 @@ export async function runLoadRequest(args, dependencies) {
       ai = messages.filter((m) => m.type === 'ai');
     assert.equal(human.length, 1);
     assert.equal(ai.length, 1);
-    const textContent = (value) => {
+    const textContent = (value, allowReasoning = false) => {
       if (typeof value === 'string') return value;
       assert(
         Array.isArray(value) &&
           value.every(
-            (part) => part.type === 'text' && typeof part.text === 'string',
+            (part) =>
+              (part.type === 'text' && typeof part.text === 'string') ||
+              (allowReasoning && part.type === 'reasoning'),
           ),
         'canonical text content is unsupported',
       );
-      return value.map((part) => part.text).join('');
+      return value
+        .filter((part) => part.type === 'text')
+        .map((part) => part.text)
+        .join('');
     };
     const humanText = textContent(human[0].content),
-      aiText = textContent(ai[0].content);
-    for (const text of [humanText, aiText])
+      aiText = textContent(ai[0].content, true);
+    for (const text of [
+      JSON.stringify(human[0].content),
+      JSON.stringify(ai[0].content),
+    ])
       assert(
         (text.match(/LOAD[A-F0-9]{32}/g) ?? []).every(
           (value) => value === marker,

@@ -8,6 +8,7 @@ function fixture({
   persistedForeignMarker = false,
   persistedDifferent = false,
   runtimeError = false,
+  reasoning = false,
 } = {}) {
   let input,
     eof = false,
@@ -86,15 +87,34 @@ function fixture({
               { type: 'human', content: input.messages[0].content },
               {
                 type: 'ai',
-                content: JSON.stringify({
-                  text:
-                    input.messages[0].content +
-                    (persistedForeignMarker
-                      ? ' LOADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-                      : persistedDifferent
-                        ? ' DIFFERENT'
-                        : ''),
-                }),
+                content: reasoning
+                  ? [
+                      {
+                        type: 'reasoning',
+                        id: 'rs_fixture',
+                        summary: [
+                          {
+                            type: 'summary_text',
+                            text: 'Considered callsign terminology',
+                          },
+                        ],
+                      },
+                      {
+                        type: 'text',
+                        text: JSON.stringify({
+                          text: input.messages[0].content,
+                        }),
+                      },
+                    ]
+                  : JSON.stringify({
+                      text:
+                        input.messages[0].content +
+                        (persistedForeignMarker
+                          ? ' LOADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+                          : persistedDifferent
+                            ? ' DIFFERENT'
+                            : ''),
+                    }),
                 response_metadata: {
                   id: 'provider-' + input.runId,
                   max_output_tokens: 4096,
@@ -309,4 +329,22 @@ test('completion buckets use EOF rather than database verification finish', () =
 
   assert.equal(first, 1);
   assert.equal(second, 1);
+});
+
+test('published reasoning-plus-text messages retain full snapshots while validating rendered text', async () => {
+  const { dependencies } = fixture({ reasoning: true });
+
+  const result = await runLoadRequest(
+    {
+      index: 0,
+      level: 1,
+      worker: 0,
+      deadlineMs: performance.now() + 1000,
+      signal: new AbortController().signal,
+    },
+    dependencies,
+  );
+
+  assert.equal(result.firstPostEofAdmissions, 0);
+  assert.equal(result.pinnedCap, 4096);
 });
