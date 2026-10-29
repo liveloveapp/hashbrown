@@ -215,6 +215,7 @@ function protocolFixture({
   let finish;
   let completed = false;
   let requests = 0;
+  let leaseExpired = false;
   const io = {
     deployment: { id: 'd1' },
     threadId: 'owned-thread',
@@ -240,10 +241,13 @@ function protocolFixture({
     lease: async () => (expiredOwner || surviving ? lease : null),
     clock: async () => {
       calls.push('clock');
-      return new Date().toISOString();
+      return new Date(Date.now() + (leaseExpired ? 60000 : 0)).toISOString();
     },
     snapshot: async () => (requests > 1 ? (mutate ? seed : winner) : owner),
-    waitForExpiry: async () => calls.push('expiry'),
+    waitForExpiry: async () => {
+      leaseExpired = true;
+      calls.push('expiry');
+    },
     waitQuiescent: async () => {
       calls.push('75s');
       return 75000;
@@ -412,4 +416,136 @@ test('restart attempts expose actual reservation and native request correlation'
   assert(
     result.attempts.every((attempt) => attempt.threadId === 'owned-thread'),
   );
+});
+
+test('expired physical admission row is reclaimed by successor without premature deletion', async () => {
+  const f = protocolFixture();
+  const original = f.io.snapshot;
+  f.io.snapshot = async (control) => {
+    const snapshot = await original(control);
+    return {
+      ...snapshot,
+      canonical: {
+        ...snapshot.canonical,
+        admissions: f.calls.includes('75s') ? 0 : 1,
+      },
+    };
+  };
+
+  const receipt = await runRestartProtocol(f);
+
+  assert.equal(receipt.qualified, true);
+  assert.equal(receipt.immediate.canonical.admissions, 0);
+  assert.equal(receipt.recoveryAdmissionGate.reason, 'database-clock-expiry');
+});
+
+for (const step of ['restart', 'wait', 'clock']) {
+  test(
+    'known native and HTTP correlations survive failed provider step ' + step,
+    async () => {
+      const f = protocolFixture();
+      const receipt = {};
+      const request = f.io.request;
+      f.io.request = async (kind, control) => {
+        const partial = {
+          runId: control.runId,
+          requestId: 'actual-http-' + kind,
+          status: kind === 'fault' ? 503 : 200,
+        };
+        control.onRequestObserved?.(partial);
+        return { ...(await request(kind, control)), ...partial };
+      };
+      if (step === 'clock')
+        f.io.clock = async () => {
+          throw Error('failed clock');
+        };
+      else {
+        const original = f.provider[step];
+        f.provider[step] = async (...args) => {
+          await original(...args);
+          throw Error('failed ' + step);
+        };
+      }
+
+      await assert.rejects(
+        runRestartProtocol({ ...f, receipt }),
+        new RegExp('failed ' + step),
+      );
+
+      assert.equal(receipt.attempts[1].runId, receipt.activeProvider.runId);
+      assert.equal(receipt.attempts[1].requestId, 'actual-http-fault');
+      assert.equal(
+        receipt.attempts[1].providerRequestId,
+        'real-provider-request',
+      );
+      assert.equal(receipt.attempts[1].providerUsage, null);
+    },
+  );
+}
+
+test('managed HTTP adapter publishes actual headers before stream completion', async () => {
+  const { createManagedTimeoutIO } = await import('./managed-timeout-io.mjs');
+  const { createServer } = await import('node:http');
+  const { once } = await import('node:events');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const stage = await mkdtemp('/private/tmp/restart-header-correlation-');
+  await writeFile(stage + '/schema.json', '{}');
+  let seen;
+  const observed = new Promise((resolve) => {
+    seen = resolve;
+  });
+  const server = createServer((_request, response) => {
+    response.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'x-vercel-id': 'actual-loopback-request',
+      'set-cookie': 'atc_visitor=owned-cookie; HttpOnly',
+    });
+    response.flushHeaders();
+    setTimeout(() => response.end(), 30);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const origin = 'http://127.0.0.1:' + server.address().port;
+  const context = {
+    manifest: { deployments: [{ origin }] },
+    secrets: {},
+    redact: (value) => value,
+    databaseErrors: [],
+    database: { end: async () => undefined },
+    storage: {
+      postgresCheckpointer: () => ({ close: async () => undefined }),
+      createPostgresThreadsStore: () => ({ close: async () => undefined }),
+    },
+  };
+  const control = {
+    signal: new AbortController().signal,
+    deadlineMs: Date.now() + 1000,
+  };
+  let io, pending;
+  try {
+    io = await createManagedTimeoutIO(
+      { schemaPath: stage + '/schema.json' },
+      { fault: { deployment: { origin } } },
+      control,
+      { openContext: async () => context, compileSchema: () => () => true },
+    );
+    pending = io.request('fault', {
+      ...control,
+      input: 'fault',
+      runId: 'known-native-run',
+      onRequestObserved: seen,
+    });
+
+    const partial = await Promise.race([observed, pending.then(() => null)]);
+
+    assert.equal(partial?.runId, 'known-native-run');
+    assert.equal(partial?.requestId, 'actual-loopback-request');
+    assert.equal(partial?.status, 200);
+  } finally {
+    if (io) await io.close();
+    await pending?.catch(() => undefined);
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(stage, { recursive: true, force: true });
+  }
 });

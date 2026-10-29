@@ -305,18 +305,40 @@ export async function runRollbackProtocol({
             ordinal: bounds.ordinal,
             kind: 'normal',
             threadId,
+            runId: randomUUID(),
             terminalUsage: null,
             terminalModel: null,
             terminalProviderResponseId: null,
             providerUsage: null,
           };
           receipt.attempts.push(attempt);
-          const response = await io.request({
-            ...bounds,
-            backend,
-            threadId,
-            deployment: plan[backend],
-          });
+          const onRequestObserved = (request) => {
+            for (const key of [
+              'runId',
+              'status',
+              'requestId',
+              'terminalUsage',
+              'terminalModel',
+              'terminalProviderResponseId',
+              'providerUsage',
+            ])
+              if (request[key] !== undefined) attempt[key] = request[key];
+          };
+          let response;
+          try {
+            response = await io.request({
+              ...bounds,
+              runId: attempt.runId,
+              onRequestObserved,
+              backend,
+              threadId,
+              deployment: plan[backend],
+            });
+          } catch (error) {
+            attempt.outcome = 'failed';
+            throw error;
+          }
+          onRequestObserved(response);
           assert.equal(response.status, 200, 'rollback request failed');
           assert.equal(
             response.deploymentId,
@@ -540,7 +562,8 @@ export async function createRollbackIO(
         return performance.now() - start;
       },
       request: async (bounds) => {
-        const runId = randomUUID();
+        const runId = bounds.runId ?? randomUUID();
+        bounds.onRequestObserved?.({ runId });
         const marker =
           'ROLLBACK' + randomUUID().replaceAll('-', '').toUpperCase();
         const body = {
@@ -584,12 +607,17 @@ export async function createRollbackIO(
             ),
           bounds,
         );
+        const requestId = response.headers.get('x-vercel-id');
+        bounds.onRequestObserved?.({
+          runId,
+          requestId,
+          status: response.status,
+        });
         assert.equal(
           response.status,
           200,
           'rollback unexpected HTTP error/throttle',
         );
-        const requestId = response.headers.get('x-vercel-id');
         assert(requestId, 'rollback actual platform request ID missing');
         await timeoutBound(
           (signal) =>
@@ -601,6 +629,20 @@ export async function createRollbackIO(
               redact: (value) => redact(value),
               onEvent: (event) => {
                 events.push(event);
+                if (event.type === 'RUN_FINISHED')
+                  bounds.onRequestObserved?.({
+                    runId,
+                    requestId,
+                    status: response.status,
+                    terminalUsage: counters(
+                      event.usage ??
+                        event.usageMetadata ??
+                        event.usage_metadata,
+                    ),
+                    terminalModel: event.model ?? null,
+                    terminalProviderResponseId:
+                      event.responseId ?? event.providerResponseId ?? null,
+                  });
                 if (event.type === 'TEXT_MESSAGE_CONTENT') {
                   const delta = event.delta ?? '';
                   text += delta;

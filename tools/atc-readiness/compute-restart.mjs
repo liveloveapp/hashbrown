@@ -210,34 +210,50 @@ export async function runRestartProtocol({
           ordinal: bounds.ordinal,
           kind,
           threadId,
+          runId: randomUUID(),
           terminalUsage: null,
           terminalModel: null,
           terminalProviderResponseId: null,
           providerUsage: null,
         };
         receipt.attempts.push(attempt);
-        const result = await operation(bounds);
-        const request = result.request ?? result;
-        for (const key of [
-          'runId',
-          'status',
-          'requestId',
-          'terminalUsage',
-          'terminalModel',
-          'terminalProviderResponseId',
-          'retryAfter',
-          'throttled',
-        ])
-          if (request[key] !== undefined) attempt[key] = request[key];
-        attempt.providerUsage = request.snapshot?.state.providerUsage ?? null;
-        attempt.outcome = result.outcome;
-        return result;
+        const onRequestObserved = (request) => {
+          for (const key of [
+            'runId',
+            'status',
+            'requestId',
+            'providerRequestId',
+            'terminalUsage',
+            'terminalModel',
+            'terminalProviderResponseId',
+            'retryAfter',
+            'throttled',
+          ]) {
+            if (request[key] !== undefined) attempt[key] = request[key];
+          }
+          if (request.snapshot?.state.providerUsage !== undefined)
+            attempt.providerUsage = request.snapshot.state.providerUsage;
+        };
+        try {
+          const result = await operation({
+            ...bounds,
+            runId: attempt.runId,
+            onRequestObserved,
+          });
+          onRequestObserved(result.request ?? result);
+          attempt.outcome = result.outcome;
+          return result;
+        } catch (error) {
+          attempt.outcome = 'failed';
+          throw error;
+        }
       },
     );
   };
   const normal = async (input) =>
     dispatch('normal', async (bounds) => {
       const result = await io.request('normal', { ...bounds, threadId, input });
+      bounds.onRequestObserved(result);
       assert.equal(
         result.snapshot.canonical.admissions,
         0,
@@ -261,11 +277,16 @@ export async function runRestartProtocol({
   );
   let owner;
   const interrupted = await dispatch('normal', async (bounds) => {
-    const runId = randomUUID();
+    const runId = bounds.runId;
     const startedAtMs = Date.now();
     let settled = false;
     const pending = io
       .request('fault', { ...bounds, threadId, runId, input: 'fault' })
+      .then((request) => {
+        bounds.onRequestObserved(request);
+        receipt.interruptedRequest = request;
+        return request;
+      })
       .finally(() => {
         settled = true;
       });
@@ -314,6 +335,10 @@ export async function runRestartProtocol({
             'timestampMs',
           ].map((key) => [key, proof[key]]),
         );
+        bounds.onRequestObserved({
+          providerRequestId: proof.providerRequestId,
+          ...(proof.requestId ? { requestId: proof.requestId } : {}),
+        });
         receipt.observedOwner = owner;
         receipt.operation = await provider.restart(bounds);
         receipt.providerTerminal = await provider.wait(
@@ -366,6 +391,7 @@ export async function runRestartProtocol({
           threadId,
           input: 'followup',
         });
+        requestBounds.onRequestObserved(response);
         const after = await io.clock(requestBounds);
         assert.equal(response.status, 409);
         assert.equal(response.retryAfter, '1');
@@ -384,12 +410,24 @@ export async function runRestartProtocol({
       receipt.assertions.preExpiryConflict = 'passed';
     }
     await io.waitForExpiry({ ...bounds, lease: retained });
-  }
+    const databaseNow = await io.clock(bounds);
+    assert(
+      Date.parse(databaseNow) >= Date.parse(retained.expiresAt),
+      'DB-clock expiry must be proven before successor',
+    );
+    receipt.recoveryAdmissionGate = {
+      reason: 'database-clock-expiry',
+      databaseNow,
+      expiresAt: retained.expiresAt,
+      ownerSha256: retained.ownerSha256,
+    };
+  } else receipt.recoveryAdmissionGate = { reason: 'observed-release' };
   const before = await io.snapshot(bounds);
-  assert.equal(
-    before.canonical.admissions,
-    0,
-    'prior admission was not released before successor',
+  assert(
+    before.canonical.admissions === 0 ||
+      (before.canonical.admissions === 1 &&
+        receipt.recoveryAdmissionGate.reason === 'database-clock-expiry'),
+    'successor requires DB-clock expiry or observed release',
   );
   assertCommittedPrefix(owner.snapshot, before);
   assert.deepEqual(

@@ -352,10 +352,19 @@ test('real rollback SSE adapter validates fresh marker and first EOF admission q
     );
     assert(result.outputSha256 && result.markerSha256);
     includeMarker = false;
+    const partial = {};
     await assert.rejects(
-      io.request({ ...request, threadId: 'different-visitor' }),
+      io.request({
+        ...request,
+        runId: 'native-failed-run',
+        threadId: 'different-visitor',
+        onRequestObserved: (value) => Object.assign(partial, value),
+      }),
       /marker mismatch/,
     );
+    assert.equal(partial.runId, 'native-failed-run');
+    assert.equal(partial.requestId, 'actual-local-request');
+    assert.equal(partial.status, 200);
   } finally {
     if (io) await io.close();
     await rm(stage, { recursive: true, force: true });
@@ -443,4 +452,29 @@ test('rollback attempts retain per-visitor reservation identities and unknown us
     reserved.map((request) => request.threadId),
   );
   assert(result.attempts.every((attempt) => attempt.terminalUsage === null));
+});
+
+test('rollback request failure preserves generated native ID and observed HTTP identity', async () => {
+  const f = fixture();
+  const receipt = {};
+  let nativeRunId;
+  f.io.request = async (control) => {
+    nativeRunId = control.runId;
+    control.onRequestObserved?.({
+      runId: control.runId,
+      requestId: 'observed-rollback-request',
+      status: 200,
+    });
+    throw Error('route proof unavailable');
+  };
+
+  await assert.rejects(
+    runRollbackProtocol({ ...f, receipt }),
+    /route proof unavailable/,
+  );
+
+  assert.match(nativeRunId, /^[a-f0-9-]{36}$/);
+  assert.equal(receipt.attempts[0].runId, nativeRunId);
+  assert.equal(receipt.attempts[0].requestId, 'observed-rollback-request');
+  assert.equal(receipt.attempts[0].terminalUsage, null);
 });

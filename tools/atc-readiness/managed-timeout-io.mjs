@@ -265,6 +265,7 @@ export async function createManagedTimeoutIO(
         result.platformErrorCode = response.headers.get('x-vercel-error');
         result.retryAfter = response.headers.get('retry-after');
         result.throttled = response.status === 429;
+        bounds.onRequestObserved?.({ ...result });
         if (kind === 'conflict') {
           await timeoutBound(() => response.body?.cancel(), bounds);
           return result;
@@ -323,6 +324,7 @@ export async function createManagedTimeoutIO(
               result.terminalModel = event.model ?? null;
               result.terminalProviderResponseId =
                 event.responseId ?? event.providerResponseId ?? null;
+              bounds.onRequestObserved?.({ ...result });
             }
             if (event.type === 'TEXT_MESSAGE_CONTENT' && event.delta) {
               modelFragments.push(event.delta);

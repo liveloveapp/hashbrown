@@ -309,3 +309,12 @@ Phase receipts retain each attempt’s ledger `id`/`ordinal`, native AG-UI `runI
 `threadId`, actual request correlation and nullable terminal/checkpoint usage.
 Restart has one top-level `threadId`; rollback has `threadIds` for its fresh
 visitors. Failed attempts remain listed even when no result/usage is available.
+
+Restart recovery records `recoveryAdmissionGate`: either a positively observed
+release or a fresh database clock at/after the retained owner's expiry. An
+expired physical admission row may remain until the successor atomically
+reclaims it; only the first post-EOF admission snapshot must be zero. Native
+AG-UI run IDs are assigned before HTTP dispatch. The optional internal
+`bounds.onRequestObserved` callback publishes actual HTTP headers and terminal
+usage as soon as observed, retaining known correlations if a later operation
+fails. Unavailable usage remains null with its full outstanding reservation.
