@@ -12,7 +12,18 @@
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": [],
+    "libraryTooling": [
+      "{workspaceRoot}/tools/growth/install/**/*",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/LICENSE",
+      {
+        "runtime": "node --version"
+      }
+    ]
   },
   "targetDefaults": {
     "@nx/angular:package": {
@@ -42,6 +53,10 @@
     "@nx/vitest:test": {
       "cache": true,
       "inputs": ["default", "^production"]
+    },
+    "@nx/rollup:rollup": {
+      "cache": true,
+      "inputs": ["production", "^production", "libraryTooling"]
     }
   },
   "release": {

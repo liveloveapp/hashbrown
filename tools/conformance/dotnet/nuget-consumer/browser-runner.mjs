@@ -36,9 +36,11 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
   let metadata;
   let npmMetadata = process.env.HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA;
   let regressions = false;
+  let smoke = false;
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === '--regressions') regressions = true;
+    else if (arg === '--smoke') smoke = true;
     else if (arg === '--metadata') metadata = args[++index];
     else if (arg.startsWith('--metadata='))
       metadata = arg.slice('--metadata='.length);
@@ -47,6 +49,7 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
       npmMetadata = arg.slice('--npm-metadata='.length);
     else throw Error(`Unexpected package browser argument: ${arg}`);
   }
+  assert.ok(!(smoke && regressions), 'Select one package browser suite');
   assert.ok(
     metadata && path.isAbsolute(metadata),
     'Explicit NuGet metadata required',
@@ -59,7 +62,7 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
   const before = await qualifyConsumer(metadata);
   const npmBefore = await qualifyNpm(npmMetadata);
   const servers = [];
-  const kind = regressions ? 'regressions' : 'matrix';
+  const kind = regressions ? 'regressions' : smoke ? 'smoke' : 'matrix';
   const evidenceDirectory =
     process.env.HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY ??
     path.join(before.root, 'browser-reports');
@@ -102,7 +105,9 @@ export async function runPackageBrowser(args = process.argv.slice(2)) {
     };
     const config = regressions
       ? 'local-native-approval.playwright.config.ts'
-      : 'package.playwright.config.ts';
+      : smoke
+        ? 'package-smoke.playwright.config.ts'
+        : 'package.playwright.config.ts';
     status = await new Promise((accept, reject) => {
       const child = spawn(
         process.execPath,

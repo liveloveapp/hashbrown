@@ -19,6 +19,36 @@
         },
         "collect-docs",
         "generate-llms"
+      ],
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        {
+          "env": "VERCEL_GIT_COMMIT_SHA"
+        },
+        {
+          "env": "NODE_ENV"
+        },
+        {
+          "env": "VERCEL_ENV"
+        },
+        {
+          "env": "VERCEL_URL"
+        },
+        "ciTooling",
+        {
+          "env": "NEXT_PUBLIC_POSTHOG_TOKEN"
+        },
+        {
+          "env": "NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL"
+        },
+        {
+          "env": "NEXT_PUBLIC_GROWTH_COLLECTION"
+        },
+        {
+          "env": "VERCEL"
+        }
       ]
     },
     "serve": {
@@ -42,13 +72,17 @@
       "options": {
         "command": "vitest run --config www/vitest.config.mts"
       },
-      "dependsOn": ["collect-docs", "generate-llms"]
+      "dependsOn": ["collect-docs", "generate-llms"],
+      "cache": true,
+      "inputs": ["default", "^production", "ciTooling"]
     },
     "lint": {
       "executor": "nx:run-commands",
       "options": {
         "command": "eslint www/src www/test www/instrumentation-client.ts www/next.config.ts www/examples/quickstart www/examples/threadplane-consumers"
-      }
+      },
+      "cache": true,
+      "inputs": ["default", "^production", "ciTooling"]
     },
     "e2e": {
       "executor": "nx:run-commands",
@@ -59,7 +93,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": ["build", "workbench-e2e"]
+      "dependsOn": ["build", "workbench-check"]
     },
     "collect-docs": {
       "executor": "nx:run-commands",
@@ -71,13 +105,32 @@
           "projects": ["angular", "core", "react"],
           "target": "build"
         }
+      ],
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "ciTooling",
+        "{workspaceRoot}/tsconfig.docs.json"
+      ],
+      "outputs": [
+        "{projectRoot}/content/reference",
+        "{workspaceRoot}/dist/reports/angular.api.json",
+        "{workspaceRoot}/dist/reports/core.api.json",
+        "{workspaceRoot}/dist/reports/react.api.json"
       ]
     },
     "generate-llms": {
       "executor": "nx:run-commands",
       "options": {
         "command": "node www/src/tools/generate-llms.mjs --baseUrl=https://hashbrown.dev"
-      }
+      },
+      "cache": true,
+      "inputs": ["default", "^production", "ciTooling"],
+      "outputs": [
+        "{projectRoot}/public/llms.txt",
+        "{projectRoot}/public/llms-full.txt"
+      ]
     },
     "review-docs": {
       "executor": "nx:run-commands",
@@ -129,7 +182,9 @@
           "projects": ["core", "react", "angular", "openai", "typesafe"],
           "target": "build"
         }
-      ]
+      ],
+      "cache": true,
+      "inputs": ["workbench"]
     },
     "docs-demo": {
       "executor": "nx:run-commands",
@@ -269,7 +324,8 @@
       "executor": "nx:run-commands",
       "outputs": [
         "{workspaceRoot}/dist/docs-workbench/browser",
-        "{workspaceRoot}/dist/docs-workbench/node"
+        "{workspaceRoot}/dist/docs-workbench/node",
+        "{workspaceRoot}/dist/docs-quickstart/compiled"
       ],
       "options": {
         "commands": [
@@ -278,7 +334,9 @@
         ],
         "parallel": false
       },
-      "dependsOn": ["typecheck"]
+      "dependsOn": ["typecheck"],
+      "cache": true,
+      "inputs": ["workbench"]
     },
     "workbench-serve": {
       "executor": "nx:run-commands",
@@ -304,6 +362,22 @@
       },
       "dependsOn": ["workbench-build"]
     },
+    "workbench-check": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["workbench"],
+      "outputs": ["{workspaceRoot}/dist/docs-workbench/verification"],
+      "dependsOn": ["workbench-build"],
+      "options": {
+        "command": "node dist/docs-workbench/node/verify-workbench.mjs",
+        "env": {
+          "WORKBENCH_LIVE": "0",
+          "WORKBENCH_RECORD": "0",
+          "WORKBENCH_LESSONS": "",
+          "WORKBENCH_OUTPUT": "dist/docs-workbench/verification"
+        }
+      }
+    },
     "docs-threadplane-live-demo": {
       "executor": "nx:run-commands",
       "cache": false,
@@ -312,5 +386,29 @@
       },
       "dependsOn": ["workbench-build"]
     }
+  },
+  "namedInputs": {
+    "workbench": [
+      "{workspaceRoot}/www/examples/quickstart/**/*",
+      "{workspaceRoot}/www/src/tools/**/*",
+      "{workspaceRoot}/www/src/lib/og/fonts/**/*",
+      "{workspaceRoot}/packages/{core,react,angular,openai,typesafe}/**/*",
+      "{workspaceRoot}/tools/growth/install/**/*",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/eslint.angular.config.mjs"
+    ],
+    "ciTooling": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/eslint.angular.config.mjs"
+    ]
   }
 }

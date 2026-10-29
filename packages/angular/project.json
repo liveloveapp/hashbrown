@@ -16,11 +16,15 @@
   "targets": {
     "prepare": {
       "executor": "nx:run-commands",
-      "inputs": ["{projectRoot}/package.json"],
+      "inputs": [
+        "{projectRoot}/package.json",
+        "{workspaceRoot}/tools/growth/install/write-package-version.mjs"
+      ],
       "outputs": ["{projectRoot}/src/package-version.ts"],
       "options": {
         "command": "node tools/growth/install/write-package-version.mjs angular"
-      }
+      },
+      "cache": true
     },
     "compile": {
       "executor": "@nx/angular:package",
@@ -37,20 +41,18 @@
           "tsConfig": "packages/angular/tsconfig.lib.json"
         }
       },
-      "dependsOn": ["^build", "prepare"]
+      "dependsOn": ["^build", "prepare"],
+      "inputs": ["production", "^production", "libraryTooling"]
     },
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": ["compile"],
-      "inputs": [
-        "{workspaceRoot}/tools/growth/install/*.cjs",
-        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
-        "{projectRoot}/package.json"
-      ],
+      "inputs": ["production", "^production", "libraryTooling"],
       "outputs": ["{workspaceRoot}/dist/packages/angular"],
       "options": {
         "command": "node tools/growth/install/assemble-package.mjs angular"
-      }
+      },
+      "cache": true
     },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
@@ -63,7 +65,17 @@
       "executor": "@nx/eslint:lint"
     },
     "test": {
-      "executor": "@analogjs/vitest-angular:test"
+      "executor": "@analogjs/vitest-angular:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/tsconfig.base.json",
+        {
+          "runtime": "node --version"
+        }
+      ]
     },
     "e2e": {
       "executor": "nx:run-commands",

@@ -29,20 +29,18 @@
             "output": "."
           }
         ]
-      }
+      },
+      "inputs": ["production", "^production", "libraryTooling"]
     },
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": ["compile"],
-      "inputs": [
-        "{workspaceRoot}/tools/growth/install/*.cjs",
-        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
-        "{projectRoot}/package.json"
-      ],
+      "inputs": ["production", "^production", "libraryTooling"],
       "outputs": ["{workspaceRoot}/dist/packages/google"],
       "options": {
         "command": "node tools/growth/install/assemble-package.mjs google"
-      }
+      },
+      "cache": true
     },
     "lint": {
       "executor": "@nx/eslint:lint",
@@ -56,7 +54,17 @@
       "options": {
         "jestConfig": "packages/google/jest.config.ts",
         "passWithNoTests": true
-      }
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/tsconfig.base.json",
+        {
+          "runtime": "node --version"
+        }
+      ]
     },
     "e2e": {
       "executor": "@nx/jest:jest",

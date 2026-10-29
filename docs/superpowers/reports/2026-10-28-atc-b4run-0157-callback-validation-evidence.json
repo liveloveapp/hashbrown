@@ -1,0 +1,3114 @@
+{
+  "schemaVersion": 1,
+  "version": "0.15.7",
+  "sourceCommit": "bf4e937deb642e25eb16b33d45ab2f0fb87ac196",
+  "sourceBase": "5fcb8b4cf64e023cde7eddea5320dab2265a8695",
+  "release": {
+    "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+    "registryManifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+    "immutableRelease": true,
+    "tagVerified": true,
+    "manifestAttestationVerified": true,
+    "smokesVerified": true,
+    "auditVerified": true,
+    "releaseId": 426627142,
+    "annotatedTagObject": "46c8f5322cc2fdba38d1c40c5c2b1415541e2527",
+    "releaseRunId": 40743222020,
+    "auditRunId": 40747893391,
+    "ordinaryReportSha256": "77662d61cca0d86f8f553abb2c153fba5c280c4ca12a7131a7f345a5acc9cbc8",
+    "url": "https://github.com/cacheplane/b4run/releases/tag/v0.15.7",
+    "ci": {
+      "status": "success",
+      "workflow": "CI",
+      "check": "validate",
+      "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+      "workflowRunId": 40553103982,
+      "runAttempt": 1
+    },
+    "smokes": [
+      {
+        "name": "metadata",
+        "status": "passed",
+        "version": "0.15.7",
+        "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+        "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+        "workflowRunId": 40743222020,
+        "runAttempt": 1
+      },
+      {
+        "name": "published-harness",
+        "status": "passed",
+        "version": "0.15.7",
+        "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+        "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+        "workflowRunId": 40743222020,
+        "runAttempt": 1
+      },
+      {
+        "name": "runtime-targets",
+        "status": "passed",
+        "version": "0.15.7",
+        "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+        "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+        "workflowRunId": 40743222020,
+        "runAttempt": 1
+      },
+      {
+        "name": "scaffold",
+        "status": "passed",
+        "version": "0.15.7",
+        "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+        "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+        "workflowRunId": 40743222020,
+        "runAttempt": 1
+      },
+      {
+        "name": "storage",
+        "status": "passed",
+        "version": "0.15.7",
+        "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+        "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+        "workflowRunId": 40743222020,
+        "runAttempt": 1
+      }
+    ],
+    "audit": {
+      "status": "success",
+      "version": "0.15.7",
+      "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+      "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+      "workflowRunId": 40747893391,
+      "runAttempt": 1,
+      "conclusion": "success"
+    },
+    "ordinaryPlan": {
+      "state": "AUDIT_COMPLETE",
+      "disposition": "noop",
+      "nextTransition": null,
+      "reasons": ["the independent release audit is complete"],
+      "conflicts": [],
+      "proposedMutations": []
+    },
+    "historicalRecordAdmitted": false
+  },
+  "registry": {
+    "version": "0.15.7",
+    "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4",
+    "verifiedAt": "2026-10-28T18:51:03.766Z",
+    "manifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+    "packages": [
+      {
+        "name": "@b4run/config-biome",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "de7f66634c327c1460c84cd8c64b7db666536a6824dec67c64d2d708d56f624b",
+        "integrity": "sha512-VFe2x7K2nYtDfVPJP0I/oC+oSgjZHPpv0dUgR3enV+2ZGrb+oeinATwzWDwLONDUlOqxpXtgqX8JCV0D22KC5g==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/config-typescript",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "d838d9265aee3701b540fba8e6c5787d77eec7378cb75802269fdbd1d0cdef39",
+        "integrity": "sha512-WSTW8ZfSP1JSUHBSmpDS2JE6ct7LzLs+03OgJ/4axAYs45hWj+b/5j4FkvA+LjxrKO4gwIPviEtKWY0smsiCFA==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/devkit",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "65cd782c5717c84a659a3cb8d2146eafac2b74e026a69614150feb33120f029d",
+        "integrity": "sha512-kFTr6n9KmBC7FmZ6ohS8MTBb37u9hynKwqIa9QaZlKn0aOQwCGKcjC8VJL5PThMVr92ToghMvmw5pqNfj5Q/8A==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/sdk",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "6b5206ff0e657cd2ff6cfefe4cf1280e99c1af52e58402e59162d5074b6d7674",
+        "integrity": "sha512-6hOWKpVOWGPIcoQuBFd/4tKadoRjjEzjJq6OWgWWWcQ+690LXQU50ZUXJqaHMHu/OYNGiF2CPveo1dQUamzf9Q==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/ag-ui",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "eef618f9ffb20d1cb1a353d784ef58ba87ecd0711e083f6a53c5dc5b8f0fa589",
+        "integrity": "sha512-9rvAeMviLc2FH1txe3z/RVR18nGizWAPRTaxl/x/npjHfW4Qn8LBwAjNMr2Srog0DpUB5iMxEc8COkxC63Joaw==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/langgraph",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "3101e1019f7c0e30b0842123b5749e2739b85661a7ed60364eeb9821dbf562ea",
+        "integrity": "sha512-ovuoprJ0VnzISBc73//Ik6QiluPkNBsuaAd0ugtreKRTQXXAmtGLa+lA6EViS0opMVxtn7fsWg9X8hK2fw2V7g==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/permissions",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "a5c804236ca72e81dacb84ac73f1b06a96a24813f7bd4e3eb8ef2aeaca439dad",
+        "integrity": "sha512-j0DLqybrmFFXoDaq2+2zrjLoqbTqyl2E3cSpEE91FqhpuAqCusVE9Uf7JJ9fk1H5KbeBV047zmHuIy91vzWgOg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/postgres-storage",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "130ede7e8b7baa0c5ff04c04ca1c96b65c24c14aee5ad1ac458f0b0f28d7c89a",
+        "integrity": "sha512-+veynXK4B4vVCU0ZxO/uCTHujC9DPfB2KUL2jRLBS6SbUMq4QlTn1smfJaGy8AdWh9BVo5ev2y4ZMrgnEf1V8g==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/workspace",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "9c388d8ea5acb10615305466ac0ec38fa366456bcd39ae6d4a227a45b72be7dd",
+        "integrity": "sha512-mIxLqlAR0Nac3OUqCKxKgqYaRXUWS2wM0G+AkOsuh0yZGxw+u8lub9i+ooLJUXKbR9uGal6jEqX/1rE1TQUIjA==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/sandbox",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "353958fb347ac2c987d92f9e7c9d18080be6695662af63c03ffa93f495ef4c95",
+        "integrity": "sha512-wOS3/54u7zMgLTaqjqcsVfHXp0HUFnYYNZ8TMsDra1Uo06Cav9McgHFchQxmWbfIFJlwkuM8vz0aTB67mferBw==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/sqlite-storage",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "fa7637c3e54b6ea33819757e03ab685469a9efa29e6f2d4e0bafed5100cf7afe",
+        "integrity": "sha512-nrDvva86IY6eM/sc7c7fuEbDqkch1LO1lfepIXISZjgJY9V9LmeCzrMXk+ydUlEvsSe+naURUcSlrkxdzdUlBQ==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/core",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "5e0b5538324ba245ea7c256645f8d56099ee06ce67cda7db6809a9caff28f937",
+        "integrity": "sha512-aKUXgZW9y7uprf+CsGAiuAXhy7IK5SIA9DwL4XZ0fuzr0bmkzBneAST40/JBMLb/0aN4f1afZ5JlMY9e7n5odw==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/langchain",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "bdfab2f3d86b55b219ba666d203b86cc2e7ecdf628250507bb96755c01fb9977",
+        "integrity": "sha512-oFwZ25lZUh4yOqQOAsk+cPvgTl3wHFk0XlclKZhJsIBBymYfQCEt6grTnSghvcFzrO75cFTiUy1CtBOikgLcig==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/memory",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "2b4c3c790f138866cc001d7a4d7e7b12c2e1056f16a03c0dab4fe11ec6ac5394",
+        "integrity": "sha512-XV92b5OJfBdUObHPTXZhlO+zeZkY+ELtFAnecoWTTCz0Bod2iE/H9mkt0yfadfhSJgMY60KZIHLEhqkYBPZJfg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/cli",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "ac589c073571565aeb63f97137246e60fbcd048c4eafb2daa70adb9ee1b3a828",
+        "integrity": "sha512-0gw1AU76M3FYWNm+KuUYd+P7aU27fH3R6F9ziExx7FHkVU+EDULHZWJzyQwPV69MSt+gs7jhdcVeIxdEiw2AJQ==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/inspector",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "b2dd2451b3c7ef189c4babeaabaa5fd7f0b2f726416a23b8031629e5bbc58f48",
+        "integrity": "sha512-jlSQLbhe43wDLXVvGW7v3IJl9LDEQi7S3etipGk17q1/XFjQl4jhzORo0J0Lg9GgPKX0fq/kI8UeGufxGNssIg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/memory-pgvector",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "bfecde0a69d9cca0e8de2801be7a7c6cc949da0278d2ad7c38779ed7b954288b",
+        "integrity": "sha512-t3NVjB87kMTiU6CnhtLxAyY4NA2WDc06EUZR1cOtD9uM665a8C02+lAtwzOpcd1FpxZD14q1qJduya0lsqAQjA==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/testing",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "ccd968ca24a4b73e406842a4fccbb63e024d1e45911b06f5044ce2d432d7aa41",
+        "integrity": "sha512-nkanst2pyffKBaMCurPvVXfXPSzMfVcwNy7OT5KjZ3aXWbD3ebFmSzCkb1hrDb84H7arD9CyOEMihb2api2IHg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/evals",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "f238c865b4df2978c7a7786ec1b1c9316220c9654b52f6ca3003db55c22246ce",
+        "integrity": "sha512-gnv2HcRWFJva2ldmlb7SligZH3oCiUXAwRT5fgjxS1nmqmju0GK9wWRAQcNoX7zipBgJiLG2H3y7WnRQ5hUfmg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "@b4run/vite-plugin",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "17130e90c1be512a2b998be061de194f2a93267a89d0ca449cc4b54703a75320",
+        "integrity": "sha512-UwEUdno3KvrBp3rb+qx2+RotAWmZ1woLDw9JNcYZKzYjopA6kFKEqb+1G3pjpFCSK0vYEttRyjZmxERWRKxT9w==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      },
+      {
+        "name": "create-b4-app",
+        "version": "0.15.7",
+        "status": "verified",
+        "sha256": "2102737ba1a3cb81e48f0ca0417a16cddaa4c44633710155b562d549374e9962",
+        "integrity": "sha512-hhPaDWwUI47hgYoXjA2wF2QIosGZfCJ/g7y25kOtOIJypoONCN+d2NSFnoyR+KwPBcFZir+nCwe/cVUNsxVQCg==",
+        "hasAttestationMetadata": true,
+        "ordinarySignature": {
+          "status": "valid"
+        },
+        "provenance": {
+          "workflow": ".github/workflows/release.yml",
+          "commitSha": "e67a92e4dc3b0f5ffc884ecee3fa8d87d5d788c4"
+        }
+      }
+    ]
+  },
+  "artifact": {
+    "sourceCommit": "bf4e937deb642e25eb16b33d45ab2f0fb87ac196",
+    "version": "0.15.7",
+    "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "functionTreeSha256": "beeaad641d2c384d74af0790e6658a3ed10ef7abb0ee64fc7c29eed2b8a92193",
+    "completeOutputTreeSha256": "090efb384c9014c3c7a2cd6f5ed323ecb191c29c7aa2a5a03784fc710596788f",
+    "lockfileSha256": "8e371794b4c3679c2dcd39f26ba4810a702cc7a31784d2131399d1436cc09b94",
+    "buildResults": "hashbrown-0157-preview-build-20261028T190716Z-results.json",
+    "completeCopiesVerified": true,
+    "deploymentsCreated": true,
+    "identity": "Verified identical prebuilt uploads; no independent remote byte attestation"
+  },
+  "deployments": [
+    {
+      "id": "dpl_7b1rBd323SXAwRSt15J2A65ijdow",
+      "url": "https://hashbrown-ecny7e4h1-blovedev.vercel.app",
+      "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+      "contextName": "blovedev",
+      "verifiedReadyPreview": true
+    },
+    {
+      "id": "dpl_6gvmdFnPy1ufosLAnSfNXUsfq4iD",
+      "url": "https://hashbrown-8nk4a5a8n-blovedev.vercel.app",
+      "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+      "contextName": "blovedev",
+      "verifiedReadyPreview": true
+    }
+  ],
+  "database": {
+    "target": "dedicated-atc-preview",
+    "connectionSha256": "70f8fc273c7540583f029977a2e1119dc0aeec57e64814204797fe20a6ab59d2"
+  },
+  "preflightManifestSha256": "0481b76ab496c59a661d6ef1713db7f62d5dc146191aae58c88e620301dbedcb",
+  "localValidation": {
+    "unitCounts": {
+      "core": 2333,
+      "openai": 89,
+      "typesafe": 49,
+      "anthropic": 232,
+      "azure": 79,
+      "bedrock": 131,
+      "google": 122,
+      "ollama": 37,
+      "react": 213,
+      "angular": 281,
+      "atc-angular": 85,
+      "growth": 395,
+      "atc-react": 83,
+      "atc-shared": 763,
+      "lifecycle": 112,
+      "atc-server": 163,
+      "atc-e2e": 38
+    },
+    "reportedUnitTestsPassed": 5205,
+    "defaultOptInPgCaseSkipped": 1,
+    "separateRealAtcPgTestsPassed": 8,
+    "separateRealLifecyclePgTestsPassed": 6,
+    "browserTestsPassed": 86,
+    "affectedBuildProjects": 16,
+    "additionalBuildTasks": 12,
+    "allAffectedLintPassed": true,
+    "lintWarningsInUnchangedSource": 13,
+    "lifecycleCheckPassed": true,
+    "atcE2eTypecheckPassed": true,
+    "fullOpenAiAndB4PrebuiltBuildsPassed": true,
+    "postCommitB4PreviewBuildPassed": true,
+    "generatedTwoModulePostgresArtifactPassed": true,
+    "warnings": [
+      "13 Angular/React lint findings in unchanged source",
+      "Nx executor/plugin deprecations",
+      "Vite native-config and Analog test-tsconfig advisories"
+    ],
+    "boundedResolverRefresh": "11 existing B4 lock entries and six existing LangChain/OpenAI entries; no new direct dependencies or lockfile package paths"
+  },
+  "noop": {
+    "startedAt": "2026-10-28T19:15:08.061Z",
+    "finishedAt": "2026-10-28T19:17:25.478Z",
+    "passed": true,
+    "topology": "Genuine model-issued discovery and highlight calls over two managed previews and dedicated hosted Postgres",
+    "limitations": [
+      "Discovery results use an explicit synthetic aircraft fixture through the ordinary browser-result protocol; model output is not fabricated.",
+      "Canonical provider IDs do not count every upstream request that might have been cancelled before committing.",
+      "The manifest is a parent-written deployment preflight assertion; the probe matches its identities and hashes rather than independently attesting hosted bytes.",
+      "Immediate EOF checks and final snapshots are not continuous monitoring."
+    ],
+    "cases": [
+      {
+        "attempt": 0,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "discovery": [
+          {
+            "toolCallId": "call_IUVtA5kxfV0AOAfwGEJ1klCr",
+            "interruptId": "client-call_IUVtA5kxfV0AOAfwGEJ1klCr",
+            "routeId": "/atc#agent",
+            "runId": "a96434fc-fcd7-4d43-a408-58389aa95f1a",
+            "expiresAt": "2026-10-28T19:25:18.091Z",
+            "pendingWritesSha256": "af14ffd203c1ee072a0c8751edff8d440269f0aa9c5a6e51b848473960499aa3",
+            "fixtureSha256": "20c7820d0f2b265129a943ceeeed8f173b71b0e212195d83bd4ebbd0c996b4cd"
+          }
+        ],
+        "callbacks": [
+          {
+            "retry": 0,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": true,
+            "runId": "d7907ba3-d2a7-46ea-9680-47f7263e644c",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 1,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "a1a32d6b-b758-4455-be35-92dcfcc6f2a5",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 2,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "9fda4801-0393-491c-bfe5-b71ed90f6ebd",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 3,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": true,
+            "runId": "d7907ba3-d2a7-46ea-9680-47f7263e644c",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 4,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "8104562b-060a-49ff-b697-d4875c8ea24f",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 5,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "20a2d3bc-c9a7-43de-90a2-6fc6dfcccfb7",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          }
+        ],
+        "passed": true,
+        "beforeAcceptedAnswer": {
+          "tupleSha256": "8b7932a3282d87bc2af2114a1ec51995eb60d2c97ff19560fe28c3ef7135f34d",
+          "recordsSha256": "dee8ce12c36aabca1663b9df6328eb38d5d5765512e2e5ad94326eab33e65d12",
+          "threadSha256": "14bf454cd65306429faf7b0f523a3db8f51dafa253a6b3e0e3f6e51797f1ed5c",
+          "counts": {
+            "checkpoints": 5,
+            "writes": 11
+          },
+          "checkpointId": "1f1d303e-b7a0-60c0-8003-df24420b0dd3",
+          "messagesSha256": "a435e3fe14f6b6cf5d6e184b8e9fff1fa1af77328591953fd76c8a1bb0617095",
+          "providerIds": [
+            "resp_00dac565c9bdd60b006ae249c197ac87d29d527dc19c7a61d1",
+            "resp_00dac565c9bdd60b006ae249c830d887d28dcb16bc8e47291e"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_CWnwZ9xGiujGproQBIA1q2D6",
+              "name": "highlightAircraft",
+              "answeredAt": null,
+              "voidedAt": null,
+              "resultSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+            },
+            {
+              "id": "call_IUVtA5kxfV0AOAfwGEJ1klCr",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:19.636Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "highlightPending": {
+          "toolCallId": "call_CWnwZ9xGiujGproQBIA1q2D6",
+          "interruptId": "client-call_CWnwZ9xGiujGproQBIA1q2D6",
+          "routeId": "/atc#agent",
+          "runId": "7d7df4b6-dea7-4185-9f9d-0472a95cb1f2",
+          "expiresAt": "2026-10-28T19:25:21.547Z",
+          "pendingWritesSha256": "43400ac073b9af79ce98ef67a7e2b43696cc4fa084ae0cf2c54b17e4d4aac4c9"
+        },
+        "completedDiscoveryCount": 1,
+        "baseline": {
+          "tupleSha256": "5995ee15699e4ca0c2bb36fb56408b482691dde5c94aa71318735ba0cc036b65",
+          "recordsSha256": "ae8df72c435374b3a7146a299c6b2b7b829f0f1285af225144d894fd0aa6dfd5",
+          "threadSha256": "b51a09fec72d34fcfe94eb694e6540393f7fe02f66247468e2b196fc5917452e",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d303e-d57c-6170-8005-a6744f2f5149",
+          "messagesSha256": "458a1d38741d63b70e25b62de19bd008dfac886af08c8edf8f0785054f2c454c",
+          "providerIds": [
+            "resp_00dac565c9bdd60b006ae249c197ac87d29d527dc19c7a61d1",
+            "resp_00dac565c9bdd60b006ae249c830d887d28dcb16bc8e47291e",
+            "resp_00dac565c9bdd60b006ae249cb339087d29d6abebcaeb24a1c"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_CWnwZ9xGiujGproQBIA1q2D6",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:15:22.760Z",
+              "voidedAt": null,
+              "resultSha256": "f65cde2518707b5d9a6787d2f9627dd39c08037ca5698df5ab0d578294cf4d69"
+            },
+            {
+              "id": "call_IUVtA5kxfV0AOAfwGEJ1klCr",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:19.636Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "acceptedAnswerPreservedPriorMessagesAndProviderPrefix": true,
+        "answer": {
+          "toolCallId": "call_CWnwZ9xGiujGproQBIA1q2D6",
+          "answeredAt": "2026-10-28T19:15:22.760Z",
+          "resultSha256": "f65cde2518707b5d9a6787d2f9627dd39c08037ca5698df5ab0d578294cf4d69"
+        },
+        "settled": {
+          "checkedAt": "2026-10-28T19:17:24.492Z",
+          "tupleSha256": "5995ee15699e4ca0c2bb36fb56408b482691dde5c94aa71318735ba0cc036b65",
+          "recordsSha256": "ae8df72c435374b3a7146a299c6b2b7b829f0f1285af225144d894fd0aa6dfd5",
+          "threadSha256": "b51a09fec72d34fcfe94eb694e6540393f7fe02f66247468e2b196fc5917452e",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d303e-d57c-6170-8005-a6744f2f5149",
+          "messagesSha256": "458a1d38741d63b70e25b62de19bd008dfac886af08c8edf8f0785054f2c454c",
+          "providerIds": [
+            "resp_00dac565c9bdd60b006ae249c197ac87d29d527dc19c7a61d1",
+            "resp_00dac565c9bdd60b006ae249c830d887d28dcb16bc8e47291e",
+            "resp_00dac565c9bdd60b006ae249cb339087d29d6abebcaeb24a1c"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_CWnwZ9xGiujGproQBIA1q2D6",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:15:22.760Z",
+              "voidedAt": null,
+              "resultSha256": "f65cde2518707b5d9a6787d2f9627dd39c08037ca5698df5ab0d578294cf4d69"
+            },
+            {
+              "id": "call_IUVtA5kxfV0AOAfwGEJ1klCr",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:19.636Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ],
+          "admissionCount": 0,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      },
+      {
+        "attempt": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "discovery": [
+          {
+            "toolCallId": "call_Zp4HwoKqCWi6W3qPi4mnZVmg",
+            "interruptId": "client-call_Zp4HwoKqCWi6W3qPi4mnZVmg",
+            "routeId": "/atc#agent",
+            "runId": "0233889c-426a-4248-817d-70a7b0aac6cc",
+            "expiresAt": "2026-10-28T19:25:35.460Z",
+            "pendingWritesSha256": "5d524d5a4cb068af01742601d638574c0cff8dcaf811857b39124de46696282b",
+            "fixtureSha256": "20c7820d0f2b265129a943ceeeed8f173b71b0e212195d83bd4ebbd0c996b4cd"
+          }
+        ],
+        "callbacks": [
+          {
+            "retry": 0,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": true,
+            "runId": "35ca225d-a977-4ca5-96fd-cd379b9cfb6c",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 1,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "1e2c34e6-b275-4579-918a-f6c9fec18213",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 2,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "318bacca-ef6f-48b2-b6f1-168c9836ee0e",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 3,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": true,
+            "runId": "35ca225d-a977-4ca5-96fd-cd379b9cfb6c",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 4,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "aa0d3c52-8141-49a7-a226-f6b81848bd1f",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 5,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "f0b2ef70-bc6a-42e2-8934-f1bd3f109775",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          }
+        ],
+        "passed": true,
+        "beforeAcceptedAnswer": {
+          "tupleSha256": "b645dd94852f4c31c2586e1d83ded31c925efdd36da46f9e64d3af57df925518",
+          "recordsSha256": "9dbfbbe135a8038d34da4a943ecb5082b925541174c6727fceb11b0e77959934",
+          "threadSha256": "b51aa93188f9d489e119bdf27979947a7c8fe0309659154e9b58e6c9dba01ffc",
+          "counts": {
+            "checkpoints": 5,
+            "writes": 11
+          },
+          "checkpointId": "1f1d303f-6c4a-60c0-8003-39881291c8f6",
+          "messagesSha256": "745006ebc82095c2de0123afcce2415ff41885c830976333bcb8b11753d7d565",
+          "providerIds": [
+            "resp_0a8b3cd2b7fda113006ae249d3c20087d294426d462b4b7996",
+            "resp_0a8b3cd2b7fda113006ae249d95ae487d2bf8e04e8a43223a0"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_wQfk8B3EAD4J1oiVkGlFvat2",
+              "name": "highlightAircraft",
+              "answeredAt": null,
+              "voidedAt": null,
+              "resultSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+            },
+            {
+              "id": "call_Zp4HwoKqCWi6W3qPi4mnZVmg",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:36.829Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "highlightPending": {
+          "toolCallId": "call_wQfk8B3EAD4J1oiVkGlFvat2",
+          "interruptId": "client-call_wQfk8B3EAD4J1oiVkGlFvat2",
+          "routeId": "/atc#agent",
+          "runId": "c469e8b1-f006-40bb-aa96-62bfbf373c9a",
+          "expiresAt": "2026-10-28T19:25:40.477Z",
+          "pendingWritesSha256": "e892750f11e41306f199db5fc6131f7e494d91988194cbe9edeff6977b6478a9"
+        },
+        "completedDiscoveryCount": 1,
+        "baseline": {
+          "tupleSha256": "219c3aeeeb0464c7a6691e87aeaacd092e59bec0e6a075a886a2a78dc241980f",
+          "recordsSha256": "cf0fe604b2c9f42dd9895e2332a55eefb3bb4abaa931cea20124238807886230",
+          "threadSha256": "ea10c9730934d5a0a3eda44255fd1cf0bb1b571f9c730e6c9c37a2653ce83b05",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d303f-86cf-6990-8005-7183391c3137",
+          "messagesSha256": "e44c5580692e597fa8f3beea4513e4ac8c9baa5b1012d97e070d56556b1ed7aa",
+          "providerIds": [
+            "resp_0a8b3cd2b7fda113006ae249d3c20087d294426d462b4b7996",
+            "resp_0a8b3cd2b7fda113006ae249d95ae487d2bf8e04e8a43223a0",
+            "resp_0a8b3cd2b7fda113006ae249de1d1487d2b0f3dd72e587653f"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_wQfk8B3EAD4J1oiVkGlFvat2",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:15:41.629Z",
+              "voidedAt": null,
+              "resultSha256": "4bb5264e324cec3363fc60902a588da913709a714ffa172dece4692808f6bfdb"
+            },
+            {
+              "id": "call_Zp4HwoKqCWi6W3qPi4mnZVmg",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:36.829Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "acceptedAnswerPreservedPriorMessagesAndProviderPrefix": true,
+        "answer": {
+          "toolCallId": "call_wQfk8B3EAD4J1oiVkGlFvat2",
+          "answeredAt": "2026-10-28T19:15:41.629Z",
+          "resultSha256": "4bb5264e324cec3363fc60902a588da913709a714ffa172dece4692808f6bfdb"
+        },
+        "settled": {
+          "checkedAt": "2026-10-28T19:17:25.030Z",
+          "tupleSha256": "219c3aeeeb0464c7a6691e87aeaacd092e59bec0e6a075a886a2a78dc241980f",
+          "recordsSha256": "cf0fe604b2c9f42dd9895e2332a55eefb3bb4abaa931cea20124238807886230",
+          "threadSha256": "ea10c9730934d5a0a3eda44255fd1cf0bb1b571f9c730e6c9c37a2653ce83b05",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d303f-86cf-6990-8005-7183391c3137",
+          "messagesSha256": "e44c5580692e597fa8f3beea4513e4ac8c9baa5b1012d97e070d56556b1ed7aa",
+          "providerIds": [
+            "resp_0a8b3cd2b7fda113006ae249d3c20087d294426d462b4b7996",
+            "resp_0a8b3cd2b7fda113006ae249d95ae487d2bf8e04e8a43223a0",
+            "resp_0a8b3cd2b7fda113006ae249de1d1487d2b0f3dd72e587653f"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_wQfk8B3EAD4J1oiVkGlFvat2",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:15:41.629Z",
+              "voidedAt": null,
+              "resultSha256": "4bb5264e324cec3363fc60902a588da913709a714ffa172dece4692808f6bfdb"
+            },
+            {
+              "id": "call_Zp4HwoKqCWi6W3qPi4mnZVmg",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:36.829Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ],
+          "admissionCount": 0,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      },
+      {
+        "attempt": 2,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "discovery": [
+          {
+            "toolCallId": "call_Qe1WBnGhOeAO6jDEqyzxs4BF",
+            "interruptId": "client-call_Qe1WBnGhOeAO6jDEqyzxs4BF",
+            "routeId": "/atc#agent",
+            "runId": "19793687-ba50-4f14-bb1e-41692e8b285f",
+            "expiresAt": "2026-10-28T19:25:56.750Z",
+            "pendingWritesSha256": "1e64416f3c6216a90daa0454aa3912e4889287e8e19ad36f8bf2f9403e1a540a",
+            "fixtureSha256": "20c7820d0f2b265129a943ceeeed8f173b71b0e212195d83bd4ebbd0c996b4cd"
+          }
+        ],
+        "callbacks": [
+          {
+            "retry": 0,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": true,
+            "runId": "fc5414bf-cdac-43c5-afec-c346230cdeac",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 1,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "bb97d248-944e-4960-849a-b4b3e9fa0c95",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 2,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "79d5ae08-3c59-4077-b373-6f4b79f3abfb",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 3,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": true,
+            "runId": "fc5414bf-cdac-43c5-afec-c346230cdeac",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 4,
+            "replica": 0,
+            "conflicting": false,
+            "sameRunId": false,
+            "runId": "452e1f81-4752-4947-8b78-1aa37979fa06",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          },
+          {
+            "retry": 5,
+            "replica": 1,
+            "conflicting": true,
+            "sameRunId": false,
+            "runId": "4ae5e1e9-33da-4bc0-aff2-c05f02c45115",
+            "canonicalUnchanged": true,
+            "completeTupleRecordsThreadAndCountsUnchanged": true,
+            "immediateAdmissions": []
+          }
+        ],
+        "passed": true,
+        "beforeAcceptedAnswer": {
+          "tupleSha256": "add9b853d8334930cfe8f5076ade3df46db2e910edb12330db8e46a10f31cb0f",
+          "recordsSha256": "4634a80f6db1e53267631db196dc5d3110903fec5c4eaf4497f3f5be76f758c4",
+          "threadSha256": "b96edb5befb224acc2661893fb264ba68257c4e48637ffb1fb5c0f0fb0ecae4e",
+          "counts": {
+            "checkpoints": 5,
+            "writes": 11
+          },
+          "checkpointId": "1f1d3040-231e-63f0-8003-f3af9a2b76ab",
+          "messagesSha256": "be8d0eeea741524e3d590e9a5efbe1220bb033ad53c1ea12c1859d40e021dec7",
+          "providerIds": [
+            "resp_0f0a49ba7df55d98006ae249e636f087d2bf99f106288774a2",
+            "resp_0f0a49ba7df55d98006ae249ee649087d2b7da94e060324a96"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_PrkAEiifCxaSDX5nKsttOU8W",
+              "name": "highlightAircraft",
+              "answeredAt": null,
+              "voidedAt": null,
+              "resultSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+            },
+            {
+              "id": "call_Qe1WBnGhOeAO6jDEqyzxs4BF",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:57.898Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "highlightPending": {
+          "toolCallId": "call_PrkAEiifCxaSDX5nKsttOU8W",
+          "interruptId": "client-call_PrkAEiifCxaSDX5nKsttOU8W",
+          "routeId": "/atc#agent",
+          "runId": "489db992-c949-4e5a-ad0f-055ffad658d6",
+          "expiresAt": "2026-10-28T19:25:59.654Z",
+          "pendingWritesSha256": "e1011cad3e62961b3702e7f8aabdce81cb7e31af5aa19551d70f1ac5dc5ec562"
+        },
+        "completedDiscoveryCount": 1,
+        "baseline": {
+          "tupleSha256": "904bfb443ab338d45cffd61a50cb4b8d9ebc60d2902a044f81fa575f1c540298",
+          "recordsSha256": "8873a93cb765aee306da9c24a4cd62c66c5695e0eac562a13234f03f8655c045",
+          "threadSha256": "031a95315314035de52a84b5bad6b082ef1980235ed95c13323b02e3be559ec8",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d3040-4012-65b0-8005-506d2ac40ab0",
+          "messagesSha256": "0b8ebd28e6e1064c2f7ac10aa42e720023da06429d7d8b85b93a2993d7783843",
+          "providerIds": [
+            "resp_0f0a49ba7df55d98006ae249e636f087d2bf99f106288774a2",
+            "resp_0f0a49ba7df55d98006ae249ee649087d2b7da94e060324a96",
+            "resp_0f0a49ba7df55d98006ae249f13d0087d281534766050f9263"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_PrkAEiifCxaSDX5nKsttOU8W",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:16:00.795Z",
+              "voidedAt": null,
+              "resultSha256": "2e8113bee516404a6073b7052c949841b666419f950524cdef6a6591c6596e42"
+            },
+            {
+              "id": "call_Qe1WBnGhOeAO6jDEqyzxs4BF",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:57.898Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ]
+        },
+        "acceptedAnswerPreservedPriorMessagesAndProviderPrefix": true,
+        "answer": {
+          "toolCallId": "call_PrkAEiifCxaSDX5nKsttOU8W",
+          "answeredAt": "2026-10-28T19:16:00.795Z",
+          "resultSha256": "2e8113bee516404a6073b7052c949841b666419f950524cdef6a6591c6596e42"
+        },
+        "settled": {
+          "checkedAt": "2026-10-28T19:17:25.478Z",
+          "tupleSha256": "904bfb443ab338d45cffd61a50cb4b8d9ebc60d2902a044f81fa575f1c540298",
+          "recordsSha256": "8873a93cb765aee306da9c24a4cd62c66c5695e0eac562a13234f03f8655c045",
+          "threadSha256": "031a95315314035de52a84b5bad6b082ef1980235ed95c13323b02e3be559ec8",
+          "counts": {
+            "checkpoints": 7,
+            "writes": 15
+          },
+          "checkpointId": "1f1d3040-4012-65b0-8005-506d2ac40ab0",
+          "messagesSha256": "0b8ebd28e6e1064c2f7ac10aa42e720023da06429d7d8b85b93a2993d7783843",
+          "providerIds": [
+            "resp_0f0a49ba7df55d98006ae249e636f087d2bf99f106288774a2",
+            "resp_0f0a49ba7df55d98006ae249ee649087d2b7da94e060324a96",
+            "resp_0f0a49ba7df55d98006ae249f13d0087d281534766050f9263"
+          ],
+          "toolRecords": [
+            {
+              "id": "call_PrkAEiifCxaSDX5nKsttOU8W",
+              "name": "highlightAircraft",
+              "answeredAt": "2026-10-28T19:16:00.795Z",
+              "voidedAt": null,
+              "resultSha256": "2e8113bee516404a6073b7052c949841b666419f950524cdef6a6591c6596e42"
+            },
+            {
+              "id": "call_Qe1WBnGhOeAO6jDEqyzxs4BF",
+              "name": "findAircraft",
+              "answeredAt": "2026-10-28T19:15:57.898Z",
+              "voidedAt": null,
+              "resultSha256": "05c63c4fa61cc1a39e0b0cc41645fd91ff383dd902879c2a95be38e38269a364"
+            }
+          ],
+          "admissionCount": 0,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      }
+    ],
+    "requests": [
+      {
+        "replica": 0,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "a96434fc-fcd7-4d43-a408-58389aa95f1a",
+        "requestSha256": "c86c1912f07eb29ab37ec6085414f7b038df0b5fb6503d7bafdd06e136379494",
+        "startedAt": "2026-10-28T19:15:11.885Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:18.256Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "REASONING_START",
+          "REASONING_MESSAGE_START",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_END",
+          "REASONING_END",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:18.347Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "7d7df4b6-dea7-4185-9f9d-0472a95cb1f2",
+        "requestSha256": "36c07e8545b5acf1b38875d393d0977b3e06b285df5aac618bede0a8a2ecf45e",
+        "startedAt": "2026-10-28T19:15:18.884Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:21.709Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:21.780Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "d7907ba3-d2a7-46ea-9680-47f7263e644c",
+        "requestSha256": "b0277a4b6c4ba85aac1aaecea89d6c279fb6acef9ab699623620f7c36205a985",
+        "startedAt": "2026-10-28T19:15:22.386Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:24.804Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "TEXT_MESSAGE_START",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "cd96523423d5f899e806a22a8ac043312f9d7571fe33bd4f88faed2bc1b615d0",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:24.883Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "d7907ba3-d2a7-46ea-9680-47f7263e644c",
+        "requestSha256": "0ebd1ab90fa916f188ea935aeba66eddc023c51b3bf7ebbd0687ec91b3fb18b7",
+        "startedAt": "2026-10-28T19:15:25.438Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:25.987Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:26.061Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "a1a32d6b-b758-4455-be35-92dcfcc6f2a5",
+        "requestSha256": "26298dbda2111921712aa9283a98784841026a97c246856f3d35b5d7aac2552d",
+        "startedAt": "2026-10-28T19:15:26.584Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:26.928Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:27.002Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "9fda4801-0393-491c-bfe5-b71ed90f6ebd",
+        "requestSha256": "82784ccebcffabeb88c642b7d84d23bcac3ed8fdaacfe668a634f2f9e2f71682",
+        "startedAt": "2026-10-28T19:15:27.464Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:27.842Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:27.919Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "d7907ba3-d2a7-46ea-9680-47f7263e644c",
+        "requestSha256": "74459b84281bd6ac682f78be85579e523dcabd9fc247841445d6622828ca12a4",
+        "startedAt": "2026-10-28T19:15:28.367Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:28.644Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:28.721Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "8104562b-060a-49ff-b697-d4875c8ea24f",
+        "requestSha256": "fe5aadda4917c9ea75723fc2d912cdfef3f93aa702c6ce341e13b2e57b729c0f",
+        "startedAt": "2026-10-28T19:15:29.196Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:29.550Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:29.627Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-2ee4b967-d78a-4bb3-af8a-731b3a541887",
+        "runId": "20a2d3bc-c9a7-43de-90a2-6fc6dfcccfb7",
+        "requestSha256": "4546df5c2e56a1354be4d46cd0916bc44d49b10672e47d0437fb54c407a72f2f",
+        "startedAt": "2026-10-28T19:15:30.086Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:30.342Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:30.415Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "0233889c-426a-4248-817d-70a7b0aac6cc",
+        "requestSha256": "a4f82fec92b23bbd68ad49fc876ba7e0903aa6d08443b8a6d90b4aeb1465cf7e",
+        "startedAt": "2026-10-28T19:15:31.183Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:35.614Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "REASONING_START",
+          "REASONING_MESSAGE_START",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_END",
+          "REASONING_END",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:35.689Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "c469e8b1-f006-40bb-aa96-62bfbf373c9a",
+        "requestSha256": "9db2de10eeab809f3e3471c12dd7ab8fe4a8419463ea9b9af6541e2a47ee2d68",
+        "startedAt": "2026-10-28T19:15:36.214Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:40.575Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "REASONING_START",
+          "REASONING_MESSAGE_START",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_END",
+          "REASONING_END",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:40.651Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "35ca225d-a977-4ca5-96fd-cd379b9cfb6c",
+        "requestSha256": "e64743797289c47686b1ebdae3315bbcb993ebea0071aaa13862a5419f3e2f85",
+        "startedAt": "2026-10-28T19:15:41.287Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:43.464Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "TEXT_MESSAGE_START",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "cd96523423d5f899e806a22a8ac043312f9d7571fe33bd4f88faed2bc1b615d0",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:43.543Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "35ca225d-a977-4ca5-96fd-cd379b9cfb6c",
+        "requestSha256": "ca11a9e4d848c02a1f5077747fb46096301bec83c64af75c175fc0d5d410a05f",
+        "startedAt": "2026-10-28T19:15:44.151Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:44.618Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:44.691Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "1e2c34e6-b275-4579-918a-f6c9fec18213",
+        "requestSha256": "e6bde6440eb19d3e3f7ae23380925d460d2349a31880a5fb60b16eccbc509909",
+        "startedAt": "2026-10-28T19:15:45.294Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:45.532Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:45.618Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "318bacca-ef6f-48b2-b6f1-168c9836ee0e",
+        "requestSha256": "cb3eb5cd7aab5d96cab5255f3e008ebe9e47897a761c5c2eb8611778a3f7b74e",
+        "startedAt": "2026-10-28T19:15:46.103Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:46.312Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:46.383Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "35ca225d-a977-4ca5-96fd-cd379b9cfb6c",
+        "requestSha256": "54034da60143b6c9bde0af4d2cd3121d638521a59d6961ba5d657c8c2f58aad2",
+        "startedAt": "2026-10-28T19:15:46.839Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:47.072Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:47.143Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "aa0d3c52-8141-49a7-a226-f6b81848bd1f",
+        "requestSha256": "9f2c7935836212b5a358835449e9850b0a28a06e8022c9beef10089067f52f47",
+        "startedAt": "2026-10-28T19:15:47.637Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:47.995Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:48.067Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-95504a57-c8fa-49e0-9bc3-711e4fed436a",
+        "runId": "f0b2ef70-bc6a-42e2-8934-f1bd3f109775",
+        "requestSha256": "8eea075c2d69be155ca56dbcb718a49124bb50a9c96ddec1c92c21cae6c2a7d4",
+        "startedAt": "2026-10-28T19:15:48.521Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:48.772Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:48.846Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "19793687-ba50-4f14-bb1e-41692e8b285f",
+        "requestSha256": "829df3e6750e0f92459f35201b235952d9744a8a1d152c0b910bc12f938207c4",
+        "startedAt": "2026-10-28T19:15:49.640Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:56.901Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "REASONING_START",
+          "REASONING_MESSAGE_START",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_CONTENT",
+          "REASONING_MESSAGE_END",
+          "REASONING_END",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:56.975Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "489db992-c949-4e5a-ad0f-055ffad658d6",
+        "requestSha256": "9b0a6906f473394f9089821c4a5119c7a8e9afe5137e64da0134712e719bb248",
+        "startedAt": "2026-10-28T19:15:57.566Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:15:59.820Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "TOOL_CALL_START",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_ARGS",
+          "TOOL_CALL_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:15:59.893Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "fc5414bf-cdac-43c5-afec-c346230cdeac",
+        "requestSha256": "29e7931991f7e4688e55f10ab90645a8009cfe46fcb9924da4cc3bf60c3109fc",
+        "startedAt": "2026-10-28T19:16:00.513Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:03.049Z",
+        "immediateAdmissions": [],
+        "eventTypes": [
+          "RUN_STARTED",
+          "TOOL_CALL_START",
+          "TOOL_CALL_END",
+          "TOOL_CALL_RESULT",
+          "TEXT_MESSAGE_START",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_CONTENT",
+          "TEXT_MESSAGE_END",
+          "RUN_FINISHED"
+        ],
+        "outputSha256": "982f10baae5995ef8d21831e992e11468d0bf29cbc45d0034288ae39c53f07db",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:03.122Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "fc5414bf-cdac-43c5-afec-c346230cdeac",
+        "requestSha256": "ebe56f39381d49342bde70006c15a466def07ccac1f1eb21c626db219179f44a",
+        "startedAt": "2026-10-28T19:16:03.653Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:04.069Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:04.141Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "bb97d248-944e-4960-849a-b4b3e9fa0c95",
+        "requestSha256": "5ed690fb2e24ae634e91883c301afdb7b15942b3153f708f6b6c6c1af33bf98e",
+        "startedAt": "2026-10-28T19:16:04.580Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:04.832Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:04.909Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "79d5ae08-3c59-4077-b373-6f4b79f3abfb",
+        "requestSha256": "3127749db2f48979892276f9a48bba955190828ee32424c66d207ca7c9d86ce9",
+        "startedAt": "2026-10-28T19:16:05.360Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:05.559Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:05.640Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "fc5414bf-cdac-43c5-afec-c346230cdeac",
+        "requestSha256": "782f5befe005ebefcaa60c7e0acf2f4729f0d70435da914c491589c22b5ce931",
+        "startedAt": "2026-10-28T19:16:06.078Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:06.362Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:06.433Z"
+      },
+      {
+        "replica": 0,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "452e1f81-4752-4947-8b78-1aa37979fa06",
+        "requestSha256": "ec2ef982c4ea43eec45e033db5618535e2e7081c0aa06eb7a25a386fdff55a43",
+        "startedAt": "2026-10-28T19:16:06.874Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:07.121Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:07.192Z"
+      },
+      {
+        "replica": 1,
+        "threadId": "noop-release-f52e8fa2-41d7-467c-8887-96da03c6bd78",
+        "runId": "4ae5e1e9-33da-4bc0-aff2-c05f02c45115",
+        "requestSha256": "afcdc771a4606a70a95b64048519c025b45eca2e6521282c857dbe32e162b753",
+        "startedAt": "2026-10-28T19:16:07.642Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:16:07.937Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:16:08.011Z"
+      }
+    ],
+    "packages": [
+      {
+        "name": "cli",
+        "version": "0.15.7"
+      },
+      {
+        "name": "core",
+        "version": "0.15.7"
+      },
+      {
+        "name": "sdk",
+        "version": "0.15.7"
+      },
+      {
+        "name": "postgres-storage",
+        "version": "0.15.7"
+      }
+    ],
+    "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "probeSha256": "947c7c1775f1a5c0f9b1a68c8afa57e2139a68c6f25266fdae0bfb5ebc1df937",
+    "schemaSha256": "f3295030d1e0d7e7e37e19238eee5ad593c9a098eb283fc8cb3cc3d286ad01ed",
+    "lastRequestFinishedAt": "2026-10-28T19:16:08.011Z",
+    "originalEvidenceSha256": "67088c76530e193c3e0a4d40d7c146779132f7b36e6ca90b020e27fcf871ad64",
+    "exitCode": 0,
+    "cleanup": {
+      "allOwnedClientRequestsSettledLocally": true,
+      "storesAndPoolClosed": true,
+      "errors": [],
+      "syntheticRowsRetained": true
+    }
+  },
+  "partial": {
+    "startedAt": "2026-10-28T19:18:06.464Z",
+    "finishedAt": "2026-10-28T19:19:45.207Z",
+    "safe": true,
+    "topology": "Published ATC artifact on two managed previews over dedicated hosted Postgres; explicit synthetic pending-call fixtures",
+    "limitations": [
+      "Pending calls and request history are synthetic, authored through published Postgres storage APIs; no fabricated provider response is used.",
+      "The fixture is not a runnable LangGraph superstep and does not establish model-issued parallel tools or actual upstream request counts.",
+      "The third call is never answered; no new user message or all-answered resume is sent.",
+      "Immediate EOF and later snapshots are observations, not continuous monitoring or server cancellation telemetry.",
+      "Deployment-to-artifact identity must also be verified by the parent deployment preflight."
+    ],
+    "fixtures": [
+      {
+        "index": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "checkpointId": "6e114640-dc8d-4130-8fff-0f1a1160fb43",
+        "originalRunId": "66e4fa30-1d0c-45ea-8673-7a1b9e08cc4b",
+        "fixtureSha256": "c68d41453be6669f55792d835b219ec81abdba926bee45f7e9e396e7ed9ccba0",
+        "baseline": {
+          "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+          "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+          "recordsSha256": "cb719d6cf6cdfc83bbbefb2271a964d06abc633efedd82cf02560e81832a8629",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          }
+        },
+        "members": [
+          {
+            "label": "A",
+            "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+            "taskId": "fixture-task-A-7e4e44ca-556c-423f-b041-61718754a5b7",
+            "resumeId": "5d9aa73fa8d94a3f8c3bd1f4393acf80"
+          },
+          {
+            "label": "B",
+            "toolCallId": "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+            "taskId": "fixture-task-B-27c2f4ed-0f48-4474-9497-d88de7ed6a4a",
+            "resumeId": "9dc88d2ae5eb4c149a98b2de78e4ad38"
+          },
+          {
+            "label": "C",
+            "toolCallId": "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294",
+            "taskId": "fixture-task-C-c457168b-030e-4286-8a52-139fd0e2a4d4",
+            "resumeId": "e5b1bb63335d4c1c9000393950728cf4"
+          }
+        ],
+        "phases": [
+          {
+            "name": "answer-A",
+            "runId": "7d4e7cec-c5fb-4194-b3b9-b98afb4818bc",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+              "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+            ],
+            "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+            "recordsSha256": "d3e2c71c66127945c4123a35f71423f57f794eb1860613653e0301aa4b32080d",
+            "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+                "resultSha256": "cec1da6a6a8c1760840c5a535c3f1bf16431144183fd3a97230a1b10321527fe",
+                "answeredAt": "2026-10-28T19:18:10.405Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-same-run",
+            "runId": "7d4e7cec-c5fb-4194-b3b9-b98afb4818bc",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+              "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+            ],
+            "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+            "recordsSha256": "d3e2c71c66127945c4123a35f71423f57f794eb1860613653e0301aa4b32080d",
+            "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+                "resultSha256": "cec1da6a6a8c1760840c5a535c3f1bf16431144183fd3a97230a1b10321527fe",
+                "answeredAt": "2026-10-28T19:18:10.405Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-distinct-run",
+            "runId": "4830b2cc-358c-4e6e-b518-56991af8e2fb",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+              "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+            ],
+            "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+            "recordsSha256": "d3e2c71c66127945c4123a35f71423f57f794eb1860613653e0301aa4b32080d",
+            "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+                "resultSha256": "cec1da6a6a8c1760840c5a535c3f1bf16431144183fd3a97230a1b10321527fe",
+                "answeredAt": "2026-10-28T19:18:10.405Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "answer-B",
+            "runId": "120d4785-55c3-4fed-8394-839d55233cb0",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+            ],
+            "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+            "recordsSha256": "acd751848251d4953da7554c7abaa592445fade6737b313bdb39963276bb2798",
+            "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+                "resultSha256": "cec1da6a6a8c1760840c5a535c3f1bf16431144183fd3a97230a1b10321527fe",
+                "answeredAt": "2026-10-28T19:18:10.405Z"
+              },
+              {
+                "toolCallId": "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+                "resultSha256": "2f1b062f9f8eb85ffc252330b82e7bb421cfb4050342f10df14e4b0f5f118876",
+                "answeredAt": "2026-10-28T19:18:13.313Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-B",
+            "runId": "e16d6fec-4f06-4b46-9948-93617afa8199",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+            ],
+            "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+            "recordsSha256": "acd751848251d4953da7554c7abaa592445fade6737b313bdb39963276bb2798",
+            "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_9a4fd559-8aa7-4aec-8d63-f5470d0f661e",
+                "resultSha256": "cec1da6a6a8c1760840c5a535c3f1bf16431144183fd3a97230a1b10321527fe",
+                "answeredAt": "2026-10-28T19:18:10.405Z"
+              },
+              {
+                "toolCallId": "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+                "resultSha256": "2f1b062f9f8eb85ffc252330b82e7bb421cfb4050342f10df14e4b0f5f118876",
+                "answeredAt": "2026-10-28T19:18:13.313Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          }
+        ],
+        "safe": true,
+        "phasesFinishedAt": "2026-10-28T19:18:14.790Z",
+        "settled": {
+          "checkedAt": "2026-10-28T19:19:44.283Z",
+          "tupleSha256": "b7a78723f9ce9585ab904a3c171351fdbbef343de3a8fc6acdd225af03f216c1",
+          "recordsSha256": "acd751848251d4953da7554c7abaa592445fade6737b313bdb39963276bb2798",
+          "threadSha256": "3f46a027dcad79277cd59bf62026830f241ede0bac985d5d45dd1886c68b7bc4",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          },
+          "admissionCount": 0,
+          "callCRemainsUnanswered": true,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      },
+      {
+        "index": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "checkpointId": "c13b339c-6320-42d8-a89e-2bcc4322563d",
+        "originalRunId": "b9357563-a213-4a8f-ad67-ce12d043464f",
+        "fixtureSha256": "d8c292a50d1ce1408dccdcaf3fdc2a71a05ce8280043fa6da2907d06cbd0642a",
+        "baseline": {
+          "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+          "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+          "recordsSha256": "c685b0d35a7d6a67ae9ae3a2c4ff358bf023c21388075d573b72dce004452926",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          }
+        },
+        "members": [
+          {
+            "label": "A",
+            "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+            "taskId": "fixture-task-A-3cd8274c-8cc0-48df-8b73-eccb8b9daf17",
+            "resumeId": "9671fd6ba6e741cf8b4b4fa202bcbe9a"
+          },
+          {
+            "label": "B",
+            "toolCallId": "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+            "taskId": "fixture-task-B-5264ae5a-6beb-4f39-b5fa-d51ffae114b2",
+            "resumeId": "06049b3b65a6480992f8d80c53188c6a"
+          },
+          {
+            "label": "C",
+            "toolCallId": "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad",
+            "taskId": "fixture-task-C-896b78ae-89a6-4925-bdc5-760fd7ccb4b6",
+            "resumeId": "81c1df2447544327b5b79688d184948e"
+          }
+        ],
+        "phases": [
+          {
+            "name": "answer-A",
+            "runId": "cda5add5-ed8e-4db3-ad5a-85ca851ee027",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+              "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+            ],
+            "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+            "recordsSha256": "a21d4e61117f7bcb8876e591dc169ea067de8dba3017207db63d9be380d1ed62",
+            "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+                "resultSha256": "f849f95d8569688adc44f841e558034bc9863da0a151a392edc7251d6f1eea30",
+                "answeredAt": "2026-10-28T19:18:17.280Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-same-run",
+            "runId": "cda5add5-ed8e-4db3-ad5a-85ca851ee027",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+              "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+            ],
+            "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+            "recordsSha256": "a21d4e61117f7bcb8876e591dc169ea067de8dba3017207db63d9be380d1ed62",
+            "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+                "resultSha256": "f849f95d8569688adc44f841e558034bc9863da0a151a392edc7251d6f1eea30",
+                "answeredAt": "2026-10-28T19:18:17.280Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-distinct-run",
+            "runId": "8faad34b-6db7-4aef-bef0-a1f245b1d13f",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+              "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+            ],
+            "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+            "recordsSha256": "a21d4e61117f7bcb8876e591dc169ea067de8dba3017207db63d9be380d1ed62",
+            "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+                "resultSha256": "f849f95d8569688adc44f841e558034bc9863da0a151a392edc7251d6f1eea30",
+                "answeredAt": "2026-10-28T19:18:17.280Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "answer-B",
+            "runId": "875b50f4-d068-4b3b-a2b2-868a5309316a",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+            ],
+            "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+            "recordsSha256": "f350ca3fce6eb19f10a8204e31b710033519d28185a9145db267ac77a8901653",
+            "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+                "resultSha256": "f849f95d8569688adc44f841e558034bc9863da0a151a392edc7251d6f1eea30",
+                "answeredAt": "2026-10-28T19:18:17.280Z"
+              },
+              {
+                "toolCallId": "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+                "resultSha256": "7f7d9a2f0e1eb9120e346fb02412e8cfbb1921c535bacf5999572b5928956065",
+                "answeredAt": "2026-10-28T19:18:20.068Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-B",
+            "runId": "4df20d49-f616-4987-a923-5937d4aae48b",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+            ],
+            "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+            "recordsSha256": "f350ca3fce6eb19f10a8204e31b710033519d28185a9145db267ac77a8901653",
+            "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_e3771f97-ca7c-4e23-881f-4c2faa95f89e",
+                "resultSha256": "f849f95d8569688adc44f841e558034bc9863da0a151a392edc7251d6f1eea30",
+                "answeredAt": "2026-10-28T19:18:17.280Z"
+              },
+              {
+                "toolCallId": "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+                "resultSha256": "7f7d9a2f0e1eb9120e346fb02412e8cfbb1921c535bacf5999572b5928956065",
+                "answeredAt": "2026-10-28T19:18:20.068Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          }
+        ],
+        "safe": true,
+        "phasesFinishedAt": "2026-10-28T19:18:21.539Z",
+        "settled": {
+          "checkedAt": "2026-10-28T19:19:44.740Z",
+          "tupleSha256": "6f877044461b61e13a561b3f8e40afe1fbcca2a42503fde0d856f0e94a0981b0",
+          "recordsSha256": "f350ca3fce6eb19f10a8204e31b710033519d28185a9145db267ac77a8901653",
+          "threadSha256": "06a353cb94fd5eaa0c9ad8f53d1c5d0cea91aff81e8f16eb0a7dc0ad6aaccb32",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          },
+          "admissionCount": 0,
+          "callCRemainsUnanswered": true,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      },
+      {
+        "index": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "checkpointId": "938e9644-c657-4087-bad8-fe001768e22e",
+        "originalRunId": "1c3ec578-fcaf-482b-97ce-f462c69cacee",
+        "fixtureSha256": "3690f3729bfd18457dde6ebe89704210ea9b162d3e5bca49fb1ea1011da6035b",
+        "baseline": {
+          "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+          "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+          "recordsSha256": "1bd71113804831a5794159e507792bf90f78db59f4f1e97add1a6bfe04a2bdc7",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          }
+        },
+        "members": [
+          {
+            "label": "A",
+            "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+            "taskId": "fixture-task-A-d0150b8a-d6dc-44fb-98f6-d42427286e4e",
+            "resumeId": "c222fcee3c4342278bee27483eebacb1"
+          },
+          {
+            "label": "B",
+            "toolCallId": "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+            "taskId": "fixture-task-B-4f1d801c-5570-4a83-88bd-d01e20b5d647",
+            "resumeId": "9027713f60c142039a98661bb871c677"
+          },
+          {
+            "label": "C",
+            "toolCallId": "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb",
+            "taskId": "fixture-task-C-a7d41b2f-2184-402b-a10c-16b2614feccd",
+            "resumeId": "85567c482a4b462baa34ec8f5b0687b4"
+          }
+        ],
+        "phases": [
+          {
+            "name": "answer-A",
+            "runId": "d89666a2-a8ed-4aa7-ac07-aa6946079e2f",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+              "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+            ],
+            "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+            "recordsSha256": "ab724ae38d721d0789c7473bc4c44731e95a69b8b208298a32e9351a515d32e2",
+            "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+                "resultSha256": "79384896dbca0e3f08db1deb1a974eba1375e028f72f6b45d66ebc4dc188b21c",
+                "answeredAt": "2026-10-28T19:18:23.885Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-same-run",
+            "runId": "d89666a2-a8ed-4aa7-ac07-aa6946079e2f",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+              "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+            ],
+            "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+            "recordsSha256": "ab724ae38d721d0789c7473bc4c44731e95a69b8b208298a32e9351a515d32e2",
+            "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+                "resultSha256": "79384896dbca0e3f08db1deb1a974eba1375e028f72f6b45d66ebc4dc188b21c",
+                "answeredAt": "2026-10-28T19:18:23.885Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-A-distinct-run",
+            "runId": "a9c016c1-6ee7-4095-9c78-a9a255fedc5d",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+              "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+            ],
+            "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+            "recordsSha256": "ab724ae38d721d0789c7473bc4c44731e95a69b8b208298a32e9351a515d32e2",
+            "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+                "resultSha256": "79384896dbca0e3f08db1deb1a974eba1375e028f72f6b45d66ebc4dc188b21c",
+                "answeredAt": "2026-10-28T19:18:23.885Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "answer-B",
+            "runId": "3d810cfc-ac0a-4572-8621-ca582e70e59f",
+            "replica": 1,
+            "pendingToolCallIds": [
+              "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+            ],
+            "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+            "recordsSha256": "8f4b01ef907c219c351a9f34473437479c8811d8131bc68a79b0aca0cd5e3f51",
+            "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+                "resultSha256": "79384896dbca0e3f08db1deb1a974eba1375e028f72f6b45d66ebc4dc188b21c",
+                "answeredAt": "2026-10-28T19:18:23.885Z"
+              },
+              {
+                "toolCallId": "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+                "resultSha256": "2fc8f3fdd1e12d11a6811bff3beb45914a53a0c0a5b566f085eb8adc7cb27343",
+                "answeredAt": "2026-10-28T19:18:26.825Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          },
+          {
+            "name": "conflicting-B",
+            "runId": "02263d91-737c-4d31-9a65-4857231f6f1d",
+            "replica": 0,
+            "pendingToolCallIds": [
+              "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+            ],
+            "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+            "recordsSha256": "8f4b01ef907c219c351a9f34473437479c8811d8131bc68a79b0aca0cd5e3f51",
+            "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+            "answers": [
+              {
+                "toolCallId": "fixture_A_eaa5b437-def6-4e34-b24e-52c8d18a51e5",
+                "resultSha256": "79384896dbca0e3f08db1deb1a974eba1375e028f72f6b45d66ebc4dc188b21c",
+                "answeredAt": "2026-10-28T19:18:23.885Z"
+              },
+              {
+                "toolCallId": "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+                "resultSha256": "2fc8f3fdd1e12d11a6811bff3beb45914a53a0c0a5b566f085eb8adc7cb27343",
+                "answeredAt": "2026-10-28T19:18:26.825Z"
+              }
+            ],
+            "immediateAdmissions": [],
+            "safe": true
+          }
+        ],
+        "safe": true,
+        "phasesFinishedAt": "2026-10-28T19:18:28.328Z",
+        "settled": {
+          "checkedAt": "2026-10-28T19:19:45.207Z",
+          "tupleSha256": "3d3125bad4bb41d0c8499af869517d33954a54b300c85cf79c404719b3ecafb0",
+          "recordsSha256": "8f4b01ef907c219c351a9f34473437479c8811d8131bc68a79b0aca0cd5e3f51",
+          "threadSha256": "eaf36472a4192d9ce07a4d29b654831d5d1dcaf12c8a01be6aecde21fd7c86fd",
+          "counts": {
+            "checkpoints": 1,
+            "writes": 3
+          },
+          "admissionCount": 0,
+          "callCRemainsUnanswered": true,
+          "unchangedAtLeast75SecondsAfterLastRequest": true
+        }
+      }
+    ],
+    "requests": [
+      {
+        "fixture": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "runId": "7d4e7cec-c5fb-4194-b3b9-b98afb4818bc",
+        "replica": 0,
+        "requestSha256": "a4f41771a0b29d02041183022fc385878e164c83aa3ebec99d3f1afd62b583ca",
+        "startedAt": "2026-10-28T19:18:10.023Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:10.491Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+          "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+        ],
+        "responseSha256": "c8231f9b566ad2e5ac9cd8a76d0f57bd472943f5fb0a92ddc2e11e24c558aa53",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:10.578Z"
+      },
+      {
+        "fixture": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "runId": "7d4e7cec-c5fb-4194-b3b9-b98afb4818bc",
+        "replica": 1,
+        "requestSha256": "42047ed15d7c961ede07fe94e3d594920f281070379a87356c823efbd4315d87",
+        "startedAt": "2026-10-28T19:18:11.100Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:11.449Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+          "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+        ],
+        "responseSha256": "c8231f9b566ad2e5ac9cd8a76d0f57bd472943f5fb0a92ddc2e11e24c558aa53",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:11.525Z"
+      },
+      {
+        "fixture": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "runId": "4830b2cc-358c-4e6e-b518-56991af8e2fb",
+        "replica": 0,
+        "requestSha256": "ab59246a7b611a648de49ceb499335fb31ad28526cdcb860d3df36d4e10e2309",
+        "startedAt": "2026-10-28T19:18:12.037Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:12.365Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_940547c5-50ca-403d-b0fc-8094a6396cbe",
+          "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+        ],
+        "responseSha256": "cc3db34ca0595ca5e60a1677a33c19829c2f38de1fc23627c28351e66ab96cee",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:12.437Z"
+      },
+      {
+        "fixture": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "runId": "120d4785-55c3-4fed-8394-839d55233cb0",
+        "replica": 1,
+        "requestSha256": "989b32b94667b4e98c6675b5acd61d8997daa061b7b8d288589b221eb331eb2c",
+        "startedAt": "2026-10-28T19:18:12.953Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:13.368Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+        ],
+        "responseSha256": "78bed199b7867890e58e66a5d7292ef1181217e2c4542cbdfa9b46fbb29a61c1",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:13.446Z"
+      },
+      {
+        "fixture": 0,
+        "threadId": "partial-release-e0c2cda5-7482-45d8-8e71-b3c326214067",
+        "runId": "e16d6fec-4f06-4b46-9948-93617afa8199",
+        "replica": 0,
+        "requestSha256": "641a46b8bb81e731336e74e70bd5a4070595502c5d303c127c49de681a4d53dc",
+        "startedAt": "2026-10-28T19:18:13.963Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:14.254Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_e24da3ad-1536-400d-9c4a-dcc6c5eab294"
+        ],
+        "responseSha256": "947e5dbc344bcebe16e880a6f638d450521ce625a1706bda0a46a9a3d870dd4f",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:14.342Z"
+      },
+      {
+        "fixture": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "runId": "cda5add5-ed8e-4db3-ad5a-85ca851ee027",
+        "replica": 1,
+        "requestSha256": "2781133f0b5d30f2327193a4cf4aa353b225e1aeeb9dca9bae4bf452b9f242bd",
+        "startedAt": "2026-10-28T19:18:16.918Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:17.345Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+          "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+        ],
+        "responseSha256": "1b55071cca5a535a709fc37d9c609848bf439730a49b4025df5558eea99a03bd",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:17.420Z"
+      },
+      {
+        "fixture": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "runId": "cda5add5-ed8e-4db3-ad5a-85ca851ee027",
+        "replica": 0,
+        "requestSha256": "d0f4fe6a5c48f2f1e505131cdb27cfc759c4ef3dfa2d90762a89113f1a91fe19",
+        "startedAt": "2026-10-28T19:18:17.947Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:18.310Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+          "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+        ],
+        "responseSha256": "1b55071cca5a535a709fc37d9c609848bf439730a49b4025df5558eea99a03bd",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:18.384Z"
+      },
+      {
+        "fixture": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "runId": "8faad34b-6db7-4aef-bef0-a1f245b1d13f",
+        "replica": 1,
+        "requestSha256": "d9efc1336cfc346c1d3075ba483795a9a2cc8bf3a64a2bf23515a15f6a580416",
+        "startedAt": "2026-10-28T19:18:18.915Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:19.211Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_c9818368-2b61-4991-ae0d-9584b04f7a65",
+          "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+        ],
+        "responseSha256": "bc7e1a58493225bfa0794235c4cfb67e412f7faa94737ac9fe3c7b6b3b835a56",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:19.288Z"
+      },
+      {
+        "fixture": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "runId": "875b50f4-d068-4b3b-a2b2-868a5309316a",
+        "replica": 0,
+        "requestSha256": "d35ac7fe14967280d9404d9f1c66ac7eebaeae1c5f893d14e2d4e2d63d574400",
+        "startedAt": "2026-10-28T19:18:19.809Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:20.098Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+        ],
+        "responseSha256": "faeddda0e6292317298d93513e7b106d527a256f09d47fec34ce8b26134796ff",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:20.172Z"
+      },
+      {
+        "fixture": 1,
+        "threadId": "partial-release-2412aeba-9af1-4efc-8d27-24688155050e",
+        "runId": "4df20d49-f616-4987-a923-5937d4aae48b",
+        "replica": 1,
+        "requestSha256": "d0ce8ec948469d59dffcb18f4c88ac2fa7b5a01e7a207354d5ace68ff0bcefb0",
+        "startedAt": "2026-10-28T19:18:20.702Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:21.020Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_c442446a-165d-45f5-8967-9fc55f8e5cad"
+        ],
+        "responseSha256": "3ec952da063cc31d28472dfda55589705f05ba6c9ad57c2d5812271defd0690e",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:21.096Z"
+      },
+      {
+        "fixture": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "runId": "d89666a2-a8ed-4aa7-ac07-aa6946079e2f",
+        "replica": 0,
+        "requestSha256": "0631b10a4aa4d1005c8d25a005f35771c4c87df88f8f13ffe5bd50f6f6665b3c",
+        "startedAt": "2026-10-28T19:18:23.624Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:23.986Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+          "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+        ],
+        "responseSha256": "90cb08cd250ccd7107cbfae0484df2826db03ff56ebc05e31e97b1ec5b15d359",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:24.060Z"
+      },
+      {
+        "fixture": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "runId": "d89666a2-a8ed-4aa7-ac07-aa6946079e2f",
+        "replica": 1,
+        "requestSha256": "21dcbc6b89f20b21e02c386193e5e617f87935e2138d8dd9813bb87524f20930",
+        "startedAt": "2026-10-28T19:18:24.595Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:24.949Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+          "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+        ],
+        "responseSha256": "90cb08cd250ccd7107cbfae0484df2826db03ff56ebc05e31e97b1ec5b15d359",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:25.023Z"
+      },
+      {
+        "fixture": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "runId": "a9c016c1-6ee7-4095-9c78-a9a255fedc5d",
+        "replica": 0,
+        "requestSha256": "59ec07ca3a8111e670537dacbd67eba39c16a281ed7f17e6d4cd44fb7e6bf8d2",
+        "startedAt": "2026-10-28T19:18:25.564Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:25.934Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_B_ea4888ba-70f7-4d11-b522-e3e48013dfea",
+          "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+        ],
+        "responseSha256": "ee8402e2fffc06b92b47c223f00e989d637a1cd8e26c01d0704df179d5defb2c",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:26.015Z"
+      },
+      {
+        "fixture": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "runId": "3d810cfc-ac0a-4572-8621-ca582e70e59f",
+        "replica": 1,
+        "requestSha256": "adc59cf4cf658592010c2a8b1bb23497b5da1413f1507084db694da3676e2962",
+        "startedAt": "2026-10-28T19:18:26.573Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:26.869Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+        ],
+        "responseSha256": "14f1c51019610cae8337056c58de4166e3206dc5db729a831da81f6eef81a85f",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:26.947Z"
+      },
+      {
+        "fixture": 2,
+        "threadId": "partial-release-8d3e0749-539c-4779-91d9-0f0bba05b369",
+        "runId": "02263d91-737c-4d31-9a65-4857231f6f1d",
+        "replica": 0,
+        "requestSha256": "739a3d3ae4b967a9f3c254bf0e4e7f11c696857f77b7f7a572b66334841d7f84",
+        "startedAt": "2026-10-28T19:18:27.505Z",
+        "status": 200,
+        "eofAt": "2026-10-28T19:18:27.792Z",
+        "immediateAdmissions": [],
+        "eventTypes": ["RUN_STARTED", "RUN_FINISHED"],
+        "pendingToolCallIds": [
+          "fixture_C_5de16737-51f0-43e4-9e0d-0024f3e675bb"
+        ],
+        "responseSha256": "57840bb18dec09359e48dc591fc6f6a80a287ce55ee807a05b8e3dc7a807bc0d",
+        "safe": true,
+        "finishedAt": "2026-10-28T19:18:27.866Z"
+      }
+    ],
+    "packages": [
+      {
+        "name": "@b4run/postgres-storage",
+        "version": "0.15.7"
+      },
+      {
+        "name": "@b4run/sdk",
+        "version": "0.15.7"
+      },
+      {
+        "name": "@b4run/cli",
+        "version": "0.15.7"
+      },
+      {
+        "name": "@b4run/core",
+        "version": "0.15.7"
+      }
+    ],
+    "localArtifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+    "probeSha256": "5e3379232ecfcd6b5d4fceb222b12e7192eccd5efddbf8c5a39b0f9e10ad1726",
+    "planSha256": "b96a342a487d18397c8a57be251edcb54087c0b679866578ed99ce9b71938a34",
+    "schemaSha256": "f3295030d1e0d7e7e37e19238eee5ad593c9a098eb283fc8cb3cc3d286ad01ed",
+    "lastRequestFinishedAt": "2026-10-28T19:18:27.866Z",
+    "originalEvidenceSha256": "5739441e6fb58b46b4c96f6efee41adcc25cd9b3727520393ccea34c9d7043da",
+    "exitCode": 0,
+    "cleanup": {
+      "allOwnedClientRequestsSettledLocally": true,
+      "storesAndPoolClosed": true,
+      "errors": [],
+      "syntheticRowsRetained": true
+    }
+  },
+  "reviews": {
+    "publication": "Approved independent evidence review",
+    "upgradeScope": "Approved independent four-file scope and package/SRI review",
+    "preflight": "Approved strict project-identity correction and resulting sealed manifest",
+    "noop": "Approved independent evidence review",
+    "partial": "Approved independent evidence review"
+  },
+  "cleanup": {
+    "previewCredentialFileRemoved": true,
+    "originalUserCredentialFilesUntouched": true,
+    "ownedLocalContainerRemoved": true,
+    "ownedLocalProxyStopped": true,
+    "syntheticRowsRetained": true,
+    "noGlobalUserStatePruning": true
+  }
+}
