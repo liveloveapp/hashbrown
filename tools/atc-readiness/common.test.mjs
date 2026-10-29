@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, chmod, rm } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  chmod,
+  rm,
+  realpath,
+} from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -477,5 +484,120 @@ test('SSE validates caller identity on run-start events as well as terminals', (
         'data: {"type":"RUN_STARTED","runId":"foreign","threadId":"t"}\n\n',
       ),
     /SSE.*identity/,
+  );
+});
+
+test('HTTP failure cancels response body without masking the HTTP diagnostic', async () => {
+  let cancellations = 0;
+  const response = new Response(
+    new ReadableStream({
+      cancel() {
+        cancellations++;
+        return Promise.reject(new Error('cleanup failure'));
+      },
+    }),
+    { status: 500 },
+  );
+  await assert.rejects(
+    common.readSseStream(response),
+    /HTTP response rejected/,
+  );
+  assert.equal(cancellations, 1);
+});
+
+test('timeout rejection remains bounded when underlying cancellation never settles', async () => {
+  let cancellations = 0;
+  const response = new Response(
+    new ReadableStream({
+      cancel() {
+        cancellations++;
+        return new Promise(() => {});
+      },
+    }),
+  );
+  const result = await Promise.race([
+    common.readSseStream(response, { timeoutMs: 5 }).then(
+      () => 'unexpected success',
+      (error) => error.message,
+    ),
+    new Promise((resolve) => setTimeout(() => resolve('still pending'), 50)),
+  ]);
+  assert.match(result, /SSE timeout/);
+  assert.equal(cancellations, 1);
+});
+
+test('dependency resolver rejects nonexistent roots, ancestor fallback and package overlays', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'atc-resolution-'));
+  try {
+    const packageDirectory = join(root, 'node_modules', 'fixture-dependency');
+    await mkdir(packageDirectory, { recursive: true });
+    await writeFile(
+      join(packageDirectory, 'package.json'),
+      '{"name":"fixture-dependency","main":"index.js"}',
+    );
+    await writeFile(join(packageDirectory, 'index.js'), 'module.exports = {};');
+    await writeFile(join(root, 'package.json'), '{"name":"root"}');
+    assert.equal(
+      common.resolveRuntimeDependency(root, 'fixture-dependency'),
+      await realpath(join(packageDirectory, 'index.js')),
+    );
+    assert.throws(
+      () =>
+        common.resolveRuntimeDependency(
+          join(root, 'missing'),
+          'fixture-dependency',
+        ),
+      /root|dependency/,
+    );
+    const child = join(root, 'child');
+    await mkdir(child);
+    await writeFile(join(child, 'package.json'), '{}');
+    assert.throws(
+      () => common.resolveRuntimeDependency(child, 'fixture-dependency'),
+      /root|dependency/,
+    );
+    await mkdir(join(child, 'node_modules'));
+    await symlink(
+      packageDirectory,
+      join(child, 'node_modules', 'fixture-dependency'),
+    );
+    assert.throws(
+      () => common.resolveRuntimeDependency(child, 'fixture-dependency'),
+      /root|dependency/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('canonical serialization preserves Map and Set content, type and deterministic ordering', () => {
+  const digest = (value) => common.sha256(common.stableStringify(value));
+  assert.notEqual(digest(new Map([['a', 1]])), digest(new Map([['a', 2]])));
+  assert.notEqual(digest(new Set(['a'])), digest(new Set(['b'])));
+  assert.notEqual(digest(new Map()), digest({}));
+  assert.notEqual(digest(new Set()), digest({}));
+  assert.notEqual(digest(new Set()), digest(new Map()));
+  assert.equal(
+    digest(
+      new Map([
+        ['a', 1],
+        ['b', new Set([1, 2])],
+      ]),
+    ),
+    digest(
+      new Map([
+        ['b', new Set([2, 1])],
+        ['a', 1],
+      ]),
+    ),
+  );
+  assert.equal(
+    digest(new Set([{ a: 1, b: 2 }, 'x'])),
+    digest(new Set(['x', { b: 2, a: 1 }])),
+  );
+  assert.notEqual(digest(Buffer.from('a')), digest(Buffer.from('b')));
+  assert.notEqual(
+    digest(new Date('2026-01-01')),
+    digest(new Date('2026-01-02')),
   );
 });

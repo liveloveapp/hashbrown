@@ -7,6 +7,7 @@
  */
 import { createHash } from 'node:crypto';
 import { readFile, readdir, lstat, realpath } from 'node:fs/promises';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { createRequire } from 'node:module';
 import { execFile } from 'node:child_process';
@@ -18,19 +19,48 @@ export function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-/** Stable JSON with sorted object keys, preserving all array elements and byte values. */
+/** Stable canonical JSON; Maps/Sets retain type and content with insertion-independent ordering. */
 export function stableStringify(value) {
-  return JSON.stringify(value, function (key, item) {
-    if (typeof item === 'bigint') return { $bigint: item.toString() };
-    if (item && typeof item === 'object' && !Array.isArray(item)) {
-      return Object.fromEntries(
-        Object.keys(item)
-          .sort()
-          .map((k) => [k, item[k]]),
-      );
+  const active = new WeakSet();
+  const tag = (type, content) => ({ $readiness: [type, content] });
+  const compare = (a, b) => {
+    const left = JSON.stringify(a);
+    const right = JSON.stringify(b);
+    return left < right ? -1 : left > right ? 1 : 0;
+  };
+  function normalize(item) {
+    if (typeof item === 'bigint') return tag('BigInt', item.toString());
+    if (item === undefined) return tag('Undefined', null);
+    if (typeof item === 'number' && !Number.isFinite(item))
+      return tag('Number', String(item));
+    if (!item || typeof item !== 'object') return item;
+    if (active.has(item))
+      throw new Error('readiness canonical value contains a cycle');
+    active.add(item);
+    try {
+      if (item instanceof Map)
+        return tag(
+          'Map',
+          [...item]
+            .map(([key, entry]) => [normalize(key), normalize(entry)])
+            .sort(compare),
+        );
+      if (item instanceof Set)
+        return tag('Set', [...item].map(normalize).sort(compare));
+      if (typeof item.toJSON === 'function') return normalize(item.toJSON());
+      if (Array.isArray(item)) return item.map(normalize);
+      const entries = Object.keys(item)
+        .sort()
+        .map((key) => [key, normalize(item[key])]);
+      // Escape the reserved marker so an ordinary object cannot impersonate a typed value.
+      return Object.hasOwn(item, '$readiness')
+        ? tag('Object', entries)
+        : Object.fromEntries(entries);
+    } finally {
+      active.delete(item);
     }
-    return item;
-  });
+  }
+  return JSON.stringify(normalize(value));
 }
 
 /** Hash a complete tree, including directory/file paths, permission bits and file bytes; reject links. */
@@ -143,11 +173,49 @@ export function validateManifest(manifest, expected) {
   return manifest;
 }
 
-/** Resolve only from an explicit runtime root; no ambient cwd dependency resolution. */
+/** Resolve from an existing root package and its own physical node_modules; reject fallback/overlays. */
 export function resolveRuntimeDependency(runtimeRoot, name) {
-  return createRequire(join(resolve(runtimeRoot), 'package.json')).resolve(
-    name,
-  );
+  try {
+    const root = realpathSync(resolve(runtimeRoot));
+    const rootPackage = join(root, 'package.json');
+    if (
+      !lstatSync(root).isDirectory() ||
+      !lstatSync(rootPackage).isFile() ||
+      lstatSync(rootPackage).isSymbolicLink()
+    )
+      throw new Error();
+    JSON.parse(readFileSync(rootPackage, 'utf8'));
+    const match = /^(?:@[^/]+\/[^/]+|[^./:@][^/:]*)(?:\/|$)/.exec(name);
+    if (!match) throw new Error();
+    const packageName = match[0].replace(/\/$/, '');
+    const modules = join(root, 'node_modules');
+    const packageRoot = join(modules, packageName);
+    if (
+      realpathSync(modules) !== modules ||
+      realpathSync(packageRoot) !== packageRoot
+    )
+      throw new Error();
+    const dependencyPackage = join(packageRoot, 'package.json');
+    if (
+      !lstatSync(dependencyPackage).isFile() ||
+      lstatSync(dependencyPackage).isSymbolicLink()
+    )
+      throw new Error();
+    JSON.parse(readFileSync(dependencyPackage, 'utf8'));
+    const resolved = realpathSync(createRequire(rootPackage).resolve(name));
+    const within = relative(packageRoot, resolved);
+    if (
+      !within ||
+      within.startsWith('..') ||
+      resolve(packageRoot, within) !== resolved
+    )
+      throw new Error();
+    return resolved;
+  } catch {
+    throw new Error(
+      'readiness dependency must resolve inside the explicit runtime root',
+    );
+  }
 }
 
 /** Normalize a dedicated Postgres DSN with verified TLS; never accept generic environment fallback. */
@@ -436,12 +504,29 @@ export async function readSseStream(
     redact = createRedactor(),
   } = {},
 ) {
-  if (response.redirected || (response.status >= 300 && response.status < 400))
+  // Cancellation is best effort: a hostile/stalled source must not extend the request deadline.
+  const cancel = (target) => {
+    try {
+      Promise.resolve(target?.cancel()).catch(() => {});
+    } catch {
+      /* Keep the original failure. */
+    }
+  };
+  if (
+    response.redirected ||
+    (response.status >= 300 && response.status < 400)
+  ) {
+    cancel(response.body);
     throw new Error('SSE redirect rejected');
-  if (!response.ok || !response.body)
+  }
+  if (!response.ok || !response.body) {
+    cancel(response.body);
     throw new Error('SSE HTTP response rejected');
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    cancel(response.body);
     throw new Error('SSE timeout invalid');
+  }
   const reader = response.body.getReader();
   const parser = createSseParser({ runId, threadId });
   let timer;
@@ -460,12 +545,16 @@ export async function readSseStream(
       for (const event of parser.push(value)) onEvent(event);
     }
   } catch (error) {
-    await reader.cancel().catch(() => {});
+    cancel(reader);
     throw new Error(redact(error)?.message ?? 'SSE stream failed');
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', abort);
-    reader.releaseLock();
+    try {
+      reader.releaseLock();
+    } catch {
+      /* Cleanup must not mask the stream failure. */
+    }
   }
 }
 
