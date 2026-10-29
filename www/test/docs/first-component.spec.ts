@@ -27,6 +27,9 @@ test.each(SDKS)(
     expect(body).toContain('OPENAI_MODEL');
     expect(body).toContain('/api/chat');
     expect(body).toContain('## Before we start');
+    expect(body.indexOf('<hb-workbench lesson="first-plan">')).toBeGreaterThan(
+      body.indexOf('## Explore it in the workbench'),
+    );
     expect(body).toContain('## If the card does not appear');
     expect(body).not.toContain('UseChatOptions');
     expect(body).not.toContain('## Beyond Chat');

@@ -75,6 +75,9 @@ For incomplete input, define an explicit clarification branch with `s.anyOf` rat
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="structured-output">
+</hb-workbench>
+
 Let’s use the same two-step plan, this time as typed data. The model returns a title and two steps. Hashbrown parses the response as it streams, and our application renders those values.
 
 I like keeping the example familiar. In [Generative UI](/docs/angular/concept/components), the model selects `SummaryCard` from a catalog. Here, `structuredChatResource()` returns plan data and the application chooses how to display it.

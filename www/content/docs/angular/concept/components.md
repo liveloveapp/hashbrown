@@ -90,6 +90,9 @@ export class BookSummary {
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="generative-ui">
+</hb-workbench>
+
 Let’s build a two-step plan. We will give the model one component, `SummaryCard`, and describe the props it accepts. As the response arrives, Hashbrown parses the JSON and renders our component.
 
 I use the same plan in [Tools](/docs/angular/concept/functions) and [Structured output](/docs/angular/concept/structured-output). Here, we’ll focus on how a model selects a component and supplies its props.

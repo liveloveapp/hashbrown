@@ -90,6 +90,9 @@ For asynchronous storage, validate the entire saved envelope and confirm the sel
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="message-history">
+</hb-workbench>
+
 Let's name our two-step plan **Lighthouse**. We'll ask the assistant to explain it, keep the completed text, clear the chat, and restore that exchange. Then we'll ask a follow-up. The next request should contain the conversation we restored.
 
 The History inspector keeps the SDK transcript beside the app's retained copy. Clear removes the current messages. It leaves the retained copy alone. Restore puts that text back into the SDK; it does not replay the earlier request or execute a plan step.

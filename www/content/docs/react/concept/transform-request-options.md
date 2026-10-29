@@ -44,6 +44,9 @@ Spreading `options` preserves `input`, `tools`, `text.format`, and other mapped 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="request-transformation">
+</hb-workbench>
+
 Our browser knows the conversation. Our server may know workspace context that belongs in the model request. Let’s add that context to the same two-step plan and inspect exactly what changed.
 
 `transformRequestOptions` runs on the server after the adapter maps the Hashbrown request to provider options. It receives the mapped request, including tools and the response format. Return the complete options object the provider should receive.

@@ -250,9 +250,7 @@ test.each(['react', 'angular'] as const)(
       ),
     ).toContain(api);
     expect(body).toContain(api);
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-json-parser-${sdk}">`,
-    );
+    expect(body).toContain(`<hb-workbench lesson="json-parser">`);
     expect(body).toContain('original JSON');
     expect(body).toContain('Source lifecycle');
     expect(body).toContain('Stop');

@@ -78,6 +78,9 @@ This example previews a choice and never changes delivery data. The candidate ID
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="ui-selection">
+</hb-workbench>
+
 I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 
 `uiDecisionResource` runs in candidates mode with `select: 'one'`. The real SDK renders the selected candidate. A separate **Use view** action commits it to application state.

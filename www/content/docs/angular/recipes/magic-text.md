@@ -66,6 +66,9 @@ The fixed prompt keeps this screen small. Replace it with a labelled composer fo
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="magic-text">
+</hb-workbench>
+
 I want to read a reply while it arrives. Let's explain the same two-step plan in Markdown, follow its source reference, and ask for a shorter explanation.
 
 `chatResource` owns the conversation. `MagicText` formats the assistant string as it grows. This is text chat: the model is not generating component props.

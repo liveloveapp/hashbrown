@@ -74,6 +74,9 @@ Before offering **Accept**, require a successful completed request, a known acti
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="predictions">
+</hb-workbench>
+
 Let's suggest what to do next with our two-step plan. The model can propose recording, reviewing, or clarifying progress. Our application owns those actions. **Only Accept applies one.**
 
 The workbench uses `structuredCompletionResource`. Each request receives an explicit snapshot of the current context. This is a structured completion, not a chat API that preserves the earlier conversation for us.

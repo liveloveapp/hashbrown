@@ -11,9 +11,7 @@ test.each(['react', 'angular'] as const)(
     ]) {
       const body = readDoc(sdk, ['recipes', slug])?.body ?? '';
 
-      const demo = body.indexOf(
-        `<hb-docs-demo demo="canonical-workbench-${lesson}-${sdk}">`,
-      );
+      const demo = body.indexOf(`<hb-workbench lesson="${lesson}">`);
 
       expect(demo).toBeGreaterThan(-1);
       expect(demo).toBeLessThan(body.indexOf('\n## '));

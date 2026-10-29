@@ -47,6 +47,9 @@ The copy bound describes allowed values. It cannot tell us whether two copies ex
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="schemas">
+</hb-workbench>
+
 A schema describes the data our application expects. Let’s use the same two-step plan: a title and an array of steps. We can use this contract for typed model output and inspect it beside the values Hashbrown resolves.
 
 Skillet is exported as `s` from `@hashbrownai/core`. Its TypeScript API describes response shapes, tool arguments, and trusted component props, including which values can appear while output streams.

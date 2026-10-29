@@ -77,6 +77,9 @@ Provider chunk sizes vary. Several fields may resolve together. Use ordinary str
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="streaming">
+</hb-workbench>
+
 We do not need to wait for the whole two-step plan before showing useful feedback. Let’s stream the title, then show steps as their values resolve. We’ll keep **Accept plan** disabled until the response finishes successfully.
 
 I use the same conversation in [Structured output](/docs/angular/concept/structured-output). Here, we’ll slow down and follow the boundary between raw text, parsed values, and application state.

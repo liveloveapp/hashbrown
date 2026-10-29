@@ -145,6 +145,9 @@ The labelled inputs change only the reviewed copy. **Apply** validates it again 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="natural-forms">
+</hb-workbench>
+
 Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
 
 <img src="/video/docs/canonical-workbench-natural-forms-react-result.png" alt="The React workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />

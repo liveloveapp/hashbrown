@@ -48,6 +48,9 @@ Use the [Quickstart](/docs/react/start/quick) for the complete HTTP handler and 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="first-plan">
+</hb-workbench>
+
 Now follow those boundaries in a concrete implementation. The recording uses the real React client and OpenAI adapter. Its `first-plan` lesson renders `SummaryCard`; the inspector and timeline record what happened without becoming part of the component API.
 
 ### Follow the request

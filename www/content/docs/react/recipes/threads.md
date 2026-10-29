@@ -52,6 +52,9 @@ On Save, capture the loaded version and completed messages together. Adopt only 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="server-threads">
+</hb-workbench>
+
 Let's move our conversation to the server. We'll save Lighthouse, refresh the browser, and ask a follow-up using the saved messages. Then we'll let another client save first and see why the version matters.
 
 <img src="/video/docs/canonical-workbench-server-threads-react-result.png" alt="The React workbench pairs the text conversation with its server snapshot and captured HTTP operations." width="1600" height="1000" loading="lazy" />

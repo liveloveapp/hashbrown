@@ -25,6 +25,9 @@ Use the normal Hashbrown APIs to build the interface first. The [Quickstart](/do
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="generative-ui">
+</hb-workbench>
+
 The rest of this page describes that optional tooling in our teaching app. The bottom player replays captured observations. It does not restore a live runtime, repeat a tool, or perform an application write.
 
 ## Run the example

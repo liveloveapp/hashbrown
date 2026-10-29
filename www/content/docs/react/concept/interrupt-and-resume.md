@@ -101,6 +101,9 @@ The start button sends an ordinary request through this same chat instance. The 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="interrupts">
+</hb-workbench>
+
 Let's explain the same two-step plan, pause for two approvals, and continue once both answers are ready. The chat keeps the original user turn. Resume sends decisions; it does not add a pretend user message.
 
 Approval in this example permits another explanation. It does not execute either plan step, record a video, or write a file. A later user turn creates a fresh approval batch with fresh form choices.

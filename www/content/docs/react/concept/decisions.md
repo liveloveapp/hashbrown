@@ -65,6 +65,9 @@ Input changes trigger decisions; editing a draft should not send requests unless
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="decisions">
+</hb-workbench>
+
 Our application already owns a two-step plan: outline the trusted UI demo, then record it. The outline is complete. What should we do next?
 
 Let’s ask a closed question. The allowed answers are `record`, `review`, and `clarify`. The model returns a typed choice and confidence. It does not generate the plan, write component props, or stream text.

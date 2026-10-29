@@ -61,6 +61,9 @@ Pass a growing prefix such as `{"title":"Groceries","items":["ap` and then the f
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="json-parser">
+</hb-workbench>
+
 Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
 
 <img src="/video/docs/canonical-workbench-json-parser-angular-result.png" alt="The Angular workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />

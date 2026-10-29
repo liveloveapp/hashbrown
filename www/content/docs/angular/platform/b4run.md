@@ -144,6 +144,9 @@ Before deploying, use your verified account identity, HTTPS cookie settings, pro
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="production-recovery">
+</hb-workbench>
+
 Let's pause the reference's two-step recording plan, restart the server, and restore the conversation. Then approve the plan and inspect the database result. The conversation checkpoint and accepted plan each have their own job.
 
 This reference uses Hashbrown Angular, TypeScript, b4.run 0.15.5, and Postgres. It is an opt-in local server with its own database and identity boundary. Run it separately from the public anonymous [conversation workbench](/docs/angular/start/workbench).

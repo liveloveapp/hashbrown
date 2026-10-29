@@ -87,6 +87,9 @@ Send the first message, then ask **What did I name our club, and what should we 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="conversation">
+</hb-workbench>
+
 Let's give our two-step plan a name, then ask the assistant to use it in a follow-up. The second request keeps the earlier exchange in the same conversation.
 
 This lesson uses text chat. There are no tools or generated components, so we can focus on the messages themselves.

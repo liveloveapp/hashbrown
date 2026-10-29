@@ -68,6 +68,9 @@ Inspect `lastRunFinishReason` when a response ends early: `length`, `content_fil
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="debugging">
+</hb-workbench>
+
 When a card does not appear, I want to find where the turn stopped before changing the code. Let’s follow the same two-step plan through a failed request, recovery, and a follow-up.
 
 ### Run the workbench

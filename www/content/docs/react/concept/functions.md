@@ -71,6 +71,9 @@ The model chooses whether to call a tool; the system instruction makes the looku
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="tools">
+</hb-workbench>
+
 Our two-step plan has an accepted version and a revision number. Before proposing a change, the model needs to read both. Let’s give it one small browser tool: `readContext`.
 
 The same conversation appears in [Generative UI](/docs/react/concept/components). In this lesson, we’ll follow the request, the tool result, and the continuation that produces the card.

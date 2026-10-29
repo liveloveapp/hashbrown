@@ -113,6 +113,9 @@ For **Save**, first require a current successful run with `lastRunFinishReason` 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="save-text-conversations">
+</hb-workbench>
+
 Let's keep our two-step plan after a refresh. We'll save a completed Lighthouse exchange, save a second conversation as **Harbor**, then refresh and load Lighthouse into a new chat. A follow-up will show which text actually reached the model.
 
 The saved-text selector chooses a browser slot. The left sidebar still chooses a live conversation. Selecting a saved slot does not load its messages or send a request. We make those actions explicit so you can see what each one changes.

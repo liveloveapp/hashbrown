@@ -309,6 +309,9 @@ After fixing the cause, send again. Continue with [Debugging](/docs/angular/conc
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="first-plan">
+</hb-workbench>
+
 Now we have a standalone app, let's inspect a second implementation of the same component contract. The recording uses `PlanCard`, registered as `SummaryCard`, inside the [conversation workbench](/docs/angular/start/workbench). Its endpoint and capturing transport are specific to that teaching app; your standalone endpoint remains `/api/chat`.
 
 To inspect the same interaction, open `http://127.0.0.1:4370/angular.html?lesson=first-plan` after starting the [workbench](/docs/angular/start/workbench). Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.

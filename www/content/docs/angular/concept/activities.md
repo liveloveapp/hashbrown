@@ -48,6 +48,9 @@ On the producer side, send `ACTIVITY_SNAPSHOT` with a unique message ID, an acti
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="activities">
+</hb-workbench>
+
 Let's explain our two-step plan and show the work around the reply. The agent validates the plan context, creates an activity, and updates that activity when the provider finishes its explanation. A second turn gets a new activity ID.
 
 These stages describe work the agent performed. They do not mean the demo was outlined or recorded. The plan remains application data.

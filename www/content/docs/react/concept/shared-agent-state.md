@@ -78,6 +78,9 @@ During a run, agent state updates are drafts. Successful completion commits them
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="shared-state">
+</hb-workbench>
+
 Let's keep the same two-step plan: outline a trusted UI demo, then record it. Change its title in the app and select **Set shared state**. Nothing runs yet. Send a message, and watch the agent read that value, stream its reply, and update the shared state.
 
 The State inspector follows the selected timeline frame. The title field is an application form draft; the SDK state is a separate value. You can see exactly when the app replaces it and when the agent updates it. The captured side shows SDK state and request flags. The other side shows the local form and accepted application plan. Choose Raw for the full selected SDK observation.

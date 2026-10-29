@@ -39,6 +39,9 @@ export function createToolsFixtureCapture(): WorkbenchCapture {
   return capture;
 }
 
+/** A docs column's panel: 740px wide at the docs page's 4:3 frame ratio. */
+const DOCS_FRAME = { width: 740, height: 555 };
+
 /** Reserves, then releases, a localhost port no server is listening on. */
 async function unusedPort(): Promise<number> {
   const probe = createServer();
@@ -57,7 +60,7 @@ function harnessHtml(src: string, target: string, capture: WorkbenchCapture) {
     '\\u003c',
   );
   return `<!doctype html><html><head><meta charset="utf-8"><title>Embed harness</title></head>
-<body style="margin:0"><iframe id="wb" style="width:1200px;height:800px;border:0"></iframe>
+<body style="margin:0"><iframe id="wb" style="width:${DOCS_FRAME.width}px;height:${DOCS_FRAME.height}px;border:0"></iframe>
 <script>
 const config = ${config};
 const frame = document.getElementById('wb');
@@ -188,6 +191,15 @@ export async function verifyEmbedWorkbench(options: {
     await expect(
       frame.locator('.wb:visible .wb-chat .wb-panel-head'),
     ).toContainText('Recorded');
+    // A docs column is under the workbench's 800px phone breakpoint; the embed
+    // must still fit the frame with the inspector beside the chat.
+    await expect(frame.locator('.wb:visible .wb-playback')).toBeInViewport({
+      ratio: 1,
+    });
+    const inspector = await frame
+      .locator('.wb:visible .wb-inspector')
+      .boundingBox();
+    expect(inspector?.width ?? 0).toBeGreaterThanOrEqual(320);
     expect(errors).toEqual([]);
     return {
       framework: 'react',

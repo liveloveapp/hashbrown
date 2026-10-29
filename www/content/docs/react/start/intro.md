@@ -33,6 +33,9 @@ Keep rendering separate from applying a change. A generated card is a proposal. 
 
 ## Explore it in the workbench
 
+<hb-workbench lesson="first-plan">
+</hb-workbench>
+
 The teaser uses a two-step plan to make those boundaries visible. Our `SummaryCard` displays the model's title and steps. In this first lesson, it has no acceptance action and changes no application state.
 
 The [conversation workbench](/docs/react/start/workbench) surrounds the same implementation with an inspector and bottom timeline. Follow the request, JSON, and resolved component props at the same moment. The two framework versions use their own Hashbrown APIs and renderer.
