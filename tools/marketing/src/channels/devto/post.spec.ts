@@ -80,3 +80,21 @@ test('postDevTo reports a rejected API key without echoing it', async () => {
     /DEVTO_API_KEY/,
   );
 });
+
+test.each([
+  ['a 503', async () => new Response('boom', { status: 503 })],
+  [
+    'a network error',
+    async () => {
+      throw new Error('socket hang up');
+    },
+  ],
+])(
+  'postDevTo makes exactly one fetch call when the create gets %s',
+  async (_, respond) => {
+    const fetchMock = vi.fn(respond);
+
+    await expect(postDevTo('key-1', draft, fetchMock)).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);

@@ -109,3 +109,39 @@ test('an X draft over 280 characters is rejected before any fetch call', async (
   );
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+test.each([
+  ['a 503', async () => new Response('boom', { status: 503 })],
+  [
+    'a network error',
+    async () => {
+      throw new Error('socket hang up');
+    },
+  ],
+])(
+  'postX makes exactly one fetch call when the create gets %s',
+  async (_, respond) => {
+    const fetchMock = vi.fn(respond);
+    const { auth } = setup(fetchMock);
+
+    await expect(
+      postX(auth, { channel: 'x', threadParts: ['one', 'two'] }),
+    ).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('postX does not retry a failed thread reply', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      jsonResponse({ data: { id: '1001', text: '' } }, { status: 201 }),
+    )
+    .mockResolvedValue(new Response('boom', { status: 502 }));
+  const { auth } = setup(fetchMock);
+
+  await expect(
+    postX(auth, { channel: 'x', threadParts: ['one', 'two'] }),
+  ).rejects.toThrow(/HTTP 502/);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});

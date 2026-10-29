@@ -27,6 +27,8 @@ async function postTweet(auth: XAuth, body: TweetRequestBody): Promise<string> {
     },
     body: JSON.stringify(body),
     fetch: auth.fetch,
+    // A retried create can post the tweet twice; fail instead.
+    retryOn5xx: false,
     on401: async () => {
       await auth.refresh();
       return { retry: true, headers: { Authorization: await bearer(auth) } };

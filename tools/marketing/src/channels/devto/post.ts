@@ -56,7 +56,8 @@ export async function postDevTo(
         'User-Agent': 'hashbrown-marketing/1.0',
       },
       body: JSON.stringify({ article }),
-      retryOn5xx: true,
+      // A retried create can publish the article twice; fail instead.
+      retryOn5xx: false,
       fetch,
     });
   } catch (error) {
