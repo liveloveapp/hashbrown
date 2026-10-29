@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runLoadRequest } from './load.mjs';
 
-function fixture({ admissions = 0, foreignMarker = false } = {}) {
+function fixture({
+  admissions = 0,
+  foreignMarker = false,
+  persistedForeignMarker = false,
+  persistedDifferent = false,
+} = {}) {
   let input,
     eof = false,
     queries = 0;
@@ -66,7 +71,15 @@ function fixture({ admissions = 0, foreignMarker = false } = {}) {
               { type: 'human', content: input.messages[0].content },
               {
                 type: 'ai',
-                content: JSON.stringify({ text: input.messages[0].content }),
+                content: JSON.stringify({
+                  text:
+                    input.messages[0].content +
+                    (persistedForeignMarker
+                      ? ' LOADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+                      : persistedDifferent
+                        ? ' DIFFERENT'
+                        : ''),
+                }),
                 response_metadata: {
                   id: 'provider-' + input.runId,
                   max_output_tokens: 4096,
@@ -174,5 +187,41 @@ test('own marker plus a foreign marker cannot pass isolation', async () => {
       dependencies,
     ),
     /foreign correlation/,
+  );
+});
+
+test('persisted foreign marker fails even when the stream is isolated', async () => {
+  const { dependencies } = fixture({ persistedForeignMarker: true });
+
+  await assert.rejects(
+    runLoadRequest(
+      {
+        index: 0,
+        level: 1,
+        worker: 0,
+        deadlineMs: performance.now() + 1000,
+        signal: new AbortController().signal,
+      },
+      dependencies,
+    ),
+    /foreign correlation marker in canonical/,
+  );
+});
+
+test('persisted response must equal the validated streamed response', async () => {
+  const { dependencies } = fixture({ persistedDifferent: true });
+
+  await assert.rejects(
+    runLoadRequest(
+      {
+        index: 0,
+        level: 1,
+        worker: 0,
+        deadlineMs: performance.now() + 1000,
+        signal: new AbortController().signal,
+      },
+      dependencies,
+    ),
+    /canonical response must match/,
   );
 });

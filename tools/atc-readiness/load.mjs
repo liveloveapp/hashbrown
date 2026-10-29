@@ -135,8 +135,36 @@ export async function runLoadRequest(args, dependencies) {
       ai = messages.filter((m) => m.type === 'ai');
     assert.equal(human.length, 1);
     assert.equal(ai.length, 1);
-    assert(JSON.stringify(human[0].content).includes(marker));
-    assert(JSON.stringify(ai[0].content).includes(marker));
+    const textContent = (value) => {
+      if (typeof value === 'string') return value;
+      assert(
+        Array.isArray(value) &&
+          value.every(
+            (part) => part.type === 'text' && typeof part.text === 'string',
+          ),
+        'canonical text content is unsupported',
+      );
+      return value.map((part) => part.text).join('');
+    };
+    const humanText = textContent(human[0].content),
+      aiText = textContent(ai[0].content);
+    for (const text of [humanText, aiText])
+      assert(
+        (text.match(/LOAD[A-F0-9]{32}/g) ?? []).every(
+          (value) => value === marker,
+        ),
+        'foreign correlation marker in canonical content',
+      );
+    assert.equal(
+      humanText,
+      input.messages[0].content,
+      'canonical human input must match',
+    );
+    assert.deepEqual(
+      JSON.parse(aiText),
+      JSON.parse(output),
+      'canonical response must match validated stream',
+    );
     assert.equal(ai[0].response_metadata?.max_output_tokens, 4096);
     const providerId = ai[0].response_metadata?.id;
     assert(typeof providerId === 'string' && providerId);
