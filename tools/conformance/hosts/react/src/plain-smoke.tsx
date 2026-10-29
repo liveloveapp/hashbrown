@@ -170,6 +170,18 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       <div data-testid="error">{errorText(error)}</div>
       <div data-testid="sending-error">{errorText(sendingError)}</div>
       <div data-testid="generating-error">{errorText(generatingError)}</div>
+      <pre data-testid="server-tool-calls">
+        {JSON.stringify(
+          messages.flatMap((message) =>
+            message.role === 'assistant' ? (message.serverToolCalls ?? []) : [],
+          ),
+        )}
+      </pre>
+      <pre data-testid="activity-messages">
+        {JSON.stringify(
+          messages.filter((message) => message.role === 'activity'),
+        )}
+      </pre>
       <div data-testid="tool-count">{toolObservations.length}</div>
       <div data-testid="tool-observations">
         {JSON.stringify(toolObservations)}
