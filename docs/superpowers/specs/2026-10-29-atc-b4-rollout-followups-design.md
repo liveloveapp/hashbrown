@@ -1,6 +1,6 @@
 # ATC B4 rollout follow-up design
 
-Status: Proposed; implementation of new fault scenarios requires review of this written design. Human authorized the merge of #828 and continued readiness work, with production B4 disabled. Source requalification and read-only configuration assessment are proceeding under that authorization.
+Status: Human directed continuation with this reviewed rollout preparation on 2026-10-29 ("Let's work to get this deployed and ready"). Proceed with implementation and the bounded 16-reservation preparation; provider-spend approval and disposable-compute access remain execution prerequisites. B4 remains disabled in production; this does not authorize enablement.
 
 ## Objective and authority
 
