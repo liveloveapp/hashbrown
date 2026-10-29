@@ -16,6 +16,7 @@ import {
   markPublished,
   markPublishing,
   markRetry,
+  PostStateError,
   readWeek,
   setPostStatus,
   updateBlogDraft,
@@ -510,4 +511,91 @@ test('importWeek refuses a week with a post past draft', async () => {
 
 test('readWeek returns undefined for an unknown week', async () => {
   expect(await readWeek(executor, '1971-04-05')).toBeUndefined();
+});
+
+test('markRetry on a held post leaves it held', async () => {
+  const id = await insertPost({ status: 'held' });
+
+  await expect(markRetry(executor, id, 'late', NOW)).rejects.toBeInstanceOf(
+    PostStateError,
+  );
+  expect(await statusOf(id)).toMatchObject({ status: 'held', attempts: 0 });
+});
+
+test.each(['markRetry', 'markFailed'] as const)(
+  '%s on a cancelled post leaves it cancelled',
+  async (name) => {
+    const id = await insertPost({ status: 'cancelled' });
+
+    const call =
+      name === 'markRetry'
+        ? markRetry(executor, id, 'late', NOW)
+        : markFailed(executor, id, 'late');
+
+    await expect(call).rejects.toBeInstanceOf(PostStateError);
+    expect(await statusOf(id)).toMatchObject({
+      status: 'cancelled',
+      last_error: null,
+    });
+  },
+);
+
+test('markPublished on a cancelled post leaves it cancelled', async () => {
+  const id = await insertPost({ status: 'cancelled' });
+
+  await expect(
+    markPublished(executor, id, {
+      externalId: '1',
+      externalUrl: 'https://x.com/i/status/1',
+      publishedAt: NOW,
+    }),
+  ).rejects.toBeInstanceOf(PostStateError);
+  expect(await statusOf(id)).toMatchObject({
+    status: 'cancelled',
+    external_id: null,
+  });
+});
+
+test('approving a held post by id approves it', async () => {
+  const id = await insertPost({ status: 'held' });
+
+  const count = await approvePosts(executor, weekId, id);
+
+  expect(count).toBe(1);
+  expect((await statusOf(id))['status']).toBe('approved');
+});
+
+test('approving a failed post by id resets its attempts', async () => {
+  const id = await insertPost({ status: 'approved' });
+  await markRetry(executor, id, 'one', NOW);
+  await markRetry(executor, id, 'two', NOW);
+  await markRetry(executor, id, 'three', NOW);
+  expect(await statusOf(id)).toMatchObject({ status: 'failed', attempts: 3 });
+
+  await approvePosts(executor, weekId, id);
+
+  expect(await statusOf(id)).toMatchObject({
+    status: 'approved',
+    attempts: 0,
+    next_attempt_at: null,
+    lease_until: null,
+    last_error: null,
+  });
+});
+
+test('approving by id does not approve a cancelled or published post', async () => {
+  const cancelled = await insertPost({ status: 'cancelled' });
+  const published = await insertPost({ status: 'published' });
+
+  expect(await approvePosts(executor, weekId, cancelled)).toBe(0);
+  expect(await approvePosts(executor, weekId, published)).toBe(0);
+});
+
+test('bulk approval skips held and failed posts', async () => {
+  const heldPost = await insertPost({ status: 'held' });
+  const failed = await insertPost({ status: 'failed' });
+
+  expect(await approvePosts(executor, weekId)).toBe(0);
+  expect((await statusOf(heldPost))['status']).toBe('held');
+  expect((await statusOf(failed))['status']).toBe('failed');
 });

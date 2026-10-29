@@ -16,6 +16,21 @@ export const LEASE_MS = 5 * 60 * 1000;
 /** Failed attempts after which a post is `failed` instead of retried. */
 export const MAX_ATTEMPTS = 3;
 
+/**
+ * A state change was refused because the post is no longer in a state that
+ * allows it, for example a worker finishing a post that was held or cancelled
+ * meanwhile. Nothing was changed; callers log it and move on.
+ */
+export class PostStateError extends Error {
+  constructor(
+    public readonly postId: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PostStateError';
+  }
+}
+
 interface PostRow extends Record<string, unknown> {
   id: string;
   week_id: string;
@@ -116,19 +131,20 @@ export async function leaseDuePosts(
 
 async function requireUpdated(
   executor: SqlExecutor,
+  id: string,
   sql: string,
   parameters: readonly unknown[],
   failure: string,
 ): Promise<void> {
   const { rows } = await executor.execute(sql, parameters);
-  if (rows.length === 0) throw new Error(failure);
+  if (rows.length === 0) throw new PostStateError(id, failure);
 }
 
 /**
  * Marks a leased post as being published. The lease stays, so a crashed tick's
  * post is picked up again once it expires.
  *
- * @throws When the post is not `approved` or `publishing`.
+ * @throws {PostStateError} When the post is not `approved` or `publishing`.
  */
 export async function markPublishing(
   executor: SqlExecutor,
@@ -136,6 +152,7 @@ export async function markPublishing(
 ): Promise<void> {
   await requireUpdated(
     executor,
+    id,
     `update marketing_posts set status = 'publishing'
      where id = $1::uuid and status in ('approved', 'publishing')
      returning id`,
@@ -145,9 +162,12 @@ export async function markPublishing(
 }
 
 /**
- * Records a published post and releases its lease.
+ * Records a published post and releases its lease. A `held` post is accepted
+ * (a hold can land while its publish was already in flight), a `cancelled`
+ * one never is.
  *
- * @throws When the post does not exist.
+ * @throws {PostStateError} When the post is missing or not `approved`,
+ *   `publishing` or `held`; the row is left unchanged.
  */
 export async function markPublished(
   executor: SqlExecutor,
@@ -156,10 +176,11 @@ export async function markPublished(
 ): Promise<void> {
   await requireUpdated(
     executor,
+    id,
     `update marketing_posts
      set status = 'published', external_id = $2, external_url = $3,
          published_at = $4::timestamptz, last_error = null, lease_until = null
-     where id = $1::uuid
+     where id = $1::uuid and status in ('approved', 'publishing', 'held')
      returning id`,
     [
       id,
@@ -167,7 +188,7 @@ export async function markPublished(
       result.externalUrl,
       result.publishedAt.toISOString(),
     ],
-    `Post ${id} does not exist`,
+    `Post ${id} cannot be marked published from its current status`,
   );
 }
 
@@ -178,7 +199,8 @@ export async function markPublished(
  *
  * @param now - The time the attempt failed.
  * @returns Whether the post will be retried.
- * @throws When the post does not exist.
+ * @throws {PostStateError} When the post is not `approved` or `publishing`
+ *   (for example it was held or cancelled meanwhile); the row is unchanged.
  */
 export async function markRetry(
   executor: SqlExecutor,
@@ -197,19 +219,25 @@ export async function markRetry(
            then $4::timestamptz + power(2, attempts + 1) * interval '1 minute'
            else next_attempt_at
          end
-     where id = $1::uuid
+     where id = $1::uuid and status in ('approved', 'publishing')
      returning status`,
     [id, error, MAX_ATTEMPTS, now.toISOString()],
   );
   const [row] = rows;
-  if (!row) throw new Error(`Post ${id} does not exist`);
+  if (!row) {
+    throw new PostStateError(
+      id,
+      `Post ${id} is not approved or publishing and cannot be retried`,
+    );
+  }
   return row.status === 'failed' ? 'failed' : 'retry';
 }
 
 /**
  * Fails a post without retrying and releases its lease.
  *
- * @throws When the post does not exist.
+ * @throws {PostStateError} When the post is not `approved` or `publishing`;
+ *   the row is unchanged.
  */
 export async function markFailed(
   executor: SqlExecutor,
@@ -218,12 +246,13 @@ export async function markFailed(
 ): Promise<void> {
   await requireUpdated(
     executor,
+    id,
     `update marketing_posts
      set status = 'failed', last_error = $2, lease_until = null
-     where id = $1::uuid
+     where id = $1::uuid and status in ('approved', 'publishing')
      returning id`,
     [id, error],
-    `Post ${id} does not exist`,
+    `Post ${id} is not approved or publishing and cannot be failed`,
   );
 }
 
@@ -276,6 +305,7 @@ export async function updateBlogDraft(
 ): Promise<void> {
   await requireUpdated(
     executor,
+    id,
     `update marketing_posts
      set draft = draft || $2::jsonb
      where id = $1::uuid and channel = 'blog'
@@ -332,8 +362,11 @@ export async function updatePostDraft(
 }
 
 /**
- * Approves `draft` posts of a week, or one post of it. Held and cancelled posts
- * are never approved. Without `postId` the week is approved too.
+ * Approves posts of a week. Without `postId`, every `draft` post is approved
+ * (held, failed and cancelled posts are skipped) and the week is approved too.
+ * With `postId`, that post is approved when it is `draft`, `held` or `failed`,
+ * which is how an operator releases a hold or retries a failure. Approval
+ * resets `attempts`, `next_attempt_at`, `lease_until` and `last_error`.
  *
  * @returns The number of posts approved.
  */
@@ -344,9 +377,14 @@ export async function approvePosts(
 ): Promise<number> {
   return executor.transaction(async (tx) => {
     const { rows } = await tx.execute(
-      `update marketing_posts set status = 'approved'
-       where week_id = $1::uuid and status = 'draft'
-         and ($2::uuid is null or id = $2::uuid)
+      `update marketing_posts
+       set status = 'approved', attempts = 0, next_attempt_at = null,
+           lease_until = null, last_error = null
+       where week_id = $1::uuid
+         and (
+           ($2::uuid is null and status = 'draft')
+           or (id = $2::uuid and status in ('draft', 'held', 'failed'))
+         )
        returning id`,
       [weekId, postId ?? null],
     );
@@ -374,6 +412,7 @@ export async function setPostStatus(
 ): Promise<void> {
   await requireUpdated(
     executor,
+    id,
     `update marketing_posts set status = $2, lease_until = null
      where id = $1::uuid and status not in ('publishing', 'published')
      returning id`,
