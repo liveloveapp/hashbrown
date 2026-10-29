@@ -483,3 +483,39 @@ test('both readiness pool sizes enforce client reply timeout and query failure r
     assert.deepEqual(calls, ['end']);
   }
 });
+
+test('owned tracker preserves native pool query callback connect while wrapping admission Promise connect', async () => {
+  const { trackOwnedPool } = await import('./owner-worker.mjs');
+  const forms = [];
+  const actual = { query: async () => ({ rows: [] }), release: () => true };
+  const raw = {
+    connect(callback) {
+      if (callback) {
+        forms.push('callback');
+        callback(null, actual);
+        return;
+      }
+      forms.push('promise');
+      return Promise.resolve(actual);
+    },
+    query() {
+      return new Promise((resolve, reject) =>
+        this.connect((error, client) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          client.release();
+          resolve({ rows: [] });
+        }),
+      );
+    },
+  };
+  const originalConnect = raw.connect;
+  const tracked = trackOwnedPool(raw);
+  await tracked.pool.query('admission query');
+  const client = await tracked.pool.connect();
+  client.release();
+  assert.equal(raw.connect, originalConnect);
+  assert.deepEqual(forms, ['callback', 'promise']);
+});
