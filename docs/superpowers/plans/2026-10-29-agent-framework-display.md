@@ -7,6 +7,9 @@
 **Status:** draft implementation outline for user review. Do not execute until
 its design and dependency decisions are approved.
 
+**Selected direction (2026-10-29):** AG-UI interoperability first, with optional
+producer recipes. Native framework transports are outside this milestone.
+
 **Goal:** Qualify activities, tool display and restore through real LangGraph and
 Mastra bridges and the existing Microsoft Agent Framework host.
 
@@ -25,8 +28,9 @@ Node/Python framework hosts with exact versions approved before dependency adds.
 Files: spec above; tools/conformance/README.md; new
 `tools/conformance/agent-frameworks/README.md` and `capabilities.json`.
 
-- [ ] Resolve whether “direct LangGraph” means no B4 agent over AG-UI (this plan)
-  or a native LangGraph SDK transport (new spec). Keep file search deferred.
+- [x] Select AG-UI interoperability first: direct LangGraph means no B4 agent
+  over AG-UI. Native LangGraph SDK transport needs a separate spec. Keep file
+  search deferred.
 - [ ] Inventory exact installed/current producer/bridge versions and native
   public hooks. Separate live, fixture-only and source-inspection evidence.
 - [ ] Request approval for exact isolated dev/test dependencies before adding

@@ -2,7 +2,8 @@
 
 **Status:** draft for user review, 2026-10-29. Planning only; no new adapter,
 dependency installation for these frameworks, or compatibility claim is approved
-by this document. The working recommendation is AG-UI interoperability first.
+by this document. The user selected AG-UI interoperability first on 2026-10-29,
+with optional producer recipes rather than first-class framework adapters.
 
 ## Intent and terminology
 
@@ -19,7 +20,7 @@ whenever their backend supplies equivalent protocol information. Preserve the
 
 ## Approaches
 
-1. **AG-UI qualification plus small producer recipes (recommended).** Run real,
+1. **AG-UI qualification plus small producer recipes (selected).** Run real,
    pinned framework and bridge packages with deterministic models, reuse the
    headless consumer and fix documented gaps at the boundary that owns them.
    This keeps client dependencies small and exposes upstream information loss.
@@ -31,10 +32,10 @@ whenever their backend supplies equivalent protocol information. Preserve the
    claim the bridge delivers execution-start events, preserves failed outcomes
    or survives restore. Use as discovery evidence, not qualification.
 
-“LangGraph directly” needs a precise boundary: plain LangGraph through AG-UI
-without a B4 agent is covered by approach 1. Bypassing AG-UI and consuming the
-LangGraph SDK's native protocol is approach 2, outside this first milestone.
-The user has been asked to choose the overall direction; this remains a draft.
+For this milestone, “LangGraph directly” means plain LangGraph through AG-UI
+without a B4 agent. Bypassing AG-UI and consuming the LangGraph SDK's native
+protocol remains outside this milestone. The overall direction is selected;
+the detailed qualification design and dependency choices remain under review.
 
 ## Existing evidence
 
