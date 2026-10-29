@@ -3,7 +3,7 @@
  * Context: common.loadReadinessContext options plus schemaPath. Expected adds schemaSha256.
  * Run storage.mjs first, then kill, then suspend; no overlapping invocations. All receipts are private.
  * Kill protocol is implemented from the approved in-repository design: committed seed, actual
- * generated ingress/input commit, owned SIGKILL, managed 409 wholly before DB expiry, managed
+ * generated ingress, owned SIGKILL, durable input observed after death, managed 409 wholly before DB expiry, managed
  * successor after natural default-30-second expiry, full state immediately and >=75s later.
  */
 import assert from 'node:assert/strict';
@@ -149,6 +149,48 @@ export async function dispatchAfterRecoveryGates({
   await providerCompletion;
   await waitForExpiry();
   return dispatch();
+}
+/** Classify exactly the seed prefix or seed plus owner input; other durable input changes fail. */
+export function ownerInputCommitObserved(baseline, state, ownerInputHash) {
+  const committed = [...baseline.humanContentHashes, ownerInputHash];
+  if (stableStringify(state.humanContentHashes) === stableStringify(committed))
+    return true;
+  assert.deepEqual(
+    state.humanContentHashes,
+    baseline.humanContentHashes,
+    'unexpected durable owner input history',
+  );
+  return false;
+}
+/**
+ * Provider capture is not a persistence barrier: bundled LangGraph 1.5.3 defaults
+ * to async durability. MessagesValue is a ReducedValue (not MessagesDeltaValue),
+ * so this exact graph persists complete message arrays. Poll only this pre-failure
+ * commit prerequisite; never poll the first post-EOF admission count into success.
+ */
+export async function waitForCommittedOwnerInput({
+  baseline,
+  ownerInputHash,
+  read,
+  checkPrefix,
+  timeoutMs = 15000,
+  now = Date.now,
+  sleep: pause = sleep,
+}) {
+  const deadline = now() + timeoutMs;
+  for (;;) {
+    const remaining = deadline - now();
+    if (remaining <= 0) throw Error('owned input commit gate timed out');
+    const snapshot = await bounded(
+      read(),
+      remaining,
+      'owned input commit gate',
+    );
+    checkPrefix(snapshot);
+    if (ownerInputCommitObserved(baseline, snapshot.state, ownerInputHash))
+      return snapshot;
+    await pause(Math.min(100, remaining));
+  }
 }
 /** Run one approved generated-runtime recovery case; no network is performed on module import. */
 export async function runRuntimeRecovery(mode, options, expected) {
@@ -371,52 +413,30 @@ export async function runRuntimeRecovery(mode, options, expected) {
     });
     worker.child.send({ op: 'run', input: ownerInput, cookie });
     await proxy.waitCaptured();
-    evidence.beforeFailureCanonical = await summary();
-    evidence.beforeFailure = await contentState();
-    assertCommittedPrefix(
-      { state: evidence.baseline, canonical: evidence.seedCanonical },
-      {
-        state: evidence.beforeFailure,
-        canonical: evidence.beforeFailureCanonical,
-      },
-    );
-    assert.deepEqual(evidence.beforeFailure.humanContentHashes, [
-      ...evidence.baseline.humanContentHashes,
-      sha256(stableStringify(user.content)),
-    ]);
-    assert.deepEqual(
-      evidence.beforeFailure.providerIds,
-      evidence.baseline.providerIds,
-    );
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL lock_timeout='100ms'");
-      const row = await client.query(
-        'select thread_id from atc_run_admissions where thread_id=$1 FOR UPDATE NOWAIT',
-        [threadId],
+    const inputHash = sha256(stableStringify(user.content));
+    const readFailureSnapshot = async () => ({
+      canonical: await summary(),
+      state: await contentState(),
+    });
+    const checkSeedPrefix = (snapshot) => {
+      assertCommittedPrefix(
+        { state: evidence.baseline, canonical: evidence.seedCanonical },
+        snapshot,
       );
-      assert.equal(row.rowCount, 1);
-    } finally {
-      try {
-        await bounded(
-          client.query('ROLLBACK'),
-          4000,
-          'admission unlock rollback',
-        );
-      } finally {
-        client.release(true);
-      }
-    }
-    evidence.checks.inputCommittedAndAdmissionUnlocked = true;
-    if (mode === 'kill') {
-      const exited = new Promise((resolve) =>
-        worker.child.once('exit', (code, signal) => resolve({ code, signal })),
+      assert.deepEqual(
+        snapshot.state.providerIds,
+        evidence.baseline.providerIds,
       );
-      worker.child.kill('SIGKILL');
-      evidence.ownerExit = await bounded(exited, 5000, 'owned kill');
-      assert.equal(evidence.ownerExit.signal, 'SIGKILL');
-    } else {
+    };
+    if (mode === 'suspend') {
+      const committed = await waitForCommittedOwnerInput({
+        baseline: evidence.baseline,
+        ownerInputHash: inputHash,
+        read: readFailureSnapshot,
+        checkPrefix: checkSeedPrefix,
+      });
+      evidence.beforeStopCommittedCanonical = committed.canonical;
+      evidence.beforeStopCommitted = committed.state;
       assert(worker.child.kill('SIGSTOP'));
       stopped = true;
       const result = await exec(
@@ -426,6 +446,63 @@ export async function runRuntimeRecovery(mode, options, expected) {
       );
       assert(result.stdout.includes('T'));
       evidence.stoppedProcessState = result.stdout.trim();
+      // Re-read after confirmed STOP: a heartbeat transaction could race the signal.
+      const stoppedSnapshot = await readFailureSnapshot();
+      checkSeedPrefix(stoppedSnapshot);
+      assertCommittedPrefix(committed, stoppedSnapshot);
+      assert(
+        ownerInputCommitObserved(
+          evidence.baseline,
+          stoppedSnapshot.state,
+          inputHash,
+        ),
+        'suspended owner input must remain committed',
+      );
+      evidence.beforeFailureCanonical = stoppedSnapshot.canonical;
+      evidence.beforeFailure = stoppedSnapshot.state;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL lock_timeout='100ms'");
+        const row = await client.query(
+          'select thread_id from atc_run_admissions where thread_id=$1 FOR UPDATE NOWAIT',
+          [threadId],
+        );
+        assert.equal(row.rowCount, 1);
+      } finally {
+        try {
+          await bounded(
+            client.query('ROLLBACK'),
+            4000,
+            'admission unlock rollback',
+          );
+        } finally {
+          client.release(true);
+        }
+      }
+      evidence.checks.inputCommitObserved = true;
+      evidence.checks.admissionUnlockedAfterStop = true;
+    } else {
+      const exited = new Promise((resolve) =>
+        worker.child.once('exit', (code, signal) => resolve({ code, signal })),
+      );
+      worker.child.kill('SIGKILL');
+      evidence.ownerExit = await bounded(exited, 5000, 'owned kill');
+      assert.equal(evidence.ownerExit.signal, 'SIGKILL');
+      // Capture durable input only after confirmed death: async writes may commit
+      // between a pre-kill read and the signal. In-flight input loss is permitted.
+      const killedSnapshot = await readFailureSnapshot();
+      checkSeedPrefix(killedSnapshot);
+      evidence.beforeFailureCanonical = killedSnapshot.canonical;
+      evidence.beforeFailure = killedSnapshot.state;
+      evidence.checks.inputCommitObserved = ownerInputCommitObserved(
+        evidence.baseline,
+        killedSnapshot.state,
+        inputHash,
+      );
+      evidence.ownerInputDisposition = evidence.checks.inputCommitObserved
+        ? 'durably observed after owned process death'
+        : 'not durably observed after owned process death';
     }
     evidence.oldLease = await lease();
     assert(evidence.oldLease);

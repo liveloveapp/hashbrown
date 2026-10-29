@@ -583,3 +583,63 @@ test('idle error fatal assertion still executes owned pool cleanup without emitt
   }
   assert(closed);
 });
+
+test('kill permits either observed durable owner input state while suspend requires the committed input', async () => {
+  const { ownerInputCommitObserved, waitForCommittedOwnerInput } =
+    await import('./runtime-recovery.mjs');
+  const baseline = { humanContentHashes: ['seed'] };
+  const uncommitted = { humanContentHashes: ['seed'] },
+    committed = { humanContentHashes: ['seed', 'owner'] };
+  assert.equal(ownerInputCommitObserved(baseline, uncommitted, 'owner'), false);
+  assert.equal(ownerInputCommitObserved(baseline, committed, 'owner'), true);
+  let now = 0,
+    reads = 0;
+  const result = await waitForCommittedOwnerInput({
+    baseline,
+    ownerInputHash: 'owner',
+    read: async () => ({ state: ++reads < 3 ? uncommitted : committed }),
+    checkPrefix: () => true,
+    now: () => now,
+    sleep: async (ms) => {
+      now += ms;
+    },
+    timeoutMs: 1000,
+  });
+  assert.equal(reads, 3);
+  assert.deepEqual(result.state, committed);
+});
+test('suspend commit gate fails boundedly if captured provider request never gets a durable input', async () => {
+  const { waitForCommittedOwnerInput } = await import('./runtime-recovery.mjs');
+  let now = 0;
+  await assert.rejects(
+    waitForCommittedOwnerInput({
+      baseline: { humanContentHashes: ['seed'] },
+      ownerInputHash: 'owner',
+      read: async () => ({ state: { humanContentHashes: ['seed'] } }),
+      checkPrefix: () => true,
+      now: () => now,
+      sleep: async (ms) => {
+        now += ms;
+      },
+      timeoutMs: 200,
+    }),
+    /input commit.*timed out/,
+  );
+});
+
+test('suspend input gate bounds a stalled database snapshot without pretending input committed', async () => {
+  const { waitForCommittedOwnerInput } = await import('./runtime-recovery.mjs');
+  await assert.rejects(
+    waitForCommittedOwnerInput({
+      baseline: { humanContentHashes: ['seed'] },
+      ownerInputHash: 'owner',
+      read: () =>
+        new Promise(() => {
+          /* Stalled database observer. */
+        }),
+      checkPrefix: () => true,
+      timeoutMs: 5,
+    }),
+    /input commit.*timed out/,
+  );
+});
