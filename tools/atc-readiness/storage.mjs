@@ -10,7 +10,13 @@ import {
   resolveRuntimeDependency,
   canonicalStorageSummary,
 } from './common.mjs';
-import { startWorker, bounded, createReadinessPool } from './owner-worker.mjs';
+import {
+  startWorker,
+  bounded,
+  createReadinessPool,
+  readinessPoolErrors,
+  assertReadinessPoolHealthy,
+} from './owner-worker.mjs';
 /** Validate independent evidence before any database pool can be created. */
 export async function storageContext(options, expected) {
   let storage;
@@ -29,7 +35,11 @@ export async function storageContext(options, expected) {
       return createReadinessPool(storage, databaseUrl, 5);
     },
   });
-  return { ...context, storage };
+  return {
+    ...context,
+    storage,
+    databaseErrors: readinessPoolErrors(context.database),
+  };
 }
 /** Execute the five approved six-second storage protocols against the explicitly bound database. */
 export async function runStorage(options, expected) {
@@ -158,6 +168,13 @@ export async function runStorage(options, expected) {
     return { conflicts, elapsedMs: Date.now() - started };
   }
   function record(row) {
+    assertReadinessPoolHealthy(raw);
+    assert(
+      ![...workers].some((worker) =>
+        worker.events.some((event) => event.event === 'database-idle-error'),
+      ),
+      'owned worker database idle client error observed',
+    );
     evidence.cases.push(row);
     save();
   }
@@ -457,6 +474,15 @@ export async function runStorage(options, expected) {
     await bounded(raw.end(), 5000, 'pool close').catch(() =>
       errors.push('pool cleanup failed'),
     );
+    if (context.databaseErrors.length)
+      errors.push('database idle client error observed');
+    if (
+      [...workers].some((worker) =>
+        worker.events.some((event) => event.event === 'database-idle-error'),
+      )
+    )
+      errors.push('owned worker database idle client error observed');
+    evidence.databaseErrors = [...context.databaseErrors];
     evidence.cleanup = {
       ownedWorkersTerminated: [...workers].every(
         (w) => w.child.exitCode !== null || w.child.signalCode !== null,

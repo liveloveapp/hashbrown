@@ -22,7 +22,11 @@ import {
   stableStringify,
 } from './common.mjs';
 import { storageContext } from './storage.mjs';
-import { startWorker, bounded } from './owner-worker.mjs';
+import {
+  startWorker,
+  bounded,
+  assertReadinessPoolHealthy,
+} from './owner-worker.mjs';
 import { createProviderProxy } from './provider-proxy.mjs';
 const exec = promisify(execFile);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -247,6 +251,7 @@ export async function runRuntimeRecovery(mode, options, expected) {
     };
   };
   async function managed(input, label, conflict = false) {
+    assertReadinessPoolHealthy(pool);
     const ordinal = await reserveRecoveryRequest(
       options.stagingDirectory,
       mode + ':' + label,
@@ -635,6 +640,9 @@ export async function runRuntimeRecovery(mode, options, expected) {
     await bounded(pool.end(), 5000, 'pool close').catch(() =>
       errors.push('pool cleanup failed'),
     );
+    if (context.databaseErrors.length)
+      errors.push('database idle client error observed');
+    evidence.databaseErrors = [...context.databaseErrors];
     evidence.cleanup = {
       ownedWorkerExited:
         !worker ||

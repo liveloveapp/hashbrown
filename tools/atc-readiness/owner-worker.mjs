@@ -120,15 +120,51 @@ export async function startWorker(entry, settings) {
     throw error;
   }
 }
-/** Build the exact runtime storage pool with server, connection and client reply deadlines. */
-export function createReadinessPool(storage, databaseUrl, max = 5) {
-  return storage.createPostgresPool({
+const poolErrors = new WeakMap();
+/** Return only fixed-text recorded idle error events; raw driver errors are never retained. */
+export function readinessPoolErrors(pool) {
+  return poolErrors.get(pool) ?? [];
+}
+/** Fail closed after any idle pool error, even when subsequent database operations recover. */
+export function assertReadinessPoolHealthy(pool) {
+  if (readinessPoolErrors(pool).length)
+    throw Error('readiness database idle client error observed');
+}
+/**
+ * Build the runtime pool with client deadlines. Replace factory-owned raw warning listeners
+ * synchronously, before pool use; onIdleError receives only {event:'database-idle-error'}.
+ */
+export function createReadinessPool(
+  storage,
+  databaseUrl,
+  max = 5,
+  onIdleError = () => {
+    /* Caller may inspect recorded safe events instead. */
+  },
+) {
+  const pool = storage.createPostgresPool({
     connectionString: databaseUrl,
     max,
     statement_timeout: 15000,
     query_timeout: 15000,
     connectionTimeoutMillis: 15000,
   });
+  const errors = [];
+  poolErrors.set(pool, errors);
+  // The pinned factory adds its console.warn(String(error)) listener here. Only
+  // listeners installed during factory construction exist before this caller uses it.
+  for (const listener of pool.listeners('error'))
+    pool.removeListener('error', listener);
+  pool.on('error', () => {
+    const event = { event: 'database-idle-error' };
+    errors.push(event);
+    try {
+      onIdleError({ ...event });
+    } catch {
+      /* No callback diagnostic may expose raw driver data. */
+    }
+  });
+  return pool;
 }
 /** Track raw clients beneath the published fenced wrapper, whose release ignores destroy arguments. */
 export function trackOwnedPool(raw) {
@@ -226,7 +262,9 @@ async function storageWorker() {
             ),
           ).href
         );
-        raw = createReadinessPool(storage, settings.databaseUrl, 4);
+        raw = createReadinessPool(storage, settings.databaseUrl, 4, (event) =>
+          process.send?.(event),
+        );
         tracked = trackOwnedPool(raw);
         admission = storage.createPostgresRunAdmission({
           pool: tracked.pool,
@@ -289,6 +327,7 @@ async function storageWorker() {
         if (errors.length) throw Error(errors.join('; '));
         result = true;
       } else throw Error('unknown command');
+      assertReadinessPoolHealthy(raw);
       process.send?.({
         id,
         ok: true,

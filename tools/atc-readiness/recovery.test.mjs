@@ -459,7 +459,7 @@ test('both readiness pool sizes enforce client reply timeout and query failure r
         assert.equal(options.statement_timeout, 15000);
         assert.equal(options.connectionTimeoutMillis, 15000);
         assert.equal(options.max, max);
-        return {
+        return Object.assign(new EventEmitter(), {
           query: () =>
             new Promise((_, reject) =>
               setTimeout(
@@ -470,7 +470,7 @@ test('both readiness pool sizes enforce client reply timeout and query failure r
           end: async () => {
             calls.push('end');
           },
-        };
+        });
       },
     };
     context.mock.timers.enable({ apis: ['setTimeout'] });
@@ -518,4 +518,68 @@ test('owned tracker preserves native pool query callback connect while wrapping 
   client.release();
   assert.equal(raw.connect, originalConnect);
   assert.deepEqual(forms, ['callback', 'promise']);
+});
+
+test('idle pool errors never reach native raw warning and remain fatal after recovered queries', async () => {
+  const {
+    createReadinessPool,
+    readinessPoolErrors,
+    assertReadinessPoolHealthy,
+  } = await import('./owner-worker.mjs');
+  const warnings = [],
+    events = [];
+  const originalWarn = console.warn;
+  console.warn = (...values) => warnings.push(values);
+  try {
+    const driver = {
+      createPostgresPool() {
+        const pool = new EventEmitter();
+        pool.on('error', (error) => console.warn(String(error)));
+        pool.query = async () => ({ rows: [] });
+        return pool;
+      },
+    };
+    const pool = createReadinessPool(driver, 'private-dsn', 5, (event) =>
+      events.push(event),
+    );
+    pool.emit(
+      'error',
+      Error(
+        'postgres://privateuser:privatepassword@db.example/private?token=private-token',
+      ),
+    );
+    await pool.query('recovered query');
+    assert.deepEqual(warnings, []);
+    assert.equal(readinessPoolErrors(pool).length, 1);
+    assert.equal(events.length, 1);
+    assert(!JSON.stringify(events).includes('privatepassword'));
+    assert.throws(() => assertReadinessPoolHealthy(pool), /idle client error/);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('idle error fatal assertion still executes owned pool cleanup without emitting credentials', async () => {
+  const { createReadinessPool, assertReadinessPoolHealthy, closeOwnedStorage } =
+    await import('./owner-worker.mjs');
+  let closed = false;
+  const pool = createReadinessPool(
+    {
+      createPostgresPool() {
+        return Object.assign(new EventEmitter(), {
+          end: async () => {
+            closed = true;
+          },
+        });
+      },
+    },
+    'explicit-private-dsn',
+  );
+  pool.emit('error', Error('credential-like-synthetic-value'));
+  try {
+    assert.throws(() => assertReadinessPoolHealthy(pool), /idle client error/);
+  } finally {
+    assert.deepEqual(await closeOwnedStorage({ pool }), []);
+  }
+  assert(closed);
 });
