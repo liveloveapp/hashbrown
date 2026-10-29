@@ -31,6 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      # Only protected main runs may populate the shared cache. PRs retain
+      # the workspace's anonymous read-only access and isolated writes.
+      NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && github.ref_protected && github.event_name != 'pull_request' && secrets.NX_CLOUD_ACCESS_TOKEN || '' }}
       DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
     steps:
       - name: Checkout repository
