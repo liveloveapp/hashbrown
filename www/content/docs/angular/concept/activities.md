@@ -67,7 +67,7 @@ An activity is structured, display-only information from your agent. Use it for 
 
 Our agent creates one `plan-progress` activity after validating context:
 
-<hb-code-example header="server/workbench-workflows.ts">
+<hb-code-example header="server/workbench-workflows.ts" moment="activity-observed-1">
 
 ```ts
       if (lesson === 'activities')

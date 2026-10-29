@@ -118,7 +118,7 @@ export const workbenchBrowserInstructions =
 
 The endpoint replaces browser-supplied system and developer messages with this application policy:
 
-<hb-code-example header="runtime/workbench-onboarding.ts">
+<hb-code-example header="runtime/workbench-onboarding.ts" moment="policy-observed-1">
 
 ```ts
 export const workbenchInstructionsSystem =

@@ -88,7 +88,7 @@ The recording uses this checked React client with real provider requests. The lo
 
 `useTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
-<hb-code-example header="react/src/Workbench.tsx">
+<hb-code-example header="react/src/Workbench.tsx" moment="tool-result-1">
 
 ```ts
 const readContext = useTool({

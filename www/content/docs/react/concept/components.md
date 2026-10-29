@@ -101,7 +101,7 @@ The recording uses this checked React client with real provider requests. The lo
 
 The following excerpt is from the checked workbench client. Open the complete client for the component implementation, application state, and acceptance guard.
 
-<hb-code-example header="react/src/Workbench.tsx">
+<hb-code-example header="react/src/Workbench.tsx" moment="parsed-output-1">
 
 ```ts
 const components = [

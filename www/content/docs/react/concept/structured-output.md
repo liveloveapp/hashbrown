@@ -93,7 +93,7 @@ The recording uses this checked React client with real provider requests. The lo
 
 The shared schema describes a title and a streaming array of step strings. Both frameworks and the server use this same contract.
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="parsed-output-1">
 
 ```ts
 export const workbenchPlanSchema = s.object('A two-step plan proposal', {
@@ -113,7 +113,7 @@ export const workbenchPlanSchema = s.object('A two-step plan proposal', {
 
 The checked React client uses `useStructuredChat()` with the plan schema, the same read-only `readContext` tool, and the capturing transport:
 
-<hb-code-example header="react/src/StructuredWorkbench.tsx">
+<hb-code-example header="react/src/StructuredWorkbench.tsx" moment="parsed-output-1">
 
 ```ts
 const chat = useStructuredChat({

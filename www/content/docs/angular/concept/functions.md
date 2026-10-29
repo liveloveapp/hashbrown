@@ -86,7 +86,7 @@ The recording uses this checked Angular client with real provider requests. The 
 
 `createTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
-<hb-code-example header="angular/src/app/workbench.ts">
+<hb-code-example header="angular/src/app/workbench.ts" moment="tool-result-1">
 
 ```ts
       createTool({

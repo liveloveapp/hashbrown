@@ -62,7 +62,7 @@ Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx w
 
 Both frameworks and the server use this shared schema:
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="parsed-output-1">
 
 ```ts
 export const workbenchPlanSchema = s.object('A two-step plan proposal', {

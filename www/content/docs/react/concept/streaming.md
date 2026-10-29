@@ -91,7 +91,7 @@ Start the [conversation workbench](/docs/react/start/workbench) with `npx nx wor
 
 The streaming lesson uses this shared response schema:
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="streaming-json-1">
 
 ```ts
 export const workbenchStreamingPlanSchema = s.object(

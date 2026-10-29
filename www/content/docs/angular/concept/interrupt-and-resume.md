@@ -147,7 +147,7 @@ Keep form drafts attached to the original displayed `batchId`. Do not replace it
 
 The workbench builds a complete `resume` argument from the original batch:
 
-<hb-code-example header="runtime/workbench-workflow-form.ts">
+<hb-code-example header="runtime/workbench-workflow-form.ts" moment="resume-requested-1">
 
 ```ts
   return {

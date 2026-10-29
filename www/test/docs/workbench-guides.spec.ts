@@ -67,7 +67,7 @@ test.each(SDKS)(
 
     for (const body of pages) {
       for (const match of body.matchAll(
-        /<hb-code-example header="((?:react|angular|runtime)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="((?:react|angular|runtime)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       )) {
         const source = readFileSync(
           resolve(import.meta.dirname, '../../examples/quickstart', match[1]),

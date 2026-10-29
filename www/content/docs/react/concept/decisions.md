@@ -103,7 +103,7 @@ export const workbenchDecisionSchema = s.object(
 
 <hb-expander title="Checked React decision setup">
 
-<hb-code-example header="react/src/DecisionWorkbench.tsx">
+<hb-code-example header="react/src/DecisionWorkbench.tsx" moment="decision-1">
 
 ```ts
 const decision = useDecision({
