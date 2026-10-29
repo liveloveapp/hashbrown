@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { semanticProjection } from './capture.mjs';
+import { semanticProjection } from '../node/capture.mjs';
 
 /** Hash the exact JSON representation saved in the raw event corpus. */
 export function eventsSha256(events) {

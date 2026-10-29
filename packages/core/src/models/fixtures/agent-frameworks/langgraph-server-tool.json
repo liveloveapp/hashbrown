@@ -399,7 +399,7 @@
       "type": "TOOL_CALL_RESULT",
       "toolCallId": "weather-call",
       "content": "Paris: 21°C and sunny",
-      "messageId": "7a1c0a8e-e6f4-45d9-96d2-cd0649f488a7",
+      "messageId": "f23b7224-8fa0-4366-88bd-ea2b995e01f3",
       "role": "tool"
     },
     {
@@ -876,7 +876,7 @@
     "nativeCheckpointRestore": "not-tested"
   },
   "provenance": {
-    "sourceSha256": "e1b67fc82de266ec39a13935cbd1b35a67b14e8af42d5ce52be2e7713dfade62",
-    "eventsSha256": "3d7cc4866a6f9337e31b3eaeec160cbf9934ad8c22455eb6f51c27dc3e65c51c"
+    "sourceSha256": "db0c08987398d5e1df4a99e3dda9a4fa2a087cf00d06099d977644286370a965",
+    "eventsSha256": "c9c2b4ff23344e5e2363001f2730f5085a81ee19339814ec2a72c0cf8b3464f0"
   }
 }

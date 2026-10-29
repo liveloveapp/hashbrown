@@ -2,6 +2,8 @@
 
 > **For agentic workers:** Use superpowers:subagent-driven-development. Work test-first, review spec compliance and quality independently, and keep Git mutations with the parent.
 
+**PR:** [#832](https://github.com/liveloveapp/hashbrown/pull/832), with user-authorized merge on green.
+
 **Goal:** Add reproducible conformance tests for real AG-UI framework bridges and Hashbrown's activity/tool-display consumer, then merge the implementation when required CI passes.
 
 **Architecture:** Real deterministic framework hosts produce unmodified AG-UI event traces. A versioned evidence corpus runs through the prepared Hashbrown root store; the existing React/Angular runtime hosts exercise the public consumer. Record per-capability gaps rather than synthesizing missing producer events. Reuse the maintained .NET host and Thread Plane's test patterns, not its native session implementation.
@@ -17,7 +19,7 @@
 
 ## Task 1: Shared evidence corpus and root-store consumer
 
-Files: `tools/conformance/agent-frameworks/{README.md,capabilities.json}`, `tools/conformance/agent-frameworks/harness/{capture.mjs,capture.spec.mjs}`, `packages/core/src/models/agent-framework-display.conformance.spec.ts`, `packages/core/src/models/fixtures/agent-frameworks/*.json`.
+Files: `tools/conformance/agent-frameworks/{README.md,capabilities.json}`, `tools/conformance/agent-frameworks/node/capture.mjs`, `tools/conformance/agent-frameworks/harness/capture.spec.mjs`, `packages/core/src/models/agent-framework-display.conformance.spec.ts`, `packages/core/src/models/fixtures/agent-frameworks/*.json`.
 
 - [x] Write failing capture-helper tests for bounded waits, event byte preservation, failed runs and manifest provenance; run them before helper implementation.
 - [x] Implement the smallest capture/provenance helper; never fabricate producer fields.
@@ -85,3 +87,10 @@ helper tests; 13 real-host/harness tests; all three capture reproducibility chec
 16 React/Angular browser cases; affected builds/lints passed. Existing Nx/Vite
 migration, color-environment and bundle-size warnings remain. Negative tool-failure
 scenarios produce expected framework diagnostics.
+
+CI integration follow-up: a fresh production-mode graph exposed Nx's unnamed inferred
+project for the isolated package. Added explicit project metadata and disabled
+package-script inference; the parent conformance project depends on it. The shared
+capture implementation lives inside that project so host imports do not introduce
+a parent/child project cycle. The existing website production-resolution regression
+is the test-first failure/verification for this fix.

@@ -48,7 +48,7 @@ test('LangGraph cancellation reaches an actual blocked tool', async () => {
 });
 
 test('LangGraph success is reproducible with exact installed versions', async () => {
-  const { semanticProjection } = await import('../harness/capture.mjs');
+  const { semanticProjection } = await import('./capture.mjs');
   const first = await runLangGraphScenario();
   const second = await runLangGraphScenario();
 

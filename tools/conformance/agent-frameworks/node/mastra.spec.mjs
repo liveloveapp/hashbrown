@@ -67,7 +67,7 @@ test('Mastra aborts a real blocked tool through the public bridge', async () => 
 
 for (const profile of ['buffered', 'live']) {
   test(`Mastra ${profile} success is reproducible with exact installed versions`, async () => {
-    const { semanticProjection } = await import('../harness/capture.mjs');
+    const { semanticProjection } = await import('./capture.mjs');
     const first = await runMastraScenario({ profile });
     const second = await runMastraScenario({ profile });
 

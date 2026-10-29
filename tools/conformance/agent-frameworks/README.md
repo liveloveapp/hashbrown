@@ -36,7 +36,10 @@ The isolated Node dependency set was approved on 2026-10-29. The install target
 uses its own lock with scripts disabled; no root or published runtime dependency
 changes. `conformance:test` depends on the real host/check target, and the existing
 `example-e2e` spec glob includes these browser cases. CI therefore exercises both
-without a new broad workflow lane.
+without a new broad workflow lane. Explicit private-project metadata keeps fresh
+production-mode graphs resolvable. Package-script inference is disabled so the
+controlled parent targets own installation and execution; the shared capture file
+is an explicit input to the cached helper-test target.
 
 ## Current baseline and limits
 

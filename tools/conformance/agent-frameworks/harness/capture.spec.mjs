@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { captureEvents, semanticProjection } from './capture.mjs';
+import { captureEvents, semanticProjection } from '../node/capture.mjs';
 
 test('captures immutable delivery-time snapshots and synchronous completion', async () => {
   const event = { type: 'ACTIVITY_SNAPSHOT', content: { count: 1 } };

@@ -15,5 +15,8 @@
     "@langchain/core": "1.3.2",
     "@mastra/core": "1.80.0",
     "@mastra/client-js": "1.57.0"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }

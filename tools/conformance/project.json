@@ -460,7 +460,10 @@
     "agent-framework-harness-test": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": ["default"],
+      "inputs": [
+        "default",
+        "{workspaceRoot}/tools/conformance/agent-frameworks/node/capture.mjs"
+      ],
       "options": {
         "command": "node --test tools/conformance/agent-frameworks/harness/*.spec.mjs"
       }
@@ -505,6 +508,7 @@
     "openai",
     "runtime-smoke-angular",
     "runtime-smoke-react",
-    "ollama"
+    "ollama",
+    "hashbrown-agent-framework-conformance"
   ]
 }

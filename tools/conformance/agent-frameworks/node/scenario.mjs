@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
-import { captureEvents } from '../harness/capture.mjs';
+import { captureEvents } from './capture.mjs';
 
 /** Deterministic successful return value from each framework's actual weather tool. */
 export const weatherResult = 'Paris: 21°C and sunny';
