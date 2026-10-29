@@ -222,7 +222,7 @@ export async function createManagedTimeoutIO(
       const controller = new AbortController();
       controllers.add(controller);
       const signal = AbortSignal.any([bounds.signal, controller.signal]);
-      const runId = randomUUID();
+      const runId = bounds.runId ?? randomUUID();
       const origin =
         kind === 'fault'
           ? expected.fault.deployment.origin
