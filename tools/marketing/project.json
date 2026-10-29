@@ -62,6 +62,20 @@
       "configurations": {
         "production": {}
       }
+    },
+    "x-auth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/marketing/src/channels/x/auth-cli.mts"
+      }
+    },
+    "linkedin-auth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/marketing/src/channels/linkedin/auth-cli.mts"
+      }
     }
   }
 }
