@@ -81,6 +81,7 @@ function setup(
       Awaited<ReturnType<DispatchDependencies['github']['pullState']>>
     >;
     live?: boolean;
+    dryRun?: boolean;
     post?: ChannelAdapter['post'];
     dependents?: string[];
     credentials?: Parameters<typeof createMemoryCredentialStore>[0];
@@ -117,6 +118,7 @@ function setup(
     github,
     isLive: vi.fn(async () => options.live ?? false),
     now: () => options.now ?? NOW,
+    dryRun: options.dryRun ?? false,
   };
   return { deps, post, github };
 }
@@ -446,5 +448,105 @@ describe('createDispatchDependencies', () => {
     expect(() => createDispatchDependencies({})).toThrow(
       /DATABASE_URL.*MARKETING_CREDENTIALS_KEY.*MARKETING_GITHUB_TOKEN/,
     );
+  });
+});
+
+describe('dry run', () => {
+  test('a due blog post is published with dry-run values and no GitHub or live call', async () => {
+    repository.leaseDuePosts.mockResolvedValue([blog()]);
+    const { deps, github } = setup({ dryRun: true });
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(repository.markPublished).toHaveBeenCalledWith(deps.executor, 'p1', {
+      externalId: 'dry-run',
+      externalUrl: 'https://hashbrown.dev/blog/my-post',
+      publishedAt: NOW,
+    });
+    expect(outcome.published).toBe(1);
+    expect(github.pullState).not.toHaveBeenCalled();
+    expect(github.updateBranch).not.toHaveBeenCalled();
+    expect(github.merge).not.toHaveBeenCalled();
+    expect(deps.isLive).not.toHaveBeenCalled();
+  });
+
+  test('a blog post before its schedule is left untouched', async () => {
+    repository.leaseDuePosts.mockResolvedValue([blog()]);
+    const { deps, github } = setup({
+      dryRun: true,
+      now: new Date(NOW.getTime() - 2 * HOUR),
+    });
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(repository.markPublished).not.toHaveBeenCalled();
+    expect(repository.updateBlogDraft).not.toHaveBeenCalled();
+    expect(github.pullState).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ leased: 1, published: 0 });
+  });
+
+  test('devto posts a placeholder body with the canonical url and never reads GitHub', async () => {
+    repository.leaseDuePosts.mockResolvedValue([
+      post({
+        channel: 'devto',
+        draft: {
+          channel: 'devto',
+          blogSlug: 'my-post',
+          article: { title: 'T', tags: ['ai'], description: 'D' },
+        },
+      }),
+    ]);
+    const { deps, post: adapterPost, github } = setup({ dryRun: true });
+
+    await dispatchMarketing(deps);
+
+    expect(github.readFile).not.toHaveBeenCalled();
+    expect(adapterPost).toHaveBeenCalledWith({
+      channel: 'devto',
+      text: 'dry run: https://hashbrown.dev/blog/my-post',
+      article: {
+        title: 'T',
+        tags: ['ai'],
+        description: 'D',
+        canonicalUrl: 'https://hashbrown.dev/blog/my-post',
+      },
+    });
+  });
+
+  test('createDispatchDependencies in dry run makes no fetch calls and disables GitHub', async () => {
+    const fetchSpy = vi.fn();
+    const deps = createDispatchDependencies(
+      {
+        DATABASE_URL: 'postgres://user:pass@localhost:1/none',
+        MARKETING_CREDENTIALS_KEY: Buffer.alloc(32).toString('base64'),
+        MARKETING_DRY_RUN: '1',
+      },
+      fetchSpy as unknown as typeof fetch,
+    );
+
+    const results = await Promise.all([
+      deps.adapters.x.post({ channel: 'x', text: 'hello' }),
+      deps.adapters.devto.post({
+        channel: 'devto',
+        text: 'dry run: https://hashbrown.dev/blog/a',
+        article: { title: 'T' },
+      }),
+    ]);
+
+    expect(results).toHaveLength(2);
+    expect(deps.dryRun).toBe(true);
+    await expect(deps.github.pullState(1)).rejects.toThrow(
+      'GitHub is disabled in dry run',
+    );
+    await expect(deps.github.merge(1)).rejects.toThrow(
+      'GitHub is disabled in dry run',
+    );
+    await expect(deps.github.updateBranch(1)).rejects.toThrow(
+      'GitHub is disabled in dry run',
+    );
+    await expect(deps.github.readFile('a', 'main')).rejects.toThrow(
+      'GitHub is disabled in dry run',
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

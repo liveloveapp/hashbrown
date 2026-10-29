@@ -111,6 +111,7 @@ test('an approved week publishes its X post, blog and dependent dev.to post in o
       github,
       isLive: async () => true,
       now: () => now,
+      dryRun: false,
     };
     return dispatchMarketing(deps);
   }

@@ -36,6 +36,8 @@ export interface DispatchDependencies {
   github: GitHubClient;
   isLive: (url: string) => Promise<boolean>;
   now: () => Date;
+  /** Dry run: no GitHub calls and no live check; posts get placeholder results. */
+  dryRun: boolean;
 }
 
 /** What one tick did; `operatorAlerts` is de-duplicated. */
@@ -97,6 +99,16 @@ async function dispatchBlog(
   tally: Tally,
 ): Promise<void> {
   const { executor } = deps;
+  if (deps.dryRun) {
+    if (now.getTime() < post.scheduledAt.getTime()) return;
+    await markPublished(executor, post.id, {
+      externalId: 'dry-run',
+      externalUrl: blogUrl(post.draft.slug),
+      publishedAt: now,
+    });
+    tally.published += 1;
+    return;
+  }
   let step;
   try {
     step = await advanceBlogPost(post, now, deps);
@@ -153,14 +165,16 @@ async function buildDraft(
 ): Promise<Draft> {
   if (post.draft.channel !== 'devto') return post.draft as Draft;
   const { blogSlug, article } = post.draft as DevtoDraft;
-  const markdown = await deps.github.readFile(
-    `www/content/blog/${blogSlug}.md`,
-    'main',
-  );
   const url = blogUrl(blogSlug);
+  const text = deps.dryRun
+    ? `dry run: ${url}`
+    : toDevtoMarkdown(
+        await deps.github.readFile(`www/content/blog/${blogSlug}.md`, 'main'),
+        url,
+      );
   return {
     channel: 'devto',
-    text: toDevtoMarkdown(markdown, url),
+    text,
     article: { ...article, canonicalUrl: url },
   };
 }
@@ -292,20 +306,34 @@ async function headIsLive(url: string): Promise<boolean> {
   return response.status === 200;
 }
 
+const DISABLED_GITHUB: GitHubClient = {
+  updateBranch: async () => disabled(),
+  pullState: async () => disabled(),
+  merge: async () => disabled(),
+  readFile: async () => disabled(),
+};
+
+function disabled(): never {
+  throw new Error('GitHub is disabled in dry run');
+}
+
 /**
- * Builds the tick's dependencies from the environment.
+ * Builds the tick's dependencies from the environment. In dry run
+ * (`MARKETING_DRY_RUN=1`) GitHub is disabled and its token is not required.
  *
- * @throws When `DATABASE_URL`, `MARKETING_CREDENTIALS_KEY` or
- *   `MARKETING_GITHUB_TOKEN` is missing, naming each.
+ * @param fetchImpl - The fetch the adapters use; defaults to `globalThis.fetch`.
+ * @throws When a required variable is missing, naming each.
  */
 export function createDispatchDependencies(
   env: Readonly<Record<string, string | undefined>>,
+  fetchImpl?: typeof fetch,
 ): DispatchDependencies {
+  const dryRun = env['MARKETING_DRY_RUN'] === '1';
   const required = [
     'DATABASE_URL',
     'MARKETING_CREDENTIALS_KEY',
-    'MARKETING_GITHUB_TOKEN',
-  ] as const;
+    ...(dryRun ? [] : ['MARKETING_GITHUB_TOKEN']),
+  ];
   const missing = required.filter((name) => !env[name]);
   if (missing.length > 0) {
     throw new Error(`Missing environment variables: ${missing.join(', ')}`);
@@ -319,13 +347,12 @@ export function createDispatchDependencies(
   return {
     executor,
     credentials,
-    adapters: createAdapters({
-      credentials,
-      env,
-      dryRun: env['MARKETING_DRY_RUN'] === '1',
-    }),
-    github: createGitHubClient(env['MARKETING_GITHUB_TOKEN'] as string),
+    adapters: createAdapters({ credentials, env, dryRun, fetch: fetchImpl }),
+    github: dryRun
+      ? DISABLED_GITHUB
+      : createGitHubClient(env['MARKETING_GITHUB_TOKEN'] as string),
     isLive: headIsLive,
     now: () => new Date(),
+    dryRun,
   };
 }
