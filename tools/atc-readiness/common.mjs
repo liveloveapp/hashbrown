@@ -275,21 +275,25 @@ export function createRedactor(secretValues = []) {
     if (!value || typeof value !== 'object') return value;
     if (seen.has(value)) return '[Circular]';
     seen.add(value);
-    if (value instanceof Error)
-      return {
-        name: redact(value.name),
-        message: redact(value.message),
-        ...(value.cause === undefined
-          ? {}
-          : { cause: redact(value.cause, seen) }),
-      };
-    if (Array.isArray(value)) return value.map((item) => redact(item, seen));
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        redact(key),
-        redact(item, seen),
-      ]),
-    );
+    try {
+      if (value instanceof Error)
+        return {
+          name: redact(value.name),
+          message: redact(value.message),
+          ...(value.cause === undefined
+            ? {}
+            : { cause: redact(value.cause, seen) }),
+        };
+      if (Array.isArray(value)) return value.map((item) => redact(item, seen));
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          redact(key),
+          redact(item, seen),
+        ]),
+      );
+    } finally {
+      seen.delete(value);
+    }
   }
   return redact;
 }

@@ -631,3 +631,17 @@ test('runtime errors remain failures while a dedicated callback preserves saniti
   assert.equal(frames[0].code, 'rate_limit_exceeded');
   assert(!JSON.stringify(frames).includes('fixture-private-token'));
 });
+
+test('redaction preserves repeated evidence references while marking actual cycles', () => {
+  const shared = { checkpointCount: 3, admissions: 0 };
+  const evidence = { attempts: [{ canonical: shared }], seedCanonical: shared };
+  const circular = {};
+  circular.self = circular;
+
+  const result = common.createRedactor()(evidence);
+  const cyclic = common.createRedactor()(circular);
+
+  assert.deepEqual(result.seedCanonical, shared);
+  assert.deepEqual(result.attempts[0].canonical, shared);
+  assert.equal(cyclic.self, '[Circular]');
+});
