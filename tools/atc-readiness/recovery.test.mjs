@@ -194,3 +194,125 @@ test('proxy incomplete real provider result cannot be released and cleanup still
     await request;
   }
 });
+
+test('committed prefix checks full assistant metadata and every prior checkpoint including pending writes', async () => {
+  const { assertCommittedPrefix } = await import('./runtime-recovery.mjs');
+  const prefix = {
+    state: { messageSha256s: ['human-all-fields', 'assistant-all-fields'] },
+    canonical: {
+      checkpoints: [
+        {
+          namespaceSha256: 'ns',
+          sha256: 'full-tuple-and-writes',
+          pendingWrites: 1,
+        },
+      ],
+    },
+  };
+  const successor = {
+    state: {
+      messageSha256s: [
+        ...prefix.state.messageSha256s,
+        'followup',
+        'new-assistant',
+      ],
+    },
+    canonical: {
+      checkpoints: [
+        ...prefix.canonical.checkpoints,
+        { namespaceSha256: 'ns', sha256: 'new-record', pendingWrites: 0 },
+      ],
+    },
+  };
+  assert.doesNotThrow(() => assertCommittedPrefix(prefix, successor));
+  assert.throws(() =>
+    assertCommittedPrefix(prefix, {
+      ...successor,
+      state: {
+        messageSha256s: [
+          'human-all-fields',
+          'changed-assistant-metadata',
+          'followup',
+        ],
+      },
+    }),
+  );
+  assert.throws(() =>
+    assertCommittedPrefix(prefix, {
+      ...successor,
+      canonical: {
+        checkpoints: [
+          {
+            namespaceSha256: 'ns',
+            sha256: 'mutated-old-pending-write',
+            pendingWrites: 1,
+          },
+        ],
+      },
+    }),
+  );
+});
+test('successor cannot dispatch until completed provider bytes and natural expiry gates both settle', async () => {
+  const { dispatchAfterRecoveryGates } = await import('./runtime-recovery.mjs');
+  const calls = [];
+  let complete;
+  const providerCompletion = new Promise((resolve) => {
+    complete = resolve;
+  });
+  const result = dispatchAfterRecoveryGates({
+    providerCompletion,
+    waitForExpiry: async () => {
+      calls.push('expiry');
+    },
+    dispatch: async () => {
+      calls.push('dispatch');
+      return 'success';
+    },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls, []);
+  calls.push('provider-complete');
+  complete();
+  assert.equal(await result, 'success');
+  assert.deepEqual(calls, ['provider-complete', 'expiry', 'dispatch']);
+});
+
+test('full message digests detect assistant content and metadata changes despite unchanged provider ID/cap', async () => {
+  const { messageRecordHashes } = await import('./runtime-recovery.mjs');
+  const messages = [
+    {
+      type: 'ai',
+      content: 'committed content',
+      response_metadata: { id: 'resp_same', max_output_tokens: 4096 },
+      additional_kwargs: { timestamp: 'original' },
+    },
+  ];
+  const baseline = messageRecordHashes(messages);
+  assert.notDeepEqual(
+    messageRecordHashes([{ ...messages[0], content: 'changed content' }]),
+    baseline,
+  );
+  assert.notDeepEqual(
+    messageRecordHashes([
+      { ...messages[0], additional_kwargs: { timestamp: 'changed' } },
+    ]),
+    baseline,
+  );
+});
+test('failed real provider completion prevents expiry wait and successor dispatch', async () => {
+  const { dispatchAfterRecoveryGates } = await import('./runtime-recovery.mjs');
+  const calls = [];
+  await assert.rejects(
+    dispatchAfterRecoveryGates({
+      providerCompletion: Promise.reject(Error('provider failed')),
+      waitForExpiry: async () => {
+        calls.push('expiry');
+      },
+      dispatch: async () => {
+        calls.push('dispatch');
+      },
+    }),
+    /provider failed/,
+  );
+  assert.deepEqual(calls, []);
+});

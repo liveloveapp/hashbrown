@@ -175,6 +175,7 @@ export async function createProviderProxy({
           headers[key] = value;
       buffered = { bytes, headers, status: result.status };
       receipt = {
+        completedMonotonicMs: performance.now(),
         responseId: response.id,
         responseSha256: sha256(bytes),
         requestSha256: sha256(captured.bytes),

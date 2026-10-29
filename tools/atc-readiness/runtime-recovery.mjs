@@ -74,6 +74,39 @@ export async function reserveRecoveryRequest(stage, label) {
     await unlink(lock);
   }
 }
+/** Hash every field of every committed message, including assistant content and metadata. */
+export function messageRecordHashes(messages) {
+  return messages.map((message) => sha256(stableStringify(message)));
+}
+/** Require the complete ordered message prefix and multiset of prior full tuple/write records. */
+export function assertCommittedPrefix(prefix, successor) {
+  assert.deepEqual(
+    successor.state.messageSha256s.slice(0, prefix.state.messageSha256s.length),
+    prefix.state.messageSha256s,
+    'complete committed message prefix changed',
+  );
+  const remaining = successor.canonical.checkpoints.map((record) =>
+    stableStringify(record),
+  );
+  for (const record of prefix.canonical.checkpoints) {
+    const index = remaining.indexOf(stableStringify(record));
+    assert(
+      index >= 0,
+      'prior full checkpoint or pending writes changed or disappeared',
+    );
+    remaining.splice(index, 1);
+  }
+}
+/** Complete and validate held upstream bytes before waiting natural expiry and dispatching takeover. */
+export async function dispatchAfterRecoveryGates({
+  providerCompletion,
+  waitForExpiry,
+  dispatch,
+}) {
+  await providerCompletion;
+  await waitForExpiry();
+  return dispatch();
+}
 /** Run one approved generated-runtime recovery case; no network is performed on module import. */
 export async function runRuntimeRecovery(mode, options, expected) {
   assert(['kill', 'suspend'].includes(mode));
@@ -158,6 +191,7 @@ export async function runRuntimeRecovery(mode, options, expected) {
     const human = messages.filter((m) => m.type === 'human'),
       ai = messages.filter((m) => m.type === 'ai');
     return {
+      messageSha256s: messageRecordHashes(messages),
       humanContentHashes: human.map((m) => sha256(stableStringify(m.content))),
       providerIds: ai.map((m) => m.response_metadata?.id).filter(Boolean),
       caps: ai.map((m) => m.response_metadata?.max_output_tokens),
@@ -172,6 +206,7 @@ export async function runRuntimeRecovery(mode, options, expected) {
     const attempt = { ordinal, label, runId: input.runId };
     evidence.attempts.push(attempt);
     await save();
+    attempt.dispatchMonotonicMs = performance.now();
     const response = await fetch(origin + '/api/run', {
       method: 'POST',
       headers: {
@@ -206,6 +241,7 @@ export async function runRuntimeRecovery(mode, options, expected) {
       onEvent: (e) => events.push(e),
       redact: context.redact,
     });
+    attempt.eofMonotonicMs = performance.now();
     // First post-EOF query is the exact admission count, no clock/polling/read can precede it.
     const canonical = await summary();
     assert.equal(
@@ -260,6 +296,7 @@ export async function runRuntimeRecovery(mode, options, expected) {
     };
     const seed = await managed(body([seedUser]), 'seed');
     const seedHistory = [seedUser, seed.assistant];
+    evidence.seedCanonical = seed.canonical;
     evidence.baseline = await contentState();
     assert.equal(evidence.baseline.humanContentHashes.length, 1);
     assert.equal(evidence.baseline.providerIds.length, 1);
@@ -281,7 +318,15 @@ export async function runRuntimeRecovery(mode, options, expected) {
     });
     worker.child.send({ op: 'run', input: ownerInput, cookie });
     await proxy.waitCaptured();
+    evidence.beforeFailureCanonical = await summary();
     evidence.beforeFailure = await contentState();
+    assertCommittedPrefix(
+      { state: evidence.baseline, canonical: evidence.seedCanonical },
+      {
+        state: evidence.beforeFailure,
+        canonical: evidence.beforeFailureCanonical,
+      },
+    );
     assert.deepEqual(evidence.beforeFailure.humanContentHashes, [
       ...evidence.baseline.humanContentHashes,
       sha256(stableStringify(user.content)),
@@ -361,21 +406,63 @@ export async function runRuntimeRecovery(mode, options, expected) {
         Date.parse(after) < Date.parse(evidence.oldLease.expiresAt),
       'conflict must finish wholly before DB expiry',
     );
-    const deadline = Date.now() + 45000;
-    while (
-      Date.parse(await clock()) < Date.parse(evidence.oldLease.expiresAt)
-    ) {
-      assert(Date.now() < deadline);
-      await sleep(250);
-    }
-    evidence.successorDispatchDatabaseTime = await clock();
-    assert(
-      Date.parse(evidence.successorDispatchDatabaseTime) >=
-        Date.parse(evidence.oldLease.expiresAt),
-    );
-    const winner = await managed(successorInput, 'after-expiry-successor');
+    const providerCompletion = (async () => {
+      if (mode !== 'suspend') return;
+      await forwarded;
+      assert(!forwardError, 'actual provider completion failed');
+      const provider = proxy.receipt();
+      assert(provider);
+      assert(
+        validate(JSON.parse(provider.outputText)),
+        'real delayed provider output must match pinned schema',
+      );
+      const providerEvidence = { ...provider };
+      delete providerEvidence.outputText;
+      evidence.staleProvider = providerEvidence;
+      evidence.providerBytesHeldConfirmedMonotonicMs = performance.now();
+    })();
+    const winner = await dispatchAfterRecoveryGates({
+      providerCompletion,
+      waitForExpiry: async () => {
+        const deadline = Date.now() + 45000;
+        while (
+          Date.parse(await clock()) < Date.parse(evidence.oldLease.expiresAt)
+        ) {
+          assert(Date.now() < deadline);
+          await sleep(250);
+        }
+        evidence.successorDispatchDatabaseTime = await clock();
+        assert(
+          Date.parse(evidence.successorDispatchDatabaseTime) >=
+            Date.parse(evidence.oldLease.expiresAt),
+        );
+      },
+      dispatch: async () => {
+        evidence.successorDispatchMonotonicMs = performance.now();
+        if (mode === 'suspend')
+          assert(
+            evidence.staleProvider.completedMonotonicMs <=
+              evidence.providerBytesHeldConfirmedMonotonicMs &&
+              evidence.providerBytesHeldConfirmedMonotonicMs <=
+                evidence.successorDispatchMonotonicMs,
+            'actual completed provider bytes must be held before successor dispatch',
+          );
+        return managed(successorInput, 'after-expiry-successor');
+      },
+    });
     evidence.winnerCanonical = winner.canonical;
     evidence.winner = await contentState();
+    assertCommittedPrefix(
+      { state: evidence.baseline, canonical: evidence.seedCanonical },
+      { state: evidence.winner, canonical: evidence.winnerCanonical },
+    );
+    assertCommittedPrefix(
+      {
+        state: evidence.beforeFailure,
+        canonical: evidence.beforeFailureCanonical,
+      },
+      { state: evidence.winner, canonical: evidence.winnerCanonical },
+    );
     assert.deepEqual(evidence.winner.humanContentHashes, [
       ...evidence.beforeFailure.humanContentHashes,
       sha256(stableStringify(followup.content)),
@@ -397,20 +484,27 @@ export async function runRuntimeRecovery(mode, options, expected) {
     );
     assert(evidence.winner.caps.every((c) => c === 4096));
     if (mode === 'suspend') {
-      await forwarded;
-      assert(!forwardError, 'actual provider completion failed');
-      const provider = proxy.receipt();
-      assert(provider);
       assert(
-        validate(JSON.parse(provider.outputText)),
-        'real delayed provider output must match pinned schema',
+        !evidence.winner.providerIds.includes(
+          evidence.staleProvider.responseId,
+        ),
       );
-      const providerEvidence = { ...provider };
-      delete providerEvidence.outputText;
-      evidence.staleProvider = providerEvidence;
-      assert(!evidence.winner.providerIds.includes(provider.responseId));
       await proxy.release();
+      evidence.providerBytesReleasedMonotonicMs = performance.now();
       assert(worker.child.kill('SIGCONT'));
+      evidence.ownerResumedMonotonicMs = performance.now();
+      const completedSuccessor = evidence.attempts.find(
+        (attempt) => attempt.label === 'after-expiry-successor',
+      );
+      assert(
+        evidence.staleProvider.completedMonotonicMs <=
+          completedSuccessor.dispatchMonotonicMs &&
+          completedSuccessor.eofMonotonicMs <=
+            evidence.providerBytesReleasedMonotonicMs &&
+          evidence.providerBytesReleasedMonotonicMs <=
+            evidence.ownerResumedMonotonicMs,
+        'provider completion, successor EOF, delayed delivery and resume must retain approved order',
+      );
       stopped = false;
       const terminal = await worker.wait((m) => m.event === 'terminal', 25000);
       evidence.ownerTerminal = terminal;
@@ -450,6 +544,10 @@ export async function runRuntimeRecovery(mode, options, expected) {
       managed409WhollyBeforeNaturalExpiry: true,
       managedSuccessorAfterNaturalExpiry: true,
       committedPrefixPreserved: true,
+      completeMessageAndCheckpointWritePrefixPreserved: true,
+      ...(mode === 'suspend'
+        ? { completedProviderBytesHeldBeforeSuccessor: true }
+        : {}),
       latestFollowupExactlyOnce: true,
       pinnedSchema: true,
       cap4096: true,
