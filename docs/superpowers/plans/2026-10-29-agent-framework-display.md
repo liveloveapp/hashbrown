@@ -1,4 +1,4 @@
-# Agent Framework Display Qualification Implementation Plan
+# Agent Framework Display Conformance Implementation Plan
 
 > **For agentic workers:** Use superpowers:subagent-driven-development or
 > superpowers:executing-plans after design approval. Parent owns Git; tasks use
@@ -10,7 +10,7 @@ its design and dependency decisions are approved.
 **Selected direction (2026-10-29):** AG-UI interoperability first, with optional
 producer recipes. Native framework transports are outside this milestone.
 
-**Goal:** Qualify activities, tool display and restore through real LangGraph and
+**Goal:** Test conformance for activities, tool display and restore through real LangGraph and
 Mastra bridges and the existing Microsoft Agent Framework host.
 
 **Architecture:** AG-UI remains the browser boundary. Real framework test hosts
@@ -39,7 +39,7 @@ Files: spec above; tools/conformance/README.md; new
   explicit unsupported/missing-upstream/not-tested rows, not skipped green tests.
 - [ ] Review and commit the inventory separately.
 
-## Task 1: Shared consumer qualification
+## Task 1: Shared consumer conformance
 
 Files: create `packages/core/src/models/agent-framework-display.conformance.spec.ts`,
 `packages/core/src/models/fixtures/agent-frameworks/{manifest.json,*.json}`;
@@ -65,7 +65,7 @@ modify `tools/conformance/project.json` for a dedicated opt-in fixture target.
 - [ ] Test commit/JSON snapshot/restore and next request as separate boundaries.
   Inputs remain frozen; duplicate deliveries retain identity.
 - [ ] Run core build/test/lint/e2e/API report and framework builds when core changes.
-  Review, commit and open the harness PR without claiming framework qualification.
+  Review, commit and open the harness PR without claiming framework conformance.
 
 ## Task 2: Plain LangGraph, no B4 agent/runtime
 
@@ -88,11 +88,11 @@ manifest/core corpus and both `www/content/docs/{react,angular}/platform/langgra
 - [ ] Run dedicated Nx host target (define in Task 1), core targeted/full tests,
   conformance lint/test/build, and docs test/lint/build. Independent review + PR.
 
-## Task 3: Mastra qualification
+## Task 3: Mastra conformance
 
 Files: create `tools/conformance/agent-frameworks/mastra/{host.ts,scenarios.spec.ts}`
 and approved isolated manifest/lock; extend corpus and create framework-specific
-platform guides only after actual version qualification.
+platform guides only after actual version conformance.
 
 - [ ] Pin a published @ag-ui/mastra/@mastra/core/client set matching audited source.
   First prove ordinary local server and client-tool behavior with real bridge
@@ -129,9 +129,9 @@ files after Task 0's gap audit, keeping one maintained server host.
 
 Files: shared capability inventory, conformance README and both framework docs.
 
-- [ ] Publish per-capability qualified versions and limitations, including omitted
+- [ ] Publish per-capability tested versions and limitations, including omitted
   producer evidence, required options and durable versus live-only behavior.
-- [ ] Keep model-provider qualification separate from orchestration qualification.
+- [ ] Keep model-provider conformance separate from orchestration conformance.
 - [ ] Compare Pydantic AI and Google ADK as optional next candidates using their
   real AG-UI producer hooks. CrewAI/AG2/Vercel remain research unless demand or
   existing executable coverage justifies another milestone.

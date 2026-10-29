@@ -1,4 +1,4 @@
-# Agent-framework activities and tool-display qualification
+# Agent-framework activities and tool-display conformance
 
 **Status:** draft for user review, 2026-10-29. Planning only; no new adapter,
 dependency installation for these frameworks, or compatibility claim is approved
@@ -6,6 +6,11 @@ by this document. The user selected AG-UI interoperability first on 2026-10-29,
 with optional producer recipes rather than first-class framework adapters.
 
 ## Intent and terminology
+
+This work is a set of conformance tests against shared activities and tool-display
+expectations. Real framework bridges produce the events; Hashbrown consumes them
+through its existing AG-UI boundary. Optional producer recipes address explicit
+capability gaps. Each result records the tested versions and supporting evidence.
 
 A model-provider adapter (OpenAI, Anthropic, Google, Bedrock) translates model
 API events. An agent framework (LangGraph, Mastra, Microsoft Agent Framework)
@@ -20,7 +25,7 @@ whenever their backend supplies equivalent protocol information. Preserve the
 
 ## Approaches
 
-1. **AG-UI qualification plus small producer recipes (selected).** Run real,
+1. **AG-UI conformance plus small producer recipes (selected).** Run real,
    pinned framework and bridge packages with deterministic models, reuse the
    headless consumer and fix documented gaps at the boundary that owns them.
    This keeps client dependencies small and exposes upstream information loss.
@@ -30,16 +35,16 @@ whenever their backend supplies equivalent protocol information. Preserve the
    maintenance. Treat a native LangGraph SDK transport as a separate proposal.
 3. **Documentation/hand-authored traces only.** Cheapest, but insufficient to
    claim the bridge delivers execution-start events, preserves failed outcomes
-   or survives restore. Use as discovery evidence, not qualification.
+   or survives restore. Use as discovery evidence, not conformance.
 
 For this milestone, “LangGraph directly” means plain LangGraph through AG-UI
 without a B4 agent. Bypassing AG-UI and consuming the LangGraph SDK's native
 protocol remains outside this milestone. The overall direction is selected;
-the detailed qualification design and dependency choices remain under review.
+the detailed conformance design and dependency choices remain under review.
 
 ## Existing evidence
 
-| Backend | Hashbrown evidence today | Next qualification |
+| Backend | Hashbrown evidence today | Next conformance |
 | --- | --- | --- |
 | B4 | Shared fixtures, real-store consumer conformance; native app/workbench paths elsewhere in the repo | Reference rich-step profile; keep version ownership explicit. |
 | Plain LangGraph | Captured helper fixture in core; JS/Python recipes; B4-owned runnable/helper tests | Execute actual JS and Python AG-UI bridges in isolated test hosts, with and without optional helper. |
@@ -115,9 +120,9 @@ Use React and Angular browser consumers for the final claimed display profile.
 6. Fresh snapshot restore and approval resume preserve failure and native replay;
    restored provider display calls never become undeclared application functions.
 7. Ordinary app tools still dispatch exactly once; no model calls, credentials,
-   production endpoints or live recordings are needed for qualification.
+   production endpoints or live recordings are needed for conformance.
 
-Record each capability as **qualified**, **unsupported**, **missing upstream**,
+Record each capability as **passed**, **unsupported**, **missing upstream**,
 **recipe-required** or **not tested**, with exact versions and evidence. No single
 “supports AG-UI” badge substitutes for this matrix. Honest gap rows can ship;
 false green assertions cannot.
@@ -140,7 +145,7 @@ notes remain outside this proposal. No release or PR merge is authorized here.
 - [AG-UI integration source tree](https://github.com/ag-ui-protocol/ag-ui/tree/7e7c1109f26e77cc32d87d351fb9e0b0bf56ff7f/integrations).
 - [Mastra bridge and options](https://github.com/ag-ui-protocol/ag-ui/blob/7e7c1109f26e77cc32d87d351fb9e0b0bf56ff7f/integrations/mastra/typescript/src/mastra.ts), [subagent translation](https://github.com/ag-ui-protocol/ag-ui/blob/7e7c1109f26e77cc32d87d351fb9e0b0bf56ff7f/integrations/mastra/typescript/src/subagents.ts).
 - [LangGraph streaming documentation source](https://github.com/langchain-ai/docs/blob/main/src/oss/langgraph/streaming.mdx).
-- [Pydantic AI's AG-UI integration](https://pydantic.dev/docs/ai/integrations/ui/ag-ui/) is a candidate reference, not evidence of Hashbrown qualification.
+- [Pydantic AI's AG-UI integration](https://pydantic.dev/docs/ai/integrations/ui/ag-ui/) is a candidate reference, not evidence of Hashbrown conformance.
 - Local evidence: core langgraph-tool-step.conformance.spec.ts,
   tool-step.conformance.spec.ts, tools/conformance/dotnet and the
   [delivery closeout](../research/2026-10-29-tool-display-closeout.md).

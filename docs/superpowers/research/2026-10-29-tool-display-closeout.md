@@ -53,7 +53,7 @@ checkboxes as missing implementation or rewrite the shared merge Rules.
 - **Upstream AG-UI contribution:** prepare a concrete profile proposal only with
   explicit authorization to post. No upstream issue/comment/PR was filed by this
   effort. Existing protocol support does not imply upstream adoption of b4.step.
-- **External agent-framework qualification:** plan direct LangGraph and Mastra
+- **External agent-framework conformance tests:** plan direct LangGraph and Mastra
   producer/bridge tests and extend the existing Microsoft Agent Framework lane.
   This is separate from Hashbrown's model-provider SDK adapters.
 - **File search stays deferred across this effort.** Generated-file citations
@@ -83,5 +83,5 @@ Documentation tests: 1782 tests / 246 files passed, followed by docs lint and
 production build. The lockfile's existing dependencies were installed unchanged;
 no dependency declarations or protocol Rules changed. Existing API Extractor,
 Nx/tooling, color-environment and website tracing warnings remain. The framework
-qualification design and outline are drafts for user review; no new framework
+conformance design and outline are drafts for user review; no new framework
 implementation or qualification claim is included in this documentation PR.
