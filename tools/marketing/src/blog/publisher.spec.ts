@@ -46,6 +46,7 @@ function setup(
   const github = {
     updateBranch: vi.fn(async () => undefined),
     pullState: vi.fn(async () => ({
+      state: 'open' as const,
       merged: false,
       mergeable: true,
       mergeableState: 'clean',
@@ -230,5 +231,70 @@ describe('merged', () => {
     expect(await advanceBlogPost(post({ mergedAt }), now, deps)).toEqual({
       kind: 'wait',
     });
+  });
+});
+
+describe('closed and failing PRs', () => {
+  test.each([
+    ['before', before],
+    ['after', SCHEDULED],
+  ])('fails a closed PR %s scheduledAt without other calls', async (_, now) => {
+    const { deps, github } = setup({ state: 'closed', merged: false });
+    expect(await advanceBlogPost(post(), now, deps)).toEqual({
+      kind: 'failed',
+      reason: 'PR closed without merge',
+    });
+    expect(github.updateBranch).not.toHaveBeenCalled();
+    expect(github.merge).not.toHaveBeenCalled();
+  });
+
+  test('a PR merged by hand before scheduledAt goes to the live path', async () => {
+    const { deps, github } = setup({ state: 'closed', merged: true }, true);
+    const step = await advanceBlogPost(post(), before, deps);
+    expect(step.kind).toBe('published');
+    expect(github.updateBranch).not.toHaveBeenCalled();
+  });
+
+  test('updateBranch throwing before scheduledAt waits', async () => {
+    const { deps, github } = setup();
+    github.updateBranch.mockRejectedValue(new Error('HTTP 409'));
+    expect(await advanceBlogPost(post(), before, deps)).toEqual({
+      kind: 'wait',
+    });
+  });
+
+  test('merge throwing before grace waits', async () => {
+    const { deps, github } = setup();
+    github.merge.mockRejectedValue(new Error('HTTP 409'));
+    expect(await advanceBlogPost(post(), at(HOUR), deps)).toEqual({
+      kind: 'wait',
+    });
+  });
+
+  test('merge throwing at grace fails naming the operation', async () => {
+    const { deps, github } = setup();
+    github.merge.mockRejectedValue(new Error('HTTP 405: nope'));
+    const step = await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps);
+    expect(step).toEqual({
+      kind: 'failed',
+      reason: 'merge failed: HTTP 405: nope',
+    });
+  });
+
+  test('updateBranch throwing when behind at grace is not attempted, fails', async () => {
+    const { deps } = setup({ mergeableState: 'behind' });
+    expect((await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps)).kind).toBe(
+      'failed',
+    );
+  });
+
+  test('a mergeable PR past grace still merges', async () => {
+    const { deps, github } = setup();
+    const now = at(MERGE_GRACE_MS + HOUR);
+    expect(await advanceBlogPost(post(), now, deps)).toEqual({
+      kind: 'merged',
+      at: now,
+    });
+    expect(github.merge).toHaveBeenCalledWith(5);
   });
 });

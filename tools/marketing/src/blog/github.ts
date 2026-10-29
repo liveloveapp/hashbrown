@@ -10,6 +10,7 @@ export interface GitHubClient {
   /** Merges `main` into the PR branch. Already up to date is success. */
   updateBranch(prNumber: number): Promise<void>;
   pullState(prNumber: number): Promise<{
+    state: 'open' | 'closed';
     merged: boolean;
     mergeable: boolean | null;
     mergeableState: string;
@@ -20,6 +21,7 @@ export interface GitHubClient {
 }
 
 interface PullResponse {
+  state: 'open' | 'closed';
   merged: boolean;
   mergeable: boolean | null;
   mergeable_state: string;
@@ -68,6 +70,7 @@ export function createGitHubClient(
         fetch: fetchImpl,
       });
       return {
+        state: pull.state,
         merged: pull.merged,
         mergeable: pull.mergeable,
         mergeableState: pull.mergeable_state,

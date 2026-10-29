@@ -22,12 +22,27 @@ export function blogUrl(slug: string): string {
   return `https://hashbrown.dev/blog/${slug}`;
 }
 
+/** A failed GitHub write waits for the next tick until the grace is spent. */
+function retryOrFail(
+  operation: string,
+  err: unknown,
+  pastGrace: boolean,
+): BlogStep {
+  if (!pastGrace) return { kind: 'wait' };
+  const message = err instanceof Error ? err.message : String(err);
+  return { kind: 'failed', reason: `${operation} failed: ${message}` };
+}
+
 const MERGEABLE_STATES = new Set(['clean', 'unstable', 'has_hooks']);
 
 /**
  * Moves a blog post one step along: update the branch before `scheduledAt`,
  * merge at `scheduledAt` if GitHub says it can merge, then confirm the page
  * is live. Never merges with admin rights; a PR that cannot merge fails.
+ *
+ * Errors from `updateBranch` and `merge` are absorbed: `wait` until
+ * `scheduledAt + MERGE_GRACE_MS`, then `failed`. Errors from `pullState` and
+ * `isLive` propagate; the dispatcher's retry cap handles them.
  */
 export async function advanceBlogPost(
   post: QueuedPost & { draft: BlogDraft },
@@ -42,27 +57,43 @@ export async function advanceBlogPost(
   if (prNumber === undefined) return { kind: 'failed', reason: 'no blog PR' };
 
   const scheduled = post.scheduledAt.getTime();
-  if (now.getTime() < scheduled) {
-    if (branchUpdatedAt) return { kind: 'wait' };
-    await github.updateBranch(prNumber);
-    return { kind: 'branch_updated', at: now };
-  }
+  const pastGrace = now.getTime() - scheduled >= MERGE_GRACE_MS;
 
   const state = await github.pullState(prNumber);
+  if (state.state === 'closed' && !state.merged) {
+    return { kind: 'failed', reason: 'PR closed without merge' };
+  }
 
   if (!state.merged) {
+    if (now.getTime() < scheduled) {
+      if (branchUpdatedAt) return { kind: 'wait' };
+      try {
+        await github.updateBranch(prNumber);
+      } catch (err) {
+        return retryOrFail('updateBranch', err, pastGrace);
+      }
+      return { kind: 'branch_updated', at: now };
+    }
+
     if (state.mergeable === null) {
-      return now.getTime() - scheduled >= MERGE_GRACE_MS
+      return pastGrace
         ? { kind: 'failed', reason: 'merge state still unknown after grace' }
         : { kind: 'wait' };
     }
-    const pastGrace = now.getTime() - scheduled >= MERGE_GRACE_MS;
     if (!pastGrace && state.mergeableState === 'behind') {
-      await github.updateBranch(prNumber);
+      try {
+        await github.updateBranch(prNumber);
+      } catch (err) {
+        return retryOrFail('updateBranch', err, pastGrace);
+      }
       return { kind: 'branch_updated', at: now };
     }
     if (state.mergeable && MERGEABLE_STATES.has(state.mergeableState)) {
-      await github.merge(prNumber);
+      try {
+        await github.merge(prNumber);
+      } catch (err) {
+        return retryOrFail('merge', err, pastGrace);
+      }
       return { kind: 'merged', at: now };
     }
     if (!pastGrace && state.mergeable && state.mergeableState === 'blocked') {

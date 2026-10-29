@@ -64,10 +64,16 @@ test('updateBranch throws on any other 422 without the token', async () => {
 
 test('pullState GETs the pull and maps the fields', async () => {
   const { github, call } = setup(
-    jsonResponse({ merged: false, mergeable: true, mergeable_state: 'clean' }),
+    jsonResponse({
+      state: 'open',
+      merged: false,
+      mergeable: true,
+      mergeable_state: 'clean',
+    }),
   );
   const state = await github.pullState(7);
   expect(state).toEqual({
+    state: 'open',
     merged: false,
     mergeable: true,
     mergeableState: 'clean',
