@@ -7,9 +7,13 @@ import {
   assertWorkbenchLesson,
   type WorkbenchLessonId,
   type WorkbenchLineRange,
+  workbenchMediaId,
   type WorkbenchSourceData,
   type WorkbenchSourceHtml,
 } from '../components/workbench/workbench-lessons';
+import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
+import { workbenchMilestones } from '../../examples/quickstart/runtime/workbench-timeline';
+import type { WorkbenchCapture } from '../../examples/quickstart/runtime/workbench-capture';
 import type { Sdk } from './content';
 import { repoRoot } from './repo-root';
 import { highlightCode } from './rehype-shiki';
@@ -189,7 +193,7 @@ export interface WorkbenchSnippet {
 export interface WorkbenchPageData {
   readonly lesson: WorkbenchLessonId;
   readonly source: WorkbenchSourceData;
-  /** Milestones the page's prose refers to; empty until moments land. */
+  /** Milestone ids the page's code examples refer to, in page order. */
   readonly moments: readonly string[];
 }
 
@@ -290,6 +294,59 @@ const elements = (node: Root | RootContent): Element[] =>
       ]
     : [];
 
+const milestoneIdCache = new Map<string, readonly string[]>();
+
+/**
+ * The milestone ids in a lesson's published capture for one SDK, in order.
+ * Captures are parsed once per media id.
+ */
+function captureMilestoneIds(
+  lesson: WorkbenchLessonId,
+  sdk: Sdk,
+): readonly string[] {
+  const mediaId = workbenchMediaId(lesson, sdk);
+  const cached = milestoneIdCache.get(mediaId);
+  if (cached) return cached;
+  const capture = JSON.parse(
+    readFileSync(
+      join(repoRoot(), 'www/public/video/docs', `${mediaId}-capture.json`),
+      'utf8',
+    ),
+  ) as WorkbenchCapture;
+  const format = workbenchLessons.find((item) => item.id === lesson)?.format;
+  const ids = workbenchMilestones(capture.events, format).map(
+    (milestone) => milestone.id,
+  );
+  milestoneIdCache.set(mediaId, ids);
+  return ids;
+}
+
+/**
+ * Check that each code example's `moment` names a milestone in its lesson's
+ * capture, so a re-recorded capture cannot silently orphan a See it run link.
+ *
+ * @param lesson - The page's workbench lesson.
+ * @param sdk - The page's SDK.
+ * @param moments - The page's code examples that name a moment.
+ * @throws When a moment is not a milestone of the capture; the message names
+ *   the snippet header, the moment and the valid milestones.
+ */
+export function assertWorkbenchMoments(
+  lesson: WorkbenchLessonId,
+  sdk: Sdk,
+  moments: readonly { readonly header: string; readonly moment: string }[],
+): void {
+  if (moments.length === 0) return;
+  const ids = captureMilestoneIds(lesson, sdk);
+  for (const { header, moment } of moments) {
+    if (!ids.includes(moment)) {
+      throw new Error(
+        `${header}: moment "${moment}" is not a milestone in the ${lesson} lesson's ${sdk} capture (${ids.join(', ')})`,
+      );
+    }
+  }
+}
+
 const isWorkbenchHeader = (header: unknown): header is string =>
   typeof header === 'string' &&
   WORKBENCH_SNIPPET_ROOTS.some((root) => header.startsWith(root));
@@ -302,8 +359,8 @@ const isWorkbenchHeader = (header: unknown): header is string =>
  * @param tree - The page's parsed markdown (see `parseMarkdown`).
  * @param sdk - The SDK whose docs are rendering (blog posts use `react`).
  * @returns The page data, or `undefined` for a page without a workbench.
- * @throws When the page has more than one lesson, or a snippet fails
- *   {@link buildWorkbenchSource}.
+ * @throws When the page has more than one lesson, a snippet fails
+ *   {@link buildWorkbenchSource}, or a `moment` is not in the capture.
  */
 export function workbenchPageData(
   tree: Root,
@@ -334,14 +391,24 @@ export function workbenchPageData(
       header: node.properties['header'] as string,
       code: textOf(node),
     }));
+  const docsSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
+  const moments = all
+    .filter(
+      (node) =>
+        node.tagName === 'hb-code-example' &&
+        isWorkbenchHeader(node.properties['header']) &&
+        typeof node.properties['moment'] === 'string' &&
+        node.properties['moment'] !== '',
+    )
+    .map((node) => ({
+      header: node.properties['header'] as string,
+      moment: node.properties['moment'] as string,
+    }));
+  assertWorkbenchMoments(lesson, docsSdk, moments);
   return {
     lesson,
-    source: buildWorkbenchSource(
-      lesson,
-      sdk === 'angular' ? 'angular' : 'react',
-      snippets,
-    ),
-    moments: [],
+    source: buildWorkbenchSource(lesson, docsSdk, snippets),
+    moments: [...new Set(moments.map((item) => item.moment))],
   };
 }
 

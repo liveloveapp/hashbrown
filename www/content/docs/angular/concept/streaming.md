@@ -92,7 +92,7 @@ Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx w
 
 The streaming lesson uses this shared response schema:
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="streaming-json-1">
 
 ```ts
 export const workbenchStreamingPlanSchema = s.object(
