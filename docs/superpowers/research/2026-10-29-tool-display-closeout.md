@@ -45,7 +45,9 @@ checkboxes as missing implementation or rewrite the shared merge Rules.
 - **B4 open-icon authoring:** the shared wire value is already an open string,
   and Hashbrown retains it. B4's ToolDisplay validator and several legacy and
   parked-permission projections still restrict names to ten built-in glyphs.
-  Implementation is being prepared separately; no merged/released claim yet.
+  Implementation is available in [B4 #1124](https://github.com/cacheplane/b4run/pull/1124),
+  with authoring, live/restore and permission regressions. It remains unmerged
+  and unreleased; the published baseline still has the restriction.
 - **OpenAI image generation:** a separate remaining adapter slice. Azure image
   generation remains outside this streaming enabling table.
 - **Upstream AG-UI contribution:** prepare a concrete profile proposal only with
