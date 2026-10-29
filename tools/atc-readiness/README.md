@@ -171,7 +171,10 @@ isolated provider response IDs and the 4096 token cap must remain valid. The
 same full snapshot must be unchanged after at least 75 seconds. The control's
 signal/deadline bounds reads, drains, precondition polling and waits. Owned HTTP
 requests and storage resources close even after partial initialization or
-protocol failure; no workers are created. Synthetic audit rows remain intact.
+protocol failure. Each resource receives a fresh bounded five-second cleanup
+grace even after phase expiry or abort; the enclosing rollout control still
+rejects the expired phase. Cleanup failures keep qualification false. No workers
+are created. Synthetic audit rows remain intact.
 Receipts are private `managed-timeout-RUN_UUID.json` files. Keep the caller,
 credentials and pulled environment private, then remove temporary credentials
 and environment files after receipt review and the credential-value scan.

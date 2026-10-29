@@ -83,13 +83,15 @@ export async function createManagedTimeoutIO(
   const close = async () => {
     for (const controller of controllers) controller.abort();
     const failures = [];
-    // Cleanup gets the remaining phase deadline, including after a request-level abort.
+    // Teardown must still run after phase expiry/abort. Each resource gets a fresh
+    // five-second grace; one stalled close cannot prevent attempting later closes.
+    // The enclosing rollout control still rejects an expired phase.
     for (const resource of [saver, threads, context?.database]) {
       if (!resource) continue;
       try {
         await timeoutBound(
           () => (resource.end ? resource.end() : resource.close()),
-          { deadlineMs: control.deadlineMs },
+          { deadlineMs: Date.now() + 5000 },
         );
       } catch {
         failures.push('owned resource close failed');

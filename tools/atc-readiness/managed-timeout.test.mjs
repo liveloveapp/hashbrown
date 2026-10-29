@@ -657,3 +657,67 @@ test('unplanned fault HTTP failures stop before querying timeout proof', async (
 
   assert.equal(proofCalls, 0);
 });
+
+for (const failClose of [false, true]) {
+  test(
+    'actual IO attempts every cleanup after phase expiry/abort; failure=' +
+      failClose,
+    async () => {
+      const { createManagedTimeoutIO } =
+        await import('./managed-timeout-io.mjs');
+      const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+      const { setTimeout: delay } = await import('node:timers/promises');
+      const stage = await mkdtemp('/private/tmp/timeout-expired-cleanup-');
+      await writeFile(stage + '/schema.json', '{}');
+      const closed = [];
+      const controller = new AbortController();
+      const control = {
+        signal: controller.signal,
+        deadlineMs: Date.now() + 100,
+      };
+      const context = {
+        secrets: {},
+        redact: (value) => value,
+        databaseErrors: [],
+        database: {
+          end: async () => {
+            closed.push('pool');
+          },
+        },
+        storage: {
+          postgresCheckpointer: () => ({
+            close: async () => {
+              closed.push('saver');
+              if (failClose) throw Error('controlled saver cleanup failure');
+            },
+          }),
+          createPostgresThreadsStore: () => ({
+            close: async () => {
+              closed.push('threads');
+            },
+          }),
+        },
+      };
+      const io = await createManagedTimeoutIO(
+        { schemaPath: stage + '/schema.json' },
+        { fault: { deployment: {} } },
+        control,
+        { compileSchema: () => () => true, openContext: async () => context },
+      );
+      await delay(110);
+      controller.abort();
+
+      try {
+        if (failClose)
+          await assert.rejects(io.close(), /owned resource close failed/);
+        else await io.close();
+
+        assert.deepEqual(closed, ['saver', 'threads', 'pool']);
+        assert(control.deadlineMs < Date.now());
+        assert.equal(control.signal.aborted, true);
+      } finally {
+        await rm(stage, { recursive: true, force: true });
+      }
+    },
+  );
+}
