@@ -78,23 +78,62 @@ export async function reserveRecoveryRequest(stage, label) {
 export function messageRecordHashes(messages) {
   return messages.map((message) => sha256(stableStringify(message)));
 }
-/** Require the complete ordered message prefix and multiset of prior full tuple/write records. */
+/**
+ * Hash immutable checkpoint columns separately from physical pending-write rows.
+ * Published 0.15.7 saver buildTuple omits idx; the database write primary key is
+ * (thread_id, checkpoint_ns, checkpoint_id, task_id, idx), so decoded tuples
+ * cannot identify retained writes reliably. Preserve every raw column, including BYTEA.
+ */
+export function physicalHistoryRecords(checkpoints, writes) {
+  const records = (rows, columns) =>
+    rows
+      .map((row) => ({
+        keySha256: sha256(
+          stableStringify(columns.map((column) => row[column])),
+        ),
+        sha256: sha256(stableStringify(row)),
+      }))
+      .sort((a, b) => a.keySha256.localeCompare(b.keySha256));
+  return {
+    checkpointRecords: records(checkpoints, [
+      'thread_id',
+      'checkpoint_ns',
+      'checkpoint_id',
+    ]),
+    writeRecords: records(writes, [
+      'thread_id',
+      'checkpoint_ns',
+      'checkpoint_id',
+      'task_id',
+      'idx',
+    ]),
+  };
+}
+/** Require full ordered messages and unchanged records at every previously committed physical key. */
 export function assertCommittedPrefix(prefix, successor) {
   assert.deepEqual(
     successor.state.messageSha256s.slice(0, prefix.state.messageSha256s.length),
     prefix.state.messageSha256s,
     'complete committed message prefix changed',
   );
-  const remaining = successor.canonical.checkpoints.map((record) =>
-    stableStringify(record),
-  );
-  for (const record of prefix.canonical.checkpoints) {
-    const index = remaining.indexOf(stableStringify(record));
-    assert(
-      index >= 0,
-      'prior full checkpoint or pending writes changed or disappeared',
+  for (const [field, label] of [
+    ['checkpointRecords', 'checkpoint'],
+    ['writeRecords', 'write'],
+  ]) {
+    const current = new Map(
+      successor.state[field].map((record) => [record.keySha256, record.sha256]),
     );
-    remaining.splice(index, 1);
+    assert.equal(
+      current.size,
+      successor.state[field].length,
+      'duplicate physical ' + label + ' key',
+    );
+    for (const record of prefix.state[field])
+      assert.equal(
+        current.get(record.keySha256),
+        record.sha256,
+        'prior full ' + label + ' changed or disappeared',
+      );
   }
 }
 /** Complete and validate held upstream bytes before waiting natural expiry and dispatching takeover. */
@@ -187,11 +226,20 @@ export async function runRuntimeRecovery(mode, options, expected) {
     const tuple = await saver.getTuple({
       configurable: { thread_id: threadId, checkpoint_ns: '' },
     });
+    const checkpoints = await pool.query(
+      'select thread_id,checkpoint_ns,checkpoint_id,parent_checkpoint_id,type,checkpoint,metadata from atc_checkpoints where thread_id=$1',
+      [threadId],
+    );
+    const writes = await pool.query(
+      'select thread_id,checkpoint_ns,checkpoint_id,task_id,idx,channel,type,value from atc_writes where thread_id=$1',
+      [threadId],
+    );
     const messages = tuple?.checkpoint.channel_values.messages ?? [];
     const human = messages.filter((m) => m.type === 'human'),
       ai = messages.filter((m) => m.type === 'ai');
     return {
       messageSha256s: messageRecordHashes(messages),
+      ...physicalHistoryRecords(checkpoints.rows, writes.rows),
       humanContentHashes: human.map((m) => sha256(stableStringify(m.content))),
       providerIds: ai.map((m) => m.response_metadata?.id).filter(Boolean),
       caps: ai.map((m) => m.response_metadata?.max_output_tokens),

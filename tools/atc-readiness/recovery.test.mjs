@@ -195,61 +195,75 @@ test('proxy incomplete real provider result cannot be released and cleanup still
   }
 });
 
-test('committed prefix checks full assistant metadata and every prior checkpoint including pending writes', async () => {
-  const { assertCommittedPrefix } = await import('./runtime-recovery.mjs');
-  const prefix = {
-    state: { messageSha256s: ['human-all-fields', 'assistant-all-fields'] },
-    canonical: {
-      checkpoints: [
-        {
-          namespaceSha256: 'ns',
-          sha256: 'full-tuple-and-writes',
-          pendingWrites: 1,
-        },
-      ],
-    },
+test('committed prefix allows appended keyed writes but rejects prior checkpoint/write changes and deletions', async () => {
+  const { assertCommittedPrefix, physicalHistoryRecords } =
+    await import('./runtime-recovery.mjs');
+  const checkpoint = {
+    thread_id: 'owned',
+    checkpoint_ns: 'ns',
+    checkpoint_id: 'c1',
+    parent_checkpoint_id: null,
+    type: 'json',
+    checkpoint: Buffer.from('payload'),
+    metadata: Buffer.from('metadata'),
   };
+  const write = {
+    thread_id: 'owned',
+    checkpoint_ns: 'ns',
+    checkpoint_id: 'c1',
+    task_id: 'task',
+    idx: 0,
+    channel: 'messages',
+    type: 'json',
+    value: Buffer.from('original'),
+  };
+  const state = (checkpoints, writes) => ({
+    messageSha256s: ['human-all-fields', 'assistant-all-fields'],
+    ...physicalHistoryRecords(checkpoints, writes),
+  });
+  const prefix = { state: state([checkpoint], [write]) };
+  const extra = { ...write, idx: 1, value: Buffer.from('additional') };
   const successor = {
-    state: {
-      messageSha256s: [
-        ...prefix.state.messageSha256s,
-        'followup',
-        'new-assistant',
-      ],
-    },
-    canonical: {
-      checkpoints: [
-        ...prefix.canonical.checkpoints,
-        { namespaceSha256: 'ns', sha256: 'new-record', pendingWrites: 0 },
-      ],
-    },
+    state: state(
+      [checkpoint, { ...checkpoint, checkpoint_id: 'c2' }],
+      [write, extra],
+    ),
   };
   assert.doesNotThrow(() => assertCommittedPrefix(prefix, successor));
-  assert.throws(() =>
-    assertCommittedPrefix(prefix, {
-      ...successor,
-      state: {
-        messageSha256s: [
-          'human-all-fields',
-          'changed-assistant-metadata',
-          'followup',
-        ],
-      },
-    }),
+  assert.throws(
+    () =>
+      assertCommittedPrefix(prefix, {
+        state: state(
+          [{ ...checkpoint, metadata: Buffer.from('changed') }],
+          [write, extra],
+        ),
+      }),
+    /checkpoint/,
   );
-  assert.throws(() =>
-    assertCommittedPrefix(prefix, {
-      ...successor,
-      canonical: {
-        checkpoints: [
-          {
-            namespaceSha256: 'ns',
-            sha256: 'mutated-old-pending-write',
-            pendingWrites: 1,
-          },
-        ],
-      },
-    }),
+  assert.throws(
+    () =>
+      assertCommittedPrefix(prefix, {
+        state: state(
+          [checkpoint],
+          [{ ...write, value: Buffer.from('changed') }, extra],
+        ),
+      }),
+    /write/,
+  );
+  assert.throws(
+    () =>
+      assertCommittedPrefix(prefix, { state: state([checkpoint], [extra]) }),
+    /write/,
+  );
+  assert.throws(
+    () =>
+      assertCommittedPrefix(prefix, {
+        state: {
+          ...successor.state,
+          messageSha256s: ['human-all-fields', 'changed-assistant-metadata'],
+        },
+      }),
+    /message/,
   );
 });
 test('successor cannot dispatch until completed provider bytes and natural expiry gates both settle', async () => {
