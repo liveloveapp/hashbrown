@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import { SDKS } from '../src/lib/content';
@@ -45,8 +45,7 @@ test('every mapped lesson is a known lesson', () => {
   expect(unknown).toEqual([]);
 });
 
-test('the launcher expands into the panel for its lesson', () => {
-  cleanup();
+test('the launcher loads nothing until expanded, then expands and collapses', () => {
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     addEventListener: vi.fn(),
@@ -68,17 +67,27 @@ test('the launcher expands into the panel for its lesson', () => {
     text: container.textContent,
     panel: queryByRole('tablist'),
     frames: document.querySelectorAll('iframe').length,
+    videos: document.querySelectorAll('video').length,
+    fetches: fetchMock.mock.calls.length,
   };
 
+  fireEvent.click(button);
+  const expanded = {
+    ariaExpanded: button.getAttribute('aria-expanded'),
+    region: getByRole('region', { name: 'Tools workbench' }),
+    focused: document.activeElement,
+    tablist: queryByRole('tablist'),
+  };
   fireEvent.click(button);
 
   expect(before.text).toContain('Try this in the workbench: Tools');
   expect(before.panel).toBeNull();
   expect(before.frames).toBe(0);
-  expect(button.getAttribute('aria-expanded')).toBe('true');
-  expect(getByRole('region', { name: 'Tools workbench' })).toBe(
-    document.activeElement,
-  );
-  expect(getByRole('tablist')).toBeTruthy();
-  vi.unstubAllGlobals();
+  expect(before.videos).toBe(0);
+  expect(before.fetches).toBe(0);
+  expect(expanded.ariaExpanded).toBe('true');
+  expect(expanded.focused).toBe(expanded.region);
+  expect(expanded.tablist).toBeTruthy();
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+  expect(queryByRole('tablist')).toBeNull();
 });
