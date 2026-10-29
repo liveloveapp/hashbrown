@@ -200,3 +200,81 @@ test('evidence write failure stops scheduling and cannot become a pass', async (
   assert.equal(result.reason, 'evidence-write-failure');
   assert.equal(result.attempts.length, 1);
 });
+
+test('early timer wakeups cannot activate a virtual user before its boundary', async () => {
+  const clock = simulatedClock();
+  const earlySleep = (ms, signal) => clock.sleep(ms > 1 ? ms - 0.5 : 1, signal);
+
+  const result = await clock.finish(
+    runLoadSchedule({
+      ...clock,
+      sleep: earlySleep,
+      run: async () => ({}),
+      stageDurationMs: 100,
+      minStartGapMs: 20,
+      requestTimeoutMs: 80,
+      phaseTimeoutMs: 500,
+    }),
+  );
+
+  assert.equal(result.status, 'passed');
+  assert(result.attempts.find((a) => a.worker === 1).startedMs >= 100);
+  assert(result.attempts.find((a) => a.worker === 2).startedMs >= 200);
+});
+
+test('pacing is anchored to actual HTTP dispatch after variable setup work', async () => {
+  const clock = simulatedClock();
+  const sent = [];
+  const run = async (args) => {
+    await clock.sleep(args.index === 0 ? 7 : 0);
+    args.onDispatch(clock.now());
+    sent.push({ worker: args.worker, at: clock.now() });
+    await clock.sleep(1);
+    return {};
+  };
+
+  const result = await clock.finish(
+    runLoadSchedule({
+      ...clock,
+      run,
+      stageDurationMs: 100,
+      minStartGapMs: 20,
+      requestTimeoutMs: 80,
+      phaseTimeoutMs: 500,
+    }),
+  );
+
+  assert.equal(result.status, 'passed');
+  for (const worker of [0, 1, 2, 3]) {
+    const times = sent.filter((s) => s.worker === worker).map((s) => s.at);
+    for (let i = 1; i < times.length; i++)
+      assert(times[i] - times[i - 1] >= 20);
+  }
+});
+
+test('reservation failure stops before dispatch or evidence for a new attempt', async () => {
+  const clock = simulatedClock();
+  let ran = 0;
+
+  const result = await clock.finish(
+    runLoadSchedule({
+      ...clock,
+      run: async () => {
+        ran++;
+        return {};
+      },
+      beforeDispatch: () => {
+        throw Error('budget locked');
+      },
+      stageDurationMs: 100,
+      minStartGapMs: 20,
+      requestTimeoutMs: 80,
+      phaseTimeoutMs: 500,
+    }),
+  );
+
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.reason, 'request-reservation-failure');
+  assert.equal(result.attempts.length, 0);
+  assert.equal(ran, 0);
+});

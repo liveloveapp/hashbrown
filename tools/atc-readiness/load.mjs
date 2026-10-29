@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { resolve, join } from 'node:path';
+import { resolve, join, basename } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
   canonicalStorageSummary,
@@ -14,6 +14,11 @@ import {
 } from './common.mjs';
 import { runLoadSchedule } from './load-scheduler.mjs';
 import { createReadinessPool, readinessPoolErrors } from './owner-worker.mjs';
+import {
+  initializeLoadBudgetFromReceipts,
+  readLoadBudget,
+  reserveLoadRequest,
+} from './load-budget.mjs';
 
 /** Execute one fresh real-model request; its first post-EOF DB operation is the admission snapshot. */
 export async function runLoadRequest(args, dependencies) {
@@ -70,6 +75,11 @@ export async function runLoadRequest(args, dependencies) {
     output = '';
   const dispatched = performance.now();
   try {
+    args.onDispatch?.(dispatched);
+    receipt.dispatchAtScheduleMs =
+      args.scheduleStartedAt === undefined
+        ? null
+        : dispatched - args.scheduleStartedAt;
     const response = await fetchImpl(origin + '/api/run', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -241,7 +251,12 @@ function percentile(values, p) {
 }
 
 /** Run the fixed approved load envelope after validating independent deployment/source evidence. */
-export async function runLoad(options, expected) {
+export async function runLoad(options, expected, externalSignal) {
+  const initialBudget = initializeLoadBudgetFromReceipts(
+    options.stagingDirectory,
+  );
+  const availableAttempts = initialBudget.limit - initialBudget.attempts.length;
+  assert(availableAttempts > 0, 'load request budget exhausted');
   const schemaBytes = readFileSync(options.schemaPath);
   assert.equal(sha256(schemaBytes), expected.schemaSha256);
   const schema = JSON.parse(schemaBytes);
@@ -283,13 +298,17 @@ export async function runLoad(options, expected) {
     limits: {
       levels: [1, 2, 4],
       stageDurationMs: 300000,
-      minStartGapMs: 20000,
+      minStartGapMs: 30000,
+      minimumAllowedStartGapMs: 20000,
       maxAttempts: 120,
+      priorReservedAttempts: initialBudget.attempts.length,
+      maxAttemptsThisRun: availableAttempts,
       requestTimeoutMs: 55000,
       phaseTimeoutMs: 1200000,
     },
     deployments: context.manifest.deployments,
     failedRequests: [],
+    schedule: { attempts: [] },
     status: 'running',
   };
   const file = join(options.stagingDirectory, 'load-' + randomUUID() + '.json');
@@ -364,7 +383,16 @@ export async function runLoad(options, expected) {
     save();
     evidence.schedule = await runLoadSchedule({
       run,
-      signal: phaseAbort.signal,
+      signal: externalSignal
+        ? AbortSignal.any([phaseAbort.signal, externalSignal])
+        : phaseAbort.signal,
+      minStartGapMs: 30000,
+      maxAttempts: availableAttempts,
+      beforeDispatch: ({ index }) =>
+        reserveLoadRequest(
+          options.stagingDirectory,
+          `${basename(file)}:${index}`,
+        ),
       sanitizeError: (error) => context.redact(error),
       onUpdate: (state) => {
         evidence.schedule = state;
@@ -471,6 +499,7 @@ export async function runLoad(options, expected) {
         errors.push('owned pool/store close failed');
       }
     }
+    evidence.budget = readLoadBudget(options.stagingDirectory);
     evidence.databaseErrors = readinessPoolErrors(pool);
     if (evidence.databaseErrors.length)
       errors.push('owned database emitted idle-client errors');
@@ -491,10 +520,15 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
+  const operator = new AbortController();
+  const stopOwnedLoad = () => operator.abort(new Error('operator-stop'));
+  process.once('SIGINT', stopOwnedLoad);
+  process.once('SIGTERM', stopOwnedLoad);
   try {
     const result = await runLoad(
       JSON.parse(readFileSync(process.argv[2], 'utf8')),
       JSON.parse(readFileSync(process.argv[3], 'utf8')),
+      operator.signal,
     );
     console.log(JSON.stringify(result));
     if (result.status !== 'passed') process.exitCode = 1;
@@ -503,5 +537,8 @@ if (
       'Load initialization/execution failed; inspect private sanitized receipts',
     );
     process.exitCode = 1;
+  } finally {
+    process.removeListener('SIGINT', stopOwnedLoad);
+    process.removeListener('SIGTERM', stopOwnedLoad);
   }
 }

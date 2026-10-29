@@ -13,6 +13,7 @@ export async function runLoadSchedule({
   phaseTimeoutMs = 1200000,
   signal,
   onUpdate = () => undefined,
+  beforeDispatch = () => undefined,
   sanitizeError = () => 'request failed',
 }) {
   for (const value of [
@@ -33,7 +34,8 @@ export async function runLoadSchedule({
   const attempts = [],
     concurrency = [];
   let active = 0,
-    reason = null;
+    reason = null,
+    reservationError;
   const stop = (why) => {
     if (!reason) {
       reason = why;
@@ -62,10 +64,12 @@ export async function runLoadSchedule({
     let nextStart = started + activationMs;
     while (!reason) {
       try {
-        await sleep(
-          Math.max(0, Math.min(nextStart, end) - now()),
-          stopController.signal,
-        );
+        const target = Math.min(nextStart, end);
+        while (now() < target)
+          await sleep(
+            Math.max(1, Math.ceil(target - now())),
+            stopController.signal,
+          );
       } catch {
         break;
       }
@@ -91,6 +95,37 @@ export async function runLoadSchedule({
           startedMs: dispatch - started,
           status: 'running',
         };
+      try {
+        beforeDispatch({ index: row.index, worker, level: row.level });
+      } catch (error) {
+        reservationError = sanitizeError(error);
+        stop('request-reservation-failure');
+        report();
+        break;
+      }
+      let actualDispatch = dispatch;
+      const onDispatch = (timestamp) => {
+        assert(
+          Number.isFinite(timestamp) &&
+            timestamp >= dispatch &&
+            timestamp <= now(),
+          'invalid HTTP dispatch clock',
+        );
+        assert.equal(
+          row.httpDispatchMs,
+          undefined,
+          'HTTP dispatch reported twice',
+        );
+        if (timestamp >= end) throw new Error('dispatch-window-closed');
+        actualDispatch = timestamp;
+        row.httpDispatchMs = timestamp - started;
+        row.level =
+          timestamp < started + stageDurationMs
+            ? 1
+            : timestamp < started + 2 * stageDurationMs
+              ? 2
+              : 4;
+      };
       attempts.push(row);
       active++;
       concurrency.push({ atMs: dispatch - started, active });
@@ -127,6 +162,7 @@ export async function runLoadSchedule({
               scheduleStartedAt: started,
               deadlineMs: dispatch + timeoutMs,
               signal: requestSignal,
+              onDispatch,
             }),
           ),
           timeout,
@@ -143,7 +179,9 @@ export async function runLoadSchedule({
               ? 'request-timeout'
               : error?.message === 'phase-deadline'
                 ? 'phase-deadline'
-                : 'request-failure'),
+                : error?.message === 'dispatch-window-closed'
+                  ? 'dispatch-window-closed'
+                  : 'request-failure'),
         );
       } finally {
         timerController.abort();
@@ -153,7 +191,7 @@ export async function runLoadSchedule({
         concurrency.push({ atMs: now() - started, active });
         report();
       }
-      nextStart = Math.max(dispatch + minStartGapMs, now());
+      nextStart = Math.max(actualDispatch + minStartGapMs, now());
     }
   }
   try {
@@ -170,11 +208,18 @@ export async function runLoadSchedule({
   await phaseTimer;
   return {
     status: reason
-      ? ['request-limit', 'phase-deadline', 'external-abort'].includes(reason)
+      ? [
+          'request-limit',
+          'phase-deadline',
+          'external-abort',
+          'request-reservation-failure',
+          'dispatch-window-closed',
+        ].includes(reason)
         ? 'incomplete'
         : 'failed'
       : 'passed',
     reason,
+    reservationError,
     scheduledDurationMs: 3 * stageDurationMs,
     elapsedMs: now() - started,
     attempts,
