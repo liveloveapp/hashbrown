@@ -9,11 +9,11 @@ meta:
 
 Connect a plain LangGraph agent to Hashbrown through a standard AG-UI endpoint. Your graph runs on the server; Hashbrown renders headless conversation state in the browser. You do not need a B4 agent, CLI, route or runtime. The optional Node helper supplies tool-step descriptions; your AG-UI bridge still owns tool lifecycle events.
 
-> Release boundary: `@b4run/langgraph/ui` is not published in `@b4run/langgraph` 0.15.2. Use this guide only once a release explicitly includes that subpath. The Python source recipe below does not require a B4 Python package.
+> Package baseline: `@b4run/langgraph` 0.15.7 publishes the `/ui` helper and its TypeScript declarations. Version 0.15.2 does not include that subpath. The Python source recipe below does not require a B4 Python package.
 
 ## Describe JavaScript server tools
 
-The Node-only helper exports `toolStepMiddleware`, `emitToolStep`, `ToolStepDisplay` and `ToolStepMiddlewareOptions`. Its optional peer baseline is `@langchain/core` 1.2.12, `langchain` 1.5.12 and `@langchain/langgraph` 1.4.17. Install compatible peers in your server project alongside a release containing `/ui`.
+The Node-only helper exports `toolStepMiddleware`, `emitToolStep`, `ToolStepDisplay` and `ToolStepMiddlewareOptions`. Its optional peer baseline is `@langchain/core` 1.2.12, `langchain` 1.5.12 and `@langchain/langgraph` 1.4.17. Install compatible peers in your server project alongside `@b4run/langgraph@0.15.7` or another verified release containing `/ui`.
 
 Pass your configured model and application approval middleware to this [tested plain-agent recipe](https://github.com/cacheplane/b4run/blob/main/packages/langgraph/examples/plain-agent.ts):
 

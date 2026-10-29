@@ -1,5 +1,9 @@
 # Headless tool-step UX implementation plan
 
+> Delivery status: see the [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> This execution record is historical; later fixes and release evidence are
+> tracked there. File search remains deferred.
+
 > **For agentic workers:** Use superpowers:subagent-driven-development task by task, with test-first implementation and independent spec then quality review. Tests are top-level test(...) with arrange/act/assert.
 
 **Goal:** Give Hashbrown apps pure, shared tool labels/grouping, turn summaries,
