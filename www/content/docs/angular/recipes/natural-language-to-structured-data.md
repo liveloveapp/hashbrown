@@ -2,26 +2,163 @@
 title: 'Natural language forms: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Generate a two-step plan, review it in editable form fields, and explicitly apply validated values without conflating draft and application state.'
+    content: 'Generate a typed form draft, edit a separate reviewed copy, and explicitly apply validated values.'
 ---
 
 # Natural language forms
 
-Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
-
 <hb-docs-demo demo="canonical-workbench-natural-forms-angular">
 </hb-docs-demo>
+
+Natural-language input can give a form a useful first draft. A customer describes a trip; the model proposes a destination and duration; the customer corrects those fields before submitting. This works well when prose is easier to start with than a blank form, but precise controls still matter.
+
+Keep generated data, editable fields, and submitted application state separate. A response arriving in the browser must not submit the form or overwrite edits made while generation was in progress.
+
+<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+
+## Generate a form draft
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import { structuredCompletionResource } from '@hashbrownai/angular';
+import { reviewTrip } from './review-trip';
+
+export const tripSchema = s.object('A trip draft for user review', {
+  destination: s.string('The destination city'),
+  days: s.integer('Number of days'),
+});
+
+@Component({
+  selector: 'app-trip-draft',
+  template: `
+    <button [disabled]="result.isLoading()" (click)="generate()">
+      Generate trip draft
+    </button>
+    @if (result.error()) {
+      <p role="alert">Generation failed. Try again.</p>
+    } @else {
+      <pre>{{ preview() }}</pre>
+    }
+    <button [disabled]="!canReview()" (click)="review()">Review draft</button>
+    @if (reviewed(); as fields) {
+      <fieldset [disabled]="result.isLoading()">
+        <label
+          >Destination
+          <input
+            #destination
+            [value]="fields.destination"
+            (input)="edit(destination.value, fields.days)"
+        /></label>
+        <label
+          >Days
+          <input
+            #days
+            type="number"
+            [value]="fields.days"
+            (input)="edit(fields.destination, days.valueAsNumber)"
+        /></label>
+        <button (click)="apply()">Apply</button>
+      </fieldset>
+    }
+    <p>
+      Applied trip: {{ applied()?.destination ?? 'None' }} ·
+      {{ applied()?.days }}
+    </p>
+  `,
+})
+export class TripDraft {
+  readonly input = signal<{ id: string; text: string } | null>(null);
+  readonly reviewed = signal<{
+    sourceId: string;
+    destination: string;
+    days: number;
+  } | null>(null);
+  readonly applied = signal<ReturnType<typeof reviewTrip>>(null);
+  readonly result = structuredCompletionResource({
+    input: this.input,
+    schema: tripSchema,
+    system: 'Extract a trip draft. Never submit or book anything.',
+  });
+  preview() {
+    return JSON.stringify(this.result.value(), null, 2);
+  }
+  canReview() {
+    return (
+      !this.result.isLoading() &&
+      !this.result.error() &&
+      this.result.lastRunFinishReason() === 'stop' &&
+      this.input() !== null
+    );
+  }
+  generate() {
+    this.reviewed.set(null);
+    this.input.set({ id: crypto.randomUUID(), text: 'Three days in Lisbon' });
+  }
+  review() {
+    if (!this.canReview()) return;
+    const draft = reviewTrip(this.result.value());
+    const source = this.input();
+    if (this.canReview() && draft && source)
+      this.reviewed.set({ ...draft, sourceId: source.id });
+  }
+  edit(destination: string, days: number) {
+    this.reviewed.update((fields) =>
+      fields ? { ...fields, destination, days } : null,
+    );
+  }
+  apply() {
+    const fields = this.reviewed();
+    const trip = reviewTrip(fields);
+    if (this.canReview() && trip && fields?.sourceId === this.input()?.id) {
+      this.applied.set(trip);
+      this.reviewed.set(null);
+    }
+  }
+}
+```
+
+The completion starts with `null`, so mounting makes no request. The preview can change while generation runs. The structured completion API owns parsing here. Enable **Review draft** only after a fresh successful completion, validate the completed structured value, then copy its values into editable fields. The workbench below demonstrates a separate text-and-parser implementation that also validates the original JSON document. For this form, require a trimmed destination of 1–120 characters and an integer duration from 1 through 14.
+
+Create `review-trip.ts` with this application helper. It validates both a generated draft and the user’s edited values. It defines the boundary independently of the component library:
+
+```ts
+export function reviewTrip(
+  value: unknown,
+): { destination: string; days: number } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const trip = value as Record<string, unknown>;
+  if (typeof trip.destination !== 'string' || typeof trip.days !== 'number')
+    return null;
+  const destination = trip.destination.trim();
+  return destination.length > 0 &&
+    destination.length <= 120 &&
+    Number.isInteger(trip.days) &&
+    trip.days >= 1 &&
+    trip.days <= 14
+    ? { destination, days: trip.days }
+    : null;
+}
+```
+
+The labelled inputs change only the reviewed copy. **Apply** validates it again and consumes that review. The source ID ties the fields to the current request; generating again discards the old review. This example has one local editor. Add an application revision check if another screen or client can change the accepted trip. A backend save must repeat value validation and check identity and ownership.
+
+## Explore it in the workbench
+
+Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
 
 <img src="/video/docs/canonical-workbench-natural-forms-angular-result.png" alt="The Angular workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />
 
 ## Keep the values separate
 
-| Value | Who changes it | Purpose |
-| --- | --- | --- |
-| Request text | The user | Describes the desired plan. |
-| Generated draft | The actual model response, parsed by Hashbrown | Proposes title and step values. |
-| Reviewed fields | Review draft, then the user | Holds an editable application copy. |
-| Applied plan | The validated Apply handler | Holds the application's accepted plan and revision. |
+| Value           | Who changes it                                 | Purpose                                             |
+| --------------- | ---------------------------------------------- | --------------------------------------------------- |
+| Request text    | The user                                       | Describes the desired plan.                         |
+| Generated draft | The actual model response, parsed by Hashbrown | Proposes title and step values.                     |
+| Reviewed fields | Review draft, then the user                    | Holds an editable application copy.                 |
+| Applied plan    | The validated Apply handler                    | Holds the application's accepted plan and revision. |
 
 The workbench begins with the same application-owned two-step plan at revision zero. A new draft leaves that accepted data in place. Typing, parsing a partial response, or rendering a component does not apply a replacement.
 

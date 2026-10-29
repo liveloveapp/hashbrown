@@ -1,3 +1,9 @@
+import {
+  createScanner,
+  LanguageVariant,
+  ScriptTarget,
+  SyntaxKind,
+} from 'typescript';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -59,12 +65,27 @@ test.each(SDKS)(
           resolve(import.meta.dirname, '../../examples/quickstart', match[1]),
           'utf8',
         );
-        const normalize = (value: string) =>
-          value
-            .split('\n')
-            .map((line) => line.trim())
-            .join('\n')
-            .trim();
+        const normalize = (value: string) => {
+          const scanner = createScanner(
+            ScriptTarget.Latest,
+            true,
+            LanguageVariant.JSX,
+            value,
+          );
+          const tokens: string[] = [];
+          for (
+            let kind = scanner.scan();
+            kind !== SyntaxKind.EndOfFileToken;
+            kind = scanner.scan()
+          ) {
+            if (kind === SyntaxKind.CommaToken) {
+              const next = scanner.lookAhead(() => scanner.scan());
+              if (next === SyntaxKind.CloseParenToken) continue;
+            }
+            tokens.push(`${kind}:${scanner.getTokenText()}`);
+          }
+          return tokens.join('\u001f');
+        };
 
         expect(normalize(source), match[1]).toContain(normalize(match[2]));
         checked++;

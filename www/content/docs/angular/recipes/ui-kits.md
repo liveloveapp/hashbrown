@@ -2,15 +2,96 @@
 title: 'UI Kits: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Reuse a trusted component kit, stream two plan presentations, and explicitly accept a completed proposal in the Angular workbench.'
+    content: 'Package trusted components with reusable descriptions and prop schemas for generative UI conversations.'
 ---
 
 # UI Kits
 
-Let's put two components in one kit. We'll ask for a summary of our two-step plan, accept it, then ask for an ordered view with a shorter second step. The kit carries the same component descriptions, schemas, and renderers into both requests.
-
 <hb-docs-demo demo="canonical-workbench-ui-kits-angular">
 </hb-docs-demo>
+
+A UI kit packages components with the descriptions and prop schemas the model needs to use them. Share a kit when several conversations should use the same cards, status messages, and formatting rules. The application supplies executable components; the model selects from that catalogue and generates schema-constrained data.
+
+Let’s package a delivery status card. We can pass the resulting kit into any UI conversation without repeating its component contract. Start with a read-only card so rendering a response has no application side effect.
+
+<hb-concept-diagram concept="generative-ui"> </hb-concept-diagram>
+
+## Package a delivery card
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component, input } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import {
+  createUiKit,
+  exposeComponent,
+  RenderMessageComponent,
+  uiChatResource,
+} from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-delivery-card',
+  template: `<article aria-label="Delivery status">
+    <h2>Delivery</h2>
+    <p>{{ status() }}</p>
+  </article>`,
+})
+export class DeliveryCard {
+  readonly status = input.required<string>();
+}
+const deliveryKit = createUiKit({
+  components: [
+    exposeComponent(DeliveryCard, {
+      name: 'DeliveryCard',
+      description:
+        'Display a read-only delivery status. Do not use for changing an order.',
+      input: { status: s.string('A short delivery status') },
+      children: false,
+    }),
+  ],
+});
+
+@Component({
+  selector: 'app-delivery-assistant',
+  imports: [RenderMessageComponent],
+  template: `
+    <button [disabled]="chat.isLoading()" (click)="show()">
+      Show delivery
+    </button>
+    @if (chat.error()) {
+      <p role="alert">The reply could not finish.</p>
+    } @else {
+      @for (message of chat.value(); track $index) {
+        @if (message.role === 'assistant') {
+          <hb-render-message [message]="message" />
+        }
+      }
+    }
+  `,
+})
+export class DeliveryAssistant {
+  readonly chat = uiChatResource({
+    system:
+      'Demonstrate the delivery card with this public example: the parcel is due Friday.',
+    components: [deliveryKit],
+  });
+  show() {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'Show the delivery status.',
+    });
+  }
+}
+```
+
+The delivery date is public example data supplied in the instructions. For a real order, retrieve its status through an authorized read-only tool and keep the authoritative result in application state. The model can misreport a tool result, so a generated status card is a presentation, not a database record.
+
+Export the exposed component from a shared module as your catalogue grows. Compose kits through `components` rather than duplicating prop schemas. Use descriptions to distinguish similar components, and add a fallback when a component cannot render until required props resolve. Kit reuse does not authorize callbacks or make partial output safe to apply.
+
+## Explore it in the workbench
+
+Let's put two components in one kit. We'll ask for a summary of our two-step plan, accept it, then ask for an ordered view with a shorter second step. The kit carries the same component descriptions, schemas, and renderers into both requests.
 
 <img src="/video/docs/canonical-workbench-ui-kits-angular-result.png" alt="The Angular workbench shows two trusted component presentations, the selected component, and the accepted plan in application state." width="1600" height="1000" loading="lazy" />
 

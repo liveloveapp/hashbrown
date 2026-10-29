@@ -2,172 +2,99 @@
 title: 'Prompt Engineering: Hashbrown React Docs'
 meta:
   - name: description
-    content: "Hashbrown's React SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the React SDK."
+    content: 'Write clear instructions, provide useful context, and check responses against an application-owned contract.'
 ---
 
 # Prompt Engineering
 
-Hashbrown's React SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the React SDK.
+<hb-docs-demo demo="canonical-workbench-system-instructions-react">
+</hb-docs-demo>
 
-## System Prompts
+A prompt is the instruction and context we give a model for a task. Good prompts tell it what to do, what information to use, and what to do when that information is missing. They also fit the interface we are building.
 
-The `system` prompt sets the context and behavior for the model. You provide it as a string when initializing chat or completion hooks.
+Let's start with a support assistant. Its job is to explain a supplied order status. It should ask for clarification when the order is unknown, and it should never claim that reading an order changed it.
+
+<a id="system-prompts"></a>
+
+## Describe a bounded task
+
+Keep the durable instruction separate from the user's latest request. This constant can be used in an ordinary React application; it has no workbench dependency.
+
+```ts
+export const supportInstructions = `
+Help the user understand their order status.
+Use only order details supplied in this conversation or returned by a tool.
+If the order is unknown, ask for the order number.
+Explain the current status in plain language and give one useful next step.
+Do not claim that you changed, cancelled, or refunded an order.
+`;
+```
+
+The instruction describes a role, an evidence boundary, missing-information behavior, and an output style. A broad instruction such as “be helpful” leaves each of those decisions to the model.
+
+## Connect the instruction to a conversation
+
+This focused client example assumes the endpoint configuration from the [Quickstart](/docs/react/start/quick). Save the constant above as `support-instructions.ts`. It configures model behavior; it is not an access-control rule.
 
 ```tsx
 import { useChat } from '@hashbrownai/react';
+import { supportInstructions } from './support-instructions';
 
-const { messages, sendMessage } = useChat({
-  system: `You are a helpful assistant. Answer concisely.`,
-});
+export function SupportChat() {
+  const chat = useChat({ system: supportInstructions });
+  return (
+    <section aria-label="Order support">
+      {chat.messages.map((message, index) => (
+        <p key={index}>
+          {typeof message.content === 'string'
+            ? message.content
+            : JSON.stringify(message.content)}
+        </p>
+      ))}
+      <button
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'What does awaiting dispatch mean?',
+          })
+        }
+      >
+        Ask about dispatch
+      </button>
+      {chat.error && <p role="alert">The request failed. Please try again.</p>}
+    </section>
+  );
+}
 ```
 
-**Tips:**
+A browser instruction can be inspected or changed by its user. Pin required policy at the server boundary, authorize tool handlers, and validate application actions independently. See [System instructions](/docs/react/concept/system-instructions) and [Public endpoints](/docs/react/recipes/public-endpoint).
 
-- Be explicit about the assistant's persona and constraints.
-- Use clear instructions for formatting, tone, or output structure.
+<a id="message-history"></a>
+<a id="structured-prompts"></a>
+<a id="tool-use"></a>
+<a id="ui-driven-prompts"></a>
 
-## Message History
+## Give context a clear source
 
-Hashbrown manages message history for you. Pass an initial message array to the `messages` option, or use the `setMessages` method to update it.
+Conversation history supplies earlier messages. A read-only tool can supply current application facts. Describe where those facts came from, and distinguish a user's quoted text from an application instruction. Avoid sending unrelated or sensitive data merely because it is available.
 
-For persistence, pruning, and history mutation examples, see [Message History](/docs/react/concept/message-history).
+For a typed result, use a [Skillet schema](/docs/react/concept/schema). For a generated interface, expose [trusted components](/docs/react/concept/components). Prompt wording helps describe the task; schemas and application checks define how the result can be used.
 
-```tsx
-import { useChat } from '@hashbrownai/react';
+<a id="debugging-prompts"></a>
 
-const initialMessages = [
-  { role: 'user', content: 'What is the capital of France?' },
-];
+## Evaluate a prompt with examples
 
-const { messages, setMessages } = useChat({
-  system: 'You are a geography expert.',
-  messages: initialMessages,
-});
-```
+Try a known order, a missing order, contradictory user input, and a request to perform an unsupported action. Keep the actual output and check it against explicit expectations. Change one part of the prompt at a time so you can explain what improved.
 
-**Best Practices:**
+A schema-shaped response can still contain an incorrect claim. Check important facts against an authoritative source, and handle failures without substituting a successful-looking answer.
 
-- Include relevant prior messages for context.
-- Limit history length to avoid exceeding model context windows.
+<a id="summary"></a>
 
-## Structured Prompts
+## Explore it in the workbench
 
-For structured outputs, use the `useStructuredChat` or `useStructuredCompletion` hooks with a schema.
+Open the **System instructions** lesson in the [workbench](/docs/react/start/workbench). The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
 
-```tsx
-import { useStructuredChat } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
+Inspect the declared browser instruction in **Requests**, then the safe effective policy captured at the real provider-mapping boundary. Send a request that conflicts with the configured task and observe the actual response. The capture shows what reached that boundary; a model's response alone does not prove that server policy was applied.
 
-const outputSchema = s.object('City info', {
-  name: s.string('City name'),
-  country: s.string('Country'),
-  population: s.integer('Population'),
-});
-
-const { messages, sendMessage } = useStructuredChat({
-  system: 'Provide city information as structured data.',
-  schema: outputSchema,
-});
-```
-
-**Why use schemas?**
-
-- Enforces output shape for reliable parsing.
-- Enables type-safe UI rendering.
-
-## Tool Use
-
-Hashbrown supports tool calling ("tools"). Define tools with `useTool` and pass them to chat hooks.
-
-```tsx
-import { useTool, useChat } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-
-const getWeather = useTool({
-  name: 'getWeather',
-  description: 'Get weather for a city',
-  args: s.object('Weather input', {
-    city: s.string('City name'),
-  }),
-  handler: async ({ city }) => {
-    // Call your weather API here
-    return { temperature: 72 };
-  },
-});
-
-const { messages, sendMessage } = useChat({
-  system: 'You can call tools to fetch data.',
-  tools: [getWeather],
-});
-```
-
-**Tips:**
-
-- Describe tool purpose and arguments clearly.
-- Use schemas for tool arguments and results.
-
-## UI-Driven Prompts
-
-For rich, component-based outputs, use the `useUiChat` hook and expose React components.
-
-```tsx
-import { useUiChat, exposeComponent } from '@hashbrownai/react';
-
-const CityCard = ({
-  name,
-  country,
-  population,
-}: {
-  name: string;
-  country: string;
-  population: number;
-}) => (
-  <div>
-    <h2>{name}</h2>
-    <p>{country}</p>
-    <p>Population: {population}</p>
-  </div>
-);
-
-const exposedCityCard = exposeComponent(CityCard, {
-  name: 'CityCard',
-  description: 'Displays city information',
-  props: {
-    name: s.string('name'),
-    country: s.string('country'),
-    population: s.number('population'),
-  },
-});
-
-const { messages, sendMessage } = useUiChat({
-  system: 'Render city info using the CityCard component.',
-  components: [exposedCityCard],
-});
-```
-
-**Best Practices:**
-
-- Expose only safe, well-documented components.
-- Use schemas to describe component props.
-
-## Debugging Prompts
-
-- Use the `debugName` option to label chat sessions for easier debugging.
-- Inspect the `error` and `exhaustedRetries` fields from chat hooks for troubleshooting.
-
-```tsx
-const { error, exhaustedRetries } = useChat({
-  system: 'You are a helpful assistant.',
-  debugName: 'support-chat',
-});
-```
-
-## Summary
-
-- Set clear system prompts for model behavior.
-- Manage message history for context.
-- Use schemas for structured outputs and tool arguments.
-- Expose React components for UI-driven outputs.
-- Leverage debugging options for prompt iteration.
-
-For more, see the [API Reference](../api/README.md) and [UI Components](./ui-components.md).
+Continue with [Debugging](/docs/react/concept/debugging) to follow failures and [Request transformation](/docs/react/concept/transform-request-options) to inspect server-owned customization.

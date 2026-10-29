@@ -2,13 +2,69 @@
 title: 'Magic Text in Angular: Streaming Markdown'
 meta:
   - name: description
-    content: 'Stream Markdown in the canonical plan workbench, inspect a citation, and replay the actual reply without another request.'
+    content: 'Render streamed assistant Markdown, handle completion and citations, then inspect the recorded workbench conversation.'
 ---
 
 # Magic Text in Angular
 
 <hb-docs-demo demo="canonical-workbench-magic-text-angular">
 </hb-docs-demo>
+
+Streaming Markdown turns a growing assistant string into readable headings, lists, links, and citations. Use it when the answer is prose and the reader benefits from seeing it before the request finishes. The conversation API owns messages and cancellation; the renderer owns formatting.
+
+Let’s build a help panel that explains a returns policy. We will render the original assistant text as it grows, and finish parsing when the request stops, including a stopped or failed partial answer.
+
+<hb-concept-diagram concept="streaming"> </hb-concept-diagram>
+
+## Render a help reply
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component } from '@angular/core';
+import { chatResource, MagicText } from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-returns-help',
+  imports: [MagicText],
+  template: `
+    <button [disabled]="chat.isLoading()" (click)="explain()">
+      Explain the policy
+    </button>
+    @if (chat.error()) {
+      <p role="alert">The reply could not finish. Try again.</p>
+    } @else {
+      @for (message of chat.value(); track $index) {
+        @if (
+          message.role === 'assistant' && typeof message.content === 'string'
+        ) {
+          <hb-magic-text
+            [text]="message.content"
+            [isComplete]="!chat.isLoading()"
+          />
+        }
+      }
+    }
+    <button [disabled]="!chat.isLoading()" (click)="chat.stop()">Stop</button>
+  `,
+})
+export class ReturnsHelp {
+  readonly chat = chatResource({
+    system:
+      'Explain this public returns policy in Markdown: unused items may be returned within 30 days with a receipt.',
+  });
+  explain() {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'What do I need to return an item?',
+    });
+  }
+}
+```
+
+The fixed prompt keeps this screen small. Replace it with a labelled composer for an open conversation. `isComplete` finalizes Markdown parsing; it does not report request success. Keep failure and cancellation visible separately. If you add citations, use the renderer’s citation event and resolved URL rather than guessing references from the source string. A rendered citation does not prove retrieval or factual accuracy.
+
+## Explore it in the workbench
 
 I want to read a reply while it arrives. Let's explain the same two-step plan in Markdown, follow its source reference, and ask for a shorter explanation.
 

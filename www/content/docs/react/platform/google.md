@@ -7,6 +7,18 @@ meta:
 
 # Google Gemini
 
+<hb-docs-demo demo="canonical-workbench-first-plan-react">
+</hb-docs-demo>
+
+Connect Hashbrown to Gemini through the Developer API or Vertex AI. Both paths accept the same AG-UI conversation input, but authentication and some native tool capabilities differ. Choose that server boundary first, then expose one streaming endpoint to the browser.
+
+The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate Gemini, Vertex AI, or Google grounding.
+
+<hb-concept-diagram concept="client-server">
+</hb-concept-diagram>
+
+## Install the server adapter
+
 Install the Google adapter, the Google Gen AI SDK, and the AG-UI SSE encoder:
 
 ```sh
@@ -80,6 +92,8 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
 <hb-backend-code-example>
 
@@ -316,188 +330,6 @@ const stream = HashbrownGoogle.stream.text({
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 
-};
-
-````
-
-### Node.js Server Integration
-
-<hb-backend-code-example>
-
-<div backend="express">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownGoogle } from '@hashbrownai/google';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/run', async (req, res) => {
-  const abortController = new AbortController();
-  req.once('aborted', () => abortController.abort());
-  res.once('close', () => abortController.abort());
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
-    input: req.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.header('Content-Type', encoder.getContentType());
-  res.header('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  for await (const event of stream) {
-    res.write(encoder.encodeSSE(event));
-  }
-
-  if (!res.writableEnded) {
-    res.end();
-  }
-});
-
-app.listen(3000);
-````
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownGoogle } from '@hashbrownai/google';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/run', async (request, reply) => {
-  const abortController = new AbortController();
-  request.raw.once('aborted', () => abortController.abort());
-  reply.raw.once('close', () => abortController.abort());
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
-    input: request.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  reply.header('Content-Type', encoder.getContentType());
-  reply.header('Connection', 'keep-alive');
-
-  for await (const event of stream) {
-    reply.raw.write(encoder.encodeSSE(event));
-  }
-
-  if (!reply.raw.writableEnded) {
-    reply.raw.end();
-  }
-});
-
-fastify.listen({ port: 3000 });
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
-import { HashbrownGoogle } from '@hashbrownai/google';
-import type { Request, Response } from 'express';
-
-@Controller()
-export class RunController {
-  @Post('run')
-  async run(
-    @Body() input: RunAgentInput,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const abortController = new AbortController();
-    req.once('aborted', () => abortController.abort());
-    res.once('close', () => abortController.abort());
-    const stream = HashbrownGoogle.stream.text({
-      apiKey: process.env.GOOGLE_API_KEY!,
-      model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
-      input,
-      signal: abortController.signal,
-    });
-    const encoder = new EventEncoder();
-
-    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.header('Content-Type', encoder.getContentType());
-    res.header('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    for await (const event of stream) {
-      res.write(encoder.encodeSSE(event));
-    }
-
-    if (!res.writableEnded) {
-      res.end();
-    }
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownGoogle } from '@hashbrownai/google';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/run', async (c) => {
-  const input = (await c.req.json()) as RunAgentInput;
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
-    input,
-    signal: c.req.raw.signal,
-  });
-  const encoder = new EventEncoder();
-  const textEncoder = new TextEncoder();
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const event of stream) {
-          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Content-Type': encoder.getContentType(),
-      },
-    },
-  );
-});
-
-export default app;
-```
-
-</div>
-
-</hb-backend-code-example>
-
 ## Built-in Tools
 
 Enable Google's server tools with `builtInTools`:
@@ -563,26 +395,8 @@ fails with a clear input error. Developer-only native history cannot be replayed
 Vertex. A response containing only grounding metadata is retained as RAW data without
 creating a synthetic assistant message.
 
-### Transform Request Options
+## Explore it in the workbench
 
-`transformRequestOptions` receives the Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings. When adding built-ins in this hook, supply their required tool configuration too: Developer native circulation needs `includeServerSideToolInvocations`, with `VALIDATED` mode for mixed application tools. The `builtInTools` option supplies that configuration automatically. Final transformed requests are checked for backend compatibility.
+Start the [conversation workbench](/docs/react/start/workbench) and open `/react.html?lesson=first-plan`. Ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
-```ts
-const stream = HashbrownGoogle.stream.text({
-  apiKey: process.env.GOOGLE_API_KEY!,
-  model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    config: {
-      ...options.config,
-      temperature: 0.2,
-      systemInstruction: {
-        parts: [{ text: 'You are a helpful assistant.' }],
-      },
-    },
-  }),
-});
-```
-
-[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
+The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Google Gemini` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Google Gemini or verify its provider-specific behavior.

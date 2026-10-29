@@ -7,6 +7,18 @@ meta:
 
 # Anthropic
 
+<hb-docs-demo demo="canonical-workbench-first-plan-angular">
+</hb-docs-demo>
+
+Connect an AG-UI endpoint to Anthropic's Messages API when your application uses Claude. The adapter translates conversation history, tools, structured-output contracts, and reasoning into the provider's native request. The server owns credentials and model selection; the browser continues to use the same Hashbrown conversation API.
+
+The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate a Claude request, extended thinking, or Anthropic built-in tools.
+
+<hb-concept-diagram concept="client-server">
+</hb-concept-diagram>
+
+## Install the server adapter
+
 Install the Anthropic adapter, the official Anthropic SDK, and the AG-UI SSE encoder:
 
 ```sh
@@ -55,6 +67,8 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+The examples below host `/run` in an ordinary application. Configure your Angular client to call that route, using the [Quickstart](/docs/angular/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
 <hb-backend-code-example>
 
@@ -364,219 +378,8 @@ const stream = HashbrownAnthropic.stream.text({
 
 [Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
 
-};
+## Explore it in the workbench
 
-````
+Start the [conversation workbench](/docs/angular/start/workbench) and open `/angular.html?lesson=first-plan`. Ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
-### Node.js Server Integration
-
-<hb-backend-code-example>
-
-<div backend="express">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/run', async (req, res) => {
-  const abortController = new AbortController();
-  req.once('aborted', () => abortController.abort());
-  res.once('close', () => abortController.abort());
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-    input: req.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.header('Content-Type', encoder.getContentType());
-  res.header('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  for await (const event of stream) {
-    res.write(encoder.encodeSSE(event));
-  }
-
-  if (!res.writableEnded) {
-    res.end();
-  }
-});
-
-app.listen(3000);
-````
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/run', async (request, reply) => {
-  const abortController = new AbortController();
-  request.raw.once('aborted', () => abortController.abort());
-  reply.raw.once('close', () => abortController.abort());
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-    input: request.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  reply.header('Content-Type', encoder.getContentType());
-  reply.header('Connection', 'keep-alive');
-
-  for await (const event of stream) {
-    reply.raw.write(encoder.encodeSSE(event));
-  }
-
-  if (!reply.raw.writableEnded) {
-    reply.raw.end();
-  }
-});
-
-fastify.listen({ port: 3000 });
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import type { Request, Response } from 'express';
-
-@Controller()
-export class RunController {
-  @Post('run')
-  async run(
-    @Body() input: RunAgentInput,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const abortController = new AbortController();
-    req.once('aborted', () => abortController.abort());
-    res.once('close', () => abortController.abort());
-    const stream = HashbrownAnthropic.stream.text({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
-      model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-      input,
-      signal: abortController.signal,
-    });
-    const encoder = new EventEncoder();
-
-    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.header('Content-Type', encoder.getContentType());
-    res.header('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    for await (const event of stream) {
-      res.write(encoder.encodeSSE(event));
-    }
-
-    if (!res.writableEnded) {
-      res.end();
-    }
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/run', async (c) => {
-  const input = (await c.req.json()) as RunAgentInput;
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-    input,
-    signal: c.req.raw.signal,
-  });
-  const encoder = new EventEncoder();
-  const textEncoder = new TextEncoder();
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const event of stream) {
-          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Content-Type': encoder.getContentType(),
-      },
-    },
-  );
-});
-
-export default app;
-```
-
-</div>
-
-</hb-backend-code-example>
-
-## Extended Thinking
-
-Enable provider-owned reasoning settings with `transformRequestOptions`. Hashbrown emits Claude thinking and redacted thinking as AG-UI reasoning events and preserves their signatures for subsequent requests.
-
-```ts
-const stream = HashbrownAnthropic.stream.text({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    max_tokens: 4096,
-    thinking: { type: 'enabled', budget_tokens: 1024 },
-  }),
-});
-```
-
-## Transform Request Options
-
-Use `transformRequestOptions` for server-owned provider settings such as token limits, service tiers, or a server-side system instruction.
-
-```ts
-const stream = HashbrownAnthropic.stream.text({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-  model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    max_tokens: 2048,
-  }),
-});
-```
-
-[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
+The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Anthropic` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Anthropic or verify its provider-specific behavior.

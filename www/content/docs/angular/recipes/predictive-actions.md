@@ -2,13 +2,77 @@
 title: 'Predictive suggestions: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Suggest known next actions from the current plan, validate the context, and require explicit acceptance before changing application state.'
+    content: 'Request known next actions from an application snapshot and require current context and explicit acceptance.'
 ---
 
 # Predictive suggestions
 
 <hb-docs-demo demo="canonical-workbench-predictions-angular">
 </hb-docs-demo>
+
+Predictive suggestions offer a short list of useful next actions from the current application state. Use them to reduce navigation in an editor, planner, or dashboard. The application defines the action catalogue and executes the accepted action; the model proposes an ID and a reason.
+
+Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.
+
+<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+
+## Request a suggestion from a snapshot
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import { structuredCompletionResource } from '@hashbrownai/angular';
+
+export const suggestionSchema = s.object('Next action for this draft', {
+  contextId: s.string('Copy the input context ID exactly'),
+  actionId: s.enumeration('A known action', ['preview', 'proofread', 'none']),
+  reason: s.string('A short reason for the suggestion'),
+});
+
+@Component({
+  selector: 'app-article-suggestions',
+  template: `
+    <button [disabled]="result.isLoading()" (click)="generate()">
+      Suggest next action
+    </button>
+    @if (result.error()) {
+      <p role="alert">Generation failed. Try again.</p>
+    } @else {
+      <pre>{{ preview() }}</pre>
+    }
+  `,
+})
+export class ArticleSuggestions {
+  readonly input = signal<{
+    contextId: string;
+    revision: number;
+    draft: string;
+  } | null>(null);
+  readonly result = structuredCompletionResource({
+    input: this.input,
+    schema: suggestionSchema,
+    system: 'Suggest one next action. Do not execute it.',
+  });
+  preview() {
+    return JSON.stringify(this.result.value(), null, 2);
+  }
+  generate() {
+    this.input.set({
+      contextId: crypto.randomUUID(),
+      revision: 3,
+      draft: 'A guide to Lisbon',
+    });
+  }
+}
+```
+
+The revision `3` and article text are fixed example data. In an editor, copy both from the current document in the request handler. `null` keeps completion idle; each button press supplies a fresh context ID. This component only previews the proposal.
+
+Before offering **Accept**, require a successful completed request, a known action ID, a bounded nonempty reason, and an exact match to the captured context ID and current document revision. Recheck them in the acceptance handler. Map `preview` and `proofread` to application functions; treat `none` as a valid empty recommendation. Dismissal changes presentation only. A new request, a changed document, cancellation, or an error makes the earlier proposal unavailable.
+
+## Explore it in the workbench
 
 Let's suggest what to do next with our two-step plan. The model can propose recording, reviewing, or clarifying progress. Our application owns those actions. **Only Accept applies one.**
 

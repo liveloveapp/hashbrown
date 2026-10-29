@@ -2,15 +2,66 @@
 title: 'Streaming JSON Parser: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Inspect actual streamed JSON, framework parser values, source completion, and final document validation in one conversation.'
+    content: 'Preview a growing JSON document with the framework parser and validate the completed source before using it.'
 ---
 
 # Streaming JSON Parser
 
-Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
-
 <hb-docs-demo demo="canonical-workbench-json-parser-angular">
 </hb-docs-demo>
+
+A streaming JSON parser resolves useful values before the whole document arrives. Use it for a JSON source you already own: a text response, a socket, or an imported file. Choose streaming strings for fields that can display a prefix, and ordinary strings for fields that should wait for a closing quote.
+
+Let’s preview a shopping list. The parser will receive the full JSON string so far. The preview helps the user read; a separate check of the original completed document decides whether it can be used. If you already use structured chat, consume its parsed content directly.
+
+<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+
+## Preview an existing JSON source
+
+This component does not make a model request. Its parent owns the source, passes the accumulated JSON string, and tracks successful completion separately. Create `shopping-schema.ts`:
+
+```ts
+import { s } from '@hashbrownai/core';
+
+export const shoppingSchema = s.object('A shopping list', {
+  title: s.string('A concise list title'),
+  items: s.streaming.array('Items to buy', s.streaming.string('An item name')),
+});
+```
+
+Then create the preview component:
+
+```ts
+import { Component, input } from '@angular/core';
+import { injectJsonParser } from '@hashbrownai/angular';
+import { shoppingSchema } from './shopping-schema';
+
+@Component({
+  selector: 'app-shopping-preview',
+  template: `
+    @if (parser.error()) {
+      <p role="alert">Invalid shopping list.</p>
+    } @else {
+      <h2>{{ parser.value()?.title ?? 'Preparing list…' }}</h2>
+      <ul>
+        @for (item of parser.value()?.items ?? []; track $index) {
+          <li>{{ item }}</li>
+        }
+      </ul>
+    }
+  `,
+})
+export class ShoppingPreview {
+  readonly json = input.required<string>();
+  readonly parser = injectJsonParser(this.json, shoppingSchema);
+}
+```
+
+Pass a growing prefix such as `{"title":"Groceries","items":["ap` and then the full document. The title waits for its closing quote; the item can appear as a prefix. Replacing the string with a different document resets parsing. Before enabling a save action, require successful source completion and reparse the original JSON with the complete application contract. A closed root, a retained parser value, and a successful source are separate observations.
+
+## Explore it in the workbench
+
+Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
 
 <img src="/video/docs/canonical-workbench-json-parser-angular-result.png" alt="The Angular workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />
 
@@ -49,10 +100,10 @@ These choices describe what our application can display as a preview. They do no
 
 ## Keep three completion checks separate
 
-| Check | What it tells us |
-| --- | --- |
-| Source lifecycle | Whether the actual SDK run is generating, successfully finished, stopped, or failed. |
-| Parser completion | Whether the parser has completed its JSON root. |
+| Check                        | What it tells us                                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Source lifecycle             | Whether the actual SDK run is generating, successfully finished, stopped, or failed.                                 |
+| Parser completion            | Whether the parser has completed its JSON root.                                                                      |
 | Original document validation | Whether parsing and validating the complete original JSON succeeds, including required fields and application rules. |
 
 A JSON root can close before the source ends. A stopped source can leave useful partial values. A streaming array can withhold an invalid member, and a parser may retain its last resolved value after an error. None of these is a completed valid plan by itself.
