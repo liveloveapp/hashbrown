@@ -511,7 +511,7 @@ test('timeout rejection remains bounded when underlying cancellation never settl
     new ReadableStream({
       cancel() {
         cancellations++;
-        return new Promise(() => {});
+        return new Promise(() => undefined);
       },
     }),
   );
@@ -600,4 +600,34 @@ test('canonical serialization preserves Map and Set content, type and determinis
     digest(new Date('2026-01-01')),
     digest(new Date('2026-01-02')),
   );
+});
+
+test('runtime errors remain failures while a dedicated callback preserves sanitized diagnostics', async () => {
+  const frames = [];
+  const redact = common.createRedactor(['fixture-private-token']);
+  const response = new Response(
+    'data: ' +
+      JSON.stringify({
+        type: 'RUN_ERROR',
+        runId: 'r',
+        threadId: 't',
+        code: 'rate_limit_exceeded',
+        message: 'fixture-private-token throttled',
+      }) +
+      '\n\n',
+  );
+
+  await assert.rejects(
+    common.readSseStream(response, {
+      runId: 'r',
+      threadId: 't',
+      redact,
+      onErrorEvent: (event) => frames.push(redact(event)),
+    }),
+    /RUN_ERROR/,
+  );
+
+  assert.equal(frames.length, 1);
+  assert.equal(frames[0].code, 'rate_limit_exceeded');
+  assert(!JSON.stringify(frames).includes('fixture-private-token'));
 });

@@ -411,7 +411,11 @@ export async function loadReadinessContext(options) {
 }
 
 /** Incremental UTF8 SSE parser; optional caller identity must match exactly on RUN_FINISHED. */
-export function createSseParser({ runId, threadId } = {}) {
+export function createSseParser({
+  runId,
+  threadId,
+  onErrorEvent = () => undefined,
+} = {}) {
   const decoder = new TextDecoder('utf-8', { fatal: true });
   let buffer = '';
   let terminal;
@@ -455,7 +459,10 @@ export function createSseParser({ runId, threadId } = {}) {
           event.threadId !== threadId)
       )
         throw new Error('SSE event identity mismatch');
-      if (event.type === 'RUN_ERROR') throw new Error('SSE RUN_ERROR');
+      if (event.type === 'RUN_ERROR') {
+        onErrorEvent(event);
+        throw new Error('SSE RUN_ERROR');
+      }
       if (event.type === 'RUN_FINISHED') {
         if (
           (runId !== undefined && event.runId !== runId) ||
@@ -497,8 +504,9 @@ export async function readSseStream(
   {
     timeoutMs = 55000,
     signal,
-    onEvent = () => {},
-    onChunk = () => {},
+    onEvent = () => undefined,
+    onChunk = () => undefined,
+    onErrorEvent = () => undefined,
     runId,
     threadId,
     redact = createRedactor(),
@@ -507,7 +515,7 @@ export async function readSseStream(
   // Cancellation is best effort: a hostile/stalled source must not extend the request deadline.
   const cancel = (target) => {
     try {
-      Promise.resolve(target?.cancel()).catch(() => {});
+      Promise.resolve(target?.cancel()).catch(() => undefined);
     } catch {
       /* Keep the original failure. */
     }
@@ -528,7 +536,7 @@ export async function readSseStream(
     throw new Error('SSE timeout invalid');
   }
   const reader = response.body.getReader();
-  const parser = createSseParser({ runId, threadId });
+  const parser = createSseParser({ runId, threadId, onErrorEvent });
   let timer;
   let abort;
   const stopped = new Promise((_, reject) => {

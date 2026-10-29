@@ -13,6 +13,7 @@ import {
   sha256,
 } from './common.mjs';
 import { runLoadSchedule } from './load-scheduler.mjs';
+import { createReadinessPool, readinessPoolErrors } from './owner-worker.mjs';
 
 /** Execute one fresh real-model request; its first post-EOF DB operation is the admission snapshot. */
 export async function runLoadRequest(args, dependencies) {
@@ -53,6 +54,8 @@ export async function runLoadRequest(args, dependencies) {
     runId,
     markerSha256: sha256(marker),
     deploymentIndex: args.index % 2,
+    runtimeErrors: [],
+    providerThrottled: false,
   };
   const deadline = new AbortController(),
     remaining = Math.min(55000, args.deadlineMs - performance.now());
@@ -75,6 +78,8 @@ export async function runLoadRequest(args, dependencies) {
       signal,
     });
     receipt.status = response.status;
+    receipt.retryAfter = response.headers.get('retry-after');
+    receipt.providerThrottled = response.status === 429;
     receipt.cookieEstablished = response.headers
       .getSetCookie()
       .some((c) => c.startsWith('atc_visitor='));
@@ -87,7 +92,14 @@ export async function runLoadRequest(args, dependencies) {
       onChunk: () => {
         firstByte ??= performance.now() - dispatched;
       },
+      onErrorEvent: (event) => {
+        receipt.runtimeErrors.push(redact(event));
+        receipt.providerThrottled ||= /rate.?limit|throttl|429/i.test(
+          JSON.stringify(event),
+        );
+      },
       onEvent: (event) => {
+        if (event.type === 'RUN_FINISHED') receipt.terminal = redact(event);
         if (event.type === 'TOOL_CALL_START')
           throw Error('unexpected tool call in load request');
         if (event.type === 'TEXT_MESSAGE_CONTENT') {
@@ -97,7 +109,12 @@ export async function runLoadRequest(args, dependencies) {
         }
       },
     });
-    receipt.totalMs = performance.now() - dispatched;
+    const eof = performance.now();
+    receipt.eofAtScheduleMs =
+      args.scheduleStartedAt === undefined
+        ? null
+        : eof - args.scheduleStartedAt;
+    receipt.totalMs = eof - dispatched;
     receipt.firstByteMs = firstByte ?? null;
     receipt.firstContentMs = firstContent ?? null;
     // No clock/database query or checkpoint lookup precedes this exact first post-EOF operation.
@@ -197,6 +214,17 @@ export async function runLoadRequest(args, dependencies) {
   }
 }
 
+/** Count actual response EOF completions in a schedule window, excluding subsequent DB verification. */
+export function completionCountInWindow(attempts, lower, upper) {
+  return attempts.filter(
+    (a) =>
+      a.status === 'passed' &&
+      Number.isFinite(a.result?.eofAtScheduleMs) &&
+      a.result.eofAtScheduleMs >= lower &&
+      a.result.eofAtScheduleMs < upper,
+  ).length;
+}
+
 function percentile(values, p) {
   const sorted = values
     .filter((v) => typeof v === 'number')
@@ -216,6 +244,7 @@ export async function runLoad(options, expected) {
   const validate = new Ajv({ strict: false }).compile(schema);
   const manifestSha256 = sha256(readFileSync(options.manifestPath));
   let storage;
+  const phaseAbort = new AbortController();
   const context = await loadReadinessContext({
     ...options,
     expected,
@@ -228,13 +257,9 @@ export async function runLoad(options, expected) {
           ),
         ).href
       );
-      return storage.createPostgresPool({
-        connectionString: databaseUrl,
-        max: 8,
-        statement_timeout: 15000,
-        query_timeout: 15000,
-        connectionTimeoutMillis: 10000,
-      });
+      return createReadinessPool(storage, databaseUrl, 8, () =>
+        phaseAbort.abort(new Error('database-idle-error')),
+      );
     },
   });
   const pool = context.database;
@@ -331,6 +356,7 @@ export async function runLoad(options, expected) {
     save();
     evidence.schedule = await runLoadSchedule({
       run,
+      signal: phaseAbort.signal,
       sanitizeError: (error) => context.redact(error),
       onUpdate: (state) => {
         evidence.schedule = state;
@@ -348,9 +374,11 @@ export async function runLoad(options, expected) {
         passed = attempts.filter((a) => a.status === 'passed'),
         values = passed.map((a) => a.result.totalMs);
       const lower = level === 1 ? 0 : level === 2 ? 300000 : 600000;
-      const completedDuringLevel = completed.filter(
-        (a) => a.finishedMs >= lower && a.finishedMs < lower + 300000,
-      ).length;
+      const completedDuringLevel = completionCountInWindow(
+        completed,
+        lower,
+        lower + 300000,
+      );
       return {
         level,
         attempted: attempts.length,
@@ -435,6 +463,9 @@ export async function runLoad(options, expected) {
         errors.push('owned pool/store close failed');
       }
     }
+    evidence.databaseErrors = readinessPoolErrors(pool);
+    if (evidence.databaseErrors.length)
+      errors.push('owned database emitted idle-client errors');
     evidence.cleanup = { ownedRequestsSettled: owned.size === 0, errors };
     if (errors.length || owned.size) evidence.status = 'failed';
     save();

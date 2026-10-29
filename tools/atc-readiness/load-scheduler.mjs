@@ -124,6 +124,7 @@ export async function runLoadSchedule({
               worker,
               level: row.level,
               startedMs: row.startedMs,
+              scheduleStartedAt: started,
               deadlineMs: dispatch + timeoutMs,
               signal: requestSignal,
             }),
