@@ -116,7 +116,12 @@
   display: block;
 }
 
-/* The copy target overhangs the padding so its icon stays on the edge. */
+/* The copy target overhangs the padding so its icon stays on the edge, and
+   draws its focus ring inside, clear of the panel's rounded edge. */
 .actions > :last-child {
   margin-right: calc((var(--control-lg) - 18px) / -2);
+}
+
+.actions > :focus-visible {
+  outline-offset: -2px;
 }

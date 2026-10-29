@@ -18,6 +18,8 @@ function snapshot(overrides: Partial<LayoutSnapshot> = {}): LayoutSnapshot {
     texts: [],
     inputs: [],
     covered: [],
+    gutter: 16,
+    edges: [],
     ...overrides,
   };
 }
@@ -122,5 +124,26 @@ test('a control drawn over in an open overlay is reported', () => {
 
   expect(issues.map((issue) => issue.detail)).toEqual([
     'Quick start is under announcement',
+  ]);
+});
+
+test('content that starts off the gutter is reported, a pixel of rounding is not', () => {
+  const offGrid = snapshot({
+    edges: [
+      { label: 'logo', inset: 16 },
+      { label: 'h1 "useUiChat"', inset: 24 },
+      { label: 'footer', inset: 16.6 },
+    ],
+  });
+
+  const issues = layoutIssues(offGrid);
+
+  expect(issues).toEqual([
+    {
+      rule: 'off-gutter',
+      page: '/docs',
+      viewport: 'phone-375',
+      detail: 'h1 "useUiChat" starts 24px in, the gutter is 16px',
+    },
   ]);
 });

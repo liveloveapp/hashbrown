@@ -2,19 +2,25 @@
 .host {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  padding: 24px;
+  gap: var(--space-8);
+  padding: var(--page-top) var(--gutter) var(--section-gap);
   width: 100%;
   max-width: 752px;
 }
 
+/* A namespace's members, laid out like the API index's symbol lists. */
 .symbols {
   width: 100%;
-  padding: 0 24px;
+  padding: 0 var(--space-4);
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  border-left: 1px solid var(--color-code-rule);
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: var(--gutter);
+}
+
+.symbols > a {
+  min-height: var(--control-lg);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .article {
@@ -62,7 +68,7 @@
 
 @media screen and (min-width: 1024px) {
   .symbols {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .article {
@@ -72,7 +78,7 @@
 
 @media screen and (min-width: 1281px) {
   .symbols {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .article {

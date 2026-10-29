@@ -9,7 +9,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-8);
   align-items: center;
-  padding: var(--space-6);
+  padding: var(--card-padding);
   border-radius: var(--radius-shot);
   background: var(--color-surface);
 }
@@ -95,7 +95,6 @@
   .card {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     gap: var(--space-12);
-    padding: var(--space-12);
   }
 
   .built {

@@ -20,6 +20,17 @@ import styles from './MobileMenu.module.css';
 /** Which menu the mobile menu shows. */
 export type MobileMenuTab = 'docs' | 'api';
 
+/**
+ * The menu the mobile menu opens on: the API reference's on an API page, the
+ * docs' everywhere else.
+ *
+ * @param pathname - The page's path.
+ * @returns The tab to show.
+ */
+export function mobileMenuTabFor(pathname: string): MobileMenuTab {
+  return pathname === '/api' || pathname.startsWith('/api/') ? 'api' : 'docs';
+}
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -174,8 +185,11 @@ export function MobileMenu({
   }, []);
 
   const toggle = () => {
+    if (!open) {
+      setTab(mobileMenuTabFor(pathname));
+    }
     setOpenedAt(pathname);
-    setOpen((value) => !value);
+    setOpen(!open);
   };
 
   useEffect(() => {
