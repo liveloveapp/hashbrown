@@ -2,206 +2,100 @@
 title: 'Prompt Engineering: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: "Hashbrown's Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK."
+    content: 'Write clear instructions, provide useful context, and check responses against an application-owned contract.'
 ---
 
 # Prompt Engineering
 
-Hashbrown's Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK.
+<hb-docs-demo demo="canonical-workbench-system-instructions-angular">
+</hb-docs-demo>
 
-## System Prompts
+A prompt is the instruction and context we give a model for a task. Good prompts tell it what to do, what information to use, and what to do when that information is missing. They also fit the interface we are building.
 
-The `system` prompt sets the context and behavior for the model. You provide it as a string when initializing chat or completion services.
+Let's start with a support assistant. Its job is to explain a supplied order status. It should ask for clarification when the order is unknown, and it should never claim that reading an order changed it.
 
-```typescript
-import { HashbrownChatService } from '@hashbrownai/angular';
+<a id="system-prompts"></a>
 
-constructor(private chat: HashbrownChatService) {}
+## Describe a bounded task
 
-ngOnInit() {
-  this.chat.initialize({
-    system: `You are a helpful assistant. Answer concisely.`,
-  });
-}
-```
-
-**Tips:**
-
-- Be explicit about the assistant's persona and constraints.
-- Use clear instructions for formatting, tone, or output structure.
-
-## Message History
-
-Hashbrown manages message history for you. Pass an initial message array to the `messages` option when initializing, or use the `setMessages` method to update it.
-
-For persistence, pruning, and history mutation examples, see [Message History](/docs/angular/concept/message-history).
+Keep the durable instruction separate from the user's latest request. This constant can be used in an ordinary Angular application; it has no workbench dependency.
 
 ```ts
+export const supportInstructions = `
+Help the user understand their order status.
+Use only order details supplied in this conversation or returned by a tool.
+If the order is unknown, ask for the order number.
+Explain the current status in plain language and give one useful next step.
+Do not claim that you changed, cancelled, or refunded an order.
+`;
+```
+
+The instruction describes a role, an evidence boundary, missing-information behavior, and an output style. A broad instruction such as “be helpful” leaves each of those decisions to the model.
+
+## Connect the instruction to a conversation
+
+This focused client example assumes the endpoint configuration from the [Quickstart](/docs/angular/start/quick). Save the constant above as `support-instructions.ts`. It configures model behavior; it is not an access-control rule.
+
+```ts
+import { Component } from '@angular/core';
 import { chatResource } from '@hashbrownai/angular';
-
-const initialMessages = [
-  { role: 'user' as const, content: 'What is the capital of France?' },
-];
-
-const chat = chatResource({
-  system: 'You are a geography expert.',
-  messages: initialMessages,
-});
-
-chat.setMessages([
-  { role: 'user', content: 'What is the capital of Belgium?' },
-]);
-```
-
-**Best Practices:**
-
-- Include relevant prior messages for context.
-- Limit history length to avoid exceeding model context windows.
-
-## Structured Prompts
-
-For structured outputs, use the `HashbrownStructuredChatService` or `HashbrownStructuredCompletionService` with a schema.
-
-```typescript
-import { HashbrownStructuredChatService } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
-
-const outputSchema = s.object('City info', {
-  name: s.string('City name'),
-  country: s.string('Country'),
-  population: s.integer('Population'),
-});
-
-constructor(private structuredChat: HashbrownStructuredChatService) {}
-
-ngOnInit() {
-  this.structuredChat.initialize({
-    system: 'Provide city information as structured data.',
-    schema: outputSchema,
-  });
-}
-```
-
-**Why use schemas?**
-
-- Enforces output shape for reliable parsing.
-- Enables type-safe UI rendering.
-
-## Tool Use
-
-Hashbrown supports tool calling ("tools"). Define tools and pass them to chat services.
-
-```typescript
-import { HashbrownTool, HashbrownChatService } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
-
-const getWeather: HashbrownTool = {
-  name: 'getWeather',
-  description: 'Get weather for a city',
-  args: s.object('Weather input', {
-    city: s.string('City name'),
-  }),
-  handler: async ({ city }) => {
-    // Call your weather API here
-    return { temperature: 72 };
-  },
-};
-
-constructor(private chat: HashbrownChatService) {}
-
-ngOnInit() {
-  this.chat.initialize({
-    system: 'You can call tools to fetch data.',
-    tools: [getWeather],
-  });
-}
-```
-
-**Tips:**
-
-- Describe tool purpose and arguments clearly.
-- Use schemas for tool arguments and results.
-
-## UI-Driven Prompts
-
-For rich, component-based outputs, use the `HashbrownUiChatService` and expose Angular components.
-
-```typescript
-import { Component, Input } from '@angular/core';
-import { exposeComponent } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
+import { supportInstructions } from './support-instructions';
 
 @Component({
-  selector: 'app-city-card',
+  selector: 'app-support-chat',
   template: `
-    <div>
-      <h2>{{ name }}</h2>
-      <p>{{ country }}</p>
-      <p>Population: {{ population }}</p>
-    </div>
+    <section aria-label="Order support">
+      @for (message of chat.value(); track $index) {
+        <p>{{ message.content }}</p>
+      }
+      <button [disabled]="chat.isLoading()" (click)="ask()">
+        Ask about dispatch
+      </button>
+      @if (chat.error()) {
+        <p role="alert">The request failed. Please try again.</p>
+      }
+    </section>
   `,
 })
-export class CityCardComponent {
-  @Input() name!: string;
-  @Input() country!: string;
-  @Input() population!: number;
-}
+export class SupportChat {
+  readonly chat = chatResource({ system: supportInstructions });
 
-const exposedCityCard = exposeComponent(CityCardComponent, {
-  name: 'CityCard',
-  description: 'Displays city information',
-  props: {
-    name: s.string('name'),
-    country: s.string('country'),
-    population: s.number('population'),
-  },
-});
-
-import { HashbrownUiChatService } from '@hashbrownai/angular';
-
-constructor(private uiChat: HashbrownUiChatService) {}
-
-ngOnInit() {
-  this.uiChat.initialize({
-    system: 'Render city info using the CityCard component.',
-    components: [exposedCityCard],
-  });
+  ask() {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'What does awaiting dispatch mean?',
+    });
+  }
 }
 ```
 
-**Best Practices:**
+A browser instruction can be inspected or changed by its user. Pin required policy at the server boundary, authorize tool handlers, and validate application actions independently. See [System instructions](/docs/angular/concept/system-instructions) and [Public endpoints](/docs/angular/recipes/public-endpoint).
 
-- Expose only safe, well-documented components.
-- Use schemas to describe component props.
+<a id="message-history"></a>
+<a id="structured-prompts"></a>
+<a id="tool-use"></a>
+<a id="ui-driven-prompts"></a>
 
-## Debugging Prompts
+## Give context a clear source
 
-- Use the `debugName` option to label chat sessions for easier debugging.
-- Inspect the `error` and `exhaustedRetries` fields from chat services for troubleshooting.
+Conversation history supplies earlier messages. A read-only tool can supply current application facts. Describe where those facts came from, and distinguish a user's quoted text from an application instruction. Avoid sending unrelated or sensitive data merely because it is available.
 
-```typescript
-import { HashbrownChatService } from '@hashbrownai/angular';
+For a typed result, use a [Skillet schema](/docs/angular/concept/schema). For a generated interface, expose [trusted components](/docs/angular/concept/components). Prompt wording helps describe the task; schemas and application checks define how the result can be used.
 
-constructor(private chat: HashbrownChatService) {}
+<a id="debugging-prompts"></a>
 
-ngOnInit() {
-  this.chat.initialize({
-    system: 'You are a helpful assistant.',
-    debugName: 'support-chat',
-  });
+## Evaluate a prompt with examples
 
-  // To access error and exhaustedRetries:
-  // this.chat.error
-  // this.chat.exhaustedRetries
-}
-```
+Try a known order, a missing order, contradictory user input, and a request to perform an unsupported action. Keep the actual output and check it against explicit expectations. Change one part of the prompt at a time so you can explain what improved.
 
-## Summary
+A schema-shaped response can still contain an incorrect claim. Check important facts against an authoritative source, and handle failures without substituting a successful-looking answer.
 
-- Set clear system prompts for model behavior.
-- Manage message history for context.
-- Use schemas for structured outputs and tool arguments.
-- Expose Angular components for UI-driven outputs.
-- Leverage debugging options for prompt iteration.
+<a id="summary"></a>
 
-For more, see the [API Reference](../api/README.md) and [UI Components](./ui-components.md).
+## Explore it in the workbench
+
+Open the **System instructions** lesson in the [workbench](/docs/angular/start/workbench). The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+
+Inspect the declared browser instruction in **Requests**, then the safe effective policy captured at the real provider-mapping boundary. Send a request that conflicts with the configured task and observe the actual response. The capture shows what reached that boundary; a model's response alone does not prove that server policy was applied.
+
+Continue with [Debugging](/docs/angular/concept/debugging) to follow failures and [Request transformation](/docs/angular/concept/transform-request-options) to inspect server-owned customization.

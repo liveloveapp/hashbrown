@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
@@ -40,10 +41,7 @@ test.each(SDKS)(
 
     for (const { demo, body } of pages) {
       const lesson = demo === 'persistence' ? 'message-history' : demo;
-      const media = body.indexOf(`<hb-workbench lesson="${lesson}">`);
-
-      expect(media, demo).toBeGreaterThan(-1);
-      expect(media, demo).toBeLessThan(body.indexOf('\n## '));
+      expectConceptFirstWorkbench(body, sdk, lesson);
     }
   },
 );

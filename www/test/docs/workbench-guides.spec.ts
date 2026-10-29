@@ -1,3 +1,9 @@
+import {
+  createScanner,
+  LanguageVariant,
+  ScriptTarget,
+  SyntaxKind,
+} from 'typescript';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -27,7 +33,7 @@ test.each(SDKS)(
 
     for (const [slug, lesson] of lessons) {
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
-      const marker = `<hb-workbench lesson="${lesson === 'ui' ? 'generative-ui' : lesson === 'structured' ? 'structured-output' : lesson}">`;
+      const marker = `<hb-docs-demo demo="canonical-workbench-${lesson}-${sdk}">`;
 
       expect(body.indexOf(marker)).toBeGreaterThan(-1);
       expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
@@ -67,12 +73,27 @@ test.each(SDKS)(
           resolve(import.meta.dirname, '../../examples/quickstart', match[1]),
           'utf8',
         );
-        const normalize = (value: string) =>
-          value
-            .split('\n')
-            .map((line) => line.trim())
-            .join('\n')
-            .trim();
+        const normalize = (value: string) => {
+          const scanner = createScanner(
+            ScriptTarget.Latest,
+            true,
+            LanguageVariant.JSX,
+            value,
+          );
+          const tokens: string[] = [];
+          for (
+            let kind = scanner.scan();
+            kind !== SyntaxKind.EndOfFileToken;
+            kind = scanner.scan()
+          ) {
+            if (kind === SyntaxKind.CommaToken) {
+              const next = scanner.lookAhead(() => scanner.scan());
+              if (next === SyntaxKind.CloseParenToken) continue;
+            }
+            tokens.push(`${kind}:${scanner.getTokenText()}`);
+          }
+          return tokens.join('\u001f');
+        };
 
         expect(normalize(source), match[1]).toContain(normalize(match[2]));
         checked++;
@@ -96,16 +117,22 @@ function docsPages(): { path: string; sdk: Sdk; body: string }[] {
   );
 }
 
-test('no docs page embeds a canonical workbench video directly', () => {
-  const pages = docsPages();
-
-  const embeds = pages.flatMap((page) =>
-    [...page.body.matchAll(/<hb-docs-demo demo="(canonical-workbench-[^"]+)"/g)]
-      .map((match) => `${page.path}: ${match[1]}`)
-      .filter((embed) => !embed.includes('canonical-workbench-threadplane-')),
+test('inline workbench walkthroughs follow the concept and video teaser', () => {
+  const pages = docsPages().filter((page) =>
+    page.body.includes('<hb-workbench '),
   );
 
-  expect(embeds).toEqual([]);
+  expect(pages.length).toBeGreaterThan(40);
+  for (const page of pages) {
+    const teaser = page.body.indexOf(
+      '<hb-docs-demo demo="canonical-workbench-',
+    );
+    const boundary = page.body.indexOf('## Explore it in the workbench');
+    const panel = page.body.indexOf('<hb-workbench ');
+    expect(teaser, page.path).toBeGreaterThan(-1);
+    expect(boundary, page.path).toBeGreaterThan(teaser);
+    expect(panel, page.path).toBeGreaterThan(boundary);
+  }
 });
 
 test('every hb-workbench lesson is a known lesson with a published capture', () => {

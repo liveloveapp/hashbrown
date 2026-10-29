@@ -2,21 +2,83 @@
 title: 'Debugging: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Inspect requests, schema failures, tool calls, cancellation, and interrupted runs.'
+    content: 'Trace AI feature failures from requests and terminal events through tools and rendering.'
 ---
 
 # Debugging
+
+<hb-docs-demo demo="canonical-workbench-debugging-react">
+</hb-docs-demo>
+
+Debugging an AI feature means finding the boundary where expected behavior stopped: the browser request, your endpoint, provider mapping, event stream, parser, tool handler, or renderer. Start with the evidence for the failing turn before changing the prompt or schema.
+
+Check HTTP status and the terminal event separately. A stream can begin with HTTP 200 and later report `RUN_ERROR`; a completed run can still report `length` or `refusal`. Preserve the current application value while investigating. A visible partial answer and an idle loading flag do not establish successful completion.
+
+<hb-concept-diagram concept="client-server"> </hb-concept-diagram>
+
+## Make the failing boundary visible
+
+Use the endpoint and client configuration from the [Quickstart](/docs/react/start/quick). Render the component below inside the existing `HashbrownProvider`.
+
+Start with this text-only component to separate endpoint problems from UI catalogs and response schemas. `debugName` identifies this runtime in Redux DevTools. The error message stays available in the SDK for local inspection; the user-facing message does not expose raw server details.
+
+```tsx
+import { useChat } from '@hashbrownai/react';
+
+export function ReadingDiagnostics() {
+  const chat = useChat({
+    system: 'Recommend classic novels. Keep replies brief.',
+    debugName: 'reading-diagnostics',
+  });
+  return (
+    <main>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'Suggest one classic novel.',
+          })
+        }
+      >
+        Ask
+      </button>
+      {chat.isLoading && <p role="status">Waiting for a reply…</p>}
+      {chat.error && (
+        <p role="alert">The request failed. Check the endpoint.</p>
+      )}
+      {chat.messages.map((message, index) =>
+        message.role === 'user' || message.role === 'assistant' ? (
+          <p key={index}>
+            {message.role}:{' '}
+            {typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content)}
+          </p>
+        ) : null,
+      )}
+    </main>
+  );
+}
+```
+
+Open the browser Network panel before sending. Check the configured URL, request body, HTTP status, event stream, and terminal event. Match `threadId` and `runId` with server logs. If text chat works, add your response schema, component catalog, and tools one at a time.
+
+Inspect `lastRunFinishReason` when a response ends early: `length`, `content_filter`, and `refusal` describe completed runs that may not satisfy your feature. `stop` describes a model finish, but business validation still decides whether the result can be applied. Do not retry a write until you have checked whether its earlier attempt took effect.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="debugging">
 </hb-workbench>
 
 When a card does not appear, I want to find where the turn stopped before changing the code. Let’s follow the same two-step plan through a failed request, recovery, and a follow-up.
 
-## Run the workbench
+### Run the workbench
 
 Start the [conversation workbench](/docs/react/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=debugging`. Configure server-only `OPENAI_API_KEY` and `OPENAI_MODEL` as described in the workbench guide. Selecting the lesson does not send a request.
 
-## Follow a failed request
+### Follow a failed request
 
 The **Deny requests for this demo** checkbox starts checked. Send the first prompt. The local endpoint returns HTTP 403 before it invokes the provider, and the source badge reads **Local demo failure**. The plan stays at revision 0.
 
@@ -32,7 +94,7 @@ Playback does not send requests, execute tools, or apply a plan. The demo checkb
 
 <img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The Requests inspector lists the denied HTTP 403 and the recovered model and readContext requests, with the selected tool result beside them." width="1600" height="1000" loading="lazy" />
 
-## Inspect the request and response
+### Inspect the request and response
 
 Use the workbench Requests view and the browser Network panel together. Select the request for the current turn, then open **Response** to see its HTTP response and every streamed event. The browser panel also helps identify failures before a response reaches Hashbrown.
 
@@ -46,7 +108,7 @@ Use `threadId` and `runId` to match the request to server events. `threadId` is 
 
 In the response, check for `RUN_STARTED`, content events, and a terminal `RUN_FINISHED` or `RUN_ERROR`. The runtime rejects a stream that ends before either terminal event. For `RUN_ERROR`, inspect the event's `message` and optional `code`, then check the corresponding server logs. Remove credentials and private user content before sharing a captured request.
 
-## Check the schema and component
+### Check the schema and component
 
 Start with the workbench’s trusted `SummaryCard`. Its exposed `props` schema accepts a string `title` and an array of string `steps`, with no children.
 
@@ -67,7 +129,7 @@ If the values are valid but nothing appears, confirm that the application render
 
 Partial output also matters: a component without a fallback may wait for valid props before appearing. See [Streaming props](/docs/react/concept/streaming) before treating that wait as a rendering failure.
 
-## Inspect the chat and tools
+### Inspect the chat and tools
 
 Set `debugName` when creating the chat. The [Messages and turns](/docs/react/concept/ai-basics) example uses `debugName: 'onboarding'` and includes the required system instructions.
 
@@ -77,7 +139,7 @@ For a tool failure, inspect the tool name, generated arguments, and handler resu
 
 Keep authorization in your handler or server. A schema can validate an account ID without proving that the user can access that account. See [Tool calling](/docs/react/concept/functions) for handler behavior and cancellation signals.
 
-## Check cancellation
+### Check cancellation
 
 `chat.stop()` cancels the active local generation or tool turn. Calling it when there is no active work throws. Connect the tool handler's abort signal to cancellable operations such as `fetch`, and connect a browser disconnect to the provider's abort signal in your endpoint, as the Quickstart does.
 
@@ -85,7 +147,7 @@ Stopping a request does not undo a completed tool action or prove that the serve
 
 A pending interrupt is a different state: while the agent waits for answers, `chat.isLoading` and `chat.isResuming` are false and `chat.pendingInterrupts` contains the batch. Calling `stop()` is not an answer to that batch. Use `resume()` with the complete set of responses, including any `cancelled` entries your application needs to submit.
 
-## Recover an interrupted run
+### Recover an interrupted run
 
 If a resume fails, identify whether its matching `RUN_STARTED` arrived:
 
@@ -96,7 +158,7 @@ If a resume fails, identify whether its matching `RUN_STARTED` arrived:
 
 Changing to a different thread retires local interrupt ownership; it does not cancel server work. See [Interrupt and resume](/docs/react/concept/interrupt-and-resume) for batch validation and recovery rules.
 
-## Try again after fixing the cause
+### Try again after fixing the cause
 
 After fixing the cause, send the prompt again in the workbench. In your application, decide whether to send a new message or reload the previous response. `chat.reload()` removes the last assistant response and resends the previous user message; it can repeat tool execution.
 

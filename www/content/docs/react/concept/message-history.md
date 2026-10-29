@@ -2,10 +2,93 @@
 title: 'Message history: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Keep, clear, and restore completed text, then follow the restored context into the next real request.'
+    content: 'Seed, replace, and retain conversation context with explicit storage boundaries.'
 ---
 
 # Message history
+
+<hb-docs-demo demo="canonical-workbench-message-history-react">
+</hb-docs-demo>
+
+Message history is the conversation context sent with the next request. Earlier user messages establish facts and goals; assistant messages and tool exchanges show what happened. A model does not remember a browser session independently of the context your application provides.
+
+Use initial messages to seed a new chat, and explicit replacement when the user selects a saved conversation or clears the current one. Storage, access control, retention, and selection are application concerns. A thread ID names a conversation; it does not load its transcript or make a browser text copy a durable agent checkpoint.
+
+<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+
+## Seed and replace a completed text exchange
+
+Use the endpoint and client configuration from the [Quickstart](/docs/react/start/quick). Render the component below inside the existing `HashbrownProvider`.
+
+The seed below is explicit sample history, not a recording or a database lookup. It ends with an assistant message so initialization does not ask the model to answer a trailing user message. Clear and restore are explicit actions; a follow-up sends the currently installed transcript.
+
+```tsx
+import { useChat } from '@hashbrownai/react';
+
+const savedMessages = [
+  { role: 'user' as const, content: 'Our book club is called Lighthouse.' },
+  {
+    role: 'assistant' as const,
+    content: 'I will refer to your club as Lighthouse.',
+    toolCalls: [],
+  },
+];
+
+export function ReadingHistory() {
+  const chat = useChat({
+    system: 'Help the user organize a book club.',
+    messages: savedMessages,
+  });
+  return (
+    <main>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() => chat.setMessages([])}
+      >
+        Clear
+      </button>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.setMessages(savedMessages.map((message) => ({ ...message })))
+        }
+      >
+        Restore sample
+      </button>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'What is our club called?',
+          })
+        }
+      >
+        Ask the club name
+      </button>
+      {chat.error && <p role="alert">The request failed.</p>}
+      {chat.messages.map((message, index) =>
+        message.role === 'user' || message.role === 'assistant' ? (
+          <p key={index}>
+            {typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content)}
+          </p>
+        ) : null,
+      )}
+    </main>
+  );
+}
+```
+
+This tool-free example assumes no pending interrupts. Do not replace history during a run, resume, approval pause, or recovery. Changing the initial `messages` option after creation does not replace the transcript; use `setMessages` for a deliberate load. A replacement ending in a user or tool message can start generation.
+
+For asynchronous storage, validate the entire saved envelope and confirm the selected conversation still owns the load before installing it. A narrow text archive omits activities, tool effects, shared state, provider metadata, and pending approvals. Use canonical server recovery for those workflows rather than treating text as a checkpoint.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="message-history">
 </hb-workbench>
@@ -18,7 +101,7 @@ The History inspector keeps the SDK transcript beside the app's retained copy. C
 
 Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=message-history`](http://127.0.0.1:4370/react.html?lesson=message-history). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/HistoryWorkbench.tsx) and real provider streaming. The model's wording can vary.
 
-## Follow the Conversation
+### Follow the Conversation
 
 Hashbrown includes the current transcript in the next request. Read it from `chat.messages`. Choose Requests in the inspector to see the actual request body, including the earlier user and assistant messages.
 
@@ -30,7 +113,7 @@ Hashbrown includes the current transcript in the next request. Read it from `cha
 
 Scrub the bottom timeline to compare those moments. Replay changes the selected view; it does not call a model, replace live messages, or write storage.
 
-## Seed Once, Replace Explicitly
+### Seed Once, Replace Explicitly
 
 The `messages` option supplies the initial history when the chat runtime is created. Changing that option later does not replace an existing transcript. For a load that finishes after the runtime has mounted, use the public setter deliberately:
 
@@ -42,7 +125,7 @@ chat.setMessages([]);
 
 Keep history edits disabled while a request is running, resuming, awaiting an interrupt response, or requiring recovery. If an asynchronous load can outlive a selection, check that it still belongs to the current conversation before applying it.
 
-## Keep a Completed Text Copy
+### Keep a Completed Text Copy
 
 The retained copy contains only user and assistant string content. Keeping it requires a successful completed `stop`, supported text, and a settled live runtime. Idle by itself does not prove success: a stopped or truncated response can leave partial assistant text on screen.
 
@@ -83,13 +166,13 @@ export function encodeWorkbenchHistory(
 
 This in-memory copy belongs to the current page. Refreshing the page discards it. Use [Save text conversations](/docs/react/recipes/browser-history) for an explicit browser-storage example.
 
-## Keep Configuration Separate
+### Keep Configuration Separate
 
 Use `system` for behavior and constraints. Use messages for requests, replies, and facts established during the conversation. Changing `system`, tools, transport options, or `threadId` affects future requests; it does not append a message or load saved text.
 
 A `threadId` is an opaque conversation identity. The client still sends its current transcript on each request, not a message delta. A thread ID does not load or save messages for you. Your application owns storage, selection, retention, and permission to read a conversation. See [Threads](/docs/react/recipes/threads) for application-owned server storage.
 
-## Respect the Checkpoint Boundary
+### Respect the Checkpoint Boundary
 
 A text copy is not a canonical agent checkpoint. It does not preserve reasoning replay metadata, tool effects, activities, shared state, or ownership of a pending interrupt. Reusing a thread ID does not restore those values.
 

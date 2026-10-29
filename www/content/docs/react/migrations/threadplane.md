@@ -7,11 +7,14 @@ meta:
 
 # Migrate chat presentation to Threadplane
 
+<hb-docs-demo demo="canonical-workbench-threadplane-react">
+</hb-docs-demo>
+
+The teaser shows the separately installed Threadplane client flow. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. It does not demonstrate every feature an existing chat screen may need.
+
 We can replace the transcript and composer in a Hashbrown chat screen while keeping `useChat` and the existing server. Let's make that change first, then check the features around it.
 
 The [Threadplane recipe](/docs/react/recipes/threadplane) contains the complete component, mounting code, and local source-package setup. At the referenced revision, the React components are private source packages; follow those build and local-install steps rather than assuming an npm registry package exists.
-
-The recipe opens with the separate **`canonical-workbench-threadplane-react`** walkthrough: install the React dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
 
 ## 1. Keep the conversation owner
 
@@ -65,3 +68,9 @@ With the tested Hashbrown **0.8.0** client, Stop cancels the request and the unf
 Check long text and narrow viewports. The recipe uses Threadplane's composer stylesheet, while `TextTranscript` presents literal text without automatic scrolling or token announcements. Add application behavior where your product needs it.
 
 Keep the existing screen until the features your users rely on have equivalent behavior. The [complete recipe](/docs/react/recipes/threadplane) is a bounded text conversation, so use its feature boundaries as a checklist for your application.
+
+## Explore it in the workbench
+
+The [Threadplane recipe](/docs/react/recipes/threadplane) runs a separate installed consumer with the canonical inspector and timeline. Follow its React installation and mounting instructions, send a shipping question, and continue with a follow-up. This is not a `?lesson=` route in the hosted workbench.
+
+Compare the first request, streamed reply, and follow-up history in **Requests**. **State** remains unchanged: this bounded text flow does not accept a plan or execute a business action. The scripted provider boundary makes the recorded exchange repeatable; it does not establish live provider access, storage migration, or support for the tool and generated-UI features listed above.

@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { rehypeConceptDiagrams } from './rehype-concept-diagrams';
 import { type Heading, rehypeHeadingIds } from './rehype-heading-ids';
 import { rehypeShiki } from './rehype-shiki';
 import { remarkCanonicalReference } from './remark-canonical-reference';
@@ -21,6 +22,7 @@ const processor = unified()
   .use(remarkCanonicalReference)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
+  .use(rehypeConceptDiagrams)
   .use(rehypeHeadingIds)
   .use(rehypeShiki);
 

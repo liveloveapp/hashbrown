@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -16,10 +17,7 @@ test.each(['react', 'angular'])(
   (sdk) => {
     const body = guide(sdk);
 
-    const marker = `<hb-workbench lesson="request-transformation">`;
-
-    expect(body.indexOf(marker)).toBeGreaterThan(-1);
-    expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
+    expectConceptFirstWorkbench(body, sdk, 'request-transformation');
     expect(body).toContain(
       `/video/docs/canonical-workbench-request-transformation-${sdk}-result.png`,
     );

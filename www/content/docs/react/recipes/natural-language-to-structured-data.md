@@ -2,26 +2,164 @@
 title: 'Natural language forms: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Generate a two-step plan, review it in editable form fields, and explicitly apply validated values without conflating draft and application state.'
+    content: 'Generate a typed form draft, edit a separate reviewed copy, and explicitly apply validated values.'
 ---
 
 # Natural language forms
 
-Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
+<hb-docs-demo demo="canonical-workbench-natural-forms-react">
+</hb-docs-demo>
+
+Natural-language input can give a form a useful first draft. A customer describes a trip; the model proposes a destination and duration; the customer corrects those fields before submitting. This works well when prose is easier to start with than a blank form, but precise controls still matter.
+
+Keep generated data, editable fields, and submitted application state separate. A response arriving in the browser must not submit the form or overwrite edits made while generation was in progress.
+
+<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+
+## Generate a form draft
+
+Start with the [React Quickstart](/docs/react/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Mount the component beneath `HashbrownProvider` and keep it mounted for the conversation lifetime.
+
+```tsx
+import { useState } from 'react';
+import { s } from '@hashbrownai/core';
+import { useStructuredCompletion } from '@hashbrownai/react';
+import { reviewTrip } from './review-trip';
+
+export const tripSchema = s.object('A trip draft for user review', {
+  destination: s.string('The destination city'),
+  days: s.integer('Number of days'),
+});
+
+export function TripDraft() {
+  const [input, setInput] = useState<{ id: string; text: string } | null>(null);
+  const [reviewed, setReviewed] = useState<{
+    sourceId: string;
+    destination: string;
+    days: number;
+  } | null>(null);
+  const [applied, setApplied] = useState<ReturnType<typeof reviewTrip>>(null);
+  const result = useStructuredCompletion({
+    input,
+    schema: tripSchema,
+    system: 'Extract a trip draft. Never submit or book anything.',
+  });
+  const canReview =
+    !result.isLoading &&
+    !result.error &&
+    result.lastRunFinishReason === 'stop' &&
+    input !== null;
+  return (
+    <section>
+      <button
+        disabled={result.isLoading}
+        onClick={() => {
+          setReviewed(null);
+          setInput({ id: crypto.randomUUID(), text: 'Three days in Lisbon' });
+        }}
+      >
+        Generate trip draft
+      </button>
+      {result.error ? (
+        <p role="alert">Generation failed. Try again.</p>
+      ) : (
+        <pre>{JSON.stringify(result.output, null, 2)}</pre>
+      )}
+      <button
+        disabled={!canReview}
+        onClick={() => {
+          const draft = reviewTrip(result.output);
+          if (canReview && draft && input)
+            setReviewed({ ...draft, sourceId: input.id });
+        }}
+      >
+        Review draft
+      </button>
+      {reviewed && (
+        <fieldset disabled={result.isLoading}>
+          <label>
+            Destination{' '}
+            <input
+              value={reviewed.destination}
+              onChange={(event) =>
+                setReviewed({ ...reviewed, destination: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Days{' '}
+            <input
+              type="number"
+              value={reviewed.days}
+              onChange={(event) =>
+                setReviewed({ ...reviewed, days: Number(event.target.value) })
+              }
+            />
+          </label>
+          <button
+            onClick={() => {
+              const trip = reviewTrip(reviewed);
+              if (canReview && trip && reviewed.sourceId === input?.id) {
+                setApplied(trip);
+                setReviewed(null);
+              }
+            }}
+          >
+            Apply
+          </button>
+        </fieldset>
+      )}
+      <p>
+        Applied trip:{' '}
+        {applied ? `${applied.destination}, ${applied.days} days` : 'None'}
+      </p>
+    </section>
+  );
+}
+```
+
+The completion starts with `null`, so mounting makes no request. The preview can change while generation runs. The structured completion API owns parsing here. Enable **Review draft** only after a fresh successful completion, validate the completed structured value, then copy its values into editable fields. The workbench below demonstrates a separate text-and-parser implementation that also validates the original JSON document. For this form, require a trimmed destination of 1–120 characters and an integer duration from 1 through 14.
+
+Create `review-trip.ts` with this application helper. It validates both a generated draft and the user’s edited values. It defines the boundary independently of the component library:
+
+```ts
+export function reviewTrip(
+  value: unknown,
+): { destination: string; days: number } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const trip = value as Record<string, unknown>;
+  if (typeof trip.destination !== 'string' || typeof trip.days !== 'number')
+    return null;
+  const destination = trip.destination.trim();
+  return destination.length > 0 &&
+    destination.length <= 120 &&
+    Number.isInteger(trip.days) &&
+    trip.days >= 1 &&
+    trip.days <= 14
+    ? { destination, days: trip.days }
+    : null;
+}
+```
+
+The labelled inputs change only the reviewed copy. **Apply** validates it again and consumes that review. The source ID ties the fields to the current request; generating again discards the old review. This example has one local editor. Add an application revision check if another screen or client can change the accepted trip. A backend save must repeat value validation and check identity and ownership.
+
+## Explore it in the workbench
 
 <hb-workbench lesson="natural-forms">
 </hb-workbench>
+
+Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
 
 <img src="/video/docs/canonical-workbench-natural-forms-react-result.png" alt="The React workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />
 
 ## Keep the values separate
 
-| Value | Who changes it | Purpose |
-| --- | --- | --- |
-| Request text | The user | Describes the desired plan. |
-| Generated draft | The actual model response, parsed by Hashbrown | Proposes title and step values. |
-| Reviewed fields | Review draft, then the user | Holds an editable application copy. |
-| Applied plan | The validated Apply handler | Holds the application's accepted plan and revision. |
+| Value           | Who changes it                                 | Purpose                                             |
+| --------------- | ---------------------------------------------- | --------------------------------------------------- |
+| Request text    | The user                                       | Describes the desired plan.                         |
+| Generated draft | The actual model response, parsed by Hashbrown | Proposes title and step values.                     |
+| Reviewed fields | Review draft, then the user                    | Holds an editable application copy.                 |
+| Applied plan    | The validated Apply handler                    | Holds the application's accepted plan and revision. |
 
 The workbench begins with the same application-owned two-step plan at revision zero. A new draft leaves that accepted data in place. Typing, parsing a partial response, or rendering a component does not apply a replacement.
 

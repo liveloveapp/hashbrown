@@ -72,7 +72,7 @@
       "options": {
         "command": "vitest run --config www/vitest.config.mts"
       },
-      "dependsOn": ["collect-docs", "generate-llms"],
+      "dependsOn": ["collect-docs", "generate-llms", "check-docs-examples"],
       "cache": true,
       "inputs": ["default", "^production", "ciTooling"]
     },
@@ -385,6 +385,19 @@
         "command": "tsx www/src/tools/record-docs-threadplane-live.ts"
       },
       "dependsOn": ["workbench-build"]
+    },
+    "check-docs-examples": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{projectRoot}/content/docs/**/*.md",
+        "{workspaceRoot}/tsconfig.base.json"
+      ],
+      "options": {
+        "command": "node --import tsx www/src/tools/check-docs-examples.ts"
+      }
     }
   },
   "namedInputs": {

@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -32,10 +33,7 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'local-models'])?.body ?? '';
 
-    const demo = body.indexOf(`<hb-workbench lesson="local-models">`);
-
-    expect(demo).toBeGreaterThan(-1);
-    expect(demo).toBeLessThan(body.indexOf('\n## '));
+    expectConceptFirstWorkbench(body, sdk, 'local-models');
     expect(body).toContain(
       `/video/docs/canonical-workbench-local-models-${sdk}-result.png`,
     );
