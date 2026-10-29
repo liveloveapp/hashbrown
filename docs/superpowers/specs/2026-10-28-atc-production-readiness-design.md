@@ -1,6 +1,6 @@
 # ATC B4 0.15.7 production-readiness validation
 
-Status: Proposed for human approval. This is a validation design, not production enablement.
+Status: Approved by the human on 2026-10-29. This authorizes the validation design and its implementation, not production enablement.
 
 ## Objective and frozen source
 
