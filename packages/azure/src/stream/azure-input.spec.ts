@@ -711,3 +711,88 @@ test('a provider step with no status, or settled failed by a run error, is not r
 
   expect(input).toEqual([{ role: 'user', content: 'Search' }]);
 });
+
+for (const step of [undefined, { v: 99, kind: 'provider' }, 'malformed']) {
+  test(`omits native code calls using marker with step ${JSON.stringify(step)}`, () => {
+    const messages: Message[] = [
+      Object.freeze({
+        id: 'a',
+        role: 'assistant',
+        content: 'Done',
+        toolCalls: Object.freeze([
+          Object.freeze({
+            id: 'native',
+            type: 'function',
+            function: { name: 'code_interpreter', arguments: '{}' },
+            metadata: {
+              azure: { itemType: 'code_interpreter_call' },
+              'b4.step': step,
+            },
+          }),
+          Object.freeze({
+            id: 'app',
+            type: 'function',
+            function: { name: 'code_interpreter', arguments: '{}' },
+          }),
+        ]) as unknown as NonNullable<
+          Extract<Message, { role: 'assistant' }>['toolCalls']
+        >,
+      }),
+      Object.freeze({
+        id: 'r',
+        role: 'tool',
+        toolCallId: 'native',
+        content: 'native',
+      }),
+      Object.freeze({
+        id: 'ar',
+        role: 'tool',
+        toolCallId: 'app',
+        content: 'app',
+      }),
+    ];
+
+    const result = mapInput(Object.freeze(messages));
+
+    expect(result).toEqual([
+      { role: 'assistant', content: 'Done' },
+      {
+        type: 'function_call',
+        call_id: 'app',
+        name: 'code_interpreter',
+        arguments: '{}',
+      },
+      { type: 'function_call_output', call_id: 'app', output: 'app' },
+    ]);
+  });
+}
+
+test('preserves same-name app calls with the other provider marker', () => {
+  const messages: Message[] = [
+    {
+      id: 'a',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'app',
+          type: 'function',
+          function: { name: 'code_interpreter', arguments: '{}' },
+          metadata: { openai: { itemType: 'code_interpreter_call' } },
+        },
+      ],
+    },
+    { id: 'r', role: 'tool', toolCallId: 'app', content: 'result' },
+  ];
+
+  const result = mapInput(messages);
+
+  expect(result).toEqual([
+    {
+      type: 'function_call',
+      call_id: 'app',
+      name: 'code_interpreter',
+      arguments: '{}',
+    },
+    { type: 'function_call_output', call_id: 'app', output: 'result' },
+  ]);
+});

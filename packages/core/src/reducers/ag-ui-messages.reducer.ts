@@ -41,6 +41,7 @@ import {
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
+  completeRunningStep,
   readRawStepIdentity,
   readResultFailure,
   reopenCancelledStep,
@@ -1285,6 +1286,30 @@ function upsertToolResult(
     );
   }
   const input = event as AGUIEvent & { readonly error?: string };
+  const previous = messages[index];
+  const previousStep = ɵreadToolStep(
+    previous?.metadata?.[ɵTOOL_STEP_METADATA_KEY],
+    event.toolCallId,
+  );
+  const previousFailure =
+    (previous?.role === 'tool'
+      ? readResultFailure(previous.error)
+      : undefined) ??
+    (previousStep?.status === 'failed'
+      ? readResultFailure(previousStep.error)
+      : undefined);
+  const resultError =
+    readResultFailure(input.error) ?? previousFailure ?? input.error;
+  // A correction owns fresh native content and provenance, while the earlier
+  // result's failed step remains authoritative under the shared merge rules.
+  const previousMetadata =
+    previousFailure === undefined
+      ? previous?.metadata
+      : completeRunningStep(
+          seedFrameResultStep(previous?.metadata, { error: previousFailure }),
+          previousFailure,
+          event.toolCallId,
+        );
   const message = freezeMessage(
     mergeEventFields(
       {
@@ -1292,7 +1317,10 @@ function upsertToolResult(
         role: 'tool' as const,
         toolCallId: event.toolCallId,
         content: event.content,
-        ...(input.error === undefined ? {} : { error: input.error }),
+        ...(previousMetadata === undefined
+          ? {}
+          : { metadata: previousMetadata }),
+        ...(resultError === undefined ? {} : { error: resultError }),
       } as Message,
       event,
     ),

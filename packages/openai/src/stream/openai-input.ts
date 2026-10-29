@@ -78,7 +78,9 @@ function isProviderCall(toolCall: ToolCall): boolean {
 
   const marker = metadata['openai'];
   return (
-    (isRecord(marker) && marker['itemType'] === 'web_search_call') ||
+    (isRecord(marker) &&
+      (marker['itemType'] === 'web_search_call' ||
+        marker['itemType'] === 'code_interpreter_call')) ||
     isProviderStep(metadata[ɵTOOL_STEP_METADATA_KEY])
   );
 }
