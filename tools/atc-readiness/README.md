@@ -90,7 +90,7 @@ spend and exact-request platform-log adapters.
 
 Keep normal expected provenance independent of the candidate normal manifest.
 The normal context is the context above, plus `faultFunctionTreePath` (the fault
-copy's complete `functions` directory), `faultOutputTreePath` (its complete
+copy's complete `functions/api/run.func` directory), `faultOutputTreePath` (its complete
 `.vercel/output`), `faultArtifactPath` (its unchanged bundled runtime), and
 `faultManifest` (a separate candidate fault provenance object). Independent
 expected provenance adds `fault`:
@@ -99,11 +99,20 @@ expected provenance adds `fault`:
 {
   sourceCommit, project, // exactly the normal reviewed source/project/team
   deployment: { id, origin, target: 'preview', readyState: 'READY' },
-  normalTreeSha256, faultTreeSha256,
+  normalTreeSha256, faultTreeSha256, // complete output/functions roots
+  functionTreeSha256, // fault output/functions/api/run.func only
   normalConfigSha256, faultConfigSha256,
   outputTreeSha256, artifactSha256,
 }
 ```
+
+Normal `functionTreePath` and `expected.functionTreeSha256` retain the existing
+complete `output/functions/api/run.func` scope. The fault path and
+`fault.functionTreeSha256` use that same scope. Separately, the shared verifier's
+`fault.normalTreeSha256` and `fault.faultTreeSha256` hash the broader complete
+`output/functions` roots, derived from each output path. These raw digest scopes
+are distinct; never relabel an existing `run.func` digest as an all-functions
+digest.
 
 The fault preview ID and HTTPS origin must differ from both normal READY
 previews. The module checks the entire copied output's paths, file types, modes,

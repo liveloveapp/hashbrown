@@ -336,12 +336,21 @@ export async function preflightManagedTimeout(options, expected) {
     options.faultOutputTreePath,
   );
   const variant = await verifyTimeoutVariant(
-    options.functionTreePath,
-    options.faultFunctionTreePath,
+    join(options.outputTreePath, 'functions'),
+    join(options.faultOutputTreePath, 'functions'),
   );
   for (const key of Object.keys(variant))
     assert.equal(variant[key], fault[key], 'fault raw-tree digest mismatch');
-  assert.equal(variant.normalTreeSha256, expected.functionTreeSha256);
+  assert.equal(
+    await hashTree(options.functionTreePath),
+    expected.functionTreeSha256,
+    'normal run.func raw digest mismatch',
+  );
+  assert.equal(
+    await hashTree(options.faultFunctionTreePath),
+    fault.functionTreeSha256,
+    'fault run.func raw digest mismatch',
+  );
   assert.equal(
     sha256(await readFile(options.faultArtifactPath)),
     expected.artifactSha256,

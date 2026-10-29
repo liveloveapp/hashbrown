@@ -407,7 +407,7 @@ test('preflight binds raw fault output and rejects edits outside the one timeout
     project,
     schemaSha256: sha256('{}'),
     artifactSha256: sha256('unchanged runtime'),
-    functionTreeSha256: await hashTree(normal + '/functions'),
+    functionTreeSha256: await hashTree(normal + '/functions/api/run.func'),
     deployments: [
       { id: 'normal1', origin: 'https://normal1.example' },
       { id: 'normal2', origin: 'https://normal2.example' },
@@ -426,6 +426,7 @@ test('preflight binds raw fault output and rejects edits outside the one timeout
       normal + '/functions',
       fault + '/functions',
     )),
+    functionTreeSha256: await hashTree(fault + '/functions/api/run.func'),
     outputTreeSha256: await hashTree(fault),
     artifactSha256: expected.artifactSha256,
   };
@@ -433,8 +434,8 @@ test('preflight binds raw fault output and rejects edits outside the one timeout
     schemaPath: stage + '/schema.json',
     outputTreePath: normal,
     faultOutputTreePath: fault,
-    functionTreePath: normal + '/functions',
-    faultFunctionTreePath: fault + '/functions',
+    functionTreePath: normal + '/functions/api/run.func',
+    faultFunctionTreePath: fault + '/functions/api/run.func',
     faultArtifactPath: stage + '/artifact.mjs',
     faultManifest: structuredClone(expected.fault),
   };
