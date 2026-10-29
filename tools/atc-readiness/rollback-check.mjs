@@ -508,7 +508,12 @@ function counters(value) {
   );
 }
 
-/** Open actual guarded Postgres and bounded HTTP/SSE clients; fresh requests send no visitor cookie. */
+/**
+ * Open guarded Postgres and bounded HTTP/SSE clients; fresh requests send no visitor cookie.
+ * @remarks
+ * Aborted or expired initialization returns no IO. Late contexts remain owned and are closed.
+ * A rejection with `cleanupFailed` retains unresolved/failed initialization cleanup for follow-up.
+ */
 export async function createRollbackIO(
   options,
   expected,
@@ -516,32 +521,45 @@ export async function createRollbackIO(
   control,
   dependencies = {},
 ) {
-  const context = await (dependencies.openContext ?? storageContext)(
-    options,
-    expected,
-  );
-  let saver, threads;
-  const close = async () => {
-    const errors = [];
-    for (const resource of [saver, threads, context.database]) {
-      if (!resource) continue;
-      try {
-        await timeoutBound(
-          () => (resource.end ? resource.end() : resource.close()),
-          { deadlineMs: Date.now() + 5000 },
-        );
-      } catch {
-        errors.push('owned rollback resource close failed');
+  let context, saver, threads, opening, closing;
+  const close = () =>
+    (closing ??= (async () => {
+      const errors = [];
+      for (const resource of [saver, threads, context?.database]) {
+        if (!resource) continue;
+        try {
+          await timeoutBound(
+            () => (resource.end ? resource.end() : resource.close()),
+            { deadlineMs: Date.now() + 5000 },
+          );
+        } catch {
+          errors.push('owned rollback resource close failed');
+        }
       }
-    }
-    assert.equal(errors.length, 0, errors.join('; '));
-    assert.equal(
-      context.databaseErrors?.length ?? 0,
-      0,
-      'database idle error observed',
-    );
-  };
+      assert.equal(errors.length, 0, errors.join('; '));
+      assert.equal(
+        context?.databaseErrors?.length ?? 0,
+        0,
+        'database idle error observed',
+      );
+    })());
   try {
+    await timeoutBound(() => undefined, control);
+    opening = Promise.resolve()
+      .then(() =>
+        (dependencies.openContext ?? storageContext)(options, expected),
+      )
+      .then(async (opened) => {
+        // Keep ownership in this continuation even when the caller's deadline wins the race.
+        context = opened;
+        if (control.signal.aborted || Date.now() >= control.deadlineMs) {
+          await close();
+          throw Error('rollback initialization exceeded phase control');
+        }
+        return opened;
+      });
+    opening.catch(() => undefined);
+    context = await timeoutBound(() => opening, control);
     saver = context.storage.postgresCheckpointer({
       pool: context.database,
       tablePrefix: 'atc',
@@ -550,11 +568,12 @@ export async function createRollbackIO(
       pool: context.database,
       tablePrefix: 'atc',
     });
-    const schema = JSON.parse(await readFile(options.schemaPath, 'utf8'));
-    assert.equal(
-      sha256(await readFile(options.schemaPath)),
-      expected.schemaSha256,
+    const schemaBytes = await timeoutBound(
+      () => readFile(options.schemaPath),
+      control,
     );
+    const schema = JSON.parse(schemaBytes);
+    assert.equal(sha256(schemaBytes), expected.schemaSha256);
     const Ajv =
       dependencies.Ajv ??
       createRequire(resolveRuntimeDependency(options.runtimeRoot, 'ajv'))(
@@ -583,6 +602,7 @@ export async function createRollbackIO(
       }
       return result;
     };
+    await timeoutBound(() => undefined, control);
     return {
       close,
       snapshot,
@@ -837,7 +857,33 @@ export async function createRollbackIO(
       },
     };
   } catch (error) {
-    await close();
+    let cleanupFailed = false;
+    if (opening) {
+      try {
+        await timeoutBound(
+          () =>
+            opening.then(
+              () => undefined,
+              () => undefined,
+            ),
+          { deadlineMs: Date.now() + 5000 },
+        );
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+    if (context) {
+      try {
+        await close();
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+    if (cleanupFailed)
+      throw Object.assign(
+        Error('partial rollback initialization cleanup failed'),
+        { cleanupFailed: true, cause: error },
+      );
     throw error;
   }
 }
@@ -872,6 +918,48 @@ export async function runRollbackCheck(
   };
   let io;
   let finalizeAlias;
+  let initializingIO;
+  let initializationCleanupFailed = false;
+  let cleanupPromise;
+  const cleanupOwned = () =>
+    (cleanupPromise ??= (async () => {
+      const errors = [];
+      if (initializingIO) {
+        try {
+          await timeoutBound(
+            () =>
+              initializingIO.then(
+                () => undefined,
+                () => undefined,
+              ),
+            { deadlineMs: Date.now() + 55000 },
+          );
+        } catch {
+          errors.push('owned rollback initialization still unresolved');
+        }
+      }
+      if (initializationCleanupFailed)
+        errors.push('partial rollback initialization cleanup failed');
+      if (finalizeAlias) {
+        try {
+          await timeoutBound(() => finalizeAlias(), {
+            deadlineMs: Date.now() + 55000,
+          });
+        } catch {
+          errors.push('owned alias restoration/removal failed');
+        }
+      }
+      if (io) {
+        try {
+          await io.close();
+        } catch {
+          errors.push('owned HTTP/storage cleanup failed');
+        }
+      }
+      receipt.cleanupErrors = errors;
+      assert.equal(errors.length, 0, errors.join('; '));
+      receipt.closed = true;
+    })());
   let redact = createRedactor([adapters.vercelToken]);
   try {
     assert(
@@ -933,28 +1021,7 @@ export async function runRollbackCheck(
         phase: 'rollback',
         runId: adapters.runId,
         observationSource: adapters.observationSource,
-        cleanup: async () => {
-          const errors = [];
-          if (finalizeAlias) {
-            try {
-              await timeoutBound(() => finalizeAlias(), {
-                deadlineMs: Date.now() + 55000,
-              });
-            } catch {
-              errors.push('owned alias restoration/removal failed');
-            }
-          }
-          if (io) {
-            try {
-              await io.close();
-            } catch {
-              errors.push('owned HTTP/storage cleanup failed');
-            }
-          }
-          receipt.cleanupErrors = errors;
-          assert.equal(errors.length, 0, errors.join('; '));
-          receipt.closed = true;
-        },
+        cleanup: cleanupOwned,
       },
       async (control) => {
         await (dependencies.verifyArtifacts ?? verifyRollbackArtifacts)(
@@ -966,15 +1033,26 @@ export async function runRollbackCheck(
           receipt.deployments.push(
             await alias.verifyDeployment(candidate, control),
           );
-        io = await (dependencies.createIO ?? createRollbackIO)(
-          options,
-          expected,
-          plan,
-          control,
-          {
-            routeProof: adapters.routeProof,
-          },
-        );
+        initializingIO = Promise.resolve()
+          .then(() =>
+            (dependencies.createIO ?? createRollbackIO)(
+              options,
+              expected,
+              plan,
+              control,
+              { routeProof: adapters.routeProof },
+            ),
+          )
+          .then((opened) => {
+            io = opened;
+            return opened;
+          })
+          .catch((error) => {
+            initializationCleanupFailed = error.cleanupFailed === true;
+            throw error;
+          });
+        initializingIO.catch(() => undefined);
+        await initializingIO;
         const secretRedactor = redact;
         redact = (value) => secretRedactor(io.redact(value));
         await runRollbackProtocol({
@@ -995,6 +1073,16 @@ export async function runRollbackCheck(
     receipt.status = 'failed';
     receipt.qualified = false;
     receipt.error = error.message;
+  } finally {
+    if (finalizeAlias) {
+      try {
+        await cleanupOwned();
+      } catch (error) {
+        receipt.status = 'failed';
+        receipt.qualified = false;
+        receipt.error ??= error.message;
+      }
+    }
   }
   const sanitized = redact(receipt);
   await writeFile(

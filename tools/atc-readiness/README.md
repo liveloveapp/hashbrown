@@ -350,3 +350,17 @@ leaves the alias untouched and records cleanup failure; it never sets `closed`
 to true. Owned IO closure is still attempted when alias cleanup fails. Optional
 injected IO boundaries in `runRollbackCheck` support offline regressions; normal
 execution uses the guarded artifact, Vercel, storage and aggregate-run adapters.
+
+The wrapper also awaits its same idempotent resource finalizer in an outer
+`finally`, covering coordinator-lock and observer startup errors that occur
+before the run coordinator enters its own cleanup scope. It preserves another
+owner's coordinator lock. Storage initialization checks cancellation/deadline
+before opening a pool and bounds the opening wait and schema read. A late pool
+remains owned by its opening continuation and closes under fresh bounded grace.
+Initialization cleanup gets a five-second settlement grace; unresolved or failed
+cleanup sets `cleanupFailed`, keeps the receipt's `closed` false and records a
+cleanup error. The late continuation still attempts closure after that grace.
+The wrapper waits for initialization ownership to settle before reporting clean
+resource closure; each actual storage resource gets its own fresh five-second
+close bound even after phase abort or expiry. Later closure does not silently
+turn a previously uncertain receipt into successful cleanup.

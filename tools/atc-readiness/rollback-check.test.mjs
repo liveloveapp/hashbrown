@@ -697,3 +697,325 @@ test('lost alias ownership fails cleanup but still closes initialized IO', async
     await rm(f.stage, { recursive: true, force: true });
   }
 });
+
+for (const startup of [
+  'existing coordinator lock',
+  'observer startup failure',
+]) {
+  test(
+    'wrapper owns alias cleanup when run startup fails: ' + startup,
+    async () => {
+      const { runRollbackCheck } = await import('./rollback-check.mjs');
+      const { writeFile, readFile, rm } = await import('node:fs/promises');
+      const f = await wrapperFixture();
+      if (startup === 'existing coordinator lock') {
+        await writeFile(f.stage + '/rollout-budget.lock', 'another owner', {
+          mode: 0o600,
+        });
+        delete f.dependencies.withRun;
+      } else
+        f.dependencies.withRun = async () => {
+          throw Error('observer startup failed');
+        };
+      try {
+        const receipt = await runRollbackCheck(
+          f.context,
+          f.expected,
+          f.adapters,
+          f.dependencies,
+        );
+
+        assert.equal(receipt.status, 'failed');
+        assert.equal(receipt.aliasRemoved, true);
+        assert.equal(receipt.closed, true);
+        assert.deepEqual(receipt.cleanupErrors, []);
+        assert.equal(f.calls.filter((call) => call === 'remove').length, 1);
+        if (startup === 'existing coordinator lock')
+          assert.equal(
+            await readFile(f.stage + '/rollout-budget.lock', 'utf8'),
+            'another owner',
+          );
+      } finally {
+        await rm(f.stage, { recursive: true, force: true });
+      }
+    },
+  );
+}
+
+test('wrapper cleanup remains idempotent across coordinator and outer failure paths', async () => {
+  const { runRollbackCheck } = await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const f = await wrapperFixture();
+  try {
+    const receipt = await runRollbackCheck(
+      f.context,
+      f.expected,
+      f.adapters,
+      f.dependencies,
+    );
+
+    assert.equal(receipt.status, 'failed');
+    assert.equal(receipt.aliasRemoved, true);
+    assert.equal(f.calls.filter((call) => call === 'remove').length, 1);
+    assert.equal(f.calls.filter((call) => call === 'close').length, 1);
+  } finally {
+    await rm(f.stage, { recursive: true, force: true });
+  }
+});
+
+async function initializationFixture({ closeFailure = false } = {}) {
+  const { mkdtemp, writeFile } = await import('node:fs/promises');
+  const { sha256 } = await import('./common.mjs');
+  const stage = await mkdtemp('/private/tmp/rollback-initialization-');
+  await writeFile(stage + '/schema.json', '{}');
+  const calls = [];
+  const context = {
+    secrets: {},
+    redact: (value) => value,
+    databaseErrors: [],
+    database: {
+      end: async () => {
+        calls.push('pool');
+        if (closeFailure) throw Error('pool close failed');
+      },
+    },
+    storage: {
+      postgresCheckpointer: () => ({ close: async () => calls.push('saver') }),
+      createPostgresThreadsStore: () => ({
+        close: async () => calls.push('threads'),
+      }),
+    },
+  };
+  const dependencies = {
+    openContext: async () => {
+      calls.push('open');
+      return context;
+    },
+    Ajv: class {
+      compile() {
+        return () => true;
+      }
+    },
+  };
+  return {
+    stage,
+    context,
+    calls,
+    dependencies,
+    options: { schemaPath: stage + '/schema.json' },
+    expected: { schemaSha256: sha256('{}') },
+  };
+}
+
+for (const stopped of ['expired', 'aborted']) {
+  test(
+    'rollback IO refuses initialization before opening storage when already ' +
+      stopped,
+    async () => {
+      const { createRollbackIO } = await import('./rollback-check.mjs');
+      const { rm } = await import('node:fs/promises');
+      const f = await initializationFixture();
+      const controller = new AbortController();
+      if (stopped === 'aborted') controller.abort(Error('phase stopped'));
+      const control = {
+        signal: controller.signal,
+        deadlineMs: Date.now() + (stopped === 'expired' ? -1 : 1000),
+      };
+      let unexpected;
+      try {
+        await assert.rejects(async () => {
+          unexpected = await createRollbackIO(
+            f.options,
+            f.expected,
+            plan,
+            control,
+            f.dependencies,
+          );
+        }, /deadline|phase stopped/);
+
+        assert.equal(f.calls.filter((call) => call === 'open').length, 0);
+      } finally {
+        if (unexpected) await unexpected.close();
+        await rm(f.stage, { recursive: true, force: true });
+      }
+    },
+  );
+}
+
+test('late-opened rollback pool is closed before initialization rejection settles', async () => {
+  const { createRollbackIO } = await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const { setTimeout: delay } = await import('node:timers/promises');
+  const f = await initializationFixture();
+  const controller = new AbortController();
+  f.dependencies.openContext = async () => {
+    f.calls.push('open');
+    await delay(25);
+    return f.context;
+  };
+  const pending = createRollbackIO(
+    f.options,
+    f.expected,
+    plan,
+    { signal: controller.signal, deadlineMs: Date.now() + 1000 },
+    f.dependencies,
+  );
+  await delay(5);
+
+  controller.abort(Error('phase stopped during initialization'));
+  await assert.rejects(pending, /phase stopped|cancelled|initialization/);
+
+  assert.deepEqual(f.calls, ['open', 'pool']);
+  await rm(f.stage, { recursive: true, force: true });
+});
+
+test('late pool close failure retains failed cleanup evidence', async () => {
+  const { createRollbackIO } = await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const { setTimeout: delay } = await import('node:timers/promises');
+  const f = await initializationFixture({ closeFailure: true });
+  f.dependencies.openContext = async () => {
+    f.calls.push('open');
+    await delay(25);
+    return f.context;
+  };
+  let error;
+
+  await createRollbackIO(
+    f.options,
+    f.expected,
+    plan,
+    { ...bounds(), deadlineMs: Date.now() + 5 },
+    f.dependencies,
+  ).catch((caught) => {
+    error = caught;
+  });
+
+  assert.equal(error?.cleanupFailed, true);
+  assert.deepEqual(f.calls, ['open', 'pool']);
+  await rm(f.stage, { recursive: true, force: true });
+});
+
+test('wrapper never marks initialization cleanup failure fully closed', async () => {
+  const { runRollbackCheck } = await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const f = await wrapperFixture();
+  f.dependencies.createIO = async () => {
+    throw Object.assign(Error('late pool cleanup uncertain'), {
+      cleanupFailed: true,
+    });
+  };
+  try {
+    const receipt = await runRollbackCheck(
+      f.context,
+      f.expected,
+      f.adapters,
+      f.dependencies,
+    );
+
+    assert.equal(receipt.aliasRemoved, true);
+    assert.equal(receipt.closed, false);
+    assert(
+      receipt.cleanupErrors.includes(
+        'partial rollback initialization cleanup failed',
+      ),
+    );
+  } finally {
+    await rm(f.stage, { recursive: true, force: true });
+  }
+});
+
+test('wrapper waits for late storage ownership to settle before declaring cleanup complete', async () => {
+  const { runRollbackCheck, createRollbackIO } =
+    await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const { setTimeout: delay } = await import('node:timers/promises');
+  const f = await wrapperFixture();
+  const initialization = await initializationFixture();
+  initialization.context.database.end = async () => f.calls.push('pool');
+  initialization.dependencies.openContext = async () => {
+    await delay(25);
+    return initialization.context;
+  };
+  f.dependencies.createIO = (_, __, actualPlan, control) =>
+    createRollbackIO(
+      initialization.options,
+      initialization.expected,
+      actualPlan,
+      control,
+      initialization.dependencies,
+    );
+  f.dependencies.withRun = async (_, __, options, execute) => {
+    const controller = new AbortController();
+    const pending = execute({
+      signal: controller.signal,
+      deadlineMs: Date.now() + 1000,
+    });
+    pending.catch(() => undefined);
+    await delay(5);
+    controller.abort(Error('phase stopped while pool opening'));
+    try {
+      throw Error('phase deadline exhausted');
+    } finally {
+      await options.cleanup();
+    }
+  };
+  try {
+    const receipt = await runRollbackCheck(
+      f.context,
+      f.expected,
+      f.adapters,
+      f.dependencies,
+    );
+
+    assert.equal(receipt.status, 'failed');
+    assert.equal(receipt.closed, true);
+    assert.deepEqual(receipt.cleanupErrors, []);
+    assert.equal(f.calls.filter((call) => call === 'pool').length, 1);
+    assert(f.calls.indexOf('pool') < f.calls.indexOf('remove'));
+  } finally {
+    await rm(f.stage, { recursive: true, force: true });
+    await rm(initialization.stage, { recursive: true, force: true });
+  }
+});
+
+test('pool resolving beyond initialization cleanup grace remains owned and closes later', async () => {
+  const { createRollbackIO } = await import('./rollback-check.mjs');
+  const { timeoutBound } = await import('./managed-timeout-io.mjs');
+  const { rm } = await import('node:fs/promises');
+  const f = await initializationFixture();
+  let resolveOpening, acknowledgeClose;
+  const closed = new Promise((resolve) => {
+    acknowledgeClose = resolve;
+  });
+  f.context.database.end = async () => {
+    f.calls.push('pool');
+    acknowledgeClose();
+  };
+  f.dependencies.openContext = () =>
+    new Promise((resolve) => {
+      f.calls.push('open');
+      resolveOpening = resolve;
+    });
+  let error;
+  try {
+    await createRollbackIO(
+      f.options,
+      f.expected,
+      plan,
+      { ...bounds(), deadlineMs: Date.now() + 10 },
+      f.dependencies,
+    ).catch((caught) => {
+      error = caught;
+    });
+
+    assert.equal(error?.cleanupFailed, true);
+    assert.deepEqual(f.calls, ['open']);
+    resolveOpening(f.context);
+    await timeoutBound(() => closed, { deadlineMs: Date.now() + 1000 });
+    assert.deepEqual(f.calls, ['open', 'pool']);
+  } finally {
+    resolveOpening?.(f.context);
+    await rm(f.stage, { recursive: true, force: true });
+  }
+});
