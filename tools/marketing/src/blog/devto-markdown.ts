@@ -7,7 +7,18 @@ const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
 const CODE_EXAMPLE_OPEN = /^\s*<hb-code-example\s+header="([^"]*)"\s*>\s*$/;
 const SITE_ONLY_TAG =
-  /^\s*(?:<\/hb-code-example>|<\/?hb-carousel(?:\s[^>]*)?>|<hb-magic-text-demo>\s*<\/hb-magic-text-demo>)\s*$/;
+  /^\s*(?:<\/hb-code-example>|<\/?hb-carousel(?:\s[^>]*)?>|<\/hb-magic-text-demo>|<\/www-atc-demo-video>)\s*$/;
+/** Interactive or video-only elements: the opening tag (and a same-line close) becomes a link. */
+const DEMO_LINKS: [RegExp, string][] = [
+  [
+    /^\s*<hb-magic-text-demo\s*>(?:\s*<\/hb-magic-text-demo>)?\s*$/,
+    'See the interactive demo on hashbrown.dev',
+  ],
+  [
+    /^\s*<www-atc-demo-video\s*>(?:\s*<\/www-atc-demo-video>)?\s*$/,
+    'Watch the demo on hashbrown.dev',
+  ],
+];
 const LOOM_EMBED =
   /^\s*<div[^>]*>\s*<iframe[^>]*\ssrc="https:\/\/www\.loom\.com\/embed\/([a-f0-9]+)[^"]*"[^>]*><\/iframe>\s*<\/div>\s*$/i;
 
@@ -84,8 +95,10 @@ function rewriteLine(line: string, base: string): string {
  *   closed only by a matching fence) and inline code spans are never changed.
  * - Site-only components become plain markdown: `<hb-code-example header="x">`
  *   becomes a bold `**x**` label above its code block; `<hb-carousel>` is
- *   unwrapped and its images kept; the interactive `<hb-magic-text-demo>` is
- *   dropped (it has no readable content); the Loom `<iframe>` wrapper becomes
+ *   unwrapped and its images kept; the interactive `<hb-magic-text-demo>` and
+ *   the video-only `<www-atc-demo-video>` (single-line or open/close on separate
+ *   lines) become one link line to the post on hashbrown.dev, so the lead-in
+ *   sentence still makes sense; the Loom `<iframe>` wrapper becomes
  *   a `[Watch the video](...)` link, since dev.to does not render iframes.
  *
  * @param markdown - The full contents of the post's markdown file.
@@ -128,6 +141,11 @@ export function toDevtoMarkdown(markdown: string, postUrl: string): string {
       removed = true;
       inCarousel = /^\s*<hb-carousel/.test(line) ? true : inCarousel;
       inCarousel = /^\s*<\/hb-carousel/.test(line) ? false : inCarousel;
+      continue;
+    }
+    const demo = DEMO_LINKS.find(([tag]) => tag.test(line));
+    if (demo) {
+      out.push(`[${demo[1]}](${postUrl})`);
       continue;
     }
     const label = CODE_EXAMPLE_OPEN.exec(line);

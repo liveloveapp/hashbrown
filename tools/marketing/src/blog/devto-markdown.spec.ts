@@ -156,12 +156,31 @@ test('unwraps hb-carousel and keeps its images, made absolute', () => {
   );
 });
 
-test('drops the interactive hb-magic-text-demo', () => {
-  expect(
-    convert(
-      'Slide below:\n\n<hb-magic-text-demo></hb-magic-text-demo>\n\nNext.',
-    ),
-  ).toBe('Slide below:\n\nNext.');
+test('replaces hb-magic-text-demo with a link to the post', () => {
+  const md =
+    "Use the slider below to simulate streaming Markdown through Hashbrown's Magic Text parser:\n\n<hb-magic-text-demo></hb-magic-text-demo>\n\nWe have a full recipe.";
+  expect(convert(md)).toBe(
+    `Use the slider below to simulate streaming Markdown through Hashbrown's Magic Text parser:\n\n[See the interactive demo on hashbrown.dev](${POST_URL})\n\nWe have a full recipe.`,
+  );
+});
+
+test('replaces a multi-line www-atc-demo-video with a link to the post', () => {
+  const md =
+    "Here's the whole thing in about a minute:\n\n<www-atc-demo-video>\n</www-atc-demo-video>\n\nThis post is long.";
+  expect(convert(md)).toBe(
+    `Here's the whole thing in about a minute:\n\n[Watch the demo on hashbrown.dev](${POST_URL})\n\nThis post is long.`,
+  );
+});
+
+test('replaces a single-line www-atc-demo-video with a link to the post', () => {
+  expect(convert('<www-atc-demo-video></www-atc-demo-video>')).toBe(
+    `[Watch the demo on hashbrown.dev](${POST_URL})`,
+  );
+});
+
+test('leaves demo tags inside a code fence untouched', () => {
+  const md = '```html\n<www-atc-demo-video>\n</www-atc-demo-video>\n```';
+  expect(convert(md)).toBe(md);
 });
 
 test('replaces the Loom iframe wrapper with a link', () => {
