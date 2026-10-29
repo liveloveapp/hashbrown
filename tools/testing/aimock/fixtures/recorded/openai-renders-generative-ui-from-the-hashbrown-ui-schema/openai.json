@@ -1,0 +1,27 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Show a card titled \"Potato harvest\" holding two metric components: acres planted (12) and tonnes picked (30).",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"ui\":[{\"card\":{\"props\":{\"title\":\"Potato harvest\"},\"children\":[{\"metric\":{\"props\":{\"label\":\"acres planted\",\"value\":12}}},{\"metric\":{\"props\":{\"label\":\"tonnes picked\",\"value\":30}}}]}}]}"
+      },
+      "recordedTimings": {
+        "ttftMs": 1133,
+        "interChunkDelaysMs": [
+          1, 0, 0, 0, 0, 0, 19, 0, 21, 9, 7, 1, 23, 1, 12, 0, 28, 2, 26, 1, 5,
+          3, 11, 0, 14, 8, 15, 0, 16, 2, 15, 4, 2, 0, 24, 6, 0, 0, 25, 2, 31, 4,
+          14, 4, 0, 0, 23, 0, 6, 2, 9, 2, 40, 41, 1, 0, 0
+        ],
+        "totalDurationMs": 1613
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Show a card titled \"Potato harvest\" holding two metric components: acres planted (12) and tonnes picked (30).",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"ui\":[{\"card\":{\"props\":{\"title\":\"Potato harvest\"},\"children\":[{\"metric\":{\"props\":{\"label\":\"acres planted\",\"value\":12}}},{\"metric\":{\"props\":{\"label\":\"tonnes picked\",\"value\":30}}}]}}]}",
+        "usage": {
+          "input_tokens": 1033,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 89
+        }
+      },
+      "recordedTimings": {
+        "ttftMs": 2640,
+        "interChunkDelaysMs": [
+          0, 0, 0, 16, 144, 0, 0, 0, 0, 0, 0, 18, 22, 21, 18, 1, 0
+        ],
+        "totalDurationMs": 2880
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}
