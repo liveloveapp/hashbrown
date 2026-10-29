@@ -243,6 +243,60 @@ export function createVercelAlias({
   };
 }
 
+function assertOwnedAlias(snapshot, plan) {
+  assert(
+    snapshot &&
+      snapshot.aliasId === plan.aliasId &&
+      snapshot.alias === plan.alias &&
+      snapshot.projectId === plan.projectId &&
+      snapshot.ownerId === plan.ownerId,
+    'rollback alias identity mismatch during ownership verification',
+  );
+  assert(
+    [plan.b4.id, plan.openai.id].includes(snapshot.deploymentId),
+    'rollback alias maps to unexpected deployment',
+  );
+}
+
+/** Own the precreated test alias before fallible work; independently reverify identity during cleanup. */
+function createAliasCleanup(plan, alias, receipt) {
+  validateRollbackPlan(plan);
+  let pending;
+  receipt.aliasRemoved = false;
+  const cleanup = async () => {
+    const bounds = {
+      signal: new AbortController().signal,
+      deadlineMs: Date.now() + 55000,
+    };
+    try {
+      const current = await timeoutBound(() => alias.inspect(bounds), bounds);
+      assertOwnedAlias(current, plan);
+      if (current.deploymentId !== plan.initialDeploymentId)
+        await timeoutBound(
+          () => alias.assign(plan.initialDeploymentId, bounds),
+          bounds,
+        );
+      receipt.restored = await timeoutBound(
+        () => alias.inspect(bounds),
+        bounds,
+      );
+      assertOwnedAlias(receipt.restored, plan);
+      assert.equal(
+        receipt.restored.deploymentId,
+        plan.initialDeploymentId,
+        'rollback restoration missing',
+      );
+      await timeoutBound(() => alias.remove(bounds), bounds);
+      receipt.aliasRemoved = true;
+    } catch (error) {
+      receipt.aliasCleanupError =
+        'owned alias identity/restoration/removal failed';
+      throw error;
+    }
+  };
+  return () => (pending ??= cleanup());
+}
+
 /** Rehearse two fresh visitor requests within the four-reservation cap; restore and verify before deletion. */
 export async function runRollbackProtocol({
   plan,
@@ -251,6 +305,7 @@ export async function runRollbackProtocol({
   io,
   receipt = {},
   registerCleanup,
+  cleanupAlias,
 }) {
   validateRollbackPlan(plan);
   receipt.qualified = false;
@@ -260,38 +315,19 @@ export async function runRollbackProtocol({
     existingConversations:
       'B4 threads cannot transparently continue as durable B4 threads on direct OpenAI',
   };
-  const initial = await alias.inspect(control);
-  assert.equal(
-    initial.deploymentId,
-    plan.initialDeploymentId,
-    'rollback initial mapping mismatch',
-  );
-  receipt.initial = initial;
-  let touched = false;
-  let cleanupPromise;
-  const cleanupAlias = async () => {
-    // Fresh bounded restoration is required even when the phase signal/deadline has expired.
-    const cleanupBounds = {
-      signal: new AbortController().signal,
-      deadlineMs: Date.now() + 55000,
-    };
-    if (touched) {
-      await alias.assign(plan.initialDeploymentId, cleanupBounds);
-      receipt.restored = await alias.inspect(cleanupBounds);
-      assert.equal(
-        receipt.restored.deploymentId,
-        plan.initialDeploymentId,
-        'rollback restoration missing',
-      );
-      await alias.remove(cleanupBounds);
-      receipt.aliasRemoved = true;
-    }
-  };
-  const finalizeAlias = () => (cleanupPromise ??= cleanupAlias());
+  const finalizeAlias =
+    cleanupAlias ?? createAliasCleanup(plan, alias, receipt);
   registerCleanup?.(finalizeAlias);
   try {
+    const initial = await alias.inspect(control);
+    assertOwnedAlias(initial, plan);
+    assert.equal(
+      initial.deploymentId,
+      plan.initialDeploymentId,
+      'rollback initial mapping mismatch',
+    );
+    receipt.initial = initial;
     for (const backend of ['b4', 'openai']) {
-      touched = true;
       await alias.assign(plan[backend].id, control);
       const before = await io.snapshot(control);
       const threadId = 'readiness-rollback-' + randomUUID();
@@ -807,7 +843,12 @@ export async function createRollbackIO(
 }
 
 /** Run the preview rehearsal through the fixed aggregate ledger and retain a sanitized partial receipt. */
-export async function runRollbackCheck(options, expected, adapters) {
+export async function runRollbackCheck(
+  options,
+  expected,
+  adapters,
+  dependencies = {},
+) {
   assert(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       adapters.runId,
@@ -823,7 +864,12 @@ export async function runRollbackCheck(options, expected, adapters) {
       (await realpath(options.stagingDirectory)) === options.stagingDirectory,
     'private staging directory required',
   );
-  const receipt = { phase: 'rollback', status: 'incomplete', qualified: false };
+  const receipt = {
+    phase: 'rollback',
+    status: 'incomplete',
+    qualified: false,
+    closed: false,
+  };
   let io;
   let finalizeAlias;
   let redact = createRedactor([adapters.vercelToken]);
@@ -856,7 +902,6 @@ export async function runRollbackCheck(options, expected, adapters) {
       'function',
       'reviewed actual-route logs required',
     );
-    await verifyRollbackArtifacts(options.artifacts, plan);
     const inventoryPath = join(
       options.stagingDirectory,
       'rollback-alias-' + adapters.runId + '.jsonl',
@@ -875,12 +920,13 @@ export async function runRollbackCheck(options, expected, adapters) {
         await file.close();
       }
     };
-    const alias = createVercelAlias({
+    const alias = (dependencies.createAlias ?? createVercelAlias)({
       token: adapters.vercelToken,
       plan,
       persist,
     });
-    await withRolloutRun(
+    finalizeAlias = createAliasCleanup(plan, alias, receipt);
+    await (dependencies.withRun ?? withRolloutRun)(
       options.stagingDirectory,
       adapters.expectedBudget,
       {
@@ -911,14 +957,24 @@ export async function runRollbackCheck(options, expected, adapters) {
         },
       },
       async (control) => {
+        await (dependencies.verifyArtifacts ?? verifyRollbackArtifacts)(
+          options.artifacts,
+          plan,
+        );
         receipt.deployments = [];
         for (const candidate of [plan.b4, plan.openai])
           receipt.deployments.push(
             await alias.verifyDeployment(candidate, control),
           );
-        io = await createRollbackIO(options, expected, plan, control, {
-          routeProof: adapters.routeProof,
-        });
+        io = await (dependencies.createIO ?? createRollbackIO)(
+          options,
+          expected,
+          plan,
+          control,
+          {
+            routeProof: adapters.routeProof,
+          },
+        );
         const secretRedactor = redact;
         redact = (value) => secretRedactor(io.redact(value));
         await runRollbackProtocol({
@@ -927,6 +983,7 @@ export async function runRollbackCheck(options, expected, adapters) {
           alias,
           io,
           receipt,
+          cleanupAlias: finalizeAlias,
           registerCleanup: (cleanup) => {
             finalizeAlias = cleanup;
           },

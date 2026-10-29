@@ -340,3 +340,13 @@ AG-UI run IDs are assigned before HTTP dispatch. The optional internal
 `bounds.onRequestObserved` callback publishes actual HTTP headers and terminal
 usage as soon as observed, retaining known correlations if a later operation
 fails. Unavailable usage remains null with its full outstanding reservation.
+
+The precreated owned alias's idempotent cleanup is registered before artifact or
+uploaded-deployment inspection and storage initialization; protocol cleanup is
+also registered before its initial alias read. Cleanup independently rechecks
+alias UID/name/project/team and an allowed preview mapping under fresh bounded
+control before restoring or removing anything. A failed or foreign identity read
+leaves the alias untouched and records cleanup failure; it never sets `closed`
+to true. Owned IO closure is still attempted when alias cleanup fails. Optional
+injected IO boundaries in `runRollbackCheck` support offline regressions; normal
+execution uses the guarded artifact, Vercel, storage and aggregate-run adapters.

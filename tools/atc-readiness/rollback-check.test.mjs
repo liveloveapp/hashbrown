@@ -66,7 +66,13 @@ function fixture({ writes = false, restoreFailure = false } = {}) {
   let wrote = false;
   const calls = [];
   const alias = {
-    inspect: async () => ({ deploymentId: mapping }),
+    inspect: async () => ({
+      aliasId: plan.aliasId,
+      alias: plan.alias,
+      projectId: plan.projectId,
+      ownerId: plan.ownerId,
+      deploymentId: mapping,
+    }),
     assign: async (id) => {
       calls.push('assign:' + id);
       if (restoreFailure && calls.length > 3 && id === 'b4')
@@ -477,4 +483,217 @@ test('rollback request failure preserves generated native ID and observed HTTP i
   assert.equal(receipt.attempts[0].runId, nativeRunId);
   assert.equal(receipt.attempts[0].requestId, 'observed-rollback-request');
   assert.equal(receipt.attempts[0].terminalUsage, null);
+});
+
+test('protocol registers safe alias cleanup before its initial inspection fails', async () => {
+  const f = fixture();
+  const receipt = {};
+  let inspections = 0;
+  let registered = false;
+  const inspect = f.alias.inspect;
+  f.alias.inspect = async (control) => {
+    assert.equal(registered, true);
+    inspections++;
+    if (inspections === 1) throw Error('initial alias read failed');
+    assert.equal(control.signal.aborted, false);
+    assert(control.deadlineMs > Date.now());
+    return inspect(control);
+  };
+
+  await assert.rejects(
+    runRollbackProtocol({
+      ...f,
+      receipt,
+      registerCleanup: () => {
+        registered = true;
+      },
+    }),
+    /initial alias read failed/,
+  );
+
+  assert(inspections >= 2);
+  assert.equal(receipt.aliasRemoved, true);
+  assert(f.calls.includes('remove'));
+});
+
+for (const identityChange of [
+  { aliasId: 'foreign' },
+  { projectId: 'foreign' },
+  { ownerId: 'foreign' },
+  { alias: 'foreign.vercel.app' },
+  { deploymentId: 'unrelated' },
+]) {
+  test(
+    'cleanup never mutates an alias whose current identity differs ' +
+      JSON.stringify(identityChange),
+    async () => {
+      const f = fixture();
+      const receipt = {};
+      const inspect = f.alias.inspect;
+      f.alias.inspect = async (control) => ({
+        ...(await inspect(control)),
+        ...identityChange,
+      });
+
+      await assert.rejects(
+        runRollbackProtocol({ ...f, receipt }),
+        /alias identity|unexpected deployment/,
+      );
+
+      assert(
+        !f.calls.some(
+          (call) => call.startsWith('assign:') || call === 'remove',
+        ),
+      );
+      assert.notEqual(receipt.aliasRemoved, true);
+      assert(receipt.aliasCleanupError);
+    },
+  );
+}
+
+async function wrapperFixture({ failAt, loseOwnership = false } = {}) {
+  const { mkdtemp } = await import('node:fs/promises');
+  const stage = await mkdtemp('/private/tmp/rollback-early-cleanup-');
+  const runId = '12345678-1234-4234-8234-123456789abc';
+  const actualPlan = { ...plan, runId, createdForRun: runId };
+  const calls = [];
+  let inspections = 0;
+  const alias = {
+    inspect: async (control) => {
+      calls.push('inspect');
+      inspections++;
+      assert.equal(control.signal.aborted, false);
+      assert(control.deadlineMs > Date.now());
+      return {
+        aliasId: loseOwnership ? 'foreign' : actualPlan.aliasId,
+        alias: actualPlan.alias,
+        projectId: actualPlan.projectId,
+        ownerId: actualPlan.ownerId,
+        deploymentId: actualPlan.initialDeploymentId,
+      };
+    },
+    assign: async () => calls.push('assign'),
+    remove: async () => calls.push('remove'),
+    verifyDeployment: async (_, control) => {
+      calls.push('verify-deployment');
+      if (failAt === 'deployment') throw Error('deployment read failed');
+      if (failAt === 'deadline') {
+        assert(control.deadlineMs <= Date.now());
+        throw Error('phase deadline exhausted');
+      }
+      return {};
+    },
+  };
+  const context = { stagingDirectory: stage, artifacts: {} };
+  const expected = {
+    ...b4,
+    deployments: [{ id: b4.id }],
+    rollback: actualPlan,
+  };
+  const adapters = {
+    runId,
+    vercelToken: 'offline-fixture-token',
+    routeProof: async () => null,
+    expectedBudget: {},
+    observationSource: {},
+  };
+  const io = {
+    redact: (value) => value,
+    close: async () => calls.push('close'),
+    request: async () => {
+      throw Error('owned request failed');
+    },
+    snapshot: async () => ({}),
+    waitQuiescent: async () => 75000,
+  };
+  const dependencies = {
+    createAlias: () => {
+      calls.push('create-alias');
+      return alias;
+    },
+    verifyArtifacts: async () => {
+      calls.push('verify-artifacts');
+      if (failAt === 'artifacts') throw Error('artifact verification failed');
+    },
+    createIO: async () => {
+      calls.push('open-io');
+      if (failAt === 'initialize') throw Error('storage initialization failed');
+      return io;
+    },
+    withRun: async (_, __, options, execute) => {
+      const control = {
+        ...bounds(),
+        dispatch: async (_, operation) => operation(bounds()),
+      };
+      if (failAt === 'deadline') control.deadlineMs = Date.now() - 1;
+      try {
+        return await execute(control);
+      } finally {
+        await options.cleanup();
+      }
+    },
+  };
+  return {
+    stage,
+    context,
+    expected,
+    adapters,
+    dependencies,
+    calls,
+    inspections: () => inspections,
+  };
+}
+
+for (const failAt of ['artifacts', 'deployment', 'initialize', 'deadline']) {
+  test(
+    'precreated owned alias is cleaned after early failure at ' + failAt,
+    async () => {
+      const { runRollbackCheck } = await import('./rollback-check.mjs');
+      const { rm } = await import('node:fs/promises');
+      const f = await wrapperFixture({ failAt });
+      try {
+        const receipt = await runRollbackCheck(
+          f.context,
+          f.expected,
+          f.adapters,
+          f.dependencies,
+        );
+
+        assert.equal(receipt.status, 'failed');
+        assert.equal(receipt.qualified, false);
+        assert(f.inspections() >= 2);
+        assert.equal(receipt.aliasRemoved, true);
+        assert.equal(receipt.closed, true);
+        assert.deepEqual(receipt.cleanupErrors, []);
+        assert(f.calls.includes('remove'));
+      } finally {
+        await rm(f.stage, { recursive: true, force: true });
+      }
+    },
+  );
+}
+
+test('lost alias ownership fails cleanup but still closes initialized IO', async () => {
+  const { runRollbackCheck } = await import('./rollback-check.mjs');
+  const { rm } = await import('node:fs/promises');
+  const f = await wrapperFixture({ loseOwnership: true });
+  try {
+    const receipt = await runRollbackCheck(
+      f.context,
+      f.expected,
+      f.adapters,
+      f.dependencies,
+    );
+
+    assert.equal(receipt.status, 'failed');
+    assert.equal(receipt.qualified, false);
+    assert.notEqual(receipt.closed, true);
+    assert(
+      receipt.cleanupErrors.includes('owned alias restoration/removal failed'),
+    );
+    assert(f.calls.includes('close'));
+    assert(!f.calls.includes('assign') && !f.calls.includes('remove'));
+  } finally {
+    await rm(f.stage, { recursive: true, force: true });
+  }
 });
