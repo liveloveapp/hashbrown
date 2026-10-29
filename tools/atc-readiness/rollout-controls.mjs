@@ -119,15 +119,23 @@ function parse(raw, reason) {
   }
 }
 
-function validateExpected(expected) {
+function validateExpected(expected, stage) {
   if (
-    !keys(expected, 'source,capUsd,runtimeSource,prior,spend') ||
+    !keys(
+      expected,
+      'source,capUsd,runtimeSource,stagingDirectory,prior,spend',
+    ) ||
     typeof expected.source !== 'string' ||
     !expected.source.trim() ||
     !positive(expected.capUsd) ||
     expected.runtimeSource !== SOURCE
   )
     fail('approval expected identity/spend invalid');
+  if (
+    typeof expected.stagingDirectory !== 'string' ||
+    expected.stagingDirectory !== realpathSync(stage)
+  )
+    fail('approved staging directory mismatch');
   if (!keys(expected.prior, 'load,recovery')) fail('prior bindings invalid');
   for (const [name, count, limit] of [
     ['load', 99, 120],
@@ -251,7 +259,7 @@ function validateLedger(ledger, stage, expected) {
 }
 
 function load(stage, expected) {
-  validateExpected(expected);
+  validateExpected(expected, stage);
   return validateLedger(
     parse(bytes(join(stage, FILE)), 'ledger malformed'),
     stage,
@@ -287,13 +295,13 @@ function save(stage, ledger, initial = false) {
  * Initialize the separate fixed aggregate ledger exactly once in an existing private directory.
  * @param {string} stage - Owned mode0700 stage.
  * @param {object} approval - Explicit human approved positive USD ceiling and provenance.
- * @param {object} expected - Independently reviewed approval, raw prior receipts and adapter-review bindings.
+ * @param {object} expected - Independently reviewed canonical stagingDirectory, approval, raw prior receipts and adapter-review bindings.
  * @returns {object} Durable ledger; existing historical ledgers are read only.
  */
 export function initializeRolloutLedger(stage, approval, expected) {
   const unlock = lock(stage);
   try {
-    validateExpected(expected);
+    validateExpected(expected, stage);
     if (!same(approval, expected)) fail('approval mismatch');
     const ledger = {
       version: 1,
@@ -410,7 +418,10 @@ export async function withRolloutRun(stage, expected, options, execute) {
     )
       fail('spend adapter/run identity invalid');
     const dispatchOne = async (request, operation) => {
-      if (busy) fail('concurrent request forbidden');
+      if (busy) {
+        stopped = true;
+        fail('concurrent request forbidden');
+      }
       if (stopped) fail('run stopped');
       busy = true;
       let reserved = false;
@@ -537,9 +548,9 @@ export async function withRolloutRun(stage, expected, options, execute) {
           fail('unexpected failure/throttle');
         return result;
       } catch (error) {
+        stopped = true;
+        activeController?.abort(error);
         if (reserved) {
-          stopped = true;
-          activeController?.abort(error);
           save(stage, {
             ...ledger,
             phases: {

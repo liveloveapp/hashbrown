@@ -4,6 +4,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync,
+  realpathSync,
   writeFileSync,
   readFileSync,
   chmodSync,
@@ -57,6 +58,7 @@ function fixture(t, capUsd = 100) {
   writeFileSync(reviewPath, reviewBytes, { mode: 0o600 });
   const expected = {
     source: 'human-approved-design',
+    stagingDirectory: realpathSync(stage),
     capUsd,
     runtimeSource: 'a2f92a4f02ab1dfc38051a44e509afb439634793',
     prior,
@@ -278,20 +280,29 @@ test('fixed aggregate and phase caps exhaust at 6/6/4 without resetting', async 
   const f = fixture(t);
   initializeRolloutLedger(f.stage, f.expected, f.expected);
 
-  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
-    for (const [phase, count] of [
-      ['timeout', 6],
-      ['restart', 6],
-      ['rollback', 4],
-    ]) {
-      for (let index = 0; index < count; index++)
-        await control.dispatch(f.request(phase), pass);
-      await assert.rejects(
-        control.dispatch(f.request(phase), pass),
-        /cap|exhausted/,
-      );
-    }
-  });
+  for (const [phase, count] of [
+    ['timeout', 6],
+    ['restart', 6],
+    ['rollback', 4],
+  ]) {
+    await withRolloutRun(
+      f.stage,
+      f.expected,
+      { ...f.options, runId: randomUUID() },
+      async (control) => {
+        for (let index = 0; index < count; index++)
+          await control.dispatch(f.request(phase), pass);
+        await assert.rejects(
+          control.dispatch(f.request(phase), pass),
+          /cap|exhausted/,
+        );
+        await assert.rejects(
+          control.dispatch(f.request(phase), pass),
+          /stopped/,
+        );
+      },
+    );
+  }
 
   assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 16);
 });
@@ -329,10 +340,6 @@ test('paces a thread, allows one explicit conflict exception per phase and stops
     await control.dispatch(f.request(), record);
     await control.dispatch(f.request(), record);
     await control.dispatch(f.request('timeout', 'conflict'), record);
-    await assert.rejects(
-      control.dispatch(f.request('timeout', 'conflict'), record),
-      /conflict/,
-    );
     await assert.rejects(
       control.dispatch(f.request(), async () => {
         throw Error('unexpected');
@@ -642,5 +649,112 @@ test('pacing that cannot fit before phase deadline blocks instead of dispatching
   });
 
   assert.equal(extraDispatched, false);
+  assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 2);
+});
+
+test('catching a stale observation cannot reopen scheduling within the same run', async (t) => {
+  const f = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  const freshRead = f.options.observationSource.read;
+  f.options.observationSource.read = async () => ({
+    source: f.expected.spend.source,
+    scope: f.expected.spend.scope,
+    observedAtMs: 1,
+    spendUsd: 0,
+  });
+  let dispatched = false;
+
+  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
+    await assert.rejects(control.dispatch(f.request(), pass), /stale/);
+    f.options.observationSource.read = freshRead;
+    await assert.rejects(
+      control.dispatch(f.request(), async () => {
+        dispatched = true;
+        return pass();
+      }),
+      /stopped/,
+    );
+  });
+
+  assert.equal(dispatched, false);
+  assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 0);
+});
+
+test('approved canonical staging directory prevents a fresh path resetting the aggregate envelope', (t) => {
+  const f = fixture(t);
+  const other = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+
+  assert.throws(
+    () => initializeRolloutLedger(other.stage, f.expected, f.expected),
+    /staging/,
+  );
+  assert.equal(fs.existsSync(join(other.stage, 'rollout-budget.json')), false);
+});
+
+test('conflict exception and thread pacing remain consumed across separate runs', async (t) => {
+  const f = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  await withRolloutRun(f.stage, f.expected, f.options, async (control) => {
+    await control.dispatch(f.request(), pass);
+    await control.dispatch(f.request('timeout', 'conflict'), pass);
+  });
+  const starts = [];
+
+  await withRolloutRun(
+    f.stage,
+    f.expected,
+    { ...f.options, runId: randomUUID() },
+    async (control) => {
+      await control.dispatch(f.request(), async () => {
+        starts.push(f.options.now());
+        return pass();
+      });
+      await assert.rejects(
+        control.dispatch(f.request('timeout', 'conflict'), pass),
+        /conflict/,
+      );
+    },
+  );
+
+  assert.deepEqual(starts, [30000]);
+  assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 3);
+});
+
+test('phase deadline and two-fault ceiling remain durable across separate runs', async (t) => {
+  const f = fixture(t);
+  initializeRolloutLedger(f.stage, f.expected, f.expected);
+  for (let index = 0; index < 2; index++) {
+    await withRolloutRun(
+      f.stage,
+      f.expected,
+      { ...f.options, runId: randomUUID() },
+      (control) =>
+        control.dispatch(f.request('timeout', 'fault'), async () => ({
+          outcome: 'inconclusive',
+        })),
+    );
+  }
+
+  await assert.rejects(
+    withRolloutRun(
+      f.stage,
+      f.expected,
+      { ...f.options, runId: randomUUID() },
+      (control) => control.dispatch(f.request('timeout', 'fault'), pass),
+    ),
+    /fault/,
+  );
+  f.advance(1200000);
+  await assert.rejects(
+    withRolloutRun(
+      f.stage,
+      f.expected,
+      { ...f.options, runId: randomUUID() },
+      (control) => control.dispatch(f.request(), pass),
+    ),
+    /deadline/,
+  );
+
   assert.equal(readRolloutLedger(f.stage, f.expected).attempts.length, 2);
 });
