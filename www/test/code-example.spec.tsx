@@ -46,6 +46,6 @@ test('See it run names its snippet file', () => {
   );
 
   expect(
-    getByRole('button', { name: 'See src/tools.ts run in the workbench' }),
+    getByRole('button', { name: 'See it run: src/tools.ts' }),
   ).toBeTruthy();
 });

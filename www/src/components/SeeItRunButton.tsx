@@ -27,7 +27,7 @@ export function SeeItRunButton({
   return (
     <button
       type="button"
-      aria-label={`See ${header} run in the workbench`}
+      aria-label={`See it run: ${header}`}
       onClick={(event) =>
         event.currentTarget.dispatchEvent(
           new CustomEvent<SeeItRunDetail>(SEE_IT_RUN_EVENT, {
