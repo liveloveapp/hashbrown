@@ -1,0 +1,29 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:05.910
+Real OpenAI output. The server tool pauses for approval.
+
+2
+00:00:05.910 --> 00:00:11.050
+Restart the server. Postgres keeps the paused turn.
+
+3
+00:00:11.050 --> 00:00:14.817
+Restore the conversation. No model request.
+
+4
+00:00:14.817 --> 00:00:19.706
+Approve once. The plan commits at revision 1.
+
+5
+00:00:19.706 --> 00:00:23.222
+Inspect the saved plan and the resumed response.
+
+6
+00:00:23.222 --> 00:00:26.779
+Replay captured events. No requests or writes.
+
+7
+00:00:26.779 --> 00:00:32.267
+Back live. Plan revision 1.

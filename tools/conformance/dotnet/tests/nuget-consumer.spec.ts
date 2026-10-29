@@ -167,7 +167,6 @@ try {
  for(const identity of [{...trusted.identity,id:'Wrong.Id'},{...trusted.identity,version:'0.1.0-preview.999'}])assert.throws(()=>v.validateArchive(archive,identity,trusted.revision),/candidate ID|version/i);
  const repository=path.join(parent,'repository');await fs.mkdir(repository);
  for(const file of Object.keys(trusted.sources)) {await fs.mkdir(path.dirname(path.join(repository,file)),{recursive:true});await fs.copyFile(path.join(trusted.repository,file),path.join(repository,file));}
- for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
   const copy=path.join(parent,'copy');
   await fs.cp(trusted.root,copy,{recursive:true,mode:fs.constants.COPYFILE_FICLONE});
   let metadata=JSON.parse(JSON.stringify(trusted).replaceAll(trusted.root,copy));metadata.repository=repository;
@@ -184,8 +183,19 @@ try {
   }
   const location=path.join(copy,'metadata.json');await fs.rm(location);await fs.writeFile(location,JSON.stringify(metadata));
   const pointer=path.join(parent,'copy-pointer.json');await fs.writeFile(pointer,JSON.stringify({metadata:location,sha256:await v.hashFile(location)}));await fs.writeFile(pointer+'.sha256',await v.hashFile(pointer));
+  const baselineMetadata=JSON.stringify(metadata);
+  const changedFiles=[metadata.archive,'app/packages.lock.json','app/bin/Release/net10.0/Hashbrown.AspNetCore.dll','app/Program.cs','metadata.json','NuGet.Config','app/obj/project.assets.json','app/bin/Release/net10.0/Consumer.deps.json','Directory.Build.targets','app/Consumer.csproj'].map(file=>path.join(copy,file));
+  changedFiles.push(pointer,pointer+'.sha256',path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'));
+  const snapshots=await Promise.all(changedFiles.map(async file=>{
+   try {const stat=await fs.lstat(file);return {file,bytes:await fs.readFile(file),mode:stat.mode & 0o777};}
+   catch(error){if(error.code==='ENOENT')return {file};throw error;}
+  }));
+ // Reuse only disposable setup; every case requalifies the complete restored byte closure.
+ for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
+  const metadata=JSON.parse(baselineMetadata);
   let launches=0;
   const launch=async()=>{launches++;return JSON.stringify(metadata.loaded);};
+  try {
   await qualifyConsumer(pointer,launch);assert.equal(launches,1);launches=0;
   const append=async(file)=>fs.appendFile(path.join(copy,file),'tampered');
   if(mutation==='archive')await append(metadata.archive);
@@ -212,8 +222,12 @@ try {
   }
   else await fs.appendFile(path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),'changed after qualification');
   await assert.rejects(()=>qualifyConsumer(pointer,launch),undefined,mutation+' must fail before launch');assert.equal(launches,0,mutation);
-  if(mutation==='changed-source-after-qualification')await fs.copyFile(path.join(trusted.repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'),path.join(repository,'packages/dotnet/src/HashbrownEndpointConfiguration.cs'));
-  await fs.rm(copy,{recursive:true,force:true});
+  } finally {
+   for(const snapshot of snapshots){
+    await fs.rm(snapshot.file,{force:true});
+    if(snapshot.bytes!==undefined)await fs.writeFile(snapshot.file,snapshot.bytes,{mode:snapshot.mode});
+   }
+  }
  }
 } finally {if(prepared)await fs.rm(prepared.root,{recursive:true,force:true});await fs.rm(parent,{recursive:true,force:true});}`;
 
@@ -332,7 +346,11 @@ const project=JSON.parse(await fs.readFile('tools/conformance/dotnet/project.jso
 assert.equal(project.targets['package-acceptance'].cache,false);
 assert.ok(project.implicitDependencies.includes('dotnet-sdk'));
 const workflow=await fs.readFile('.github/workflows/pr-main.yml','utf8');
-assert.ok(workflow.includes('npx nx package-acceptance dotnet-conformance'));
+assert.ok(workflow.includes('npx nx package-pr-acceptance dotnet-conformance'));
+assert.equal(project.targets['package-pr-acceptance'].cache,false);
+assert.equal(project.targets['package-pr-acceptance'].options.command,'node tools/conformance/dotnet/nuget-consumer/run.mjs --pr');
+const nightly=await fs.readFile('.github/workflows/nightly.yml','utf8');
+assert.ok(nightly.includes('npx nx package-acceptance dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx provider-e2e dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx prepare-live-consumer dotnet-conformance'));
 assert.ok(workflow.includes('needs: [ci, targets, preview]'));
@@ -581,13 +599,13 @@ await fs.mkdir(sourceDirectory,{recursive:true});
 const originalEnvironment={...process.env};
 try {
  let source=await fs.readFile(path.join(repository,'tools/conformance/dotnet/harness/http-fixture.ts'),'utf8');
- for(const original of ['./dotnet-host','@ag-ui/core/schemas','@copilotkit/aimock','node:child_process','./recovery-timings'])source=source.replaceAll("from '"+original+"'","from './adapters.mjs'");
+ for(const original of ['./terminate-fixture','./dotnet-host','@ag-ui/core/schemas','@copilotkit/aimock','node:child_process','./recovery-timings'])source=source.replaceAll("from '"+original+"'","from './adapters.mjs'");
  const javascript=ts.default.transpileModule(source,{compilerOptions:{module:ts.default.ModuleKind.ESNext,target:ts.default.ScriptTarget.ES2022}}).outputText;
  await fs.writeFile(path.join(root,'fixture.mjs'),javascript);
  await fs.writeFile(path.join(root,'adapters.mjs'),\`
 import {EventEmitter} from 'node:events';
 export const resolveDotnetHost=()=>({executable:'fixture-test-only',controlled:process.env.TEST_FIXTURE_MODE==='historical',loaded:process.env.TEST_FIXTURE_MODE==='package'?{}:undefined});
-export const validateHostOverrides=()=>{};export const verifyLoadedDotnetHost=()=>{};export const fixtureChildEnvironment=()=>({});
+export const terminateFixture=async()=>{};export const validateHostOverrides=()=>{};export const verifyLoadedDotnetHost=()=>{};export const fixtureChildEnvironment=()=>({});
 export const recoveryRequestRecorder=()=>()=>()=>{};export const traceRecoveryRequest=()=>()=>{};export const EventSchemas={};
 export class LLMock {onMessage(){}async start(){}async stop(){}}
 export function spawn(){const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.exitCode=null;child.signalCode=null;queueMicrotask(()=>{child.stdout.emit('data','PRIVATE_FIXTURE_OUTPUT_SENTINEL');child.exitCode=7;child.emit('exit',7,null);});return child;}
@@ -607,6 +625,21 @@ export function spawn(){const child=new EventEmitter();child.stdout=new EventEmi
   }finally{for(const name of added)await fs.rm(path.join(sourceDirectory,name));}
  }
 }finally{for(const key of Object.keys(process.env))if(!(key in originalEnvironment))delete process.env[key];Object.assign(process.env,originalEnvironment);await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('PR acceptance retains qualification docs upgrade and regressions while selecting an explicit smoke profile', () => {
+  const result = probe(`
+const {acceptancePlan, acceptanceProfile}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+assert.equal(acceptanceProfile([]),'full');
+assert.equal(acceptanceProfile(['--pr']),'pr');
+assert.throws(()=>acceptanceProfile(['--metadata','/tmp/candidate.json']));
+const plan=acceptancePlan('/tmp/current.json','/tmp/npm.json','pr');
+assert.deepEqual(plan.map(x=>x.name),['candidate','npm','initial-qualification','docs','upgrade','smoke','regressions','final-qualification','final-npm-qualification']);
+assert.ok(plan.find(x=>x.name==='smoke').argv.includes('--smoke'));
+assert.ok(plan.find(x=>x.name==='regressions').argv.includes('--regressions'));
 `);
 
   expect(result.trim()).toBe('passed');

@@ -86,3 +86,5 @@ Replay follows captured operations and SDK messages without requests or writes. 
 - [Thread repository](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-store.ts) defines the owner-scoped atomic storage contract.
 
 For deployment, supply your application's verified identity, durable repository, and shared admission policy. Continue with [Securing a Public Endpoint](/docs/react/recipes/public-endpoint).
+
+For a runnable TypeScript/Postgres reference that survives a server restart, see [Durable recovery with b4.run](/docs/react/platform/b4run). It separates conversation checkpoints, native approval grants, and the application’s accepted plan.

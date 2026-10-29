@@ -11,6 +11,7 @@ import {
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type SubagentRun,
   type TokenUsage,
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
@@ -111,6 +112,8 @@ export interface UseStructuredChatResult<
    */
   readonly state: State | undefined;
 
+  /** Observed native subagent invocations in the current conversation. */
+  readonly subagents: readonly SubagentRun[];
   /** The complete pending interrupt batch, including while claimed. */
   readonly pendingInterrupts: PendingInterruptBatch | undefined;
 
@@ -378,6 +381,7 @@ export function useStructuredChat<
 
   const internalMessages = useHashbrownSignal(runtimeRef.current.messages);
   const recovery = useHashbrownSignal(getRuntime().recovery);
+  const subagents = useHashbrownSignal(getRuntime().subagents);
   const pendingInterrupts = useHashbrownSignal(getRuntime().pendingInterrupts);
   const isResuming = useHashbrownSignal(getRuntime().isResuming);
   const state = useHashbrownSignal(runtimeRef.current.state);
@@ -449,6 +453,7 @@ export function useStructuredChat<
   }, [internalMessages]);
 
   return {
+    subagents,
     pendingInterrupts,
     isResuming,
     resume: getRuntime().resume,

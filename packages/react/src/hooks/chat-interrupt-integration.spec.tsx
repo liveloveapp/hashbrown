@@ -80,7 +80,11 @@ function controlledTransport(fail = false) {
                   outcome: {
                     type: 'interrupt' as const,
                     interrupts: [
-                      { id: 'approve', reason: 'approval' },
+                      {
+                        id: 'approve',
+                        reason: 'approval',
+                        subagentRunId: 'waiting-child',
+                      },
                       { id: 'address', reason: 'input' },
                     ],
                   },
@@ -119,6 +123,12 @@ test.each(families)(
 
     expect(result.current).toHaveProperty('pendingInterrupts');
     const batch = requireBatch(result.current.pendingInterrupts);
+    expect(result.current.subagents).toEqual([
+      expect.objectContaining({
+        subagentRunId: 'waiting-child',
+        status: 'awaiting',
+      }),
+    ]);
     expect(batch.interrupts.map((item) => item.id)).toEqual([
       'approve',
       'address',
@@ -338,5 +348,160 @@ test.each(families)(
       family.name === 'text' ? 1 : 0,
     );
     unmount();
+  },
+);
+
+test.each(
+  families.flatMap((family) =>
+    ['complete', 'failed'].map((status) => ({ ...family, status })),
+  ),
+)(
+  '$name chat subscribes to frozen native subagents ($status)',
+  async (family) => {
+    const terminal = gate();
+    const transport: Transport = {
+      name: 'subagents',
+      send: async (request) => ({
+        events: (async function* (): AsyncGenerator<AGUIEvent> {
+          const identity = {
+            threadId: request.input.threadId,
+            runId: request.input.runId,
+          };
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield {
+            type: EventType.SUBAGENT_STARTED,
+            subagentRunId: 'child',
+            name: 'Research',
+          };
+          await terminal.promise;
+          yield family.status === 'failed'
+            ? {
+                type: EventType.SUBAGENT_ERROR,
+                subagentRunId: 'child',
+                message: 'child failed',
+              }
+            : {
+                type: EventType.SUBAGENT_FINISHED,
+                subagentRunId: 'child',
+                result: { found: true },
+              };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      }),
+    };
+    const { result, rerender, unmount } = renderHook(
+      ({ threadId }) =>
+        family.use({ system: '', threadId, transport, debounceTime: 0 }),
+      { wrapper, initialProps: { threadId: 'original' } },
+    );
+
+    try {
+      expect(result.current.subagents).toEqual([]);
+      act(() => result.current.sendMessage({ role: 'user', content: 'go' }));
+      await waitFor(() =>
+        expect(result.current.subagents[0]?.status).toBe('running'),
+      );
+      expect(Object.isFrozen(result.current.subagents)).toBe(true);
+      const running = result.current.subagents[0];
+      await act(async () => terminal.release());
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.subagents[0]).toMatchObject({
+        status: family.status,
+        ...(family.status === 'failed'
+          ? { error: { message: 'child failed' } }
+          : { result: { found: true } }),
+      });
+      expect(running.status).toBe('running');
+      const settled = result.current.subagents;
+      rerender({ threadId: 'original' });
+      expect(result.current.subagents).toBe(settled);
+      rerender({ threadId: 'fresh' });
+      await waitFor(() => expect(result.current.subagents).toEqual([]));
+    } finally {
+      terminal.release();
+      unmount();
+    }
+  },
+);
+
+test.each(families)(
+  '$name chat restores native owners as unknown and retains explicit waits',
+  async (family) => {
+    const control = controlledTransport();
+    const { result, unmount } = renderHook(
+      () => family.use({ system: '', transport: control.transport }),
+      { wrapper },
+    );
+    const messages = [
+      {
+        id: 'assistant',
+        role: 'assistant' as const,
+        subagentRunId: '',
+        toolCalls: [
+          {
+            id: 'call',
+            type: 'function' as const,
+            function: { name: 'lookup', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        id: 'result',
+        role: 'tool' as const,
+        toolCallId: 'call',
+        content: 'found',
+        subagentRunId: 'executor',
+      },
+    ];
+
+    try {
+      act(() =>
+        result.current.restoreConversation(
+          { threadId: 'restored', messages },
+          { expectedRevision: result.current.recovery.revision },
+        ),
+      );
+      await act(async () => undefined);
+
+      expect(result.current.subagents).toEqual([
+        { subagentRunId: '', status: 'unknown', interruptIds: [] },
+        { subagentRunId: 'executor', status: 'unknown', interruptIds: [] },
+      ]);
+      const call = result.current.messages.find(
+        (message) => message.role === 'assistant',
+      );
+      expect(call).toMatchObject({
+        subagentRunId: '',
+        serverToolCalls: [
+          expect.objectContaining({
+            subagentRunId: '',
+            resultSubagentRunId: 'executor',
+            result: { status: 'fulfilled', value: 'found' },
+          }),
+        ],
+      });
+      act(() =>
+        result.current.restoreConversation(
+          {
+            threadId: 'waiting',
+            messages,
+            interrupts: [
+              { id: 'approval', reason: 'approval', subagentRunId: '' },
+            ],
+          },
+          { expectedRevision: result.current.recovery.revision },
+        ),
+      );
+      await act(async () => undefined);
+      expect(result.current.subagents[0]).toMatchObject({
+        subagentRunId: '',
+        status: 'awaiting',
+        interruptIds: ['approval'],
+      });
+      expect(control.requests).toHaveLength(0);
+    } finally {
+      unmount();
+    }
   },
 );

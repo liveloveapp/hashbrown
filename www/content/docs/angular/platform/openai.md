@@ -30,7 +30,7 @@ The model is server configuration and is not read from the client run input.
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the OpenAI request when the HTTP client disconnects.                                  |
 | `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
 | `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
-| `builtInTools`            | `{ webSearch?: true \| object }`        | _(Optional)_ Turns on provider-run tools. See [Built-in Tools](#built-in-tools).                           |
+| `builtInTools`            | `OpenAIBuiltInTools`                    | _(Optional)_ Turns on provider-run tools. See [Built-in Tools](#built-in-tools).                           |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`).           |
 
 The adapter maps system and developer instructions, message history, tool definitions, and tool results. Text and tool calls become canonical AG-UI events. Provider and mapping failures are emitted as `RUN_ERROR` events.
@@ -263,7 +263,7 @@ export default app;
 
 ## Built-in Tools
 
-Built-in tools run on the model provider instead of in your app or on your server. Turn them on with `builtInTools`. The keys are the camelCase form of the `builtin` value a call reports, so a key means the same capability on every Hashbrown provider adapter. Today the only key is `webSearch`.
+Built-in tools run on the model provider instead of in your app or on your server. Turn them on with `builtInTools`. The keys are the camelCase form of the `builtin` value a call reports, so a key means the same capability on every Hashbrown provider adapter. The available keys are `webSearch` and `codeExecution`.
 
 ```ts
 const stream = HashbrownOpenAI.stream.text({
@@ -310,7 +310,57 @@ export class AnswerComponent {
 
 OpenAI requires inline citations to be clearly visible and clickable wherever your UI shows the answer. Source links may carry `?utm_source=openai`; keep it.
 
-Sources need the `builtInTools.webSearch` option, because it also requests `web_search_call.action.sources`. A `web_search` tool you add through `transformRequestOptions` instead still streams as a provider tool call, with a label and queries, but without sources.
+Web search source lists need the `builtInTools.webSearch` option, because it also requests `web_search_call.action.sources`. A `web_search` tool you add through `transformRequestOptions` instead still streams as a provider tool call, with a label and queries, but without sources.
+
+## Code Execution
+
+Enable the provider's Code Interpreter with `builtInTools.codeExecution`. Pass `true` for `{ type: 'code_interpreter', container: { type: 'auto' } }`. Hashbrown also requests `code_interpreter_call.outputs`, alongside any reasoning or web search includes.
+
+```ts
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: 'gpt-5',
+  input,
+  signal,
+  builtInTools: { codeExecution: true },
+});
+```
+
+For native configuration, pass the tool's options without `type`. The adapter clones the configuration before building the request. For example, an automatic container can receive provider file IDs and a memory limit:
+
+```ts
+import type { OpenAIBuiltInTools } from '@hashbrownai/openai';
+
+const builtInTools: OpenAIBuiltInTools = {
+  codeExecution: {
+    container: {
+      type: 'auto',
+      file_ids: ['file-input'],
+      memory_limit: '4g',
+    },
+  },
+};
+```
+
+To use an existing provider container, pass its ID instead:
+
+```ts
+const builtInTools: OpenAIBuiltInTools = {
+  codeExecution: { container: 'cntr-existing' },
+};
+```
+
+The model must support Code Interpreter; unsupported requests fail through the normal provider error path. You can combine code execution with `webSearch`, application tools, reasoning and structured output.
+
+Each execution appears in the assistant message's `serverToolCalls` with `name: 'code_interpreter'`, `kind: 'provider'`, `builtin: 'code_execution'`, an `icon` of `run` and a ready-to-show `label`. A registered app tool with the same name remains separate. While code arguments stream, the call has `status: 'inProgress'`; once arguments finish, it has `status: 'executing'` until a native execution result arrives. Arguments ending does not mean execution succeeded.
+
+A completed native execution settles as `status: 'complete'` with `outcome: 'success'`. Native failed or incomplete executions settle with `outcome: 'failure'`, a readable `error` and a rejected public `result`. Successful `result.value` contains the serialized native result, including `code`, `container_id`, `status` and `outputs` (logs or image values). Native `code: null` means the provider did not supply code. Image outputs with a real URL can also appear in the call's `sources`.
+
+Generated-file annotations belong to the assistant answer. Find a citation's source by matching `citation.sourceId` to `source.id` across the message's own `sources` and its calls' `sources`. A file source has `kind: 'file'`, `fileId`, a `title` and, when supplied, `containerId`. Hashbrown does not invent a download URL or attach an answer file to a guessed execution. Character positions and quotes are optional: invalid spans, ambiguous Unicode offsets and noncontiguous text parts retain their source references without fabricated positions.
+
+Your server owns file retrieval and storage. Use the native file/container IDs with the provider's file APIs, applying your app's access checks, and provide your own download route if needed. Containers and files remain provider-owned and ephemeral.
+
+Every request uses `store: false`. Hashbrown omits provider execution display calls and their synthetic results from later requests, while preserving ordinary application calls and results. The earlier native execution context is therefore absent: automatic container reuse across turns is not promised. When your application needs retained container state, keep the returned container ID and supply it explicitly through `codeExecution.container` on the next run.
 
 ## Sending Activities
 

@@ -6,6 +6,7 @@
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
+import { workbenchVercelConfig } from './vercel-config.mjs';
 
 const repo = resolve(import.meta.dirname, '../..');
 const output = resolve(import.meta.dirname, '.vercel/output');
@@ -59,12 +60,6 @@ writeFileSync(
 );
 writeFileSync(
   resolve(output, 'config.json'),
-  JSON.stringify({
-    version: 3,
-    routes: [
-      { src: '^/$', status: 307, headers: { Location: '/react.html' } },
-      { src: '^/api/workbench(?:/.*)?$', dest: '/api/workbench' },
-    ],
-  }),
+  JSON.stringify(workbenchVercelConfig()),
 );
 console.log(`wrote ${output}`);

@@ -1,31 +1,31 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:13.890
+00:00:00.000 --> 00:00:13.546
 OpenAI replies. Explicitly Save Lighthouse text.
 
-00:00:13.890 --> 00:00:16.774
+00:00:13.546 --> 00:00:16.442
 New conversation. Select Harbor.
 
-00:00:16.774 --> 00:00:23.538
+00:00:16.442 --> 00:00:24.044
 Name Harbor, then explicitly Save its reply.
 
-00:00:23.538 --> 00:00:26.346
+00:00:24.044 --> 00:00:26.858
 Two independent browser text documents.
 
-00:00:26.346 --> 00:00:32.770
+00:00:26.858 --> 00:00:32.974
 Reload clears SDK identity and captured events.
 
-00:00:32.770 --> 00:00:35.708
+00:00:32.974 --> 00:00:35.906
 Load Lighthouse text. No request or write.
 
-00:00:35.708 --> 00:00:45.730
+00:00:35.906 --> 00:00:44.514
 OpenAI remembers Lighthouse. Explicitly Save.
 
-00:00:45.730 --> 00:00:48.732
+00:00:44.514 --> 00:00:47.438
 Only this page’s captured events are replayed.
 
-00:00:48.732 --> 00:00:57.528
+00:00:47.438 --> 00:00:56.270
 Replay is read-only. No requests or writes.
 
-00:00:57.528 --> 00:01:00.567
+00:00:56.270 --> 00:01:03.000
 Back live.

@@ -107,7 +107,7 @@ export function nextPlaybackSpeed(speed: number): 0.5 | 1 | 2 {
   return 1;
 }
 
-/** Maps a key event to a player shortcut, ignoring text fields and buttons. */
+/** Maps a key event to a player shortcut outside interactive controls. */
 export function workbenchShortcut(
   event: Pick<
     KeyboardEvent,
@@ -117,7 +117,48 @@ export function workbenchShortcut(
 ): WorkbenchShortcut | null {
   if (
     target instanceof Element &&
-    target.closest('input, textarea, select, button, [contenteditable]')
+    target.closest(
+      [
+        'input',
+        'textarea',
+        'select',
+        'button',
+        'a[href]',
+        'area[href]',
+        'summary',
+        '[contenteditable]',
+        ...[
+          'button',
+          'checkbox',
+          'combobox',
+          'grid',
+          'gridcell',
+          'link',
+          'listbox',
+          'menu',
+          'menubar',
+          'menuitem',
+          'menuitemcheckbox',
+          'menuitemradio',
+          'option',
+          'radio',
+          'radiogroup',
+          'scrollbar',
+          'searchbox',
+          'separator',
+          'slider',
+          'spinbutton',
+          'switch',
+          'tab',
+          'tablist',
+          'tabpanel',
+          'textbox',
+          'tree',
+          'treegrid',
+          'treeitem',
+        ].map((role) => `[role~=${role}]`),
+      ].join(', '),
+    )
   ) {
     return null;
   }

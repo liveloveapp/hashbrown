@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import {
@@ -232,6 +233,8 @@ export async function verifyJavaScriptWorkbench(options: {
     } else await page.waitForTimeout(800);
     expect(requests).toBe(0);
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     return {
       framework,
       lesson: 'javascript-runtime',

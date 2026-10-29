@@ -1,0 +1,558 @@
+{
+  "version": 1,
+  "lesson": "decisions",
+  "framework": "react",
+  "commit": "c29b05b2d9c7d777b82c814d9ac545e98c6971da",
+  "recordedAt": "2026-10-28T19:08:21.332Z",
+  "events": [
+    {
+      "sequence": 1,
+      "turn": 1,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-1",
+        "role": "user",
+        "content": "The outline is complete. What should I do next?"
+      },
+      "source": "Application",
+      "elapsedMs": 0,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 2,
+      "turn": 1,
+      "kind": "request",
+      "payload": {
+        "requestId": "workbench-0-1",
+        "input": {
+          "state": {
+            "system": "Choose the next useful action from the supplied application snapshot and progress prompt. When the outline is complete choose record. When the demo is recorded choose review. If progress is unclear choose clarify. Suggest only; the user must explicitly use the suggestion.",
+            "input": {
+              "requestId": "workbench-0-1",
+              "prompt": "The outline is complete. What should I do next?",
+              "application": {
+                "revision": 0,
+                "nextAction": null,
+                "plan": {
+                  "title": "Show how a model renders trusted UI",
+                  "steps": ["Outline the trusted UI demo.", "Record the demo."]
+                }
+              }
+            }
+          },
+          "questions": {
+            "nextAction": {
+              "type": "choice",
+              "instructions": "The next useful action",
+              "options": {
+                "record": "Record the demo after the outline is complete.",
+                "review": "Review the demo after it has been recorded.",
+                "clarify": "Ask for clarification when progress is unclear."
+              }
+            }
+          }
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 2,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 3,
+      "turn": 1,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 167,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 4,
+      "turn": 1,
+      "kind": "event",
+      "payload": {
+        "kind": "hashbrown.decision",
+        "version": 1,
+        "value": { "nextAction": "record" },
+        "meta": {
+          "nextAction": {
+            "confidence": 0.98,
+            "probabilities": { "record": 0.99, "review": 0, "clarify": 0.01 }
+          }
+        },
+        "usage": { "inputTokens": 497, "outputTokens": 41 }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 169,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 5,
+      "turn": 1,
+      "kind": "decision",
+      "payload": { "nextAction": "record", "confidence": 0.98 },
+      "source": "Application",
+      "elapsedMs": 171,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "decision": { "nextAction": "record", "confidence": 0.98 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 6,
+      "turn": 1,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 171,
+      "application": {
+        "revision": 0,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": null
+      },
+      "decision": { "nextAction": "record", "confidence": 0.98 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 7,
+      "turn": 1,
+      "kind": "choose",
+      "payload": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "source": "Application",
+      "elapsedMs": 1080,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "decision": { "nextAction": "record", "confidence": 0.98 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "complete"
+    },
+    {
+      "sequence": 8,
+      "turn": 2,
+      "kind": "user",
+      "payload": {
+        "id": "workbench-0-2",
+        "role": "user",
+        "content": "The demo is recorded. What should I do next?"
+      },
+      "source": "Application",
+      "elapsedMs": 1965,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 9,
+      "turn": 2,
+      "kind": "request",
+      "payload": {
+        "requestId": "workbench-0-2",
+        "input": {
+          "state": {
+            "system": "Choose the next useful action from the supplied application snapshot and progress prompt. When the outline is complete choose record. When the demo is recorded choose review. If progress is unclear choose clarify. Suggest only; the user must explicitly use the suggestion.",
+            "input": {
+              "requestId": "workbench-0-2",
+              "prompt": "The demo is recorded. What should I do next?",
+              "application": {
+                "revision": 1,
+                "nextAction": "record",
+                "plan": {
+                  "title": "Show how a model renders trusted UI",
+                  "steps": ["Outline the trusted UI demo.", "Record the demo."]
+                }
+              }
+            }
+          },
+          "questions": {
+            "nextAction": {
+              "type": "choice",
+              "instructions": "The next useful action",
+              "options": {
+                "record": "Record the demo after the outline is complete.",
+                "review": "Review the demo after it has been recorded.",
+                "clarify": "Ask for clarification when progress is unclear."
+              }
+            }
+          }
+        }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 1966,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 10,
+      "turn": 2,
+      "kind": "source",
+      "payload": { "source": "provider" },
+      "source": "Application",
+      "elapsedMs": 2037,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        }
+      ],
+      "json": "",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 11,
+      "turn": 2,
+      "kind": "event",
+      "payload": {
+        "kind": "hashbrown.decision",
+        "version": 1,
+        "value": { "nextAction": "review" },
+        "meta": {
+          "nextAction": {
+            "confidence": 0.94,
+            "probabilities": { "record": 0.02, "review": 0.96, "clarify": 0.02 }
+          }
+        },
+        "usage": { "inputTokens": 499, "outputTokens": 41 }
+      },
+      "source": "Browser transport",
+      "elapsedMs": 2039,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"review\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.94,\n      \"probabilities\": {\n        \"record\": 0.02,\n        \"review\": 0.96,\n        \"clarify\": 0.02\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 499,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 12,
+      "turn": 2,
+      "kind": "decision",
+      "payload": { "nextAction": "review", "confidence": 0.94 },
+      "source": "Application",
+      "elapsedMs": 2040,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "decision": { "nextAction": "review", "confidence": 0.94 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-2",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"review\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.94,\n      \"probabilities\": {\n        \"record\": 0.02,\n        \"review\": 0.96,\n        \"clarify\": 0.02\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 499,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "review", "confidence": 0.94 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"review\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.94,\n      \"probabilities\": {\n        \"record\": 0.02,\n        \"review\": 0.96,\n        \"clarify\": 0.02\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 499,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "loading"
+    },
+    {
+      "sequence": 13,
+      "turn": 2,
+      "kind": "complete",
+      "payload": { "status": "complete", "finishReason": "stop" },
+      "source": "Application",
+      "elapsedMs": 2040,
+      "application": {
+        "revision": 1,
+        "plan": {
+          "title": "Show how a model renders trusted UI",
+          "steps": ["Outline the trusted UI demo.", "Record the demo."]
+        },
+        "nextAction": "record"
+      },
+      "decision": { "nextAction": "review", "confidence": 0.94 },
+      "dismissedPredictions": [],
+      "messages": [
+        {
+          "id": "workbench-0-1",
+          "role": "user",
+          "content": "The outline is complete. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-1",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"record\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.98,\n      \"probabilities\": {\n        \"record\": 0.99,\n        \"review\": 0,\n        \"clarify\": 0.01\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 497,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "record", "confidence": 0.98 }
+        },
+        {
+          "id": "workbench-0-2",
+          "role": "user",
+          "content": "The demo is recorded. What should I do next?"
+        },
+        {
+          "id": "decision-workbench-0-2",
+          "role": "assistant",
+          "content": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"review\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.94,\n      \"probabilities\": {\n        \"record\": 0.02,\n        \"review\": 0.96,\n        \"clarify\": 0.02\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 499,\n    \"outputTokens\": 41\n  }\n}",
+          "decision": { "nextAction": "review", "confidence": 0.94 }
+        }
+      ],
+      "json": "{\n  \"kind\": \"hashbrown.decision\",\n  \"version\": 1,\n  \"value\": {\n    \"nextAction\": \"review\"\n  },\n  \"meta\": {\n    \"nextAction\": {\n      \"confidence\": 0.94,\n      \"probabilities\": {\n        \"record\": 0.02,\n        \"review\": 0.96,\n        \"clarify\": 0.02\n      }\n    }\n  },\n  \"usage\": {\n    \"inputTokens\": 499,\n    \"outputTokens\": 41\n  }\n}",
+      "props": null,
+      "status": "complete"
+    }
+  ]
+}

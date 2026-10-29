@@ -1,3 +1,4 @@
+import type { ProductionClientState } from './workbench-production-client';
 import {
   normalizeWorkbenchLocalModelObservation,
   type WorkbenchLocalModelObservation,
@@ -79,37 +80,18 @@ export interface WorkbenchApplication {
 /** Runtime state for one captured user turn. */
 export type WorkbenchStatus =
   'idle' | 'loading' | 'paused' | 'complete' | 'error' | 'cancelled';
-/** The origin of an observable change in the canonical example. */
-export type WorkbenchEventKind =
-  | 'kit'
-  | 'decision'
-  | 'dismiss'
-  | 'choose'
-  | 'request'
-  | 'event'
-  | 'tool'
-  | 'parsed'
-  | 'accept'
-  | 'error'
-  | 'cancel'
-  | 'complete'
-  | 'user'
-  | 'source'
-  | 'response'
-  | 'workflow'
-  | 'form'
-  | 'pause'
-  | 'resume'
-  | 'history'
-  | 'history-app'
-  | 'javascript'
-  | 'local-model';
+import {
+  type WorkbenchEventKind,
+  workbenchEventKinds,
+} from './workbench-event-kinds';
+export { workbenchEventKinds, type WorkbenchEventKind };
 /** A frame captures everything needed for read-only historical playback. */
 export interface WorkbenchFrame {
   readonly localModel?: WorkbenchLocalModelObservation;
   readonly uiComponent?: WorkbenchUiComponent;
   readonly uiKit?: WorkbenchUiKitObservation;
   readonly history?: WorkbenchHistoryFrame;
+  readonly production?: ProductionClientState;
   readonly workflow?: WorkbenchWorkflowObservation;
   readonly javascript?: WorkbenchJavaScriptObservation;
   readonly sequence: number;
@@ -147,6 +129,8 @@ export type WorkbenchEvent = WorkbenchFrame;
 export interface WorkbenchSnapshot {
   readonly events: readonly WorkbenchEvent[];
   readonly cursor: number | null;
+  /** True after `load`: the trace is a recorded run and cannot be extended. */
+  readonly readOnly: boolean;
   readonly turn: number;
   readonly status: WorkbenchStatus;
   readonly application: WorkbenchApplication;
@@ -179,6 +163,8 @@ export interface WorkbenchStore {
   ): boolean;
   /** Releases failed/cancelled replacement intent without claiming the SDK transcript changed. */
   failHistoryReplacement(error?: unknown): boolean;
+  /** Captures authoritative production application reads separately from SDK events. */
+  recordProduction(state: ProductionClientState): boolean;
   /** Captures actual SDK state, messages, activities, pending batch and lifecycle flags. */
   recordWorkflow(observation: WorkbenchWorkflowObservationInput): boolean;
   /** Records intent before calling the synchronous SDK resume API; adds no user message. */
@@ -189,6 +175,8 @@ export interface WorkbenchStore {
   recordJavaScript(observation: unknown, userId: string): boolean;
   getSnapshot(): WorkbenchSnapshot;
   subscribe(listener: () => void): () => void;
+  /** Replaces the trace with recorded events, read-only, starting at the first; refused while a live run is loading. */
+  load(events: readonly WorkbenchEvent[]): void;
   send(content: string): { id: string; role: 'user'; content: string };
   record(kind: WorkbenchEventKind, payload: unknown, requestId?: string): void;
   parsed(ui: unknown): void;
@@ -435,6 +423,7 @@ export function createWorkbenchStore(
   let historySuccess = false;
   let replacementBaseline = '';
   let replacementObservedBusy = false;
+  let production: ProductionClientState | undefined;
   let workflow: WorkbenchWorkflowObservation | undefined;
   let javascript: WorkbenchJavaScriptObservation | undefined;
   let resumeIntent = false;
@@ -448,6 +437,7 @@ export function createWorkbenchStore(
   let instructions: WorkbenchInstructionsTrace | undefined;
   let events: readonly WorkbenchEvent[] = [];
   let cursor: number | null = null;
+  let readOnly = false;
   let turn = 0;
   let status: WorkbenchStatus = 'idle';
   let messages: WorkbenchFrame['messages'] = [];
@@ -464,6 +454,7 @@ export function createWorkbenchStore(
     snapshot = freeze({
       events,
       cursor,
+      readOnly,
       turn,
       status,
       application,
@@ -473,11 +464,27 @@ export function createWorkbenchStore(
     listeners.forEach((listener) => listener());
   };
   const record = (kind: WorkbenchEventKind, payload: unknown) => {
+    if (readOnly) return;
     if (
       (turn === 0 &&
         kind !== 'kit' &&
         kind !== 'local-model' &&
         kind !== 'workflow' &&
+        kind !== 'production' &&
+        !(
+          production &&
+          [
+            'pause',
+            'resume',
+            'request',
+            'response',
+            'source',
+            'event',
+            'complete',
+            'error',
+            'cancel',
+          ].includes(kind)
+        ) &&
         kind !== 'history' &&
         kind !== 'history-app' &&
         !(format === 'workflow' && kind === 'form')) ||
@@ -594,6 +601,7 @@ export function createWorkbenchStore(
               },
             }
           : {}),
+        ...(production ? { production } : {}),
         ...(workflow ? { workflow } : {}),
         ...(javascript ? { javascript } : {}),
         json,
@@ -913,18 +921,53 @@ export function createWorkbenchStore(
       record('history-app', { action, error: message });
       return true;
     },
+    recordProduction(state) {
+      if (readOnly || cursor !== null || format !== 'workflow') return false;
+      if (JSON.stringify(state) === JSON.stringify(production)) return false;
+      production = copy(state);
+      record('production', state);
+      return true;
+    },
     recordWorkflow(observation) {
-      if (format !== 'workflow' || cursor !== null) return false;
-      const next = normalizeWorkbenchWorkflowObservation(observation);
+      if (readOnly || format !== 'workflow' || cursor !== null) return false;
+      const normalized = normalizeWorkbenchWorkflowObservation(observation);
+      const next = production
+        ? {
+            ...normalized,
+            productionState: copy(observation.state),
+            ...(observation.pendingInterrupts
+              ? { pendingInterrupts: copy(observation.pendingInterrupts) }
+              : {}),
+          }
+        : normalized;
       const observedUser = next.messages
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
       const currentUser = messages
         .filter((message) => message.role === 'user')
         .at(-1)?.id;
-      if (turn > 0 && observedUser !== currentUser) return false;
+      if (
+        turn > 0 &&
+        observedUser !== currentUser &&
+        (!production || status === 'loading')
+      )
+        return false;
       if (JSON.stringify(next) === JSON.stringify(workflow)) return false;
       workflow = next;
+      if (production) {
+        messages = next.messages.flatMap((message) =>
+          (message.role === 'user' || message.role === 'assistant') &&
+          typeof message.content === 'string'
+            ? [
+                {
+                  id: message.id,
+                  role: message.role as 'user' | 'assistant',
+                  content: message.content,
+                },
+              ]
+            : [],
+        );
+      }
       if (next.isResuming || next.error || next.recoveryRequired)
         resumeIntent = false;
       const paused =
@@ -933,6 +976,14 @@ export function createWorkbenchStore(
         !next.isResuming &&
         !next.recoveryRequired &&
         !resumeIntent;
+      if (
+        production &&
+        status === 'paused' &&
+        !next.pendingInterrupts &&
+        !next.isLoading &&
+        !next.isResuming
+      )
+        status = 'idle';
       if (paused) {
         status = 'paused';
         resumeIntent = false;
@@ -956,7 +1007,7 @@ export function createWorkbenchStore(
       return true;
     },
     failResume() {
-      if (!resumeIntent || !workflow?.pendingInterrupts) return;
+      if (readOnly || !resumeIntent || !workflow?.pendingInterrupts) return;
       resumeIntent = false;
       status = 'paused';
       record('pause', { synchronousValidationRejected: true });
@@ -1021,6 +1072,8 @@ export function createWorkbenchStore(
     },
     send(content) {
       const text = content.trim();
+      if (readOnly)
+        return { id: `readonly-${events.length}`, role: 'user', content: text };
       if (
         cursor !== null ||
         status === 'loading' ||
@@ -1217,7 +1270,7 @@ export function createWorkbenchStore(
       return true;
     },
     parsed(value) {
-      if (status !== 'loading') return;
+      if (readOnly || status !== 'loading') return;
       const extracted =
         options.uiLesson && format === 'ui'
           ? extractWorkbenchUi(value, options.uiLesson)
@@ -1274,7 +1327,7 @@ export function createWorkbenchStore(
       record('parsed', value);
     },
     settle(next, reason) {
-      if (status !== 'loading') return;
+      if (readOnly || status !== 'loading') return;
       status = next;
       finishReason = reason;
       if (format === 'history')
@@ -1401,9 +1454,22 @@ export function createWorkbenchStore(
       record('accept', application);
       return true;
     },
+    load(recorded) {
+      if ((!readOnly && status === 'loading') || !recorded.length) return;
+      generation++;
+      localPreparationId = null;
+      events = freeze(copy([...recorded]));
+      const last = events[events.length - 1];
+      status = last.status;
+      turn = last.turn;
+      application = last.application;
+      readOnly = true;
+      cursor = 0;
+      notify();
+    },
     seek(index) {
       if (
-        status === 'loading' ||
+        (!readOnly && status === 'loading') ||
         (format === 'history' &&
           (!!history?.replacement || isWorkbenchHistoryBusy(history?.sdk))) ||
         !Number.isInteger(index) ||
@@ -1416,7 +1482,7 @@ export function createWorkbenchStore(
       notify();
     },
     live() {
-      cursor = null;
+      cursor = readOnly ? events.length - 1 : null;
       notify();
     },
     clear() {
@@ -1438,6 +1504,7 @@ export function createWorkbenchStore(
       application = initialApplication();
       events = [];
       cursor = null;
+      readOnly = false;
       turn = 0;
       status = 'idle';
       messages = [];

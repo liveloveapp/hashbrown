@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import { assertWorkbenchSavedTextInspection } from './workbench-history-inspection';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -21,6 +22,7 @@ export async function verifyHistoryWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly preview: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly nativeRequests: readonly Record<string, unknown>[];
   readonly outcome: (
@@ -358,10 +360,13 @@ export async function verifyHistoryWorkbench(options: {
       }
       options.outcome('success');
       await newConversation();
+      const releaseCancellation = options.preview();
+      const beforeCancellation = count();
       await send.click();
+      await expect.poll(count).toBeGreaterThan(beforeCancellation);
       await expect(button('Stop')).toBeEnabled();
-      await page.waitForTimeout(200);
       await button('Stop').click();
+      releaseCancellation();
       await expect(root.locator('.wb-chat .wb-panel-head')).toContainText(
         'cancelled',
       );
@@ -484,6 +489,8 @@ export async function verifyHistoryWorkbench(options: {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

@@ -146,6 +146,11 @@ body {
     14px minmax(320px, var(--wb-inspector, 56fr));
   transition: grid-template-columns 200ms ease;
 }
+.wb-embed .wb-layout {
+  grid-template-columns:
+    minmax(280px, var(--wb-chat, 44fr)) 14px
+    minmax(320px, var(--wb-inspector, 56fr));
+}
 .wb-layout:has(.wb-dragging) {
   transition: none;
 }

@@ -2996,8 +2996,14 @@ test('accepts a compatible snapshotted reasoning start without resetting it', ()
           content: 'Plan',
           encryptedValue: 'opaque',
           metadata: { initial: true },
+          subagentRunId: 'subagent-1',
         },
-        { id: 'assistant-1', role: 'assistant', content: '' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          subagentRunId: 'subagent-1',
+        },
       ],
     }),
   );
@@ -4776,22 +4782,21 @@ test('prepared success commits the exact attempt-owned decorated tool objects', 
     effects: [],
     prepareAction: ɵprepareRootAction,
   });
-  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  const lookup = {
+    name: 'lookup',
+    description: 'Look up a value.',
+    schema: s.object('Lookup input', { value: s.number('Value') }),
+    handler: async () => 'result',
+  };
+  store.dispatch(
+    devActions.init({ system: '', canonicalMessages: [], tools: [lookup] }),
+  );
   store.dispatch(
     internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
   );
   store.dispatch(
     apiActions.generateMessageStart({
-      toolsByName: {
-        lookup: {
-          name: 'lookup',
-          description: 'Look up a value.',
-          schema: s.object('Lookup input', {
-            value: s.number('Value'),
-          }),
-          handler: async () => 'result',
-        },
-      },
+      toolsByName: { lookup },
     }),
   );
   store.dispatch(internalActions.generationAttemptStarted());
@@ -6617,3 +6622,63 @@ test('rechecks idle ownership and interrupt expiry at the queued restore commit 
   expect(initial.interrupts.pending).toBeUndefined();
   expect(initial.recovery.restorationEpoch).toBe(0);
 });
+
+test.each(['', '{}'])(
+  'keeps provider argument completion in public streaming views while another invocation is open: %p',
+  (argumentsText) => {
+    const store = createStore({
+      reducers,
+      effects: [],
+      prepareAction: ɵprepareRootAction,
+    });
+    store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+    store.dispatch(internalActions.generationAttemptStarted());
+    store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+    const dispatch = (event: AGUIEvent) =>
+      store.dispatch(apiActions.generateMessageEvent(event));
+    const start = (id: string): AGUIEvent => ({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: id,
+      toolCallName: 'code_interpreter',
+      parentMessageId: 'answer',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'provider',
+          status: 'running',
+          builtin: 'code_execution',
+        },
+      },
+    });
+    dispatch(start('first'));
+    dispatch(start('second'));
+    if (argumentsText)
+      dispatch({
+        type: EventType.TOOL_CALL_ARGS,
+        toolCallId: 'first',
+        delta: argumentsText,
+      });
+
+    dispatch({ type: EventType.TOOL_CALL_END, toolCallId: 'first' });
+    dispatch({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'second',
+      delta: '{',
+    });
+    const views = store.read(selectViewMessages);
+    const calls = views.flatMap((view) =>
+      view.role === 'assistant' ? (view.serverToolCalls ?? []) : [],
+    );
+
+    expect(calls).toEqual([
+      expect.objectContaining({ toolCallId: 'first', status: 'executing' }),
+      expect.objectContaining({ toolCallId: 'second', status: 'inProgress' }),
+    ]);
+    expect(
+      calls.every(
+        (call) => call.result === undefined && call.outcome === undefined,
+      ),
+    ).toBe(true);
+    expect(store.read(ɵselectAgUiMessagesProtocolError)).toBeUndefined();
+  },
+);

@@ -113,3 +113,5 @@ Start with read-only functions. Add mutation capabilities only when their handle
 
 - [Expose tools](/docs/react/concept/functions) to read application data or perform checked actions.
 - [Use structured output](/docs/react/concept/structured-output) when the task needs typed data rather than code execution.
+
+The [conversation workbench guide](/docs/react/start/workbench#inspect-and-replay) explains the inspector, keyboard controls, and read-only playback.

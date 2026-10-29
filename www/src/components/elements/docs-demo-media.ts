@@ -1,5 +1,21 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'canonical-workbench-production-recovery-react': {
+    title: 'React workbench: durable recovery with b4.run.',
+    caption:
+      'Restore a paused turn after a server restart, then explicitly approve the application-owned plan.',
+    recording:
+      'Real OpenAI output through Hashbrown React and b4.run 0.15.5 with isolated Postgres storage. Actual-speed footage with reading pauses and no narration. A genuine server process replacement preserves the checkpoint and pending approval. Explicit restoration generates no model request. Explicit approval commits one plan revision and database receipt; this does not guarantee exactly-once external effects. The local identity adapter uses a signed anonymous cookie, not account login. The post-refresh capture records newly observed recovery and resume facts, not the original stream timing. Playback sends no requests and writes no application state.',
+    dimensions: { width: 1600, height: 1000 },
+  },
+  'canonical-workbench-production-recovery-angular': {
+    title: 'Angular workbench: durable recovery with b4.run.',
+    caption:
+      'Restore a paused turn after a server restart, then explicitly approve the application-owned plan.',
+    recording:
+      'Real OpenAI output through Hashbrown Angular and b4.run 0.15.5 with isolated Postgres storage. Actual-speed footage with reading pauses and no narration. A genuine server process replacement preserves the checkpoint and pending approval. Explicit restoration generates no model request. Explicit approval commits one plan revision and database receipt; this does not guarantee exactly-once external effects. The local identity adapter uses a signed anonymous cookie, not account login. The post-refresh capture records newly observed recovery and resume facts, not the original stream timing. Playback sends no requests and writes no application state.',
+    dimensions: { width: 1600, height: 1000 },
+  },
   'canonical-workbench-local-models-react': {
     title: 'React workbench: local models.',
     caption:

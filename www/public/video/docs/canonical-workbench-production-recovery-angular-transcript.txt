@@ -1,0 +1,19 @@
+ANGULAR · Durable recovery with b4.run
+
+Real OpenAI output through Hashbrown and b4.run 0.15.5, backed by isolated Postgres. Actual-speed footage with reading pauses; no narration. A genuine server process replacement preserves the paused checkpoint and approval grant. Explicit restoration sends no model request. Explicit approval commits one application plan revision and receipt. This protects the illustrated database write; it does not guarantee exactly-once external effects. The local identity is a signed anonymous cookie, not account login.
+
+Real OpenAI output. The server tool pauses for approval.
+
+Restart the server. Postgres keeps the paused turn.
+
+Restore the conversation. No model request.
+
+Approve once. The plan commits at revision 1.
+
+Inspect the saved plan and the resumed response.
+
+Replay captured events. No requests or writes.
+
+Back live. Plan revision 1.
+
+Playback sends no requests and writes no application state. The post-refresh timeline contains newly observed recovery and resume facts; it does not reconstruct the original stream's timing.

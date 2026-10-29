@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -24,6 +25,8 @@ export async function verifyOnboardingWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly preview: () => () => void;
+  readonly partial: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly instructions: readonly WorkbenchInstructionsTrace[];
   readonly nativeRequests: readonly Record<string, unknown>[];
@@ -148,6 +151,8 @@ export async function verifyOnboardingWorkbench(options: {
     );
     await hold();
     mark('firstRequest');
+    const releasePartial =
+      !live && lesson === 'first-plan' ? options.partial() : undefined;
     await send.click();
     let partialTitle = '';
     let partialSteps: string[] = [];
@@ -178,6 +183,7 @@ export async function verifyOnboardingWorkbench(options: {
     } else {
       await expect(replies.first()).not.toBeEmpty({ timeout: 60_000 });
     }
+    releasePartial?.();
     await complete();
     mark('firstComplete');
     await expect(root.locator('[data-source]')).toHaveText(
@@ -361,11 +367,14 @@ export async function verifyOnboardingWorkbench(options: {
       }
       options.outcome('success');
       await newConversation();
+      const releaseCancellation = options.preview();
+      const beforeCancellation = count();
       await send.click();
+      await expect.poll(count).toBeGreaterThan(beforeCancellation);
       const stop = root.getByRole('button', { name: 'Stop', exact: true });
       await expect(stop).toBeEnabled();
-      await page.waitForTimeout(200);
       await stop.click();
+      releaseCancellation();
       await expect(status).toContainText('cancelled');
       await revision();
       await root
@@ -407,6 +416,8 @@ export async function verifyOnboardingWorkbench(options: {
       root.getByRole('button', { name: 'Accept plan', exact: true }),
     ).toHaveCount(0);
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

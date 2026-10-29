@@ -1706,3 +1706,73 @@ test('normalizes a new tool call step using its call id', () => {
     sources: [{ id: 'legacy-1:0', kind: 'record', title: 'Legacy source' }],
   });
 });
+
+test('hydrates assistant and inline call requester ownership from native openers', () => {
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'a',
+      role: 'assistant',
+      subagentRunId: '',
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c',
+      toolCallName: 'x',
+      parentMessageId: 'a',
+      subagentRunId: '',
+    },
+  ];
+
+  const state = accumulateEvents(createState(), events);
+
+  expect(state.message).toMatchObject({ subagentRunId: '' });
+  expect(state.toolCalls[0]).toMatchObject({ subagentRunId: '' });
+});
+
+test('reasoning opener retains its assistant owner when text and call hydrate later', () => {
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      role: 'reasoning',
+      messageId: 'r',
+      subagentRunId: '__proto__',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'a',
+      role: 'assistant',
+      subagentRunId: '__proto__',
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c',
+      toolCallName: 'x',
+      parentMessageId: 'a',
+      subagentRunId: '__proto__',
+    },
+  ];
+
+  const state = accumulateEvents(createState(), events);
+
+  expect(state.message).toMatchObject({ subagentRunId: '__proto__' });
+  expect(state.toolCalls[0]).toMatchObject({ subagentRunId: '__proto__' });
+});
+
+test('an existing parent assistant does not inherit a mismatched call event owner', () => {
+  const events: AGUIEvent[] = [
+    { type: EventType.TEXT_MESSAGE_START, messageId: 'a', role: 'assistant' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c',
+      toolCallName: 'x',
+      parentMessageId: 'a',
+      subagentRunId: 'other',
+    },
+  ];
+
+  const state = accumulateEvents(createState(), events);
+
+  expect(state.message).not.toHaveProperty('subagentRunId');
+  expect(state.toolCalls[0]).not.toHaveProperty('subagentRunId');
+});

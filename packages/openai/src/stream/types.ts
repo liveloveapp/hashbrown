@@ -49,6 +49,29 @@ export interface OpenAIBuiltInTools {
    * any UI that shows the answer.
    */
   webSearch?: true | Omit<OpenAI.Responses.WebSearchTool, 'type'>;
+
+  /**
+   * Turns on the provider's `code_interpreter` tool and requests
+   * `code_interpreter_call.outputs`. Pass `true` for an automatic container,
+   * or native configuration with an automatic container (including file IDs
+   * and memory limits) or an explicit container ID. Configuration is deeply
+   * cloned and sent unchanged; execution runs on the provider.
+   *
+   * Requests remain stateless with `store: false`: provider execution history
+   * is omitted from later requests, so automatic reuse of an earlier container
+   * is not guaranteed. Supply an explicit container ID when retained container
+   * state is required. Containers and files remain provider-owned and ephemeral;
+   * Hashbrown does not provide file storage or download endpoints.
+   *
+   * The OpenAI model must support code interpreter; otherwise the request
+   * fails through the provider's normal request path.
+   */
+  codeExecution?:
+    | true
+    | Omit<
+        Extract<OpenAI.Responses.Tool, { type: 'code_interpreter' }>,
+        'type'
+      >;
 }
 
 /**

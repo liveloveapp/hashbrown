@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -29,6 +30,8 @@ export async function verifyUiWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly fallback: () => () => void;
+  readonly partial: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly nativeRequests: readonly Record<string, unknown>[];
   readonly outcome: (value: UiFixtureOutcome) => void;
@@ -59,6 +62,8 @@ export async function verifyUiWorkbench(options: {
   const nativeStart = options.nativeRequests.length;
   let succeeded = false;
   const observations: { fallback: boolean; json: string }[] = [];
+  let releaseFallback: (() => void) | undefined;
+  let releasePartial: (() => void) | undefined;
   try {
     await page.goto(`${options.origin}/${framework}.html?lesson=${lesson}`);
     const root = page.locator('.wb:visible');
@@ -144,7 +149,29 @@ export async function verifyUiWorkbench(options: {
         attributes: true,
       });
     });
+    if (!live) {
+      releaseFallback = options.fallback();
+      releasePartial = options.partial();
+    }
     await send.click();
+    if (!live) {
+      await expect(root.locator('[data-kit-fallback]')).toBeVisible();
+      await expect
+        .poll(() => observations.some((value) => value.fallback))
+        .toBe(true);
+      releaseFallback?.();
+      await expect
+        .poll(async () => {
+          const value = await inspection();
+          return (
+            value.sourceStatus === 'loading' &&
+            value.component === 'SummaryCard' &&
+            value.props?.steps?.length > 0
+          );
+        })
+        .toBe(true);
+      releasePartial?.();
+    }
     await complete();
     await expect(root.locator('[data-source]')).toHaveText(
       live ? 'Live model' : 'Test fixture',
@@ -358,6 +385,8 @@ export async function verifyUiWorkbench(options: {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,
@@ -401,6 +430,8 @@ export async function verifyUiWorkbench(options: {
     );
     throw error;
   } finally {
+    releaseFallback?.();
+    releasePartial?.();
     options.outcome('success');
     const video = page.video();
     await page.close();

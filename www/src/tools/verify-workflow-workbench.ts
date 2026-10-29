@@ -1,3 +1,4 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -12,6 +13,7 @@ export async function verifyWorkflowWorkbench(options: {
   readonly work: string;
   readonly live: boolean;
   readonly recording: boolean;
+  readonly preview: () => () => void;
   readonly requests: readonly RunAgentInput[];
   readonly providerRequests: readonly RunAgentInput[];
   readonly outcome: (value: 'success' | 'error' | 'length') => void;
@@ -473,11 +475,14 @@ export async function verifyWorkflowWorkbench(options: {
       }
       options.outcome('success');
       await newConversation();
+      const beforeCancellation = count();
+      const releaseCancellation = options.preview();
       await send.click();
+      await expect.poll(count).toBeGreaterThan(beforeCancellation);
       const stop = root.getByRole('button', { name: 'Stop', exact: true });
       await expect(stop).toBeEnabled();
-      await page.waitForTimeout(150);
       await stop.click();
+      releaseCancellation();
       await expect(status).toContainText('cancelled');
       await expect(state).toContainText('· idle');
       await expect(approvals).toHaveCount(0);
@@ -577,6 +582,8 @@ export async function verifyWorkflowWorkbench(options: {
       expect(count()).toBe(beforeNavigation);
     }
     expect(errors).toEqual([]);
+    if (process.env['WORKBENCH_RECORD'] === '1')
+      await saveWorkbenchCapture(page, resolve(work, `${base}.capture.json`));
     succeeded = true;
     return {
       framework,

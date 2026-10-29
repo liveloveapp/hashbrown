@@ -1,3 +1,5 @@
+import { saveWorkbenchCapture } from './workbench-capture-file';
+import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
 import { assertLocalRecordingAllowed } from './docs-local-models-fixtures';
 import { verifyJavaScriptWorkbench } from './verify-javascript-workbench';
@@ -18,6 +20,12 @@ import { workbenchAuthoringFixtureText } from './workbench-authoring-fixture';
 import { createWorkbenchAgentStream } from '../../examples/quickstart/server/workbench-agent';
 import { DecisionError } from '@hashbrownai/typesafe';
 import { verifyServerWorkbench } from './verify-server-workbench';
+import {
+  createWorkbenchFallbackPreview,
+  createWorkbenchPlanPreview,
+  createWorkbenchPreview,
+  workbenchVerificationTiming,
+} from './workbench-verification-timing';
 import { verifyHistoryWorkbench } from './verify-history-workbench';
 import { workbenchHistoryFixtureText } from './workbench-history-fixture';
 import { verifyWorkflowWorkbench } from './verify-workflow-workbench';
@@ -32,6 +40,7 @@ import { type Decision } from '@hashbrownai/core';
 import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workbench';
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
+import { verifyEmbedWorkbench } from './verify-embed-workbench';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -45,10 +54,11 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
+import { hostedWorkbenchLessons as workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
+const recording = process.env['WORKBENCH_RECORD'] === '1';
 const eventDelayMs = process.env['WORKBENCH_RECORD'] === '1' ? 20 : 0;
 async function* pacedProvider(
   events: AsyncIterable<AGUIEvent>,
@@ -60,6 +70,37 @@ async function* pacedProvider(
     if (signal.aborted) return;
     yield event;
   }
+}
+let pendingPreview: ReturnType<typeof createWorkbenchPreview> | undefined;
+let pendingPartial: ReturnType<typeof createWorkbenchPlanPreview> | undefined;
+let pendingFallback:
+  ReturnType<typeof createWorkbenchFallbackPreview> | undefined;
+/** Holds incomplete UI-kit props until the browser sees the framework fallback. */
+function holdFallback(): () => void {
+  const preview = createWorkbenchFallbackPreview();
+  pendingFallback = preview;
+  return () => {
+    preview.release();
+    if (pendingFallback === preview) pendingFallback = undefined;
+  };
+}
+/** Holds the first renderable plan fragment until its browser assertion completes. */
+function holdPartial(completeFirstStep = false): () => void {
+  const preview = createWorkbenchPlanPreview(completeFirstStep);
+  pendingPartial = preview;
+  return () => {
+    preview.release();
+    if (pendingPartial === preview) pendingPartial = undefined;
+  };
+}
+/** Starts a single provisional-output checkpoint for the current serial scenario. */
+function holdPreview(): () => void {
+  const preview = createWorkbenchPreview();
+  pendingPreview = preview;
+  return () => {
+    preview.release();
+    if (pendingPreview === preview) pendingPreview = undefined;
+  };
 }
 const requests: RunAgentInput[] = [];
 const agentRequests: { state: string }[] = [];
@@ -107,16 +148,31 @@ async function* fixture(
     const messageId = `${input.runId}-answer`;
     yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
     for (let index = 0; index < onboardingText.length; index += 10) {
-      await new Promise((done) => setTimeout(done, 80));
+      await new Promise((done) =>
+        setTimeout(
+          done,
+          workbenchVerificationTiming(recording, lessonId).chunkMs,
+        ),
+      );
       if (signal.aborted) return;
       yield {
         type: EventType.TEXT_MESSAGE_CONTENT,
         messageId,
         delta: onboardingText.slice(index, index + 10),
       };
+      await pendingPartial?.wait(
+        onboardingText.slice(index, index + 10),
+        signal,
+      );
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId };
-    await new Promise((done) => setTimeout(done, 400));
+    await pendingPreview?.wait(signal);
+    await new Promise((done) =>
+      setTimeout(
+        done,
+        workbenchVerificationTiming(recording, lessonId).verdictMs,
+      ),
+    );
     yield outcome === 'error'
       ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
       : {
@@ -217,7 +273,12 @@ async function* fixture(
       : valid;
   yield { type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant' };
   for (let index = 0; index < json.length; index += 14) {
-    await new Promise((done) => setTimeout(done, 80));
+    await new Promise((done) =>
+      setTimeout(
+        done,
+        workbenchVerificationTiming(recording, lessonId).chunkMs,
+      ),
+    );
     if (signal.aborted) return;
     yield {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -226,8 +287,15 @@ async function* fixture(
     };
   }
   yield { type: EventType.TEXT_MESSAGE_END, messageId };
+  // The browser releases the first preview after asserting its disabled action.
+  await pendingPreview?.wait(signal);
   // Leave a visible complete-looking preview before the terminal verdict.
-  await new Promise((done) => setTimeout(done, 400));
+  await new Promise((done) =>
+    setTimeout(
+      done,
+      workbenchVerificationTiming(recording, lessonId).verdictMs,
+    ),
+  );
   yield verdict === 'error'
     ? { type: EventType.RUN_ERROR, message: 'Intentional test failure' }
     : {
@@ -572,16 +640,33 @@ app.post('/fixture-openai/v1/responses', async (req, res) => {
     'Cache-Control': 'no-store',
   });
   for (const [sequence_number, event] of events.entries()) {
+    if ((hasContext || onboarding) && event.type === 'response.completed')
+      await pendingPreview?.wait(new AbortController().signal);
     if (outcome === 'no-finish' && event.type === 'response.completed')
       continue;
     if (res.destroyed) return;
     res.write(
       `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`,
     );
+    if (event.type === 'response.output_text.delta' && 'delta' in event) {
+      await pendingFallback?.wait(
+        String(event.delta),
+        new AbortController().signal,
+      );
+      await pendingPartial?.wait(
+        String(event.delta),
+        new AbortController().signal,
+      );
+    }
     if (event.type === 'response.output_text.delta')
-      await new Promise((done) => setTimeout(done, 80));
+      await new Promise((done) =>
+        setTimeout(done, workbenchVerificationTiming(recording).chunkMs),
+      );
   }
-  if (hasContext) await new Promise((done) => setTimeout(done, 400));
+  if (hasContext)
+    await new Promise((done) =>
+      setTimeout(done, workbenchVerificationTiming(recording).verdictMs),
+    );
   res.end();
 });
 const server = createServer(app);
@@ -594,7 +679,9 @@ const browser = await chromium.launch({ headless: true }).catch((error) => {
   if (process.env['CI']) throw error;
   return chromium.launch({ headless: true, channel: 'chrome' });
 });
-const requestedLessons = process.env['WORKBENCH_LESSONS']?.split(',');
+const requestedLessons = process.env['WORKBENCH_LESSONS']
+  ? process.env['WORKBENCH_LESSONS'].split(',')
+  : undefined;
 if (
   requestedLessons?.some(
     (id) => !workbenchLessons.some((lesson) => lesson.id === id),
@@ -685,6 +772,8 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            fallback: holdFallback,
+            partial: () => holdPartial(true),
             requests,
             nativeRequests,
             outcome: (value) => {
@@ -709,6 +798,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             agentRequests,
             authoringOutcome: (value) => {
@@ -751,6 +841,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             nativeRequests,
             outcome: (value) => {
@@ -772,6 +863,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             outcome: (value) => {
               outcome = value;
@@ -796,6 +888,8 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
+            partial: holdPartial,
             requests,
             instructions,
             nativeRequests,
@@ -817,6 +911,7 @@ try {
             work,
             live,
             recording: process.env['WORKBENCH_RECORD'] === '1',
+            preview: holdPreview,
             requests,
             decisionRequests,
             outcome: (value) => {
@@ -966,7 +1061,7 @@ try {
         await page.getByRole('tab', { name: 'JSON', exact: true }).click();
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(800);
-      await page.waitForTimeout(100);
+      if (recording) await page.waitForTimeout(100);
       expect(requests).toHaveLength(start);
       expect(browserRequests).toBe(0);
       if (lesson.id === 'debugging') {
@@ -1012,6 +1107,7 @@ try {
           await page.waitForTimeout(500);
       }
       mark('firstRequest');
+      if (!live) pendingPreview = createWorkbenchPreview();
       await send.click();
       const card = page.getByRole('article', { name: 'Summary card' }).last();
       await expect(card).toBeVisible({ timeout: 60_000 });
@@ -1022,6 +1118,8 @@ try {
       if (!live) await expect(accept).toBeDisabled();
       if (lesson.id === 'streaming' && !live)
         await expect(card.locator('h2')).not.toHaveText('Building your plan…');
+      pendingPreview?.release();
+      pendingPreview = undefined;
       await expect(accept)
         .toBeEnabled({ timeout: 15_000 })
         .catch(async (error) => {
@@ -1045,28 +1143,7 @@ try {
       mark('firstComplete');
       // A verification step, not footage: recordings skip it.
       if (lesson.id === 'tools' && process.env['WORKBENCH_RECORD'] !== '1') {
-        const requestsDetail = page.locator(
-          '.wb:visible .wb-inspector [data-detail]',
-        );
-        await page.getByRole('tab', { name: 'Requests', exact: true }).click();
-        await page
-          .getByRole('button', { name: 'Model request', exact: true })
-          .first()
-          .click();
-        await expect(requestsDetail).toBeVisible();
-        await expect(
-          requestsDetail.getByRole('tab', { name: /^Response\b/ }),
-        ).toBeVisible();
-        await requestsDetail
-          .getByRole('tab', { name: /^Raw request\b/ })
-          .click();
-        await expect(requestsDetail).toContainText('"messages"');
-        await page.keyboard.press('Escape');
-        await expect(requestsDetail).toHaveCount(0);
-        // Selecting a request seeks the player to it; go back to the live end.
-        await page
-          .getByRole('button', { name: 'Return to live', exact: true })
-          .click();
+        await verifyWorkbenchKeyboard(page, () => requests.length);
       }
       if (
         lesson.id === 'request-transformation' &&
@@ -1402,6 +1479,14 @@ try {
           : {}),
         passed: true,
       });
+      if (process.env['WORKBENCH_RECORD'] === '1')
+        await saveWorkbenchCapture(
+          page,
+          resolve(
+            work,
+            `${framework}-${lesson.id}-${live ? 'live' : 'fixture'}.capture.json`,
+          ),
+        );
       saveCheckpoint();
       const video = page.video();
       await page.close();
@@ -1414,6 +1499,16 @@ try {
         );
     }
   }
+  // A cross-origin docs page drives a replay embed; fixtures only.
+  if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
+    report.push(
+      await verifyEmbedWorkbench({
+        browser,
+        origin: `http://127.0.0.1:${address.port}`,
+      }),
+    );
+    saveCheckpoint();
+  }
   writeFileSync(
     resolve(work, `${live ? 'live' : 'fixture'}-report.json`),
     JSON.stringify(report, null, 2),
@@ -1422,6 +1517,9 @@ try {
   console.log(JSON.stringify(report));
 } finally {
   await nativeLocal?.close();
+  pendingPreview?.release();
+  pendingPartial?.release();
+  pendingFallback?.release();
   await browser.close();
   await new Promise<void>((done) => server.close(() => done()));
 }
