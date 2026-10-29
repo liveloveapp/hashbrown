@@ -84,3 +84,97 @@
   font: 13px/1.5 var(--font-code);
   color: var(--color-muted);
 }
+
+.source {
+  display: grid;
+  /* A long line scrolls inside the code area instead of widening the panel. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.panel .files,
+.panel .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Not prose lists: no bullets or indents from the docs article styles. */
+.panel .files > li,
+.panel .links > li {
+  margin: 0;
+  padding: 0;
+}
+
+.panel .files > li::before,
+.panel .links > li::before {
+  content: none;
+}
+
+.panel .links {
+  flex-direction: column;
+  margin-top: var(--space-2);
+  font: 13px/1.5 var(--font-code);
+}
+
+.files .tab {
+  font: 13px/1.5 var(--font-code);
+}
+
+.files .tab[aria-pressed='true'] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-rule);
+}
+
+.file figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.file figcaption a {
+  font: 14px/1.5 var(--font-sans);
+}
+
+/* A bounded scroll area: long files scroll here, not the page. */
+.code {
+  position: relative;
+  max-height: min(480px, 60vh);
+  overflow: auto;
+  border-radius: var(--radius-card);
+  background: var(--color-code-bg);
+}
+
+.code pre {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: var(--space-3) 0;
+}
+
+.code :global(.line) {
+  display: inline-block;
+  min-width: 100%;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border-left: 4px solid transparent;
+}
+
+.code [data-highlighted] {
+  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  user-select: none;
+}
