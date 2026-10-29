@@ -120,8 +120,93 @@ export async function startWorker(entry, settings) {
     throw error;
   }
 }
+/** Build the exact runtime storage pool with server, connection and client reply deadlines. */
+export function createReadinessPool(storage, databaseUrl, max = 5) {
+  return storage.createPostgresPool({
+    connectionString: databaseUrl,
+    max,
+    statement_timeout: 15000,
+    query_timeout: 15000,
+    connectionTimeoutMillis: 15000,
+  });
+}
+/** Track raw clients beneath the published fenced wrapper, whose release ignores destroy arguments. */
+export function trackOwnedPool(raw) {
+  const active = new Set();
+  return {
+    pool: {
+      query: (...args) => raw.query(...args),
+      connect: async () => {
+        const actual = await raw.connect();
+        let released = false;
+        const client = {
+          query: (...args) => actual.query(...args),
+          release: (destroy) => {
+            if (released) return;
+            released = true;
+            active.delete(client);
+            actual.release(destroy);
+          },
+        };
+        active.add(client);
+        return client;
+      },
+    },
+    destroyClients() {
+      for (const client of [...active]) client.release(true);
+    },
+  };
+}
+/** Bound rollback and every owned resource close; destroy raw checked-out clients before pool shutdown. */
+export async function closeOwnedStorage({
+  client,
+  admission,
+  saver,
+  pool,
+  destroyClients = () => {
+    /* Direct-client fixtures need no separate tracker. */
+  },
+  timeoutMs = 4000,
+}) {
+  const errors = [];
+  if (client) {
+    try {
+      await bounded(
+        client.query('ROLLBACK'),
+        timeoutMs,
+        'transaction rollback',
+      );
+    } catch {
+      errors.push('transaction rollback failed');
+    } finally {
+      try {
+        client.release(true);
+      } catch {
+        errors.push('transaction release failed');
+      }
+    }
+  }
+  try {
+    destroyClients();
+  } catch {
+    errors.push('raw client destruction failed');
+  }
+  for (const [label, resource, method] of [
+    ['admission', admission, 'close'],
+    ['saver', saver, 'close'],
+    ['pool', pool, 'end'],
+  ])
+    if (resource) {
+      try {
+        await bounded(resource[method](), timeoutMs, label + ' cleanup');
+      } catch {
+        errors.push(label + ' cleanup failed');
+      }
+    }
+  return errors;
+}
 async function storageWorker() {
-  let raw, admission, saver, client, settings;
+  let raw, admission, saver, client, settings, tracked;
   let redact = createRedactor();
   process.on('message', async (message) => {
     const { id, op } = message;
@@ -141,14 +226,10 @@ async function storageWorker() {
             ),
           ).href
         );
-        raw = storage.createPostgresPool({
-          connectionString: settings.databaseUrl,
-          max: 4,
-          statement_timeout: 15000,
-          connectionTimeoutMillis: 15000,
-        });
+        raw = createReadinessPool(storage, settings.databaseUrl, 4);
+        tracked = trackOwnedPool(raw);
         admission = storage.createPostgresRunAdmission({
-          pool: raw,
+          pool: tracked.pool,
           tablePrefix: settings.prefix,
           leaseDurationMs: settings.duration,
           heartbeatIntervalMs: settings.interval,
@@ -197,14 +278,15 @@ async function storageWorker() {
         await admission.release();
         result = true;
       } else if (op === 'close') {
-        if (client) {
-          await client.query('ROLLBACK');
-          client.release();
-          client = undefined;
-        }
-        await admission.close();
-        await saver.close();
-        await raw.end();
+        const errors = await closeOwnedStorage({
+          client,
+          admission,
+          saver,
+          pool: raw,
+          destroyClients: () => tracked?.destroyClients(),
+        });
+        client = undefined;
+        if (errors.length) throw Error(errors.join('; '));
         result = true;
       } else throw Error('unknown command');
       process.send?.({

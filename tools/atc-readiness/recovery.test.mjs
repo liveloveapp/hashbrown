@@ -330,3 +330,156 @@ test('failed real provider completion prevents expiry wait and successor dispatc
   );
   assert.deepEqual(calls, []);
 });
+
+test('stalled transaction rollback destroys checked-out client before bounded pool cleanup', async () => {
+  const { closeOwnedStorage } = await import('./owner-worker.mjs');
+  const calls = [];
+  const client = {
+    query() {
+      calls.push('rollback');
+      return new Promise(() => {
+        /* Simulate server never returning a reply. */
+      });
+    },
+    release(destroy) {
+      calls.push(['release', destroy]);
+    },
+  };
+  const errors = await closeOwnedStorage({
+    client,
+    admission: {
+      close: async () => {
+        calls.push('admission');
+      },
+    },
+    saver: {
+      close: async () => {
+        calls.push('saver');
+      },
+    },
+    pool: {
+      end: async () => {
+        calls.push('pool');
+      },
+    },
+    timeoutMs: 5,
+  });
+  assert.deepEqual(calls, [
+    'rollback',
+    ['release', true],
+    'admission',
+    'saver',
+    'pool',
+  ]);
+  assert.deepEqual(errors, ['transaction rollback failed']);
+});
+test('client query failure still destroys client and stalled pool shutdown is bounded', async () => {
+  const { closeOwnedStorage } = await import('./owner-worker.mjs');
+  let destroyed = false;
+  const started = Date.now();
+  const errors = await closeOwnedStorage({
+    client: {
+      query: async () => {
+        throw Error('query read timeout');
+      },
+      release(value) {
+        destroyed = value;
+      },
+    },
+    admission: { close: async () => true },
+    saver: { close: async () => true },
+    pool: {
+      end: () =>
+        new Promise(() => {
+          /* Deliberately stuck pool fixture. */
+        }),
+    },
+    timeoutMs: 5,
+  });
+  assert(destroyed);
+  assert(Date.now() - started < 1000);
+  assert.deepEqual(errors, [
+    'transaction rollback failed',
+    'pool cleanup failed',
+  ]);
+});
+
+test('raw tracker destroys underlying client even when fenced release waits behind stalled query', async () => {
+  const { trackOwnedPool, closeOwnedStorage } =
+    await import('./owner-worker.mjs');
+  const releases = [];
+  const calls = [];
+  const tracked = trackOwnedPool({
+    connect: async () => ({
+      query: () =>
+        new Promise(() => {
+          /* Server reply never arrives. */
+        }),
+      release: (destroy) => {
+        releases.push(destroy);
+      },
+    }),
+    query: async () => true,
+  });
+  const rawClient = await tracked.pool.connect();
+  const queued = new Promise(() => {
+    /* Mimic fenced pool queue waiting on query. */
+  });
+  const fenced = {
+    query: () => queued,
+    release() {
+      void queued.then(() => rawClient.release());
+    },
+  };
+  const errors = await closeOwnedStorage({
+    client: fenced,
+    destroyClients: tracked.destroyClients,
+    pool: {
+      end: async () => {
+        calls.push('pool end');
+        assert.deepEqual(releases, [true]);
+      },
+    },
+    timeoutMs: 5,
+  });
+  rawClient.release();
+  assert.deepEqual(releases, [true]);
+  assert.deepEqual(calls, ['pool end']);
+  assert.deepEqual(errors, ['transaction rollback failed']);
+});
+
+test('both readiness pool sizes enforce client reply timeout and query failure reaches cleanup', async (context) => {
+  const { createReadinessPool, closeOwnedStorage } =
+    await import('./owner-worker.mjs');
+  for (const max of [4, 5]) {
+    const calls = [];
+    const driver = {
+      createPostgresPool(options) {
+        assert.equal(options.query_timeout, 15000);
+        assert.equal(options.statement_timeout, 15000);
+        assert.equal(options.connectionTimeoutMillis, 15000);
+        assert.equal(options.max, max);
+        return {
+          query: () =>
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(Error('query read timeout')),
+                options.query_timeout,
+              ),
+            ),
+          end: async () => {
+            calls.push('end');
+          },
+        };
+      },
+    };
+    context.mock.timers.enable({ apis: ['setTimeout'] });
+    const pool = createReadinessPool(driver, 'explicit-private-dsn', max);
+    const query = pool.query('owned query');
+    context.mock.timers.tick(15000);
+    await assert.rejects(query, /query read timeout/);
+    context.mock.timers.reset();
+    assert.deepEqual(await closeOwnedStorage({ pool }), []);
+    assert.deepEqual(calls, ['end']);
+  }
+});

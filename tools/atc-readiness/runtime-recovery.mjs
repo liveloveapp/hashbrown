@@ -393,8 +393,15 @@ export async function runRuntimeRecovery(mode, options, expected) {
       );
       assert.equal(row.rowCount, 1);
     } finally {
-      await client.query('ROLLBACK');
-      client.release();
+      try {
+        await bounded(
+          client.query('ROLLBACK'),
+          4000,
+          'admission unlock rollback',
+        );
+      } finally {
+        client.release(true);
+      }
     }
     evidence.checks.inputCommittedAndAdmissionUnlocked = true;
     if (mode === 'kill') {

@@ -10,7 +10,7 @@ import {
   resolveRuntimeDependency,
   canonicalStorageSummary,
 } from './common.mjs';
-import { startWorker, bounded } from './owner-worker.mjs';
+import { startWorker, bounded, createReadinessPool } from './owner-worker.mjs';
 /** Validate independent evidence before any database pool can be created. */
 export async function storageContext(options, expected) {
   let storage;
@@ -26,12 +26,7 @@ export async function storageContext(options, expected) {
           ),
         ).href
       );
-      return storage.createPostgresPool({
-        connectionString: databaseUrl,
-        max: 5,
-        statement_timeout: 15000,
-        connectionTimeoutMillis: 15000,
-      });
+      return createReadinessPool(storage, databaseUrl, 5);
     },
   });
   return { ...context, storage };
