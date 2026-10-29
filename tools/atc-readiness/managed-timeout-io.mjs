@@ -262,6 +262,7 @@ export async function createManagedTimeoutIO(
         result.requestId = response.headers.get('x-vercel-id');
         result.platformErrorCode = response.headers.get('x-vercel-error');
         result.retryAfter = response.headers.get('retry-after');
+        result.throttled = response.status === 429;
         if (kind === 'conflict') {
           await timeoutBound(() => response.body?.cancel(), bounds);
           return result;
@@ -293,7 +294,14 @@ export async function createManagedTimeoutIO(
           } finally {
             await timeoutBound(() => reader?.cancel(), bounds);
           }
-          result.errorBodySha256 = sha256(Buffer.concat(bytes));
+          const errorBytes = Buffer.concat(bytes);
+          result.throttled ||=
+            /rate_limit_exceeded|insufficient_quota|too_many_requests|throttl(?:ed|ing)|overloaded_error/i.test(
+              (result.platformErrorCode ?? '') +
+                '\n' +
+                errorBytes.toString('utf8'),
+            );
+          result.errorBodySha256 = sha256(errorBytes);
           result.errorBodyTruncated = count >= 8192;
           return result;
         }

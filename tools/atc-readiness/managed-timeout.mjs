@@ -58,6 +58,9 @@ export async function runTimeoutProtocol({
           'runId',
           'status',
           'requestId',
+          'retryAfter',
+          'throttled',
+          'platformErrorCode',
           'terminalUsage',
           'terminalModel',
           'terminalProviderResponseId',
@@ -106,6 +109,20 @@ export async function runTimeoutProtocol({
     receipt.observedOwner = observed ?? null;
     const request = await pending;
     receipt.faultRequest = request;
+    if (request.status === 429 || request.throttled) {
+      return {
+        outcome: 'inconclusive',
+        throttled: true,
+        qualified: false,
+        request,
+      };
+    }
+    assert(
+      request.status === undefined ||
+        request.status === 200 ||
+        request.status === 504,
+      'unexpected fault HTTP response; stop qualification',
+    );
     const proof = await timeoutBound(
       (signal) =>
         platformProof({
@@ -179,7 +196,7 @@ export async function runTimeoutProtocol({
           Date.parse(after) < Date.parse(retained.expiresAt),
         'conflict must finish wholly before DB expiry',
       );
-      return { outcome: 'expected-failure', before, after };
+      return { outcome: 'expected-failure', request: response, before, after };
     });
     receipt.conflict = conflict;
     await io.waitForExpiry({ ...bounds, lease: retained });

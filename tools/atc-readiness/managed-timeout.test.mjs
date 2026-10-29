@@ -43,6 +43,7 @@ function fixture({
       return kind === 'fault'
         ? {
             requestId: 'req',
+            status: fast ? 200 : 504,
             startedAtMs: 1,
             endedAtMs: 1001,
             completed: fast,
@@ -264,10 +265,17 @@ test('real HTTP stream adapter takes first EOF query as admissions and closes pa
   await writeFile(stage + '/schema.json', '{}');
   const queries = [];
   const closed = [];
+  let nextStatus = 200;
+  let errorBody = '';
   const server = createServer(async (request, response) => {
     let bytes = '';
     for await (const chunk of request) bytes += chunk;
     const body = JSON.parse(bytes);
+    if (nextStatus !== 200) {
+      response.writeHead(nextStatus, { 'x-vercel-id': 'controlled-failure' });
+      response.end(errorBody);
+      return;
+    }
     response.writeHead(200, {
       'content-type': 'text/event-stream',
       'set-cookie': 'atc_visitor=signed-secret; HttpOnly',
@@ -331,6 +339,23 @@ test('real HTTP stream adapter takes first EOF query as admissions and closes pa
     assert.equal(result.terminalUsage, null);
     assert.deepEqual(result.snapshot.state.providerUsage, []);
     assert.match(result.runId, /^[0-9a-f-]{36}$/);
+    nextStatus = 429;
+    const throttled = await io.request('fault', { ...bounds, input: 'fault' });
+    assert.equal(throttled.throttled, true);
+    nextStatus = 503;
+    errorBody = JSON.stringify({ error: { code: 'rate_limit_exceeded' } });
+    const providerThrottled = await io.request('fault', {
+      ...bounds,
+      input: 'fault',
+    });
+    assert.equal(providerThrottled.throttled, true);
+    nextStatus = 504;
+    errorBody = 'FUNCTION_INVOCATION_TIMEOUT';
+    const timeoutResponse = await io.request('fault', {
+      ...bounds,
+      input: 'fault',
+    });
+    assert.equal(timeoutResponse.throttled, false);
     assert.match(
       queries[queries.indexOf('EOF') + 1],
       /SELECT count\(\*\).*atc_run_admissions/,
@@ -479,4 +504,155 @@ test('cleanup failure is surfaced after partially initialized storage', async ()
   } finally {
     await rm(stage, { recursive: true, force: true });
   }
+});
+
+test('conflict receipt retains actual HTTP run/request correlation and retry header', async () => {
+  const f = fixture({ surviving: true });
+  const original = f.io.request;
+  f.io.request = async (kind, bounds) => ({
+    ...(await original(kind, bounds)),
+    ...(kind === 'conflict'
+      ? { runId: 'actual-conflict-run', requestId: 'actual-http-request' }
+      : {}),
+  });
+
+  const result = await runTimeoutProtocol(f);
+
+  assert.equal(result.conflict.request.runId, 'actual-conflict-run');
+  assert.equal(result.conflict.request.requestId, 'actual-http-request');
+  assert.equal(result.conflict.request.status, 409);
+  assert.equal(result.conflict.request.retryAfter, '1');
+  const attempt = result.attempts.find((entry) => entry.kind === 'conflict');
+  assert.equal(attempt.runId, 'actual-conflict-run');
+  assert.equal(attempt.requestId, 'actual-http-request');
+  assert.equal(attempt.status, 409);
+  assert.equal(attempt.retryAfter, '1');
+});
+
+test('fault HTTP 429 durably stops the reviewed timeout phase', async () => {
+  const { initializeRolloutLedger, readRolloutLedger, withRolloutRun } =
+    await import('./rollout-controls.mjs');
+  const { mkdtempSync, writeFileSync, readFileSync, realpathSync, rmSync } =
+    await import('node:fs');
+  const { randomUUID } = await import('node:crypto');
+  const { sha256 } = await import('./common.mjs');
+  const stage = mkdtempSync('/private/tmp/timeout-throttle-');
+  const prior = {};
+  for (const [name, count, limit] of [
+    ['load', 99, 120],
+    ['recovery', 10, 16],
+  ]) {
+    const path = stage + '/' + name + '.json';
+    const bytes = JSON.stringify({
+      limit,
+      attempts: Array.from({ length: count }, (_, index) => ({
+        ordinal: index + 1,
+        label: String(index),
+      })),
+    });
+    writeFileSync(path, bytes, { mode: 0o600 });
+    prior[name] = { path, count, sha256: sha256(bytes) };
+  }
+  const adapterPath = stage + '/usage-adapter.mjs';
+  writeFileSync(adapterPath, 'controlled offline fixture', { mode: 0o600 });
+  const adapterSha256 = sha256(readFileSync(adapterPath));
+  const reviewPath = stage + '/adapter-review.json';
+  const reviewBytes = JSON.stringify({
+    source: 'provider-usage',
+    scope: 'owned-project',
+    adapterSha256,
+  });
+  writeFileSync(reviewPath, reviewBytes, { mode: 0o600 });
+  const expected = {
+    source: 'human-approved-design',
+    stagingDirectory: realpathSync(stage),
+    capUsd: 10,
+    runtimeSource: 'a2f92a4f02ab1dfc38051a44e509afb439634793',
+    prior,
+    spend: {
+      adapterPath,
+      adapterSha256,
+      source: 'provider-usage',
+      scope: 'owned-project',
+      review: { path: reviewPath, sha256: sha256(reviewBytes) },
+      maxAgeMs: 1000,
+      reserveUsd: 1,
+      maxUpstreamRetries: 2,
+      costPerAttemptUsd: 1 / 3,
+    },
+  };
+  let time = Date.now();
+  const options = {
+    phase: 'timeout',
+    runId: randomUUID(),
+    now: () => time,
+    sleep: async (ms) => {
+      time += ms;
+    },
+    cleanup: async () => undefined,
+    observationSource: {
+      source: expected.spend.source,
+      scope: expected.spend.scope,
+      adapterSha256,
+      read: async () => ({
+        source: expected.spend.source,
+        scope: expected.spend.scope,
+        observedAtMs: time,
+        spendUsd: 0,
+      }),
+    },
+  };
+  initializeRolloutLedger(stage, expected, expected);
+  const f = fixture();
+  const original = f.io.request;
+  f.io.request = async (kind, bounds) =>
+    kind === 'fault'
+      ? { status: 429, requestId: 'throttled-http', completed: false }
+      : original(kind, bounds);
+  let error;
+
+  try {
+    await withRolloutRun(stage, expected, options, async (control) =>
+      runTimeoutProtocol({ ...f, control }),
+    ).catch((caught) => {
+      error = caught;
+    });
+
+    assert(error, 'HTTP 429 must reject qualification');
+    const ledger = readRolloutLedger(stage, expected);
+    assert.equal(ledger.attempts.length, 2);
+    assert.equal(
+      ledger.phases.timeout.stopped,
+      'unexpected-failure/throttle/deadline',
+    );
+    await assert.rejects(
+      withRolloutRun(
+        stage,
+        expected,
+        { ...options, runId: randomUUID() },
+        async () => undefined,
+      ),
+      /phase stopped/,
+    );
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+  }
+});
+
+test('unplanned fault HTTP failures stop before querying timeout proof', async () => {
+  const f = fixture();
+  const original = f.io.request;
+  let proofCalls = 0;
+  f.io.request = async (kind, bounds) =>
+    kind === 'fault'
+      ? { status: 500, completed: false }
+      : original(kind, bounds);
+  f.platformProof = async () => {
+    proofCalls++;
+    return null;
+  };
+
+  await assert.rejects(runTimeoutProtocol(f), /unexpected fault HTTP response/);
+
+  assert.equal(proofCalls, 0);
 });
