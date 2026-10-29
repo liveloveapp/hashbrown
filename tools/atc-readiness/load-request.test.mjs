@@ -1,0 +1,178 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { runLoadRequest } from './load.mjs';
+
+function fixture({ admissions = 0, foreignMarker = false } = {}) {
+  let input,
+    eof = false,
+    queries = 0;
+  const fetchImpl = async (_url, options) => {
+    input = JSON.parse(options.body);
+    const text = JSON.stringify({
+      text:
+        input.messages[0].content +
+        (foreignMarker ? ' LOADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : ''),
+    });
+    const frames = [
+      { type: 'RUN_STARTED', threadId: input.threadId, runId: input.runId },
+      { type: 'TEXT_MESSAGE_CONTENT', delta: text },
+      { type: 'RUN_FINISHED', threadId: input.threadId, runId: input.runId },
+    ];
+    let sent = false;
+    return new Response(
+      new ReadableStream({
+        pull(controller) {
+          if (!sent) {
+            sent = true;
+            controller.enqueue(
+              new TextEncoder().encode(
+                frames
+                  .map((e) => 'data: ' + JSON.stringify(e) + '\n\n')
+                  .join(''),
+              ),
+            );
+          } else {
+            eof = true;
+            controller.close();
+          }
+        },
+      }),
+      { headers: { 'set-cookie': 'atc_visitor=fixture; Secure' } },
+    );
+  };
+  const dependencies = {
+    origins: ['https://a.test', 'https://b.test'],
+    schema: {},
+    validate: (x) => typeof x.text === 'string',
+    fetchImpl,
+    snapshot: async (threadId) => {
+      assert(eof, 'DB read must follow EOF');
+      queries++;
+      assert.equal(threadId, input.threadId);
+      return {
+        threadId,
+        admissions,
+        threadPresent: true,
+        checkpoints: [{ sha256: 'checkpoint' }],
+        tuplesSha256: 'tuple',
+        threadSha256: 'thread',
+      };
+    },
+    saver: {
+      getTuple: async () => ({
+        checkpoint: {
+          channel_values: {
+            messages: [
+              { type: 'human', content: input.messages[0].content },
+              {
+                type: 'ai',
+                content: JSON.stringify({ text: input.messages[0].content }),
+                response_metadata: {
+                  id: 'provider-' + input.runId,
+                  max_output_tokens: 4096,
+                },
+                usage_metadata: { input_tokens: 8, output_tokens: 12 },
+              },
+            ],
+          },
+        },
+      }),
+    },
+    seenProviderIds: new Set(),
+    redact: (value) => value,
+  };
+  return { dependencies, queries: () => queries };
+}
+
+test('first post-EOF admission query is immediate and successful state is isolated', async () => {
+  const { dependencies, queries } = fixture();
+
+  const result = await runLoadRequest(
+    {
+      index: 0,
+      level: 1,
+      worker: 0,
+      deadlineMs: performance.now() + 1000,
+      signal: new AbortController().signal,
+    },
+    dependencies,
+  );
+
+  assert.equal(queries(), 1);
+  assert.equal(result.firstPostEofAdmissions, 0);
+  assert.equal(result.pinnedCap, 4096);
+  assert(result.firstByteMs >= 0);
+  assert(result.firstContentMs >= 0);
+  assert(result.totalMs >= result.firstContentMs);
+  assert.equal(result.usage.output_tokens, 12);
+});
+
+test('nonzero first EOF admission read fails without polling', async () => {
+  const { dependencies, queries } = fixture({ admissions: 1 });
+
+  await assert.rejects(
+    runLoadRequest(
+      {
+        index: 0,
+        level: 1,
+        worker: 0,
+        deadlineMs: performance.now() + 1000,
+        signal: new AbortController().signal,
+      },
+      dependencies,
+    ),
+    /first post-EOF/,
+  );
+
+  assert.equal(queries(), 1);
+});
+
+test('dispatch deadline includes waiting for response headers', async () => {
+  const { dependencies, queries } = fixture();
+  let aborted = false;
+  dependencies.fetchImpl = (_url, options) =>
+    new Promise((_, reject) =>
+      options.signal.addEventListener(
+        'abort',
+        () => {
+          aborted = true;
+          reject(options.signal.reason);
+        },
+        { once: true },
+      ),
+    );
+
+  await assert.rejects(
+    runLoadRequest(
+      {
+        index: 0,
+        level: 1,
+        worker: 0,
+        deadlineMs: performance.now() + 15,
+        signal: new AbortController().signal,
+      },
+      dependencies,
+    ),
+  );
+
+  assert(aborted);
+  assert.equal(queries(), 0);
+});
+
+test('own marker plus a foreign marker cannot pass isolation', async () => {
+  const { dependencies } = fixture({ foreignMarker: true });
+
+  await assert.rejects(
+    runLoadRequest(
+      {
+        index: 0,
+        level: 1,
+        worker: 0,
+        deadlineMs: performance.now() + 1000,
+        signal: new AbortController().signal,
+      },
+      dependencies,
+    ),
+    /foreign correlation/,
+  );
+});
