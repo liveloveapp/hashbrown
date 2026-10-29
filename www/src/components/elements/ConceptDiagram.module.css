@@ -1,0 +1,70 @@
+.diagram {
+  margin: var(--space-8) 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.diagram .title {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+.diagram .steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.diagram .steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 0;
+  min-width: 0;
+  margin: 0;
+}
+.number {
+  display: grid;
+  flex: 0 0 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid var(--color-rule);
+  border-radius: 50%;
+  background: var(--color-surface);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+.diagram .steps strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.diagram .steps p {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.diagram figcaption {
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-rule);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+@media (max-width: 600px) {
+  .diagram .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .diagram {
+    padding: 1rem;
+  }
+}
+
+.diagram .steps > li::after {
+  content: none;
+}

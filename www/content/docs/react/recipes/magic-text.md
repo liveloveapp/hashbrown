@@ -2,13 +2,67 @@
 title: 'Magic Text in React: Streaming Markdown'
 meta:
   - name: description
-    content: 'Stream Markdown in the canonical plan workbench, inspect a citation, and replay the actual reply without another request.'
+    content: 'Render streamed assistant Markdown, handle completion and citations, then inspect the recorded workbench conversation.'
 ---
 
 # Magic Text in React
 
 <hb-docs-demo demo="canonical-workbench-magic-text-react">
 </hb-docs-demo>
+
+Streaming Markdown turns a growing assistant string into readable headings, lists, links, and citations. Use it when the answer is prose and the reader benefits from seeing it before the request finishes. The conversation API owns messages and cancellation; the renderer owns formatting.
+
+Let’s build a help panel that explains a returns policy. We will render the original assistant text as it grows, and finish parsing when the request stops, including a stopped or failed partial answer.
+
+<hb-concept-diagram concept="streaming"> </hb-concept-diagram>
+
+## Render a help reply
+
+Start with the [React Quickstart](/docs/react/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Mount the component beneath `HashbrownProvider` and keep it mounted for the conversation lifetime.
+
+```tsx
+import { MagicTextRenderer, useChat } from '@hashbrownai/react';
+
+export function ReturnsHelp() {
+  const chat = useChat({
+    system:
+      'Explain this public returns policy in Markdown: unused items may be returned within 30 days with a receipt.',
+  });
+  return (
+    <section aria-label="Returns help">
+      <button
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'What do I need to return an item?',
+          })
+        }
+      >
+        Explain the policy
+      </button>
+      {chat.messages.map((message) =>
+        message.role === 'assistant' && typeof message.content === 'string' ? (
+          <MagicTextRenderer key={message.id} isComplete={!chat.isLoading}>
+            {message.content}
+          </MagicTextRenderer>
+        ) : null,
+      )}
+      {chat.error && <p role="alert">The reply could not finish. Try again.</p>}
+      <button disabled={!chat.isLoading} onClick={() => chat.stop()}>
+        Stop
+      </button>
+    </section>
+  );
+}
+```
+
+The fixed prompt keeps this screen small. Replace it with a labelled composer for an open conversation. `isComplete` finalizes Markdown parsing; it does not report request success. Keep failure and cancellation visible separately. If you add citations, use the renderer’s citation event and resolved URL rather than guessing references from the source string. A rendered citation does not prove retrieval or factual accuracy.
+
+## Explore it in the workbench
+
+<hb-workbench lesson="magic-text">
+</hb-workbench>
 
 I want to read a reply while it arrives. Let's explain the same two-step plan in Markdown, follow its source reference, and ask for a shorter explanation.
 
@@ -67,16 +121,16 @@ The shared text client also hosts the plain-text onboarding lessons. Magic Text 
 <hb-code-example header="react/src/MagicTextWorkbench.tsx">
 
 ```tsx
-  const chat = useChat({
-    system:
-      lesson.id === 'system-instructions'
-        ? workbenchBrowserInstructions
-        : plain
-          ? workbenchConversationSystem
-          : workbenchTextSystem,
-    tools: plain ? [] : [readContext],
-    transport,
-  });
+const chat = useChat({
+  system:
+    lesson.id === 'system-instructions'
+      ? workbenchBrowserInstructions
+      : plain
+        ? workbenchConversationSystem
+        : workbenchTextSystem,
+  tools: plain ? [] : [readContext],
+  transport,
+});
 ```
 
 </hb-code-example>

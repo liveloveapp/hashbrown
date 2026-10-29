@@ -7,11 +7,14 @@ meta:
 
 # Migrate chat presentation to Threadplane
 
+<hb-docs-demo demo="canonical-workbench-threadplane-angular">
+</hb-docs-demo>
+
+The teaser shows the separately installed Threadplane client flow. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. It does not demonstrate every feature an existing chat screen may need.
+
 Let's keep the Hashbrown server and replace our custom Angular chat screen with Threadplane's `<chat>`. The browser will use Threadplane's AG-UI adapter to talk to the same endpoint.
 
 The [Threadplane recipe](/docs/angular/recipes/threadplane) includes the complete component, install command, theme, root element, and bootstrap code. Work through the boundaries below before removing an existing `chatResource` screen.
-
-The recipe opens with the separate **`canonical-workbench-threadplane-angular`** walkthrough: install the Angular dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
 
 ## 1. Replace one conversation owner
 
@@ -63,3 +66,9 @@ Read [Functions](/docs/angular/concept/functions) before replacing tool executio
 Send a first message and a follow-up through the same server. Confirm the trusted instructions, expected history, and thread identity in the request. Stop a stream, display a failed run, recover with an explicit action, and check that mounting an empty screen doesn't submit a message.
 
 Verify any restored conversation, tools, and approvals before removing the old implementation. Check keyboard input, long replies, scrolling, and narrow layouts. Use the [complete Threadplane recipe](/docs/angular/recipes/threadplane) as the starting point, then add only the capabilities your backend and application actually support.
+
+## Explore it in the workbench
+
+The [Threadplane recipe](/docs/angular/recipes/threadplane) runs a separate installed consumer with the canonical inspector and timeline. Follow its Angular installation and mounting instructions, send a shipping question, and continue with a follow-up. This is not a `?lesson=` route in the hosted workbench.
+
+Compare the first request, streamed reply, and follow-up history in **Requests**. **State** remains unchanged: this bounded text flow does not accept a plan or execute a business action. The scripted provider boundary makes the recorded exchange repeatable; it does not establish live provider access, storage migration, or support for the tool and generated-UI features listed above.

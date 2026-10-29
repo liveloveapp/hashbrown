@@ -1,7 +1,7 @@
 /**
- * Rules for the mobile layout report (`npx nx e2e www`). A browser collects a
+ * Rules for the layout report (`npx nx e2e www`). A browser collects a
  * {@link LayoutSnapshot} for each page and viewport; {@link layoutIssues}
- * turns it into the problems a phone or tablet reader would hit.
+ * turns it into the problems a phone, tablet or desktop reader would hit.
  */
 
 /** A viewport the report renders every page at. */
@@ -11,12 +11,17 @@ export interface LayoutViewport {
   readonly height: number;
 }
 
-/** Phone portrait (small and common), tablet portrait, and phone landscape. */
+/**
+ * Phone portrait (small and common), tablet portrait, phone landscape, and
+ * the two desktop steps of the gutter.
+ */
 export const LAYOUT_VIEWPORTS: readonly LayoutViewport[] = [
   { name: 'phone-320', width: 320, height: 568 },
   { name: 'phone-375', width: 375, height: 812 },
   { name: 'tablet-768', width: 768, height: 1024 },
   { name: 'landscape-812', width: 812, height: 375 },
+  { name: 'laptop-1024', width: 1024, height: 768 },
+  { name: 'desktop-1440', width: 1440, height: 900 },
 ];
 
 /** Below this width the page is laid out for a phone held upright. */
@@ -50,6 +55,14 @@ export interface LayoutSnapshot {
   readonly inputs: readonly { label: string; fontSize: number }[];
   /** Controls in an open overlay that something else is drawn over. */
   readonly covered: readonly { label: string; by: string }[];
+  /** The page's `--gutter` at this width. */
+  readonly gutter: number;
+  /**
+   * How far in from its column's edge each page edge starts: the logo, the
+   * header's last control, the first heading, the sidebar and the footer.
+   * Every one should sit on the gutter.
+   */
+  readonly edges: readonly { label: string; inset: number }[];
 }
 
 /** One problem found in a snapshot. */
@@ -60,7 +73,8 @@ export interface LayoutIssue {
     | 'small-target'
     | 'small-text'
     | 'input-zoom'
-    | 'covered';
+    | 'covered'
+    | 'off-gutter';
   readonly page: string;
   readonly viewport: string;
   readonly detail: string;
@@ -115,5 +129,13 @@ export function layoutIssues(snapshot: LayoutSnapshot): LayoutIssue[] {
     ...snapshot.covered.map(({ label, by }) =>
       issue('covered', `${label} is under ${by}`),
     ),
+    ...snapshot.edges
+      .filter(({ inset }) => Math.abs(inset - snapshot.gutter) > 1)
+      .map(({ label, inset }) =>
+        issue(
+          'off-gutter',
+          `${label} starts ${Math.round(inset)}px in, the gutter is ${snapshot.gutter}px`,
+        ),
+      ),
   ];
 }

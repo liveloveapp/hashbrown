@@ -7,6 +7,9 @@ meta:
 
 # Choosing an API
 
+<hb-docs-demo demo="canonical-workbench-ui-angular">
+</hb-docs-demo>
+
 Start with what your interface needs to show: text, typed data, your own components, or a choice among known options. Then decide whether the request needs earlier conversation turns.
 
 New to Hashbrown? Build the two-step plan in the [Quickstart](/docs/angular/start/quick) first. The examples below extend that setup.
@@ -15,9 +18,9 @@ New to Hashbrown? Build the two-step plan in the [Quickstart](/docs/angular/star
 
 | I want to…                                         | API                                                        | Context       | Continue with                                                         |
 | -------------------------------------------------- | ---------------------------------------------------------- | ------------- | --------------------------------------------------------------------- |
-| Render trusted components in a conversation        | @hashbrownai/angular!uiChatResource:function               | Earlier turns | [Light chatbot](/docs/angular/recipes/ui-chatbot)                     |
+| Render trusted components in a conversation        | @hashbrownai/angular!uiChatResource:function               | Earlier turns | [UI chatbot](/docs/angular/recipes/ui-chatbot)                        |
 | Build a text conversation                          | @hashbrownai/angular!chatResource:function                 | Earlier turns | [Messages and turns](/docs/angular/concept/ai-basics)                 |
-| Keep a conversation with typed data                | @hashbrownai/angular!structuredChatResource:function       | Earlier turns | [Shopping-list draft](/docs/angular/concept/structured-output)        |
+| Keep a conversation with typed data                | @hashbrownai/angular!structuredChatResource:function       | Earlier turns | [Structured output](/docs/angular/concept/structured-output)          |
 | Generate text from the current input               | @hashbrownai/angular!completionResource:function           | Current input | [Chat or completion](/docs/angular/start/overview#chat-or-completion) |
 | Generate typed data from the current input         | @hashbrownai/angular!structuredCompletionResource:function | Current input | [Predictive suggestions](/docs/angular/recipes/predictive-actions)    |
 | Generate trusted components from the current input | @hashbrownai/angular!uiCompletionResource:function         | Current input | [Exposing components](/docs/angular/concept/components)               |
@@ -28,7 +31,7 @@ The API links open the reference for exact options and return values. For UI sel
 
 ## Chat or completion?
 
-A chat keeps earlier turns in its current instance. Send a message when the user asks a follow-up or when the answer depends on the conversation so far. The [light chatbot](/docs/angular/recipes/ui-chatbot) reads a light, proposes a change, and reads the updated state on the next turn.
+A chat keeps earlier turns in its current instance. Send a message when the user asks a follow-up or when the answer depends on the conversation so far. The [UI chatbot](/docs/angular/recipes/ui-chatbot) reads application context, proposes a plan, and reads the accepted state on the next turn.
 
 A completion responds to the current input. Use it for a focused transformation, such as generating suggestions from the current form values. Input changes can schedule another completion; keep the input absent until the application is ready to request it. See [Predictive suggestions](/docs/angular/recipes/predictive-actions) for an explicit request and review flow.
 
@@ -46,8 +49,14 @@ The framework API owns browser state and rendering. A [provider adapter](/docs/a
 
 For on-device inference, follow [Local Models](/docs/angular/recipes/local-models). For parsing an existing JSON stream without a model or endpoint, use [JSON Parser](/docs/angular/recipes/json-parser). For a finished chat interface around your runtime, see [Threadplane](/docs/angular/recipes/threadplane).
 
+## Explore it in the workbench
+
+Use the [workbench](/docs/angular/start/workbench) to compare result shapes after choosing an API. Start with **Messages and turns** for text, **Structured output** for typed data, and **Generative UI** for trusted components. Each lesson uses the same plan so the changed API is easier to spot.
+
+Inspect **Requests** and **JSON**, then compare the live renderer and application **State**. A different output API changes how the response is interpreted; it does not grant permission to apply it. The teaser demonstrates generative UI with real OpenAI output, not every API in the table.
+
 ## Follow one learning path
 
-- **Typed data:** [Skillet schemas](/docs/angular/concept/schema) → [Structured output](/docs/angular/concept/structured-output) → [Streaming](/docs/angular/concept/streaming) → [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data). The same shopping-list task carries through each guide.
-- **A conversation with components:** [Messages and turns](/docs/angular/concept/ai-basics) → [Tool calling](/docs/angular/concept/functions) → [Exposing components](/docs/angular/concept/components) → [Light chatbot](/docs/angular/recipes/ui-chatbot).
+- **Typed data:** [Skillet schemas](/docs/angular/concept/schema) → [Structured output](/docs/angular/concept/structured-output) → [Streaming](/docs/angular/concept/streaming) → [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data). Each guide first teaches the application contract, then applies it to the canonical plan.
+- **A conversation with components:** [Messages and turns](/docs/angular/concept/ai-basics) → [Tool calling](/docs/angular/concept/functions) → [Exposing components](/docs/angular/concept/components) → [UI chatbot](/docs/angular/recipes/ui-chatbot).
 - **A production endpoint:** [Request customization](/docs/angular/concept/transform-request-options) → [Securing a public endpoint](/docs/angular/recipes/public-endpoint) → [Threads](/docs/angular/recipes/threads).

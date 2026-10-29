@@ -2,13 +2,84 @@
 title: 'UI Selection: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Choose between trusted plan views with UI decision candidates, inspect confidence, and keep application data and manual control in the app.'
+    content: 'Choose among application-owned views with typed candidates, confidence filtering, and manual control.'
 ---
 
 # UI Selection
 
 <hb-docs-demo demo="canonical-workbench-ui-selection-angular">
 </hb-docs-demo>
+
+Sometimes the data and components are already known, and only the choice of view needs language understanding. UI selection lets a model choose a candidate ID while the application supplies the element and all its data. Use it for a compact summary versus a detailed list, or another small set of equivalent views.
+
+Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
+
+<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+
+## Choose among application views
+
+Start with the [Angular Quickstart](/docs/angular/start/quick) and a configured [TypeSafe decision endpoint](/docs/angular/platform/typesafe). Decisions use the provider’s `decision.url` (normally `/api/decide`), separately from AG-UI chat. Pin the matching candidate schema on the server and keep TypeSafe credentials there. The resource below is created in its component injection context.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { UiDecisionComponent, uiDecisionResource } from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-delivery-summary',
+  template: `<p>Due Friday · 2 items</p>`,
+})
+export class DeliverySummary {}
+@Component({
+  selector: 'app-delivery-items',
+  template: `<ul>
+    <li>Notebook</li>
+    <li>Pen</li>
+  </ul>`,
+})
+export class DeliveryItems {}
+
+@Component({
+  selector: 'app-delivery-view',
+  imports: [UiDecisionComponent],
+  template: `
+    <button (click)="input.set('Show the individual items')">
+      Choose a view
+    </button>
+    <hb-ui-decision [resource]="choice" />
+    @if (choice.error()) {
+      <p role="alert">Choose a view manually or try again.</p>
+    }
+  `,
+})
+export class DeliveryView {
+  readonly input = signal<string | null>(null);
+  readonly choice = uiDecisionResource({
+    input: this.input,
+    system: 'Choose a delivery view matching the request.',
+    select: 'one',
+    minConfidence: 0.75,
+    candidates: [
+      {
+        id: 'summary',
+        description: 'A brief delivery overview',
+        component: DeliverySummary,
+      },
+      {
+        id: 'items',
+        description: 'A detailed item list',
+        component: DeliveryItems,
+      },
+    ],
+  });
+}
+```
+
+This example previews a choice and never changes delivery data. The candidate IDs, descriptions, order, and application-owned data must agree with the server contract. Confidence below `0.75` can leave the preview empty; display manual summary and item controls alongside it in a full screen. Confidence is a model score, not calibrated accuracy. If you persist the selected view, require a separate action and recheck the current request and application revision.
+
+## Explore it in the workbench
+
+<hb-workbench lesson="ui-selection">
+</hb-workbench>
 
 I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 

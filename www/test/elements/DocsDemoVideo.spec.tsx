@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from '../docs/concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -120,18 +121,14 @@ test.each(SDKS)(
     const quick = readDoc(sdk, ['start', 'quick'])?.body ?? '';
 
     const counts = [structured, streaming, quick].map(
-      (body) => [...body.matchAll(/<hb-docs-demo\b/g)].length,
+      (body) => [...body.matchAll(/<hb-workbench\b/g)].length,
     );
 
     expect(counts).toEqual([1, 1, 1]);
-    expect(structured).toContain(
-      `<hb-docs-demo demo="canonical-workbench-structured-${sdk}">`,
-    );
-    expect(quick).toContain(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    expect(structured).toContain(`<hb-workbench lesson="structured-output">`);
+    expect(quick).toContain(`<hb-workbench lesson="first-plan">`);
     expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-debugging-${sdk}">`,
+      `<hb-workbench lesson="debugging">`,
     );
   },
 );
@@ -139,33 +136,21 @@ test.each(SDKS)(
 test.each(SDKS)(
   'opens matching %s guides with the recorded demos before their first section',
   (sdk) => {
-    const pages = demos.map(([demo, slug]) => ({
-      demo:
-        slug === 'components'
-          ? `canonical-workbench-ui-${sdk}`
-          : slug === 'functions'
-            ? `canonical-workbench-tools-${sdk}`
-            : slug === 'structured-output'
-              ? `canonical-workbench-structured-${sdk}`
-              : slug === 'streaming'
-                ? `canonical-workbench-streaming-${sdk}`
-                : slug === 'schema'
-                  ? `canonical-workbench-schemas-${sdk}`
-                  : slug === 'decisions'
-                    ? `canonical-workbench-decisions-${sdk}`
-                    : demo,
+    const lessons: Record<(typeof demos)[number][1], string> = {
+      components: 'generative-ui',
+      functions: 'tools',
+      'structured-output': 'structured-output',
+      streaming: 'streaming',
+      schema: 'schemas',
+      decisions: 'decisions',
+    };
+    const pages = demos.map(([, slug]) => ({
+      demo: lessons[slug],
       body: readDoc(sdk, ['concept', slug])?.body ?? '',
     }));
 
-    const positions = pages.map(({ demo, body }) => ({
-      demo,
-      video: body.indexOf(`<hb-docs-demo demo="${demo}">`),
-      section: body.indexOf('\n## '),
-    }));
-
-    for (const position of positions) {
-      expect(position.video, position.demo).toBeGreaterThan(-1);
-      expect(position.video, position.demo).toBeLessThan(position.section);
+    for (const { demo, body } of pages) {
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

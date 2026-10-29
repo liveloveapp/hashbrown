@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
+import type { Sdk } from '../lib/content';
 import type { MarkdownComponents } from '../lib/markdown';
 import { CodeExample } from './CodeExample';
 import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
+import { ConceptDiagram } from './elements/ConceptDiagram';
 import { DocsDemoVideo } from './elements/DocsDemoVideo';
 import { MagicTextDemo } from './elements/MagicTextDemo';
 import { ScrollTable } from './elements/ScrollTable';
@@ -19,6 +21,8 @@ import {
 } from './icons';
 import { NextStep, NextSteps } from './NextSteps';
 import { SymbolLink } from './SymbolLink';
+import { WorkbenchPanel } from './workbench/WorkbenchPanel';
+import { assertWorkbenchLesson } from './workbench/workbench-lessons';
 
 /**
  * The element map for docs and blog markdown. Elements not listed here render
@@ -39,6 +43,11 @@ export function docsComponents(
   const DocsSymbolLink = ({ reference = '' }: { reference?: string }) => (
     <SymbolLink reference={reference} popover={popovers.get(reference)} />
   );
+  // Blog posts and API summaries render as React.
+  const panelSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
+  const DocsWorkbench = ({ lesson = '' }: { lesson?: string }) => (
+    <WorkbenchPanel lesson={assertWorkbenchLesson(lesson)} sdk={panelSdk} />
+  );
   return {
     table: ScrollTable,
     'hb-code-example': CodeExample,
@@ -46,6 +55,8 @@ export function docsComponents(
     'hb-carousel': Carousel,
     'www-atc-demo-video': AtcDemoVideo,
     'hb-docs-demo': DocsDemoVideo,
+    'hb-concept-diagram': ConceptDiagram,
+    'hb-workbench': DocsWorkbench,
     'hb-magic-text-demo': MagicTextDemo,
     'hb-next-steps': NextSteps,
     'hb-next-step': DocsNextStep,

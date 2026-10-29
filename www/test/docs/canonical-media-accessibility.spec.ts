@@ -2,18 +2,30 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
+import {
+  assertWorkbenchLesson,
+  workbenchMediaId,
+} from '../../src/components/workbench/workbench-lessons';
 import { listDocs, readDoc, SDKS } from '../../src/lib/content';
 
+// Direct canonical videos plus the videos behind each inline workbench, which
+// narrow screens and failed replays show.
 const active = [
   ...new Set(
     SDKS.flatMap((sdk) =>
-      listDocs(sdk).flatMap((slug) =>
-        [
-          ...(readDoc(sdk, slug)?.body ?? '').matchAll(
-            /<hb-docs-demo demo="(canonical-workbench[^"]+)"/g,
+      listDocs(sdk).flatMap((slug) => {
+        const body = readDoc(sdk, slug)?.body ?? '';
+        return [
+          ...[
+            ...body.matchAll(
+              /<hb-docs-demo demo="(canonical-workbench[^"]+)"/g,
+            ),
+          ].map((match) => match[1]),
+          ...[...body.matchAll(/<hb-workbench lesson="([^"]+)"/g)].map(
+            (match) => workbenchMediaId(assertWorkbenchLesson(match[1]), sdk),
           ),
-        ].map((match) => match[1]),
-      ),
+        ];
+      }),
     ),
   ),
 ];

@@ -2,13 +2,119 @@
 title: 'Save text conversations: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Explicitly save completed text in two browser slots, refresh, and continue with validated history.'
+    content: 'Save bounded completed text in browser storage and explicitly load it into a new conversation.'
 ---
 
 # Save text conversations
 
 <hb-docs-demo demo="canonical-workbench-save-text-conversations-react">
 </hb-docs-demo>
+
+Saving a text conversation lets a user refresh a page and continue with the earlier exchange. Browser storage works for a small, device-local draft when cross-device access and server ownership are unnecessary. Save a narrow, versioned format so a future release can recognize or reject it safely.
+
+Let’s store only completed user and assistant text. Loading it should replace history without generating a reply; the next explicit user message starts the next request.
+
+<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+
+## Store a bounded text document
+
+Create an application helper such as `saved-text.ts`. It has no SDK dependency and can be shared by both frontends:
+
+```ts
+export type SavedMessage = { role: 'user' | 'assistant'; content: string };
+export function decodeSavedText(json: string): SavedMessage[] {
+  if (new TextEncoder().encode(json).length > 64_000)
+    throw new Error('Saved text is too large');
+  const document: unknown = JSON.parse(json);
+  if (!document || typeof document !== 'object')
+    throw new Error('Invalid document');
+  const { version, messages } = document as Record<string, unknown>;
+  if (
+    Object.keys(document).some(
+      (key) => key !== 'version' && key !== 'messages',
+    ) ||
+    version !== 1 ||
+    !Array.isArray(messages) ||
+    messages.length > 40
+  )
+    throw new Error('Unsupported document');
+  for (const message of messages) {
+    if (
+      !message ||
+      typeof message !== 'object' ||
+      Object.keys(message).some((key) => key !== 'role' && key !== 'content') ||
+      !['user', 'assistant'].includes(message.role) ||
+      typeof message.content !== 'string' ||
+      !message.content.trim() ||
+      message.content.length > 2_000
+    )
+      throw new Error('Unsupported message');
+  }
+  if (
+    messages.length &&
+    (!messages.some((m) => m.role === 'user') ||
+      messages.at(-1).role !== 'assistant')
+  )
+    throw new Error('Incomplete exchange');
+  return messages.map(({ role, content }) => ({ role, content }));
+}
+
+// Call from an explicit browser Load action, after mounting.
+export function readSavedText(key: string): SavedMessage[] {
+  const json = window.localStorage.getItem(key);
+  return json === null ? [] : decodeSavedText(json);
+}
+
+// Convert the saved format to the SDK's assistant input shape.
+export function readSavedChatMessages(key: string) {
+  return readSavedText(key).map((message) =>
+    message.role === 'assistant'
+      ? { role: 'assistant' as const, content: message.content, toolCalls: [] }
+      : { role: 'user' as const, content: message.content },
+  );
+}
+
+// Call only with text from a successfully completed current run.
+export function writeSavedText(key: string, messages: SavedMessage[]) {
+  const json = JSON.stringify({ version: 1, messages });
+  decodeSavedText(json); // Apply the same contract before replacing storage.
+  window.localStorage.setItem(key, json);
+}
+```
+
+The saved format deliberately omits SDK metadata. `readSavedChatMessages` adds the required empty `toolCalls` array for assistant inputs before passing them to `setMessages`. Use this integration with the [React Quickstart](/docs/react/start/quick) provider. Call the hook inside your mounted screen.
+
+```ts
+import { useChat } from '@hashbrownai/react';
+import { readSavedChatMessages } from './saved-text';
+
+export function useSavedHelpChat() {
+  const chat = useChat({ system: 'Help explain our public returns policy.' });
+  function load() {
+    if (
+      chat.isLoading ||
+      chat.isResuming ||
+      chat.pendingInterrupts ||
+      chat.recovery.required
+    ) {
+      throw new Error(
+        'Finish the current interaction before loading saved text.',
+      );
+    }
+    chat.setMessages(readSavedChatMessages('help-chat:v1'));
+  }
+  return { chat, load };
+}
+```
+
+Call `load()` from an explicit browser **Load** handler and catch validation or storage errors there so the screen can display them. An assistant-ended document loads without a request; the SDK assigns new message IDs. Loading is allowed only while idle, with no active tool, interrupt, or required recovery.
+
+For **Save**, first require a current successful run with `lastRunFinishReason` equal to `stop`, supported nonempty text, and no loading, error, interruption, or required recovery. Project only user/assistant string content, then call `writeSavedText` inside `try/catch`. Never serialize an arbitrary SDK message list into this narrow format. Keep the previous value when validation or storage fails, and offer explicit clearing for an invalid existing document. Browser storage is origin-local plain text; use server storage for ownership and synchronization.
+
+## Explore it in the workbench
+
+<hb-workbench lesson="save-text-conversations">
+</hb-workbench>
 
 Let's keep our two-step plan after a refresh. We'll save a completed Lighthouse exchange, save a second conversation as **Harbor**, then refresh and load Lighthouse into a new chat. A follow-up will show which text actually reached the model.
 

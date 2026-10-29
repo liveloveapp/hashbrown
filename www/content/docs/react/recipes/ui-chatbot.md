@@ -2,15 +2,85 @@
 title: 'Build a Generative UI Chatbot: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Propose a two-step plan, explicitly accept it, and read the accepted state in a second React conversation turn.'
+    content: 'Build a conversation with trusted application components and separate generated proposals from accepted state.'
 ---
 
 # Build a generative UI conversation
 
-Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
-
 <hb-docs-demo demo="canonical-workbench-ui-chatbot-react">
 </hb-docs-demo>
+
+A generative UI conversation answers with application components as well as text. Use it when a card, list, or other trusted view makes the response easier to understand and act on. The model chooses from exposed components and supplies their props; your application controls rendering and every action.
+
+Let’s make a delivery assistant that can display a status card. The first implementation is read-only. Adding an Accept or Save button later requires a separate handler that checks completion, current data, and permission.
+
+<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+
+## Build a conversation with a trusted card
+
+Start with the [React Quickstart](/docs/react/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Mount the component beneath `HashbrownProvider` and keep it mounted for the conversation lifetime.
+
+```tsx
+import { s } from '@hashbrownai/core';
+import { exposeComponent, useUiChat, useUiKit } from '@hashbrownai/react';
+
+function DeliveryCard({ status }: { status: string }) {
+  return (
+    <article aria-label="Delivery status">
+      <h2>Delivery</h2>
+      <p>{status}</p>
+    </article>
+  );
+}
+const delivery = exposeComponent(DeliveryCard, {
+  name: 'DeliveryCard',
+  description:
+    'Display a read-only delivery status. Do not use for changing an order.',
+  props: { status: s.string('A short delivery status') },
+  children: false,
+});
+
+export function DeliveryAssistant() {
+  const kit = useUiKit({ components: [delivery] });
+  const chat = useUiChat({
+    system:
+      'Demonstrate the delivery card with this public example: the parcel is due Friday.',
+    components: [kit],
+  });
+  return (
+    <section>
+      <button
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'Show the delivery status.',
+          })
+        }
+      >
+        Show delivery
+      </button>
+      {chat.messages.map((message) =>
+        message.role === 'assistant' ? (
+          <div key={message.id}>{message.ui}</div>
+        ) : null,
+      )}
+      {chat.error && <p role="alert">The reply could not finish.</p>}
+    </section>
+  );
+}
+```
+
+The delivery date is public example data supplied in the instructions. For a real order, retrieve its status through an authorized read-only tool and keep the authoritative result in application state. The model can misreport a tool result, so a generated status card is a presentation, not a database record.
+
+Send a follow-up through the same chat instance to retain the exchange. If a later card proposes a change, keep its draft separate from accepted state. Require a current completed response and an explicit application action; the next read tool should return what the application actually accepted.
+
+## Explore it in the workbench
+
+<hb-workbench lesson="ui-chatbot">
+</hb-workbench>
+
+Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
 
 <img src="/video/docs/canonical-workbench-ui-chatbot-react-result.png" alt="The React conversation shows an accepted SummaryCard followed by a read-only PlanReading, beside the application plan and revision." width="1600" height="1000" loading="lazy" />
 

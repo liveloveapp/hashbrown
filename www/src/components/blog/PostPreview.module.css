@@ -7,9 +7,9 @@
 .link {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: var(--space-8);
   height: 100%;
-  padding: 32px;
+  padding: var(--card-padding);
 }
 
 .title {

@@ -11,7 +11,7 @@
   gap: var(--section-gap);
   width: 100%;
   max-width: var(--container);
-  padding: var(--space-12) var(--gutter) var(--section-gap);
+  padding: var(--page-top) var(--gutter) var(--section-gap);
 }
 
 .intro {
@@ -51,7 +51,7 @@
 .fonts {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-6);
+  gap: var(--gutter);
 }
 
 .tile {
@@ -158,7 +158,7 @@
 .colors {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-4);
+  gap: var(--gutter);
 }
 
 .color {
@@ -220,7 +220,6 @@
 
   .colors {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-6);
   }
 }
 

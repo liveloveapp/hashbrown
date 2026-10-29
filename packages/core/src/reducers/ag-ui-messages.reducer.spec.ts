@@ -3420,3 +3420,210 @@ test('a step held before START of an existing call keeps the provider kind of an
   });
   expect(isProviderToolCall({ metadata: tool?.metadata })).toBe(true);
 });
+
+test.each([
+  {
+    step: {
+      v: 1,
+      kind: 'provider',
+      provider: 'openai',
+      status: 'failed',
+      error: { message: 'Native failure' },
+    },
+    error: undefined,
+    message: 'Native failure',
+  },
+  { step: undefined, error: 'Raw failure', message: 'Raw failure' },
+  {
+    step: { v: 1, kind: 'provider', provider: 'openai', status: 'running' },
+    error: 'Raw failure',
+    message: 'Raw failure',
+  },
+])(
+  'keeps prior result failure when a completed correction replaces native content: %p',
+  ({ step, error, message }) => {
+    const history: Message[] = [
+      {
+        id: 'assistant',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'call',
+            type: 'function',
+            function: { name: 'code_interpreter', arguments: '{}' },
+            metadata: {
+              'b4.step': {
+                v: 1,
+                kind: 'provider',
+                provider: 'openai',
+                status: 'running',
+              },
+            },
+          },
+        ],
+      },
+      {
+        id: 'result',
+        role: 'tool',
+        toolCallId: 'call',
+        content: 'old native content',
+        ...(error === undefined ? {} : { error }),
+        metadata: {
+          retained: true,
+          vendor: 'old',
+          ...(step === undefined ? {} : { 'b4.step': step }),
+        },
+      },
+    ];
+    const before = JSON.stringify(history);
+
+    for (const correctionError of [undefined, '']) {
+      const next = applyCanonicalMessageEvent(history, {
+        type: EventType.TOOL_CALL_RESULT,
+        toolCallId: 'call',
+        messageId: 'result',
+        content: 'corrected native content',
+        ...(correctionError === undefined ? {} : { error: correctionError }),
+        metadata: {
+          vendor: 'new',
+          'b4.step': {
+            v: 1,
+            kind: 'provider',
+            provider: 'openai',
+            status: 'completed',
+          },
+        },
+      } as AGUIEvent);
+      const projected = projectAgUiMessages(next, {});
+
+      expect(next[1]).toMatchObject({
+        content: 'corrected native content',
+        metadata: {
+          retained: true,
+          vendor: 'new',
+          'b4.step': { status: 'failed', error: { message } },
+        },
+      });
+      expect(next[1]).toHaveProperty('error', message);
+      expect(projected.toolCalls[0].result).toEqual({
+        status: 'rejected',
+        reason: message,
+      });
+      expect(projected.toolCalls[0].metadata?.['b4.step']).toMatchObject({
+        kind: 'provider',
+        status: 'failed',
+        error: { message },
+      });
+      expect(next).toHaveLength(2);
+      expect(JSON.stringify(history)).toBe(before);
+    }
+  },
+);
+
+test('retains result metadata while a fresh result frame owns its other fields', () => {
+  const history: Message[] = [
+    {
+      id: 'assistant',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'call',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+    {
+      id: 'result',
+      role: 'tool',
+      toolCallId: 'call',
+      content: 'old',
+      name: 'old-name',
+      subagentRunId: 'old-owner',
+      encryptedValue: 'old-encrypted',
+      metadata: { retained: true },
+    } as Message,
+  ];
+
+  const next = applyCanonicalMessageEvent(history, {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'result',
+    toolCallId: 'call',
+    content: 'new',
+    subagentRunId: 'new-owner',
+  });
+
+  expect(next[1]).toEqual({
+    id: 'result',
+    role: 'tool',
+    toolCallId: 'call',
+    content: 'new',
+    subagentRunId: 'new-owner',
+    metadata: { retained: true },
+  });
+  expect(history[1]).toMatchObject({
+    name: 'old-name',
+    subagentRunId: 'old-owner',
+    encryptedValue: 'old-encrypted',
+  });
+});
+
+test('accepts a fresh nonempty result error while retaining the settled failed step', () => {
+  const history: Message[] = [
+    {
+      id: 'assistant',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'call',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+    {
+      id: 'result',
+      role: 'tool',
+      toolCallId: 'call',
+      content: 'old',
+      error: 'Original rejection',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'failed',
+          error: { message: 'Original step failure' },
+        },
+      },
+    },
+  ];
+
+  const next = applyCanonicalMessageEvent(history, {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'result',
+    toolCallId: 'call',
+    content: 'updated',
+    error: 'Updated rejection',
+    metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+  } as AGUIEvent);
+  const projected = projectAgUiMessages(next, {});
+
+  expect(next[1]).toMatchObject({
+    content: 'updated',
+    error: 'Updated rejection',
+    metadata: {
+      'b4.step': {
+        status: 'failed',
+        error: { message: 'Original step failure' },
+      },
+    },
+  });
+  expect(projected.toolCalls[0].result).toEqual({
+    status: 'rejected',
+    reason: 'Updated rejection',
+  });
+  expect(history[1]).toMatchObject({
+    content: 'old',
+    error: 'Original rejection',
+  });
+});

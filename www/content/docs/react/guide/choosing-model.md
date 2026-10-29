@@ -2,50 +2,67 @@
 title: 'Choosing a Model: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Choose and configure the provider model on your AG-UI server while keeping Hashbrown React clients provider-independent.'
+    content: 'Choose a model by the task, output contract, latency, and failure behavior; configure it on the server.'
 ---
 
 # Choosing a Model
 
-Hashbrown React clients send AG-UI run requests to your configured endpoint. The server adapter chooses the provider and model, so hooks such as `useChat`, `useCompletion`, `useStructuredChat`, and `useStructuredCompletion` do not accept a `model` option.
+<hb-docs-demo demo="canonical-workbench-structured-react">
+</hb-docs-demo>
 
-## Select the Model on the Server
+A model turns context into a response. Choosing one starts with the job your application needs to do: answer a question, return typed data, select a known option, or propose a component. Those jobs place different demands on a model.
 
-Configure the model when you create the provider adapter:
+Hashbrown separates that choice from your React interface. The client sends a run to your endpoint; your server selects the provider and model. You can compare models while keeping the same application contract.
+
+## Start with the task
+
+Write down a small set of representative inputs before comparing models. Include an ordinary request, an ambiguous request, a long conversation, and a request the application should decline. Keep the schema, tools, and instructions the same during the comparison.
+
+| What to check        | What to observe                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| Required capability  | Does the selected deployment support your schema, tools, and output mode?               |
+| Useful response time | When can the user read a useful value, and when does the run complete?                  |
+| Result quality       | Does the response satisfy application rules as well as the schema?                      |
+| Failure behavior     | How does the interface handle refusal, truncation, cancellation, or unavailable output? |
+| Operating limits     | Can your service support the expected context size, traffic, and provider usage?        |
+
+A fast first token is useful for a text preview. A short, valid completed result may matter more for a decision or an application write. Measure the behavior your user actually needs.
+
+<hb-concept-diagram concept="client-server">
+</hb-concept-diagram>
+
+## Select the model on the server
+
+Here is a reusable server module for an OpenAI-backed AG-UI endpoint. Install the packages in the [OpenAI guide](/docs/react/platform/openai), set the two environment variables, and pass the endpoint's validated run input and disconnect signal into this function. Your HTTP handler still owns authentication, authorization, request validation, and SSE encoding.
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 
-const stream = HashbrownOpenAI.stream.text({
-  apiKey: process.env.OPENAI_API_KEY!,
-  model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
-  request,
-});
-```
+export function streamReply(input: RunAgentInput, signal?: AbortSignal) {
+  const apiKey = process.env['OPENAI_API_KEY'];
+  const model = process.env['OPENAI_MODEL'];
+  if (!apiKey || !model)
+    throw new Error('Configure the provider on the server');
 
-The client remains unchanged when the server switches models or providers:
-
-```tsx
-import { useChat } from '@hashbrownai/react';
-
-export function Chat() {
-  const chat = useChat({
-    system: 'You are a helpful assistant.',
-  });
-
-  // Render chat.messages and call chat.sendMessage(...).
+  return HashbrownOpenAI.stream.text({ apiKey, model, input, signal });
 }
 ```
 
-## Route Between Models
+The React hooks do not take a provider `model` option. Keep provider credentials and unrestricted model identifiers out of browser configuration. Follow the [Quickstart](/docs/react/start/quick) to connect the frontend to the endpoint.
 
-If an application needs multiple models, expose separate AG-UI endpoints or choose the model in trusted server logic. Point a hook at an alternate endpoint with a nested `HashbrownProvider` or a custom transport. Do not send provider credentials or unrestricted model identifiers from the browser.
+## Route between models
 
-See the provider guides for server configuration:
+If different tasks need different models, select among server-owned configurations after checking the caller's access. Separate endpoints can make that policy clear. A request for a short suggestion may use a different configuration from a long-running agent, while both return the protocol their client expects.
 
-- [OpenAI](/docs/react/platform/openai)
-- [Azure OpenAI](/docs/react/platform/azure)
-- [Anthropic](/docs/react/platform/anthropic)
-- [Amazon Bedrock](/docs/react/platform/bedrock)
-- [Google Gemini](/docs/react/platform/google)
-- [Ollama](/docs/react/platform/ollama)
+Changing providers also means checking provider capabilities. An adapter translates events; it cannot add schema or tool support that a deployment does not have. See [Platforms](/docs/react/start/platforms) for the supported integration paths.
+
+## Explore it in the workbench
+
+Open [Structured output](/docs/react/concept/structured-output) in the [workbench](/docs/react/start/workbench). The teaser uses real OpenAI output; it is one observed run, not a benchmark or a comparison between providers.
+
+1. Run the same first prompt with your current server model configuration. Inspect **Requests** and **JSON** and record the completed result.
+2. Change the server-owned `OPENAI_MODEL`, restart the local host, and begin a fresh conversation. Reuse the prompt and response schema.
+3. Compare resolved values, completion, and the application's acceptance checks. Replay each capture to inspect it without another provider request.
+
+Keep the original responses when a model fails. A successful demonstration alone does not show how your application behaves under ambiguous input or a failed run.
