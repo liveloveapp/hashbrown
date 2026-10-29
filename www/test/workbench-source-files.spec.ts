@@ -188,4 +188,5 @@ test('every docs page with a workbench builds its source data', async () => {
 
   expect(pages.length).toBeGreaterThan(0);
   expect(failures).toEqual([]);
-});
+  // Parses every docs page, which outlasts the 5 s default on CI runners.
+}, 30_000);
