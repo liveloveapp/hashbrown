@@ -108,7 +108,7 @@ export const workbenchDecisionSchema = s.object(
 
 <hb-expander title="Checked Angular decision setup">
 
-<hb-code-example header="angular/src/app/decision-workbench.ts">
+<hb-code-example header="angular/src/app/decision-workbench.ts" moment="decision-1">
 
 ```ts
   private readonly resource = decisionResource({

@@ -190,3 +190,115 @@ test('every docs page with a workbench builds its source data', async () => {
   expect(failures).toEqual([]);
   // Parses every docs page, which outlasts the 5 s default on CI runners.
 }, 30_000);
+
+const pageWithMoment = (
+  path: string,
+  lines: [number, number],
+  moment: string,
+) =>
+  [
+    '<hb-workbench lesson="tools"></hb-workbench>',
+    '',
+    `<hb-code-example header="${path}" moment="${moment}">`,
+    '',
+    '```ts',
+    linesOf(path, lines[0], lines[1]),
+    '```',
+    '',
+    '</hb-code-example>',
+  ].join('\n');
+
+test('a snippet moment is collected when its lesson capture has the milestone', async () => {
+  const parsed = await parseMarkdown(
+    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-result-1'),
+  );
+
+  const data = workbenchPageData(parsed.tree, 'react');
+
+  expect(data?.moments).toEqual(['tool-result-1']);
+});
+
+test('a snippet moment missing from the lesson capture fails with its header and moment', async () => {
+  const parsed = await parseMarkdown(
+    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-result-99'),
+  );
+
+  const build = () => workbenchPageData(parsed.tree, 'react');
+
+  expect(build).toThrow(
+    'react/src/Workbench.tsx: moment "tool-result-99" is not a milestone in the tools lesson\'s react capture',
+  );
+});
+
+test('every snippet moment names a milestone in its lesson capture', async () => {
+  const pages = readdirSync(docsRoot, { recursive: true, encoding: 'utf8' })
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => ({ name, body: readFileSync(join(docsRoot, name), 'utf8') }))
+    .filter((page) => page.body.includes(' moment="'));
+
+  const failures: string[] = [];
+  for (const page of pages) {
+    const sdk = page.name.startsWith('angular') ? 'angular' : 'react';
+    try {
+      workbenchPageData((await parseMarkdown(page.body)).tree, sdk);
+    } catch (error) {
+      failures.push(`${page.name}: ${(error as Error).message}`);
+    }
+  }
+
+  expect(pages.length).toBeGreaterThan(0);
+  expect(failures).toEqual([]);
+}, 30_000);
+
+test('the Tools pages link readContext to the tool result', async () => {
+  const pages = ['react', 'angular'].map((sdk) => ({
+    sdk: sdk as 'react' | 'angular',
+    body: readFileSync(join(docsRoot, sdk, 'concept/functions.md'), 'utf8'),
+  }));
+
+  const data = await Promise.all(
+    pages.map(async ({ sdk, body }) => ({
+      body,
+      data: workbenchPageData((await parseMarkdown(body)).tree, sdk),
+    })),
+  );
+
+  for (const { body, data: page } of data) {
+    expect(page?.moments).toContain('tool-result-1');
+    expect(body).toMatch(/moment="tool-result-1"/);
+  }
+});
+
+test('a moment on a page without a workbench fails with its header and moment', async () => {
+  const parsed = await parseMarkdown(
+    '<hb-code-example header="react/src/Workbench.tsx" moment="tool-result-1">\n\n```ts\ncode\n```\n\n</hb-code-example>',
+  );
+
+  const build = () => workbenchPageData(parsed.tree, 'react');
+
+  expect(build).toThrow(
+    'react/src/Workbench.tsx: moment "tool-result-1" needs an hb-workbench lesson on the page',
+  );
+});
+
+test('a moment on a snippet outside the workbench files fails with its header and moment', async () => {
+  const parsed = await parseMarkdown(
+    [
+      '<hb-workbench lesson="tools"></hb-workbench>',
+      '',
+      '<hb-code-example header="src/app.ts" moment="tool-result-1">',
+      '',
+      '```ts',
+      'code',
+      '```',
+      '',
+      '</hb-code-example>',
+    ].join('\n'),
+  );
+
+  const build = () => workbenchPageData(parsed.tree, 'react');
+
+  expect(build).toThrow(
+    'src/app.ts: moment "tool-result-1" is only allowed on workbench snippets',
+  );
+});

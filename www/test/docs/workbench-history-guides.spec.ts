@@ -124,7 +124,7 @@ test.each(SDKS)('%s history excerpts match checked source', (sdk) => {
   for (const [section, slug] of lessons) {
     const body = readDoc(sdk, [section, slug])?.body ?? '';
     for (const [, file, excerpt] of body.matchAll(
-      /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+      /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
     )) {
       const source = readFileSync(
         resolve(import.meta.dirname, '../../examples/quickstart', file),

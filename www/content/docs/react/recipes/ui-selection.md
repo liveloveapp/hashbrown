@@ -134,7 +134,7 @@ This is different from [Generative UI](/docs/react/concept/components), where th
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="react/src/SelectionWorkbench.tsx">
+<hb-code-example header="react/src/SelectionWorkbench.tsx" moment="selection-result-1">
 
 ```tsx
 const selection = useUiDecision({
