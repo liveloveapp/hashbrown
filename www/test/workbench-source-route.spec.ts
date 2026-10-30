@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import {
   generateStaticParams,
@@ -21,6 +21,7 @@ test('react/tools source is highlighted with addressable lines', async () => {
 
   const response = await GET(new Request('http://localhost'), { params });
   const body = (await response.json()) as {
+    commit: string;
     files: { path: string; html: string }[];
   };
 
@@ -32,8 +33,7 @@ test('react/tools source is highlighted with addressable lines', async () => {
     .split('\n').length;
   const [wrapper] = body.files;
   expect(response.headers.get('content-type')).toContain('application/json');
-  // GitHub links use the page's commit, so the payload carries only files.
-  expect(Object.keys(body)).toEqual(['files']);
+  expect(Object.keys(body)).toEqual(['commit', 'files']);
   expect(body.files.map((file) => file.path)).toEqual([
     'react/src/Workbench.tsx',
     'server/workbench-app.ts',
@@ -43,6 +43,16 @@ test('react/tools source is highlighted with addressable lines', async () => {
   expect(wrapper.html).toContain('<span class="line" data-line="1">');
   expect(wrapper.html.match(/data-line="\d+"/g)).toHaveLength(lines);
   expect(wrapper.html).toContain(`data-line="${lines}"`);
+});
+
+test('source carries the deployed commit the production check reads', async () => {
+  vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'a'.repeat(40));
+  const params = Promise.resolve({ sdk: 'react', lesson: 'generative-ui' });
+
+  const response = await GET(new Request('http://localhost'), { params });
+  const body = (await response.json()) as { commit: string };
+
+  expect(body.commit).toBe('a'.repeat(40));
 });
 
 test('an unknown lesson is not found', async () => {

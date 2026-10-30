@@ -40,6 +40,8 @@ export interface WorkbenchSourceData {
  * data-line="N">` per source line.
  */
 export interface WorkbenchSourceHtml {
+  /** The deployed Git revision; the production deploy check reads it. */
+  readonly commit: string;
   readonly files: readonly { readonly path: string; readonly html: string }[];
 }
 
