@@ -667,6 +667,9 @@ test('TARGETS includes hashbrown-marketing with no domains and a 60 second fluid
   });
   assert.deepEqual(target?.requiredEnv, ['MARKETING_SERVICE_SECRET']);
   assert.ok(target?.env.includes('MARKETING_CREDENTIALS_KEY'));
+  assert.ok(target?.env.includes('MARKETING_SERVICE_SECRET'));
+  assert.ok(!target?.env.includes('CRON_SECRET'));
+  assert.ok(!target?.env.includes('MARKETING_CRON_ENABLED'));
   assert.ok(!target?.env.includes('DATABASE_URL'));
   assert.ok(!target?.env.includes('B4_DATABASE_URL'));
 });
@@ -678,6 +681,8 @@ test('TARGETS www lists the growth env keys', () => {
     'OPENAI_API_KEY',
     'LIFECYCLE_SERVICE_SECRET',
     'CRON_SECRET',
+    'MARKETING_CRON_ENABLED',
+    'MARKETING_SERVICE_SECRET',
     'NEXT_PUBLIC_POSTHOG_TOKEN',
     'NEXT_PUBLIC_POSTHOG_HOST',
     'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
@@ -688,6 +693,7 @@ test('TARGETS www lists the growth env keys', () => {
   assert.deepEqual(target?.envPerTarget, [
     'GROWTH_DATABASE_ENVIRONMENT',
     'LIFECYCLE_URL',
+    'MARKETING_URL',
   ]);
 });
 

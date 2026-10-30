@@ -85,13 +85,20 @@ export const TARGETS = Object.freeze([
       'NEXT_PUBLIC_GROWTH_COLLECTION',
       // Read by the /_/cron/lifecycle route and nudgeLifecycle in www.
       'LIFECYCLE_CRON_ENABLED',
+      // Read by the /_/cron/marketing route in www.
+      'MARKETING_CRON_ENABLED',
+      'MARKETING_SERVICE_SECRET',
       // Read by the /_/forms/unstuck route and the /unstuck page: exact
       // true | false, default off.
       'GROWTH_UNSTUCK_FORM_ENABLED',
     ],
     // DATABASE_URL is injected by the Neon Marketplace integration; the
     // bootstrap must never upsert it.
-    envPerTarget: ['GROWTH_DATABASE_ENVIRONMENT', 'LIFECYCLE_URL'],
+    envPerTarget: [
+      'GROWTH_DATABASE_ENVIRONMENT',
+      'LIFECYCLE_URL',
+      'MARKETING_URL',
+    ],
     requiredEnv: ['OPENAI_API_KEY'],
     build: {
       framework: 'nextjs',
@@ -147,8 +154,6 @@ export const TARGETS = Object.freeze([
     domains: [],
     env: [
       'MARKETING_SERVICE_SECRET',
-      'CRON_SECRET',
-      'MARKETING_CRON_ENABLED',
       'MARKETING_DRY_RUN',
       'MARKETING_CREDENTIALS_KEY',
       'MARKETING_GITHUB_TOKEN',
