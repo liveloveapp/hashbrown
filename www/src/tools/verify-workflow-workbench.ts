@@ -48,6 +48,7 @@ export async function verifyWorkflowWorkbench(options: {
   const providerStart = options.providerRequests.length;
   const count = () => options.requests.length - start;
   let succeeded = false;
+  let releaseActivityPreview: (() => void) | undefined;
   try {
     await page.goto(`${options.origin}/${framework}.html?lesson=${lesson}`);
     const root = page.locator('.wb:visible');
@@ -183,6 +184,9 @@ export async function verifyWorkflowWorkbench(options: {
     }
     await hold();
     mark('firstRequest');
+    // Hold the fixture verdict until the browser has observed its initial activity.
+    if (!live && lesson === 'activities')
+      releaseActivityPreview = options.preview();
     await send.click();
     await expect(
       root.getByRole('button', { name: 'Set shared state', exact: true }),
@@ -224,7 +228,11 @@ export async function verifyWorkflowWorkbench(options: {
     } else {
       if (lesson === 'activities') {
         await expect(activities).toHaveCount(1, { timeout: 60_000 });
-        if (!live) await expect(activities).toContainText('context-checked');
+        if (!live) {
+          await expect(activities).toContainText('context-checked');
+          releaseActivityPreview?.();
+          releaseActivityPreview = undefined;
+        }
       }
       await complete();
       mark('firstComplete');
@@ -622,6 +630,7 @@ export async function verifyWorkflowWorkbench(options: {
     });
     throw error;
   } finally {
+    releaseActivityPreview?.();
     options.outcome('success');
     const video = page.video();
     await page.close();
