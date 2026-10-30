@@ -2,16 +2,38 @@ import type { WorkbenchStore } from './workbench';
 import { canSaveWorkbenchHistory } from './workbench-history';
 import type { createWorkbenchServerHistory } from './workbench-server-history';
 
-/** Mounts identical explicit server actions beside each framework's actual SDK transcript. */
+// The hosted workbench is its own origin, so docs links must be absolute.
+const workbenchDocsOrigin = 'https://hashbrown.dev';
+
+/**
+ * Mounts identical explicit server actions beside each framework's actual SDK
+ * transcript. Off a loopback host, where every action could only be denied,
+ * it mounts a notice that links to running the example locally instead.
+ *
+ * @param host - The element the controls are appended to.
+ * @param store - The conversation's workbench store.
+ * @param controller - The conversation's server history controller.
+ * @param framework - The client framework, which picks the docs link.
+ */
 export function mountWorkbenchServerControls(
   host: HTMLElement,
   store: WorkbenchStore,
   controller: ReturnType<typeof createWorkbenchServerHistory>,
+  framework: 'React' | 'Angular',
 ) {
   const article = document.createElement('article');
   article.className = 'wb-summary wb-history-controls';
   article.setAttribute('aria-label', 'Server conversation controls');
   host.append(article);
+  if (controller.access === 'hosted') {
+    const notice = document.createElement('p');
+    const link = document.createElement('a');
+    link.href = `${workbenchDocsOrigin}/docs/${framework.toLowerCase()}/start/workbench#run-the-example`;
+    link.textContent = 'Run the example';
+    notice.append('This lesson runs on a local server. ', link);
+    article.append(notice);
+    return { dispose: () => article.remove() };
+  }
   const render = () => {
     const snapshot = store.getSnapshot();
     const state =

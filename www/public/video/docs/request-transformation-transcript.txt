@@ -1,9 +1,0 @@
-request-transformation
-
-Recorded through the checked React component after both React and Angular passed the same browser checks. Checked React and Angular clients, Express endpoint, async request transformation and actual OpenAI adapter. Identity/context integrations use public example data. Provider-native Responses events are scripted over local HTTP; no live model or provider key. Presentation styles and the request-flow strip are added; no narration. The recording uses React after both frameworks passed the same checks.
-
-The first two seconds preview the final result. The complete interaction follows.
-
-Ask “How quickly will our team get support?” The server verifies application identity, loads the authorized Northstar workspace context, and adds Studio plan instructions through transformRequestOptions. The provider reply says the plan includes a response within one business day. The browser supplies the question; trusted policy comes from the server.
-
-The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

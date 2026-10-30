@@ -13,6 +13,10 @@ type ChildMessageOf<T extends WorkbenchChildMessage['type']> = Extract<
 export interface EmbedClientHandlers {
   ready(message: ChildMessageOf<'hb-workbench:ready'>): void;
   loaded(message: ChildMessageOf<'hb-workbench:loaded'>): void;
+  /**
+   * A refused `load` (`version`, `lesson`, `malformed`), or a refused `seek`
+   * to an unknown id (`milestone`), which leaves the loaded replay in place.
+   */
   rejected(message: ChildMessageOf<'hb-workbench:rejected'>): void;
   state(message: ChildMessageOf<'hb-workbench:state'>): void;
 }

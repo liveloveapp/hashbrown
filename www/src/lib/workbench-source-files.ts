@@ -5,15 +5,18 @@ import type { Element, Root, RootContent } from 'hast';
 import type { ShikiTransformer } from 'shiki';
 import {
   assertWorkbenchLesson,
+  docsPanelSdk,
   type WorkbenchLessonId,
   type WorkbenchLineRange,
   workbenchMediaId,
   type WorkbenchSourceData,
   type WorkbenchSourceHtml,
 } from '../components/workbench/workbench-lessons';
-import { workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
-import { workbenchMilestones } from '../../examples/quickstart/runtime/workbench-timeline';
-import type { WorkbenchCapture } from '../../examples/quickstart/runtime/workbench-capture';
+import {
+  parseWorkbenchCapture,
+  type WorkbenchCapture,
+} from '../../examples/quickstart/runtime/workbench-capture';
+import { codeExampleId } from './code-example-id';
 import type { Sdk } from './content';
 import { repoRoot } from './repo-root';
 import { highlightCode } from './rehype-shiki';
@@ -195,6 +198,11 @@ export interface WorkbenchPageData {
   readonly source: WorkbenchSourceData;
   /** Milestone ids the page's code examples refer to, in page order. */
   readonly moments: readonly string[];
+  /**
+   * Each workbench code example's lines in its file, by the id rendering
+   * gives it (see `codeExampleId`): the same ranges the highlights merge.
+   */
+  readonly snippetLines: Readonly<Record<string, WorkbenchLineRange>>;
 }
 
 const quickstartPath = (path: string) =>
@@ -248,15 +256,35 @@ export function buildWorkbenchSource(
   sdk: Sdk,
   snippets: readonly WorkbenchSnippet[],
 ): WorkbenchSourceData {
+  return locateWorkbenchSnippets(lesson, sdk, snippets).source;
+}
+
+// buildWorkbenchSource, plus each snippet's own range in input order.
+function locateWorkbenchSnippets(
+  lesson: WorkbenchLessonId,
+  sdk: Sdk,
+  snippets: readonly WorkbenchSnippet[],
+): {
+  readonly source: WorkbenchSourceData;
+  readonly ranges: readonly WorkbenchLineRange[];
+} {
   const files = WORKBENCH_LESSON_FILES[lesson][sdk];
+  // Each header's file is read once, however many snippets quote it.
+  const texts = new Map<string, string | undefined>();
+  const readHeader = (header: string): string | undefined => {
+    if (!texts.has(header)) {
+      try {
+        texts.set(header, readFileSync(quickstartPath(header), 'utf8'));
+      } catch {
+        texts.set(header, undefined);
+      }
+    }
+    return texts.get(header);
+  };
   const located = snippets.map(({ header, code }) => {
     const notFound = `${header}: snippet not found in www/examples/quickstart/${header}`;
-    let text: string;
-    try {
-      text = readFileSync(quickstartPath(header), 'utf8');
-    } catch {
-      throw new Error(notFound);
-    }
+    const text = readHeader(header);
+    if (text === undefined) throw new Error(notFound);
     const range = resolveSnippetLines(text, code);
     if (!range) throw new Error(notFound);
     if (!files.includes(header)) {
@@ -267,15 +295,18 @@ export function buildWorkbenchSource(
     return { header, range };
   });
   return {
-    commit: workbenchSourceCommit(),
-    files: files.map((path) => ({
-      path,
-      highlights: mergeRanges(
-        located
-          .filter((item) => item.header === path)
-          .map((item) => item.range),
-      ),
-    })),
+    source: {
+      commit: workbenchSourceCommit(),
+      files: files.map((path) => ({
+        path,
+        highlights: mergeRanges(
+          located
+            .filter((item) => item.header === path)
+            .map((item) => item.range),
+        ),
+      })),
+    },
+    ranges: located.map((item) => item.range),
   };
 }
 
@@ -294,18 +325,17 @@ const elements = (node: Root | RootContent): Element[] =>
       ]
     : [];
 
-const milestoneIdCache = new Map<string, readonly string[]>();
+const captureCache = new Map<string, WorkbenchCapture>();
 
 /**
- * The milestone ids in a lesson's published capture for one SDK, in order.
- * Captures are parsed once per media id.
+ * A lesson's published capture for one SDK, parsed once per media id.
  */
-function captureMilestoneIds(
+function publishedCapture(
   lesson: WorkbenchLessonId,
   sdk: Sdk,
-): readonly string[] {
+): WorkbenchCapture {
   const mediaId = workbenchMediaId(lesson, sdk);
-  const cached = milestoneIdCache.get(mediaId);
+  const cached = captureCache.get(mediaId);
   if (cached) return cached;
   const path = join(
     repoRoot(),
@@ -320,24 +350,64 @@ function captureMilestoneIds(
       `The ${lesson} lesson has no ${sdk} capture for moments (${path})`,
     );
   }
-  const capture = JSON.parse(text) as WorkbenchCapture;
-  const format = workbenchLessons.find((item) => item.id === lesson)?.format;
-  const ids = workbenchMilestones(capture.events, format).map(
-    (milestone) => milestone.id,
-  );
-  milestoneIdCache.set(mediaId, ids);
-  return ids;
+  const capture = parseWorkbenchCapture(JSON.parse(text));
+  if (!capture) {
+    throw new Error(
+      `The ${lesson} lesson's ${sdk} capture is not a valid workbench capture (${path})`,
+    );
+  }
+  captureCache.set(mediaId, capture);
+  return capture;
 }
 
 /**
- * Check that each code example's `moment` names a milestone in its lesson's
- * capture, so a re-recorded capture cannot silently orphan a See it run link.
+ * Check that each moment names a milestone the capture recorded, so a
+ * re-recorded capture cannot silently orphan or retarget a See it run link.
+ * A `tool-…` moment must also point at a recorded tool event.
+ *
+ * @param capture - A published capture.
+ * @param where - Names the capture in errors, for example
+ *   `the tools lesson's react capture`.
+ * @param moments - The code examples that name a moment.
+ * @throws When the capture has no recorded milestones, a moment is not one
+ *   of them, or a `tool-…` moment points at another kind of event.
+ */
+export function assertCaptureMoments(
+  capture: WorkbenchCapture,
+  where: string,
+  moments: readonly { readonly header: string; readonly moment: string }[],
+): void {
+  if (moments.length === 0) return;
+  const milestones = capture.milestones;
+  if (!milestones) {
+    throw new Error(`${where} has no recorded milestones; restamp its capture`);
+  }
+  for (const { header, moment } of moments) {
+    const milestone = milestones.find((item) => item.id === moment);
+    if (!milestone) {
+      throw new Error(
+        `${header}: moment "${moment}" is not a milestone in ${where} (${milestones.map((item) => item.id).join(', ')})`,
+      );
+    }
+    const kind = capture.events[milestone.index]?.kind;
+    if (moment.startsWith('tool-') && kind !== 'tool') {
+      throw new Error(
+        `${header}: moment "${moment}" points at a ${kind} event in ${where}, not a tool`,
+      );
+    }
+  }
+}
+
+/**
+ * Check that each code example's `moment` names a milestone recorded in its
+ * lesson's published capture (see {@link assertCaptureMoments}).
  *
  * @param lesson - The page's workbench lesson.
  * @param sdk - The page's SDK.
  * @param moments - The page's code examples that name a moment.
- * @throws When a moment is not a milestone of the capture; the message names
- *   the snippet header, the moment and the valid milestones.
+ * @throws When the capture is missing or has no recorded milestones, or a
+ *   moment is not one of them; the message names the snippet header, the
+ *   moment and the valid milestones.
  */
 export function assertWorkbenchMoments(
   lesson: WorkbenchLessonId,
@@ -345,14 +415,11 @@ export function assertWorkbenchMoments(
   moments: readonly { readonly header: string; readonly moment: string }[],
 ): void {
   if (moments.length === 0) return;
-  const ids = captureMilestoneIds(lesson, sdk);
-  for (const { header, moment } of moments) {
-    if (!ids.includes(moment)) {
-      throw new Error(
-        `${header}: moment "${moment}" is not a milestone in the ${lesson} lesson's ${sdk} capture (${ids.join(', ')})`,
-      );
-    }
-  }
+  assertCaptureMoments(
+    publishedCapture(lesson, sdk),
+    `the ${lesson} lesson's ${sdk} capture`,
+    moments,
+  );
 }
 
 const isWorkbenchHeader = (header: unknown): header is string =>
@@ -366,14 +433,26 @@ const isWorkbenchHeader = (header: unknown): header is string =>
  *
  * @param tree - The page's parsed markdown (see `parseMarkdown`).
  * @param sdk - The SDK whose docs are rendering (blog posts use `react`).
+ * @param page - Names the page in errors, for example
+ *   `react/concept/functions`.
  * @returns The page data, or `undefined` for a page without a workbench.
  * @throws When the page has more than one lesson, a snippet fails
- *   {@link buildWorkbenchSource}, or a `moment` is not in the capture.
+ *   {@link buildWorkbenchSource}, or a `moment` is not in the capture; the
+ *   message starts with the page label.
  */
 export function workbenchPageData(
   tree: Root,
   sdk: string,
+  page: string,
 ): WorkbenchPageData | undefined {
+  try {
+    return pageData(tree, sdk);
+  } catch (error) {
+    throw new Error(`${page}: ${(error as Error).message}`, { cause: error });
+  }
+}
+
+function pageData(tree: Root, sdk: string): WorkbenchPageData | undefined {
   const all = elements(tree);
   const lessons = [
     ...new Set(
@@ -413,22 +492,32 @@ export function workbenchPageData(
     );
   }
   const lesson = assertWorkbenchLesson(lessons[0]);
+  // In document order, as renderMarkdownTree numbers them for their ids.
   const snippets = all
-    .filter(
-      (node) =>
-        node.tagName === 'hb-code-example' &&
-        isWorkbenchHeader(node.properties['header']),
-    )
-    .map((node) => ({
-      header: node.properties['header'] as string,
+    .filter((node) => node.tagName === 'hb-code-example')
+    .map((node, order) => ({
+      id: codeExampleId(order, String(node.properties['header'] ?? '')),
+      header: node.properties['header'],
       code: textOf(node),
-    }));
-  const docsSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
+    }))
+    .filter(
+      (item): item is typeof item & { header: string } =>
+        isWorkbenchHeader(item.header),
+    );
+  const docsSdk = docsPanelSdk(sdk);
   assertWorkbenchMoments(lesson, docsSdk, moments);
+  const { source, ranges } = locateWorkbenchSnippets(
+    lesson,
+    docsSdk,
+    snippets,
+  );
   return {
     lesson,
-    source: buildWorkbenchSource(lesson, docsSdk, snippets),
+    source,
     moments: [...new Set(moments.map((item) => item.moment))],
+    snippetLines: Object.fromEntries(
+      snippets.map((item, index) => [item.id, ranges[index]]),
+    ),
   };
 }
 
@@ -449,9 +538,26 @@ const lineNumbers: ShikiTransformer = {
   },
 };
 
+// Highlighted HTML by file path. Lessons share files (`runtime/workbench.ts`
+// is in every chat lesson), so each file is highlighted once per process.
+const highlightCache = new Map<string, Promise<string>>();
+
+const highlightFile = (path: string): Promise<string> => {
+  const cached = highlightCache.get(path);
+  if (cached) return cached;
+  const html = highlightCode(
+    readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
+    languageOf(path),
+    { transformers: [lineNumbers] },
+  );
+  highlightCache.set(path, html);
+  return html;
+};
+
 /**
  * Highlight a lesson's source files for the Source tab, with numbered lines.
- * Served as static JSON by `/workbench-source/<sdk>/<lesson>`.
+ * Served as static JSON by `/workbench-source/<sdk>/<lesson>`. Each file is
+ * highlighted once per process and reused by every lesson that lists it.
  *
  * @param lesson - A workbench lesson.
  * @param sdk - The SDK whose files to highlight.
@@ -461,15 +567,10 @@ export async function highlightWorkbenchSource(
   sdk: Sdk,
 ): Promise<WorkbenchSourceHtml> {
   return {
-    commit: workbenchSourceCommit(),
     files: await Promise.all(
       WORKBENCH_LESSON_FILES[lesson][sdk].map(async (path) => ({
         path,
-        html: await highlightCode(
-          readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
-          languageOf(path),
-          { transformers: [lineNumbers] },
-        ),
+        html: await highlightFile(path),
       })),
     ),
   };

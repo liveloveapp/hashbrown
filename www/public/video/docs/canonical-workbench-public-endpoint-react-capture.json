@@ -19141,5 +19141,13 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "text-action-0", "index": 1, "label": "Text action" },
+    { "id": "prompt-1", "index": 21, "label": "Prompt" },
+    { "id": "request-1", "index": 23, "label": "Request" },
+    { "id": "text-action-1", "index": 24, "label": "Text action" },
+    { "id": "streaming-text-1", "index": 31, "label": "Streaming text" },
+    { "id": "complete-1", "index": 134, "label": "Complete" }
   ]
 }

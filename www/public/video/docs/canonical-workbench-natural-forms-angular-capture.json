@@ -39237,5 +39237,21 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 2, "label": "Prompt" },
+    { "id": "request-1", "index": 4, "label": "Request" },
+    { "id": "tool-readcontext-1", "index": 16, "label": "Tool readContext" },
+    { "id": "request-1-2", "index": 18, "label": "Request" },
+    { "id": "streaming-text-1", "index": 26, "label": "Streaming text" },
+    { "id": "complete-1", "index": 104, "label": "Complete" },
+    { "id": "text-action-1", "index": 106, "label": "Text action" },
+    { "id": "prompt-2", "index": 109, "label": "Prompt" },
+    { "id": "request-2", "index": 111, "label": "Request" },
+    { "id": "tool-readcontext-2", "index": 123, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 125, "label": "Request" },
+    { "id": "streaming-text-2", "index": 133, "label": "Streaming text" },
+    { "id": "complete-2", "index": 208, "label": "Complete" },
+    { "id": "text-action-2", "index": 210, "label": "Text action" }
   ]
 }

@@ -2590,5 +2590,21 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    {
+      "id": "shared-state-observed-0",
+      "index": 0,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "paused-for-decisions-0",
+      "index": 5,
+      "label": "Paused for decisions"
+    },
+    { "id": "resume-requested-0", "index": 6, "label": "Resume requested" },
+    { "id": "sdk-resuming-0", "index": 8, "label": "SDK resuming" },
+    { "id": "request-0", "index": 9, "label": "Request" },
+    { "id": "complete-0", "index": 23, "label": "Complete" }
   ]
 }

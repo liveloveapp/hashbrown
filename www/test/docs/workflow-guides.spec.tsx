@@ -2,34 +2,34 @@ import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
+import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 import { readDoc, SDKS } from '../../src/lib/content';
 import { renderMarkdown } from '../../src/lib/markdown';
 
 const workflows = [
-  ['persistence', ['concept', 'message-history']],
+  ['message-history', ['concept', 'message-history']],
   ['interrupts', ['concept', 'interrupt-and-resume']],
   ['shared-state', ['concept', 'shared-agent-state']],
   ['activities', ['concept', 'activities']],
   ['ui-kits', ['recipes', 'ui-kits']],
 ] as const;
 
-test.each(workflows)(
-  'renders the %s recording with its own accessible assets',
-  async (demo) => {
-    const result = await renderMarkdown(
-      `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`,
-      docsComponents('react'),
-    );
+test.each(
+  workflows.map(([lesson]) => `canonical-workbench-${lesson}-react` as const),
+)('renders the %s recording with its own accessible assets', async (demo) => {
+  const result = await renderMarkdown(
+    `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`,
+    docsComponents('react'),
+  );
 
-    const html = renderToStaticMarkup(result.content);
+  const html = renderToStaticMarkup(result.content);
 
-    expect(html).toContain(`/video/docs/${demo}.webm`);
-    expect(html).toContain(`/video/docs/${demo}-transcript.txt`);
-    expect(html).toContain('scripted');
-    expect(html).toContain('preload="none"');
-    expect(html).not.toContain('ATC example');
-  },
-);
+  expect(html).toContain(`/video/docs/${demo}.webm`);
+  expect(html).toContain(`/video/docs/${demo}-transcript.txt`);
+  expect(html).toContain(DOCS_DEMOS[demo].recording);
+  expect(html).toContain('preload="none"');
+  expect(html).not.toContain('ATC example');
+});
 
 test.each(SDKS)(
   '%s workflow guides open with the behavior they teach',
@@ -40,8 +40,7 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const lesson = demo === 'persistence' ? 'message-history' : demo;
-      expectConceptFirstWorkbench(body, sdk, lesson);
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

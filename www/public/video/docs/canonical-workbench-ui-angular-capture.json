@@ -7008,5 +7008,22 @@
       },
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "tool-readcontext-1", "index": 9, "label": "Tool readContext" },
+    { "id": "request-1-2", "index": 10, "label": "Request" },
+    { "id": "streaming-json-1", "index": 15, "label": "Streaming JSON" },
+    { "id": "parsed-output-1", "index": 68, "label": "Parsed output" },
+    { "id": "complete-1", "index": 73, "label": "Complete" },
+    { "id": "plan-accepted-1", "index": 74, "label": "Plan accepted" },
+    { "id": "prompt-2", "index": 75, "label": "Prompt" },
+    { "id": "request-2", "index": 76, "label": "Request" },
+    { "id": "tool-readcontext-2", "index": 84, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 85, "label": "Request" },
+    { "id": "streaming-json-2", "index": 90, "label": "Streaming JSON" },
+    { "id": "parsed-output-2", "index": 136, "label": "Parsed output" },
+    { "id": "complete-2", "index": 141, "label": "Complete" }
   ]
 }

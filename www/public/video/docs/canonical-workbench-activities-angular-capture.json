@@ -35836,5 +35836,52 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    {
+      "id": "shared-state-observed-0",
+      "index": 0,
+      "label": "Shared state observed"
+    },
+    { "id": "prompt-1", "index": 1, "label": "Prompt" },
+    { "id": "request-1", "index": 3, "label": "Request" },
+    {
+      "id": "shared-state-observed-1",
+      "index": 8,
+      "label": "Shared state observed"
+    },
+    { "id": "activity-observed-1", "index": 10, "label": "Activity observed" },
+    { "id": "streaming-text-1", "index": 13, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-1-2",
+      "index": 217,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "activity-observed-1-2",
+      "index": 219,
+      "label": "Activity observed"
+    },
+    { "id": "complete-1", "index": 222, "label": "Complete" },
+    { "id": "prompt-2", "index": 223, "label": "Prompt" },
+    { "id": "request-2", "index": 225, "label": "Request" },
+    {
+      "id": "shared-state-observed-2",
+      "index": 230,
+      "label": "Shared state observed"
+    },
+    { "id": "activity-observed-2", "index": 232, "label": "Activity observed" },
+    { "id": "streaming-text-2", "index": 235, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-2-2",
+      "index": 291,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "activity-observed-2-2",
+      "index": 293,
+      "label": "Activity observed"
+    },
+    { "id": "complete-2", "index": 296, "label": "Complete" }
   ]
 }

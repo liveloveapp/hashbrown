@@ -664,5 +664,17 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "selection-result-1", "index": 4, "label": "Selection result" },
+    { "id": "complete-1", "index": 5, "label": "Complete" },
+    { "id": "view-applied-1", "index": 6, "label": "View applied" },
+    { "id": "prompt-2", "index": 7, "label": "Prompt" },
+    { "id": "request-2", "index": 8, "label": "Request" },
+    { "id": "selection-result-2", "index": 11, "label": "Selection result" },
+    { "id": "complete-2", "index": 12, "label": "Complete" },
+    { "id": "manual-view-2", "index": 13, "label": "Manual view" }
   ]
 }

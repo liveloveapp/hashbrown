@@ -1,6 +1,14 @@
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
-import { createWorkbenchServerHistory } from '../examples/quickstart/runtime/workbench-server-history';
+import {
+  createWorkbenchServerHistory,
+  getWorkbenchServerAccess,
+  type WorkbenchServerAccess,
+} from '../examples/quickstart/runtime/workbench-server-history';
+import {
+  getWorkbenchLesson,
+  isWorkbenchLoopbackHostname,
+} from '../examples/quickstart/runtime/workbench-lessons';
 import { observeHistory } from '../examples/quickstart/runtime/workbench-history-client';
 
 function setup() {
@@ -324,3 +332,58 @@ test('cancellation at replacement admission prevents the actual SDK setter side 
     expect(s.controller.state().threadId).toBeNull();
   }
 });
+
+test.each([
+  ['localhost', '?lesson=server-threads', 'session'],
+  ['127.0.0.1', '?lesson=public-endpoint', 'session'],
+  ['[::1]', '?lesson=server-threads', 'session'],
+  ['workbench.hashbrown.dev', '?lesson=server-threads', 'hosted'],
+  ['workbench.hashbrown.dev', '?lesson=public-endpoint', 'hosted'],
+  ['localhost', '?lesson=server-threads&embed=replay', 'replay'],
+  ['workbench.hashbrown.dev', '?lesson=server-threads&embed=replay', 'replay'],
+  ['workbench.hashbrown.dev', '?lesson=server-threads&embed=live', 'hosted'],
+] as const)(
+  'server access on %s with %s is %s',
+  (hostname, search, expected) => {
+    const lesson = getWorkbenchLesson(search);
+
+    const access = getWorkbenchServerAccess({ hostname, search }, lesson);
+
+    expect(access).toBe(expected);
+  },
+);
+
+test('the loopback hostnames match what the server answers on', () => {
+  const hostnames = ['localhost', '127.0.0.1', '[::1]', 'example.test'];
+
+  const loopback = hostnames.map(isWorkbenchLoopbackHostname);
+
+  expect(loopback).toEqual([true, true, true, false]);
+});
+
+test.each<WorkbenchServerAccess>(['replay', 'hosted'])(
+  '%s access sends no server requests',
+  async (access) => {
+    const store = createWorkbenchStore('history');
+    const observation = { messages: [], isLoading: false };
+    observeHistory(store, observation);
+    const fetcher = vi.fn<typeof fetch>();
+    const controller = createWorkbenchServerHistory({
+      store,
+      lesson: 'server-threads',
+      observation: () => observation,
+      active: () => true,
+      replace: vi.fn(),
+      fetch: fetcher,
+      access,
+    });
+
+    await controller.initialize();
+    await controller.startSession();
+    await controller.checkUnauthenticated();
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(controller.mutable()).toBe(false);
+    expect(controller.access).toBe(access);
+  },
+);
