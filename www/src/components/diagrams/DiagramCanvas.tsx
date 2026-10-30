@@ -86,6 +86,7 @@ function Node({ node }: { node: DiagramNode }) {
   const { width, height, titles, details, headerHeight } = nodeMetrics(node);
   return (
     <g
+      data-diagram-node={node.id}
       transform={`translate(${node.x} ${node.y})`}
       className={node.accent ? styles.accentNode : styles.node}
     >
@@ -145,8 +146,8 @@ export function DiagramCanvas({
   definition: DiagramDefinition;
 }) {
   if (definition.kind === 'sequence') {
-    const lane = 260,
-      padding = 120,
+    const lane = 188,
+      padding = 88,
       width = padding * 2 + (definition.participants.length - 1) * lane;
     const x = (id: string) =>
       padding + definition.participants.findIndex((p) => p.id === id) * lane;
@@ -165,7 +166,7 @@ export function DiagramCanvas({
       Math.max(
         ...definition.participants.map(
           (participant) =>
-            nodeMetrics({ ...participant, x: 0, y: 0, width: 208 }).height,
+            nodeMetrics({ ...participant, x: 0, y: 0, width: 160 }).height,
         ),
       );
     const firstMessage = headerBottom + maxLines * 20 + 32;
@@ -174,7 +175,7 @@ export function DiagramCanvas({
     return (
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ minWidth: width }}
+        style={{ minWidth: width, maxWidth: width }}
         role="img"
         aria-label={definition.title}
         className={styles.canvas}
@@ -188,9 +189,9 @@ export function DiagramCanvas({
             <Node
               node={{
                 ...participant,
-                x: x(participant.id) - 104,
+                x: x(participant.id) - 80,
                 y: 16,
-                width: 208,
+                width: 160,
               }}
             />
           </Fragment>
@@ -223,7 +224,7 @@ export function DiagramCanvas({
   return (
     <svg
       viewBox={`0 0 ${definition.width} ${definition.height}`}
-      style={{ minWidth: definition.width }}
+      style={{ minWidth: definition.width, maxWidth: definition.width }}
       role="img"
       aria-label={definition.title}
       className={styles.canvas}
