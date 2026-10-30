@@ -147,8 +147,9 @@ function useSeeItRun(onRun: (detail: SeeItRunDetail) => void) {
  *
  * The server cannot know the viewport, so its markup holds both the narrow
  * video panel and the tabbed panel, and CSS media queries show one: a phone
- * never paints tabs or loads the poster. Once hydrated, only the panel for
- * the viewport stays mounted, so a phone mounts no frames or observers.
+ * never loads the desktop poster. Once hydrated, pages with source keep the
+ * same tabbed panel across resizes; phones use video and Source without
+ * mounting replay frames or observers.
  */
 export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
   const hydrated = useHydrated();
@@ -165,13 +166,20 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
   );
   return (
     <>
-      {(!hydrated || narrow) && (
+      {(!hydrated || (narrow && !props.source)) && (
         <NarrowPanel title={props.title}>
           {props.fallback}
           {openLink}
         </NarrowPanel>
       )}
-      {(!hydrated || !narrow) && <TabbedPanel {...props} openLink={openLink} />}
+      {(!hydrated || props.source || !narrow) && (
+        <TabbedPanel
+          {...props}
+          hydrated={hydrated}
+          narrow={narrow}
+          openLink={openLink}
+        />
+      )}
     </>
   );
 }
@@ -232,12 +240,21 @@ function TabbedPanel({
   fallback,
   source,
   openLink,
-}: WorkbenchPanelClientProps & { openLink: ReactNode }) {
+  narrow,
+  hydrated,
+}: WorkbenchPanelClientProps & {
+  openLink: ReactNode;
+  narrow: boolean;
+  hydrated: boolean;
+}) {
   const id = useId();
-  const tabs: readonly Tab[] = source
-    ? ['replay', 'live', 'source']
-    : ['replay', 'live'];
-  const [tab, setTab] = useState<Tab>('replay');
+  const tabs: readonly Tab[] = narrow
+    ? ['replay', 'source']
+    : source
+      ? ['replay', 'live', 'source']
+      : ['replay', 'live'];
+  const [selectedTab, setTab] = useState<Tab>('replay');
+  const tab = narrow && selectedTab === 'live' ? 'replay' : selectedTab;
   const [liveMounted, setLiveMounted] = useState(false);
   const [near, setNear] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -263,8 +280,7 @@ function TabbedPanel({
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
 
-  // A Source fetch still running when the panel unmounts (a resize below
-  // 800px, a collapsed launcher) is abandoned.
+  // Abandon any Source fetch still running when the launcher unmounts.
   useEffect(
     () => () => {
       const pending = sourceFetch.current;
@@ -279,7 +295,7 @@ function TabbedPanel({
   // hydration pass renders this panel on phones too: never observe there.
   useEffect(() => {
     const element = panel.current;
-    if (near || !hasCapture || !element || isNarrow()) return;
+    if (narrow || near || !hasCapture || !element || isNarrow()) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -290,7 +306,17 @@ function TabbedPanel({
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [near, hasCapture]);
+  }, [narrow, near, hasCapture]);
+
+  // A mobile replay or failed desktop replay uses the deferred video poster.
+  useEffect(() => {
+    if (!narrow && hasCapture && !failed) return;
+    panel.current
+      ?.querySelectorAll<HTMLVideoElement>('video[data-poster]')
+      .forEach((video) => {
+        video.poster = video.dataset['poster'] ?? '';
+      });
+  }, [narrow, hasCapture, failed]);
 
   // Fetch the capture after the frame is ready and load it. Fall back to the
   // video on no ready, a ready for another embed, a failed or hung fetch, no
@@ -385,7 +411,7 @@ function TabbedPanel({
     useCallback(
       (detail) => {
         // Before hydration both panels listen; only the one showing acts.
-        if (isNarrow()) return;
+        if (isNarrow() && (!source || !hydrated)) return;
         const snippet = revealSnippet(panel.current, detail);
         setTab('replay');
         // The reader jumped away from the button: carry focus to the Replay.
@@ -397,7 +423,7 @@ function TabbedPanel({
             seq: (last?.seq ?? 0) + 1,
             lines: detail.lines,
           }));
-        if (!hasCapture || failed) return;
+        if (isNarrow() || !hasCapture || failed) return;
         lastMoment.current = detail.moment;
         setNear(true);
         // Before the replay loads, `loaded` seeks to it instead.
@@ -409,7 +435,7 @@ function TabbedPanel({
           });
         }
       },
-      [hasCapture, failed],
+      [hasCapture, failed, source, hydrated],
     ),
   );
 
@@ -511,7 +537,7 @@ function TabbedPanel({
 
   return (
     <div
-      className={`${styles.panel} ${styles.wide}`}
+      className={`${styles.panel} ${!hydrated || !source ? styles.wide : ''}`}
       data-component="workbench-panel"
       ref={panel}
     >
@@ -545,7 +571,7 @@ function TabbedPanel({
         {openLink}
       </div>
       <div {...panelProps('replay')}>
-        {!hasCapture || failed ? (
+        {narrow || !hasCapture || failed ? (
           fallback
         ) : near ? (
           <>
@@ -606,7 +632,7 @@ function TabbedPanel({
               Try again
             </button>
           </p>
-        ) : liveMounted ? (
+        ) : liveMounted && !narrow ? (
           <iframe
             key={liveAttempt}
             ref={setLiveFrame}

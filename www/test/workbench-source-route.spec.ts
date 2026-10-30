@@ -39,7 +39,8 @@ test('react/tools source is highlighted with addressable lines', async () => {
     'server/workbench-app.ts',
     'runtime/workbench.ts',
   ]);
-  expect(wrapper.html).toContain('class="shiki hashbrown"');
+  expect(wrapper.html).toContain('class="shiki github-light"');
+  expect(wrapper.html).toContain('background-color:#fff');
   expect(wrapper.html).toContain('<span class="line" data-line="1">');
   expect(wrapper.html.match(/data-line="\d+"/g)).toHaveLength(lines);
   expect(wrapper.html).toContain(`data-line="${lines}"`);
