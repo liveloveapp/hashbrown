@@ -78,3 +78,12 @@ Both delayed-start cases pass and independent quality review found no issues.
 Full www build, all 2,307 tests and lint passed. Existing Next filesystem-tracing
 and API-reference/tooling warnings remain. Fresh required CI is the remaining
 integration gate.
+
+The current-main run then passed the website deadline fix and other source checks
+but exposed a workbench verifier race: the activities fixture could finish before
+Playwright observed `context-checked`. Reused the existing preview barrier before
+first send, released it after that actual UI assertion and in finally on failure.
+The completed-state assertion remains required. Production/provider events and
+live timing are unchanged. Independent review found no issues; both targeted
+React/Angular activity checks and all 57 full workbench scenarios pass with live
+and recording disabled. Website build/lint and all 2,307 tests passed again.
