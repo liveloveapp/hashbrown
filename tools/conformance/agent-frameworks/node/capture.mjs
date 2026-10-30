@@ -90,14 +90,33 @@ const eventIdFields = new Set([
  * One first-appearance ID map preserves equality and distinctness across envelope
  * references and MESSAGES_SNAPSHOT message/tool-call identities. Arbitrary content,
  * state, custom values and other payloads remain verbatim, including their IDs and
- * timestamps. This projection deliberately does not guess identities inside recipes.
+ * timestamps. The explicit Mastra delegation profile additionally maps only the
+ * native agent-worker result subAgentThreadId; it preserves all other payload fields.
  */
-export function semanticProjection(events) {
+export function semanticProjection(events, { mastraDelegation = false } = {}) {
+  const delegationCalls = new Set(
+    mastraDelegation
+      ? events
+          .filter(
+            (event) =>
+              event.type === 'TOOL_CALL_START' &&
+              event.toolCallName === 'agent-worker',
+          )
+          .map((event) => event.toolCallId)
+      : [],
+  );
   const ids = new Map();
   const remap = (value) => {
     if (typeof value !== 'string') return value;
     if (!ids.has(value)) ids.set(value, `id-${ids.size + 1}`);
     return ids.get(value);
+  };
+  const projectDelegation = (content) => {
+    const result = JSON.parse(content);
+    return JSON.stringify({
+      ...result,
+      subAgentThreadId: remap(result.subAgentThreadId),
+    });
   };
   const projectMessage = (message) =>
     Object.fromEntries(
@@ -126,11 +145,16 @@ export function semanticProjection(events) {
           key,
           eventIdFields.has(key)
             ? remap(value)
-            : event.type === 'MESSAGES_SNAPSHOT' &&
-                key === 'messages' &&
-                Array.isArray(value)
-              ? value.map(projectMessage)
-              : value,
+            : mastraDelegation &&
+                event.type === 'TOOL_CALL_RESULT' &&
+                key === 'content' &&
+                delegationCalls.has(event.toolCallId)
+              ? projectDelegation(value)
+              : event.type === 'MESSAGES_SNAPSHOT' &&
+                  key === 'messages' &&
+                  Array.isArray(value)
+                ? value.map(projectMessage)
+                : value,
         ]),
     ),
   );

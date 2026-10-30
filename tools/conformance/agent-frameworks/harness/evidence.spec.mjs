@@ -84,3 +84,46 @@ test('compares JSON wire captures when producer objects contain undefined option
 
   assert.equal(result, undefined);
 });
+
+test('normalizes only the native Mastra delegation thread identity in its explicit profile', () => {
+  const scenario = (thread) => ({
+    ...record(),
+    framework: 'mastra',
+    profile: 'native-delegation',
+    events: [
+      {
+        type: 'TOOL_CALL_START',
+        toolCallId: 'delegate',
+        toolCallName: 'agent-worker',
+      },
+      {
+        type: 'TOOL_CALL_RESULT',
+        toolCallId: 'delegate',
+        content: JSON.stringify({
+          text: 'Answer',
+          subAgentThreadId: thread,
+          subAgentToolResults: [],
+        }),
+      },
+    ],
+  });
+  const saved = createCapture(scenario('thread-one'), 'source');
+  const current = createCapture(scenario('thread-two'), 'source');
+
+  const verify = () => verifyCapture(saved, current);
+
+  assert.doesNotThrow(verify);
+  const changed = scenario('thread-two');
+  changed.events[1].content = JSON.stringify({
+    text: 'Wrong answer',
+    subAgentThreadId: 'thread-two',
+    subAgentToolResults: [],
+  });
+  assert.throws(() => verifyCapture(saved, createCapture(changed, 'source')));
+  assert.throws(() =>
+    verifyCapture(
+      { ...saved, profile: 'other' },
+      { ...current, profile: 'other' },
+    ),
+  );
+});

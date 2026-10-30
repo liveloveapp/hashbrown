@@ -91,14 +91,38 @@ The maintained host is `tools/conformance/dotnet/Program.cs`; it constructs real
 `AIAgent` instances and uses the package's `MapAGUIServer` endpoints. Its deterministic
 model upstream is mocked, not the agent framework. Reuse this host.
 
-| Capability | Existing evidence | Display gap |
-| --- | --- | --- |
-| Server tools | `dotnet/tests/tools.spec.ts`, `dotnet/specs/integration.spec.ts` | Rich step lifecycle is not asserted. |
-| React/Angular | `dotnet/dotnet.playwright.config.ts`, eight provider/API combinations | No activity/subagent display cases found. |
-| Failure | `dotnet/specs/lifecycle.spec.ts` model failure and truncated SSE | Useful tool error text not yet asserted. |
-| Native history/restore | `dotnet/specs/native-sessions.spec.ts`, `native-wire.spec.ts`, `cold-history.spec.ts` | Activities, rich steps and child provenance lack coverage. |
-| Cancellation metadata | `dotnet/tests/native-recovery-client.spec.ts`, `dotnet/specs/native-approvals.spec.ts` | Admission checks are not a rich-step producer/display test. |
-| Activities/subagents | No executable scenarios found in the audited .NET trees | Not tested; producer hooks need inspection before adding scenarios. |
+| Capability             | Existing evidence                                                                      | Display gap                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Server tools           | `dotnet/tests/tools.spec.ts`, `dotnet/specs/integration.spec.ts`                       | Rich step lifecycle is not asserted.                                |
+| React/Angular          | `dotnet/dotnet.playwright.config.ts`, eight provider/API combinations                  | No activity/subagent display cases found.                           |
+| Failure                | `dotnet/specs/lifecycle.spec.ts` model failure and truncated SSE                       | Useful tool error text not yet asserted.                            |
+| Native history/restore | `dotnet/specs/native-sessions.spec.ts`, `native-wire.spec.ts`, `cold-history.spec.ts`  | Activities, rich steps and child provenance lack coverage.          |
+| Cancellation metadata  | `dotnet/tests/native-recovery-client.spec.ts`, `dotnet/specs/native-approvals.spec.ts` | Admission checks are not a rich-step producer/display test.         |
+| Activities/subagents   | No executable scenarios found in the audited .NET trees                                | Not tested; producer hooks need inspection before adding scenarios. |
 
 This is a source inventory, not a fresh test-run result. Do not create a second
 .NET service or weaken its native history, approval-journal or dispatch fencing.
+
+## Native delegation profiles
+
+The `native-subgraph` LangGraph profile embeds a compiled child graph containing
+its actual weather ToolNode. The SDK seam serves boundary history from a real
+in-memory checkpointer. This exercises published bridge checkpoint handling;
+it does not qualify API-server transport or durable checkpoint restart.
+
+The `native-delegation` Mastra profile uses `Agent({ agents: { worker } })` and
+the framework-generated `agent-worker` tool. Both parent and child models execute.
+Its result carries a native `subAgentThreadId` in JSON content. The consumer keeps
+that content; it cannot turn a native thread identifier into AG-UI subagent
+ownership.
+
+Neither pinned bridge emits `SUBAGENT_*` or `subagentRunId` for these executions.
+Host tests record the producer gap, and prepared-store/browser tests verify that
+Hashbrown does not invent child rows. Passing these tests proves preservation
+of the actual unattributed output, not native subagent display conformance.
+
+For reproducibility, only the explicit Mastra `native-delegation` profile maps
+`subAgentThreadId` in its `agent-worker` result using the same protocol identity
+map. Other result fields, child text and nested results remain exact. The raw
+capture and its integrity hash are unchanged. This profile-specific rule never
+parses general application tool results.

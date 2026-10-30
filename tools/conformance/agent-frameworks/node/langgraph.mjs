@@ -1,5 +1,6 @@
 import {
   StateGraph,
+  MemorySaver,
   MessagesAnnotation,
   START,
   END,
@@ -65,8 +66,14 @@ class WeatherModel extends BaseChatModel {
 }
 
 /** Runs the published bridge over actual graph events using a labeled in-process SDK seam. */
-export async function runLangGraphScenario({ outcome = 'success' } = {}) {
-  return captureScenario(
+export async function runLangGraphScenario({
+  outcome = 'success',
+  profile = 'local-sdk-seam',
+} = {}) {
+  if (!['local-sdk-seam', 'native-subgraph'].includes(profile))
+    throw new Error(`Unknown LangGraph profile: ${profile}`);
+  let nativeSubgraphObserved = false;
+  const scenario = await captureScenario(
     async (execute) => {
       const weather = tool(
         async (args, config) =>
@@ -88,6 +95,14 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
         },
       );
       const model = new WeatherModel({});
+      const worker = new StateGraph(MessagesAnnotation)
+        .addNode('weather', async (state, config) => {
+          nativeSubgraphObserved = true;
+          return new ToolNode([weather]).invoke(state, config);
+        })
+        .addEdge(START, 'weather')
+        .addEdge('weather', END)
+        .compile({ name: 'weather-worker' });
       const graph = new StateGraph(MessagesAnnotation)
         .addNode('model', async ({ messages }) => {
           let result;
@@ -95,13 +110,20 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
             result = result ? result.concat(chunk) : chunk;
           return { messages: [result] };
         })
-        .addNode('tools', new ToolNode([weather]))
+        .addNode(
+          'tools',
+          profile === 'native-subgraph' ? worker : new ToolNode([weather]),
+        )
         .addEdge(START, 'model')
         .addConditionalEdges('model', ({ messages }) =>
           messages.at(-1).tool_calls?.length ? 'tools' : END,
         )
         .addEdge('tools', 'model')
-        .compile();
+        .compile(
+          profile === 'native-subgraph'
+            ? { checkpointer: new MemorySaver() }
+            : {},
+        );
       const controller = new AbortController();
       let state = { values: { messages: [] }, next: [], tasks: [] };
       const client = {
@@ -118,12 +140,21 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
         threads: {
           get: async (threadId) => ({ thread_id: threadId }),
           getState: async () => state,
+          async getHistory(threadId, options) {
+            const history = [];
+            for await (const checkpoint of graph.getStateHistory(
+              { configurable: { thread_id: threadId } },
+              { filter: options.metadata, limit: options.limit },
+            ))
+              history.push(checkpoint);
+            return history;
+          },
         },
         runs: {
           cancel: async () => {
             controller.abort();
           },
-          async *stream(_threadId, _assistantId, payload) {
+          async *stream(threadId, _assistantId, payload) {
             const messages = payload.input.messages.map(
               (message) =>
                 new HumanMessage({ id: message.id, content: message.content }),
@@ -131,7 +162,11 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
             try {
               for await (const event of graph.streamEvents(
                 { messages },
-                { version: 'v2', signal: controller.signal },
+                {
+                  version: 'v2',
+                  signal: controller.signal,
+                  configurable: { thread_id: threadId },
+                },
               )) {
                 if (
                   event.event === 'on_chain_end' &&
@@ -157,7 +192,7 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
     {
       live: true,
       framework: 'langgraph',
-      profile: 'local-sdk-seam',
+      profile,
       versions: installedVersions([
         '@ag-ui/langgraph',
         '@langchain/langgraph',
@@ -170,4 +205,8 @@ export async function runLangGraphScenario({ outcome = 'success' } = {}) {
         'in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server',
     },
   );
+  return {
+    ...scenario,
+    evidence: { ...scenario.evidence, nativeSubgraphObserved },
+  };
 }

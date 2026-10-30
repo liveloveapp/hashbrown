@@ -1,0 +1,84 @@
+{
+  "framework": "mastra",
+  "profile": "native-delegation",
+  "versions": {
+    "@ag-ui/mastra": "2.0.1",
+    "@mastra/core": "1.80.0",
+    "@mastra/client-js": "1.57.0",
+    "@ag-ui/core": "1.0.3"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "mastra-delegation-thread",
+      "runId": "mastra-delegation-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "parentMessageId": "8cca2553-2511-4525-a409-ba554e911fe3",
+      "toolCallId": "delegate-call",
+      "toolCallName": "agent-worker"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "toolCallId": "delegate-call",
+      "delta": "{\"prompt\":\"What is the weather in Paris?\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "toolCallId": "delegate-call"
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "toolCallId": "delegate-call",
+      "content": "{\"text\":\"The weather in Paris is 21°C and sunny.\",\"subAgentThreadId\":\"mastra-delegation-thread-fb190d22-46c5-4938-a3fc-da58165810d8\",\"subAgentResourceId\":\"mastra-delegation-thread-worker\",\"subAgentToolResults\":[]}",
+      "messageId": "7f331aa2-dbbf-4488-a566-3bf2668f4d4a",
+      "role": "tool"
+    },
+    {
+      "type": "TEXT_MESSAGE_CHUNK",
+      "role": "assistant",
+      "messageId": "8cca2553-2511-4525-a409-ba554e911fe3-agui-text",
+      "delta": "The weather in Paris is 21°C and sunny."
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "mastra-delegation-thread",
+      "runId": "mastra-delegation-run",
+      "usage": [
+        {
+          "provider": "mock-provider",
+          "model": "mock-model-id",
+          "inputTokens": 2,
+          "outputTokens": 2,
+          "totalTokens": 4
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "calls": [
+      {
+        "name": "agent-worker",
+        "args": {
+          "prompt": "What is the weather in Paris?"
+        },
+        "resultText": "The weather in Paris is 21°C and sunny."
+      }
+    ],
+    "text": "The weather in Paris is 21°C and sunny."
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "real local Mastra Agent.stream with native agents configuration",
+    "childModelExecutions": 1,
+    "parentModelExecutions": 2,
+    "nativeSubagentAttribution": "missing-upstream",
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "a25d309f4d8414c9c9a13f6a0c57eeb30031b7b91b4be60d37905e8a24d09958",
+    "eventsSha256": "1a63474c245aa4ed5538395da5317ac3f350f7b05eb3141b09b78d0a9f2138fd"
+  }
+}

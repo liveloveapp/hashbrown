@@ -75,12 +75,22 @@ for (const filename of readdirSync(corpus)
     profile: string;
     events: AGUIEvent[];
     expected: {
-      calls: { name: string; args: unknown; result?: string }[];
+      calls: {
+        name: string;
+        args: unknown;
+        result?: string;
+        resultText?: string;
+      }[];
       text: string;
     };
   };
 
-  for (const sameNameClient of [false, true]) {
+  const clientProfiles = fixture.expected.calls.every(
+    (call) => call.name === 'getWeather',
+  )
+    ? [false, true]
+    : [false];
+  for (const sameNameClient of clientProfiles) {
     test(`${fixture.framework} ${fixture.profile} ${sameNameClient ? 'does not rerun a completed same-name client call' : 'displays undeclared server calls'}`, async ({
       page,
     }) => {
@@ -108,11 +118,17 @@ for (const filename of readdirSync(corpus)
           expectedCalls.map(() => 'complete'),
         );
         expect(observed.map((call) => call.result)).toEqual(
-          expectedCalls.map((call) => ({
+          expectedCalls.map((call, index) => ({
             status: 'fulfilled',
-            value: call.result,
+            value: fixture.events.filter(
+              (event) => event.type === EventType.TOOL_CALL_RESULT,
+            )[index]?.content,
           })),
         );
+        await expect(page.getByTestId('subagents')).toHaveText('[]');
+        expect(
+          observed.every((call) => !Object.hasOwn(call, 'subagentRunId')),
+        ).toBe(true);
         await expect(driver.toolCount()).toHaveText('0');
         await expect(driver.error()).toBeEmpty();
         await expect(driver.generatingError()).toBeEmpty();

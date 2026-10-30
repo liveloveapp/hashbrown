@@ -177,6 +177,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
           ),
         )}
       </pre>
+      <pre data-testid="subagents">{JSON.stringify(chat.subagents)}</pre>
       <pre data-testid="activity-messages">
         {JSON.stringify(
           messages.filter((message) => message.role === 'activity'),

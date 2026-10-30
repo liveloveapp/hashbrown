@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scope": "Initial Node AG-UI server-tool conformance; each capability is version-specific. Consumer replay is separate from native framework restore.",
+  "scope": "Version-specific Node AG-UI server-tool, native delegation and activity conformance. Consumer replay is separate from native framework restore.",
   "profiles": [
     {
       "framework": "langgraph",
@@ -71,6 +71,55 @@
         "subagents": "not-tested",
         "citationsAndAttribution": "not-tested"
       }
+    },
+    {
+      "framework": "langgraph",
+      "profile": "native-subgraph",
+      "fixture": "langgraph-native-subgraph.json",
+      "versions": {
+        "@ag-ui/langgraph": "0.0.45",
+        "@langchain/langgraph": "1.5.3",
+        "@langchain/core": "1.3.2",
+        "langchain": "1.6.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "passed",
+        "nativeCheckpointRestore": "not-tested",
+        "activities": "not-tested",
+        "subagents": "missing-upstream",
+        "citationsAndAttribution": "not-tested",
+        "nativeChildExecution": "passed"
+      }
+    },
+    {
+      "framework": "mastra",
+      "profile": "native-delegation",
+      "fixture": "mastra-native-delegation.json",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "not-tested",
+        "liveStartBeforeToolCompletion": "not-tested",
+        "nativeCheckpointRestore": "not-tested",
+        "activities": "not-tested",
+        "subagents": "missing-upstream",
+        "citationsAndAttribution": "not-tested",
+        "nativeChildExecution": "passed"
+      }
     }
   ],
   "producerGaps": [
@@ -93,10 +142,16 @@
       "detail": "The real failure is JSON error text inside TOOL_CALL_RESULT.content with no top-level error marker. Hashbrown must not infer failure by parsing human-readable result bodies."
     },
     {
+      "framework": "langgraph",
+      "capability": "attributed-subagents",
+      "status": "missing-upstream",
+      "detail": "A real compiled child StateGraph executes a ToolNode, with actual in-memory checkpoint history through the labeled SDK seam. The pinned bridge emits ordinary calls without SUBAGENT lifecycle events or subagentRunId. This is not API-server or native durable restore evidence."
+    },
+    {
       "framework": "mastra",
       "capability": "attributed-subagents",
-      "status": "not-tested",
-      "detail": "The inspected upstream source has newer APIs than the pinned published bridge. No subagent conformance claim is made for this baseline."
+      "status": "missing-upstream",
+      "detail": "The native agents configuration executes agent-worker and its real child model. The tool result supplies a subAgentThreadId inside JSON content, but the pinned bridge emits no SUBAGENT lifecycle or subagentRunId. That payload is retained verbatim; it does not establish AG-UI ownership."
     }
   ],
   "existingDotnetHost": {

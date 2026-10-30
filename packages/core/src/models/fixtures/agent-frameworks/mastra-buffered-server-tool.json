@@ -16,7 +16,7 @@
     },
     {
       "type": "TOOL_CALL_START",
-      "parentMessageId": "71af6806-6d10-46dc-9e13-8d263f64efea",
+      "parentMessageId": "e48ad682-2d9d-4389-ae71-1a9d11d905b6",
       "toolCallId": "weather-call",
       "toolCallName": "getWeather"
     },
@@ -33,13 +33,13 @@
       "type": "TOOL_CALL_RESULT",
       "toolCallId": "weather-call",
       "content": "\"Paris: 21°C and sunny\"",
-      "messageId": "8b51db80-0f3b-4b1e-8a84-9188f2f4c60d",
+      "messageId": "05309e5d-9a8d-4f25-9777-44354b68c856",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_CHUNK",
       "role": "assistant",
-      "messageId": "71af6806-6d10-46dc-9e13-8d263f64efea-agui-text",
+      "messageId": "e48ad682-2d9d-4389-ae71-1a9d11d905b6-agui-text",
       "delta": "The weather in Paris is 21°C and sunny."
     },
     {
@@ -80,7 +80,7 @@
     "nativeCheckpointRestore": "not-tested"
   },
   "provenance": {
-    "sourceSha256": "db0c08987398d5e1df4a99e3dda9a4fa2a087cf00d06099d977644286370a965",
-    "eventsSha256": "b224d5b2c44c1be3ecbc60d047bb343520d9d70278d702bda989eb623937cbc6"
+    "sourceSha256": "a25d309f4d8414c9c9a13f6a0c57eeb30031b7b91b4be60d37905e8a24d09958",
+    "eventsSha256": "be4d16b47116ab06f91ad3299164df475b2abb70b311530b35a35ef9ab6055c3"
   }
 }

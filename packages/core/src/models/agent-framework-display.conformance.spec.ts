@@ -12,6 +12,7 @@ import {
   selectViewMessages,
   ɵprepareRootAction,
   ɵselectCommittedAgUiMessages,
+  ɵselectSubagents,
 } from '../reducers';
 import { createCanonicalRunAgentInput } from '../transport/hashbrown-run-agent-input';
 import { createStore } from '../utils/micro-ngrx';
@@ -22,7 +23,12 @@ type FrameworkFixture = {
   versions: Record<string, string>;
   events: AGUIEvent[];
   expected: {
-    calls: { name: string; args: unknown; result?: string }[];
+    calls: {
+      name: string;
+      args: unknown;
+      result?: string;
+      resultText?: string;
+    }[];
     text?: string;
   };
 };
@@ -149,18 +155,33 @@ for (const filename of fixtureFiles) {
     );
     for (const [index, expected] of fixture.expected.calls.entries()) {
       const call = liveCalls[index];
-      if (expected.result !== undefined) {
+      const result = fixture.events.find(
+        (event) =>
+          event.type === EventType.TOOL_CALL_RESULT &&
+          event.toolCallId === call.toolCallId,
+      );
+      expect(result).toBeDefined();
+      const content =
+        result?.type === EventType.TOOL_CALL_RESULT
+          ? result.content
+          : undefined;
+      if (expected.result !== undefined) expect(content).toBe(expected.result);
+      if (expected.resultText !== undefined)
+        expect(
+          JSON.parse(typeof content === 'string' ? content : '').text,
+        ).toBe(expected.resultText);
+      if (content !== undefined) {
         expect(call.status).toBe('complete');
         expect(call.result).toEqual({
           status: 'fulfilled',
-          value: expected.result,
+          value: content,
         });
         expect(
           wire.messages.find(
             (message) =>
               message.role === 'tool' && message.toolCallId === call.toolCallId,
           ),
-        ).toMatchObject({ content: expected.result });
+        ).toMatchObject({ content });
       }
       expect(call.label).toBeUndefined();
       expect(call.icon).toBeUndefined();
@@ -177,6 +198,11 @@ for (const filename of fixtureFiles) {
           .join(''),
       ).toBe(fixture.expected.text);
     }
+    expect(store.read(ɵselectSubagents)).toEqual([]);
+    expect(restored.read(ɵselectSubagents)).toEqual([]);
+    expect(liveCalls.every((call) => call.subagentRunId === undefined)).toBe(
+      true,
+    );
     expect(serverCalls(store)).toEqual(liveCalls);
     expect(serverCalls(restored)).toEqual(liveCalls);
     expect(

@@ -64,3 +64,22 @@ test('LangGraph success is reproducible with exact installed versions', async ()
     '@ag-ui/core': '1.0.3',
   });
 });
+
+test('LangGraph executes a native subgraph but its pinned bridge omits child provenance', async () => {
+  const profile = 'native-subgraph';
+
+  const scenario = await runLangGraphScenario({ profile });
+  const calls = scenario.events.filter(
+    (event) => event.type === 'TOOL_CALL_START',
+  );
+
+  assert.equal(scenario.profile, profile);
+  assert.equal(scenario.evidence.nativeSubgraphObserved, true);
+  assert.equal(scenario.evidence.toolExecutions, 1);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].subagentRunId, undefined);
+  assert.equal(
+    scenario.events.some((event) => event.type.startsWith('SUBAGENT_')),
+    false,
+  );
+});
