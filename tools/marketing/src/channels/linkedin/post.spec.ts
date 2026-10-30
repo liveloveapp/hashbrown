@@ -1,7 +1,13 @@
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import { createMemoryCredentialStore } from '../../credentials/memory-store.ts';
-import { bodyOf, jsonResponse } from '../test-fetch.ts';
+import { OutcomeUnknownError } from '../http.ts';
+import {
+  bodyOf,
+  hangingFetch,
+  jsonResponse,
+  UNKNOWN_OUTCOME_FAILURES,
+} from '../test-fetch.ts';
 import { LINKEDIN_VERSION } from './api.ts';
 import { LinkedInAuth } from './auth.ts';
 import { postLinkedIn } from './post.ts';
@@ -135,4 +141,73 @@ test('postLinkedIn fails loudly when the create response has no post id', async 
   await expect(
     postLinkedIn(authWith(fetchMock), { channel: 'linkedin', text: 'hi' }),
   ).rejects.toThrow(/x-restli-id/);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test.each(UNKNOWN_OUTCOME_FAILURES)(
+  'postLinkedIn throws OutcomeUnknownError when the create gets %s',
+  async (_, respond) => {
+    const error = await postLinkedIn(authWith(vi.fn(respond)), {
+      channel: 'linkedin',
+      text: 'hi',
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(OutcomeUnknownError);
+  },
+);
+
+test('postLinkedIn throws OutcomeUnknownError when the create times out', async () => {
+  vi.useFakeTimers();
+
+  const pending = postLinkedIn(authWith(hangingFetch()), {
+    channel: 'linkedin',
+    text: 'hi',
+  }).catch((caught: unknown) => caught);
+  await vi.advanceTimersByTimeAsync(20_000);
+
+  expect(await pending).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test('postLinkedIn throws OutcomeUnknownError when a created post has no id', async () => {
+  const fetchMock = vi.fn(async () => new Response(null, { status: 201 }));
+
+  const error = await postLinkedIn(authWith(fetchMock), {
+    channel: 'linkedin',
+    text: 'hi',
+  }).catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test('postLinkedIn throws an ordinary error when LinkedIn rejects the create with a 400', async () => {
+  const fetchMock = vi.fn(async () =>
+    jsonResponse({ message: 'bad' }, { status: 400 }),
+  );
+
+  const error = await postLinkedIn(authWith(fetchMock), {
+    channel: 'linkedin',
+    text: 'hi',
+  }).catch((caught: unknown) => caught);
+
+  expect(error).not.toBeInstanceOf(OutcomeUnknownError);
+  expect((error as Error).message).toMatch(/HTTP 400/);
+});
+
+test('postLinkedIn keeps a 503 on the first comment as a warning', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(created())
+    .mockResolvedValueOnce(new Response('boom', { status: 503 }));
+
+  const result = await postLinkedIn(authWith(fetchMock), {
+    channel: 'linkedin',
+    text: 'hi',
+    firstComment: 'link',
+  });
+
+  expect(result.postId).toBe(POST_URN);
+  expect(result.warnings?.[0]).toMatch(/first comment failed/);
 });

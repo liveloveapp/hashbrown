@@ -1,7 +1,15 @@
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import { createMemoryCredentialStore } from '../../credentials/memory-store.ts';
-import { bodyOf, callsOf, headersOf, jsonResponse } from '../test-fetch.ts';
+import { OutcomeUnknownError } from '../http.ts';
+import {
+  bodyOf,
+  callsOf,
+  hangingFetch,
+  headersOf,
+  jsonResponse,
+  UNKNOWN_OUTCOME_FAILURES,
+} from '../test-fetch.ts';
 import { createAdapters } from '../registry.ts';
 import { XAuth } from './auth.ts';
 import { postX } from './post.ts';
@@ -144,4 +152,97 @@ test('postX does not retry a failed thread reply', async () => {
     postX(auth, { channel: 'x', threadParts: ['one', 'two'] }),
   ).rejects.toThrow(/HTTP 502/);
   expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test.each(UNKNOWN_OUTCOME_FAILURES)(
+  'postX throws OutcomeUnknownError when the create gets %s',
+  async (_, respond) => {
+    const { auth } = setup(vi.fn(respond));
+
+    const error = await postX(auth, { channel: 'x', text: 'hello' }).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(OutcomeUnknownError);
+  },
+);
+
+test('postX throws OutcomeUnknownError when the create times out', async () => {
+  vi.useFakeTimers();
+  const { auth } = setup(hangingFetch());
+
+  const pending = postX(auth, { channel: 'x', text: 'hello' }).catch(
+    (caught: unknown) => caught,
+  );
+  await vi.advanceTimersByTimeAsync(20_000);
+
+  expect(await pending).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test('postX throws an ordinary error when X rejects the create with a 400', async () => {
+  const { auth } = setup(
+    vi.fn(async () => jsonResponse({ title: 'Invalid' }, { status: 400 })),
+  );
+
+  const error = await postX(auth, { channel: 'x', text: 'hello' }).catch(
+    (caught: unknown) => caught,
+  );
+
+  expect(error).toBeInstanceOf(Error);
+  expect(error).not.toBeInstanceOf(OutcomeUnknownError);
+  expect((error as Error).message).toMatch(/HTTP 400/);
+});
+
+test('postX throws OutcomeUnknownError when a thread reply gets a 503', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      jsonResponse({ data: { id: '1001', text: '' } }, { status: 201 }),
+    )
+    .mockResolvedValue(new Response('boom', { status: 503 }));
+  const { auth } = setup(fetchMock);
+
+  const error = await postX(auth, {
+    channel: 'x',
+    threadParts: ['one', 'two'],
+  }).catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test('postX throws OutcomeUnknownError when a reply is rejected after the first tweet is live', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      jsonResponse({ data: { id: '1001', text: '' } }, { status: 201 }),
+    )
+    .mockResolvedValue(jsonResponse({ title: 'Invalid' }, { status: 400 }));
+  const { auth } = setup(fetchMock);
+
+  const error = await postX(auth, {
+    channel: 'x',
+    threadParts: ['one', 'two'],
+  }).catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(OutcomeUnknownError);
+  expect((error as Error).message).toMatch(/1001/);
+});
+
+test('postX throws an ordinary error when the token refresh fails', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(jsonResponse({}, { status: 401 }))
+    .mockResolvedValueOnce(jsonResponse({}, { status: 400 }));
+  const { auth } = setup(fetchMock);
+
+  const error = await postX(auth, { channel: 'x', text: 'hello' }).catch(
+    (caught: unknown) => caught,
+  );
+
+  expect(error).not.toBeInstanceOf(OutcomeUnknownError);
+  expect((error as Error).message).toMatch(/refresh failed/);
 });

@@ -13,7 +13,11 @@ const on401: HttpOpts['on401'] = async () => {
   );
 };
 
-/** POST JSON to the versioned LinkedIn API. Returns the body and the x-restli-id header. */
+/**
+ * POST JSON to the versioned LinkedIn API. Returns the body and the
+ * x-restli-id header. Every call creates something, so a timeout, network
+ * error or 5xx throws `OutcomeUnknownError`.
+ */
 export async function linkedInPost<T>(
   auth: LinkedInAuth,
   path: string,
@@ -33,6 +37,7 @@ export async function linkedInPost<T>(
     fetch: auth.fetch,
     // A retried create can double-post; let the caller decide.
     retryOn5xx: false,
+    creates: true,
     on401,
     onHeaders: (headers) => {
       restliId = headers.get('x-restli-id') ?? undefined;

@@ -23,7 +23,9 @@ interface ArticleBody {
  * already be validated.
  *
  * @param fetch - The fetch implementation; defaults to `globalThis.fetch`.
- * @throws When dev.to rejects the API key or the article.
+ * @throws When dev.to rejects the API key or the article;
+ *   `OutcomeUnknownError` when it may have been published (timeout,
+ *   network error, 5xx, unreadable answer).
  */
 export async function postDevTo(
   apiKey: string,
@@ -58,6 +60,7 @@ export async function postDevTo(
       body: JSON.stringify({ article }),
       // A retried create can publish the article twice; fail instead.
       retryOn5xx: false,
+      creates: true,
       fetch,
     });
   } catch (error) {

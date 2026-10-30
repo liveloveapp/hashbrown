@@ -1,6 +1,7 @@
 import { advanceBlogPost, blogUrl } from './blog/publisher.ts';
 import { toDevtoMarkdown } from './blog/devto-markdown.ts';
 import { createGitHubClient, type GitHubClient } from './blog/github.ts';
+import { OutcomeUnknownError } from './channels/http.ts';
 import { createAdapters } from './channels/registry.ts';
 import type { ChannelAdapter, Draft, SocialChannel } from './channels/types.ts';
 import {
@@ -19,6 +20,10 @@ import {
   updateBlogDraft,
 } from './queue/repository.ts';
 import type { BlogDraft, DevtoDraft, QueuedPost } from './queue/types.ts';
+
+/** Why a post whose publish may already be live is failed instead of retried. */
+const OUTCOME_UNKNOWN =
+  'publish outcome unknown, check the channel before retrying';
 
 /** The most posts one tick leases. */
 export const DISPATCH_BATCH_SIZE = 5;
@@ -193,6 +198,17 @@ async function dispatchSocial(
     const adapter = deps.adapters[draft.channel];
     result = await adapter.post(draft);
   } catch (error) {
+    if (error instanceof OutcomeUnknownError) {
+      // The post may be live; a retry could post it twice.
+      await markFailed(
+        executor,
+        post.id,
+        `${OUTCOME_UNKNOWN}: ${messageOf(error)}`,
+      );
+      tally.failed += 1;
+      tally.alerts.add('post_failed');
+      return;
+    }
     const outcome = await markRetry(
       executor,
       post.id,
@@ -222,11 +238,7 @@ async function dispatchPost(
 ): Promise<void> {
   if (post.status === 'publishing') {
     // The lease expired mid-publish: the post may be live. Never re-post.
-    await markFailed(
-      deps.executor,
-      post.id,
-      'publish outcome unknown, check the channel before retrying',
-    );
+    await markFailed(deps.executor, post.id, OUTCOME_UNKNOWN);
     tally.failed += 1;
     tally.alerts.add('post_failed');
     return;

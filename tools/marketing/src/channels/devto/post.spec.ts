@@ -1,8 +1,14 @@
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import { createMemoryCredentialStore } from '../../credentials/memory-store.ts';
 import { createAdapters } from '../registry.ts';
-import { bodyOf, jsonResponse } from '../test-fetch.ts';
+import { OutcomeUnknownError } from '../http.ts';
+import {
+  bodyOf,
+  hangingFetch,
+  jsonResponse,
+  UNKNOWN_OUTCOME_FAILURES,
+} from '../test-fetch.ts';
 import type { Draft } from '../types.ts';
 import { postDevTo } from './post.ts';
 
@@ -96,5 +102,57 @@ test.each([
 
     await expect(postDevTo('key-1', draft, fetchMock)).rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test.each(UNKNOWN_OUTCOME_FAILURES)(
+  'postDevTo throws OutcomeUnknownError when the create gets %s',
+  async (_, respond) => {
+    const error = await postDevTo('key-1', draft, vi.fn(respond)).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(OutcomeUnknownError);
+  },
+);
+
+test('postDevTo throws OutcomeUnknownError when the create times out', async () => {
+  vi.useFakeTimers();
+
+  const pending = postDevTo('key-1', draft, hangingFetch()).catch(
+    (caught: unknown) => caught,
+  );
+  await vi.advanceTimersByTimeAsync(20_000);
+
+  expect(await pending).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test('postDevTo throws OutcomeUnknownError when a 2xx body is unreadable', async () => {
+  const fetchMock = vi.fn(async () => new Response('<html>', { status: 201 }));
+
+  const error = await postDevTo('key-1', draft, fetchMock).catch(
+    (caught: unknown) => caught,
+  );
+
+  expect(error).toBeInstanceOf(OutcomeUnknownError);
+});
+
+test.each([400, 401, 422])(
+  'postDevTo throws an ordinary error when dev.to answers %i',
+  async (status) => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ error: 'no' }, { status }),
+    );
+
+    const error = await postDevTo('key-1', draft, fetchMock).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(OutcomeUnknownError);
   },
 );

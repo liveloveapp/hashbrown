@@ -1,3 +1,4 @@
+import { OutcomeUnknownError } from '../http.ts';
 import type { Draft, PostResult } from '../types.ts';
 import { linkedInPost } from './api.ts';
 import type { LinkedInAuth } from './auth.ts';
@@ -22,7 +23,8 @@ async function createPost(
 ): Promise<string> {
   const { restliId } = await linkedInPost(auth, '/posts', body);
   if (!restliId) {
-    throw new Error(
+    // The post is live; only its id is missing.
+    throw new OutcomeUnknownError(
       'LinkedIn created the post but returned no x-restli-id header.',
     );
   }
@@ -45,8 +47,9 @@ async function createComment(
  * Posts the draft to LinkedIn, then its `firstComment` if it has one. The
  * draft must already be validated.
  *
- * @throws When the post cannot be created. A failed comment does not throw,
- * because the post is already live; it comes back as a warning.
+ * @throws When the post cannot be created; {@link OutcomeUnknownError} when it
+ * may have been (timeout, network error, 5xx, no id). A failed comment does
+ * not throw, because the post is already live; it comes back as a warning.
  */
 export async function postLinkedIn(
   auth: LinkedInAuth,

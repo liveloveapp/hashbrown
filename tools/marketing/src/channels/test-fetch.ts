@@ -32,3 +32,26 @@ export function headersOf(
 ): Record<string, string> {
   return callsOf(fetchMock)[call][1].headers as Record<string, string>;
 }
+
+/** A `fetch` that never answers and rejects once its request is aborted. */
+export function hangingFetch(): typeof fetch {
+  return (_input, init) =>
+    new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('The operation was aborted.', 'AbortError')),
+      );
+    });
+}
+
+/** The ways a create call can fail after the request may have been sent. */
+export const UNKNOWN_OUTCOME_FAILURES: Array<
+  [string, () => Promise<Response>]
+> = [
+  ['a 503', async () => new Response('boom', { status: 503 })],
+  [
+    'a network error',
+    async () => {
+      throw new TypeError('fetch failed: socket hang up');
+    },
+  ],
+];

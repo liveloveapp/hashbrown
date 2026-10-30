@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { OutcomeUnknownError } from './channels/http.ts';
 import type { ChannelAdapter, PostResult } from './channels/types.ts';
 import { createMemoryCredentialStore } from './credentials/memory-store.ts';
 import {
@@ -197,6 +198,30 @@ describe('dispatchMarketing', () => {
       failed: 0,
       published: 0,
       operatorAlerts: [],
+    });
+  });
+
+  test('an unknown publish outcome fails the post at once and never retries', async () => {
+    repository.leaseDuePosts.mockResolvedValue([post()]);
+    const { deps, post: adapterPost } = setup({
+      post: async () => {
+        throw new OutcomeUnknownError('HTTP 503: boom');
+      },
+    });
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(adapterPost).toHaveBeenCalledTimes(1);
+    expect(repository.markRetry).not.toHaveBeenCalled();
+    expect(repository.markFailed).toHaveBeenCalledWith(
+      deps.executor,
+      'p1',
+      'publish outcome unknown, check the channel before retrying: HTTP 503: boom',
+    );
+    expect(outcome).toMatchObject({
+      failed: 1,
+      published: 0,
+      operatorAlerts: ['post_failed'],
     });
   });
 

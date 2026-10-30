@@ -1,4 +1,4 @@
-import { http } from '../http.ts';
+import { http, OutcomeUnknownError } from '../http.ts';
 import type { Draft, PostResult } from '../types.ts';
 import type { XAuth } from './auth.ts';
 
@@ -29,6 +29,7 @@ async function postTweet(auth: XAuth, body: TweetRequestBody): Promise<string> {
     fetch: auth.fetch,
     // A retried create can post the tweet twice; fail instead.
     retryOn5xx: false,
+    creates: true,
     on401: async () => {
       await auth.refresh();
       return { retry: true, headers: { Authorization: await bearer(auth) } };
@@ -40,6 +41,9 @@ async function postTweet(auth: XAuth, body: TweetRequestBody): Promise<string> {
 /**
  * Posts a tweet, or a thread of replies, to X. The draft must already be
  * validated. A 401 refreshes the token once and retries.
+ *
+ * @throws {OutcomeUnknownError} When a create may have gone through (timeout,
+ *   network error, 5xx), or any reply fails after the first tweet is live.
  */
 export async function postX(auth: XAuth, draft: Draft): Promise<PostResult> {
   const parts = draft.threadParts ?? (draft.text ? [draft.text] : []);
@@ -49,11 +53,19 @@ export async function postX(auth: XAuth, draft: Draft): Promise<PostResult> {
 
   const firstId = await postTweet(auth, { text: parts[0] });
   let previousId = firstId;
-  for (const text of parts.slice(1)) {
-    previousId = await postTweet(auth, {
-      text,
-      reply: { in_reply_to_tweet_id: previousId },
-    });
+  for (const [index, text] of parts.slice(1).entries()) {
+    try {
+      previousId = await postTweet(auth, {
+        text,
+        reply: { in_reply_to_tweet_id: previousId },
+      });
+    } catch (error) {
+      // The thread is already partly live; posting it again would double it.
+      throw new OutcomeUnknownError(
+        `X thread is partly live from tweet ${firstId}; part ${index + 2} of ${parts.length} failed: ${(error as Error).message}`,
+        { cause: error },
+      );
+    }
   }
 
   return {
