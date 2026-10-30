@@ -8,6 +8,10 @@ import {
   diagramRequestIssue,
 } from '../src/lib/diagram-checks';
 
+const auditProcessTimeout = 15_000;
+// Vitest must allow the child its full deadline plus assertion and cleanup time.
+const auditTestTimeout = auditProcessTimeout + 5_000;
+
 test('blocks every mutating browser request and never records URL credentials or query strings', () => {
   const url = 'https://name:secret@example.com/api/chat?api_key=secret';
 
@@ -20,68 +24,76 @@ test('blocks every mutating browser request and never records URL credentials or
   }
 });
 
-test('a fatal audit startup error leaves a failed report instead of an empty apparent success', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'hashbrown-diagram-fatal-'));
+test(
+  'a fatal audit startup error leaves a failed report instead of an empty apparent success',
+  () => {
+    const directory = mkdtempSync(join(tmpdir(), 'hashbrown-diagram-fatal-'));
 
-  try {
-    const result = spawnSync(
-      process.execPath,
-      ['--import', 'tsx', 'www/src/tools/diagram-report.ts'],
-      {
-        cwd: resolve(import.meta.dirname, '../..'),
-        env: {
-          ...process.env,
-          DOCS_DIAGRAM_ORIGIN: 'file:///invalid',
-          DOCS_DIAGRAM_OUTPUT: directory,
+    try {
+      const result = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', 'www/src/tools/diagram-report.ts'],
+        {
+          cwd: resolve(import.meta.dirname, '../..'),
+          env: {
+            ...process.env,
+            DOCS_DIAGRAM_ORIGIN: 'file:///invalid',
+            DOCS_DIAGRAM_OUTPUT: directory,
+          },
+          encoding: 'utf8',
+          timeout: auditProcessTimeout,
         },
-        encoding: 'utf8',
-        timeout: 15000,
-      },
+      );
+      const report = JSON.parse(
+        readFileSync(join(directory, 'report.json'), 'utf8'),
+      );
+
+      expect(result.status).toBe(1);
+      expect(report.passed).toBe(false);
+      expect(report.fatalError).toEqual(expect.any(String));
+      expect(report.fatalError.length).toBeGreaterThan(0);
+      expect(report.origin).toBe('file:');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+  auditTestTimeout,
+);
+
+test(
+  'invalid credential-bearing audit origins never leak credentials in diagnostics',
+  () => {
+    const directory = mkdtempSync(
+      join(tmpdir(), 'hashbrown-diagram-private-origin-'),
     );
-    const report = JSON.parse(
-      readFileSync(join(directory, 'report.json'), 'utf8'),
-    );
 
-    expect(result.status).toBe(1);
-    expect(report.passed).toBe(false);
-    expect(report.fatalError).toEqual(expect.any(String));
-    expect(report.fatalError.length).toBeGreaterThan(0);
-    expect(report.origin).toBe('file:');
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-test('invalid credential-bearing audit origins never leak credentials in diagnostics', () => {
-  const directory = mkdtempSync(
-    join(tmpdir(), 'hashbrown-diagram-private-origin-'),
-  );
-
-  try {
-    const result = spawnSync(
-      process.execPath,
-      ['--import', 'tsx', 'www/src/tools/diagram-report.ts'],
-      {
-        cwd: resolve(import.meta.dirname, '../..'),
-        env: {
-          ...process.env,
-          DOCS_DIAGRAM_ORIGIN:
-            'https://name:secret@example.com/path?key=secret',
-          DOCS_DIAGRAM_OUTPUT: directory,
+    try {
+      const result = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', 'www/src/tools/diagram-report.ts'],
+        {
+          cwd: resolve(import.meta.dirname, '../..'),
+          env: {
+            ...process.env,
+            DOCS_DIAGRAM_ORIGIN:
+              'https://name:secret@example.com/path?key=secret',
+            DOCS_DIAGRAM_OUTPUT: directory,
+          },
+          encoding: 'utf8',
+          timeout: auditProcessTimeout,
         },
-        encoding: 'utf8',
-        timeout: 15000,
-      },
-    );
-    const report = readFileSync(join(directory, 'report.json'), 'utf8');
+      );
+      const report = readFileSync(join(directory, 'report.json'), 'utf8');
 
-    expect(result.status).toBe(1);
-    expect(report).not.toContain('secret');
-    expect(JSON.parse(report).origin).toBe('https://example.com');
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+      expect(result.status).toBe(1);
+      expect(report).not.toContain('secret');
+      expect(JSON.parse(report).origin).toBe('https://example.com');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+  auditTestTimeout,
+);
 
 test('a docs redirect cannot silently move the audit to another origin', () => {
   const origin = 'https://hashbrown.dev';

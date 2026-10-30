@@ -30,7 +30,13 @@ export function verifyCapture(saved, current) {
   const project = ({ events, provenance, ...record }) => ({
     ...record,
     sourceSha256: provenance.sourceSha256,
-    events: semanticProjection(events),
+    events: semanticProjection(events, {
+      mastraDelegation:
+        record.framework === 'mastra' && record.profile === 'native-delegation',
+      mastraBackground:
+        record.framework === 'mastra' &&
+        ['background', 'background-failure'].includes(record.profile),
+    }),
   });
   assert.deepEqual(project(saved), project(current));
 }
