@@ -3,6 +3,7 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import type { WorkbenchLessonId } from '../examples/quickstart/runtime/workbench-lessons';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 function fakeStorage() {
@@ -294,7 +295,7 @@ function loadRecording(
 ) {
   const capture = {
     ...createWorkbenchCapture(source.getSnapshot(), {
-      lesson,
+      lesson: lesson as WorkbenchLessonId,
       framework: 'react',
       recordedAt: '2026-10-28T00:00:00.000Z',
     }),
