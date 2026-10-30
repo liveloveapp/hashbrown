@@ -54,7 +54,10 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import { hostedWorkbenchLessons as workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
+import {
+  isWorkbenchLoopbackLesson,
+  hostedWorkbenchLessons as workbenchLessons,
+} from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
@@ -464,8 +467,7 @@ const app = createWorkbenchApp({
               lessonId === 'system-instructions' ||
               lessonId === 'message-history' ||
               lessonId === 'save-text-conversations' ||
-              lessonId === 'server-threads' ||
-              lessonId === 'public-endpoint' ||
+              isWorkbenchLoopbackLesson(lessonId) ||
               lessonId === 'json-parser' ||
               lessonId === 'natural-forms' ||
               lessonId === 'ui-kits' ||
@@ -812,7 +814,7 @@ try {
         saveCheckpoint();
         continue;
       }
-      if (lesson.id === 'server-threads' || lesson.id === 'public-endpoint') {
+      if (isWorkbenchLoopbackLesson(lesson.id)) {
         report.push(
           await verifyServerWorkbench({
             browser,
@@ -1502,10 +1504,10 @@ try {
   // A cross-origin docs page drives a replay embed; fixtures only.
   if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
     report.push(
-      await verifyEmbedWorkbench({
+      ...(await verifyEmbedWorkbench({
         browser,
         origin: `http://127.0.0.1:${address.port}`,
-      }),
+      })),
     );
     saveCheckpoint();
   }

@@ -7794,5 +7794,26 @@
       },
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "http-403-1", "index": 3, "label": "HTTP 403" },
+    { "id": "error-1", "index": 5, "label": "Error" },
+    { "id": "prompt-2", "index": 6, "label": "Prompt" },
+    { "id": "request-2", "index": 7, "label": "Request" },
+    { "id": "tool-readcontext-2", "index": 15, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 16, "label": "Request" },
+    { "id": "streaming-json-2", "index": 21, "label": "Streaming JSON" },
+    { "id": "parsed-output-2", "index": 72, "label": "Parsed output" },
+    { "id": "complete-2", "index": 77, "label": "Complete" },
+    { "id": "plan-accepted-2", "index": 78, "label": "Plan accepted" },
+    { "id": "prompt-3", "index": 79, "label": "Prompt" },
+    { "id": "request-3", "index": 80, "label": "Request" },
+    { "id": "tool-readcontext-3", "index": 88, "label": "Tool readContext" },
+    { "id": "request-3-2", "index": 89, "label": "Request" },
+    { "id": "streaming-json-3", "index": 94, "label": "Streaming JSON" },
+    { "id": "parsed-output-3", "index": 139, "label": "Parsed output" },
+    { "id": "complete-3", "index": 144, "label": "Complete" }
   ]
 }

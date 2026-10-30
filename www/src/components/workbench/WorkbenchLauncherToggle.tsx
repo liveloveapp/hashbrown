@@ -47,7 +47,8 @@ export function WorkbenchLauncherToggle({
           <div
             ref={focusRegion}
             role="region"
-            aria-label={`${title} workbench`}
+            // Not "<title> workbench": the panel's tablist inside has that name.
+            aria-label={`${title} workbench lesson`}
             tabIndex={-1}
             className={styles.region}
           >

@@ -7,6 +7,7 @@ import {
 import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { isAllowedParentOrigin } from '../examples/quickstart/runtime/workbench-messages';
+import { WORKBENCH_DOCS_ORIGINS } from '../examples/quickstart/runtime/workbench-origins';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 const docsOrigin = 'https://hashbrown.dev';
@@ -29,7 +30,10 @@ function recordedCapture({ settled = true } = {}) {
   };
 }
 
-function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
+function mountReplay(
+  store: WorkbenchStore = createWorkbenchStore(),
+  embed: 'replay' | 'live' = 'replay',
+) {
   const post = vi
     .spyOn(window, 'postMessage')
     .mockImplementation(() => undefined);
@@ -51,7 +55,7 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
       stop: vi.fn(),
       reset: vi.fn(),
     },
-    { layout: createWorkbenchLayoutStore(), embed: 'replay' },
+    { layout: createWorkbenchLayoutStore(), embed },
   );
   onTestFinished(() => {
     mounted.dispose();
@@ -192,6 +196,62 @@ test('seek moves the replay to the named milestone and reports state', () => {
       },
       docsOrigin,
     ],
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'milestone' },
+      docsOrigin,
+    ],
+  ]);
+});
+
+test('recorded milestones win over computed ones for loaded, seek and state', () => {
+  const { store, post } = mountReplay();
+  const capture = {
+    ...recordedCapture(),
+    milestones: [
+      { id: 'asked-1', index: 0, label: 'Asked' },
+      { id: 'answered-1', index: 2, label: 'Answered' },
+    ],
+  };
+  post.mockClear();
+
+  load(capture);
+  fromParent({
+    type: 'hb-workbench:seek',
+    version: 1,
+    milestone: 'answered-1',
+  });
+  const cursor = store.getSnapshot().cursor;
+  fromParent({ type: 'hb-workbench:seek', version: 1, milestone: 'request-1' });
+
+  expect(cursor).toBe(2);
+  expect(store.getSnapshot().cursor).toBe(2);
+  expect(post.mock.calls).toEqual([
+    [
+      {
+        type: 'hb-workbench:loaded',
+        version: 1,
+        milestones: [
+          { id: 'asked-1', label: 'Asked' },
+          { id: 'answered-1', label: 'Answered' },
+        ],
+        commit: '0123456789abcdef',
+      },
+      docsOrigin,
+    ],
+    [
+      {
+        type: 'hb-workbench:state',
+        version: 1,
+        mode: 'replay',
+        milestone: 'answered-1',
+        playing: false,
+      },
+      docsOrigin,
+    ],
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'milestone' },
+      docsOrigin,
+    ],
   ]);
 });
 
@@ -220,6 +280,35 @@ test('isAllowedParentOrigin accepts docs, previews and localhost only', () => {
     ...accepted.map(() => true),
     ...rejected.map(() => false),
   ]);
+});
+
+test('every docs origin in the shared list is accepted', () => {
+  const examples = WORKBENCH_DOCS_ORIGINS.map((source) =>
+    source.replace('*.', 'preview-1.').replace(':*', ':4200'),
+  );
+
+  const results = examples.map(isAllowedParentOrigin);
+
+  expect(examples).toEqual([
+    'https://hashbrown.dev',
+    'https://www.hashbrown.dev',
+    'https://preview-1.vercel.app',
+    'http://localhost:4200',
+  ]);
+  expect(results).toEqual(examples.map(() => true));
+});
+
+test('a live workbench ignores load, seek and play and posts nothing', () => {
+  const { store, post } = mountReplay(createWorkbenchStore(), 'live');
+  post.mockClear();
+
+  load();
+  fromParent({ type: 'hb-workbench:seek', version: 1, milestone: 'prompt-1' });
+  fromParent({ type: 'hb-workbench:play', version: 1 });
+
+  expect(post).not.toHaveBeenCalled();
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(store.getSnapshot().events).toEqual([]);
 });
 
 test('play reports each step and the stop at the end of the recording', () => {

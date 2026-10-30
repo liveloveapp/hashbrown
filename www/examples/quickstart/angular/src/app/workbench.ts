@@ -460,9 +460,8 @@ export class Workbench {
     'json-parser',
     'natural-forms',
   ].includes(getWorkbenchLesson(window.location.search).id);
-  protected readonly server = ['server-threads', 'public-endpoint'].includes(
-    getWorkbenchLesson(window.location.search).id,
-  );
+  protected readonly server =
+    getWorkbenchLesson(window.location.search).host === 'loopback';
   protected readonly format = getWorkbenchLesson(window.location.search).format;
   protected readonly decision =
     getWorkbenchLesson(window.location.search).format === 'decision';

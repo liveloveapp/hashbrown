@@ -3,6 +3,7 @@ import type { DocsDemoId } from '../elements/docs-demo-media';
 // Pure lesson data with no imports, so it is safe in the client bundle.
 import {
   hostedWorkbenchLessons,
+  type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
 } from '../../../examples/quickstart/runtime/workbench-lessons';
@@ -39,15 +40,28 @@ export interface WorkbenchSourceData {
  * data-line="N">` per source line.
  */
 export interface WorkbenchSourceHtml {
-  readonly commit: string;
   readonly files: readonly { readonly path: string; readonly html: string }[];
 }
 
-/** Lessons whose Live mode needs a local server, so docs never embed it. */
-export const LOOPBACK_LESSONS: readonly WorkbenchLessonId[] = [
-  'server-threads',
-  'public-endpoint',
-];
+/**
+ * A workbench lesson by id.
+ *
+ * @param id - A lesson id, or any string from a URL or markdown attribute.
+ * @returns The lesson, or `undefined` when `id` is not a lesson id.
+ */
+export function findWorkbenchLesson(id: string): WorkbenchLesson | undefined {
+  return workbenchLessons.find((item) => item.id === id);
+}
+
+/**
+ * The SDK a docs workbench panel runs for a page's SDK. Blog posts, API
+ * summaries and any unknown value use React.
+ *
+ * @param sdk - The SDK whose docs are rendering.
+ */
+export function docsPanelSdk(sdk: string): Sdk {
+  return sdk === 'angular' ? 'angular' : 'react';
+}
 
 /**
  * Whether the hosted workbench serves a lesson at all. Loopback lessons are
@@ -61,12 +75,18 @@ export function isHostedWorkbenchLesson(lesson: WorkbenchLessonId): boolean {
 
 /** Whether a lesson's Live tab can run, and where to run it otherwise. */
 export type WorkbenchLiveAvailability =
-  { readonly live: true } | { readonly live: false; readonly href: string };
+  | { readonly live: true }
+  | {
+      readonly live: false;
+      /** Why the hosted workbench cannot run it. */
+      readonly reason: 'loopback' | 'production-reference';
+      readonly href: string;
+    };
 
 /**
  * Whether the hosted workbench can run a lesson live. Derived from the
- * runtime lesson data: only hosted lessons that are not loopback-only run
- * live; the rest link to the docs page that runs them locally.
+ * runtime lesson data's `host`: only hosted lessons that are not
+ * `loopback` run live; the rest link to the docs page that runs them locally.
  *
  * @param lesson - A workbench lesson id.
  * @param sdk - The docs SDK the link points into.
@@ -75,13 +95,18 @@ export function workbenchLiveAvailability(
   lesson: WorkbenchLessonId,
   sdk: Sdk,
 ): WorkbenchLiveAvailability {
-  const data = workbenchLessons.find((item) => item.id === lesson);
+  const data = findWorkbenchLesson(lesson);
   if (data?.host === 'production-reference') {
-    return { live: false, href: `/docs/${sdk}/platform/b4run` };
-  }
-  if (!isHostedWorkbenchLesson(lesson) || LOOPBACK_LESSONS.includes(lesson)) {
     return {
       live: false,
+      reason: 'production-reference',
+      href: `/docs/${sdk}/platform/b4run`,
+    };
+  }
+  if (!isHostedWorkbenchLesson(lesson) || data?.host === 'loopback') {
+    return {
+      live: false,
+      reason: 'loopback',
       href: `/docs/${sdk}/start/workbench#run-the-example`,
     };
   }
@@ -124,7 +149,7 @@ export function workbenchOrigin(): string {
  * @throws When the value is not a workbench lesson id.
  */
 export function assertWorkbenchLesson(value: string): WorkbenchLessonId {
-  const lesson = workbenchLessons.find((item) => item.id === value);
+  const lesson = findWorkbenchLesson(value);
   if (!lesson) throw new Error(`Unknown workbench lesson: ${value}`);
   return lesson.id;
 }
@@ -148,5 +173,5 @@ export function workbenchMediaId(
  * @param lesson - A workbench lesson id.
  */
 export function workbenchLessonTitle(lesson: WorkbenchLessonId): string {
-  return workbenchLessons.find((item) => item.id === lesson)?.title ?? lesson;
+  return findWorkbenchLesson(lesson)?.title ?? lesson;
 }

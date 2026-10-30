@@ -85,7 +85,7 @@ The replay uses this checked Angular client with real provider requests. The loc
 
 `createTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
-<hb-code-example header="angular/src/app/workbench.ts" moment="tool-result-1">
+<hb-code-example header="angular/src/app/workbench.ts" moment="tool-readcontext-1">
 
 ```ts
       createTool({

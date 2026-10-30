@@ -1,14 +1,14 @@
 import type { WorkbenchStore } from './workbench';
 import {
+  isRecord,
   parseWorkbenchCapture,
   WORKBENCH_CAPTURE_VERSION,
   type WorkbenchCapture,
+  type WorkbenchCaptureMilestone,
 } from './workbench-capture';
 import type { WorkbenchLesson, WorkbenchLessonId } from './workbench-lessons';
-import {
-  findWorkbenchMilestone,
-  workbenchMilestones,
-} from './workbench-timeline';
+import { matchesWorkbenchDocsOrigin } from './workbench-origins';
+import { workbenchMilestones } from './workbench-timeline';
 
 /** The current docs ↔ workbench message protocol version. */
 export const WORKBENCH_MESSAGE_VERSION = 1;
@@ -37,7 +37,12 @@ export type WorkbenchChildMessage =
   | {
       type: 'hb-workbench:rejected';
       version: 1;
-      reason: 'version' | 'lesson' | 'malformed';
+      /**
+       * Why a message was refused: `version`, `lesson` and `malformed` refuse
+       * a `load`; `milestone` refuses a `seek` to an id the loaded capture
+       * does not have, and leaves the replay where it was.
+       */
+      reason: 'version' | 'lesson' | 'malformed' | 'milestone';
     }
   | {
       type: 'hb-workbench:state';
@@ -47,29 +52,16 @@ export type WorkbenchChildMessage =
       playing: boolean;
     };
 
-const docsOrigins = new Set([
-  'https://hashbrown.dev',
-  'https://www.hashbrown.dev',
-]);
-const previewOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
-const localOrigin = /^http:\/\/localhost:\d+$/;
-
 /**
  * Whether a docs page at this origin may drive the workbench: the docs site,
- * a one-label Vercel preview, or a localhost dev server with a port.
+ * a one-label Vercel preview, or a localhost dev server with a port. The
+ * same list (`WORKBENCH_DOCS_ORIGINS`) sets the hosted workbench's
+ * `frame-ancestors`.
  *
  * @param origin - A `MessageEvent.origin`.
  */
 export function isAllowedParentOrigin(origin: string): boolean {
-  return (
-    docsOrigins.has(origin) ||
-    previewOrigin.test(origin) ||
-    localOrigin.test(origin)
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return matchesWorkbenchDocsOrigin(origin);
 }
 
 /**
@@ -158,14 +150,19 @@ export function attachWorkbenchMessages(
 ): WorkbenchMessages {
   const parent = window.parent;
   let parentOrigin: string | null = null;
+  // The loaded capture's recorded milestones, or computed when it has none.
+  let milestones: readonly WorkbenchCaptureMilestone[] | null = null;
   const post = (message: WorkbenchChildMessage) => {
     if (parentOrigin) parent.postMessage(message, parentOrigin);
   };
+  const currentMilestones = () =>
+    milestones ??
+    workbenchMilestones(host.store.getSnapshot().events, host.format);
   const activeMilestone = () => {
     const snapshot = host.store.getSnapshot();
     const index = snapshot.cursor ?? snapshot.events.length - 1;
     return (
-      workbenchMilestones(snapshot.events, host.format)
+      currentMilestones()
         .filter((item) => item.index <= index)
         .at(-1)?.id ?? null
     );
@@ -239,25 +236,33 @@ export function attachWorkbenchMessages(
         });
         return;
       }
+      milestones =
+        capture.milestones ??
+        workbenchMilestones(capture.events, host.format).map(
+          ({ id, index, label }) => ({ id, index, label }),
+        );
       host.loaded(capture.commit);
       post({
         type: 'hb-workbench:loaded',
         version: 1,
-        milestones: workbenchMilestones(capture.events, host.format).map(
-          ({ id, label }) => ({ id, label }),
-        ),
+        milestones: milestones.map(({ id, label }) => ({ id, label })),
         commit: capture.commit,
       });
       return;
     }
     if (!message || !replaying()) return;
     if (message.type === 'hb-workbench:seek') {
-      const milestone = findWorkbenchMilestone(
-        host.store.getSnapshot().events,
-        message.milestone,
-        host.format,
+      const milestone = currentMilestones().find(
+        (item) => item.id === message.milestone,
       );
-      if (!milestone) return;
+      if (!milestone) {
+        post({
+          type: 'hb-workbench:rejected',
+          version: 1,
+          reason: 'milestone',
+        });
+        return;
+      }
       act(() => {
         host.pause();
         host.store.seek(milestone.index);

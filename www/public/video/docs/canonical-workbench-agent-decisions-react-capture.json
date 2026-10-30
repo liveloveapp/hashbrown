@@ -2834,5 +2834,15 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 1, "label": "Prompt" },
+    { "id": "request-1", "index": 3, "label": "Request" },
+    { "id": "streaming-text-1", "index": 11, "label": "Streaming text" },
+    { "id": "complete-1", "index": 16, "label": "Complete" },
+    { "id": "prompt-2", "index": 17, "label": "Prompt" },
+    { "id": "request-2", "index": 19, "label": "Request" },
+    { "id": "streaming-text-2", "index": 27, "label": "Streaming text" },
+    { "id": "complete-2", "index": 32, "label": "Complete" }
   ]
 }

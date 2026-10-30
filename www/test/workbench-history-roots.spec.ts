@@ -54,7 +54,12 @@ function reactDispatch(format: string, id?: string) {
       ) => ({ type, children }),
     },
     (initial: unknown) => [initial, () => undefined],
-    () => ({ format, id }),
+    // The root reads the lesson's id, format and host (loopback lessons).
+    () => ({
+      format,
+      id,
+      host: workbenchLessons.find((lesson) => lesson.id === id)?.host,
+    }),
     { location: { search: '' } },
     ...names,
   );

@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { codeExampleId } from './code-example-id';
 import { rehypeConceptDiagrams } from './rehype-concept-diagrams';
 import { type Heading, rehypeHeadingIds } from './rehype-heading-ids';
 import { rehypeShiki } from './rehype-shiki';
@@ -141,14 +142,12 @@ function identifyCodeExamples(root: Root): void {
     for (const child of node.children) {
       if (child.type !== 'element') continue;
       if (child.tagName === 'hb-code-example') {
-        const header = String(child.properties['header'] ?? '');
-        const slug = header
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '');
         child.properties = {
           ...child.properties,
-          id: `code-example-${order++}${slug ? `-${slug}` : ''}`,
+          id: codeExampleId(
+            order++,
+            String(child.properties['header'] ?? ''),
+          ),
         };
       }
       visit(child);

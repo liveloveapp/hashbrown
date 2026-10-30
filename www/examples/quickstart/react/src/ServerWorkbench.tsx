@@ -16,6 +16,7 @@ import {
 import { getWorkbenchLesson } from '../../runtime/workbench-lessons';
 import {
   createWorkbenchServerHistory,
+  getWorkbenchServerAccess,
   type WorkbenchServerLesson,
 } from '../../runtime/workbench-server-history';
 import { mountWorkbenchServerControls } from '../../runtime/workbench-server-controls';
@@ -77,6 +78,7 @@ export function ServerWorkbenchConversation({
     createWorkbenchServerHistory({
       store,
       lesson: lesson.id as WorkbenchServerLesson,
+      access: getWorkbenchServerAccess(window.location, lesson),
       observation: () => current.current.observation(),
       active: () => current.current.active,
       replace: (id, messages) =>
@@ -154,9 +156,11 @@ export function ServerWorkbenchConversation({
       shell.live,
       store,
       controller,
+      'React',
     );
     setLive(shell.live);
-    void controller.initialize();
+    // Replays and hosted loopback lessons never ask the server for a session.
+    if (controller.access === 'session') void controller.initialize();
     return () => {
       stop();
       controller.dispose();

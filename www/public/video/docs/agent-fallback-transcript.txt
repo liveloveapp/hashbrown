@@ -1,9 +1,0 @@
-agent-fallback
-
-Recorded through the checked React component after both React and Angular passed the same browser checks. Checked Express agent/router with scripted classifier envelopes and errors; presentation styles added; no live model or narration. Final replies come from the checked application handlers. Client state clears on refresh.
-
-The first two seconds preview the final result. The complete interaction follows.
-
-An uncertain classifier result asks for clarification. An expected provider failure uses the same safe reply. An unexpected programming failure ends the run; choose Run agent explicitly to retry successfully.
-
-The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

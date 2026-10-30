@@ -7101,5 +7101,17 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "streaming-text-1", "index": 6, "label": "Streaming text" },
+    { "id": "parsed-text-1", "index": 65, "label": "Parsed text" },
+    { "id": "complete-1", "index": 68, "label": "Complete" },
+    { "id": "prompt-2", "index": 69, "label": "Prompt" },
+    { "id": "request-2", "index": 70, "label": "Request" },
+    { "id": "streaming-text-2", "index": 75, "label": "Streaming text" },
+    { "id": "parsed-text-2", "index": 140, "label": "Parsed text" },
+    { "id": "complete-2", "index": 143, "label": "Complete" }
   ]
 }
