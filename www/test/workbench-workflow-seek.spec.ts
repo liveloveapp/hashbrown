@@ -3,6 +3,7 @@ import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { getWorkbenchLesson } from '../examples/quickstart/runtime/workbench-lessons';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+import { inspectorSections } from './workbench-inspector-helpers';
 
 test('the public scrubber selects a completed workflow frame beside a dense next-turn tick without running commands', () => {
   const store = createWorkbenchStore('workflow');
@@ -69,12 +70,13 @@ test('the public scrubber selects a completed workflow frame beside a dense next
 
   scrubber.value = completed.dataset.index ?? '';
   scrubber.dispatchEvent(new Event('input', { bubbles: true }));
-  const selectedState = JSON.parse(
-    host.querySelector('[data-captured] pre')?.textContent ?? 'null',
-  );
-  const interpreted = JSON.parse(
-    host.querySelector('[data-detail] pre')?.textContent ?? 'null',
-  );
+  const { captured: selectedState, interpreted } = inspectorSections(
+    host,
+    'State',
+  ) as {
+    captured: { state: { planTitle: string } };
+    interpreted: { outcome: string };
+  };
 
   expect(store.getSnapshot().events.length).toBeGreaterThanOrEqual(339);
   expect(Number(nextPrompt.dataset.index)).toBe(completedIndex + 1);

@@ -576,57 +576,18 @@ body {
   color: var(--wb-ink);
   font-weight: 600;
 }
-.wb-selection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--wb-line);
-  background: #fcfcfd;
-  color: var(--wb-muted);
-  font-size: 12px;
-}
-.wb-chip {
-  padding: 1px 6px;
-  border: 1px solid var(--wb-line);
-  border-radius: 6px;
-  background: var(--wb-panel);
-  color: var(--wb-ink);
-  font: 11px/1.6 var(--wb-mono-font);
-}
-.wb-chip-active {
-  border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
-  color: var(--wb-cobalt);
-}
-.wb-pair {
+.wb-mode-panel {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
 }
 .wb-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-.wb-section + .wb-section {
-  border-top: 1px solid var(--wb-line);
-}
-@container (min-width: 560px) {
-  .wb-pair {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-rows: auto;
-    grid-template-rows: minmax(0, 1fr);
-  }
-  .wb-section + .wb-section {
-    border-top: 0;
-    border-left: 1px solid var(--wb-line);
-  }
 }
 .wb-section-head {
   display: flex;
@@ -634,34 +595,47 @@ body {
   gap: 4px 8px;
   padding: 12px 16px 8px;
 }
-/* A long heading wraps within its own column, so the sub-label and raw toggle stay on the first line. */
+/* A long heading wraps within its own column, so the mode toggle stays beside it. */
 .wb .wb-section-head h3 {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 13px;
 }
-.wb-section-sub {
-  flex: 0 1 auto;
-  text-align: right;
+.wb-segmented {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-code);
+}
+.wb .wb-segmented button {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wb-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.wb .wb-segmented button:hover:enabled {
+  color: var(--wb-ink);
+}
+.wb .wb-segmented [aria-checked='true'] {
+  background: var(--wb-panel);
+  box-shadow: 0 0 0 1px var(--wb-line);
+  color: var(--wb-ink);
+  font-weight: 600;
+}
+.wb-caption {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--wb-line);
   color: var(--wb-muted);
   font-size: 12px;
-}
-.wb .wb-raw {
-  flex: none;
-  white-space: nowrap;
-  min-height: 22px;
-  padding: 0 6px;
-  border-radius: 6px;
-  color: var(--wb-muted);
-  font: 11px/1.6 var(--wb-mono-font);
-}
-.wb .wb-raw::after {
-  content: ' raw';
-}
-.wb .wb-raw[aria-pressed='true'] {
-  border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
-  color: var(--wb-cobalt);
 }
 .wb-inspection {
   flex: 1;
@@ -716,12 +690,6 @@ body {
   margin: 0;
   max-height: none;
   overflow: visible;
-}
-.wb .wb-section[data-detail] > pre {
-  flex: 1;
-  min-height: 0;
-  margin: 0 16px 12px;
-  max-height: none;
 }
 .wb-inspection [role='alert'] {
   padding: 8px 12px;
@@ -1676,11 +1644,7 @@ app-workflow-workbench-conversation[hidden] {
   .wb-chat {
     min-height: 440px;
   }
-  .wb-pair {
-    grid-auto-rows: auto;
-  }
-  .wb .wb-inspection > pre,
-  .wb .wb-section[data-detail] > pre {
+  .wb .wb-inspection > pre {
     max-height: 320px;
     overflow: auto;
   }

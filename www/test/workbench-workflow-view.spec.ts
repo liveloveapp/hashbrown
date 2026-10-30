@@ -3,6 +3,12 @@ import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { getWorkbenchLesson } from '../examples/quickstart/runtime/workbench-lessons';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+import {
+  chooseInspectorMode,
+  inspectorPanelText,
+  inspectorPre,
+  inspectorSections,
+} from './workbench-inspector-helpers';
 
 test('activity and approval lessons focus their actual SDK inspector with application-owned UI', () => {
   for (const [id, tab] of [
@@ -25,7 +31,7 @@ test('activity and approval lessons focus their actual SDK inspector with applic
       host.querySelector('[role="tab"][aria-selected="true"]')?.textContent,
     ).toBe(tab);
     expect(host.querySelector('.wb-detail')).toBeNull();
-    expect(host.querySelector('.wb-pair [data-detail]')).not.toBeNull();
+    expect(host.querySelector('.wb-mode-panel [data-captured]')).not.toBeNull();
     expect(host.querySelector('[role=separator]')).not.toBeNull();
     expect(host.querySelector('.wb-player')).not.toBeNull();
     expect(host.querySelectorAll('.wb-nav a')).toHaveLength(29);
@@ -43,7 +49,8 @@ test('activity and approval lessons focus their actual SDK inspector with applic
 
     expect(host.textContent).toContain('Application-owned workflow controls');
     expect(host.textContent).not.toContain('SummaryCard');
-    expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    chooseInspectorMode(host, 'bottom');
+    expect(inspectorPanelText(host)).toContain(
       'Selected SDK values for application controls',
     );
     shell.dispose();
@@ -97,19 +104,20 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
   });
 
   store.seek(earlier);
-  const captured = JSON.parse(
-    host.querySelector('[data-captured] pre')?.textContent ?? 'null',
-  );
-  const interpreted = JSON.parse(
-    host.querySelector('[data-detail] pre')?.textContent ?? 'null',
-  );
+  const { captured, interpreted } = inspectorSections(host, 'Interrupts') as {
+    captured: { pending: { id: string } };
+    interpreted: {
+      batchId: string;
+      applicationForm: { answers: unknown };
+    };
+  };
 
   expect(captured.pending.id).toBe('original');
   expect(captured).not.toHaveProperty('applicationForm');
   expect(interpreted.batchId).toBe(captured.pending.id);
   expect(interpreted.applicationForm.answers).toEqual({ first: 'approve' });
   expect(interpreted).not.toHaveProperty('sdk');
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+  expect(host.querySelector('.wb-caption')?.textContent).toContain(
     'separately recorded application form drafts',
   );
   function tab(name: string) {
@@ -118,14 +126,7 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
     ].find((node) => node.textContent === name);
     if (!control) throw new Error(`Missing tab ${name}`);
     control.click();
-    return {
-      captured: JSON.parse(
-        host.querySelector('[data-captured] pre')?.textContent ?? 'null',
-      ),
-      interpreted: JSON.parse(
-        host.querySelector('[data-detail] pre')?.textContent ?? 'null',
-      ),
-    };
+    return inspectorSections(host, name);
   }
   const state = tab('State');
   expect(state.captured).toEqual({
@@ -176,15 +177,7 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
     outcome: 'paused',
   });
   tab('Interrupts');
-  const raw = host.querySelector<HTMLButtonElement>(
-    '[aria-label="Show captured frame"]',
-  );
-  raw?.click();
-  expect(
-    JSON.parse(
-      host.querySelector('[data-captured] pre')?.textContent ?? 'null',
-    ),
-  ).toEqual({
+  expect(JSON.parse(inspectorPre(host, 'raw') ?? 'null')).toEqual({
     sdk: store.getSnapshot().frame?.workflow,
     event: {
       kind: 'form',
@@ -196,13 +189,13 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
       },
     },
   });
-  expect(
-    JSON.parse(host.querySelector('[data-detail] pre')?.textContent ?? 'null'),
-  ).toEqual(interpreted);
+  expect(JSON.parse(inspectorPre(host, 'bottom') ?? 'null')).toEqual(
+    interpreted,
+  );
   expect(send).not.toHaveBeenCalled();
-  expect(
-    host.querySelectorAll('[aria-label="Show captured frame"]'),
-  ).toHaveLength(1);
+  expect(host.querySelectorAll('[aria-label="Inspector view"]')).toHaveLength(
+    1,
+  );
   expect(
     host
       .querySelector('[aria-label="Inspector views"]')
