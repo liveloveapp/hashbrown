@@ -3,6 +3,7 @@ import type { DocsDemoId } from '../elements/docs-demo-media';
 // Pure lesson data with no imports, so it is safe in the client bundle.
 import {
   hostedWorkbenchLessons,
+  type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
 } from '../../../examples/quickstart/runtime/workbench-lessons';
@@ -39,8 +40,27 @@ export interface WorkbenchSourceData {
  * data-line="N">` per source line.
  */
 export interface WorkbenchSourceHtml {
-  readonly commit: string;
   readonly files: readonly { readonly path: string; readonly html: string }[];
+}
+
+/**
+ * A workbench lesson by id.
+ *
+ * @param id - A lesson id, or any string from a URL or markdown attribute.
+ * @returns The lesson, or `undefined` when `id` is not a lesson id.
+ */
+export function findWorkbenchLesson(id: string): WorkbenchLesson | undefined {
+  return workbenchLessons.find((item) => item.id === id);
+}
+
+/**
+ * The SDK a docs workbench panel runs for a page's SDK. Blog posts, API
+ * summaries and any unknown value use React.
+ *
+ * @param sdk - The SDK whose docs are rendering.
+ */
+export function docsPanelSdk(sdk: string): Sdk {
+  return sdk === 'angular' ? 'angular' : 'react';
 }
 
 /**
@@ -75,7 +95,7 @@ export function workbenchLiveAvailability(
   lesson: WorkbenchLessonId,
   sdk: Sdk,
 ): WorkbenchLiveAvailability {
-  const data = workbenchLessons.find((item) => item.id === lesson);
+  const data = findWorkbenchLesson(lesson);
   if (data?.host === 'production-reference') {
     return {
       live: false,
@@ -129,7 +149,7 @@ export function workbenchOrigin(): string {
  * @throws When the value is not a workbench lesson id.
  */
 export function assertWorkbenchLesson(value: string): WorkbenchLessonId {
-  const lesson = workbenchLessons.find((item) => item.id === value);
+  const lesson = findWorkbenchLesson(value);
   if (!lesson) throw new Error(`Unknown workbench lesson: ${value}`);
   return lesson.id;
 }
@@ -153,5 +173,5 @@ export function workbenchMediaId(
  * @param lesson - A workbench lesson id.
  */
 export function workbenchLessonTitle(lesson: WorkbenchLessonId): string {
-  return workbenchLessons.find((item) => item.id === lesson)?.title ?? lesson;
+  return findWorkbenchLesson(lesson)?.title ?? lesson;
 }

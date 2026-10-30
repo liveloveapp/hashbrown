@@ -5,6 +5,7 @@ import type { Element, Root, RootContent } from 'hast';
 import type { ShikiTransformer } from 'shiki';
 import {
   assertWorkbenchLesson,
+  docsPanelSdk,
   type WorkbenchLessonId,
   type WorkbenchLineRange,
   workbenchMediaId,
@@ -250,14 +251,22 @@ export function buildWorkbenchSource(
   snippets: readonly WorkbenchSnippet[],
 ): WorkbenchSourceData {
   const files = WORKBENCH_LESSON_FILES[lesson][sdk];
+  // Each header's file is read once, however many snippets quote it.
+  const texts = new Map<string, string | undefined>();
+  const readHeader = (header: string): string | undefined => {
+    if (!texts.has(header)) {
+      try {
+        texts.set(header, readFileSync(quickstartPath(header), 'utf8'));
+      } catch {
+        texts.set(header, undefined);
+      }
+    }
+    return texts.get(header);
+  };
   const located = snippets.map(({ header, code }) => {
     const notFound = `${header}: snippet not found in www/examples/quickstart/${header}`;
-    let text: string;
-    try {
-      text = readFileSync(quickstartPath(header), 'utf8');
-    } catch {
-      throw new Error(notFound);
-    }
+    const text = readHeader(header);
+    if (text === undefined) throw new Error(notFound);
     const range = resolveSnippetLines(text, code);
     if (!range) throw new Error(notFound);
     if (!files.includes(header)) {
@@ -403,14 +412,26 @@ const isWorkbenchHeader = (header: unknown): header is string =>
  *
  * @param tree - The page's parsed markdown (see `parseMarkdown`).
  * @param sdk - The SDK whose docs are rendering (blog posts use `react`).
+ * @param page - Names the page in errors, for example
+ *   `react/concept/functions`.
  * @returns The page data, or `undefined` for a page without a workbench.
  * @throws When the page has more than one lesson, a snippet fails
- *   {@link buildWorkbenchSource}, or a `moment` is not in the capture.
+ *   {@link buildWorkbenchSource}, or a `moment` is not in the capture; the
+ *   message starts with the page label.
  */
 export function workbenchPageData(
   tree: Root,
   sdk: string,
+  page: string,
 ): WorkbenchPageData | undefined {
+  try {
+    return pageData(tree, sdk);
+  } catch (error) {
+    throw new Error(`${page}: ${(error as Error).message}`, { cause: error });
+  }
+}
+
+function pageData(tree: Root, sdk: string): WorkbenchPageData | undefined {
   const all = elements(tree);
   const lessons = [
     ...new Set(
@@ -460,7 +481,7 @@ export function workbenchPageData(
       header: node.properties['header'] as string,
       code: textOf(node),
     }));
-  const docsSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
+  const docsSdk = docsPanelSdk(sdk);
   assertWorkbenchMoments(lesson, docsSdk, moments);
   return {
     lesson,
@@ -486,9 +507,26 @@ const lineNumbers: ShikiTransformer = {
   },
 };
 
+// Highlighted HTML by file path. Lessons share files (`runtime/workbench.ts`
+// is in every chat lesson), so each file is highlighted once per process.
+const highlightCache = new Map<string, Promise<string>>();
+
+const highlightFile = (path: string): Promise<string> => {
+  const cached = highlightCache.get(path);
+  if (cached) return cached;
+  const html = highlightCode(
+    readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
+    languageOf(path),
+    { transformers: [lineNumbers] },
+  );
+  highlightCache.set(path, html);
+  return html;
+};
+
 /**
  * Highlight a lesson's source files for the Source tab, with numbered lines.
- * Served as static JSON by `/workbench-source/<sdk>/<lesson>`.
+ * Served as static JSON by `/workbench-source/<sdk>/<lesson>`. Each file is
+ * highlighted once per process and reused by every lesson that lists it.
  *
  * @param lesson - A workbench lesson.
  * @param sdk - The SDK whose files to highlight.
@@ -498,15 +536,10 @@ export async function highlightWorkbenchSource(
   sdk: Sdk,
 ): Promise<WorkbenchSourceHtml> {
   return {
-    commit: workbenchSourceCommit(),
     files: await Promise.all(
       WORKBENCH_LESSON_FILES[lesson][sdk].map(async (path) => ({
         path,
-        html: await highlightCode(
-          readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
-          languageOf(path),
-          { transformers: [lineNumbers] },
-        ),
+        html: await highlightFile(path),
       })),
     ),
   };

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import type { Sdk } from '../lib/content';
 import type { MarkdownComponents } from '../lib/markdown';
 import {
   buildWorkbenchSource,
@@ -28,7 +27,10 @@ import { SymbolLink } from './SymbolLink';
 import { WorkbenchLauncher } from './workbench/WorkbenchLauncher';
 import { WorkbenchPanel } from './workbench/WorkbenchPanel';
 import { DocsDiagram } from './diagrams/DocsDiagram';
-import { assertWorkbenchLesson } from './workbench/workbench-lessons';
+import {
+  assertWorkbenchLesson,
+  docsPanelSdk,
+} from './workbench/workbench-lessons';
 
 /**
  * The element map for docs and blog markdown. Elements not listed here render
@@ -53,8 +55,7 @@ export function docsComponents(
   const DocsSymbolLink = ({ reference = '' }: { reference?: string }) => (
     <SymbolLink reference={reference} popover={popovers.get(reference)} />
   );
-  // Blog posts and API summaries render as React.
-  const panelSdk: Sdk = sdk === 'angular' ? 'angular' : 'react';
+  const panelSdk = docsPanelSdk(sdk);
   const DocsWorkbench = ({ lesson = '' }: { lesson?: string }) => {
     const id = assertWorkbenchLesson(lesson);
     const page = workbench?.lesson === id ? workbench : undefined;

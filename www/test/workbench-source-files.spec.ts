@@ -11,28 +11,50 @@ import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
   assertCaptureMoments,
   buildWorkbenchSource,
+  highlightWorkbenchSource,
   WORKBENCH_LESSON_FILES,
   workbenchPageData,
 } from '../src/lib/workbench-source-files';
+import { highlightCode } from '../src/lib/rehype-shiki';
+
+// Counts highlight passes; the real highlighter still runs.
+vi.mock('../src/lib/rehype-shiki', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../src/lib/rehype-shiki')>();
+  return { ...actual, highlightCode: vi.fn(actual.highlightCode) };
+});
 
 const quickstart = resolve(import.meta.dirname, '../examples/quickstart');
 const docsRoot = resolve(import.meta.dirname, '../content/docs');
 
-const linesOf = (path: string, start: number, end: number) =>
-  readFileSync(join(quickstart, path), 'utf8')
-    .split('\n')
-    .slice(start - 1, end)
-    .join('\n');
+/**
+ * `count` lines of a quickstart file from the first line that starts with
+ * `first`, and their 1-based range, so edits elsewhere in the file cannot
+ * move the snippet under the test.
+ */
+const snippetAt = (path: string, first: string, count: number) => {
+  const lines = readFileSync(join(quickstart, path), 'utf8').split('\n');
+  const index = lines.findIndex((line) => line.startsWith(first));
+  if (index < 0) throw new Error(`${path}: no line starts with ${first}`);
+  return {
+    code: lines.slice(index, index + count).join('\n'),
+    range: { start: index + 1, end: index + count },
+  };
+};
+
+const workbenchExport = snippetAt(
+  'react/src/Workbench.tsx',
+  'export function Workbench() {',
+  3,
+);
 
 test('tools source lists its files and highlights the page snippets', () => {
   vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'abc123');
-  const snippet = linesOf('react/src/Workbench.tsx', 299, 301);
 
   const source = buildWorkbenchSource('tools', 'react', [
-    { header: 'react/src/Workbench.tsx', code: snippet },
+    { header: 'react/src/Workbench.tsx', code: workbenchExport.code },
   ]);
 
-  vi.unstubAllEnvs();
   expect(WORKBENCH_LESSON_FILES.tools.react).toEqual([
     'react/src/Workbench.tsx',
     'server/workbench-app.ts',
@@ -43,7 +65,7 @@ test('tools source lists its files and highlights the page snippets', () => {
     files: [
       {
         path: 'react/src/Workbench.tsx',
-        highlights: [{ start: 299, end: 301 }],
+        highlights: [workbenchExport.range],
       },
       { path: 'server/workbench-app.ts', highlights: [] },
       { path: 'runtime/workbench.ts', highlights: [] },
@@ -67,7 +89,7 @@ test('a snippet outside the lesson files fails with its header and lesson', () =
   const snippets = [
     {
       header: 'runtime/workbench-recipes.ts',
-      code: linesOf('runtime/workbench-recipes.ts', 1, 2),
+      code: snippetAt('runtime/workbench-recipes.ts', 'import ', 2).code,
     },
   ];
 
@@ -116,14 +138,18 @@ test('a page without a workbench builds no source data', async () => {
     '<hb-code-example header="react/src/Workbench.tsx">\n\n```tsx\nnot checked\n```\n\n</hb-code-example>',
   );
 
-  const data = workbenchPageData(parsed.tree, 'react');
+  const data = workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(data).toBeUndefined();
 });
 
 test('a page with a workbench highlights its snippets in its lesson source', async () => {
   vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'abc123');
-  const snippet = linesOf('angular/src/app/workbench.ts', 450, 452);
+  const snippet = snippetAt(
+    'angular/src/app/workbench.ts',
+    'export class Workbench {',
+    3,
+  );
   const parsed = await parseMarkdown(
     [
       '<hb-workbench lesson="tools"></hb-workbench>',
@@ -131,7 +157,7 @@ test('a page with a workbench highlights its snippets in its lesson source', asy
       '<hb-code-example header="angular/src/app/workbench.ts">',
       '',
       '```ts',
-      snippet,
+      snippet.code,
       '```',
       '',
       '</hb-code-example>',
@@ -146,9 +172,8 @@ test('a page with a workbench highlights its snippets in its lesson source', asy
     ].join('\n'),
   );
 
-  const data = workbenchPageData(parsed.tree, 'angular');
+  const data = workbenchPageData(parsed.tree, 'angular', 'test');
 
-  vi.unstubAllEnvs();
   expect(data).toEqual({
     lesson: 'tools',
     moments: [],
@@ -157,7 +182,7 @@ test('a page with a workbench highlights its snippets in its lesson source', asy
       files: [
         {
           path: 'angular/src/app/workbench.ts',
-          highlights: [{ start: 450, end: 452 }],
+          highlights: [snippet.range],
         },
         { path: 'server/workbench-app.ts', highlights: [] },
         { path: 'runtime/workbench.ts', highlights: [] },
@@ -171,7 +196,7 @@ test('a page with two different workbench lessons fails', async () => {
     '<hb-workbench lesson="tools"></hb-workbench>\n\n<hb-workbench lesson="schemas"></hb-workbench>',
   );
 
-  const build = () => workbenchPageData(parsed.tree, 'react');
+  const build = () => workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(build).toThrow('one workbench lesson per page');
 });
@@ -186,9 +211,9 @@ test('every docs page with a workbench builds its source data', async () => {
   for (const page of pages) {
     const sdk = page.name.startsWith('angular') ? 'angular' : 'react';
     try {
-      workbenchPageData((await parseMarkdown(page.body)).tree, sdk);
+      workbenchPageData((await parseMarkdown(page.body)).tree, sdk, page.name);
     } catch (error) {
-      failures.push(`${page.name}: ${(error as Error).message}`);
+      failures.push((error as Error).message);
     }
   }
 
@@ -199,7 +224,7 @@ test('every docs page with a workbench builds its source data', async () => {
 
 const pageWithMoment = (
   path: string,
-  lines: [number, number],
+  snippet: { readonly code: string },
   moment: string,
 ) =>
   [
@@ -208,7 +233,7 @@ const pageWithMoment = (
     `<hb-code-example header="${path}" moment="${moment}">`,
     '',
     '```ts',
-    linesOf(path, lines[0], lines[1]),
+    snippet.code,
     '```',
     '',
     '</hb-code-example>',
@@ -216,10 +241,14 @@ const pageWithMoment = (
 
 test('a snippet moment is collected when its lesson capture has the milestone', async () => {
   const parsed = await parseMarkdown(
-    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-readcontext-1'),
+    pageWithMoment(
+      'react/src/Workbench.tsx',
+      workbenchExport,
+      'tool-readcontext-1',
+    ),
   );
 
-  const data = workbenchPageData(parsed.tree, 'react');
+  const data = workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(data?.moments).toEqual(['tool-readcontext-1']);
 });
@@ -228,12 +257,12 @@ test('a snippet moment missing from the lesson capture fails with its header and
   const parsed = await parseMarkdown(
     pageWithMoment(
       'react/src/Workbench.tsx',
-      [299, 301],
+      workbenchExport,
       'tool-readcontext-99',
     ),
   );
 
-  const build = () => workbenchPageData(parsed.tree, 'react');
+  const build = () => workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(build).toThrow(
     'react/src/Workbench.tsx: moment "tool-readcontext-99" is not a milestone in the tools lesson\'s react capture',
@@ -250,9 +279,9 @@ test('every snippet moment names a milestone in its lesson capture', async () =>
   for (const page of pages) {
     const sdk = page.name.startsWith('angular') ? 'angular' : 'react';
     try {
-      workbenchPageData((await parseMarkdown(page.body)).tree, sdk);
+      workbenchPageData((await parseMarkdown(page.body)).tree, sdk, page.name);
     } catch (error) {
-      failures.push(`${page.name}: ${(error as Error).message}`);
+      failures.push((error as Error).message);
     }
   }
 
@@ -269,7 +298,11 @@ test('the Tools pages link readContext to the tool result', async () => {
   const data = await Promise.all(
     pages.map(async ({ sdk, body }) => ({
       body,
-      data: workbenchPageData((await parseMarkdown(body)).tree, sdk),
+      data: workbenchPageData(
+        (await parseMarkdown(body)).tree,
+        sdk,
+        `${sdk}/concept/functions`,
+      ),
     })),
   );
 
@@ -284,7 +317,7 @@ test('a moment on a page without a workbench fails with its header and moment', 
     '<hb-code-example header="react/src/Workbench.tsx" moment="tool-readcontext-1">\n\n```ts\ncode\n```\n\n</hb-code-example>',
   );
 
-  const build = () => workbenchPageData(parsed.tree, 'react');
+  const build = () => workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(build).toThrow(
     'react/src/Workbench.tsx: moment "tool-readcontext-1" needs an hb-workbench lesson on the page',
@@ -306,7 +339,7 @@ test('a moment on a snippet outside the workbench files fails with its header an
     ].join('\n'),
   );
 
-  const build = () => workbenchPageData(parsed.tree, 'react');
+  const build = () => workbenchPageData(parsed.tree, 'react', 'test');
 
   expect(build).toThrow(
     'src/app.ts: moment "tool-readcontext-1" is only allowed on workbench snippets',
@@ -404,4 +437,65 @@ test('every published capture records its milestones', () => {
 
   expect(captures.length).toBeGreaterThan(0);
   expect(missing).toEqual([]);
+});
+
+test('a file two lessons share is highlighted once', async () => {
+  const shared = 'runtime/workbench.ts';
+  const code = readFileSync(join(quickstart, shared), 'utf8').replace(
+    /\n$/,
+    '',
+  );
+  const passes = () =>
+    vi.mocked(highlightCode).mock.calls.filter(([text]) => text === code)
+      .length;
+
+  const tools = await highlightWorkbenchSource('tools', 'react');
+  const decisions = await highlightWorkbenchSource('decisions', 'react');
+
+  const htmlOf = (files: typeof tools.files) =>
+    files.find((file) => file.path === shared)?.html;
+  expect(WORKBENCH_LESSON_FILES.decisions.react).toContain(shared);
+  expect(passes()).toBe(1);
+  expect(htmlOf(decisions.files)).toBe(htmlOf(tools.files));
+  expect(htmlOf(tools.files)).toContain('data-line="1"');
+}, 30_000);
+
+test('a bad moment names its page', async () => {
+  const parsed = await parseMarkdown(
+    pageWithMoment(
+      'react/src/Workbench.tsx',
+      workbenchExport,
+      'tool-readcontext-99',
+    ),
+  );
+
+  const build = () =>
+    workbenchPageData(parsed.tree, 'react', 'react/concept/functions');
+
+  expect(build).toThrow(
+    'react/concept/functions: react/src/Workbench.tsx: moment "tool-readcontext-99" is not a milestone',
+  );
+});
+
+test('a drifted snippet names its page', async () => {
+  const parsed = await parseMarkdown(
+    [
+      '<hb-workbench lesson="tools"></hb-workbench>',
+      '',
+      '<hb-code-example header="react/src/Workbench.tsx">',
+      '',
+      '```tsx',
+      'not in the workbench',
+      '```',
+      '',
+      '</hb-code-example>',
+    ].join('\n'),
+  );
+
+  const build = () =>
+    workbenchPageData(parsed.tree, 'react', 'react/concept/functions');
+
+  expect(build).toThrow(
+    'react/concept/functions: react/src/Workbench.tsx: snippet not found',
+  );
 });

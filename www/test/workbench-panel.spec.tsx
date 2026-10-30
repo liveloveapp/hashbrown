@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import {
   hostedWorkbenchLessons,
   workbenchLessons,
@@ -43,8 +43,12 @@ const capture = {
 function setup({ narrow = false, fakeTimers = false } = {}) {
   cleanup();
   vi.restoreAllMocks();
-  // jsdom has no scrollIntoView; tests spy on this stub.
-  Element.prototype.scrollIntoView ??= () => undefined;
+  // jsdom has no scrollIntoView: stub it for this test only; tests spy on
+  // the stub.
+  Element.prototype.scrollIntoView = vi.fn();
+  onTestFinished(() => {
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
   document
     .querySelectorAll('[data-component="code-example"]')
     .forEach((element) => element.remove());

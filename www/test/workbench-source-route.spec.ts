@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import {
   generateStaticParams,
@@ -17,16 +17,13 @@ test('prerenders source for every lesson in both SDKs', () => {
 });
 
 test('react/tools source is highlighted with addressable lines', async () => {
-  vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'abc123');
   const params = Promise.resolve({ sdk: 'react', lesson: 'tools' });
 
   const response = await GET(new Request('http://localhost'), { params });
   const body = (await response.json()) as {
-    commit: string;
     files: { path: string; html: string }[];
   };
 
-  vi.unstubAllEnvs();
   const lines = readFileSync(
     resolve(quickstart, 'react/src/Workbench.tsx'),
     'utf8',
@@ -35,7 +32,8 @@ test('react/tools source is highlighted with addressable lines', async () => {
     .split('\n').length;
   const [wrapper] = body.files;
   expect(response.headers.get('content-type')).toContain('application/json');
-  expect(body.commit).toBe('abc123');
+  // GitHub links use the page's commit, so the payload carries only files.
+  expect(Object.keys(body)).toEqual(['files']);
   expect(body.files.map((file) => file.path)).toEqual([
     'react/src/Workbench.tsx',
     'server/workbench-app.ts',

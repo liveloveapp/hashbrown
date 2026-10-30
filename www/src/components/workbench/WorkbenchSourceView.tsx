@@ -7,6 +7,7 @@ import type {
   WorkbenchSourceData,
   WorkbenchSourceHtml,
 } from './workbench-lessons';
+import { GITHUB_REPO_URL } from '../site/links';
 import styles from './WorkbenchPanel.module.css';
 
 /** Where the Source tab's highlighted files are, before and after fetching. */
@@ -14,7 +15,7 @@ export type WorkbenchSourceLoad =
   | { readonly status: 'idle' | 'loading' | 'failed' }
   | { readonly status: 'loaded'; readonly files: WorkbenchSourceHtml['files'] };
 
-const GITHUB = 'https://github.com/liveloveapp/hashbrown/blob';
+const GITHUB = `${GITHUB_REPO_URL}/blob`;
 
 /**
  * A lesson file on GitHub at the page's commit, at its first highlight.

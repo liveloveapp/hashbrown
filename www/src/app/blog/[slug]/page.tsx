@@ -57,7 +57,7 @@ export default async function BlogPostPage({
         }}
       />
       <BlogPostView post={summary}>
-        {(await renderDocsMarkdown(body, 'react')).content}
+        {(await renderDocsMarkdown(body, 'react', `blog/${post.slug}`)).content}
       </BlogPostView>
     </>
   );
