@@ -2588,5 +2588,48 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "quickjs-started-1", "index": 2, "label": "QuickJS started" },
+    { "id": "host-call-observed-1", "index": 3, "label": "Host call observed" },
+    { "id": "quickjs-result-1", "index": 4, "label": "QuickJS result" },
+    { "id": "parsed-text-1", "index": 5, "label": "Parsed text" },
+    { "id": "complete-1", "index": 6, "label": "Complete" },
+    { "id": "prompt-2", "index": 7, "label": "Prompt" },
+    { "id": "quickjs-started-2", "index": 9, "label": "QuickJS started" },
+    {
+      "id": "host-call-observed-2",
+      "index": 10,
+      "label": "Host call observed"
+    },
+    { "id": "quickjs-result-2", "index": 11, "label": "QuickJS result" },
+    { "id": "parsed-text-2", "index": 12, "label": "Parsed text" },
+    { "id": "complete-2", "index": 13, "label": "Complete" },
+    { "id": "prompt-3", "index": 14, "label": "Prompt" },
+    { "id": "quickjs-started-3", "index": 16, "label": "QuickJS started" },
+    { "id": "quickjs-error-3", "index": 17, "label": "QuickJS error" },
+    { "id": "parsed-text-3", "index": 18, "label": "Parsed text" },
+    { "id": "error-3", "index": 19, "label": "Error" },
+    { "id": "prompt-4", "index": 20, "label": "Prompt" },
+    { "id": "quickjs-started-4", "index": 22, "label": "QuickJS started" },
+    {
+      "id": "host-call-observed-4",
+      "index": 23,
+      "label": "Host call observed"
+    },
+    { "id": "quickjs-error-4", "index": 24, "label": "QuickJS error" },
+    { "id": "parsed-text-4", "index": 25, "label": "Parsed text" },
+    { "id": "error-4", "index": 26, "label": "Error" },
+    { "id": "prompt-5", "index": 27, "label": "Prompt" },
+    { "id": "quickjs-started-5", "index": 29, "label": "QuickJS started" },
+    {
+      "id": "host-call-observed-5",
+      "index": 30,
+      "label": "Host call observed"
+    },
+    { "id": "quickjs-result-5", "index": 31, "label": "QuickJS result" },
+    { "id": "parsed-text-5", "index": 32, "label": "Parsed text" },
+    { "id": "complete-5", "index": 33, "label": "Complete" }
   ]
 }

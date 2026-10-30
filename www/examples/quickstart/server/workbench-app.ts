@@ -65,7 +65,10 @@ export function pinWorkbenchInput(
   value: unknown,
   lesson: WorkbenchLessonId = 'generative-ui',
 ): RunAgentInput {
-  if (workbenchLessons.find((entry) => entry.id === lesson)?.host)
+  if (
+    workbenchLessons.find((entry) => entry.id === lesson)?.host ===
+    'production-reference'
+  )
     throw new Error('Use the separate production reference server.');
   if (
     workbenchLessons.find((entry) => entry.id === lesson)?.protocol === 'local'
@@ -303,7 +306,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
         if (!res.headersSent)
           res.status(502).json({
             error:
-              'Decision failed. Check the local server and retry, or review the plan manually.',
+              'Decision failed. Try again in a moment, or review the plan manually.',
           });
       } finally {
         clearTimeout(timeout);
@@ -384,8 +387,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
           res.write(
             encoder.encodeSSE({
               type: EventType.RUN_ERROR,
-              message:
-                'The demo request failed. Check the local server and retry.',
+              message: 'The demo request failed. Try again in a moment.',
             }),
           );
       } finally {

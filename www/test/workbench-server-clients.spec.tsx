@@ -9,6 +9,7 @@ const sdk = vi.hoisted(() => ({
 }));
 vi.mock('@hashbrownai/react', () => ({ useChat: sdk.chat }));
 import { ServerWorkbenchConversation } from '../examples/quickstart/react/src/ServerWorkbench';
+import { idleChat, navigation } from './workbench-server-react-chat';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 test('React waits for real thread configuration and setter application before sending', async () => {
@@ -53,12 +54,6 @@ test('React waits for real thread configuration and setter application before se
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  const navigation = {
-    currentId: '1',
-    conversations: [{ id: '1', label: 'Plan' }],
-    select: vi.fn(),
-    create: vi.fn(),
-  };
   const click = async (text: string) => {
     await act(async () => {
       const button = [...host.querySelectorAll('button')].find(
@@ -70,7 +65,9 @@ test('React waits for real thread configuration and setter application before se
   };
 
   await act(async () =>
-    root.render(<ServerWorkbenchConversation active navigation={navigation} />),
+    root.render(
+      <ServerWorkbenchConversation active navigation={navigation()} />,
+    ),
   );
   expect(
     host.querySelector<HTMLButtonElement>('button[type=submit]')?.disabled,
@@ -95,4 +92,25 @@ test('React waits for real thread configuration and setter application before se
   expect(host.textContent).toContain('version 0');
   await act(async () => root.unmount());
   host.remove();
+});
+
+test('a React replay embed never asks the server for a session', async () => {
+  window.history.replaceState(null, '', '?lesson=server-threads&embed=replay');
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+  sdk.chat.mockImplementation(idleChat);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+
+  await act(async () =>
+    root.render(
+      <ServerWorkbenchConversation active navigation={navigation()} />,
+    ),
+  );
+
+  expect(fetch).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+  host.remove();
+  vi.unstubAllGlobals();
 });

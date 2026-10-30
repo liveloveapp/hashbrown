@@ -58,14 +58,7 @@ export function docsComponents(
   const DocsWorkbench = ({ lesson = '' }: { lesson?: string }) => {
     const id = assertWorkbenchLesson(lesson);
     const page = workbench?.lesson === id ? workbench : undefined;
-    return (
-      <WorkbenchPanel
-        lesson={id}
-        sdk={panelSdk}
-        source={page?.source}
-        moments={page?.moments}
-      />
-    );
+    return <WorkbenchPanel lesson={id} sdk={panelSdk} source={page?.source} />;
   };
   const DocsWorkbenchLauncher = ({ lesson = '' }: { lesson?: string }) => {
     const id = assertWorkbenchLesson(lesson);

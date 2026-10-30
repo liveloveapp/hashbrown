@@ -43,12 +43,6 @@ export interface WorkbenchSourceHtml {
   readonly files: readonly { readonly path: string; readonly html: string }[];
 }
 
-/** Lessons whose Live mode needs a local server, so docs never embed it. */
-export const LOOPBACK_LESSONS: readonly WorkbenchLessonId[] = [
-  'server-threads',
-  'public-endpoint',
-];
-
 /**
  * Whether the hosted workbench serves a lesson at all. Loopback lessons are
  * served (only their API is local); production-reference lessons are not.
@@ -61,12 +55,18 @@ export function isHostedWorkbenchLesson(lesson: WorkbenchLessonId): boolean {
 
 /** Whether a lesson's Live tab can run, and where to run it otherwise. */
 export type WorkbenchLiveAvailability =
-  { readonly live: true } | { readonly live: false; readonly href: string };
+  | { readonly live: true }
+  | {
+      readonly live: false;
+      /** Why the hosted workbench cannot run it. */
+      readonly reason: 'loopback' | 'production-reference';
+      readonly href: string;
+    };
 
 /**
  * Whether the hosted workbench can run a lesson live. Derived from the
- * runtime lesson data: only hosted lessons that are not loopback-only run
- * live; the rest link to the docs page that runs them locally.
+ * runtime lesson data's `host`: only hosted lessons that are not
+ * `loopback` run live; the rest link to the docs page that runs them locally.
  *
  * @param lesson - A workbench lesson id.
  * @param sdk - The docs SDK the link points into.
@@ -77,11 +77,16 @@ export function workbenchLiveAvailability(
 ): WorkbenchLiveAvailability {
   const data = workbenchLessons.find((item) => item.id === lesson);
   if (data?.host === 'production-reference') {
-    return { live: false, href: `/docs/${sdk}/platform/b4run` };
-  }
-  if (!isHostedWorkbenchLesson(lesson) || LOOPBACK_LESSONS.includes(lesson)) {
     return {
       live: false,
+      reason: 'production-reference',
+      href: `/docs/${sdk}/platform/b4run`,
+    };
+  }
+  if (!isHostedWorkbenchLesson(lesson) || data?.host === 'loopback') {
+    return {
+      live: false,
+      reason: 'loopback',
       href: `/docs/${sdk}/start/workbench#run-the-example`,
     };
   }

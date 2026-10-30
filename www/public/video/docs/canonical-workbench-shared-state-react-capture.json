@@ -23383,5 +23383,50 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    {
+      "id": "shared-state-observed-0",
+      "index": 0,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "application-form-draft-0",
+      "index": 1,
+      "label": "Application form draft"
+    },
+    {
+      "id": "shared-state-observed-0-2",
+      "index": 2,
+      "label": "Shared state observed"
+    },
+    { "id": "prompt-1", "index": 3, "label": "Prompt" },
+    { "id": "request-1", "index": 5, "label": "Request" },
+    {
+      "id": "shared-state-observed-1",
+      "index": 10,
+      "label": "Shared state observed"
+    },
+    { "id": "streaming-text-1", "index": 13, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-1-2",
+      "index": 179,
+      "label": "Shared state observed"
+    },
+    { "id": "complete-1", "index": 182, "label": "Complete" },
+    { "id": "prompt-2", "index": 183, "label": "Prompt" },
+    { "id": "request-2", "index": 185, "label": "Request" },
+    {
+      "id": "shared-state-observed-2",
+      "index": 190,
+      "label": "Shared state observed"
+    },
+    { "id": "streaming-text-2", "index": 193, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-2-2",
+      "index": 267,
+      "label": "Shared state observed"
+    },
+    { "id": "complete-2", "index": 270, "label": "Complete" }
   ]
 }

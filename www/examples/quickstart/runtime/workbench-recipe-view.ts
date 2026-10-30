@@ -9,6 +9,9 @@ import {
   workbenchSelectionSchema,
 } from './workbench-recipes';
 
+// Core-free so the timeline (and the capture publisher) can label events.
+export { workbenchRecipeEventLabel } from './workbench-recipe-labels';
+
 /** Checks visual availability against the same request, revision and terminal outcome as recipe writes. */
 export function canUseWorkbenchRecipe(
   snapshot: WorkbenchSnapshot,
@@ -158,28 +161,6 @@ export function workbenchRecipeInspection(
           }
         : null,
   };
-}
-
-/** Names recipe observations and explicit interactions without inventing JSON streams or application writes. */
-export function workbenchRecipeEventLabel(
-  event: WorkbenchSnapshot['events'][number],
-): string | undefined {
-  if (event.kind === 'dismiss') return 'Suggestion dismissed';
-  if (event.kind === 'parsed') {
-    if (event.recipe?.kind === 'text') return 'Parsed text';
-    if (event.recipe?.kind === 'predictions') return 'Suggestions ready';
-    if (event.recipe?.kind === 'selection') return 'Selection result';
-  }
-  const payload = event.payload;
-  if (event.kind !== 'choose' || !payload || typeof payload !== 'object')
-    return undefined;
-  if ('citation' in payload) return 'Reference selected';
-  if ('actionId' in payload) return 'Suggestion accepted';
-  if ('selectedView' in payload)
-    return 'manual' in payload && payload.manual
-      ? 'Manual view'
-      : 'View applied';
-  return undefined;
 }
 
 /** Reads dismissal at the selected cursor while retaining the original turn's presentation in live history. */

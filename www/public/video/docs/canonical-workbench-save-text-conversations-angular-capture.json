@@ -8039,5 +8039,19 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "text-select-slot-0", "index": 1, "label": "Text select-slot" },
+    {
+      "id": "text-read-before-load-0",
+      "index": 2,
+      "label": "Text read-before-load"
+    },
+    { "id": "text-load-0", "index": 3, "label": "Text load" },
+    { "id": "prompt-1", "index": 5, "label": "Prompt" },
+    { "id": "request-1", "index": 7, "label": "Request" },
+    { "id": "streaming-text-1", "index": 14, "label": "Streaming text" },
+    { "id": "complete-1", "index": 63, "label": "Complete" },
+    { "id": "text-save-1", "index": 64, "label": "Text save" }
   ]
 }

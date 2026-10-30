@@ -37656,5 +37656,72 @@
       "props": null,
       "status": "paused"
     }
+  ],
+  "milestones": [
+    {
+      "id": "shared-state-observed-0",
+      "index": 0,
+      "label": "Shared state observed"
+    },
+    { "id": "prompt-1", "index": 1, "label": "Prompt" },
+    { "id": "request-1", "index": 3, "label": "Request" },
+    {
+      "id": "shared-state-observed-1",
+      "index": 8,
+      "label": "Shared state observed"
+    },
+    { "id": "streaming-text-1", "index": 11, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-1-2",
+      "index": 175,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "paused-for-decisions-1",
+      "index": 177,
+      "label": "Paused for decisions"
+    },
+    {
+      "id": "application-form-draft-1",
+      "index": 178,
+      "label": "Application form draft"
+    },
+    {
+      "id": "application-form-draft-1-2",
+      "index": 179,
+      "label": "Application form draft"
+    },
+    { "id": "resume-requested-1", "index": 180, "label": "Resume requested" },
+    { "id": "sdk-resuming-1", "index": 181, "label": "SDK resuming" },
+    { "id": "request-1-2", "index": 182, "label": "Request" },
+    {
+      "id": "shared-state-observed-1-3",
+      "index": 188,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "shared-state-observed-1-4",
+      "index": 329,
+      "label": "Shared state observed"
+    },
+    { "id": "complete-1", "index": 332, "label": "Complete" },
+    { "id": "prompt-2", "index": 333, "label": "Prompt" },
+    { "id": "request-2", "index": 335, "label": "Request" },
+    {
+      "id": "shared-state-observed-2",
+      "index": 340,
+      "label": "Shared state observed"
+    },
+    { "id": "streaming-text-2", "index": 343, "label": "Streaming text" },
+    {
+      "id": "shared-state-observed-2-2",
+      "index": 395,
+      "label": "Shared state observed"
+    },
+    {
+      "id": "paused-for-decisions-2",
+      "index": 397,
+      "label": "Paused for decisions"
+    }
   ]
 }
