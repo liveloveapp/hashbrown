@@ -2,7 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
-import { parseMarkdown } from '../src/lib/markdown';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parseMarkdown, renderMarkdownTree } from '../src/lib/markdown';
+import { docsComponents } from '../src/components/docs-components';
 import {
   createWorkbenchCapture,
   withWorkbenchCaptureMilestones,
@@ -177,6 +179,9 @@ test('a page with a workbench highlights its snippets in its lesson source', asy
   expect(data).toEqual({
     lesson: 'tools',
     moments: [],
+    snippetLines: {
+      'code-example-0-angular-src-app-workbench-ts': snippet.range,
+    },
     source: {
       commit: 'abc123',
       files: [
@@ -497,5 +502,43 @@ test('a drifted snippet names its page', async () => {
 
   expect(build).toThrow(
     'react/concept/functions: react/src/Workbench.tsx: snippet not found',
+  );
+});
+
+test('each workbench code example carries its own lines, even three in one file', async () => {
+  const snippets = [
+    snippetAt('react/src/Workbench.tsx', 'export const Session', 1),
+    snippetAt('react/src/Workbench.tsx', 'export function SummaryCard', 1),
+    snippetAt('react/src/Workbench.tsx', 'export function Workbench() {', 3),
+  ];
+  const parsed = await parseMarkdown(
+    [
+      '<hb-workbench lesson="tools"></hb-workbench>',
+      ...snippets.flatMap((snippet) => [
+        '',
+        '<hb-code-example header="react/src/Workbench.tsx" moment="prompt-1">',
+        '',
+        '```tsx',
+        snippet.code,
+        '```',
+        '',
+        '</hb-code-example>',
+      ]),
+    ].join('\n'),
+  );
+  const data = workbenchPageData(parsed.tree, 'react', 'test');
+  const codeExample = docsComponents('react', new Map(), data)[
+    'hb-code-example'
+  ];
+
+  const html = renderToStaticMarkup(
+    renderMarkdownTree(parsed, { 'hb-code-example': codeExample }).content,
+  );
+
+  const lines = [...html.matchAll(/data-lines="([^"]*)"/g)].map(
+    ([, value]) => value,
+  );
+  expect(lines).toEqual(
+    snippets.map(({ range }) => `${range.start}-${range.end}`),
   );
 });

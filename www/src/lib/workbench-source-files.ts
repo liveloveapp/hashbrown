@@ -16,6 +16,7 @@ import {
   parseWorkbenchCapture,
   type WorkbenchCapture,
 } from '../../examples/quickstart/runtime/workbench-capture';
+import { codeExampleId } from './code-example-id';
 import type { Sdk } from './content';
 import { repoRoot } from './repo-root';
 import { highlightCode } from './rehype-shiki';
@@ -197,6 +198,11 @@ export interface WorkbenchPageData {
   readonly source: WorkbenchSourceData;
   /** Milestone ids the page's code examples refer to, in page order. */
   readonly moments: readonly string[];
+  /**
+   * Each workbench code example's lines in its file, by the id rendering
+   * gives it (see `codeExampleId`): the same ranges the highlights merge.
+   */
+  readonly snippetLines: Readonly<Record<string, WorkbenchLineRange>>;
 }
 
 const quickstartPath = (path: string) =>
@@ -250,6 +256,18 @@ export function buildWorkbenchSource(
   sdk: Sdk,
   snippets: readonly WorkbenchSnippet[],
 ): WorkbenchSourceData {
+  return locateWorkbenchSnippets(lesson, sdk, snippets).source;
+}
+
+// buildWorkbenchSource, plus each snippet's own range in input order.
+function locateWorkbenchSnippets(
+  lesson: WorkbenchLessonId,
+  sdk: Sdk,
+  snippets: readonly WorkbenchSnippet[],
+): {
+  readonly source: WorkbenchSourceData;
+  readonly ranges: readonly WorkbenchLineRange[];
+} {
   const files = WORKBENCH_LESSON_FILES[lesson][sdk];
   // Each header's file is read once, however many snippets quote it.
   const texts = new Map<string, string | undefined>();
@@ -277,15 +295,18 @@ export function buildWorkbenchSource(
     return { header, range };
   });
   return {
-    commit: workbenchSourceCommit(),
-    files: files.map((path) => ({
-      path,
-      highlights: mergeRanges(
-        located
-          .filter((item) => item.header === path)
-          .map((item) => item.range),
-      ),
-    })),
+    source: {
+      commit: workbenchSourceCommit(),
+      files: files.map((path) => ({
+        path,
+        highlights: mergeRanges(
+          located
+            .filter((item) => item.header === path)
+            .map((item) => item.range),
+        ),
+      })),
+    },
+    ranges: located.map((item) => item.range),
   };
 }
 
@@ -471,22 +492,32 @@ function pageData(tree: Root, sdk: string): WorkbenchPageData | undefined {
     );
   }
   const lesson = assertWorkbenchLesson(lessons[0]);
+  // In document order, as renderMarkdownTree numbers them for their ids.
   const snippets = all
-    .filter(
-      (node) =>
-        node.tagName === 'hb-code-example' &&
-        isWorkbenchHeader(node.properties['header']),
-    )
-    .map((node) => ({
-      header: node.properties['header'] as string,
+    .filter((node) => node.tagName === 'hb-code-example')
+    .map((node, order) => ({
+      id: codeExampleId(order, String(node.properties['header'] ?? '')),
+      header: node.properties['header'],
       code: textOf(node),
-    }));
+    }))
+    .filter(
+      (item): item is typeof item & { header: string } =>
+        isWorkbenchHeader(item.header),
+    );
   const docsSdk = docsPanelSdk(sdk);
   assertWorkbenchMoments(lesson, docsSdk, moments);
+  const { source, ranges } = locateWorkbenchSnippets(
+    lesson,
+    docsSdk,
+    snippets,
+  );
   return {
     lesson,
-    source: buildWorkbenchSource(lesson, docsSdk, snippets),
+    source,
     moments: [...new Set(moments.map((item) => item.moment))],
+    snippetLines: Object.fromEntries(
+      snippets.map((item, index) => [item.id, ranges[index]]),
+    ),
   };
 }
 

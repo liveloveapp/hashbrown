@@ -2,6 +2,23 @@
   margin: var(--space-4) 0 var(--space-8);
 }
 
+/*
+ * The server renders both the narrow video panel and the tabbed panel; the
+ * viewport shows one until hydration keeps only that one. Matches
+ * NARROW_QUERY in WorkbenchPanelClient.tsx. A hidden lazy poster never loads.
+ */
+@media (max-width: 799px) {
+  .wide {
+    display: none;
+  }
+}
+
+@media (min-width: 800px) {
+  .narrow {
+    display: none;
+  }
+}
+
 .bar {
   display: flex;
   flex-wrap: wrap;

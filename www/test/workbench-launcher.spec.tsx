@@ -134,7 +134,7 @@ test('the launcher loads nothing until expanded, then expands and collapses', ()
   fireEvent.click(button);
   const expanded = {
     ariaExpanded: button.getAttribute('aria-expanded'),
-    region: getByRole('region', { name: 'Tools workbench' }),
+    region: getByRole('region', { name: 'Tools workbench lesson' }),
     focused: document.activeElement,
     tablist: queryByRole('tablist'),
   };

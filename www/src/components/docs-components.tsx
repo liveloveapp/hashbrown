@@ -4,7 +4,7 @@ import {
   buildWorkbenchSource,
   type WorkbenchPageData,
 } from '../lib/workbench-source-files';
-import { CodeExample } from './CodeExample';
+import { CodeExample, type CodeExampleProps } from './CodeExample';
 import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
@@ -41,8 +41,9 @@ import {
  *   the symbol links this page contains (see `renderDocsMarkdown`). Links
  *   without an entry render without a popover.
  * @param workbench - The page's workbench data (see `workbenchPageData`):
- *   the Source tab's files and highlights for its `hb-workbench` lesson. A
- *   panel without it has no Source tab.
+ *   the Source tab's files and highlights for its `hb-workbench` lesson, and
+ *   each workbench code example's lines. A panel without it has no Source
+ *   tab.
  */
 export function docsComponents(
   sdk: string,
@@ -71,9 +72,16 @@ export function docsComponents(
       />
     );
   };
+  // Workbench snippets carry their lines, so See it run can show them.
+  const DocsCodeExample = (props: CodeExampleProps) => (
+    <CodeExample
+      {...props}
+      lines={props.id ? workbench?.snippetLines[props.id] : undefined}
+    />
+  );
   return {
     table: ScrollTable,
-    'hb-code-example': CodeExample,
+    'hb-code-example': DocsCodeExample,
     'hb-backend-code-example': BackendCodeExample,
     'hb-carousel': Carousel,
     'www-atc-demo-video': AtcDemoVideo,
