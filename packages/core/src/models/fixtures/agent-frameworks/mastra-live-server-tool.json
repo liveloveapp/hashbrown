@@ -16,7 +16,7 @@
     },
     {
       "type": "TOOL_CALL_START",
-      "parentMessageId": "ffa0d43a-75b9-4dce-a6f7-2515bc6b295c",
+      "parentMessageId": "17aadfc7-1852-4ad1-85f4-d6a4f3a4a350",
       "toolCallId": "weather-call",
       "toolCallName": "getWeather"
     },
@@ -33,13 +33,13 @@
       "type": "TOOL_CALL_RESULT",
       "toolCallId": "weather-call",
       "content": "\"Paris: 21°C and sunny\"",
-      "messageId": "1684ec28-cadf-40f5-a441-d3f0567f8613",
+      "messageId": "f2ed314b-de0a-41db-9890-405a2758b5d3",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_CHUNK",
       "role": "assistant",
-      "messageId": "ffa0d43a-75b9-4dce-a6f7-2515bc6b295c-agui-text",
+      "messageId": "17aadfc7-1852-4ad1-85f4-d6a4f3a4a350-agui-text",
       "delta": "The weather in Paris is 21°C and sunny."
     },
     {
@@ -77,10 +77,11 @@
     "toolAbortObserved": false,
     "outcome": "success",
     "startBeforeToolCompletion": true,
+    "activityBeforeToolCompletion": false,
     "nativeCheckpointRestore": "not-tested"
   },
   "provenance": {
-    "sourceSha256": "db0c08987398d5e1df4a99e3dda9a4fa2a087cf00d06099d977644286370a965",
-    "eventsSha256": "1345f863f108f3ae4ef3eb69ef527425d19ff17041da36b7f0c5788efda3a9f8"
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "7c321538d69c35d65b5d777646af52e58170a18ed0cdf98d48d500f264dbe75c"
   }
 }
