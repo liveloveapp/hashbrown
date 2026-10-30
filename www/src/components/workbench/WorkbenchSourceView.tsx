@@ -9,6 +9,8 @@ import type {
 } from './workbench-lessons';
 import { GITHUB_REPO_URL } from '../site/links';
 import styles from './WorkbenchPanel.module.css';
+import { WorkbenchFileExplorer } from './WorkbenchFileExplorer';
+import { BrandGitHubIcon } from '../site/icons';
 
 /** Where the Source tab's highlighted files are, before and after fetching. */
 export type WorkbenchSourceLoad =
@@ -81,9 +83,9 @@ export interface WorkbenchSourceViewProps {
 }
 
 /**
- * The Source tab: the lesson's files, then the selected file with the page's
- * snippets marked, in a bounded scroll area. If the files cannot load, a
- * note and the GitHub links stand in.
+ * The Source tab: a responsive folder explorer beside the selected file,
+ * with the page's snippets marked in a bounded scroll area. The explorer
+ * collapses into a file picker on narrow panels. Failed loads show GitHub links.
  */
 export function WorkbenchSourceView({
   source,
@@ -161,33 +163,28 @@ export function WorkbenchSourceView({
   }
   return (
     <div className={styles.source}>
-      <ul className={styles.files} aria-label="Lesson files">
-        {source.files.map((item) => (
-          <li key={item.path}>
-            <button
-              type="button"
-              className={styles.tab}
-              aria-current={item.path === selected || undefined}
-              onClick={() => {
-                setSelected(item.path);
-                setTarget(undefined);
-              }}
-            >
-              {item.path}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <WorkbenchFileExplorer
+        files={source.files}
+        selected={selected}
+        onSelect={(path) => {
+          setSelected(path);
+          setTarget(undefined);
+        }}
+        request={select?.seq}
+      />
       {file && (
         <figure className={styles.file}>
           <figcaption>
             <span>{file.path}</span>
             <a
+              className={styles.github}
+              aria-label={`View ${file.path} on GitHub`}
+              title="View on GitHub"
               href={workbenchSourceHref(source.commit, file)}
               target="_blank"
               rel="noopener noreferrer"
             >
-              View on GitHub <span aria-hidden="true">↗</span>
+              <BrandGitHubIcon height="20px" width="20px" />
             </a>
           </figcaption>
           {marked ? (

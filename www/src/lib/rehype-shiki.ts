@@ -32,13 +32,13 @@ const ALIASES: Record<string, string> = {
 let highlighter: Promise<Highlighter> | undefined;
 
 /**
- * The site's shared Shiki highlighter (hashbrown theme, the docs' languages),
- * created once per process.
+ * The site's shared Shiki highlighter (article and light workbench themes,
+ * the docs' languages), created once per process.
  */
 export function getHighlighter(): Promise<Highlighter> {
   return (highlighter ??= createHighlighter({
     // A VS Code theme export; Shiki fills in fg/bg from `colors` at runtime.
-    themes: [shikiHashbrown as unknown as ThemeRegistration],
+    themes: [shikiHashbrown as unknown as ThemeRegistration, 'github-light'],
     langs: [...LANGS],
   }));
 }
@@ -110,18 +110,22 @@ export const rehypeShiki: Plugin<[], Root> = () => async (tree) => {
  *
  * @param code - The source to highlight.
  * @param lang - A language the site loads, such as `typescript`, `tsx` or `html`.
- * @param options - Optional Shiki transformers applied to the output.
+ * @param options - Optional theme and Shiki transformers applied to the output.
  * @returns The highlighted HTML.
  */
 export async function highlightCode(
   code: string,
   lang: string,
-  options: { readonly transformers?: readonly ShikiTransformer[] } = {},
+  options: {
+    readonly transformers?: readonly ShikiTransformer[];
+    /** Source viewers use the light workbench surface; prose keeps Hashbrown. */
+    readonly theme?: 'hashbrown' | 'github-light';
+  } = {},
 ): Promise<string> {
   const hl = await getHighlighter();
   return hl.codeToHtml(code, {
     lang: ALIASES[lang] ?? lang,
-    theme: 'hashbrown',
+    theme: options.theme ?? 'hashbrown',
     transformers: [...(options.transformers ?? [])],
   });
 }

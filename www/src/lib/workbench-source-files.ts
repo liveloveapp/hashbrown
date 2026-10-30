@@ -500,17 +500,12 @@ function pageData(tree: Root, sdk: string): WorkbenchPageData | undefined {
       header: node.properties['header'],
       code: textOf(node),
     }))
-    .filter(
-      (item): item is typeof item & { header: string } =>
-        isWorkbenchHeader(item.header),
+    .filter((item): item is typeof item & { header: string } =>
+      isWorkbenchHeader(item.header),
     );
   const docsSdk = docsPanelSdk(sdk);
   assertWorkbenchMoments(lesson, docsSdk, moments);
-  const { source, ranges } = locateWorkbenchSnippets(
-    lesson,
-    docsSdk,
-    snippets,
-  );
+  const { source, ranges } = locateWorkbenchSnippets(lesson, docsSdk, snippets);
   return {
     lesson,
     source,
@@ -548,7 +543,7 @@ const highlightFile = (path: string): Promise<string> => {
   const html = highlightCode(
     readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
     languageOf(path),
-    { transformers: [lineNumbers] },
+    { transformers: [lineNumbers], theme: 'github-light' },
   );
   highlightCache.set(path, html);
   return html;
@@ -567,6 +562,7 @@ export async function highlightWorkbenchSource(
   sdk: Sdk,
 ): Promise<WorkbenchSourceHtml> {
   return {
+    commit: workbenchSourceCommit(),
     files: await Promise.all(
       WORKBENCH_LESSON_FILES[lesson][sdk].map(async (path) => ({
         path,

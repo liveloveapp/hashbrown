@@ -62,13 +62,19 @@ function setup({ narrow = false, fakeTimers = false } = {}) {
   vi.unstubAllEnvs();
   if (fakeTimers) vi.useFakeTimers();
   const observers: IntersectionObserverCallback[] = [];
+  let isNarrow = narrow;
+  const mediaListeners = new Set<() => void>();
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query: string) => ({
-      matches: narrow && query === '(max-width: 799px)',
+      get matches() {
+        return isNarrow && query === '(max-width: 799px)';
+      },
       media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
+      addEventListener: (_: string, listener: () => void) =>
+        mediaListeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) =>
+        mediaListeners.delete(listener),
     })),
   );
   vi.stubGlobal(
@@ -94,7 +100,12 @@ function setup({ narrow = false, fakeTimers = false } = {}) {
         ),
       ),
     );
-  return { fetchMock, intersect };
+  const resize = (next: boolean) =>
+    act(() => {
+      isNarrow = next;
+      mediaListeners.forEach((listener) => listener());
+    });
+  return { fetchMock, intersect, resize };
 }
 
 function liveTab() {
@@ -525,21 +536,23 @@ test('Source tab shows files, marks highlighted lines and links to GitHub at the
   const panel = document.getElementById(
     sourceTab().getAttribute('aria-controls') as string,
   ) as HTMLElement;
-  const files = [...panel.querySelectorAll('button')].map(
-    (button) => button.textContent,
+  const files = [...panel.querySelectorAll('button[aria-current]')].map(
+    (button) => button.getAttribute('aria-label'),
   );
   const highlighted = [...panel.querySelectorAll('[data-highlighted]')];
   const link = () =>
     [...panel.querySelectorAll('a')].find((anchor) =>
-      anchor.textContent?.includes('View on GitHub'),
+      anchor.getAttribute('aria-label')?.includes('on GitHub'),
     );
   const firstLink = link()?.getAttribute('href');
   const region = panel.querySelector('[role="region"]');
   const regionLabel = region?.getAttribute('aria-label');
-  const current = panel.querySelector('[aria-current="true"]')?.textContent;
+  const current = panel
+    .querySelector('[aria-current="true"]')
+    ?.getAttribute('aria-label');
   fireEvent.click(
     [...panel.querySelectorAll('button')].find(
-      (button) => button.textContent === 'runtime/workbench.ts',
+      (button) => button.getAttribute('aria-label') === 'runtime/workbench.ts',
     ) as HTMLElement,
   );
 
@@ -565,9 +578,10 @@ test('Source tab shows files, marks highlighted lines and links to GitHub at the
   expect(region?.getAttribute('tabindex')).toBe('0');
   expect(regionLabel).toBe('react/src/Workbench.tsx source');
   expect(current).toBe('react/src/Workbench.tsx');
-  expect(link()?.textContent).toBe('View on GitHub ↗');
-  expect(link()?.querySelector('span[aria-hidden="true"]')?.textContent).toBe(
-    '↗',
+  expect(link()?.textContent).toBe('');
+  expect(link()?.querySelector('svg')).not.toBeNull();
+  expect(link()?.getAttribute('aria-label')).toBe(
+    'View runtime/workbench.ts on GitHub',
   );
   expect(link()?.getAttribute('href')).toBe(`${blob}/runtime/workbench.ts`);
   expect(panel.querySelectorAll('[data-highlighted]')).toHaveLength(0);
@@ -592,6 +606,123 @@ test('Source fetches once, however often the tab is opened', async () => {
       String(url).startsWith('/workbench-source/'),
     ),
   ).toHaveLength(1);
+});
+
+test('Source groups filenames in collapsible real directories', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  fireEvent.click(sourceTab());
+  await settle();
+  const explorer = document.querySelector(
+    'nav[aria-label="Lesson files"]',
+  ) as HTMLElement;
+  const folders = [...explorer.querySelectorAll('summary')].map(
+    (folder) => folder.textContent,
+  );
+  const folder = explorer.querySelector('details') as HTMLDetailsElement;
+  folder.open = false;
+  fireEvent.click(
+    explorer.querySelector(
+      'button[aria-label="runtime/workbench.ts"]',
+    ) as HTMLElement,
+  );
+
+  expect(folders).toEqual(['react', 'src', 'runtime']);
+  expect(folder.open).toBe(false);
+  expect(
+    explorer.querySelector('button[aria-label="react/src/Workbench.tsx"]')
+      ?.textContent,
+  ).toContain('Workbench.tsx');
+  expect(
+    document.querySelector('[role="region"]')?.getAttribute('aria-label'),
+  ).toBe('runtime/workbench.ts source');
+});
+
+test('source navigation keeps full path names without lesson highlight decorations', () => {
+  setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  const file = document.querySelector(
+    'button[aria-label="react/src/Workbench.tsx"]',
+  ) as HTMLElement;
+  const navigation = document.querySelector(
+    'nav[aria-label="Lesson files"]',
+  ) as HTMLElement;
+
+  expect(file.getAttribute('aria-describedby')).toBeNull();
+  expect(navigation.textContent).not.toMatch(/highlighted in this lesson/i);
+  expect(navigation.textContent).not.toContain('●');
+});
+
+test('mobile Source opens a collapsed file picker and closes it after selection', async () => {
+  const { fetchMock } = setup({ narrow: true });
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+
+  expect(
+    [...document.querySelectorAll('[role="tab"]')].map(
+      (tab) => tab.textContent,
+    ),
+  ).toEqual(['Replay', 'Source']);
+  expect(fetchMock).not.toHaveBeenCalled();
+  fireEvent.click(sourceTab());
+  await settle();
+  const toggle = document.querySelector(
+    'button[aria-controls][aria-expanded]',
+  ) as HTMLButtonElement;
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  fireEvent.click(
+    document.querySelector(
+      'button[aria-label="runtime/workbench.ts"]',
+    ) as HTMLElement,
+  );
+
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(toggle.textContent).toContain('workbench.ts');
+  expect(document.activeElement).toBe(toggle);
+  expect(
+    document.querySelector('[role="region"]')?.getAttribute('aria-label'),
+  ).toBe('runtime/workbench.ts source');
+  expect(document.querySelector('iframe')).toBeNull();
+});
+
+test('Source selection and loaded files survive desktop to mobile resizing', async () => {
+  const { fetchMock, resize } = setup();
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+  fireEvent.click(sourceTab());
+  await settle();
+  fireEvent.click(
+    document.querySelector(
+      'button[aria-label="runtime/workbench.ts"]',
+    ) as HTMLElement,
+  );
+
+  resize(true);
+  const mobileRegion = document.querySelector('[role="region"]');
+  resize(false);
+
+  expect(mobileRegion?.getAttribute('aria-label')).toBe(
+    'runtime/workbench.ts source',
+  );
+  expect(document.querySelector('[role="region"]')).toBe(mobileRegion);
+  expect(
+    document.querySelector('[role="tab"][aria-selected="true"]')?.textContent,
+  ).toBe('Source');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
 test('unmounting while Source loads aborts the fetch', async () => {
@@ -1157,7 +1288,9 @@ test('See it run selects the snippet file in Source without opening it', async (
   intersect();
 
   seeItRun();
-  const current = document.querySelector('[aria-current]')?.textContent;
+  const current = document
+    .querySelector('[aria-current="true"]')
+    ?.getAttribute('aria-label');
 
   expect(current).toBe('runtime/workbench.ts');
   expect(
@@ -1420,6 +1553,37 @@ test('See it run scrolls Source to the clicked snippet, not the first highlight'
   expect(code?.scrollTop).toBe(10 * 20 - 16);
 });
 
+test('choosing a file in the explorer clears a previous snippet scroll target', async () => {
+  const { fetchMock } = setup();
+  vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(
+    function (this: HTMLElement) {
+      return Number(this.dataset['line'] ?? 0) * 20;
+    },
+  );
+  addSnippet();
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => sourceJson,
+  }));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+  seeItRun('tool-call', 'code-example-0', { start: 4, end: 4 });
+  fireEvent.click(sourceTab());
+  await settle();
+  const code = document.querySelector<HTMLElement>(
+    '[role="region"][aria-label$=" source"]',
+  );
+  const snippetScroll = code?.scrollTop;
+
+  fireEvent.click(
+    document.querySelector(
+      'button[aria-label="react/src/Workbench.tsx"]',
+    ) as HTMLElement,
+  );
+
+  expect(snippetScroll).toBe(4 * 20 - 16);
+  expect(code?.scrollTop).toBe(2 * 20 - 16);
+});
+
 test('the server render has the narrow video and the tabbed panel, each shown by its media query', () => {
   setup();
   const host = document.createElement('div');
@@ -1481,5 +1645,37 @@ test('a phone hydrates the server render into the video alone, with no observer 
   expect(panels).toHaveLength(1);
   expect(panels[0].querySelector('video')).not.toBeNull();
   expect(host.querySelector('[role="tablist"]')).toBeNull();
+  expect(vi.mocked(IntersectionObserver)).not.toHaveBeenCalled();
+});
+
+test('a phone hydrates Source without hiding it or starting replay work', async () => {
+  setup({ narrow: true });
+  const host = document.createElement('div');
+  host.innerHTML = renderToString(
+    <WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />,
+  );
+  document.body.append(host);
+  onTestFinished(() => host.remove());
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await act(async () => {
+    const root = hydrateRoot(
+      host,
+      <WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />,
+    );
+    onTestFinished(() => root.unmount());
+  });
+
+  const panels = host.querySelectorAll('[data-component="workbench-panel"]');
+  expect(errors).not.toHaveBeenCalled();
+  expect(panels).toHaveLength(1);
+  expect(panels[0].classList.contains(styles.wide)).toBe(false);
+  expect(
+    [...host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent),
+  ).toEqual(['Replay', 'Source']);
+  expect(host.querySelector('video')?.getAttribute('poster')).toBe(
+    '/video/docs/canonical-workbench-tools-react-poster.png',
+  );
+  expect(host.querySelector('iframe')).toBeNull();
   expect(vi.mocked(IntersectionObserver)).not.toHaveBeenCalled();
 });

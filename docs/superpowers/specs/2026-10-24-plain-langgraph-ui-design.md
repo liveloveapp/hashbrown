@@ -1,5 +1,9 @@
 # Plain LangGraph UI helpers
 
+> Current delivery inventory: [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> Baselines and remaining-work statements below are historical. The shared
+> contract's Rules remain binding. File search remains deferred.
+
 ## Scope and decisions
 
 Implement slice 4 of the shared `2026-10-21-b4-tool-step-contract-design.md`. Its Rules remain binding. B4.run main at `de0fdca77` contains the SDK contract and B4 emitters/restore work, but no plain LangGraph helper. Hashbrown main at `834998549` contains the provider slices and shared reducer conformance.
