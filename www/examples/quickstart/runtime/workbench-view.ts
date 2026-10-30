@@ -39,6 +39,7 @@ import {
 } from './workbench-layout';
 import {
   getWorkbenchLesson,
+  isWorkbenchLoopbackLesson,
   type WorkbenchLesson,
   type WorkbenchLessonId,
   workbenchLessons,
@@ -737,7 +738,7 @@ export function mountWorkbench(
                 ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
                 'Schema',
               ]
-            : ['server-threads', 'public-endpoint'].includes(commands.lesson.id)
+            : isWorkbenchLoopbackLesson(commands.lesson.id)
               ? ['History', 'Server', 'Access']
               : ['History', 'Saved text']
         : []),
@@ -1043,8 +1044,7 @@ export function mountWorkbench(
     const server = frame?.history?.app.server;
     const serverLesson = commands.lesson?.id;
     const serverUnloaded =
-      (serverLesson === 'server-threads' ||
-        serverLesson === 'public-endpoint') &&
+      isWorkbenchLoopbackLesson(serverLesson) &&
       (!server?.threadId ||
         server.access !== 'local-demo' ||
         server.threadId !==

@@ -72,7 +72,13 @@ export function withWorkbenchCaptureMilestones(
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/**
+ * Whether untrusted data is a plain object (not null or an array), so its
+ * fields can be read before they are checked.
+ *
+ * @param value - Any parsed JSON or message data.
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

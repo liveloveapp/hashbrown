@@ -26,7 +26,11 @@ export default async function PrivacyPage() {
     join(repoRoot(), 'www/content/privacy.md'),
     'utf-8',
   );
-  const { content, headings } = await renderDocsMarkdown(source, 'react');
+  const { content, headings } = await renderDocsMarkdown(
+    source,
+    'react',
+    'privacy',
+  );
   return (
     <div className={`${styles.shell} ${styles.blog}`}>
       <Header />

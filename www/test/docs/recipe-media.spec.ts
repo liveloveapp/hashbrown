@@ -3,9 +3,8 @@ import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 
-test.each([
-  'canonical-workbench-react',
-  ...[
+test.each(
+  [
     'ui',
     'tools',
     'structured',
@@ -37,18 +36,7 @@ test.each([
       (framework) => `canonical-workbench-${lesson}-${framework}`,
     ),
   ),
-  'canonical-workbench-angular',
-  'magic-text',
-  'predictive-suggestions',
-  'ui-selection',
-  'agent-routing',
-  'agent-fallback',
-  'local-models',
-  'json-parser-react',
-  'json-parser-angular',
-  'ui-chatbot-react',
-  'ui-chatbot-angular',
-])('%s has accessible recorded media and a result screenshot', (id) => {
+)('%s has accessible recorded media and a result screenshot', (id) => {
   const root = resolve(import.meta.dirname, '../../public/video/docs');
   const suffixes = [
     '.mp4',

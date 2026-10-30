@@ -18,13 +18,16 @@ import { docsComponents } from './docs-components';
  *
  * @param source - Markdown without frontmatter.
  * @param sdk - The SDK whose docs are rendering (blog posts use `react`).
+ * @param page - Names the page in build errors, for example
+ *   `react/concept/functions` or `blog/<slug>`.
  */
 export async function renderDocsMarkdown(
   source: string,
   sdk: string,
+  page: string,
 ): Promise<RenderedMarkdown> {
   const parsed = await parseMarkdown(source);
   const popovers = await symbolPopovers(collectSymbolReferences(parsed.tree));
-  const workbench = workbenchPageData(parsed.tree, sdk);
+  const workbench = workbenchPageData(parsed.tree, sdk, page);
   return renderMarkdownTree(parsed, docsComponents(sdk, popovers, workbench));
 }

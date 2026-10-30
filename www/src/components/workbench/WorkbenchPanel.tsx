@@ -61,7 +61,7 @@ export function WorkbenchPanel({ lesson, sdk, source }: WorkbenchPanelProps) {
       partialCapture={PARTIAL_CAPTURE_LESSONS.includes(lesson)}
       availability={availability}
       openHref={openHref}
-      fallback={<DocsDemoVideo demo={mediaId} />}
+      fallback={<DocsDemoVideo demo={mediaId} deferPoster />}
       source={source}
     />
   );

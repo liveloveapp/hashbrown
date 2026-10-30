@@ -1,9 +1,0 @@
-magic-text
-
-Recorded through the checked React component after both React and Angular passed the same browser checks. Scripted AG-UI or decision responses, presentation styles added, no live model and no narration. Application state is local and clears on refresh.
-
-The first two seconds preview the final result. The complete interaction follows.
-
-Generate a Markdown packing reply. The real Magic Text renderer displays a heading, emphasis and a list as text streams. After the source definition arrives, select the citation to open source details. A citation is a reference, not proof that the reply is correct.
-
-The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

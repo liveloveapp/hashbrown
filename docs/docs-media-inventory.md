@@ -1,10 +1,10 @@
 # Documentation media inventory
 
-Updated 2026-10-28. This inventory describes the current guides and their recording sources. Historical captures remain available for bookmarks and independent tests; they are not the current walkthroughs unless listed below.
+Updated 2026-10-30. This inventory describes the current guides and their recording sources. Pre-canonical recordings were deleted on 2026-10-30; only the media listed below is published.
 
 ## Current canonical coverage
 
-The workbench has 28 lessons, each implemented in Angular and React: 56 framework paths. The shared two-step plan, LLA styling, chat feed, paired inspector and bottom playback keep the teaching context consistent. The two `start/workbench` overview recordings use `canonical-workbench-{react,angular}`.
+The workbench has 28 lessons, each implemented in Angular and React: 56 framework paths. The shared two-step plan, LLA styling, chat feed, paired inspector and bottom playback keep the teaching context consistent.
 
 Each lesson below has a separate recording per framework. The media ID is `canonical-workbench-<recording>-<sdk>`, where `<sdk>` is `angular` or `react`. A lesson can introduce more than one guide without requiring another recording.
 
@@ -76,15 +76,13 @@ The Threadplane migration guides keep runtime, presentation, identity, history, 
 
 No primary guide pair remains on standalone scripted footage. Next is a consistency and accessibility review across the full set; durable agent state, production identity and storage remain separate integrations.
 
-## Retained legacy assets
+## Retired legacy assets
 
-Earlier WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, shopping-list, parser, decisions, assisted-interface and ATC recordings remain for old links and independent fixtures. Their source disclosures still apply. A retained asset is not evidence that the current guide uses it.
-
-Retained standalone Threadplane shipping clips and workflow/tutorial recordings may use scripted AG-UI events and recorder-only presentation styles. Earlier parser clips use a finite local JSON source; earlier ATC clips disclose fixture traffic and scripted replies. Do not label any of these as live model output. Remote MCP and CopilotKit learning sections are retired with compatibility redirects; they are not recording backlog items.
+The pre-canonical WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, parser, structured, recipe, decisions, local-model, request-transformation and standalone Threadplane recordings, and the `canonical-workbench-{react,angular}` overview copies of the generative UI lesson, were deleted on 2026-10-30. No guide referenced them. Their recorders under `www/src/tools/record-docs-*.ts` remain wired to nx targets and would write those ids again if run; do not publish their output without adding it to a guide and to the media registry.
 
 ## Accessibility and consistency checks
 
-The 62 active recordings are reused by 108 canonical video teasers and 64 inline workbench panels. The two ATC case-study pages retain their separate ATC teaser. Their caption intervals are ordered, nonempty and at most 20 characters per displayed second. The initial overview, generative UI, tools, schemas, streaming, structured output, debugging, request transformation, decisions and UI-selection captions were shortened where needed, without retiming or replacing footage. Text walkthroughs and recorder sources use the same concise descriptions. Runtime ownership and source disclosures are preserved.
+The 60 active recordings are reused by 44 canonical video teasers and 96 inline workbench panels. The two ATC case-study pages retain their separate ATC teaser. Their caption intervals are ordered, nonempty and at most 20 characters per displayed second. The initial overview, generative UI, tools, schemas, streaming, structured output, debugging, request transformation, decisions and UI-selection captions were shortened where needed, without retiming or replacing footage. Text walkthroughs and recorder sources use the same concise descriptions. Runtime ownership and source disclosures are preserved.
 
 Video players keep native controls and captions, with a visible caption associated to each player and a context-specific text-walkthrough link. Workbench tab strips use one Tab stop with arrow/Home/End navigation; request-detail rebuilds preserve keyboard focus. The bottom range names its turn, event, milestone and elapsed time. Lifecycle status is polite and deduplicated; stream tokens and JSON panels are not live regions. Playback shortcuts leave focused links and interactive controls alone.
 

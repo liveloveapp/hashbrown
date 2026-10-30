@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import {
   hostedWorkbenchLessons,
   workbenchLessons,
@@ -16,6 +20,7 @@ import {
   workbenchOrigin,
 } from '../src/components/workbench/workbench-lessons';
 import { workbenchMediaName } from '../src/components/workbench/workbench-media';
+import styles from '../src/components/workbench/WorkbenchPanel.module.css';
 
 // next/dynamic resolves asynchronously outside Next; render the client panel
 // directly. The build check covers the split itself.
@@ -43,8 +48,12 @@ const capture = {
 function setup({ narrow = false, fakeTimers = false } = {}) {
   cleanup();
   vi.restoreAllMocks();
-  // jsdom has no scrollIntoView; tests spy on this stub.
-  Element.prototype.scrollIntoView ??= () => undefined;
+  // jsdom has no scrollIntoView: stub it for this test only; tests spy on
+  // the stub.
+  Element.prototype.scrollIntoView = vi.fn();
+  onTestFinished(() => {
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
   document
     .querySelectorAll('[data-component="code-example"]')
     .forEach((element) => element.remove());
@@ -557,6 +566,9 @@ test('Source tab shows files, marks highlighted lines and links to GitHub at the
   expect(regionLabel).toBe('react/src/Workbench.tsx source');
   expect(current).toBe('react/src/Workbench.tsx');
   expect(link()?.textContent).toBe('View on GitHub ↗');
+  expect(link()?.querySelector('span[aria-hidden="true"]')?.textContent).toBe(
+    '↗',
+  );
   expect(link()?.getAttribute('href')).toBe(`${blob}/runtime/workbench.ts`);
   expect(panel.querySelectorAll('[data-highlighted]')).toHaveLength(0);
 });
@@ -580,6 +592,22 @@ test('Source fetches once, however often the tab is opened', async () => {
       String(url).startsWith('/workbench-source/'),
     ),
   ).toHaveLength(1);
+});
+
+test('unmounting while Source loads aborts the fetch', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(() => new Promise(() => undefined));
+  const { unmount } = render(
+    <WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />,
+  );
+  fireEvent.click(sourceTab());
+  const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  const before = init.signal?.aborted;
+
+  unmount();
+
+  expect(before).toBe(false);
+  expect(init.signal?.aborted).toBe(true);
 });
 
 test('Source shows a note and GitHub links when the source cannot load', async () => {
@@ -918,6 +946,34 @@ test('Live falls back when no ready arrives in 8 seconds', () => {
   ).not.toBeNull();
 });
 
+test('Try again after a Live failure mounts a fresh live frame', () => {
+  const { intersect } = setup({ fakeTimers: true });
+  render(<WorkbenchPanel lesson="tools" sdk="angular" />);
+  intersect();
+  fireEvent.click(liveTab());
+  const first = liveFrame();
+  act(() => vi.advanceTimersByTime(8000));
+  const retry = [...document.querySelectorAll('button')].find(
+    (button) => button.textContent === 'Try again',
+  ) as HTMLElement;
+
+  fireEvent.click(retry);
+
+  const second = liveFrame();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(second).not.toBe(first);
+  expect(document.body.textContent).not.toContain(
+    "Couldn't load the live workbench.",
+  );
+  expect(document.activeElement).toBe(liveTab());
+  act(() => vi.advanceTimersByTime(8000));
+  expect(liveFrame()).toBeNull();
+  expect(document.body.textContent).toContain(
+    "Couldn't load the live workbench.",
+  );
+});
+
 test.each([
   ['another lesson', { lesson: 'streaming' }],
   ['another framework', { framework: 'react' }],
@@ -980,20 +1036,35 @@ test('arrowing onto Live does not start the live workbench', () => {
   expect(liveFrame()).toBeNull();
 });
 
-test.each(['Enter', ' '])(
-  'pressing %j on the Live tab starts the live workbench',
-  (key) => {
-    setup();
-    render(<WorkbenchPanel lesson="tools" sdk="react" />);
-    const [replay, live] =
-      document.querySelectorAll<HTMLElement>('[role="tab"]');
-    fireEvent.keyDown(replay, { key: 'ArrowRight' });
+test('pressing Enter on the Live tab starts the live workbench', () => {
+  setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  const [replay, live] = document.querySelectorAll<HTMLElement>('[role="tab"]');
+  fireEvent.keyDown(replay, { key: 'ArrowRight' });
 
-    fireEvent.keyDown(live, { key });
+  fireEvent.keyDown(live, { key: 'Enter' });
 
-    expect(liveFrame()).not.toBeNull();
-  },
-);
+  expect(liveFrame()).not.toBeNull();
+});
+
+test('Space on a tab is left to the native button click, so it activates once', () => {
+  setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  const [replay, live] = document.querySelectorAll<HTMLElement>('[role="tab"]');
+  fireEvent.keyDown(replay, { key: 'ArrowRight' });
+
+  // A button fires its own click for Space; the keydown must not also act.
+  const notPrevented = fireEvent.keyDown(live, { key: ' ' });
+  const afterKeyDown = liveFrame();
+  fireEvent.keyUp(live, { key: ' ' });
+  fireEvent.click(live);
+
+  expect(notPrevented).toBe(true);
+  expect(afterKeyDown).toBeNull();
+  expect(document.querySelectorAll('iframe[src*="embed=live"]')).toHaveLength(
+    1,
+  );
+});
 
 function addSnippet(header = 'react/src/Workbench.tsx') {
   const snippet = document.createElement('div');
@@ -1004,12 +1075,16 @@ function addSnippet(header = 'react/src/Workbench.tsx') {
   return snippet;
 }
 
-function seeItRun(moment = 'tool-call') {
+function seeItRun(
+  moment = 'tool-call',
+  snippet = 'code-example-0',
+  lines?: { start: number; end: number },
+) {
   act(() => {
     document.dispatchEvent(
       new CustomEvent('hb-workbench:see-it-run', {
         bubbles: true,
-        detail: { moment, snippet: 'code-example-0' },
+        detail: { moment, snippet, ...(lines ? { lines } : {}) },
       }),
     );
   });
@@ -1295,4 +1370,116 @@ test('Source holds the replay frame box while it loads', async () => {
   );
   expect(panel?.textContent).toContain('Loading source');
   expect(panel?.style.aspectRatio).toBe('4 / 3');
+});
+
+test('See it run scrolls Source to the clicked snippet, not the first highlight', async () => {
+  const { fetchMock, intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  // jsdom has no layout: place each line 20px below the last.
+  vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(
+    function (this: HTMLElement) {
+      return Number(this.dataset['line'] ?? 0) * 20;
+    },
+  );
+  const ranges = [
+    { start: 2, end: 3 },
+    { start: 6, end: 7 },
+    { start: 10, end: 11 },
+  ];
+  ranges.forEach((range, index) => {
+    const snippet = addSnippet();
+    snippet.id = `code-example-${index}`;
+    snippet.dataset['lines'] = `${range.start}-${range.end}`;
+  });
+  fetchMock.mockImplementation(async () => ({
+    ok: true,
+    json: async () => ({
+      commit: 'abc',
+      files: [{ path: 'react/src/Workbench.tsx', html: lineHtml(12) }],
+    }),
+  }));
+  render(
+    <WorkbenchPanel
+      lesson="tools"
+      sdk="react"
+      source={{
+        commit: 'abc',
+        files: [{ path: 'react/src/Workbench.tsx', highlights: ranges }],
+      }}
+    />,
+  );
+  intersect();
+
+  seeItRun('tool-call', 'code-example-2', ranges[2]);
+  fireEvent.click(sourceTab());
+  await settle();
+
+  const code = document.querySelector<HTMLElement>(
+    '[role="region"][aria-label$=" source"]',
+  );
+  expect(code?.scrollTop).toBe(10 * 20 - 16);
+});
+
+test('the server render has the narrow video and the tabbed panel, each shown by its media query', () => {
+  setup();
+  const host = document.createElement('div');
+
+  host.innerHTML = renderToString(
+    <WorkbenchPanel lesson="tools" sdk="react" />,
+  );
+
+  const [narrow, tabbed] = host.querySelectorAll<HTMLElement>(
+    '[data-component="workbench-panel"]',
+  );
+  const css = readFileSync(
+    join(
+      import.meta.dirname,
+      '../src/components/workbench/WorkbenchPanel.module.css',
+    ),
+    'utf8',
+  ).replace(/\s+/g, ' ');
+  expect(narrow.classList.contains(styles.narrow)).toBe(true);
+  expect(narrow.querySelector('video')).not.toBeNull();
+  // Browsers fetch a video poster even when hidden, so desktop must not see one.
+  expect(narrow.querySelector('video')?.hasAttribute('poster')).toBe(false);
+  expect(narrow.querySelector('video')?.dataset['poster']).toBe(
+    '/video/docs/canonical-workbench-tools-react-poster.png',
+  );
+  expect(narrow.querySelector('[role="tablist"]')).toBeNull();
+  expect(tabbed.classList.contains(styles.wide)).toBe(true);
+  expect(tabbed.querySelector('[role="tablist"]')).not.toBeNull();
+  expect(tabbed.querySelector('video')).toBeNull();
+  expect(tabbed.querySelector('img')?.getAttribute('loading')).toBe('lazy');
+  expect(css).toContain(
+    '@media (max-width: 799px) { .wide { display: none; } }',
+  );
+  expect(css).toContain(
+    '@media (min-width: 800px) { .narrow { display: none; } }',
+  );
+});
+
+test('a phone hydrates the server render into the video alone, with no observer or frame', async () => {
+  setup({ narrow: true });
+  const host = document.createElement('div');
+  host.innerHTML = renderToString(
+    <WorkbenchPanel lesson="tools" sdk="react" />,
+  );
+  document.body.append(host);
+  onTestFinished(() => host.remove());
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await act(async () => {
+    const root = hydrateRoot(
+      host,
+      <WorkbenchPanel lesson="tools" sdk="react" />,
+    );
+    onTestFinished(() => root.unmount());
+  });
+
+  const panels = host.querySelectorAll('[data-component="workbench-panel"]');
+  expect(errors).not.toHaveBeenCalled();
+  expect(panels).toHaveLength(1);
+  expect(panels[0].querySelector('video')).not.toBeNull();
+  expect(host.querySelector('[role="tablist"]')).toBeNull();
+  expect(vi.mocked(IntersectionObserver)).not.toHaveBeenCalled();
 });

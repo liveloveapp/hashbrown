@@ -1,9 +1,0 @@
-Shopping list demo
-
-Recorded through the checked React component; Angular verified for the same behavior. Scripted AG-UI output, presentation styles added, no live model, narration, purchase or server write.
-
-The first two seconds preview the final result. The full interaction follows.
-
-Generate a typed shopping-list draft from two apples and one loaf of bread. Review the completed items.
-
-The draft displays 2 × Apples and 1 × Bread. Generated items never apply automatically. After successful completion and application validation, select Apply list. The applied list now contains an independent copy. It lives only in the component and clears on refresh. Cancelled or failed runs cannot replace it.
