@@ -64,3 +64,17 @@ SDK browser tests require a capability marker, so fallback output cannot satisfy
 conformance. Pins and package acceptance fences remain unchanged. The additional
 compatibility fix passed independent quality review. Final fresh CI is required
 before merge; no main merge freeze or background schedule is used.
+
+## CI follow-up
+
+Fresh head b558fa51 passed the framework conformance checks and all other affected
+projects, including the 520 .NET tests, but www's new main-branch diagram audit
+startup test exceeded Vitest's default five-second deadline. Its real subprocess
+already had a fifteen-second bound. Reproduced the failure with a temporary
+preloader delaying only actual audit-child startup by six seconds. Kept that
+process bound and all report/redaction assertions unchanged; the two process
+tests now derive a twenty-second outer deadline, including cleanup reserve.
+Both delayed-start cases pass and independent quality review found no issues.
+Full www build, all 2,307 tests and lint passed. Existing Next filesystem-tracing
+and API-reference/tooling warnings remain. Fresh required CI is the remaining
+integration gate.
