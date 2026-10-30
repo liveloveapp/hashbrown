@@ -236,6 +236,7 @@ export async function verifyRecipeWorkbench(options: {
       await expect(root.locator('.wb-inspector [data-captured]')).toContainText(
         'https://hashbrown.dev',
       );
+      await showInspectorMode(root, 'top');
       expect(page.url()).toBe(url);
       await hold();
       await revision(0);
@@ -309,6 +310,7 @@ export async function verifyRecipeWorkbench(options: {
         selected: string[];
         confidence: number;
       };
+      await showInspectorMode(root, 'top');
       expect(detail.confidence).toBe(firstConfidence);
       expect(detail.selected).toEqual(firstManualChoice ? [] : ['summary']);
       if (firstManualChoice) {
@@ -391,6 +393,7 @@ export async function verifyRecipeWorkbench(options: {
         selected: string[];
         confidence: number;
       };
+      await showInspectorMode(root, 'top');
       expect(detail.confidence).toBe(secondChoiceConfidence);
       expect(detail.selected).toEqual(
         lowConfidenceSecondChoice ? [] : ['steps'],
@@ -560,6 +563,7 @@ export async function verifyRecipeWorkbench(options: {
           selected: string[];
           confidence: number;
         };
+        await showInspectorMode(root, 'top');
         expect(capturedSelection.selected).toEqual(
           lowConfidenceSecondChoice ? [] : ['steps'],
         );
@@ -605,6 +609,7 @@ export async function verifyRecipeWorkbench(options: {
       await expect(root.locator('.wb-inspector [data-captured]')).toContainText(
         'https://hashbrown.dev',
       );
+      await showInspectorMode(root, 'top');
       expect(requestCount()).toBe(beforeCitation);
       expect(httpRequests).toBe(beforeReplayHTTP);
       await hold();
@@ -705,6 +710,7 @@ export async function verifyRecipeWorkbench(options: {
             await expect(
               root.locator('.wb-inspector [data-captured]'),
             ).toContainText('"outcome": "error"');
+            await showInspectorMode(root, 'top');
             if (outcome === 'error') {
               options.outcome('success');
               await root

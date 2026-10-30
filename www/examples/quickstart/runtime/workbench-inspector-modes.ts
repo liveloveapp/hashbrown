@@ -60,10 +60,15 @@ export function workbenchInspectorModes(input: {
   top: Section;
   bottom: Section;
   raw: unknown;
+  /** True when the sections come from a lesson recipe, whose own data must stay visible. */
+  recipe?: boolean;
 }): readonly WorkbenchInspectorMode[] {
-  const { tab, format, frame, application, top, bottom, raw } = input;
+  const { tab, format, frame, application, top, bottom, raw, recipe } = input;
   const hasJson =
-    !!frame?.json && format !== 'decision' && format !== 'structured';
+    !!frame?.json &&
+    !recipe &&
+    format !== 'decision' &&
+    format !== 'structured';
 
   if (hasJson && frame && tab === 'ui') {
     return [

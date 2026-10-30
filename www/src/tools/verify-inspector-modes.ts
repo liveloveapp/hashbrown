@@ -1,46 +1,70 @@
 import type { Locator } from '@playwright/test';
 
-const modeIds = {
-  top: ['top', 'schema', 'raw'],
-  bottom: ['bottom', 'resolved'],
-  raw: ['raw'],
-  tree: ['tree'],
-} as const;
-
 /**
- * Chooses a mode in the inspector panel's toggle, as a reader would.
- * `top` and `bottom` name the two sections a tab used to show side by side.
+ * Chooses a mode in the inspector panel's toggle by its explicit mode id,
+ * as a reader would. The ids depend on the tab: `top`, `bottom` and `raw` for
+ * most tabs; `tree`, `json` and `raw` on State; `schema`, `raw`, `parsed` and
+ * `resolved` on UI; `raw`, `parsed` and `resolved` on JSON.
  *
  * @param root - The visible workbench shell.
- * @param mode - The section or mode to show.
+ * @param id - The mode id to show.
  */
 export async function showInspectorMode(
   root: Locator,
-  mode: keyof typeof modeIds,
+  id: string,
 ): Promise<void> {
-  await root
-    .locator(
-      modeIds[mode]
-        .map((id) => `.wb-inspector [role="radio"][data-mode="${id}"]`)
-        .join(', '),
-    )
-    .first()
-    .click();
+  await root.locator(`.wb-inspector [role="radio"][data-mode="${id}"]`).click();
 }
 
 /**
- * Chooses a section of the inspector panel and reads its code block as JSON.
+ * Chooses a mode and reads its code block as JSON.
  *
  * @param root - The visible workbench shell.
- * @param mode - The section or mode to show.
+ * @param id - The mode id to show.
  * @returns The parsed value shown in the panel.
  */
 export async function readInspectorJson(
   root: Locator,
-  mode: keyof typeof modeIds,
+  id: string,
 ): Promise<ReturnType<typeof JSON.parse>> {
-  await showInspectorMode(root, mode);
+  await showInspectorMode(root, id);
   return JSON.parse(
     await root.locator('.wb-inspector .wb-inspection pre').innerText(),
   );
+}
+
+/**
+ * Reads the application state shown on the State tab, as JSON text. The Tree
+ * mode adds the selected moment under `moment`; it is left out so the text only
+ * changes when the application state does.
+ *
+ * @param root - The visible workbench shell.
+ * @returns The application state without the selected moment.
+ */
+export async function readApplicationState(root: Locator): Promise<string> {
+  const tree = await readInspectorJson(root, 'tree');
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(tree).filter(([k]) => k !== 'moment')),
+    null,
+    2,
+  );
+}
+
+/**
+ * Reads what the selected tab used to show in its first section: the
+ * application state on State (without the selected moment), the `top` mode
+ * elsewhere.
+ *
+ * @param root - The visible workbench shell.
+ * @returns The parsed value.
+ */
+export async function readFirstSection(
+  root: Locator,
+): Promise<ReturnType<typeof JSON.parse>> {
+  const selected = await root
+    .locator('.wb-inspector [role="tab"][aria-selected="true"]')
+    .innerText();
+  return selected === 'State'
+    ? JSON.parse(await readApplicationState(root))
+    : readInspectorJson(root, 'top');
 }

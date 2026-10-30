@@ -6,6 +6,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { resolve } from 'node:path';
+import { readApplicationState } from './verify-inspector-modes';
 import { workbenchLocalFixtureScript } from './workbench-local-fixture';
 import {
   expectNoHorizontalOverflow,
@@ -55,8 +56,7 @@ export async function verifyLocalWorkbench(options: {
     const tab = async (name: string) => {
       await root.getByRole('tab', { name, exact: true }).click();
     };
-    const inspection = () =>
-      root.locator('.wb-inspection pre').innerText().then(JSON.parse);
+    const inspection = async () => JSON.parse(await readApplicationState(root));
     const metrics = () =>
       page.evaluate(() => {
         const state = globalThis as unknown as Record<

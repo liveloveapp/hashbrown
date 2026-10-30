@@ -378,7 +378,9 @@ export async function verifyWorkflowWorkbench(options: {
     expect(replayEvidence.interpreted.outcome).toBe(
       lesson === 'interrupts' ? 'paused' : 'complete',
     );
-    await showInspectorMode(root, 'bottom');
+    // State has Tree/JSON/Raw only; its Tree holds both old sections.
+    const evidenceMode = lesson === 'shared-state' ? 'tree' : 'bottom';
+    await showInspectorMode(root, evidenceMode);
     const interpretedBeforeRaw = await inspection.locator('pre').innerText();
     await showInspectorMode(root, 'raw');
     await expect(
@@ -410,11 +412,10 @@ export async function verifyWorkflowWorkbench(options: {
         recoveryRequired: rawCapture.sdk.recoveryRequired ?? false,
       });
     }
-    await showInspectorMode(root, 'bottom');
+    await showInspectorMode(root, evidenceMode);
     expect(await inspection.locator('pre').innerText()).toBe(
       interpretedBeforeRaw,
     );
-    await showInspectorMode(root, 'top');
     await hold();
     await root.getByRole('slider', { name: 'Seek captured event' }).fill('0');
     await expect(root.locator('.wb-workflow-reply')).toHaveCount(0);

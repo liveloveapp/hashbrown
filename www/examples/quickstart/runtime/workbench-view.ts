@@ -1602,6 +1602,7 @@ export function mountWorkbench(
       top: { heading: topHeading, value },
       bottom: { heading: bottomHeading, value: bottomValue },
       raw: rawValue,
+      recipe: !!recipeView,
     });
     const remembered = modeMemory.get(tab);
     const modeId = modes.some((mode) => mode.id === remembered)

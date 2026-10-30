@@ -159,3 +159,16 @@ test('drops trailing connector words from the two-word mode labels', () => {
     'Raw',
   ]);
 });
+
+test('keeps recipe sections instead of the JSON modes when a lesson recipe supplies them', () => {
+  const recipe = { ...sections, recipe: true };
+
+  const modes = workbenchInspectorModes({
+    ...recipe,
+    tab: 'ui',
+    frame,
+  });
+
+  expect(modes.map((mode) => mode.id)).toEqual(['top', 'bottom', 'raw']);
+  expect(modes[1].value).toBe('bottom-value');
+});
