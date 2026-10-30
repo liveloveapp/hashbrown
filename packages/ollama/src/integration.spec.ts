@@ -2,6 +2,9 @@ import { resolve } from 'node:path';
 import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
+  GENERATIVE_UI_PROMPT,
+  generativeUiResponseSchema,
+  parseGenerativeUi,
   runProviderAGUIWithAimock,
   startRecordedAimock,
 } from '@hashbrownai/testing/aimock';
@@ -430,6 +433,35 @@ test(
     expect(JSON.parse(textContent(events))).toEqual({
       text: expect.any(String),
       ok: expect.any(Boolean),
+    });
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Ollama renders generative UI from the Hashbrown UI schema',
+  async () => {
+    const input = recordedInput(GENERATIVE_UI_PROMPT);
+    const responseSchema = generativeUiResponseSchema();
+    input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+    let captured: OllamaStreamRequest | undefined;
+
+    const events = await withRecording((run) =>
+      run(input, {
+        transformRequestOptions: (options) => {
+          captured = options;
+          return options;
+        },
+      }),
+    );
+
+    expect(captured?.format).toEqual(responseSchema);
+    expectCanonicalTextRun(events, input);
+    expect(parseGenerativeUi(textContent(events))).toEqual({
+      title: expect.any(String),
+      metrics: expect.arrayContaining([
+        { label: expect.any(String), value: expect.any(Number) },
+      ]),
     });
   },
   RECORDED_TIMEOUT_MS,

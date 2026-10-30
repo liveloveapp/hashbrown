@@ -8,6 +8,9 @@ import {
 } from '@google/genai';
 import {
   type AimockHandle,
+  GENERATIVE_UI_PROMPT,
+  generativeUiResponseSchema,
+  parseGenerativeUi,
   runProviderAGUIWithAimock,
   startRecordedAimock,
 } from '@hashbrownai/testing/aimock';
@@ -662,6 +665,40 @@ for (const target of RECORDED_MODELS) {
       expect(JSON.parse(streamedContent(events))).toEqual({
         text: expect.any(String),
         ok: expect.any(Boolean),
+      });
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+
+  test(
+    `Google renders generative UI from the Hashbrown UI schema${target.suffix}`,
+    async () => {
+      const input = baseInput(GENERATIVE_UI_PROMPT);
+      const responseSchema = generativeUiResponseSchema();
+      input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+      let capturedConfig: GenerateContentParameters['config'];
+
+      const events = await withRecording(target, (run) =>
+        run(input, {
+          transformRequestOptions: (options) => {
+            capturedConfig = options.config;
+            return options;
+          },
+        }),
+      );
+
+      expect(capturedConfig).toEqual(
+        expect.objectContaining({
+          responseMimeType: 'application/json',
+          responseJsonSchema: responseSchema,
+        }),
+      );
+      expectCanonicalTextRun(events, input);
+      expect(parseGenerativeUi(streamedContent(events))).toEqual({
+        title: expect.any(String),
+        metrics: expect.arrayContaining([
+          { label: expect.any(String), value: expect.any(Number) },
+        ]),
       });
     },
     RECORDED_TIMEOUT_MS,
