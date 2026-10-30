@@ -223,7 +223,6 @@ function TabbedPanel({
   const sourceRequested = useRef(false);
   const client = useRef<EmbedClient | null>(null);
   const isLoaded = useRef(false);
-  const pendingMoment = useRef<string | null>(null);
   const lastMoment = useRef<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
@@ -283,8 +282,6 @@ function TabbedPanel({
       ready: (message) => {
         clearTimeout(timer);
         isLoaded.current = false;
-        // A reload restarts the replay: seek back to where the reader was.
-        pendingMoment.current = lastMoment.current;
         const current = ++generation;
         if (!readyFor(message, 'replay', lesson, sdk)) return fail();
         capture ??= fetchCapture();
@@ -302,9 +299,9 @@ function TabbedPanel({
       loaded: () => {
         clearTimeout(timer);
         isLoaded.current = true;
-        // A See it run that came before the replay loaded seeks now.
-        const moment = pendingMoment.current;
-        pendingMoment.current = null;
+        // Every load starts the replay over, so seek back to the last See it
+        // run, including one that came before the replay loaded.
+        const moment = lastMoment.current;
         if (moment) {
           embed.post({
             type: 'hb-workbench:seek',
@@ -351,14 +348,13 @@ function TabbedPanel({
         if (!hasCapture || failed) return;
         lastMoment.current = detail.moment;
         setNear(true);
+        // Before the replay loads, `loaded` seeks to it instead.
         if (isLoaded.current && client.current) {
           client.current.post({
             type: 'hb-workbench:seek',
             version: 1,
             milestone: detail.moment,
           });
-        } else {
-          pendingMoment.current = detail.moment;
         }
       },
       [hasCapture, failed],
