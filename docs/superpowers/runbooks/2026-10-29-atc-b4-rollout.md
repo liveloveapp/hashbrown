@@ -1,6 +1,10 @@
 # ATC B4 rollout preparation and operating contract
 
-Status: Preparation only. B4 remains disabled in production. No production database, secret, domain or deployment selection has been changed by this work. This runbook is not an enablement approval.
+Status update, 2026-10-30: B4 is manually enabled in production under a later explicit operator instruction to skip hardening and put it in production. See the [production cutover record](../reports/2026-10-30-atc-b4-production-cutover.md) for exact identities, zero-model smoke checks, dedicated production storage, rollback and the CI packaging follow-up. Readiness gaps and the paid-check accounting hold remain unresolved.
+
+## Historical preparation contract
+
+The sections below preserve the pre-cutover preparation status and operating requirements. Their disabled-production statements describe that earlier phase; the linked cutover record is the current deployment authority.
 
 ## Qualified source and artifacts
 
