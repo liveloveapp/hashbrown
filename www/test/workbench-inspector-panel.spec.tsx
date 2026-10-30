@@ -212,3 +212,43 @@ test('the State tab shows a tree whose closed branches survive a new event', () 
   expect(JSON.parse(tree?.dataset.json ?? 'null')).toHaveProperty('moment');
   shell.dispose();
 });
+
+test('highlights the application field that changed from the previous event', () => {
+  const { host, store, shell } = mountPanel(generative);
+  streamPlan(store);
+  clickTab(host, 'State');
+
+  const accepted = store.accept({
+    title: 'Trusted plan',
+    steps: ['Outline', 'Record'],
+  });
+
+  const frames = store.getSnapshot().events;
+  const tree = host.querySelector('[data-captured] [role=tree]');
+  const changed = [...(tree?.querySelectorAll('[data-changed]') ?? [])].map(
+    (node) => (node as HTMLElement).dataset.path,
+  );
+  expect(accepted).toBe(true);
+  expect(frames.at(-1)?.application.revision).not.toBe(
+    frames.at(-2)?.application.revision,
+  );
+  expect(changed).toContain('/revision');
+  shell.dispose();
+});
+
+test('highlights nothing on the first State render of a new conversation', () => {
+  const { host, store, shell } = mountPanel(generative);
+  streamPlan(store);
+  store.accept({ title: 'Trusted plan', steps: ['Outline', 'Record'] });
+
+  store.clear();
+  streamPlan(store);
+  store.seek(0);
+  clickTab(host, 'State');
+
+  expect(host.querySelector('[data-captured] [role=tree]')).not.toBeNull();
+  expect(host.querySelectorAll('[data-captured] [data-changed]')).toHaveLength(
+    0,
+  );
+  shell.dispose();
+});

@@ -700,7 +700,6 @@ export function mountWorkbench(
   const modeMemory = createInspectorModeMemory();
   // Long-lived so branches the reader opened or closed survive re-renders and scrubbing.
   const stateTree = createWorkbenchTree({ label: 'Application state' });
-  const treeValues = new Map<number, unknown>();
   const modeControl = createWorkbenchSegmented({
     label: 'Inspector view',
     onChange: (id) => {
@@ -1646,11 +1645,11 @@ export function mountWorkbench(
     if (!onRequests)
       if (tab === 'State' && mode.id === 'tree') {
         const previousFrame = snapshot.events[selectedIndex - 1];
-        const previousTree = recipeView
-          ? treeValues.get(selectedIndex - 1)
-          : previousFrame && mode.value && typeof mode.value === 'object'
+        // Recipe lessons derive state per render, not per frame: no highlight.
+        const previousTree =
+          !recipeView && previousFrame
             ? {
-                ...mode.value,
+                ...previousFrame.application,
                 moment: {
                   turn: previousFrame.turn,
                   status: previousFrame.status ?? snapshot.status,
@@ -1662,7 +1661,6 @@ export function mountWorkbench(
                 },
               }
             : undefined;
-        treeValues.set(selectedIndex, mode.value);
         stateTree.update(mode.value, previousTree);
         // Keep the same node attached so focus and scroll survive a render.
         [...inspection.childNodes]
