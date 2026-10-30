@@ -12,6 +12,35 @@ export const IDENTITY = Object.freeze({
   sdk: '10.0.402',
 });
 
+const SDK_VERSION = /^(\d+)\.(\d+)\.(\d)(\d\d)$/;
+
+/**
+ * Accepts the pinned SDK or a later patch in its feature band, the same
+ * versions `rollForward: latestPatch` resolves: 10.0.402 admits 10.0.4xx
+ * from 402 up, never another band, minor, major or a prerelease.
+ */
+export function acceptsSdk(version, minimum) {
+  const actual = SDK_VERSION.exec(version);
+  const pinned = SDK_VERSION.exec(minimum);
+  return Boolean(
+    actual &&
+    pinned &&
+    actual[1] === pinned[1] &&
+    actual[2] === pinned[2] &&
+    actual[3] === pinned[3] &&
+    Number(actual[4]) >= Number(pinned[4]),
+  );
+}
+
+/** The global.json that pins `version` and rolls forward to its latest patch. */
+export function sdkPolicy(version) {
+  return JSON.stringify(
+    { sdk: { version, rollForward: 'latestPatch', allowPrerelease: false } },
+    null,
+    2,
+  );
+}
+
 /** Tests a normalized path boundary without accepting sibling prefixes. */
 export function within(root, file) {
   return file === root || file.startsWith(root + path.sep);

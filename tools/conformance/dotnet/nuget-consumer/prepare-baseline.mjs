@@ -9,6 +9,8 @@ import {
   hashFile,
   listFiles,
   validateAncestors,
+  acceptsSdk,
+  sdkPolicy,
 } from './verify.mjs';
 import { run } from './prepare.mjs';
 
@@ -94,6 +96,10 @@ export async function prepareBaseline(metadata, archivedDirectory) {
   await fs.rm(path.join(root, 'extracted'), { recursive: true });
   await fs.rm(path.join(root, 'original.tar'));
   const source = path.join(root, 'source');
+  // The historical global.json disables roll-forward. Its original bytes were
+  // verified above; build it under the current pin's latestPatch policy.
+  const policy = sdkPolicy(manifest.sdk);
+  await fs.writeFile(path.join(source, 'global.json'), policy);
   const sdk = (
     await run(
       'dotnet',
@@ -103,7 +109,7 @@ export async function prepareBaseline(metadata, archivedDirectory) {
       path.join(root, 'logs/sdk.log'),
     )
   ).trim();
-  assert.equal(sdk, manifest.sdk, 'Historical SDK pin differs');
+  assert.ok(acceptsSdk(sdk, manifest.sdk), 'Historical SDK pin differs');
   for (const dependency of metadata.closure) {
     const name = `${dependency.id.toLowerCase()}.${dependency.version.toLowerCase()}.nupkg`;
     const file = 'dependency-feed/' + name;
@@ -141,11 +147,17 @@ export async function prepareBaseline(metadata, archivedDirectory) {
     );
   }
   for (const [file, hash] of Object.entries(manifest.files))
-    assert.equal(
-      await hashFile(path.join(source, file)),
-      hash,
-      'Historical source changed while building',
-    );
+    if (file !== 'global.json')
+      assert.equal(
+        await hashFile(path.join(source, file)),
+        hash,
+        'Historical source changed while building',
+      );
+  assert.equal(
+    await fs.readFile(path.join(source, 'global.json'), 'utf8'),
+    policy,
+    'Historical source changed while building',
+  );
   const observer = path.join(root, 'observer');
   for (const file of [
     'Hashbrown.Conformance.csproj',
