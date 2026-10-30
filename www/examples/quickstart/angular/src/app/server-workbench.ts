@@ -21,6 +21,7 @@ import {
 import { getWorkbenchLesson } from '../../../runtime/workbench-lessons';
 import {
   createWorkbenchServerHistory,
+  getWorkbenchServerAccess,
   type WorkbenchServerLesson,
 } from '../../../runtime/workbench-server-history';
 import { mountWorkbenchServerControls } from '../../../runtime/workbench-server-controls';
@@ -64,6 +65,7 @@ export class ServerWorkbenchSession {
   readonly controller = createWorkbenchServerHistory({
     store: this.store,
     lesson: this.lesson.id as WorkbenchServerLesson,
+    access: getWorkbenchServerAccess(window.location, this.lesson),
     observation: () => this.observation(),
     active: () => this.active(),
     replace: (id, messages) =>
@@ -138,10 +140,13 @@ export class ServerWorkbenchSession {
       recoveryRequired: this.chat.recovery().required,
     };
   }
-  /** Initializes only after the actual resource has a mounted observation. */
+  /**
+   * Initializes only after the actual resource has a mounted observation.
+   * Replays and hosted loopback lessons never ask the server for a session.
+   */
   mount(): void {
     observeHistory(this.store, this.observation());
-    void this.controller.initialize();
+    if (this.controller.access === 'session') void this.controller.initialize();
   }
   /** Sends only after server identity and actual SDK replacement are ready. */
   send(content: string): void {
@@ -237,6 +242,7 @@ export class ServerWorkbenchConversation implements AfterViewInit {
       mounted.live,
       this.session.store,
       this.session.controller,
+      'Angular',
     );
     mounted.live.append(this.live().nativeElement);
     this.mounted.set(mounted);

@@ -1502,10 +1502,10 @@ try {
   // A cross-origin docs page drives a replay embed; fixtures only.
   if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
     report.push(
-      await verifyEmbedWorkbench({
+      ...(await verifyEmbedWorkbench({
         browser,
         origin: `http://127.0.0.1:${address.port}`,
-      }),
+      })),
     );
     saveCheckpoint();
   }

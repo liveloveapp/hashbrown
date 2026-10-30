@@ -10,7 +10,6 @@ import { WorkbenchPanel } from '../src/components/workbench/WorkbenchPanel';
 import { createEmbedClient } from '../src/components/workbench/embed-client';
 import {
   assertWorkbenchLesson,
-  LOOPBACK_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
   workbenchLiveAvailability,
   workbenchMediaId,
@@ -692,7 +691,7 @@ test('every lesson is either live on the hosted workbench or links to a local ru
   }));
 
   for (const { lesson, react } of availability) {
-    const live = hosted.has(lesson.id) && !LOOPBACK_LESSONS.includes(lesson.id);
+    const live = hosted.has(lesson.id) && lesson.host !== 'loopback';
     expect(react.live, lesson.id).toBe(live);
     if (react.live) continue;
     expect(react.href, lesson.id).toBe(
@@ -706,6 +705,11 @@ test('every lesson is either live on the hosted workbench or links to a local ru
     href: '/docs/react/platform/b4run',
   });
   expect(workbenchLiveAvailability('tools', 'react')).toEqual({ live: true });
+  expect(
+    workbenchLessons
+      .filter((lesson) => lesson.host === 'loopback')
+      .map((lesson) => lesson.id),
+  ).toEqual(['server-threads', 'public-endpoint']);
 });
 
 test('narrow viewports get the video and an open link', () => {
@@ -810,7 +814,6 @@ test('workbenchMediaId maps generative-ui and structured-output to their media n
   );
   expect(workbenchMediaName('tools')).toBe('tools');
   expect(ids.filter((id) => !Object.hasOwn(DOCS_DEMOS, id))).toEqual([]);
-  expect(LOOPBACK_LESSONS).toEqual(['server-threads', 'public-endpoint']);
 });
 
 test.each([
