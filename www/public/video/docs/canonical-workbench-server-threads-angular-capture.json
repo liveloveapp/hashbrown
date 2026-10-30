@@ -13149,5 +13149,14 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "text-action-0", "index": 1, "label": "Text action" },
+    { "id": "text-load-0", "index": 8, "label": "Text load" },
+    { "id": "prompt-1", "index": 14, "label": "Prompt" },
+    { "id": "request-1", "index": 16, "label": "Request" },
+    { "id": "text-load-1", "index": 17, "label": "Text load" },
+    { "id": "streaming-text-1", "index": 24, "label": "Streaming text" },
+    { "id": "complete-1", "index": 69, "label": "Complete" }
   ]
 }

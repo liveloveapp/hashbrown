@@ -57,8 +57,6 @@ export interface WorkbenchPanelClientProps {
    * without it. The highlighted files load when the tab first opens.
    */
   readonly source?: WorkbenchSourceData;
-  /** Milestones the page's prose refers to (unused until moments land). */
-  readonly moments?: readonly string[];
 }
 
 type Tab = 'replay' | 'live' | 'source';
@@ -150,7 +148,7 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
   );
   if (narrow) {
     return (
-      <NarrowPanel>
+      <NarrowPanel title={props.title}>
         {props.fallback}
         {openLink}
       </NarrowPanel>
@@ -160,7 +158,13 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
 }
 
 // The video fallback has nothing to seek: See it run only scrolls and marks.
-function NarrowPanel({ children }: { children: ReactNode }) {
+function NarrowPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   const panel = useRef<HTMLDivElement>(null);
   useSeeItRun(
     useCallback((detail) => {
@@ -172,6 +176,8 @@ function NarrowPanel({ children }: { children: ReactNode }) {
     <div
       className={styles.panel}
       data-component="workbench-panel"
+      role="region"
+      aria-label={`${title} workbench`}
       tabIndex={-1}
       ref={panel}
     >
@@ -217,7 +223,6 @@ function TabbedPanel({
   const sourceRequested = useRef(false);
   const client = useRef<EmbedClient | null>(null);
   const isLoaded = useRef(false);
-  const pendingMoment = useRef<string | null>(null);
   const lastMoment = useRef<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
@@ -240,7 +245,7 @@ function TabbedPanel({
 
   // Fetch the capture after the frame is ready and load it. Fall back to the
   // video on no ready, a ready for another embed, a failed or hung fetch, no
-  // answer to load, or rejected.
+  // answer to load, or a rejected load.
   useEffect(() => {
     if (!frame) return;
     let disposed = false;
@@ -267,18 +272,21 @@ function TabbedPanel({
         .finally(() => clearTimeout(fetchTimer));
     };
     let capture: Promise<WorkbenchCapture> | null = null;
+    // Each ready starts a generation; only the latest one posts load, so a
+    // second ready while the capture downloads cannot load twice and undo a
+    // seek made after the first load.
+    let generation = 0;
     isLoaded.current = false;
     const embed = createEmbedClient(frame, origin, {
       // StrictMode and reloads can say ready twice; load again each time.
       ready: (message) => {
         clearTimeout(timer);
         isLoaded.current = false;
-        // A reload restarts the replay: seek back to where the reader was.
-        pendingMoment.current = lastMoment.current;
+        const current = ++generation;
         if (!readyFor(message, 'replay', lesson, sdk)) return fail();
         capture ??= fetchCapture();
         capture.then((value) => {
-          if (disposed) return;
+          if (disposed || current !== generation) return;
           embed.post({
             type: 'hb-workbench:load',
             version: 1,
@@ -291,9 +299,9 @@ function TabbedPanel({
       loaded: () => {
         clearTimeout(timer);
         isLoaded.current = true;
-        // A See it run that came before the replay loaded seeks now.
-        const moment = pendingMoment.current;
-        pendingMoment.current = null;
+        // Every load starts the replay over, so seek back to the last See it
+        // run, including one that came before the replay loaded.
+        const moment = lastMoment.current;
         if (moment) {
           embed.post({
             type: 'hb-workbench:seek',
@@ -302,7 +310,11 @@ function TabbedPanel({
           });
         }
       },
-      rejected: fail,
+      // A refused seek leaves the loaded replay where it was; only a
+      // refused load falls back to the video.
+      rejected: (message) => {
+        if (message.reason !== 'milestone') fail();
+      },
       state: () => undefined,
     });
     client.current = embed;
@@ -336,14 +348,13 @@ function TabbedPanel({
         if (!hasCapture || failed) return;
         lastMoment.current = detail.moment;
         setNear(true);
+        // Before the replay loads, `loaded` seeks to it instead.
         if (isLoaded.current && client.current) {
           client.current.post({
             type: 'hb-workbench:seek',
             version: 1,
             milestone: detail.moment,
           });
-        } else {
-          pendingMoment.current = detail.moment;
         }
       },
       [hasCapture, failed],
@@ -497,8 +508,17 @@ function TabbedPanel({
       <div {...panelProps('live')}>
         {!availability.live ? (
           <p className={styles.loopback}>
-            This lesson runs only on a local server.{' '}
-            <a href={availability.href}>Run the example locally</a>.
+            {availability.reason === 'production-reference' ? (
+              <>
+                This lesson needs the B4.run Postgres host.{' '}
+                <a href={availability.href}>Read the B4.run reference</a>.
+              </>
+            ) : (
+              <>
+                This lesson runs only on a local server.{' '}
+                <a href={availability.href}>Run the example locally</a>.
+              </>
+            )}
           </p>
         ) : liveFailed ? (
           <p className={styles.loopback}>
@@ -535,7 +555,16 @@ function TabbedPanel({
         )}
       </div>
       {source && (
-        <div {...panelProps('source')}>
+        <div
+          {...panelProps('source')}
+          // Hold the Replay frame's box while loading, so opening Source
+          // never shrinks the panel.
+          style={
+            sourceLoad.status === 'loading'
+              ? { aspectRatio: FRAME_RATIO }
+              : undefined
+          }
+        >
           <WorkbenchSourceView
             source={source}
             load={sourceLoad}

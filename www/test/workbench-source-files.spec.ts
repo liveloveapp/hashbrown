@@ -4,6 +4,12 @@ import { expect, test, vi } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import { parseMarkdown } from '../src/lib/markdown';
 import {
+  createWorkbenchCapture,
+  withWorkbenchCaptureMilestones,
+} from '../examples/quickstart/runtime/workbench-capture';
+import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import {
+  assertCaptureMoments,
   buildWorkbenchSource,
   WORKBENCH_LESSON_FILES,
   workbenchPageData,
@@ -210,23 +216,27 @@ const pageWithMoment = (
 
 test('a snippet moment is collected when its lesson capture has the milestone', async () => {
   const parsed = await parseMarkdown(
-    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-result-1'),
+    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-readcontext-1'),
   );
 
   const data = workbenchPageData(parsed.tree, 'react');
 
-  expect(data?.moments).toEqual(['tool-result-1']);
+  expect(data?.moments).toEqual(['tool-readcontext-1']);
 });
 
 test('a snippet moment missing from the lesson capture fails with its header and moment', async () => {
   const parsed = await parseMarkdown(
-    pageWithMoment('react/src/Workbench.tsx', [299, 301], 'tool-result-99'),
+    pageWithMoment(
+      'react/src/Workbench.tsx',
+      [299, 301],
+      'tool-readcontext-99',
+    ),
   );
 
   const build = () => workbenchPageData(parsed.tree, 'react');
 
   expect(build).toThrow(
-    'react/src/Workbench.tsx: moment "tool-result-99" is not a milestone in the tools lesson\'s react capture',
+    'react/src/Workbench.tsx: moment "tool-readcontext-99" is not a milestone in the tools lesson\'s react capture',
   );
 });
 
@@ -264,20 +274,20 @@ test('the Tools pages link readContext to the tool result', async () => {
   );
 
   for (const { body, data: page } of data) {
-    expect(page?.moments).toContain('tool-result-1');
-    expect(body).toMatch(/moment="tool-result-1"/);
+    expect(page?.moments).toContain('tool-readcontext-1');
+    expect(body).toMatch(/moment="tool-readcontext-1"/);
   }
 });
 
 test('a moment on a page without a workbench fails with its header and moment', async () => {
   const parsed = await parseMarkdown(
-    '<hb-code-example header="react/src/Workbench.tsx" moment="tool-result-1">\n\n```ts\ncode\n```\n\n</hb-code-example>',
+    '<hb-code-example header="react/src/Workbench.tsx" moment="tool-readcontext-1">\n\n```ts\ncode\n```\n\n</hb-code-example>',
   );
 
   const build = () => workbenchPageData(parsed.tree, 'react');
 
   expect(build).toThrow(
-    'react/src/Workbench.tsx: moment "tool-result-1" needs an hb-workbench lesson on the page',
+    'react/src/Workbench.tsx: moment "tool-readcontext-1" needs an hb-workbench lesson on the page',
   );
 });
 
@@ -286,7 +296,7 @@ test('a moment on a snippet outside the workbench files fails with its header an
     [
       '<hb-workbench lesson="tools"></hb-workbench>',
       '',
-      '<hb-code-example header="src/app.ts" moment="tool-result-1">',
+      '<hb-code-example header="src/app.ts" moment="tool-readcontext-1">',
       '',
       '```ts',
       'code',
@@ -299,6 +309,99 @@ test('a moment on a snippet outside the workbench files fails with its header an
   const build = () => workbenchPageData(parsed.tree, 'react');
 
   expect(build).toThrow(
-    'src/app.ts: moment "tool-result-1" is only allowed on workbench snippets',
+    'src/app.ts: moment "tool-readcontext-1" is only allowed on workbench snippets',
   );
+});
+
+function toolsCapture() {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: { revision: 0 } });
+  store.settle('complete', 'stop');
+  return createWorkbenchCapture(store.getSnapshot(), {
+    lesson: 'tools',
+    framework: 'react',
+    recordedAt: '2026-10-28T00:00:00.000Z',
+  });
+}
+
+const momentAt = (moment: string) => [
+  { header: 'react/src/Workbench.tsx', moment },
+];
+
+test('moments resolve against the recorded milestones, not computed ones', () => {
+  const capture = {
+    ...withWorkbenchCaptureMilestones(toolsCapture()),
+    milestones: [{ id: 'asked-1', index: 0, label: 'Asked' }],
+  };
+
+  const recorded = () =>
+    assertCaptureMoments(capture, 'the tools lesson', momentAt('asked-1'));
+  const computed = () =>
+    assertCaptureMoments(capture, 'the tools lesson', momentAt('prompt-1'));
+
+  expect(recorded).not.toThrow();
+  expect(computed).toThrow(
+    'react/src/Workbench.tsx: moment "prompt-1" is not a milestone in the tools lesson (asked-1)',
+  );
+});
+
+test('a capture without recorded milestones fails the moments check', () => {
+  const capture = toolsCapture();
+
+  const check = () =>
+    assertCaptureMoments(capture, 'the tools lesson', momentAt('prompt-1'));
+
+  expect(check).toThrow(
+    'the tools lesson has no recorded milestones; restamp its capture',
+  );
+});
+
+test('a tool moment must point at a recorded tool event', () => {
+  const capture = {
+    ...withWorkbenchCaptureMilestones(toolsCapture()),
+    milestones: [
+      { id: 'tool-readcontext-1', index: 1, label: 'Tool readContext' },
+      { id: 'tool-shifted-1', index: 2, label: 'Tool shifted' },
+    ],
+  };
+
+  const tool = () =>
+    assertCaptureMoments(
+      capture,
+      'the tools lesson',
+      momentAt('tool-readcontext-1'),
+    );
+  const shifted = () =>
+    assertCaptureMoments(
+      capture,
+      'the tools lesson',
+      momentAt('tool-shifted-1'),
+    );
+
+  expect(tool).not.toThrow();
+  expect(shifted).toThrow(
+    'react/src/Workbench.tsx: moment "tool-shifted-1" points at a complete event in the tools lesson, not a tool',
+  );
+});
+
+test('every published capture records its milestones', () => {
+  const captures = readdirSync(
+    resolve(import.meta.dirname, '../public/video/docs'),
+  ).filter((name) => name.endsWith('-capture.json'));
+
+  const missing = captures.filter(
+    (name) =>
+      !Array.isArray(
+        JSON.parse(
+          readFileSync(
+            resolve(import.meta.dirname, '../public/video/docs', name),
+            'utf8',
+          ),
+        ).milestones,
+      ),
+  );
+
+  expect(captures.length).toBeGreaterThan(0);
+  expect(missing).toEqual([]);
 });

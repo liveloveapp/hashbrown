@@ -1,4 +1,9 @@
 import type { WorkbenchStore } from './workbench';
+import { getWorkbenchEmbedMode } from './workbench-embed';
+import {
+  isWorkbenchLoopbackHostname,
+  type WorkbenchLesson,
+} from './workbench-lessons';
 import {
   canMutateWorkbenchHistory,
   canSaveWorkbenchHistory,
@@ -43,6 +48,31 @@ export interface WorkbenchServerHistoryState {
   readonly busy: boolean;
   readonly error: string | null;
 }
+/**
+ * Whether a page may call the loopback-only server API: `session` may;
+ * `replay` (a docs replay embed) shows only its capture; `hosted` (a loopback
+ * lesson off a loopback host) would only get 403s.
+ */
+export type WorkbenchServerAccess = 'session' | 'replay' | 'hosted';
+
+/**
+ * Decides whether a page may call the loopback-only server API, using the
+ * same loopback hostnames the server accepts.
+ *
+ * @param location - The page location, such as `window.location`.
+ * @param lesson - The page's lesson.
+ */
+export function getWorkbenchServerAccess(
+  location: Pick<Location, 'hostname' | 'search'>,
+  lesson: Pick<WorkbenchLesson, 'host'>,
+): WorkbenchServerAccess {
+  if (getWorkbenchEmbedMode(location.search) === 'replay') return 'replay';
+  return lesson.host === 'loopback' &&
+    !isWorkbenchLoopbackHostname(location.hostname)
+    ? 'hosted'
+    : 'session';
+}
+
 /** Framework bindings replace real SDK identity and text together before send is enabled. */
 export interface WorkbenchServerHistoryOptions {
   readonly store: WorkbenchStore;
@@ -54,6 +84,8 @@ export interface WorkbenchServerHistoryOptions {
     messages: WorkbenchTextDocument['messages'],
   ) => void | Promise<void>;
   readonly fetch?: typeof fetch;
+  /** Only `session` (the default) sends server requests. */
+  readonly access?: WorkbenchServerAccess;
 }
 
 /** Owns explicit server operations, cancellation, optimistic versions and inert replay guards. */
@@ -77,9 +109,11 @@ export function createWorkbenchServerHistory(
   let pending: AbortController | null = null;
   const listeners = new Set<() => void>();
   const root = '/api/workbench/server';
+  const access = options.access ?? 'session';
   const mutable = () => {
     const sdk = normalizeWorkbenchHistoryObservation(options.observation());
     return (
+      access === 'session' &&
       !disposed &&
       options.active() &&
       !state.busy &&
@@ -196,6 +230,7 @@ export function createWorkbenchServerHistory(
   const threadPath = (id: string) =>
     `${root}/${options.lesson}/threads/${encodeURIComponent(id)}`;
   return {
+    access,
     state: () => structuredClone(state),
     subscribe(listener: () => void) {
       listeners.add(listener);

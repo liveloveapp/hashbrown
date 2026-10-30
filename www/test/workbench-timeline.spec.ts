@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest';
-import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import {
+  createWorkbenchStore,
+  type WorkbenchEvent,
+} from '../examples/quickstart/runtime/workbench';
 import {
   findWorkbenchMilestone,
   withWorkbenchMilestoneIds,
@@ -60,7 +63,7 @@ test('keeps tool results, acceptance and failed turns visible without hiding raw
 
   expect(milestones.map((item) => item.label)).toEqual([
     'Prompt',
-    'Tool result',
+    'Tool readContext',
     'Parsed output',
     'Complete',
     'Plan accepted',
@@ -186,10 +189,10 @@ test('milestones carry readable ids unique within a capture', () => {
   expect(ids).toEqual(
     expect.arrayContaining([
       'prompt-1',
-      'tool-result-1',
+      'tool-readcontext-1',
       'plan-accepted-1',
       'prompt-2',
-      'tool-result-2',
+      'tool-readcontext-2',
     ]),
   );
   expect(new Set(ids).size).toBe(ids.length);
@@ -218,4 +221,58 @@ test('findWorkbenchMilestone returns the milestone by id and null for unknown id
   expect(found?.label).toBe('Prompt');
   expect(found?.turn).toBe(2);
   expect(missing).toBeNull();
+});
+
+test('names tool milestones after the tool and falls back without a name', () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  store.record('tool', { name: 'readContext', result: { revision: 0 } });
+  store.record('tool', { result: { revision: 1 } });
+  store.record('tool', { name: 'readContext', result: { revision: 2 } });
+
+  const milestones = workbenchMilestones(store.getSnapshot().events);
+
+  expect(milestones.map((item) => item.id)).toEqual([
+    'prompt-1',
+    'tool-readcontext-1',
+    'tool-result-1',
+    'tool-readcontext-1-2',
+  ]);
+});
+
+function historyAction(
+  base: WorkbenchEvent,
+  turn: number,
+  action: string | null,
+): WorkbenchEvent {
+  return {
+    ...base,
+    kind: 'history-app',
+    turn,
+    history: { app: { action } },
+  } as unknown as WorkbenchEvent;
+}
+
+test('collapses repeated history actions to the first of each label per turn', () => {
+  const store = createWorkbenchStore();
+  store.send('Plan');
+  const prompt = store.getSnapshot().events[0];
+  const events = [
+    historyAction(prompt, 0, null),
+    historyAction(prompt, 0, null),
+    historyAction(prompt, 0, 'load'),
+    historyAction(prompt, 0, 'load'),
+    historyAction(prompt, 1, 'load'),
+    historyAction(prompt, 1, 'save'),
+    historyAction(prompt, 1, 'load'),
+  ];
+
+  const milestones = workbenchMilestones(events, 'history');
+
+  expect(milestones.map(({ id, index }) => ({ id, index }))).toEqual([
+    { id: 'text-action-0', index: 0 },
+    { id: 'text-load-0', index: 2 },
+    { id: 'text-load-1', index: 4 },
+    { id: 'text-save-1', index: 5 },
+  ]);
 });

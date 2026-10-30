@@ -9294,5 +9294,32 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "streaming-json-1", "index": 6, "label": "Streaming JSON" },
+    { "id": "suggestions-ready-1", "index": 46, "label": "Suggestions ready" },
+    { "id": "complete-1", "index": 47, "label": "Complete" },
+    {
+      "id": "suggestion-dismissed-1",
+      "index": 48,
+      "label": "Suggestion dismissed"
+    },
+    { "id": "prompt-2", "index": 49, "label": "Prompt" },
+    { "id": "request-2", "index": 50, "label": "Request" },
+    { "id": "streaming-json-2", "index": 55, "label": "Streaming JSON" },
+    { "id": "suggestions-ready-2", "index": 94, "label": "Suggestions ready" },
+    { "id": "complete-2", "index": 95, "label": "Complete" },
+    {
+      "id": "suggestion-accepted-2",
+      "index": 96,
+      "label": "Suggestion accepted"
+    },
+    { "id": "prompt-3", "index": 97, "label": "Prompt" },
+    { "id": "request-3", "index": 98, "label": "Request" },
+    { "id": "streaming-json-3", "index": 103, "label": "Streaming JSON" },
+    { "id": "suggestions-ready-3", "index": 143, "label": "Suggestions ready" },
+    { "id": "complete-3", "index": 144, "label": "Complete" }
   ]
 }

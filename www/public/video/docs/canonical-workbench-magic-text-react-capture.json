@@ -11133,5 +11133,31 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "tool-readcontext-1", "index": 9, "label": "Tool readContext" },
+    { "id": "request-1-2", "index": 10, "label": "Request" },
+    { "id": "streaming-text-1", "index": 15, "label": "Streaming text" },
+    { "id": "parsed-text-1", "index": 116, "label": "Parsed text" },
+    { "id": "complete-1", "index": 119, "label": "Complete" },
+    {
+      "id": "reference-selected-1",
+      "index": 120,
+      "label": "Reference selected"
+    },
+    { "id": "prompt-2", "index": 121, "label": "Prompt" },
+    { "id": "request-2", "index": 122, "label": "Request" },
+    { "id": "tool-readcontext-2", "index": 130, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 131, "label": "Request" },
+    { "id": "streaming-text-2", "index": 136, "label": "Streaming text" },
+    { "id": "parsed-text-2", "index": 221, "label": "Parsed text" },
+    { "id": "complete-2", "index": 224, "label": "Complete" },
+    {
+      "id": "reference-selected-2",
+      "index": 225,
+      "label": "Reference selected"
+    }
   ]
 }

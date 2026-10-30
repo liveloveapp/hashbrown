@@ -10,7 +10,6 @@ import { WorkbenchPanel } from '../src/components/workbench/WorkbenchPanel';
 import { createEmbedClient } from '../src/components/workbench/embed-client';
 import {
   assertWorkbenchLesson,
-  LOOPBACK_LESSONS,
   WORKBENCH_LESSONS_WITHOUT_CAPTURE,
   workbenchLiveAvailability,
   workbenchMediaId,
@@ -324,6 +323,25 @@ test('falls back when the workbench rejects the capture', async () => {
   expect(document.querySelector('video')).not.toBeNull();
 });
 
+test('keeps the replay when the workbench rejects a seek to an unknown milestone', async () => {
+  const { intersect } = setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+
+  await fromFrame(frame, {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  });
+
+  expect(replayFrame()).not.toBeNull();
+  expect(document.querySelector('video')).toBeNull();
+});
+
 test('ignores messages from other origins or frames', async () => {
   const { fetchMock, intersect } = setup();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
@@ -372,6 +390,36 @@ test('the embed client dispatches only valid messages from its frame', () => {
 
   expect(handlers.ready).toHaveBeenCalledTimes(1);
   expect(handlers.ready).toHaveBeenCalledWith(ready);
+  frame.remove();
+});
+
+test('the embed client dispatches a refused seek to the rejected handler', () => {
+  setup();
+  const frame = document.createElement('iframe');
+  document.body.append(frame);
+  const handlers = {
+    ready: vi.fn(),
+    loaded: vi.fn(),
+    rejected: vi.fn(),
+    state: vi.fn(),
+  };
+  const client = createEmbedClient(frame, origin, handlers);
+  const refused = {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  };
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: refused,
+      origin,
+      source: frame.contentWindow as Window,
+    }),
+  );
+
+  expect(handlers.rejected).toHaveBeenCalledWith(refused);
+  client.dispose();
   frame.remove();
 });
 
@@ -597,8 +645,9 @@ test('production-recovery links to the b4run reference instead of Live', () => {
 
   expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
   expect(document.body.textContent).toContain(
-    'This lesson runs only on a local server',
+    'This lesson needs the B4.run Postgres host',
   );
+  expect(document.body.textContent).not.toContain('local server');
   expect(
     document.querySelector('a[href="/docs/angular/platform/b4run"]'),
   ).not.toBeNull();
@@ -620,17 +669,14 @@ test.each([false, true])(
 );
 
 test.each([false, true])(
-  'loopback lessons keep their hosted open link (narrow: %s)',
+  'loopback lessons render no hosted open link (narrow: %s)',
   (narrow) => {
     const { intersect } = setup({ narrow });
     render(<WorkbenchPanel lesson="public-endpoint" sdk="angular" />);
     intersect();
 
-    const link = document.querySelector(
-      `a[href="${origin}/angular.html?lesson=public-endpoint"]`,
-    );
-
-    expect(link?.textContent).toContain('Open full workbench');
+    expect(document.querySelector(`a[href^="${origin}"]`)).toBeNull();
+    expect(document.body.textContent).not.toContain('Open full workbench');
   },
 );
 
@@ -643,7 +689,7 @@ test('every lesson is either live on the hosted workbench or links to a local ru
   }));
 
   for (const { lesson, react } of availability) {
-    const live = hosted.has(lesson.id) && !LOOPBACK_LESSONS.includes(lesson.id);
+    const live = hosted.has(lesson.id) && lesson.host !== 'loopback';
     expect(react.live, lesson.id).toBe(live);
     if (react.live) continue;
     expect(react.href, lesson.id).toBe(
@@ -654,9 +700,15 @@ test('every lesson is either live on the hosted workbench or links to a local ru
   }
   expect(workbenchLiveAvailability('production-recovery', 'react')).toEqual({
     live: false,
+    reason: 'production-reference',
     href: '/docs/react/platform/b4run',
   });
   expect(workbenchLiveAvailability('tools', 'react')).toEqual({ live: true });
+  expect(
+    workbenchLessons
+      .filter((lesson) => lesson.host === 'loopback')
+      .map((lesson) => lesson.id),
+  ).toEqual(['server-threads', 'public-endpoint']);
 });
 
 test('narrow viewports get the video and an open link', () => {
@@ -761,7 +813,6 @@ test('workbenchMediaId maps generative-ui and structured-output to their media n
   );
   expect(workbenchMediaName('tools')).toBe('tools');
   expect(ids.filter((id) => !Object.hasOwn(DOCS_DEMOS, id))).toEqual([]);
-  expect(LOOPBACK_LESSONS).toEqual(['server-threads', 'public-endpoint']);
 });
 
 test.each([
@@ -1108,4 +1159,140 @@ test('See it run on a narrow screen moves focus to the panel', () => {
   expect(document.activeElement?.getAttribute('data-component')).toBe(
     'workbench-panel',
   );
+});
+
+function seeks(post: ReturnType<typeof spyOnFrame>) {
+  return post.mock.calls.filter(
+    ([message]) => (message as { type: string }).type === 'hb-workbench:seek',
+  );
+}
+
+function loads(post: ReturnType<typeof spyOnFrame>) {
+  return post.mock.calls.filter(
+    ([message]) => (message as { type: string }).type === 'hb-workbench:load',
+  );
+}
+
+test('two readys before the capture arrives post one load, and a pending See it run still seeks', async () => {
+  const { fetchMock, intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  let resolveFetch: (value: {
+    ok: boolean;
+    json: () => Promise<unknown>;
+  }) => void = () => undefined;
+  fetchMock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+  );
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  const post = spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  seeItRun();
+  await fromFrame(frame, ready);
+
+  await act(async () => {
+    resolveFetch({ ok: true, json: async () => capture });
+    for (let tick = 0; tick < 10; tick++) await Promise.resolve();
+  });
+  await fromFrame(frame, loaded);
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(loads(post)).toEqual([
+    [{ type: 'hb-workbench:load', version: 1, capture }, origin],
+  ]);
+  expect(seeks(post)).toEqual([
+    [{ type: 'hb-workbench:seek', version: 1, milestone: 'tool-call' }, origin],
+  ]);
+});
+
+test('a reload after a seek seeks back to the last moment', async () => {
+  const { intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  const post = spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+  seeItRun('tool-readcontext-1');
+
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+
+  expect(loads(post)).toHaveLength(2);
+  expect(seeks(post)).toEqual([
+    [
+      {
+        type: 'hb-workbench:seek',
+        version: 1,
+        milestone: 'tool-readcontext-1',
+      },
+      origin,
+    ],
+    [
+      {
+        type: 'hb-workbench:seek',
+        version: 1,
+        milestone: 'tool-readcontext-1',
+      },
+      origin,
+    ],
+  ]);
+});
+
+test('an unknown moment after See it run keeps the replay and the open link', async () => {
+  const { intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+  seeItRun('no-such-moment');
+
+  await fromFrame(frame, {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  });
+
+  expect(replayFrame()).not.toBeNull();
+  expect(document.querySelector('video')).toBeNull();
+  expect(
+    document.querySelector(`a[href="${origin}/react.html?lesson=tools"]`)
+      ?.textContent,
+  ).toContain('Open full workbench');
+});
+
+test('the narrow panel is a region named for the lesson', () => {
+  setup({ narrow: true });
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+
+  const panel = document.querySelector('[data-component="workbench-panel"]');
+
+  expect(panel?.getAttribute('role')).toBe('region');
+  expect(panel?.getAttribute('aria-label')).toBe('Tools workbench');
+});
+
+test('Source holds the replay frame box while it loads', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(() => new Promise(() => undefined));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+  const sourceTab = document.querySelectorAll<HTMLElement>('[role="tab"]')[2];
+
+  fireEvent.click(sourceTab);
+
+  const panel = document.getElementById(
+    sourceTab.getAttribute('aria-controls') as string,
+  );
+  expect(panel?.textContent).toContain('Loading source');
+  expect(panel?.style.aspectRatio).toBe('4 / 3');
 });

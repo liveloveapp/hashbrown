@@ -6684,5 +6684,19 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "policy-observed-1", "index": 5, "label": "Policy observed" },
+    { "id": "streaming-text-1", "index": 7, "label": "Streaming text" },
+    { "id": "parsed-text-1", "index": 94, "label": "Parsed text" },
+    { "id": "complete-1", "index": 97, "label": "Complete" },
+    { "id": "prompt-2", "index": 98, "label": "Prompt" },
+    { "id": "request-2", "index": 99, "label": "Request" },
+    { "id": "policy-observed-2", "index": 103, "label": "Policy observed" },
+    { "id": "streaming-text-2", "index": 105, "label": "Streaming text" },
+    { "id": "parsed-text-2", "index": 132, "label": "Parsed text" },
+    { "id": "complete-2", "index": 135, "label": "Complete" }
   ]
 }

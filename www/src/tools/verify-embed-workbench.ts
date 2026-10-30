@@ -1,10 +1,13 @@
 import { type Browser, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { resolve } from 'node:path';
 import { createWorkbenchStore } from '../../examples/quickstart/runtime/workbench';
 import {
   createWorkbenchCapture,
   type WorkbenchCapture,
 } from '../../examples/quickstart/runtime/workbench-capture';
+import type { WorkbenchLessonId } from '../../examples/quickstart/runtime/workbench-lessons';
 import {
   WORKBENCH_MESSAGE_VERSION,
   type WorkbenchChildMessage,
@@ -34,8 +37,10 @@ export function createToolsFixtureCapture(): WorkbenchCapture {
     recordedAt: '2026-10-28T00:00:00.000Z',
   });
   const ids = workbenchMilestones(capture.events, 'ui').map((item) => item.id);
-  if (!ids.includes('tool-result-1'))
-    throw new Error(`Fixture capture lacks tool-result-1: ${ids.join(', ')}`);
+  if (!ids.includes('tool-readcontext-1'))
+    throw new Error(
+      `Fixture capture lacks tool-readcontext-1: ${ids.join(', ')}`,
+    );
   return capture;
 }
 
@@ -78,17 +83,55 @@ frame.src = config.src;
 </script></body></html>`;
 }
 
+/** One replay embed the harness drives. */
+interface EmbedCase {
+  readonly lesson: WorkbenchLessonId;
+  readonly capture: WorkbenchCapture;
+  /** The milestone to seek to; checked against the loaded milestones. */
+  readonly milestone: string;
+}
+
 /**
- * Drives `react.html?lesson=tools&embed=replay` from a cross-origin parent at
- * `http://localhost:<port>`, the way a docs page would: load a capture on
- * `ready`, seek to `tool-result-1`, and check the embedded chrome.
+ * Drives `react.html?lesson=<lesson>&embed=replay` from a cross-origin parent
+ * at `http://localhost:<port>`, the way a docs page would, for the tools
+ * fixture and the published server-threads capture: load the capture on
+ * `ready`, seek to a milestone, check the embedded chrome, and assert the
+ * replay made no `/api/` requests. Server-threads covers a loopback-only
+ * lesson, whose replay must never ask the server for a session.
  */
 export async function verifyEmbedWorkbench(options: {
   readonly browser: Browser;
   /** The verifier server, e.g. `http://127.0.0.1:1234`. */
   readonly origin: string;
 }) {
-  const capture = createToolsFixtureCapture();
+  const cases: readonly EmbedCase[] = [
+    {
+      lesson: 'tools',
+      capture: createToolsFixtureCapture(),
+      milestone: 'tool-readcontext-1',
+    },
+    {
+      lesson: 'server-threads',
+      capture: JSON.parse(
+        readFileSync(
+          resolve(
+            'www/public/video/docs/canonical-workbench-server-threads-react-capture.json',
+          ),
+          'utf8',
+        ),
+      ) as WorkbenchCapture,
+      milestone: 'complete-1',
+    },
+  ];
+  const results = [];
+  for (const item of cases) results.push(await verifyEmbedCase(options, item));
+  return results;
+}
+
+async function verifyEmbedCase(
+  options: { readonly browser: Browser; readonly origin: string },
+  { lesson, capture, milestone }: EmbedCase,
+) {
   const parent = `http://localhost:${await unusedPort()}`;
   // The routed parent has no address space, so Chrome's Local Network Access
   // checks would block its frame of the loopback server without this grant.
@@ -99,12 +142,18 @@ export async function verifyEmbedWorkbench(options: {
   const page = await context.newPage();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  const apiRequests: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/api/'))
+      apiRequests.push(`${request.method()} ${url.pathname}`);
+  });
   try {
     await page.route(`${parent}/harness.html`, (route) =>
       route.fulfill({
         contentType: 'text/html',
         body: harnessHtml(
-          `${options.origin}/react.html?lesson=tools&embed=replay`,
+          `${options.origin}/react.html?lesson=${lesson}&embed=replay`,
           options.origin,
           capture,
         ),
@@ -151,7 +200,7 @@ export async function verifyEmbedWorkbench(options: {
       'hb-workbench:ready',
       'The embedded workbench never posted ready.',
     );
-    expect(ready).toMatchObject({ mode: 'replay', lesson: 'tools' });
+    expect(ready).toMatchObject({ mode: 'replay', lesson });
     const loaded = await waitFor(
       'hb-workbench:loaded',
       `The workbench posted ready but never loaded the capture: is ${parent} accepted as a parent origin?`,
@@ -160,7 +209,7 @@ export async function verifyEmbedWorkbench(options: {
       loaded.type === 'hb-workbench:loaded'
         ? loaded.milestones.map((item) => item.id)
         : [];
-    expect(milestones).toContain('tool-result-1');
+    expect(milestones).toContain(milestone);
     expect(
       (await received()).every(({ origin }) => origin === options.origin),
     ).toBe(true);
@@ -173,15 +222,14 @@ export async function verifyEmbedWorkbench(options: {
       {
         type: 'hb-workbench:seek',
         version: WORKBENCH_MESSAGE_VERSION,
-        milestone: 'tool-result-1',
+        milestone,
       },
     );
     await waitFor(
       'hb-workbench:state',
-      'The workbench never reported the seek to tool-result-1.',
+      `The workbench never reported the seek to ${milestone}.`,
       (data) =>
-        data.type === 'hb-workbench:state' &&
-        data.milestone === 'tool-result-1',
+        data.type === 'hb-workbench:state' && data.milestone === milestone,
     );
 
     const frame = page.frameLocator('#wb');
@@ -201,13 +249,15 @@ export async function verifyEmbedWorkbench(options: {
       .boundingBox();
     expect(inspector?.width ?? 0).toBeGreaterThanOrEqual(320);
     expect(errors).toEqual([]);
+    // A replay shows its capture only: no session, history or chat requests.
+    expect(apiRequests, `${lesson} replay made API requests`).toEqual([]);
     return {
       framework: 'react',
-      lesson: 'tools',
+      lesson,
       embed: 'replay',
       parent,
       milestones,
-      source: 'test-fixture',
+      source: lesson === 'tools' ? 'test-fixture' : 'published-capture',
       passed: true,
     };
   } finally {
