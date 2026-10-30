@@ -582,10 +582,10 @@ describe('createDispatchDependencies', () => {
   });
 
   test.each(['1', 'true'])('MARKETING_DRY_RUN=%j is a dry run', (value) => {
-    const { MARKETING_GITHUB_TOKEN: _token, ...env } = ENV;
-
+    // No GitHub token: a dry run does not need one.
     const deps = createDispatchDependencies({
-      ...env,
+      ...ENV,
+      MARKETING_GITHUB_TOKEN: undefined,
       MARKETING_DRY_RUN: value,
     });
 
