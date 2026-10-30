@@ -1,5 +1,5 @@
 import type { WorkbenchLesson } from './workbench-lessons';
-import { workbenchRecipeEventLabel } from './workbench-recipe-view';
+import { workbenchRecipeEventLabel } from './workbench-recipe-labels';
 import type { WorkbenchEvent } from './workbench';
 
 /** A meaningful transition pointing at its original, immutable captured frame. */
@@ -56,6 +56,7 @@ function collectMilestones(
   format?: WorkbenchLesson['format'],
 ): readonly Omit<WorkbenchMilestone, 'id'>[] {
   const firstChunks = new Set<number>();
+  const historyActions = new Set<string>();
   const lastParsed = new Map<number, number>();
   const lastError = new Map<number, number>();
   events.forEach((event, index) => {
@@ -118,14 +119,14 @@ function collectMilestones(
       return label ? [{ index, turn: event.turn, label }] : [];
     }
     if (event.kind === 'history') return [];
-    if (event.kind === 'history-app')
-      return [
-        {
-          index,
-          turn: event.turn,
-          label: `Text ${event.history?.app.action ?? 'action'}`,
-        },
-      ];
+    if (event.kind === 'history-app') {
+      // Repeated actions collapse to the first of each label per turn.
+      const label = `Text ${event.history?.app.action ?? 'action'}`;
+      const key = `${event.turn}:${label}`;
+      if (historyActions.has(key)) return [];
+      historyActions.add(key);
+      return [{ index, turn: event.turn, label }];
+    }
     const payload = event.payload;
     const chunk =
       event.kind === 'event' &&
@@ -158,6 +159,20 @@ function collectMilestones(
       payload.name === 'workbench.system-instructions'
     )
       return [{ index, turn: event.turn, label: 'Policy observed' }];
+    if (event.kind === 'tool') {
+      const name =
+        payload && typeof payload === 'object' && 'name' in payload
+          ? payload.name
+          : undefined;
+      return [
+        {
+          index,
+          turn: event.turn,
+          label:
+            typeof name === 'string' && name ? `Tool ${name}` : 'Tool result',
+        },
+      ];
+    }
     if (chunk && !firstChunks.has(event.turn)) {
       firstChunks.add(event.turn);
       label =
@@ -176,7 +191,6 @@ function collectMilestones(
         pause: 'Paused for decisions',
         resume: 'Resume requested',
         request: 'Request',
-        tool: 'Tool result',
         complete: 'Complete',
         accept: 'Plan accepted',
         error: 'Error',

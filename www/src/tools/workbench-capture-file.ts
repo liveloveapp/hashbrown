@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   parseWorkbenchCapture,
+  withWorkbenchCaptureMilestones,
   type WorkbenchCapture,
 } from '../../examples/quickstart/runtime/workbench-capture';
 
@@ -68,7 +69,8 @@ export async function saveWorkbenchCapture(
 }
 
 /**
- * Validates a recorded capture and stamps it with the publishing commit.
+ * Validates a recorded capture and stamps it with the publishing commit and
+ * the milestones docs moments resolve against.
  *
  * @param raw - The capture JSON a verifier saved.
  * @param commit - The commit the media is published from.
@@ -82,7 +84,7 @@ export function publishWorkbenchCapture(
 ): string {
   const capture = parseWorkbenchCapture(JSON.parse(raw));
   if (!capture) throw new Error('Capture is not a valid workbench capture');
-  const stamped = { ...capture, commit };
+  const stamped = { ...withWorkbenchCaptureMilestones(capture), commit };
   assertPublishableCapture(stamped, expected);
   return JSON.stringify(stamped);
 }

@@ -10415,5 +10415,31 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "tool-readcontext-1", "index": 9, "label": "Tool readContext" },
+    { "id": "request-1-2", "index": 10, "label": "Request" },
+    { "id": "streaming-text-1", "index": 15, "label": "Streaming text" },
+    { "id": "parsed-text-1", "index": 118, "label": "Parsed text" },
+    { "id": "complete-1", "index": 121, "label": "Complete" },
+    {
+      "id": "reference-selected-1",
+      "index": 122,
+      "label": "Reference selected"
+    },
+    { "id": "prompt-2", "index": 123, "label": "Prompt" },
+    { "id": "request-2", "index": 124, "label": "Request" },
+    { "id": "tool-readcontext-2", "index": 132, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 133, "label": "Request" },
+    { "id": "streaming-text-2", "index": 138, "label": "Streaming text" },
+    { "id": "parsed-text-2", "index": 209, "label": "Parsed text" },
+    { "id": "complete-2", "index": 212, "label": "Complete" },
+    {
+      "id": "reference-selected-2",
+      "index": 213,
+      "label": "Reference selected"
+    }
   ]
 }

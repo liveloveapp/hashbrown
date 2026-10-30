@@ -21162,5 +21162,42 @@
       },
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    {
+      "id": "request-transformed-1",
+      "index": 5,
+      "label": "Request transformed"
+    },
+    { "id": "tool-readcontext-1", "index": 10, "label": "Tool readContext" },
+    { "id": "request-1-2", "index": 11, "label": "Request" },
+    {
+      "id": "request-transformed-1-2",
+      "index": 15,
+      "label": "Request transformed"
+    },
+    { "id": "streaming-json-1", "index": 17, "label": "Streaming JSON" },
+    { "id": "parsed-output-1", "index": 58, "label": "Parsed output" },
+    { "id": "complete-1", "index": 63, "label": "Complete" },
+    { "id": "plan-accepted-1", "index": 64, "label": "Plan accepted" },
+    { "id": "prompt-2", "index": 65, "label": "Prompt" },
+    { "id": "request-2", "index": 66, "label": "Request" },
+    {
+      "id": "request-transformed-2",
+      "index": 70,
+      "label": "Request transformed"
+    },
+    { "id": "tool-readcontext-2", "index": 75, "label": "Tool readContext" },
+    { "id": "request-2-2", "index": 76, "label": "Request" },
+    {
+      "id": "request-transformed-2-2",
+      "index": 80,
+      "label": "Request transformed"
+    },
+    { "id": "streaming-json-2", "index": 82, "label": "Streaming JSON" },
+    { "id": "parsed-output-2", "index": 120, "label": "Parsed output" },
+    { "id": "complete-2", "index": 125, "label": "Complete" }
   ]
 }

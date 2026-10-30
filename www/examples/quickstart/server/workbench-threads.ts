@@ -6,6 +6,7 @@ import {
   decodeWorkbenchHistory,
   workbenchHistorySystem,
 } from '../runtime/workbench-history';
+import { isWorkbenchLoopbackHostname } from '../runtime/workbench-lessons';
 import type { WorkbenchServerOptions } from './workbench-app';
 
 const lessons = ['server-threads', 'public-endpoint'] as const;
@@ -14,7 +15,7 @@ const cookieName = 'workbench_demo_session';
 function localOrigin(request: Request): string | null {
   try {
     const origin = new URL(`http://${request.get('host')}`);
-    return ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname) &&
+    return isWorkbenchLoopbackHostname(origin.hostname) &&
       origin.origin === `http://${request.get('host')}`
       ? origin.origin
       : null;
