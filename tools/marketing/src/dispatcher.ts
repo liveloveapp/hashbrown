@@ -28,6 +28,14 @@ const OUTCOME_UNKNOWN =
 /** The most posts one tick leases. */
 export const DISPATCH_BATCH_SIZE = 5;
 
+/**
+ * How late an X, LinkedIn or dev.to post may still go out. A post leased
+ * later than this after its `scheduledAt` (the cron was paused, the service
+ * was down) is held instead of posted; blog posts keep their own grace logic.
+ */
+export const MAX_LATENESS_MS = 6 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
 /** Days ahead a stored credential's expiry raises `credential_expiring`. */
 const CREDENTIAL_WARNING_DAYS = 14;
 /** How long the `isLive` HEAD request may take. */
@@ -250,6 +258,18 @@ async function dispatchPost(
     tally.alerts.add('post_failed');
     return;
   }
+  if (post.channel !== 'blog') {
+    const lateMs = now.getTime() - post.scheduledAt.getTime();
+    if (lateMs > MAX_LATENESS_MS) {
+      const held = await holdWithDependents(
+        deps.executor,
+        post.id,
+        `missed its slot by ${Math.floor(lateMs / HOUR_MS)} hours`,
+      );
+      tally.held += held.length;
+      return;
+    }
+  }
   if (post.channel === 'blog') {
     await dispatchBlog(
       deps,
@@ -337,17 +357,32 @@ function disabled(): never {
 }
 
 /**
+ * `MARKETING_DRY_RUN`: `1` or `true` is a dry run; unset, empty, `0` or
+ * `false` is live.
+ *
+ * @throws For any other value, so a typo never publishes for real.
+ */
+function parseDryRun(value: string | undefined): boolean {
+  if (value === '1' || value === 'true') return true;
+  if (value === undefined || value === '' || value === '0' || value === 'false')
+    return false;
+  throw new Error('MARKETING_DRY_RUN must be 1, true, 0, false or unset');
+}
+
+/**
  * Builds the tick's dependencies from the environment. In dry run
- * (`MARKETING_DRY_RUN=1`) GitHub is disabled and its token is not required.
+ * (`MARKETING_DRY_RUN` is `1` or `true`) GitHub is disabled and its token is
+ * not required.
  *
  * @param fetchImpl - The fetch the adapters use; defaults to `globalThis.fetch`.
- * @throws When a required variable is missing, naming each.
+ * @throws When a required variable is missing, naming each, or
+ *   `MARKETING_DRY_RUN` has a value other than `1`, `true`, `0` or `false`.
  */
 export function createDispatchDependencies(
   env: Readonly<Record<string, string | undefined>>,
   fetchImpl?: typeof fetch,
 ): DispatchDependencies {
-  const dryRun = env['MARKETING_DRY_RUN'] === '1';
+  const dryRun = parseDryRun(env['MARKETING_DRY_RUN']);
   const required = [
     'DATABASE_URL',
     'MARKETING_CREDENTIALS_KEY',

@@ -8,6 +8,7 @@ import {
   DISPATCH_BATCH_SIZE,
   type DispatchDependencies,
   dispatchMarketing,
+  MAX_LATENESS_MS,
 } from './dispatcher.ts';
 import { PostStateError } from './queue/repository.ts';
 import type { QueuedPost } from './queue/types.ts';
@@ -149,6 +150,77 @@ describe('dispatchMarketing', () => {
     );
     expect(outcome).toMatchObject({ leased: 1, failed: 1, published: 0 });
     expect(outcome.operatorAlerts).toEqual(['post_failed']);
+  });
+
+  test('an X post 7 hours late is held, not posted', async () => {
+    repository.leaseDuePosts.mockResolvedValue([
+      post({ scheduledAt: new Date(NOW.getTime() - 7 * HOUR) }),
+    ]);
+    const { deps, post: adapterPost } = setup();
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(MAX_LATENESS_MS).toBe(6 * HOUR);
+    expect(adapterPost).not.toHaveBeenCalled();
+    expect(repository.markPublishing).not.toHaveBeenCalled();
+    expect(repository.holdWithDependents).toHaveBeenCalledWith(
+      deps.executor,
+      'p1',
+      'missed its slot by 7 hours',
+    );
+    expect(outcome).toMatchObject({ leased: 1, published: 0, held: 1 });
+  });
+
+  test.each(['linkedin', 'devto'] as const)(
+    'a %s post 7 hours late is held, not posted',
+    async (channel) => {
+      repository.leaseDuePosts.mockResolvedValue([
+        post({
+          channel,
+          scheduledAt: new Date(NOW.getTime() - 7 * HOUR),
+          draft:
+            channel === 'linkedin'
+              ? { channel, text: 'hi' }
+              : {
+                  channel,
+                  blogSlug: 'my-post',
+                  article: { title: 'T', tags: [], description: 'D' },
+                },
+        }),
+      ]);
+      const { deps, post: adapterPost } = setup();
+
+      const outcome = await dispatchMarketing(deps);
+
+      expect(adapterPost).not.toHaveBeenCalled();
+      expect(outcome).toMatchObject({ published: 0, held: 1 });
+    },
+  );
+
+  test('an X post 5 hours late is still posted', async () => {
+    repository.leaseDuePosts.mockResolvedValue([
+      post({ scheduledAt: new Date(NOW.getTime() - 5 * HOUR) }),
+    ]);
+    const { deps, post: adapterPost } = setup();
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(adapterPost).toHaveBeenCalledTimes(1);
+    expect(repository.holdWithDependents).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ published: 1, held: 0 });
+  });
+
+  test('a blog post past the lateness bound keeps its own grace logic', async () => {
+    repository.leaseDuePosts.mockResolvedValue([
+      blog({}, { scheduledAt: new Date(NOW.getTime() - 7 * HOUR) }),
+    ]);
+    const { deps, github } = setup({ pull: { merged: true }, live: true });
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(github.pullState).toHaveBeenCalled();
+    expect(repository.holdWithDependents).not.toHaveBeenCalled();
+    expect(outcome.published).toBe(1);
   });
 
   test('a social post is marked publishing, posted, then marked published', async () => {
@@ -497,11 +569,49 @@ describe('dispatchMarketing', () => {
 });
 
 describe('createDispatchDependencies', () => {
+  const ENV = {
+    DATABASE_URL: 'postgres://user:pass@localhost:1/none',
+    MARKETING_CREDENTIALS_KEY: Buffer.alloc(32).toString('base64'),
+    MARKETING_GITHUB_TOKEN: 'token',
+  };
+
   test('names every missing variable', () => {
     expect(() => createDispatchDependencies({})).toThrow(
       /DATABASE_URL.*MARKETING_CREDENTIALS_KEY.*MARKETING_GITHUB_TOKEN/,
     );
   });
+
+  test.each(['1', 'true'])('MARKETING_DRY_RUN=%j is a dry run', (value) => {
+    const { MARKETING_GITHUB_TOKEN: _token, ...env } = ENV;
+
+    const deps = createDispatchDependencies({
+      ...env,
+      MARKETING_DRY_RUN: value,
+    });
+
+    expect(deps.dryRun).toBe(true);
+  });
+
+  test.each([undefined, '', '0', 'false'])(
+    'MARKETING_DRY_RUN=%j is live',
+    (value) => {
+      const deps = createDispatchDependencies({
+        ...ENV,
+        MARKETING_DRY_RUN: value,
+      });
+
+      expect(deps.dryRun).toBe(false);
+    },
+  );
+
+  test.each(['yes', 'TRUE', ' 1', 'no'])(
+    'MARKETING_DRY_RUN=%j is a configuration error naming the variable',
+    (value) => {
+      expect(() =>
+        createDispatchDependencies({ ...ENV, MARKETING_DRY_RUN: value }),
+      ).toThrow(/MARKETING_DRY_RUN/);
+    },
+  );
 });
 
 describe('dry run', () => {

@@ -11,7 +11,8 @@ import type { DispatchState } from './state.ts';
  * It leases the due approved posts, publishes them and returns the current
  * state with the tick's result.
  *
- * @throws When a required environment variable is missing, or the lease fails.
+ * @throws When a required environment variable is missing or invalid, or the
+ *   lease fails.
  */
 export async function workflow(
   current: DispatchState,
