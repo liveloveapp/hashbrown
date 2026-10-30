@@ -1525,6 +1525,18 @@ export function mountWorkbench(
                           kind: event.kind,
                           payload: event.payload,
                         }));
+    const milestones = rawEvents
+      ? withWorkbenchMilestoneIds(
+          snapshot.events.map((event, index) => ({
+            index,
+            turn: event.turn,
+            label: workbenchEventLabel(event, commands.lesson?.format),
+          })),
+        )
+      : workbenchMilestones(snapshot.events, commands.lesson?.format);
+    const activeMilestone = milestones
+      .filter((item) => item.index <= selectedIndex)
+      .at(-1);
     if (onRequests)
       requestsView.update({
         snapshot,
@@ -1532,6 +1544,7 @@ export function mountWorkbench(
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
         source: provenance.textContent ?? '',
+        flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
     const bottomHeading =
       recipeView?.detailHeading ??
@@ -1698,18 +1711,6 @@ export function mountWorkbench(
     }
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
-    const milestones = rawEvents
-      ? withWorkbenchMilestoneIds(
-          snapshot.events.map((event, index) => ({
-            index,
-            turn: event.turn,
-            label: workbenchEventLabel(event, commands.lesson?.format),
-          })),
-        )
-      : workbenchMilestones(snapshot.events, commands.lesson?.format);
-    const activeMilestone = milestones
-      .filter((item) => item.index <= selectedIndex)
-      .at(-1);
     rebuildKeepingFocus(events, 'data-index', () => {
       events.replaceChildren();
       milestones.forEach(({ index, label, id }) => {

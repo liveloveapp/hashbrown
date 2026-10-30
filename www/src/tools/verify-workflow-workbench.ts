@@ -62,7 +62,10 @@ export async function verifyWorkflowWorkbench(options: {
     const caption = capturedSection.locator('.wb-caption');
     const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const pairedWorkflowEvidence = async (
       name: 'State' | 'Activities' | 'Interrupts',

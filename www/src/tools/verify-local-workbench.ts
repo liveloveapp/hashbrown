@@ -54,7 +54,10 @@ export async function verifyLocalWorkbench(options: {
     const send = root.locator('[data-send]');
     const status = root.locator('.wb-chat .wb-panel-head');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const inspection = async () => JSON.parse(await readApplicationState(root));
     const metrics = () =>

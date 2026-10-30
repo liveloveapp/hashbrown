@@ -77,7 +77,10 @@ export async function verifyAuthoringWorkbench(options: {
       root.getByRole('button', { name, exact: true });
     const send = root.locator('[data-send]');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const inspection = async () => readFirstSection(root);
     const detail = async () => readInspectorJson(root, 'bottom');

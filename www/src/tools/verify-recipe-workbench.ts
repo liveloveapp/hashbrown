@@ -131,7 +131,10 @@ export async function verifyRecipeWorkbench(options: {
     const inspection = root.locator('.wb-inspector .wb-inspection');
     const chatStatus = root.locator('.wb-chat .wb-panel-head');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const revision = async (value: number) => {
       await tab('State');

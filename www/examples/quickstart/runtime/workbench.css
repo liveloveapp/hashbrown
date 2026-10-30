@@ -898,7 +898,11 @@ body {
 .wb-requests-flag:empty {
   display: none;
 }
+.wb-requests-pickbar {
+  display: none;
+}
 .wb-requests-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -1074,28 +1078,41 @@ body {
   padding: 0 8px;
   border-bottom: 1px solid var(--wb-line);
 }
+/* One segmented row that scrolls sideways rather than wrapping. */
 .wb-requests-tabs {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
+  margin: 6px 0;
+  padding: 2px;
+  overflow-x: auto;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-code);
+  scrollbar-width: thin;
+}
+.wb-requests-tabs:empty {
+  display: none;
 }
 .wb .wb-requests-tabs button {
-  min-height: 0;
-  padding: 8px 8px 6px;
+  flex: none;
+  min-height: 24px;
+  padding: 0 8px;
   border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--wb-muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 .wb .wb-requests-tabs button:hover {
   color: var(--wb-ink);
 }
 .wb .wb-requests-tabs [aria-selected='true'] {
-  border-bottom-color: var(--wb-cobalt);
+  background: var(--wb-panel);
+  box-shadow: 0 0 0 1px var(--wb-line);
   color: var(--wb-ink);
   font-weight: 600;
 }
@@ -1105,6 +1122,7 @@ body {
 }
 .wb .wb-requests-close {
   flex: none;
+  margin-left: auto;
   width: 28px;
   height: 28px;
   min-height: 0;
@@ -1114,13 +1132,34 @@ body {
   background: transparent;
   color: var(--wb-muted);
 }
-.wb .wb-requests-back {
-  display: none;
-  flex: none;
-  min-height: 28px;
-  padding: 2px 8px;
+/* The narrow header picker: the request in the detail, opening the list. */
+.wb .wb-requests-picker {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--wb-line);
   border-radius: 8px;
+  background: var(--wb-panel);
   font-size: 12px;
+  text-align: left;
+}
+.wb .wb-requests-picker:hover {
+  background: var(--wb-hover);
+}
+.wb-requests-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wb-requests-picker-chevron {
+  margin-left: auto;
+  color: var(--wb-muted);
 }
 .wb-requests-panel {
   flex: 1;
@@ -1256,8 +1295,19 @@ body {
   text-align: left;
   text-decoration: underline;
 }
-/* A narrow inspector keeps the overview, drops the timing columns and swaps the table for the detail. */
+/*
+ * A narrow inspector drops the overview strip (the main timeline scrubs) and
+ * shows the detail alone; the header picker opens the table as a list over it.
+ */
 @container wb-requests (max-width: 559px) {
+  .wb-requests-overview {
+    display: none;
+  }
+  .wb-requests-pickbar:not([hidden]) {
+    display: flex;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--wb-line);
+  }
   .wb-requests-table
     :is(th, td):is(:nth-child(4), :nth-child(6), :nth-child(7)) {
     display: none;
@@ -1268,12 +1318,20 @@ body {
   .wb-requests[data-open] .wb-requests-table-wrap {
     display: none;
   }
+  .wb-requests[data-open][data-picking] .wb-requests-table-wrap {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: block;
+    border-bottom: 1px solid var(--wb-line);
+    background: var(--wb-panel);
+    box-shadow: 0 8px 16px rgb(0 0 0 / 0.08);
+  }
+  .wb-requests[data-picking] .wb-requests-table[data-narrow] td:nth-child(5) {
+    display: table-cell;
+  }
   .wb-requests-detail {
     border-left: 0;
-  }
-  .wb .wb-requests-back {
-    display: inline-flex;
-    align-items: center;
   }
   .wb .wb-requests-close {
     display: none;
@@ -1776,7 +1834,8 @@ app-workflow-workbench-conversation[hidden] {
     outline-offset: -2px;
   }
   .wb .wb-requests-tabs [aria-selected='true'] {
-    border-bottom-color: Highlight;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 

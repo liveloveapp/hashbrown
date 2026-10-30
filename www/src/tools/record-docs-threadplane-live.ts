@@ -259,7 +259,10 @@ async function demonstrate(page: Page, sdk: Sdk) {
   await composer(page, sdk).fill(secondPrompt);
   await page.waitForTimeout(2300);
   phase('followup');
-  await page.getByRole('tab', { name: 'JSON', exact: true }).click();
+  await page
+    .getByRole('tablist', { name: 'Inspector views', exact: true })
+    .getByRole('tab', { name: 'JSON', exact: true })
+    .click();
   await send(page, sdk).click();
   await expect.poll(() => requests.length, { timeout: 90000 }).toBe(before + 2);
   await expect
@@ -298,12 +301,21 @@ async function demonstrate(page: Page, sdk: Sdk) {
   ]);
   await page.waitForTimeout(2600);
   phase('secondComplete');
-  await page.getByRole('tab', { name: 'JSON', exact: true }).click();
+  await page
+    .getByRole('tablist', { name: 'Inspector views', exact: true })
+    .getByRole('tab', { name: 'JSON', exact: true })
+    .click();
   await page.waitForTimeout(2300);
-  await page.getByRole('tab', { name: 'Requests', exact: true }).click();
+  await page
+    .getByRole('tablist', { name: 'Inspector views', exact: true })
+    .getByRole('tab', { name: 'Requests', exact: true })
+    .click();
   await page.waitForTimeout(2300);
   phase('inspected');
-  await page.getByRole('tab', { name: 'State', exact: true }).click();
+  await page
+    .getByRole('tablist', { name: 'Inspector views', exact: true })
+    .getByRole('tab', { name: 'State', exact: true })
+    .click();
   await page.waitForTimeout(2600);
   phase('replay');
   const domSamples = await page.evaluate(

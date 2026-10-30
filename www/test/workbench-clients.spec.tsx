@@ -527,7 +527,7 @@ test('does not label an earlier turn tool result as the current request context'
     )
     ?.click();
   [...host.querySelectorAll<HTMLButtonElement>('[data-detail] [role=tab]')]
-    .find((tab) => tab.textContent === 'Raw request')
+    .find((tab) => tab.textContent === 'Request')
     ?.click();
 
   const context = host.querySelector('[data-detail]');

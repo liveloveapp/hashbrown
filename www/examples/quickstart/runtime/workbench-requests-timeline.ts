@@ -13,7 +13,7 @@ export interface WorkbenchRequestsTimelineInput {
   readonly busy: boolean;
   readonly axis: WorkbenchActiveAxis;
   readonly exchanges: readonly WorkbenchExchange[];
-  /** The name of the exchange at the playhead, shown in the flag. */
+  /** The main timeline's flag label at the playhead, so both flags read the same. */
   readonly flag: string;
   /** The slider's `aria-valuetext`, naming the event at the playhead. */
   readonly valueText: string;

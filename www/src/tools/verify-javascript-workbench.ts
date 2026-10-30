@@ -131,7 +131,10 @@ export async function verifyJavaScriptWorkbench(options: {
     const output = root.locator('[data-runtime-output]');
     const editor = root.locator('[data-runtime-code]');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const status = root.locator('.wb-chat .wb-panel-head');
     await tab('State');

@@ -686,6 +686,7 @@ test('keeps focus on an activated request row and tick', () => {
 
   row?.click();
   const focusedRow = document.activeElement;
+  const rowPressed = focusedRow?.getAttribute('aria-pressed');
   const tick = host.querySelectorAll<HTMLButtonElement>(
     '.wb-scrubber .wb-events button',
   )[0];
@@ -696,7 +697,9 @@ test('keeps focus on an activated request row and tick', () => {
 
   expect(focusedRow?.closest('.wb-requests-table')).not.toBeNull();
   expect(focusedRow?.textContent).toBe(rowText);
-  expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
+  expect(rowPressed).toBe('true');
+  // The tick moved the playhead, so the detail follows it again.
+  expect(focusedRow?.getAttribute('aria-pressed')).toBe('false');
   expect(focusedTick?.closest('.wb-events')).not.toBeNull();
   expect(focusedTick?.getAttribute('aria-label')).toBe(label);
   expect(focusedTick?.getAttribute('aria-pressed')).toBe('true');
