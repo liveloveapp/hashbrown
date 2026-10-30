@@ -88,15 +88,15 @@ Each opens a browser and stores the tokens encrypted in `marketing_channel_crede
 ## 5. First week in dry run, then live
 
 1. With `MARKETING_DRY_RUN=1` on `hashbrown-marketing` (redeployed), set `MARKETING_CRON_ENABLED=true` on `hashbrown-www` and redeploy www. The cron now runs dispatch every 15 minutes in dry run.
-2. Run `/hashbrown-week` and approve a week as usual. Through that week, `npx nx run marketing:week -- status` and `week show` should show each approved post `published` at its time with a `dry-run://` URL.
+2. Run `/hashbrown-week` and approve a week as usual. Through that week, `npx nx run marketing:week -- status` and `week show` should show each approved post `published` at its time. X, LinkedIn and dev.to rows get a `dry-run://` URL; the blog row shows its real `https://hashbrown.dev/blog/<slug>` URL even though nothing was merged (its `externalId` is `dry-run`).
    - Dry run makes no GitHub calls: the blog post is marked `published` at its time without merging, and the PR stays open. Merge or close it by hand.
    - A dry-run week's posts are spent: they are `published` in the queue and cannot be re-imported. Post anything you still want by hand, or keep that week light.
    - Dry run still validates every draft, so a bad draft fails there just as it would live.
-3. After a clean dry-run week, remove `MARKETING_DRY_RUN` from `hashbrown-marketing` (any value other than `1` is live) and redeploy. Leave `MARKETING_CRON_ENABLED=true` on www. The next approved week publishes for real.
+3. After a clean dry-run week, remove `MARKETING_DRY_RUN` from `hashbrown-marketing` (or set it to `0` or `false`) and redeploy. Only `1` and `true` mean dry run; unset, empty, `0` and `false` mean live, and any other value fails every tick with a configuration error naming `MARKETING_DRY_RUN`, which shows as `[marketing-cron-failed]`. Leave `MARKETING_CRON_ENABLED=true` on www. The next approved week publishes for real.
 
 ## Pause everything
 
-Set `MARKETING_CRON_ENABLED=false` on `hashbrown-www` and redeploy. The route answers 503 and nothing dispatches; approved rows stay approved. When you turn it back on, every approved post that came due meanwhile publishes on the next ticks (five per tick), so hold the ones that should not go out late first.
+Set `MARKETING_CRON_ENABLED=false` on `hashbrown-www` and redeploy. The route answers 503 and nothing dispatches; approved rows stay approved. When you turn it back on, approved posts that came due meanwhile publish on the next ticks (five per tick) if they are at most 6 hours late; X, LinkedIn and dev.to posts more than 6 hours late are held with "missed its slot by N hours" instead (`MAX_LATENESS_MS`). Hold any others that should not go out late before turning it back on.
 
 ## Hold or cancel a single post
 
@@ -112,4 +112,21 @@ npx nx run marketing:week -- cancel --post <id>    # never publishes
 
 ## Failures and alerts
 
-A post that fails three times goes to `failed`. A blog post that cannot merge at its time (PR Gate red, conflicts, PR closed) goes to `failed`, and one that is not live within 24 hours of merge goes to `held` with everything depending on it. All of these show up at the top of the next `/hashbrown-week` (`week status`, `attention`) with `lastError`. Fix the cause, then `approve --post <id>` to retry.
+A post that fails three times goes to `failed`. A blog post that cannot merge at its time (PR Gate red, conflicts, PR closed) goes to `failed`, and one that is not live within 24 hours of merge goes to `held` with everything depending on it. An X, LinkedIn or dev.to post reached more than 6 hours after its slot goes to `held` ("missed its slot by N hours"). All of these show up at the top of the next `/hashbrown-week` (`week status`, `attention`) with `lastError`, as do posts published in the last 14 days that carry a warning. Fix the cause, then `approve --post <id>` to retry (move a post whose time has passed to a new slot first).
+
+### Where alerts appear
+
+The marketing service returns its alerts to the www cron route, which logs them in the `hashbrown-www` project's logs on Vercel (Logs, filter on the route `/_/cron/marketing` or the line prefix):
+
+- `[marketing-operator-alert] <kind>`: one line per alert kind per tick.
+- `[marketing-cron-failed]`: the tick itself failed (marketing unreachable, timed out, answered an error or an invalid state, or a configuration error such as a missing env var or a bad `MARKETING_DRY_RUN`). Nothing was dispatched, or the outcome of that tick is unknown; check the `hashbrown-marketing` logs for the cause.
+- `[marketing-cron-misconfigured]`: `MARKETING_CRON_ENABLED` is neither `true` nor `false`.
+
+Alert kinds and what to do:
+
+| Kind                  | Meaning                                                                                                                                                                            | What to do                                                                                                                                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `post_failed`         | A post went to `failed`: three failed attempts, a blog PR that cannot merge, or `publish outcome unknown` (a create timed out, lost its connection or got a 5xx, and may be live). | Run `week status` and read `lastError`. For "publish outcome unknown", look at the channel first: if the post is there, `cancel` the row; if not, move it to a future slot and `approve --post`. Otherwise fix the cause and `approve --post`. |
+| `post_warning`        | A post published, but a follow-up step failed (today: the LinkedIn first comment). The reason is in that post's `lastError`.                                                       | Open the post's `externalUrl` and finish the step by hand (add the first comment). Nothing to retry; the row stays `published`.                                                                                                                |
+| `blog_not_live`       | A merged blog post was not live within 24 hours; it and its dependents are `held`.                                                                                                 | Check the www deploy for the merge. Once the URL answers 200, release the blog and its dependents with `approve --post` (moving any whose slot has passed).                                                                                    |
+| `credential_expiring` | A stored LinkedIn token expires within 14 days (X never raises it: its refresh token rotates and does not expire).                                                                 | Run `linkedin-auth` (step 4). The alert repeats every tick until you do.                                                                                                                                                                       |

@@ -15,7 +15,7 @@ Brian runs this once a week, normally Sunday or Monday. You research the coming 
 4. **Mildly controversial means technical opinions only**: frameworks, architecture, AI tooling, industry habits. Never political, religious, social-issue or identity topics, and never an attack on or mockery of a person or named individual.
 5. **Agent-written Q&A questions are phrased plainly in Brian's voice and never presented as asked by someone** ("Someone asked me...", "A reader wants to know..." are out unless a real person asked, with the link as a source).
 6. **Typos**: occasional and natural as `docs/marketing/voice.md` describes, never in names, package names, code, versions or URLs. Point each one out when you present the week.
-7. **Links**: at most one URL per X post, written in `text` (the X adapter posts `text` only and ignores a `link` field, so never set `link` on X). LinkedIn `text` has no URL and no `link` field; the link goes in `firstComment`.
+7. **Links**: at most one URL per X post, written in `text` (the X adapter posts `text` only; the schema rejects a `link` field on X). Most X posts carry no link at all; use a URL on X only for the blog promo or when the link is the point. LinkedIn `text` has no URL and no `link` field; the link goes in `firstComment`.
 8. Voice: read `docs/marketing/voice.md` every run and follow it. Do not restate or reinterpret it here.
 
 ## Running the week CLI
@@ -28,16 +28,16 @@ The CLI talks to the production growth database. Run it from the repo root. It n
 
 Below, `week <command> [flags]` means exactly that line. Every command prints one JSON line on success; errors print `{"error":"..."}` on stderr and exit 1. Never print, echo or log the env file's values. If the file is missing or the CLI reports `DATABASE_URL is required`, `TEST_DATABASE_URL must be absent` or `B4_DATABASE_URL must be absent`, stop and tell Brian; do not work around the preflight.
 
-| Command           | Flags                              | Output                                                                                                                                                                                       |
-| ----------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`          | none                               | `{lastWeek: {weekStart, byStatus: {<status>: [post]}} or null, attention: [{id, channel, kind, status, scheduledAt, lastError}], credentials: [{channel, expiresAt}] or "unavailable: ..."}` |
-| `show`            | `--week YYYY-MM-DD` (a Monday)     | `{week, posts: [post + voiceIssues]}`; `scheduledAt` is UTC                                                                                                                                  |
-| `check`           | `--file <abs path>`                | `{weekStart, voiceIssues: {<key>: [issue]}}`; offline, validates the schema                                                                                                                  |
-| `import`          | `--file <abs path>`                | `{weekId, postIds: {<key>: id}, voiceIssues}`                                                                                                                                                |
-| `edit`            | `--post <id> --file <abs path>`    | `{post, voiceIssues}`                                                                                                                                                                        |
-| `approve`         | `--week <Monday>` or `--post <id>` | `{approved: n}`                                                                                                                                                                              |
-| `hold` / `cancel` | `--post <id>`                      | `{id, status}`                                                                                                                                                                               |
-| `set-pr`          | `--post <blog id> --pr <number>`   | `{id, prNumber}`                                                                                                                                                                             |
+| Command           | Flags                              | Output                                                                                                                                                                                                    |
+| ----------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`          | none                               | `{lastWeek: {weekStart, byStatus: {<status>: [post]}} or null, attention: [{id, channel, kind, status, scheduledAt, externalUrl, lastError}], credentials: [{channel, expiresAt}] or "unavailable: ..."}` |
+| `show`            | `--week YYYY-MM-DD` (a Monday)     | `{week, posts: [post + voiceIssues]}`; `scheduledAt` is UTC                                                                                                                                               |
+| `check`           | `--file <abs path>`                | `{weekStart, voiceIssues: {<key>: [issue]}}`; offline, validates the schema                                                                                                                               |
+| `import`          | `--file <abs path>`                | `{weekId, postIds: {<key>: id}, voiceIssues}`                                                                                                                                                             |
+| `edit`            | `--post <id> --file <abs path>`    | `{post, voiceIssues}`                                                                                                                                                                                     |
+| `approve`         | `--week <Monday>` or `--post <id>` | `{approved: n}`                                                                                                                                                                                           |
+| `hold` / `cancel` | `--post <id>`                      | `{id, status}`                                                                                                                                                                                            |
+| `set-pr`          | `--post <blog id> --pr <number>`   | `{id, prNumber}`                                                                                                                                                                                          |
 
 Always pass `--week` explicitly. Write every JSON file you hand the CLI to your session scratchpad and pass its absolute path.
 
@@ -57,11 +57,11 @@ Behaviour to remember:
 
 Run `week status`. Before anything else, tell Brian:
 
-- every post in `attention` (failed or held, any week): day and time in America/New_York, channel, kind, `lastError`;
+- every post in `attention`: day and time in America/New_York, channel, kind, status, `lastError`. Failed and held posts come from any week; a held post whose `lastError` is "missed its slot by N hours" was more than 6 hours late when the dispatcher reached it. A `published` post in `attention` (published in the last 14 days) went live but a follow-up step failed, for example the LinkedIn first comment: give Brian its `externalUrl` and the `lastError` so he can finish it by hand. Never retry a published post. A failed post whose `lastError` starts with "publish outcome unknown" may be live: Brian checks the channel first, and if it is there the row is cancelled, not retried;
 - `credentials` expiring within 14 days, with the fix (`npx nx run marketing:linkedin-auth` for LinkedIn, `npx nx run marketing:x-auth` for X; Brian runs these, they open a browser); if it says `unavailable`, say the key is not in the environment;
 - last week (`lastWeek.byStatus`): what published, with `externalUrl`, and what did not.
 
-Ask whether to retry or release anything in `attention` before moving on; each retry is an `approve --post` that needs his go-ahead.
+Ask whether to retry or release anything failed or held in `attention` before moving on; each retry is an `approve --post` that needs his go-ahead, and a post whose time has passed needs a new `scheduledAt` first (Step 7, "Past-due slots").
 
 Then run `week show --week W`. If the week already exists, skip to Step 6 and present it; do not re-draft over it.
 
@@ -96,6 +96,8 @@ Defaults (America/New_York), from spec 4.5:
 | dev.to      | Wednesday 10:00, `dependsOnKey` the blog (publishes once the blog is live)                      |
 | Blog promos | Wednesday: the X post at 10:00 and LinkedIn at 08:30 if used, each with `dependsOnKey` the blog |
 
+Never draft a slot that is already past or less than 30 minutes away (this happens when the week starts today): move that post to a later free slot in the week or leave it out. The dispatcher holds any X, LinkedIn or dev.to post it reaches more than 6 hours after its `scheduledAt` instead of posting it.
+
 Mix, adapted to what actually happened: one `release` if anything shipped, two to three `qa`, one or two `topical`, one or two `guide`, one `take`, one `blog_promo` per channel. Prefer real questions from issues and discussions for `qa`.
 
 Blog post:
@@ -106,10 +108,10 @@ Blog post:
 
 Week JSON (scratchpad, e.g. `<scratchpad>/week-W.json`), following the example at the end. Rules the schema enforces: `weekStart` is W; `key`s are unique (use `mon-x`, `tue-li`, `blog`, `devto`, `wed-x-promo`...); `channel` is `x | linkedin | blog | devto`; `kind` is `release | qa | topical | guide | take | blog_promo | blog` (`blog` for the blog and dev.to rows); every `scheduledAt` falls between W and W+6 in America/New_York; `draft.channel` equals `channel`; drafts are strict objects:
 
-- X: `{channel: "x", text}` (no `link`, at most one URL in `text`)
+- X: `{channel: "x", text}` (no `link`; at most one URL in `text`, and most X posts have none: only the blog promo, or a post where the link is the point)
 - LinkedIn: `{channel: "linkedin", text, firstComment?}`
 - Blog: `{channel: "blog", slug, title}`
-- dev.to: `{channel: "devto", blogSlug, article: {title, tags, description}}`; `tags` up to 4, lowercase letters and digits only
+- dev.to: `{channel: "devto", blogSlug, article: {title, tags, description}}`; `tags` up to 4, each lowercase letters and digits only and at most 30 characters
 
 Every post, including the blog and dev.to rows, has `sources: [{url, note}]` (the voice check flags an empty list). Put the research summary and its sources in `researchBrief`.
 
@@ -137,7 +139,16 @@ Then let Brian talk it through. For each change:
 
 ## Step 7: Go ahead
 
-Only after Brian's explicit go-ahead (Hard rule 1). Before starting, confirm: no `[BRIAN:` anywhere, every post's `voiceIssues` is empty or Brian accepted the issue, and the blog file exists. Then, in this order, stopping and reporting on any failure:
+Only after Brian's explicit go-ahead (Hard rule 1), and only for what it names. Before starting, confirm: no `[BRIAN:` anywhere and every post's `voiceIssues` is empty or Brian accepted the issue.
+
+**Past-due slots.** Right before any `approve`, run `week show --week W` and compare every post you are about to approve with the current time. Any post whose `scheduledAt` is already past, or less than 30 minutes away, must not be approved as it is: move it to a future slot with `week edit` (show Brian the new day and time, and get his go-ahead for that post again) or cancel it with his agreement. The dispatcher holds X, LinkedIn and dev.to posts it reaches more than 6 hours late, and anything late but under 6 hours goes out at the wrong time.
+
+**Which path.**
+
+- **The whole week** ("go ahead", "ship the week"), or an approval that names the blog post: do steps 1 to 6 below. The blog row is approved only after steps 1 to 4.
+- **Any single post other than the blog** ("approve Tuesday's X post", releasing a hold, retrying a failure): only the past-due check above, then `week approve --post <id>`. Do not create a worktree, commit, push, open a PR or run `set-pr`.
+
+Whole week or blog, in this order, stopping and reporting on any failure. The blog file must exist.
 
 1. Commit the blog file on `blog/<slug>` from an up-to-date `origin/main`, in a separate worktree so Brian's checkout is untouched:
 
@@ -154,7 +165,7 @@ Only after Brian's explicit go-ahead (Hard rule 1). Before starting, confirm: no
 2. Push: `git -C "$WT" push -u origin "blog/$SLUG"`.
 3. Open the PR: `gh pr create --repo liveloveapp/hashbrown --base main --head "blog/$SLUG" --title "docs(blog): <title>" --body "<one line on the post>. The marketing dispatcher merges this at <blog day and time> ET once PR Gate is green; please don't merge it earlier."` Read the number with `gh pr view "blog/$SLUG" --repo liveloveapp/hashbrown --json number -q .number`.
 4. `week set-pr --post <blog post id> --pr <number>`.
-5. `week approve --week W`. For a single post Brian named instead: `week approve --post <id>` (approve the blog row only after steps 1 to 4).
+5. `week approve --week W` for the whole week, or `week approve --post <blog post id>` when Brian named only the blog.
 6. Clean up: `git -C "$REPO" worktree remove "$WT"`. If `git -C "$REPO" status --porcelain "www/content/blog/$SLUG.md"` shows `??` and `git -C "$REPO" show "blog/$SLUG:www/content/blog/$SLUG.md" | cmp -s - "$REPO/www/content/blog/$SLUG.md"` succeeds, delete the local copy so it cannot clash when Brian pulls `main`. Later blog edits go to the PR branch (`gh pr checkout` or a new worktree on `blog/<slug>`).
 
 ## Step 8: Report the schedule
