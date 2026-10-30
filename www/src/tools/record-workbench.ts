@@ -1,3 +1,4 @@
+/** Records the verified live lesson clients and publishes their local documentation media. */
 import { workbenchLocalRecordingCues } from './workbench-local-recording';
 import { workbenchJavaScriptRecordingCues } from './workbench-javascript-recording';
 import { workbenchUiRecordingCues } from './workbench-ui-recording';
@@ -11,13 +12,13 @@ import {
   workbenchWorkflowPosterTime,
   workbenchWorkflowRecordingCues,
 } from './workbench-workflow-recording';
-/** Records the verified live lesson clients and publishes their local documentation media. */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { publishWorkbenchMedia } from './workbench-media-publication';
 import { resolve } from 'node:path';
 import { prepareWorkbenchCaptures } from './workbench-capture-file';
 import {
+  isWorkbenchLoopbackLesson,
   type WorkbenchLessonId,
   workbenchLessons,
 } from '../../examples/quickstart/runtime/workbench-lessons';
@@ -311,7 +312,7 @@ for (const report of reports) {
       `${report.framework.toUpperCase()} · ${report.lesson}\n\nReal OpenAI output through actual Hashbrown UI chat, kit APIs and trusted framework renderers. The actual normalized kit registry and serialized schema are captured. A real configured framework fallback was observed. Only explicit acceptance of a current completed valid proposal changes application state. ${report.lesson === 'ui-chatbot' ? 'PlanReading is a read-only model report.' : 'SummaryCard and StepsCard are the only trusted components in this kit.'} The server requires a fresh successful context result before UI generation, then disables further tool calls. Unchanged protocol events are paced at 20 ms for filming. Footage is slowed to half speed; no narration.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nThe real readContext tool returns the accepted application plan and revision to the next request. Original JSON, parsed props, current source/turn/revision and once-only guards protect acceptance. Replay makes no requests or writes. Refresh clears local sessions and captures.\n`,
     );
   }
-  if (['server-threads', 'public-endpoint'].includes(report.lesson)) {
+  if (isWorkbenchLoopbackLesson(report.lesson)) {
     writeFileSync(
       `${base}-transcript.txt`,
       `${report.framework.toUpperCase()} · ${report.lesson}\n\nReal OpenAI text through the actual Hashbrown SDK. Unchanged provider events are paced at 20 ms for filming. Footage is slowed to half speed; no narration. The loopback demo session and process-memory repository are application integrations, not production authentication or durable agent checkpoints.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nServer saves are explicit completed-text snapshots with owner and version checks. No tools, generated UI, shared state or paused checkpoints are restored. The competing client makes a real independent HTTP write; a stale save returns 409. Anonymous and foreign-owner checks stop before provider invocation. Refresh clears SDK sessions and captures; loading server text starts no generation. Replay makes no requests or writes.\n`,

@@ -3,6 +3,7 @@ import { getWorkbenchEmbedMode } from './workbench-embed';
 import {
   isWorkbenchLoopbackHostname,
   type WorkbenchLesson,
+  type WorkbenchLoopbackLessonId,
 } from './workbench-lessons';
 import {
   canMutateWorkbenchHistory,
@@ -17,7 +18,7 @@ import {
 } from './workbench-history';
 
 /** Canonical server lesson IDs, each with isolated application records. */
-export type WorkbenchServerLesson = 'server-threads' | 'public-endpoint';
+export type WorkbenchServerLesson = WorkbenchLoopbackLessonId;
 /** Safe server snapshot; this is completed text, never an agent checkpoint. */
 export interface WorkbenchServerSnapshot {
   readonly id: string;

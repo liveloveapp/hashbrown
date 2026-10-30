@@ -40,6 +40,7 @@ import {
 
 import {
   hostedWorkbenchLessons,
+  isWorkbenchLoopbackLesson,
   type WorkbenchLessonId,
   workbenchLessons,
 } from '../runtime/workbench-lessons';
@@ -121,8 +122,7 @@ export function pinWorkbenchInput(
   const history =
     lesson === 'message-history' ||
     lesson === 'save-text-conversations' ||
-    lesson === 'server-threads' ||
-    lesson === 'public-endpoint';
+    isWorkbenchLoopbackLesson(lesson);
   const onboarding =
     lesson === 'first-plan' ||
     lesson === 'conversation' ||

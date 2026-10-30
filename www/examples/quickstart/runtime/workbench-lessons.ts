@@ -354,6 +354,28 @@ export function isWorkbenchLoopbackHostname(hostname: string): boolean {
   return ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
 }
 
+/** The lessons whose API answers only on a loopback host (`host: 'loopback'`). */
+export type WorkbenchLoopbackLessonId = 'server-threads' | 'public-endpoint';
+
+/**
+ * Whether a lesson is a loopback lesson: its pages are served everywhere,
+ * but its API answers only on a loopback host. Reads the lesson data's
+ * `host`, so a new loopback lesson needs only that flag.
+ *
+ * @param id - A lesson id, or any string such as a report's lesson.
+ */
+export function isWorkbenchLoopbackLesson(
+  id: string | null | undefined,
+): id is WorkbenchLoopbackLessonId {
+  return workbenchLessons.some(
+    (lesson) => lesson.id === id && lesson.host === 'loopback',
+  );
+}
+
+/** The loopback lessons' ids, in lesson order (see {@link isWorkbenchLoopbackLesson}). */
+export const workbenchLoopbackLessonIds: readonly WorkbenchLoopbackLessonId[] =
+  workbenchLessons.map((lesson) => lesson.id).filter(isWorkbenchLoopbackLesson);
+
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {
   const id = new URLSearchParams(search).get('lesson');
