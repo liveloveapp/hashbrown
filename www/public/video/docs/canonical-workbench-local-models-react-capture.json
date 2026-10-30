@@ -7422,5 +7422,21 @@
       },
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "model-preparing-0", "index": 0, "label": "Model preparing" },
+    { "id": "model-ready-0", "index": 1, "label": "Model ready" },
+    { "id": "prompt-1", "index": 2, "label": "Prompt" },
+    { "id": "request-1", "index": 4, "label": "Request" },
+    { "id": "streaming-json-1", "index": 8, "label": "Streaming JSON" },
+    { "id": "parsed-output-1", "index": 64, "label": "Parsed output" },
+    { "id": "complete-1", "index": 72, "label": "Complete" },
+    { "id": "plan-accepted-1", "index": 73, "label": "Plan accepted" },
+    { "id": "prompt-2", "index": 74, "label": "Prompt" },
+    { "id": "request-2", "index": 76, "label": "Request" },
+    { "id": "streaming-json-2", "index": 80, "label": "Streaming JSON" },
+    { "id": "parsed-output-2", "index": 133, "label": "Parsed output" },
+    { "id": "complete-2", "index": 141, "label": "Complete" },
+    { "id": "plan-accepted-2", "index": 142, "label": "Plan accepted" }
   ]
 }

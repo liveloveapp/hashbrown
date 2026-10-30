@@ -240,7 +240,7 @@ function TabbedPanel({
 
   // Fetch the capture after the frame is ready and load it. Fall back to the
   // video on no ready, a ready for another embed, a failed or hung fetch, no
-  // answer to load, or rejected.
+  // answer to load, or a rejected load.
   useEffect(() => {
     if (!frame) return;
     let disposed = false;
@@ -302,7 +302,11 @@ function TabbedPanel({
           });
         }
       },
-      rejected: fail,
+      // A refused seek leaves the loaded replay where it was; only a
+      // refused load falls back to the video.
+      rejected: (message) => {
+        if (message.reason !== 'milestone') fail();
+      },
       state: () => undefined,
     });
     client.current = embed;

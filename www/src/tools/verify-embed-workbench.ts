@@ -34,8 +34,10 @@ export function createToolsFixtureCapture(): WorkbenchCapture {
     recordedAt: '2026-10-28T00:00:00.000Z',
   });
   const ids = workbenchMilestones(capture.events, 'ui').map((item) => item.id);
-  if (!ids.includes('tool-result-1'))
-    throw new Error(`Fixture capture lacks tool-result-1: ${ids.join(', ')}`);
+  if (!ids.includes('tool-readcontext-1'))
+    throw new Error(
+      `Fixture capture lacks tool-readcontext-1: ${ids.join(', ')}`,
+    );
   return capture;
 }
 
@@ -81,7 +83,7 @@ frame.src = config.src;
 /**
  * Drives `react.html?lesson=tools&embed=replay` from a cross-origin parent at
  * `http://localhost:<port>`, the way a docs page would: load a capture on
- * `ready`, seek to `tool-result-1`, and check the embedded chrome.
+ * `ready`, seek to `tool-readcontext-1`, and check the embedded chrome.
  */
 export async function verifyEmbedWorkbench(options: {
   readonly browser: Browser;
@@ -160,7 +162,7 @@ export async function verifyEmbedWorkbench(options: {
       loaded.type === 'hb-workbench:loaded'
         ? loaded.milestones.map((item) => item.id)
         : [];
-    expect(milestones).toContain('tool-result-1');
+    expect(milestones).toContain('tool-readcontext-1');
     expect(
       (await received()).every(({ origin }) => origin === options.origin),
     ).toBe(true);
@@ -173,15 +175,15 @@ export async function verifyEmbedWorkbench(options: {
       {
         type: 'hb-workbench:seek',
         version: WORKBENCH_MESSAGE_VERSION,
-        milestone: 'tool-result-1',
+        milestone: 'tool-readcontext-1',
       },
     );
     await waitFor(
       'hb-workbench:state',
-      'The workbench never reported the seek to tool-result-1.',
+      'The workbench never reported the seek to tool-readcontext-1.',
       (data) =>
         data.type === 'hb-workbench:state' &&
-        data.milestone === 'tool-result-1',
+        data.milestone === 'tool-readcontext-1',
     );
 
     const frame = page.frameLocator('#wb');

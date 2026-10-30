@@ -324,6 +324,25 @@ test('falls back when the workbench rejects the capture', async () => {
   expect(document.querySelector('video')).not.toBeNull();
 });
 
+test('keeps the replay when the workbench rejects a seek to an unknown milestone', async () => {
+  const { intersect } = setup();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+
+  await fromFrame(frame, {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  });
+
+  expect(replayFrame()).not.toBeNull();
+  expect(document.querySelector('video')).toBeNull();
+});
+
 test('ignores messages from other origins or frames', async () => {
   const { fetchMock, intersect } = setup();
   render(<WorkbenchPanel lesson="tools" sdk="react" />);
@@ -372,6 +391,36 @@ test('the embed client dispatches only valid messages from its frame', () => {
 
   expect(handlers.ready).toHaveBeenCalledTimes(1);
   expect(handlers.ready).toHaveBeenCalledWith(ready);
+  frame.remove();
+});
+
+test('the embed client dispatches a refused seek to the rejected handler', () => {
+  setup();
+  const frame = document.createElement('iframe');
+  document.body.append(frame);
+  const handlers = {
+    ready: vi.fn(),
+    loaded: vi.fn(),
+    rejected: vi.fn(),
+    state: vi.fn(),
+  };
+  const client = createEmbedClient(frame, origin, handlers);
+  const refused = {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  };
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: refused,
+      origin,
+      source: frame.contentWindow as Window,
+    }),
+  );
+
+  expect(handlers.rejected).toHaveBeenCalledWith(refused);
+  client.dispose();
   frame.remove();
 });
 

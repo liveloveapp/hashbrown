@@ -192,6 +192,62 @@ test('seek moves the replay to the named milestone and reports state', () => {
       },
       docsOrigin,
     ],
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'milestone' },
+      docsOrigin,
+    ],
+  ]);
+});
+
+test('recorded milestones win over computed ones for loaded, seek and state', () => {
+  const { store, post } = mountReplay();
+  const capture = {
+    ...recordedCapture(),
+    milestones: [
+      { id: 'asked-1', index: 0, label: 'Asked' },
+      { id: 'answered-1', index: 2, label: 'Answered' },
+    ],
+  };
+  post.mockClear();
+
+  load(capture);
+  fromParent({
+    type: 'hb-workbench:seek',
+    version: 1,
+    milestone: 'answered-1',
+  });
+  const cursor = store.getSnapshot().cursor;
+  fromParent({ type: 'hb-workbench:seek', version: 1, milestone: 'request-1' });
+
+  expect(cursor).toBe(2);
+  expect(store.getSnapshot().cursor).toBe(2);
+  expect(post.mock.calls).toEqual([
+    [
+      {
+        type: 'hb-workbench:loaded',
+        version: 1,
+        milestones: [
+          { id: 'asked-1', label: 'Asked' },
+          { id: 'answered-1', label: 'Answered' },
+        ],
+        commit: '0123456789abcdef',
+      },
+      docsOrigin,
+    ],
+    [
+      {
+        type: 'hb-workbench:state',
+        version: 1,
+        mode: 'replay',
+        milestone: 'answered-1',
+        playing: false,
+      },
+      docsOrigin,
+    ],
+    [
+      { type: 'hb-workbench:rejected', version: 1, reason: 'milestone' },
+      docsOrigin,
+    ],
   ]);
 });
 
