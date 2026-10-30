@@ -30,6 +30,7 @@ type FrameworkFixture = {
       resultText?: string;
     }[];
     text?: string;
+    activities?: { activityType: string; content: Record<string, unknown> }[];
   };
 };
 
@@ -97,7 +98,7 @@ for (const filename of fixtureFiles) {
     ) as FrameworkFixture,
   );
 
-  test(`preserves ${fixture.framework} ${fixture.profile} server display through commit, JSON restore and next-run input`, () => {
+  test(`preserves ${fixture.framework} ${fixture.profile} display through commit, JSON restore and next-run input`, () => {
     const originalCapture = JSON.stringify(fixture);
     const store = rootStore([
       { id: 'framework-consumer-user', role: 'user', content: 'Run the tool.' },
@@ -111,9 +112,33 @@ for (const filename of fixtureFiles) {
       expect(
         store.read((state) => state.agUiMessages.protocolError),
       ).toBeUndefined();
+      if (
+        event.type === EventType.ACTIVITY_SNAPSHOT ||
+        event.type === EventType.ACTIVITY_DELTA
+      ) {
+        const activity = store
+          .read(selectViewMessages)
+          .find(
+            (message) =>
+              message.role === 'activity' && message.id === event.messageId,
+          );
+        expect(activity?.role).toBe('activity');
+        if (activity?.role === 'activity') {
+          if (event.type === EventType.ACTIVITY_SNAPSHOT)
+            expect(activity.content).toEqual(event.content);
+          else
+            for (const patch of event.patch) {
+              if (patch.op === 'add' && patch.path === '/status')
+                expect(activity.content['status']).toBe(patch.value);
+            }
+        }
+      }
     }
     const liveMessages = store.read(selectViewMessages);
     const liveCalls = serverCalls(store);
+    const liveActivities = liveMessages.filter(
+      (message) => message.role === 'activity',
+    );
     store.dispatch(
       apiActions.generateMessageSuccess({
         message: { role: 'assistant', content: '', toolCallIds: [] },
@@ -127,7 +152,7 @@ for (const filename of fixtureFiles) {
       apiActions.generateMessageEvent(
         freezeJson({
           type: EventType.MESSAGES_SNAPSHOT,
-          messages: wire.messages,
+          messages: JSON.parse(JSON.stringify(committed)) as Message[],
         }),
       ),
     );
@@ -142,7 +167,10 @@ for (const filename of fixtureFiles) {
     expect(fixture.framework).not.toBe('');
     expect(fixture.profile).not.toBe('');
     expect(Object.keys(fixture.versions).length).toBeGreaterThan(0);
-    expect(fixture.expected.calls.length).toBeGreaterThan(0);
+    expect(
+      fixture.expected.calls.length +
+        (fixture.expected.activities?.length ?? 0),
+    ).toBeGreaterThan(0);
     expect(starts).toHaveLength(fixture.expected.calls.length);
     expect(new Set(starts.map((event) => event.toolCallId)).size).toBe(
       starts.length,
@@ -198,6 +226,55 @@ for (const filename of fixtureFiles) {
           .join(''),
       ).toBe(fixture.expected.text);
     }
+    expect(liveActivities).toHaveLength(
+      fixture.expected.activities?.length ?? 0,
+    );
+    for (const [index, expected] of (
+      fixture.expected.activities ?? []
+    ).entries()) {
+      const activity = liveActivities[index];
+      const snapshot = fixture.events.find(
+        (event) =>
+          event.type === EventType.ACTIVITY_SNAPSHOT &&
+          event.messageId === activity.id,
+      );
+      expect(activity.activityType).toBe(expected.activityType);
+      expect(activity.content).toMatchObject(expected.content);
+      expect(activity.content['taskId']).toBe(activity.id);
+      expect(
+        snapshot?.type === EventType.ACTIVITY_SNAPSHOT
+          ? snapshot.content['status']
+          : undefined,
+      ).toBe('running');
+      for (const field of ['startedAt', 'completedAt']) {
+        const patch = fixture.events
+          .flatMap((event) =>
+            event.type === EventType.ACTIVITY_DELTA &&
+            event.messageId === activity.id
+              ? event.patch
+              : [],
+          )
+          .find((patch) => patch.op === 'add' && patch.path === `/${field}`);
+        expect(patch).toBeDefined();
+        expect(activity.content[field]).toBe(
+          patch && 'value' in patch ? patch.value : undefined,
+        );
+      }
+    }
+    expect(
+      store
+        .read(selectViewMessages)
+        .filter((message) => message.role === 'activity'),
+    ).toEqual(liveActivities);
+    const restoredActivities = restored
+      .read(selectViewMessages)
+      .filter((message) => message.role === 'activity');
+    expect(restoredActivities).toEqual(
+      liveActivities.map((activity) => ({ ...activity, links: {} })),
+    );
+    expect(wire.messages.some((message) => message.role === 'activity')).toBe(
+      false,
+    );
     expect(store.read(ɵselectSubagents)).toEqual([]);
     expect(restored.read(ɵselectSubagents)).toEqual([]);
     expect(liveCalls.every((call) => call.subagentRunId === undefined)).toBe(

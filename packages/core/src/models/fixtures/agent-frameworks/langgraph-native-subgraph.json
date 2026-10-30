@@ -598,7 +598,7 @@
       "type": "TOOL_CALL_RESULT",
       "toolCallId": "weather-call",
       "content": "Paris: 21°C and sunny",
-      "messageId": "cd996085-06c6-4b01-9344-7794fc036235",
+      "messageId": "14a85b94-f6b5-4e18-a43d-f28f1a12150e",
       "role": "tool"
     },
     {
@@ -1400,11 +1400,12 @@
     "toolAbortObserved": false,
     "outcome": "success",
     "startBeforeToolCompletion": true,
+    "activityBeforeToolCompletion": false,
     "nativeCheckpointRestore": "not-tested",
     "nativeSubgraphObserved": true
   },
   "provenance": {
-    "sourceSha256": "a25d309f4d8414c9c9a13f6a0c57eeb30031b7b91b4be60d37905e8a24d09958",
-    "eventsSha256": "72331fbd8e2c4b2ae9d7f04786efa8e58ae3ec95ccecdc8095c62869112ab857"
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "52618c276c261f4592cdc220ccd5d5a6266737c22abf9d4758f0e96172c1cbd2"
   }
 }

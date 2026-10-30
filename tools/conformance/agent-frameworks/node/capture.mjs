@@ -85,6 +85,9 @@ const eventIdFields = new Set([
  * Projects raw AG-UI traces for reproducibility comparisons without changing them.
  *
  * @param events - Producer events in delivery order.
+ * @param options - Explicit producer profile projection options. `mastraDelegation`
+ * maps native delegation thread IDs; `mastraBackground` maps background task and
+ * tool-call IDs and canonicalizes absolute activity timestamps by wire type.
  * @returns Copies with top-level timestamps omitted and known identities remapped.
  * @remarks
  * One first-appearance ID map preserves equality and distinctness across envelope
@@ -92,8 +95,14 @@ const eventIdFields = new Set([
  * state, custom values and other payloads remain verbatim, including their IDs and
  * timestamps. The explicit Mastra delegation profile additionally maps only the
  * native agent-worker result subAgentThreadId; it preserves all other payload fields.
+ * The explicit Mastra background profile applies only to mastra-background-task
+ * activity snapshots and deltas. It retains timestamp presence and type, but its
+ * canonical timestamps do not represent elapsed duration; host gates verify timing.
  */
-export function semanticProjection(events, { mastraDelegation = false } = {}) {
+export function semanticProjection(
+  events,
+  { mastraDelegation = false, mastraBackground = false } = {},
+) {
   const delegationCalls = new Set(
     mastraDelegation
       ? events
@@ -118,6 +127,41 @@ export function semanticProjection(events, { mastraDelegation = false } = {}) {
       subAgentThreadId: remap(result.subAgentThreadId),
     });
   };
+  const projectAbsoluteTime = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return 0;
+    if (
+      typeof value === 'string' &&
+      /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+      Number.isFinite(Date.parse(value))
+    ) {
+      return '1970-01-01T00:00:00.000Z';
+    }
+    return value;
+  };
+  const projectBackgroundContent = (content) =>
+    content && typeof content === 'object' && !Array.isArray(content)
+      ? Object.fromEntries(
+          Object.entries(content).map(([key, value]) => [
+            key,
+            key === 'taskId' || key === 'toolCallId'
+              ? remap(value)
+              : key === 'startedAt' || key === 'completedAt'
+                ? projectAbsoluteTime(value)
+                : value,
+          ]),
+        )
+      : content;
+  const projectBackgroundPatch = (patch) =>
+    Array.isArray(patch)
+      ? patch.map((operation) =>
+          operation &&
+          (operation.path === '/startedAt' ||
+            operation.path === '/completedAt') &&
+          Object.hasOwn(operation, 'value')
+            ? { ...operation, value: projectAbsoluteTime(operation.value) }
+            : operation,
+        )
+      : patch;
   const projectMessage = (message) =>
     Object.fromEntries(
       Object.entries(message).map(([key, value]) => [
@@ -150,11 +194,21 @@ export function semanticProjection(events, { mastraDelegation = false } = {}) {
                 key === 'content' &&
                 delegationCalls.has(event.toolCallId)
               ? projectDelegation(value)
-              : event.type === 'MESSAGES_SNAPSHOT' &&
-                  key === 'messages' &&
-                  Array.isArray(value)
-                ? value.map(projectMessage)
-                : value,
+              : mastraBackground &&
+                  event.activityType === 'mastra-background-task' &&
+                  event.type === 'ACTIVITY_SNAPSHOT' &&
+                  key === 'content'
+                ? projectBackgroundContent(value)
+                : mastraBackground &&
+                    event.activityType === 'mastra-background-task' &&
+                    event.type === 'ACTIVITY_DELTA' &&
+                    key === 'patch'
+                  ? projectBackgroundPatch(value)
+                  : event.type === 'MESSAGES_SNAPSHOT' &&
+                      key === 'messages' &&
+                      Array.isArray(value)
+                    ? value.map(projectMessage)
+                    : value,
         ]),
     ),
   );

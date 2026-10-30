@@ -33,6 +33,9 @@ export function verifyCapture(saved, current) {
     events: semanticProjection(events, {
       mastraDelegation:
         record.framework === 'mastra' && record.profile === 'native-delegation',
+      mastraBackground:
+        record.framework === 'mastra' &&
+        ['background', 'background-failure'].includes(record.profile),
     }),
   });
   assert.deepEqual(project(saved), project(current));

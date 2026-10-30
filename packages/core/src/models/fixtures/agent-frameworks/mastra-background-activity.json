@@ -1,0 +1,134 @@
+{
+  "framework": "mastra",
+  "profile": "background",
+  "versions": {
+    "@ag-ui/mastra": "2.0.1",
+    "@mastra/core": "1.80.0",
+    "@mastra/client-js": "1.57.0",
+    "@ag-ui/core": "1.0.3",
+    "@mastra/memory": "1.39.1"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "mastra-background-thread",
+      "runId": "mastra-background-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "ACTIVITY_SNAPSHOT",
+      "messageId": "c7fc10de-7988-422e-8693-c2a0a5f577e5",
+      "activityType": "mastra-background-task",
+      "content": {
+        "taskId": "c7fc10de-7988-422e-8693-c2a0a5f577e5",
+        "toolName": "getWeather",
+        "toolCallId": "weather-call",
+        "status": "running",
+        "outputs": [],
+        "args": {
+          "city": "Paris"
+        }
+      }
+    },
+    {
+      "type": "ACTIVITY_DELTA",
+      "messageId": "c7fc10de-7988-422e-8693-c2a0a5f577e5",
+      "activityType": "mastra-background-task",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/status",
+          "value": "running"
+        },
+        {
+          "op": "add",
+          "path": "/args",
+          "value": {
+            "city": "Paris"
+          }
+        },
+        {
+          "op": "add",
+          "path": "/startedAt",
+          "value": "2026-10-30T15:48:01.254Z"
+        }
+      ]
+    },
+    {
+      "type": "ACTIVITY_DELTA",
+      "messageId": "c7fc10de-7988-422e-8693-c2a0a5f577e5",
+      "activityType": "mastra-background-task",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/status",
+          "value": "completed"
+        },
+        {
+          "op": "add",
+          "path": "/result",
+          "value": "Paris: 21°C and sunny"
+        },
+        {
+          "op": "add",
+          "path": "/completedAt",
+          "value": "2026-10-30T15:48:01.270Z"
+        }
+      ]
+    },
+    {
+      "type": "TEXT_MESSAGE_CHUNK",
+      "role": "assistant",
+      "messageId": "5be76907-5caf-4cfe-985f-dc96f6af713f",
+      "delta": "The weather in Paris is 21°C and sunny."
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "mastra-background-thread",
+      "runId": "mastra-background-run",
+      "usage": [
+        {
+          "provider": "mock-provider",
+          "model": "mock-model-id",
+          "inputTokens": 2,
+          "outputTokens": 2,
+          "totalTokens": 4
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "calls": [],
+    "text": "The weather in Paris is 21°C and sunny.",
+    "activities": [
+      {
+        "activityType": "mastra-background-task",
+        "content": {
+          "toolName": "getWeather",
+          "toolCallId": "weather-call",
+          "status": "completed",
+          "outputs": [],
+          "args": {
+            "city": "Paris"
+          },
+          "result": "Paris: 21°C and sunny"
+        }
+      }
+    ]
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "real local Mastra Agent.stream",
+    "toolExecutions": 1,
+    "toolCompleted": true,
+    "toolAbortObserved": false,
+    "outcome": "success",
+    "startBeforeToolCompletion": false,
+    "activityBeforeToolCompletion": true,
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "7ba6f3c53b54586d4b9b49ea2ea743bb5586309fcae41ef3d7f958919a6ba10f"
+  }
+}

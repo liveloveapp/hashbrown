@@ -16,7 +16,7 @@
     },
     {
       "type": "TOOL_CALL_START",
-      "parentMessageId": "8cca2553-2511-4525-a409-ba554e911fe3",
+      "parentMessageId": "32cd6a3a-4547-466c-8910-1c4e87ecb8fb",
       "toolCallId": "delegate-call",
       "toolCallName": "agent-worker"
     },
@@ -32,14 +32,14 @@
     {
       "type": "TOOL_CALL_RESULT",
       "toolCallId": "delegate-call",
-      "content": "{\"text\":\"The weather in Paris is 21°C and sunny.\",\"subAgentThreadId\":\"mastra-delegation-thread-fb190d22-46c5-4938-a3fc-da58165810d8\",\"subAgentResourceId\":\"mastra-delegation-thread-worker\",\"subAgentToolResults\":[]}",
-      "messageId": "7f331aa2-dbbf-4488-a566-3bf2668f4d4a",
+      "content": "{\"text\":\"The weather in Paris is 21°C and sunny.\",\"subAgentThreadId\":\"mastra-delegation-thread-dba28104-5463-464b-91ad-0c21bd50dc66\",\"subAgentResourceId\":\"mastra-delegation-thread-worker\",\"subAgentToolResults\":[]}",
+      "messageId": "0e810375-762f-4211-b63f-e1a2f8068297",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_CHUNK",
       "role": "assistant",
-      "messageId": "8cca2553-2511-4525-a409-ba554e911fe3-agui-text",
+      "messageId": "32cd6a3a-4547-466c-8910-1c4e87ecb8fb-agui-text",
       "delta": "The weather in Paris is 21°C and sunny."
     },
     {
@@ -78,7 +78,7 @@
     "nativeCheckpointRestore": "not-tested"
   },
   "provenance": {
-    "sourceSha256": "a25d309f4d8414c9c9a13f6a0c57eeb30031b7b91b4be60d37905e8a24d09958",
-    "eventsSha256": "1a63474c245aa4ed5538395da5317ac3f350f7b05eb3141b09b78d0a9f2138fd"
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "7ccd4f27c3894a2ba218645bd945c7bf37c2edf6aeb3f489368d5dba28c3cd31"
   }
 }

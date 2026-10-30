@@ -120,6 +120,56 @@
         "citationsAndAttribution": "not-tested",
         "nativeChildExecution": "passed"
       }
+    },
+    {
+      "framework": "mastra",
+      "profile": "background",
+      "fixture": "mastra-background-activity.json",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3",
+        "@mastra/memory": "1.39.1"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "unsupported",
+        "liveActivityBeforeToolCompletion": "passed",
+        "activities": "passed",
+        "nativeCheckpointRestore": "not-tested",
+        "subagents": "not-tested",
+        "citationsAndAttribution": "not-tested"
+      }
+    },
+    {
+      "framework": "mastra",
+      "profile": "background-failure",
+      "fixture": "mastra-background-failure.json",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3",
+        "@mastra/memory": "1.39.1"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "unsupported",
+        "liveActivityBeforeToolCompletion": "passed",
+        "activities": "passed",
+        "nativeCheckpointRestore": "not-tested",
+        "subagents": "not-tested",
+        "citationsAndAttribution": "not-tested"
+      }
     }
   ],
   "producerGaps": [
@@ -139,7 +189,7 @@
       "framework": "mastra",
       "capability": "failed-tool-outcome",
       "status": "missing-upstream",
-      "detail": "The real failure is JSON error text inside TOOL_CALL_RESULT.content with no top-level error marker. Hashbrown must not infer failure by parsing human-readable result bodies."
+      "detail": "The real failure is JSON error text inside TOOL_CALL_RESULT.content with no top-level error marker. Hashbrown must not infer failure by parsing human-readable result bodies. This gap concerns ordinary foreground tools; the separately tested native background profile does supply a failed activity status and error text."
     },
     {
       "framework": "langgraph",
@@ -152,6 +202,12 @@
       "capability": "attributed-subagents",
       "status": "missing-upstream",
       "detail": "The native agents configuration executes agent-worker and its real child model. The tool result supplies a subAgentThreadId inside JSON content, but the pinned bridge emits no SUBAGENT lifecycle or subagentRunId. That payload is retained verbatim; it does not establish AG-UI ownership."
+    },
+    {
+      "framework": "langgraph",
+      "capability": "native-activities",
+      "status": "recipe-required",
+      "detail": "A real native dispatchCustomEvent progress probe in langgraph.spec.mjs reaches the published bridge as CUSTOM weather-progress events, without ACTIVITY_SNAPSHOT/DELTA. A separate explicit producer recipe is needed for standard activity display; none is invented here."
     }
   ],
   "existingDotnetHost": {
@@ -164,7 +220,7 @@
     "langgraph-api-server",
     "native-framework-checkpoint-restore",
     "rich-metadata-recipes",
-    "mastra-memory-activities",
+    "mastra-observational-memory-activities",
     "framework-subagents",
     "strands"
   ]

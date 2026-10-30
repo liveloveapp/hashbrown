@@ -83,3 +83,22 @@ test('LangGraph executes a native subgraph but its pinned bridge omits child pro
     false,
   );
 });
+
+test('LangGraph native progress callbacks stay CUSTOM events rather than native activities', async () => {
+  const profile = 'native-progress';
+
+  const scenario = await runLangGraphScenario({ profile });
+  const progress = scenario.events.filter(
+    (event) => event.type === 'CUSTOM' && event.name === 'weather-progress',
+  );
+
+  assert.equal(scenario.evidence.toolExecutions, 1);
+  assert.deepEqual(
+    progress.map((event) => event.value),
+    [{ status: 'running' }, { status: 'completed' }],
+  );
+  assert.equal(
+    scenario.events.some((event) => event.type.startsWith('ACTIVITY_')),
+    false,
+  );
+});

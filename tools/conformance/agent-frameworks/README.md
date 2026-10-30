@@ -1,8 +1,8 @@
 # Agent framework display conformance
 
-These initial tests check how framework-produced AG-UI server-tool calls reach
-Hashbrown. Activities remain part of the follow-up roadmap. They are test infrastructure, not new runtime adapters. File search
-remains deferred.
+These tests check how framework-produced AG-UI server-tool calls, background
+activities and native delegation reach Hashbrown. They are test infrastructure,
+not new runtime adapters. File search remains deferred.
 
 The implementation plan is
 [agent-framework-conformance-execution](../../../docs/superpowers/plans/2026-10-29-agent-framework-conformance-execution.md).
@@ -32,7 +32,8 @@ npx nx agent-framework-capture conformance      # regenerate raw captures after 
 npx nx agent-framework-e2e conformance          # both built browser consumers
 ```
 
-The isolated Node dependency set was approved on 2026-10-29. The install target
+The initial isolated Node dependency set was approved on 2026-10-29; the additional
+`@mastra/memory` 1.39.1 test dependency was approved on 2026-10-30. The install target
 uses its own lock with scripts disabled; no root or published runtime dependency
 changes. `conformance:test` depends on the real host/check target, and the existing
 `example-e2e` spec glob includes these browser cases. CI therefore exercises both
@@ -44,7 +45,7 @@ is an explicit input to the cached helper-test target.
 ## Current baseline and limits
 
 [capabilities.json](capabilities.json) records the exact versioned profiles and
-gaps. Three real success captures cover a LangGraph graph/ToolNode and Mastra's
+gaps. The initial three real success profiles cover a LangGraph graph/ToolNode and Mastra's
 default buffered and opt-in live server-tool profiles. LangGraph uses the published
 bridge's public custom-client seam backed by real `graph.streamEvents`; it does
 not exercise a LangGraph API server or qualify native SDK transport.
@@ -62,9 +63,9 @@ content without the AG-UI error marker. We preserve those facts and do not parse
 result bodies to invent a failure status. Mastra cancellation has a cancelled
 outcome; LangGraph's seam reaches the tool but its terminal lacks that outcome.
 
-Activities, subagents, richer metadata/citations and durable native framework
-checkpoint restore remain follow-ups. The empty activity observation in the host
-is fixture diagnostics, not activity conformance evidence. Python, an actual
+Native subagent lifecycle remains a versioned producer gap as documented below.
+Observational-memory activities, richer metadata/citations and durable native
+framework checkpoint restore remain follow-ups. Python, an actual
 LangGraph API server and Strands are separately untested. The broader roadmap
 remains in the design/plan; this first implementation does not complete it.
 
@@ -126,3 +127,44 @@ For reproducibility, only the explicit Mastra `native-delegation` profile maps
 map. Other result fields, child text and nested results remain exact. The raw
 capture and its integrity hash are unchanged. This profile-specific rule never
 parses general application tool results.
+
+## Native background activity profiles
+
+The Mastra `background` and `background-failure` profiles run actual eligible
+background tools with the public `Mastra` runtime, core's `InMemoryStore`,
+`@mastra/memory` and bridge `untilIdle`. These options are a separate profile;
+they do not change default buffered or opt-in live foreground tool behavior.
+The deterministic model requests the real task, stays silent while it is
+pending, then answers when Mastra re-enters the loop after task settlement.
+Public runtime shutdown provides bounded cleanup.
+
+A gated actual tool proves that ACTIVITY_SNAPSHOT is delivered before completion.
+The bridge supplies running and terminal ACTIVITY_DELTA patches, including the
+result or readable error. It suppresses the ordinary tool-call family in these
+profiles. A completed activity is not inferred to be a tool-step outcome or a
+subagent lifecycle event.
+
+Prepared-store tests assert each supplied status transition, preserve content
+through canonical commit/JSON restore and check the next-run input separately.
+Activities are intentionally excluded from model-bound history. Restore recomputes
+positional links without inventing the former live run ID. Both browser consumers
+verify final activity content, original IDs and timestamps, no invented subagent
+rows, and zero executions of an identically named browser tool.
+
+Only the explicit background profiles normalize native task/tool identity fields
+and absolute startedAt/completedAt values for independent capture comparisons.
+Timestamp presence and wire type are preserved; these comparisons make no duration
+claim. Raw capture bytes, consumer content assertions and host timing evidence
+remain unchanged. Observational memory and durable native restart are untested.
+
+The LangGraph host-only `native-progress` probe executes actual
+`dispatchCustomEvent` callbacks around its real tool. The pinned bridge forwards
+both values as `CUSTOM weather-progress`, not `ACTIVITY_SNAPSHOT`/`ACTIVITY_DELTA`.
+That establishes a `recipe-required` gap, not native activity display support.
+No standard events are synthesized, and no browser or restore qualification is
+claimed for that progress callback profile.
+
+The maintained smoke hosts are also copied by the .NET acceptance consumer, which
+pins published SDK 0.8.3. Their optional subagent diagnostic tolerates that older
+API. These current-SDK conformance cases require its capability marker to be true,
+so an empty compatibility fallback cannot qualify the subagent observations.

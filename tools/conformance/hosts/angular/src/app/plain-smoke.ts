@@ -124,7 +124,9 @@ function errorText(error: unknown): string {
         [textContent]="toErrorText(chat.generatingError())"
       ></div>
       <pre data-testid="server-tool-calls">{{ serverToolCalls() }}</pre>
-      <pre data-testid="subagents">{{ serializedSubagents() }}</pre>
+      <pre data-testid="subagents" [attr.data-supported]="supportsSubagents">{{
+        serializedSubagents()
+      }}</pre>
       <pre data-testid="activity-messages">{{ activityMessages() }}</pre>
       <div data-testid="tool-count">{{ toolCount() }}</div>
       <div data-testid="tool-observations">
@@ -191,9 +193,13 @@ export class PlainSmoke {
           ),
     );
   });
-  protected readonly serializedSubagents = computed(() =>
-    JSON.stringify(this.chat.subagents()),
-  );
+  protected readonly supportsSubagents =
+    'subagents' in this.chat && typeof this.chat.subagents === 'function';
+  // The pinned published-package acceptance consumer also copies this host.
+  protected readonly serializedSubagents = computed(() => {
+    const value = 'subagents' in this.chat ? this.chat.subagents : undefined;
+    return JSON.stringify(typeof value === 'function' ? value() : []);
+  });
   protected readonly activityMessages = computed(() => {
     const snapshot = this.chat.snapshot();
     return JSON.stringify(

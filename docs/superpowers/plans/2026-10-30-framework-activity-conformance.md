@@ -12,11 +12,11 @@
 
 - [x] Start from current main in the existing clean managed worktree; inspect installed and published bridge versions and public hooks.
 - [x] Review plan independently. Require actual child execution separately from missing lifecycle/provenance assertions; verify activity snapshot/delta content and use public bounded shutdown.
-- [ ] Write failing real-host tests for Mastra native background-task activity using its existing InMemoryStore and a real memory scope (additional @mastra/memory dependency approval requested); implement only supported public configuration. Assert actual execution and supplied activity lifecycle, with bounded cleanup.
+- [x] Write failing real-host tests for Mastra native background-task activity using its existing InMemoryStore and a real memory scope (@mastra/memory 1.39.1 dependency approved 2026-10-30); implement only supported public configuration. Assert actual execution and supplied activity lifecycle, with bounded cleanup.
 - [x] Exercise actual framework delegation/subgraphs with deterministic models. Assert whether lifecycle and provenance survive each bridge; record omissions as version-specific gaps. Never synthesize child identities.
-- [ ] Generate captures with exact version/source/hash evidence. Add prepared-store and browser assertions for supplied activities, ownership and restore. A gap test is not passed lifecycle conformance.
-- [ ] Update capabilities/README with observed results, remaining native restore/API-server/Python/OM gaps and file-search deferral.
-- [ ] Run build/test/lint for core and conformance, real bridge/check and browser targets, runtime host builds/lints if changed. Report warnings.
+- [x] Generate captures with exact version/source/hash evidence. Add prepared-store and browser assertions for supplied activities, ownership and restore. A gap test is not passed lifecycle conformance.
+- [x] Update capabilities/README with observed results, remaining native restore/API-server/Python/OM gaps and file-search deferral.
+- [x] Run build/test/lint for core and conformance, real bridge/check and browser targets, runtime host builds/lints if changed. Report warnings.
 - [ ] Obtain independent implementation review, fix findings, open and attach PR, address CI/reviews, update during a quiet main window and merge when green. Keep other merges unrestricted.
 
 ## Current checkpoint
@@ -27,15 +27,40 @@ and attribution; tests record that gap and verify preserved, unattributed output
 through prepared store, commit/JSON restore and both UI consumers. No runtime
 package dependencies or core production behavior changed.
 
-Mastra background activity work is pending approval for isolated test dependency
-`@mastra/memory` 1.39.1, whose peer range matches core 1.80.0. The public bridge's
-`untilIdle` path requires configured memory; storage alone does not keep the
-stream open for task execution. The exploratory failing activity test and public
-background configuration are saved locally outside the PR until that approval;
-the PR must not be treated as completing the activity acceptance criteria.
+Mastra background activity dependency `@mastra/memory` 1.39.1 was approved on
+2026-10-30 and added only to the isolated test manifest/lock. Public runtime,
+real Memory/InMemoryStore, eligible tools and bounded untilIdle produce actual
+running/completed/failed activities; public shutdown bounds cleanup. The model
+waits silently until native task settlement re-enters the loop. Host tests prove
+execution, delivery before completion, readable failures and supplied timestamps.
+Success/failure captures run through per-event prepared-store checks, canonical
+commit/JSON restore, and both browser consumers. Restoring outgoing model input
+was an incorrect harness assumption: activities are intentionally stripped there.
+The corrected test restores the retained canonical checkpoint, checks absent
+invented run links and independently verifies next-run stripping.
 
-Independent review found no actionable delegation issues. Local verification so
-far: 2,469 core tests, 22 browser cases, affected builds/lints passed. Final full
-conformance verification passed: 112 existing consumer tests, 23 capture/evidence
-helper tests, 15 real-host tests and all five capture reproduction profiles. Existing Nx/Vite,
-color environment and bundle-size warnings remain. File search stays deferred.
+The LangGraph native progress probe forwards real dispatchCustomEvent values as
+CUSTOM rather than ACTIVITY events. This is an explicit recipe-required producer
+gap. No native activity display qualification or invented events are claimed.
+Native lifecycle/provenance remains missing upstream in both delegation profiles.
+
+Final build/test/lint, independent spec/quality review and remote green CI are
+required before merge. No schedules or main-branch merge freeze. Existing Nx/Vite,
+color environment and bundle-size warnings and expected native failure diagnostics
+will be reported. File search remains deferred; release notes remain user-owned.
+
+## Verification before integration
+
+Passed locally: core build/lint and all 2,471 tests; conformance build/lint and
+112 tests; 30 capture/evidence tests; 18 real-host tests; seven reproducible
+capture profiles; all 30 Angular/React browser cases; both runtime-host builds
+and lints. Independent spec and quality reviewers found no blocking issues.
+Expected task-failure workflow diagnostics are retained as test evidence.
+The earlier draft CI's .NET candidate passed, but its copied shared browser hosts
+failed the pinned published SDK 0.8.3 consumer build: that API lacks subagents.
+Reproduced the exact TS2339 locally, guarded the optional diagnostic in both
+hosts and verified the actual published React/Angular consumer build. Current
+SDK browser tests require a capability marker, so fallback output cannot satisfy
+conformance. Pins and package acceptance fences remain unchanged. The additional
+compatibility fix passed independent quality review. Final fresh CI is required
+before merge; no main merge freeze or background schedule is used.

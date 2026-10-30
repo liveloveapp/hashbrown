@@ -7,6 +7,7 @@ import {
 } from '@langchain/langgraph';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { tool } from '@langchain/core/tools';
+import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   AIMessageChunk,
@@ -70,19 +71,35 @@ export async function runLangGraphScenario({
   outcome = 'success',
   profile = 'local-sdk-seam',
 } = {}) {
-  if (!['local-sdk-seam', 'native-subgraph'].includes(profile))
+  if (
+    !['local-sdk-seam', 'native-subgraph', 'native-progress'].includes(profile)
+  )
     throw new Error(`Unknown LangGraph profile: ${profile}`);
   let nativeSubgraphObserved = false;
   const scenario = await captureScenario(
     async (execute) => {
       const weather = tool(
-        async (args, config) =>
-          new ToolMessage({
+        async (args, config) => {
+          if (profile === 'native-progress')
+            await dispatchCustomEvent(
+              'weather-progress',
+              { status: 'running' },
+              config,
+            );
+          const content = await execute(args, { signal: config.signal });
+          if (profile === 'native-progress')
+            await dispatchCustomEvent(
+              'weather-progress',
+              { status: 'completed' },
+              config,
+            );
+          return new ToolMessage({
             id: 'weather-result',
-            content: await execute(args, { signal: config.signal }),
+            content,
             tool_call_id: 'weather-call',
             name: 'getWeather',
-          }),
+          });
+        },
         {
           name: 'getWeather',
           description: 'Get weather for a city',

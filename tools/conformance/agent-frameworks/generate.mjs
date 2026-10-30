@@ -49,6 +49,14 @@ const scenarios = [
   ],
   ['mastra-native-delegation.json', () => runMastraDelegationScenario()],
   [
+    'mastra-background-failure.json',
+    () => runMastraScenario({ profile: 'background', outcome: 'failure' }),
+  ],
+  [
+    'mastra-background-activity.json',
+    () => runMastraScenario({ profile: 'background' }),
+  ],
+  [
     'mastra-buffered-server-tool.json',
     () => runMastraScenario({ profile: 'buffered' }),
   ],
