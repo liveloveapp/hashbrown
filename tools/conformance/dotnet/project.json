@@ -295,6 +295,7 @@
     "restore": {
       "executor": "nx:run-commands",
       "cache": false,
+      "dependsOn": [{ "projects": ["dotnet-sdk"], "target": "build" }],
       "options": {
         "cwd": "tools/conformance/dotnet",
         "command": "dotnet restore --locked-mode"
