@@ -30,7 +30,7 @@ test('label previews schedule only trusted preview labels in independent concurr
   });
   expect(workflow.permissions).toEqual({ contents: 'read' });
   expect(workflow.concurrency.group).toBe(
-    'preview-label-${{ github.event.pull_request.number }}',
+    'preview-label-${{ github.event.pull_request.number }}-${{ github.event.label.name }}',
   );
   expect(workflow.concurrency.group).not.toBe(validation.concurrency.group);
   expect(workflow.concurrency['cancel-in-progress']).toBe(true);
