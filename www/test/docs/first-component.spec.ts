@@ -10,14 +10,10 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['start', 'quick'])?.body ?? '';
 
-    const video = body.indexOf(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
-    const firstSection = body.indexOf('\n## ');
+    const afterTitle = body.split(/^# .+$/m)[1]?.trimStart() ?? '';
 
-    expect(video).toBeGreaterThan(-1);
-    expect(video).toBeLessThan(firstSection);
-    expect(body).toContain(
+    expect(afterTitle).not.toMatch(/^<hb-docs-demo\b/);
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-first-plan-${sdk}-result.png`,
     );
     expect(body).toContain('SummaryCard');
@@ -42,9 +38,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['start', 'intro'])?.body ?? '';
 
     expect(body).toContain('two-step plan');
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    expect(body).toContain('<hb-workbench lesson="first-plan">');
     expect(body).toContain('start/quick');
     expect(body).not.toContain('Getting started and text generation');
   },
@@ -97,9 +91,7 @@ test.each(SDKS)(
     expect(sections[0]).toContain('book club');
     expect(sections[0]).toMatch(/```(?:tsx|ts)\nimport /);
     expect(sections[1]).toContain('two-step plan');
-    expect(body).toContain(
-      `<hb-docs-demo demo="canonical-workbench-conversation-${sdk}">`,
-    );
+    expect(sections[1]).toContain('<hb-workbench lesson="conversation">');
     expect(body).toContain('threadId');
     expect(body).toContain('runId');
     expect(body).toContain('page refresh');
@@ -114,14 +106,12 @@ test.each(SDKS)(
     const instructions =
       readDoc(sdk, ['concept', 'system-instructions'])?.body ?? '';
 
-    expect(path).toContain(
-      `<hb-docs-demo demo="canonical-workbench-first-plan-${sdk}">`,
-    );
+    expect(path).toContain('<hb-workbench lesson="first-plan">');
     expect(path).toContain('SummaryCard');
     expect(path).toContain('AG-UI');
     expect(path).not.toContain('WelcomeCard');
     expect(instructions).toContain(
-      `<hb-docs-demo demo="canonical-workbench-system-instructions-${sdk}">`,
+      '<hb-workbench lesson="system-instructions">',
     );
     expect(instructions).toContain('provider');
     expect(instructions).toContain('browser');

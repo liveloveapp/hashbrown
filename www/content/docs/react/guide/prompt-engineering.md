@@ -95,7 +95,10 @@ A schema-shaped response can still contain an incorrect claim. Check important f
 
 ## Explore it in the workbench
 
-Open the **System instructions** lesson in the [workbench](/docs/react/start/workbench). The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+Open the **System instructions** lesson in the workbench below. The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+
+<hb-workbench-launcher lesson="system-instructions">
+</hb-workbench-launcher>
 
 Inspect the declared browser instruction in **Requests**, then the safe effective policy captured at the real provider-mapping boundary. Send a request that conflicts with the configured task and observe the actual response. The capture shows what reached that boundary; a model's response alone does not prove that server policy was applied.
 

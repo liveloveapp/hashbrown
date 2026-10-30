@@ -5,14 +5,14 @@ import { expect, test } from 'vitest';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 test.each(SDKS)(
-  '%s selection guide opens with its canonical framework recording',
+  '%s selection guide teaches before its inline workbench',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
     expectConceptFirstWorkbench(body, sdk, 'ui-selection');
-    expect(body).toContain(
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-ui-selection-${sdk}-result.png`,
     );
-    expect(body).toContain(`/${sdk}.html?lesson=ui-selection`);
+    expect(body).toContain('<hb-workbench lesson="ui-selection">');
     expect(body).toContain(`/docs/${sdk}/start/workbench`);
     expect(body).toContain('two-step plan');
     expect(body).not.toMatch(/packing|shopping|Apples|Passport/);

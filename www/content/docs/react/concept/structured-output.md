@@ -7,9 +7,6 @@ meta:
 
 # Structured output
 
-<hb-docs-demo demo="canonical-workbench-structured-react">
-</hb-docs-demo>
-
 Structured output gives an application typed data instead of prose it must interpret. A response schema describes the fields you need. Hashbrown parses the arriving response into that shape, and your application decides how to display or use it.
 
 Use it for extracting form values, classifying a request with explanations, or producing a proposal for review. Choose [generative UI](/docs/react/concept/components) when the model should also choose components. A valid shape is one part of accepting a result: completion, business rules, and permission to perform a write still belong to the application.
@@ -76,6 +73,8 @@ For incomplete input, define an explicit clarification branch with `s.anyOf` rat
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="structured-output">
 </hb-workbench>
 
@@ -85,9 +84,9 @@ I like keeping the example familiar. In [Generative UI](/docs/react/concept/comp
 
 ### Run the same conversation
 
-Use the [conversation workbench](/docs/react/start/workbench) with the server environment from the [Quickstart](/docs/react/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=structured-output`. Selecting a lesson does not send a request.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
-The recording uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
+The replay uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
 ### Describe the plan
 
@@ -115,6 +114,7 @@ The checked React client uses `useStructuredChat()` with the plan schema, the sa
 
 <hb-code-example header="react/src/StructuredWorkbench.tsx" moment="parsed-output-1">
 
+<!-- prettier-ignore -->
 ```ts
 const chat = useStructuredChat({
   system: workbenchStructuredSystem,
@@ -135,8 +135,6 @@ The latest assistant message exposes its parsed plan in `content`. The applicati
 ### Watch the preview become a result
 
 Send the first prompt. Keep **JSON** selected to see response text arrive beside the plan. The **Typed plan** section beside it shows values resolved by the SDK. Select **State** before accepting: the application still has revision `0` and no accepted plan.
-
-<img src="/video/docs/canonical-workbench-structured-react-result.png" alt="The model streams a plain title and steps while the application renders a plan preview beside the typed data." width="1600" height="1000" loading="lazy" />
 
 ### Accept a completed plan
 

@@ -5,7 +5,11 @@ import {
 } from '../../src/components/workbench/workbench-lessons';
 import type { Sdk } from '../../src/lib/content';
 
-/** Assert a matching video teaser precedes teaching and its inline lesson follows it. */
+/**
+ * Assert a panel page opens with teaching material, not a video, and shows its
+ * lesson once: in the inline panel of a separate explore section, with no
+ * static result still duplicating the panel's Replay.
+ */
 export function expectConceptFirstWorkbench(
   body: string,
   sdk: string,
@@ -13,13 +17,21 @@ export function expectConceptFirstWorkbench(
 ): void {
   expect(['angular', 'react']).toContain(sdk);
   const media = workbenchMediaId(assertWorkbenchLesson(lesson), sdk as Sdk);
-  const teaser = body.indexOf(`<hb-docs-demo demo="${media}">`);
+  const afterTitle = body.split(/^# .+$/m)[1]?.trimStart() ?? '';
   const firstSection = body.indexOf('\n## ');
   const boundary = body.indexOf('\n## Explore it in the workbench\n');
   const panel = body.indexOf(`<hb-workbench lesson="${lesson}">`);
 
-  expect(teaser, `${lesson}: matching video teaser`).toBeGreaterThan(-1);
-  expect(firstSection, `${lesson}: teaching section`).toBeGreaterThan(teaser);
+  expect(afterTitle, `${lesson}: no top video`).not.toMatch(
+    /^<(?:hb-docs-demo|www-atc-demo-video)\b/,
+  );
+  expect(body, `${lesson}: no duplicate video`).not.toContain(
+    `<hb-docs-demo demo="${media}">`,
+  );
+  expect(body, `${lesson}: no result still`).not.toContain(
+    `/video/docs/${media}-result.png`,
+  );
+  expect(firstSection, `${lesson}: teaching section`).toBeGreaterThan(-1);
   expect(boundary, `${lesson}: separate workbench section`).toBeGreaterThan(
     firstSection,
   );

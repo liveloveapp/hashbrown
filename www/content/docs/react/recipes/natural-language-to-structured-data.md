@@ -7,9 +7,6 @@ meta:
 
 # Natural language forms
 
-<hb-docs-demo demo="canonical-workbench-natural-forms-react">
-</hb-docs-demo>
-
 Natural-language input can give a form a useful first draft. A customer describes a trip; the model proposes a destination and duration; the customer corrects those fields before submitting. This works well when prose is easier to start with than a blank form, but precise controls still matter.
 
 Keep generated data, editable fields, and submitted application state separate. A response arriving in the browser must not submit the form or overwrite edits made while generation was in progress.
@@ -145,12 +142,12 @@ The labelled inputs change only the reviewed copy. **Apply** validates it again 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="natural-forms">
 </hb-workbench>
 
 Let's use a prompt to fill a form. We'll generate a two-step plan, review it in ordinary editable fields, and apply the reviewed values. Generating a response will not submit the form for us.
-
-<img src="/video/docs/canonical-workbench-natural-forms-react-result.png" alt="The React workbench shows generated plan data, editable reviewed fields, and a separately applied application plan with its revision." width="1600" height="1000" loading="lazy" />
 
 ## Keep the values separate
 
@@ -174,7 +171,7 @@ The workbench begins with the same application-owned two-step plan at revision z
 7. Ask for a shorter second step. Inspect `readContext`: it returns the applied plan, including the edited first step.
 8. Review the next draft. If the model rewrote the first step, restore **Outline the demo** in the field, then apply the reviewed values explicitly.
 
-Both framework recordings use real OpenAI requests, real browser tool results, and their actual text and parser APIs. The model proposes data. It can rewrite a value we asked it to keep. That is why we review the next draft too. Our application owns the form and its actions.
+The replays for both frameworks use real OpenAI requests, real browser tool results, and their actual text and parser APIs. The model proposes data. It can rewrite a value we asked it to keep. That is why we review the next draft too. Our application owns the form and its actions.
 
 ## Validate both the document and the edits
 

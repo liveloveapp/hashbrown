@@ -1,34 +1,17 @@
-import type { WorkbenchLessonId } from './workbench-lessons';
-
 /**
- * The workbench lesson closest to a docs page that has no inline panel of its
- * own, keyed by slug path without the SDK (for example `'guide/ethics'`). Each
- * key must exist for both SDKs. Migrations, API reference, the threadplane
- * recipe and the atc sample are left out on purpose: no lesson is their
- * subject.
+ * Docs pages that show no workbench lesson, keyed by slug path without the SDK
+ * (for example `'migrations/v0-8'`), with the reason. Every other docs page
+ * shows exactly one lesson: an `hb-workbench` panel when the lesson is its
+ * subject, or an `hb-workbench-launcher` in its "Explore it in the workbench"
+ * section when it is only related. A test holds every page to that rule, so a
+ * new page has to choose.
  */
-export const WORKBENCH_CLOSEST_LESSON: Readonly<
-  Record<string, WorkbenchLessonId>
-> = {
-  // Guides whose "Explore it in the workbench" section already names the lesson.
-  'guide/choosing-model': 'structured-output',
-  'guide/ethics': 'natural-forms',
-  'guide/prompt-engineering': 'system-instructions',
-  // Platform pages about one capability the lesson demonstrates end to end.
-  'platform/langgraph': 'tools',
-  'platform/typesafe': 'decisions',
-  'platform/dotnet-native-tools': 'interrupts',
-  // Provider pages and the platforms overview close by pointing the reader at
-  // first-plan: compare the AG-UI request and stream with the server route.
-  'platform/openai': 'first-plan',
-  'platform/azure': 'first-plan',
-  'platform/anthropic': 'first-plan',
-  'platform/google': 'first-plan',
-  'platform/bedrock': 'first-plan',
-  'platform/ollama': 'first-plan',
-  'platform/custom': 'first-plan',
-  'platform/dotnet': 'first-plan',
-  'start/platforms': 'first-plan',
-  // The API chooser's teaser is the generative UI result.
-  'start/overview': 'generative-ui',
+export const WORKBENCH_FREE_PAGES: Readonly<Record<string, string>> = {
+  'migrations/threadplane': 'threadplane has its own video, not a lesson',
+  'migrations/v0-5': 'a migration guide; its video shows the current flow',
+  'migrations/v0-6': 'a migration guide; its video shows the current flow',
+  'migrations/v0-7': 'a migration guide; its video shows the current flow',
+  'migrations/v0-8': 'a migration guide; its video shows the current flow',
+  'recipes/threadplane': 'threadplane has its own video, not a lesson',
+  'start/sample': 'the atc sample links several lessons, none is its subject',
 };

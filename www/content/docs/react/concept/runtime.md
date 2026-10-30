@@ -7,9 +7,6 @@ meta:
 
 # JavaScript runtime
 
-<hb-docs-demo demo="canonical-workbench-javascript-runtime-react">
-</hb-docs-demo>
-
 The JavaScript runtime evaluates a script in a separate QuickJS context and returns its result. It is useful when a calculation or transformation is easier to express as code, including code submitted by a model through a JavaScript tool. You can learn the execution boundary with an ordinary application-owned script first.
 
 The context has no browser `window`, `document`, or `fetch`. Host functions are capabilities you explicitly provide. Keep them narrow, validate their arguments in the handler, and bound their work. A runtime deadline interrupts JavaScript evaluation; it does not roll back a host side effect or impose a memory limit.
@@ -60,16 +57,16 @@ Each call creates a fresh QuickJS context, so variables do not persist between c
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="javascript-runtime">
 </hb-workbench>
 
 Let's estimate how long our plan will take. We have two steps. At 15 minutes per step, that's **30 minutes**. Change the estimate to 10 minutes per step and run it again: **20 minutes**. The plan hasn't changed. We've calculated a result from it.
 
-![The React workbench shows submitted code, the actual QuickJS result, and application state at revision zero.](/video/docs/canonical-workbench-javascript-runtime-react-result.png)
-
 ### Run the example
 
-Open the [JavaScript runtime workbench](https://workbench.hashbrown.dev/react.html?lesson=javascript-runtime). Start with **15 minutes per step**, then choose **Run in QuickJS**. Next, choose **10 minutes per step** and run again.
+In the **Live** tab above, start with **15 minutes per step**, then choose **Run in QuickJS**. Next, choose **10 minutes per step** and run again.
 
 These are application-owned scripts running through the real Hashbrown React runtime API. There is no model or provider request in this lesson. Code doesn't stream into a generated component. The workbench captures the submitted source, actual host calls, and the result or error as each occurs.
 

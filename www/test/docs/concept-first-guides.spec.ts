@@ -19,7 +19,9 @@ const pages = files(root).map((path) => ({
   source: readFileSync(path, 'utf8'),
 }));
 
-test.each(pages)(
+const hasPanel = (source: string) => /<hb-workbench lesson="/.test(source);
+
+test.each(pages.filter(({ source }) => !hasPanel(source)))(
   '$path opens with the recorded teaser before its teaching material',
   ({ source }) => {
     const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
@@ -27,6 +29,36 @@ test.each(pages)(
     expect(afterTitle).toMatch(/^<(?:hb-docs-demo|www-atc-demo-video)\b/);
   },
 );
+
+test.each(pages.filter(({ source }) => hasPanel(source)))(
+  '$path opens with teaching material and leaves the demo to its panel',
+  ({ source }) => {
+    const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
+
+    expect(afterTitle).not.toMatch(/^<(?:hb-docs-demo|www-atc-demo-video)\b/);
+    expect(source).not.toContain('<hb-docs-demo');
+    expect(source).not.toMatch(/canonical-workbench-[a-z-]+-result\.png/);
+  },
+);
+
+test.each(
+  pages.filter(
+    ({ path, source }) =>
+      hasPanel(source) && !path.endsWith('start/workbench.md'),
+  ),
+)('$path leaves local setup to the workbench page', ({ source }) => {
+  expect(source).not.toContain('npx nx workbench-serve www');
+  expect(source).not.toContain('127.0.0.1:4370');
+  expect(source).not.toMatch(/teaser/i);
+});
+
+test.each(
+  pages.filter(({ source }) => source.includes('<hb-workbench-launcher ')),
+)('$path points at its launcher, not a lesson URL', ({ source }) => {
+  expect(source).toMatch(/workbench below/);
+  expect(source).not.toMatch(/\.html\?lesson=/);
+  expect(source).not.toContain('npx nx workbench-serve www');
+});
 
 test.each(pages.filter(({ path }) => /\/(concept|recipes)\//.test(path)))(
   '$path teaches an application example before the separate workbench implementation',

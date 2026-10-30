@@ -7,9 +7,6 @@ meta:
 
 # Message history
 
-<hb-docs-demo demo="canonical-workbench-message-history-angular">
-</hb-docs-demo>
-
 Message history is the conversation context sent with the next request. Earlier user messages establish facts and goals; assistant messages and tool exchanges show what happened. A model does not remember a browser session independently of the context your application provides.
 
 Use initial messages to seed a new chat, and explicit replacement when the user selects a saved conversation or clears the current one. Storage, access control, retention, and selection are application concerns. A thread ID names a conversation; it does not load its transcript or make a browser text copy a durable agent checkpoint.
@@ -83,6 +80,8 @@ For asynchronous storage, validate the entire saved envelope and confirm the sel
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="message-history">
 </hb-workbench>
 
@@ -90,9 +89,7 @@ Let's name our two-step plan **Lighthouse**. We'll ask the assistant to explain 
 
 The History inspector keeps the SDK transcript beside the app's retained copy. Clear removes the current messages. It leaves the retained copy alone. Restore puts that text back into the SDK; it does not replay the earlier request or execute a plan step.
 
-<img src="/video/docs/canonical-workbench-message-history-angular-result.png" alt="Angular workbench showing restored Lighthouse messages, their history observation, and the synchronized bottom timeline." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/angular/start/workbench), then open [`/angular.html?lesson=message-history`](http://127.0.0.1:4370/angular.html?lesson=message-history). The recording uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/history-workbench.ts) and real provider streaming. The model's wording can vary.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The replay uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/history-workbench.ts) and real provider streaming. The model's wording can vary.
 
 ### Follow the Conversation
 
