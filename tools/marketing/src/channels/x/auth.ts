@@ -1,4 +1,7 @@
-import type { CredentialStore } from '../../credentials/store.ts';
+import type {
+  ChannelCredentials,
+  CredentialStore,
+} from '../../credentials/store.ts';
 import { http } from '../http.ts';
 
 const TOKEN_URL = 'https://api.x.com/2/oauth2/token';
@@ -11,6 +14,19 @@ interface TokenResponse {
   refresh_token: string;
   token_type: 'bearer';
   expires_in: number;
+}
+
+/**
+ * What X stores. No `expiresAt`: the access token lasts about two hours and is
+ * refreshed on a 401, while the rotating refresh token is the credential that
+ * matters and has no expiry X reports. Storing the access token's expiry
+ * would raise `credential_expiring` on every tick.
+ */
+function storedTokens(tokens: TokenResponse): ChannelCredentials {
+  return {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+  };
 }
 
 /** Options for {@link XAuth}. */
@@ -89,11 +105,7 @@ export class XAuth {
         `X access token expired and refresh failed; run \`${X_AUTH_COMMAND}\`. Underlying: ${(error as Error).message}`,
       );
     }
-    await this.credentials.put('x', {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-    });
+    await this.credentials.put('x', storedTokens(tokens));
   }
 }
 
@@ -139,9 +151,5 @@ export async function exchangeXCode(
     retryOn5xx: false,
     fetch: options.fetch,
   });
-  await options.credentials.put('x', {
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-  });
+  await options.credentials.put('x', storedTokens(tokens));
 }

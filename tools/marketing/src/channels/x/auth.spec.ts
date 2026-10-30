@@ -32,11 +32,11 @@ test('XAuth persists rotated tokens before refresh() resolves', async () => {
   await refreshed;
 
   expect(events).toEqual(['put', 'refreshed']);
-  expect(put).toHaveBeenCalledWith('x', {
-    accessToken: 'access-2',
-    refreshToken: 'refresh-2',
-    expiresAt: expect.any(String),
-  });
+  // No expiry: the refresh token is the long-lived credential, and the
+  // two-hour access token must not raise credential_expiring.
+  expect(put.mock.calls).toStrictEqual([
+    ['x', { accessToken: 'access-2', refreshToken: 'refresh-2' }],
+  ]);
   const [url, init] = callsOf(fetchMock)[0];
   expect(url).toBe('https://api.x.com/2/oauth2/token');
   expect(init.body).toContain('grant_type=refresh_token');
@@ -106,10 +106,9 @@ test('exchangeXCode trades the code with the PKCE verifier and stores the tokens
   expect(init.body).toContain('grant_type=authorization_code');
   expect(init.body).toContain('code=the-code');
   expect(init.body).toContain('code_verifier=the-verifier');
-  await expect(credentials.get('x')).resolves.toEqual({
+  await expect(credentials.get('x')).resolves.toStrictEqual({
     accessToken: 'access-2',
     refreshToken: 'refresh-2',
-    expiresAt: expect.any(String),
   });
 });
 

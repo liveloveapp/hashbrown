@@ -16,7 +16,13 @@ export interface ChannelCredentials {
 export interface CredentialStore {
   get(channel: StoredChannel): Promise<ChannelCredentials | undefined>;
   put(channel: StoredChannel, credentials: ChannelCredentials): Promise<void>;
-  /** Channels whose token expires on or before `now` plus `days`. */
+  /**
+   * Channels whose token expires on or before `now` plus `days`. X is never
+   * returned: its stored access token is short-lived and refreshed on demand,
+   * and its refresh token has no expiry, so an `x` row's `expires_at` (null
+   * since tokens stopped recording it, but possibly set on older rows) says
+   * nothing about needing to re-authorize.
+   */
   expiringWithin(
     now: Date,
     days: number,
@@ -67,10 +73,12 @@ export function createCredentialStore(
          ORDER BY expires_at`,
         [cutoff.toISOString()],
       );
-      return rows.map((row) => ({
-        channel: row.channel,
-        expiresAt: new Date(row.expires_at).toISOString(),
-      }));
+      return rows
+        .filter((row) => row.channel !== 'x')
+        .map((row) => ({
+          channel: row.channel,
+          expiresAt: new Date(row.expires_at).toISOString(),
+        }));
     },
   };
 }

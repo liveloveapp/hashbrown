@@ -1,6 +1,9 @@
 import type { ChannelCredentials, CredentialStore } from './store.ts';
 
-/** A {@link CredentialStore} held in memory, for tests that need no database. */
+/**
+ * A {@link CredentialStore} held in memory, for tests that need no database.
+ * Like the real store, `expiringWithin` never returns X.
+ */
 export function createMemoryCredentialStore(
   initial: Partial<Record<'x' | 'linkedin', ChannelCredentials>> = {},
 ): CredentialStore {
@@ -16,7 +19,8 @@ export function createMemoryCredentialStore(
       const cutoff = now.getTime() + days * 86_400_000;
       return [...entries]
         .filter(
-          ([, value]) =>
+          ([channel, value]) =>
+            channel !== 'x' &&
             value.expiresAt !== undefined &&
             new Date(value.expiresAt).getTime() <= cutoff,
         )

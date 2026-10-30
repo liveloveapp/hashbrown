@@ -86,3 +86,19 @@ test('expiringWithin queries the cutoff and returns ISO expiries', async () => {
     { channel: 'linkedin', expiresAt: '2026-11-05T00:00:00.000Z' },
   ]);
 });
+
+test('expiringWithin never returns X, whose refresh token does not expire', async () => {
+  const { executor } = fakeExecutor([
+    { channel: 'x', expires_at: new Date('2026-10-01T00:00:00.000Z') },
+    { channel: 'linkedin', expires_at: new Date('2026-11-05T00:00:00.000Z') },
+  ]);
+
+  const expiring = await createCredentialStore(executor, key).expiringWithin(
+    new Date('2026-11-01T00:00:00.000Z'),
+    14,
+  );
+
+  expect(expiring).toEqual([
+    { channel: 'linkedin', expiresAt: '2026-11-05T00:00:00.000Z' },
+  ]);
+});
