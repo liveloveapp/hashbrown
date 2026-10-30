@@ -55,7 +55,13 @@ export function isHostedWorkbenchLesson(lesson: WorkbenchLessonId): boolean {
 
 /** Whether a lesson's Live tab can run, and where to run it otherwise. */
 export type WorkbenchLiveAvailability =
-  { readonly live: true } | { readonly live: false; readonly href: string };
+  | { readonly live: true }
+  | {
+      readonly live: false;
+      /** Why the hosted workbench cannot run it. */
+      readonly reason: 'loopback' | 'production-reference';
+      readonly href: string;
+    };
 
 /**
  * Whether the hosted workbench can run a lesson live. Derived from the
@@ -71,11 +77,16 @@ export function workbenchLiveAvailability(
 ): WorkbenchLiveAvailability {
   const data = workbenchLessons.find((item) => item.id === lesson);
   if (data?.host === 'production-reference') {
-    return { live: false, href: `/docs/${sdk}/platform/b4run` };
+    return {
+      live: false,
+      reason: 'production-reference',
+      href: `/docs/${sdk}/platform/b4run`,
+    };
   }
   if (!isHostedWorkbenchLesson(lesson) || data?.host === 'loopback') {
     return {
       live: false,
+      reason: 'loopback',
       href: `/docs/${sdk}/start/workbench#run-the-example`,
     };
   }

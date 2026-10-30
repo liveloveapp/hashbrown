@@ -645,8 +645,9 @@ test('production-recovery links to the b4run reference instead of Live', () => {
 
   expect(document.querySelector('iframe[src*="embed=live"]')).toBeNull();
   expect(document.body.textContent).toContain(
-    'This lesson runs only on a local server',
+    'This lesson needs the B4.run Postgres host',
   );
+  expect(document.body.textContent).not.toContain('local server');
   expect(
     document.querySelector('a[href="/docs/angular/platform/b4run"]'),
   ).not.toBeNull();
@@ -668,17 +669,14 @@ test.each([false, true])(
 );
 
 test.each([false, true])(
-  'loopback lessons keep their hosted open link (narrow: %s)',
+  'loopback lessons render no hosted open link (narrow: %s)',
   (narrow) => {
     const { intersect } = setup({ narrow });
     render(<WorkbenchPanel lesson="public-endpoint" sdk="angular" />);
     intersect();
 
-    const link = document.querySelector(
-      `a[href="${origin}/angular.html?lesson=public-endpoint"]`,
-    );
-
-    expect(link?.textContent).toContain('Open full workbench');
+    expect(document.querySelector(`a[href^="${origin}"]`)).toBeNull();
+    expect(document.body.textContent).not.toContain('Open full workbench');
   },
 );
 
@@ -702,6 +700,7 @@ test('every lesson is either live on the hosted workbench or links to a local ru
   }
   expect(workbenchLiveAvailability('production-recovery', 'react')).toEqual({
     live: false,
+    reason: 'production-reference',
     href: '/docs/react/platform/b4run',
   });
   expect(workbenchLiveAvailability('tools', 'react')).toEqual({ live: true });

@@ -47,11 +47,14 @@ export function WorkbenchPanel({
   const media = DOCS_DEMOS[mediaId];
   const { width, height } =
     'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
-  // Lessons the hosted workbench does not serve get no hosted link; their
-  // Live tab points at the local instructions instead.
-  const openHref = isHostedWorkbenchLesson(lesson)
-    ? `${origin}/${sdk}.html?lesson=${lesson}`
-    : null;
+  // Lessons the hosted workbench cannot run get no hosted link: production
+  // references are not served, and loopback lessons show only a run-locally
+  // notice there. Their Live tab points at the instructions instead.
+  const availability = workbenchLiveAvailability(lesson, sdk);
+  const openHref =
+    isHostedWorkbenchLesson(lesson) && availability.live
+      ? `${origin}/${sdk}.html?lesson=${lesson}`
+      : null;
   return (
     <WorkbenchPanelLoader
       lesson={lesson}
@@ -63,7 +66,7 @@ export function WorkbenchPanel({
       height={height}
       hasCapture={!WORKBENCH_LESSONS_WITHOUT_CAPTURE.includes(lesson)}
       partialCapture={PARTIAL_CAPTURE_LESSONS.includes(lesson)}
-      availability={workbenchLiveAvailability(lesson, sdk)}
+      availability={availability}
       openHref={openHref}
       fallback={<DocsDemoVideo demo={mediaId} />}
       source={source}

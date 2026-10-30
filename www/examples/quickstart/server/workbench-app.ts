@@ -303,7 +303,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
         if (!res.headersSent)
           res.status(502).json({
             error:
-              'Decision failed. Check the local server and retry, or review the plan manually.',
+              'Decision failed. Try again in a moment, or review the plan manually.',
           });
       } finally {
         clearTimeout(timeout);
@@ -385,7 +385,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
             encoder.encodeSSE({
               type: EventType.RUN_ERROR,
               message:
-                'The demo request failed. Check the local server and retry.',
+                'The demo request failed. Try again in a moment.',
             }),
           );
       } finally {

@@ -501,8 +501,17 @@ function TabbedPanel({
       <div {...panelProps('live')}>
         {!availability.live ? (
           <p className={styles.loopback}>
-            This lesson runs only on a local server.{' '}
-            <a href={availability.href}>Run the example locally</a>.
+            {availability.reason === 'production-reference' ? (
+              <>
+                This lesson needs the B4.run Postgres host.{' '}
+                <a href={availability.href}>Read the B4.run reference</a>.
+              </>
+            ) : (
+              <>
+                This lesson runs only on a local server.{' '}
+                <a href={availability.href}>Run the example locally</a>.
+              </>
+            )}
           </p>
         ) : liveFailed ? (
           <p className={styles.loopback}>
