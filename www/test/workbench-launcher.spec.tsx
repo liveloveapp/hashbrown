@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { fireEvent, render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
-import { SDKS } from '../src/lib/content';
+import { listDocs, SDKS } from '../src/lib/content';
 import { WorkbenchLauncher } from '../src/components/workbench/WorkbenchLauncher';
-import { WORKBENCH_CLOSEST_LESSON } from '../src/components/workbench/workbench-page-lessons';
+import { WORKBENCH_FREE_PAGES } from '../src/components/workbench/workbench-page-lessons';
 
 // next/dynamic resolves asynchronously outside Next; render the client panel
 // directly. The build check covers the split itself.
@@ -18,31 +18,91 @@ vi.mock('../src/components/workbench/WorkbenchPanelLoader', async () => ({
 
 const docsRoot = join(__dirname, '../content/docs');
 
-test('every mapped page exists for both sdks and has no inline panel', () => {
-  const slugs = Object.keys(WORKBENCH_CLOSEST_LESSON);
-
-  const problems = slugs.flatMap((slug) =>
-    SDKS.flatMap((sdk) => {
-      const file = join(docsRoot, sdk, `${slug}.md`);
-      if (!existsSync(file)) return [`${sdk}/${slug}: missing`];
-      return readFileSync(file, 'utf8').includes('<hb-workbench')
-        ? [`${sdk}/${slug}: has an inline panel`]
-        : [];
-    }),
+const lessonsOn = (body: string, tag: string) =>
+  [...body.matchAll(new RegExp(`<${tag} lesson="([^"]*)"`, 'g'))].map(
+    (match) => match[1],
   );
 
-  expect(slugs.length).toBeGreaterThan(0);
+// The "## Explore it in the workbench" section, up to the next h2.
+const exploreSection = (body: string) =>
+  /^## Explore it in the workbench\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(
+    body,
+  )?.[1];
+
+const pages = SDKS.flatMap((sdk) =>
+  listDocs(sdk).map((slug) => ({
+    sdk,
+    slug: slug.join('/'),
+    body: readFileSync(join(docsRoot, sdk, `${slug.join('/')}.md`), 'utf8'),
+  })),
+);
+
+test('every docs page shows one lesson, or is listed as having none', () => {
+  const problems = pages.flatMap(({ sdk, slug, body }) => {
+    const shown = [
+      ...lessonsOn(body, 'hb-workbench'),
+      ...lessonsOn(body, 'hb-workbench-launcher'),
+    ];
+    const excluded = slug in WORKBENCH_FREE_PAGES;
+    if (excluded && shown.length > 0) return [`${sdk}/${slug}: listed as free`];
+    if (!excluded && shown.length !== 1)
+      return [`${sdk}/${slug}: shows ${shown.length} lessons`];
+    return [];
+  });
+
   expect(problems).toEqual([]);
 });
 
-test('every mapped lesson is a known lesson', () => {
-  const known = workbenchLessons.map((lesson) => lesson.id);
+test('every page listed as free exists for both sdks', () => {
+  const slugs = Object.keys(WORKBENCH_FREE_PAGES);
 
-  const unknown = Object.values(WORKBENCH_CLOSEST_LESSON).filter(
-    (lesson) => !known.includes(lesson),
+  const missing = slugs.flatMap((slug) =>
+    SDKS.filter((sdk) => !existsSync(join(docsRoot, sdk, `${slug}.md`))).map(
+      (sdk) => `${sdk}/${slug}`,
+    ),
   );
 
-  expect(unknown).toEqual([]);
+  expect(slugs.length).toBeGreaterThan(0);
+  expect(missing).toEqual([]);
+});
+
+test('launchers sit in the explore section and name a known lesson', () => {
+  const known: readonly string[] = workbenchLessons.map((lesson) => lesson.id);
+
+  const problems = pages.flatMap(({ sdk, slug, body }) =>
+    lessonsOn(body, 'hb-workbench-launcher').flatMap((lesson) => [
+      ...(known.includes(lesson) ? [] : [`${sdk}/${slug}: unknown ${lesson}`]),
+      ...(lessonsOn(exploreSection(body) ?? '', 'hb-workbench-launcher')
+        .length === 1
+        ? []
+        : [`${sdk}/${slug}: launcher outside the explore section`]),
+    ]),
+  );
+
+  expect(problems).toEqual([]);
+});
+
+test('react and angular pages show the same lesson', () => {
+  const lessonOf = (sdk: string, slug: string) => {
+    const body = pages.find(
+      (page) => page.sdk === sdk && page.slug === slug,
+    )?.body;
+    return body
+      ? [
+          ...lessonsOn(body, 'hb-workbench'),
+          ...lessonsOn(body, 'hb-workbench-launcher'),
+        ].join()
+      : undefined;
+  };
+
+  const drift = pages
+    .filter((page) => page.sdk === 'react')
+    .filter(
+      (page) => lessonOf('react', page.slug) !== lessonOf('angular', page.slug),
+    )
+    .map((page) => page.slug);
+
+  expect(drift).toEqual([]);
 });
 
 test('the launcher loads nothing until expanded, then expands and collapses', () => {

@@ -7,9 +7,6 @@ meta:
 
 # Magic Text in Angular
 
-<hb-docs-demo demo="canonical-workbench-magic-text-angular">
-</hb-docs-demo>
-
 Streaming Markdown turns a growing assistant string into readable headings, lists, links, and citations. Use it when the answer is prose and the reader benefits from seeing it before the request finishes. The conversation API owns messages and cancellation; the renderer owns formatting.
 
 Let’s build a help panel that explains a returns policy. We will render the original assistant text as it grows, and finish parsing when the request stops, including a stopped or failed partial answer.
@@ -66,6 +63,8 @@ The fixed prompt keeps this screen small. Replace it with a labelled composer fo
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="magic-text">
 </hb-workbench>
 
@@ -75,13 +74,7 @@ I want to read a reply while it arrives. Let's explain the same two-step plan in
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with server-only `OPENAI_API_KEY` and `OPENAI_MODEL`:
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/angular.html?lesson=magic-text`. The **Markdown** inspector opens first. Selecting the lesson does not send a request. Its endpoint is `/api/workbench/magic-text`.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The **Markdown** inspector opens first. Its endpoint is `/api/workbench/magic-text`.
 
 The application supplies a fixed plan. The model explains that plan; it does not replace its steps or apply an action.
 
@@ -92,8 +85,6 @@ The application supplies a fixed plan. The model explains that plan; it does not
 3. Select the numbered citation after its source URL resolves. The inspector's **Selected reference** section shows the reference the renderer selected. The workbench prevents navigation.
 4. Send **Follow-up** to shorten the explanation in the same conversation. The plan stays at revision 0.
 5. Use the bottom player to inspect either reply. Chat, Markdown, source details, and state follow the selected frame. Replay does not send requests or run tools.
-
-<img src="/video/docs/canonical-workbench-magic-text-angular-result.png" alt="The Angular workbench shows a Markdown explanation of the two-step plan and its captured source details." width="1600" height="1000" loading="lazy" />
 
 ## Give a reference a clear meaning
 
@@ -123,7 +114,7 @@ Turn on **Raw events** to see every captured chunk on the scrubber. Markdown str
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="angular/src/app/magic-text-workbench.ts">
+<hb-code-example header="angular/src/app/magic-text-workbench.ts" moment="parsed-text-1">
 
 ```html
 <hb-magic-text

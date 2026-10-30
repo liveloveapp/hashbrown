@@ -76,7 +76,8 @@ for (const sdk of ['react', 'angular'] as const)
         ).length,
       ).toBeGreaterThan(0);
     }
-    expect(body).toContain(`canonical-workbench-javascript-runtime-${sdk}`);
+    expect(body).toContain('<hb-workbench lesson="javascript-runtime">');
+    expect(body).not.toContain(`canonical-workbench-javascript-runtime-${sdk}`);
     expect(body).toContain(
       'does **not automatically validate arguments or results**',
     );

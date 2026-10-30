@@ -7,9 +7,6 @@ meta:
 
 # Debugging
 
-<hb-docs-demo demo="canonical-workbench-debugging-react">
-</hb-docs-demo>
-
 Debugging an AI feature means finding the boundary where expected behavior stopped: the browser request, your endpoint, provider mapping, event stream, parser, tool handler, or renderer. Start with the evidence for the failing turn before changing the prompt or schema.
 
 Check HTTP status and the terminal event separately. A stream can begin with HTTP 200 and later report `RUN_ERROR`; a completed run can still report `length` or `refusal`. Preserve the current application value while investigating. A visible partial answer and an idle loading flag do not establish successful completion.
@@ -69,6 +66,8 @@ Inspect `lastRunFinishReason` when a response ends early: `length`, `content_fil
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="debugging">
 </hb-workbench>
 
@@ -76,7 +75,7 @@ When a card does not appear, I want to find where the turn stopped before changi
 
 ### Run the workbench
 
-Start the [conversation workbench](/docs/react/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=debugging`. Configure server-only `OPENAI_API_KEY` and `OPENAI_MODEL` as described in the workbench guide. Selecting the lesson does not send a request.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
 ### Follow a failed request
 
@@ -91,8 +90,6 @@ This is an intentional local demo denial, not authentication or a provider outag
 5. Select **HTTP 403** in the bottom player. The chat, request evidence, JSON, UI, and state follow that point in the conversation. Its source still reads **Local demo failure**, even after later successful provider requests. Choose **Return to live** to continue.
 
 Playback does not send requests, execute tools, or apply a plan. The demo checkbox and acceptance control are disabled while inspecting historical frames.
-
-<img src="/video/docs/canonical-workbench-debugging-react-result.png" alt="The Requests inspector lists the denied HTTP 403 and the recovered model and readContext requests, with the selected tool result beside them." width="1600" height="1000" loading="lazy" />
 
 ### Inspect the request and response
 

@@ -13,18 +13,16 @@ const guide = (sdk: string) =>
   );
 
 test.each(['react', 'angular'])(
-  '%s transformation guide opens with its real canonical recording',
+  '%s transformation guide teaches before its inline workbench',
   (sdk) => {
     const body = guide(sdk);
 
     expectConceptFirstWorkbench(body, sdk, 'request-transformation');
-    expect(body).toContain(
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-request-transformation-${sdk}-result.png`,
     );
-    expect(body).toContain(`/${sdk}.html?lesson=request-transformation`);
-    expect(body).toContain('OPENAI_API_KEY');
-    expect(body).toContain('OPENAI_MODEL');
-    expect(body).toContain('npx nx workbench-serve www');
+    expect(body).toContain(`/docs/${sdk}/start/workbench#run-the-example`);
+    expect(body).not.toContain('npx nx workbench-serve www');
     expect(body).toContain('actual callback');
     expect(body).toContain('authorization');
     expect(body).toContain('reasoning.encrypted_content');

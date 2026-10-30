@@ -10,7 +10,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['recipes', 'decisions-in-agents'])?.body ?? '';
 
     expectConceptFirstWorkbench(body, sdk, 'agent-decisions');
-    expect(body).toContain(
+    expect(body).not.toContain(
       `canonical-workbench-agent-decisions-${sdk}-result.png`,
     );
     expect(body).toContain('real TypeSafe');

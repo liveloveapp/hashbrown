@@ -7,9 +7,6 @@ meta:
 
 # Predictive suggestions
 
-<hb-docs-demo demo="canonical-workbench-predictions-react">
-</hb-docs-demo>
-
 Predictive suggestions offer a short list of useful next actions from the current application state. Use them to reduce navigation in an editor, planner, or dashboard. The application defines the action catalogue and executes the accepted action; the model proposes an ID and a reason.
 
 Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.
@@ -72,6 +69,8 @@ Before offering **Accept**, require a successful completed request, a known acti
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="predictions">
 </hb-workbench>
 
@@ -81,13 +80,7 @@ The workbench uses `useStructuredCompletion`. Each request receives an explicit 
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/react/start/workbench) with server-only `OPENAI_API_KEY` and `OPENAI_MODEL`:
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/react.html?lesson=predictions`. The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example). The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
 
 ## Review, dismiss, and accept
 
@@ -97,8 +90,6 @@ Open `http://127.0.0.1:4370/react.html?lesson=predictions`. The endpoint is `/ap
 4. Send **First prompt** again. This is a fresh request with a new context ID and the same unchanged plan. Choose **Accept** on its new recording proposal; the accepted action is saved and the revision advances to 1.
 5. Older proposals are now stale. Request fresh suggestions instead of applying an earlier snapshot. The first proposal stays marked as dismissed; accepting a later proposal does not rewrite its history.
 6. Send **Follow-up**. The third snapshot includes the accepted action, so it cannot be applied again. The model can now suggest reviewing the recorded demo.
-
-<img src="/video/docs/canonical-workbench-predictions-react-result.png" alt="The React workbench shows context-bound action suggestions beside the completion JSON and accepted application action." width="1600" height="1000" loading="lazy" />
 
 ## Keep the catalogue in the application
 
