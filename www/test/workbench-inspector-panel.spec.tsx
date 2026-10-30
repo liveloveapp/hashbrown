@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
@@ -250,5 +251,84 @@ test('highlights nothing on the first State render of a new conversation', () =>
   expect(host.querySelectorAll('[data-captured] [data-changed]')).toHaveLength(
     0,
   );
+  shell.dispose();
+});
+
+function mountReplayEmbed() {
+  const post = vi
+    .spyOn(window, 'postMessage')
+    .mockImplementation(() => undefined);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: generative,
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: createWorkbenchLayoutStore(fakeStorage()), embed: 'replay' },
+  );
+  onTestFinished(() => {
+    shell.dispose();
+    host.remove();
+    post.mockRestore();
+  });
+  return { host, store };
+}
+
+function loadRecording(store: ReturnType<typeof createWorkbenchStore>) {
+  const source = createWorkbenchStore();
+  streamPlan(source);
+  const capture = {
+    ...createWorkbenchCapture(source.getSnapshot(), {
+      lesson: generative.id,
+      framework: 'react',
+      recordedAt: '2026-10-28T00:00:00.000Z',
+    }),
+    commit: 'c29b05b1234567890',
+  };
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: { type: 'hb-workbench:load', version: 1, capture },
+      origin: 'https://hashbrown.dev',
+      source: window,
+    }),
+  );
+  return capture;
+}
+
+test('a loaded replay embed drops the source label, live button and read-only notes', () => {
+  const { host, store } = mountReplayEmbed();
+
+  loadRecording(store);
+
+  const text = host.textContent ?? '';
+  const muted = Array.from(host.querySelectorAll('.wb-muted')).map(
+    (node) => node.textContent ?? '',
+  );
+  expect(store.getSnapshot().readOnly).toBe(true);
+  expect(text).not.toContain('Live model');
+  expect(text).not.toContain('Awaiting source');
+  expect(text).not.toContain('Replay is read-only.');
+  expect(text).not.toContain('captured preview');
+  expect(text).not.toContain('Recorded at');
+  expect(host.querySelector<HTMLElement>('.wb-live')?.hidden).toBe(true);
+  expect(muted.some((value) => /^[0-9a-f]{7}$/.test(value))).toBe(true);
+});
+
+test('a live workbench keeps its source label and live button', () => {
+  const { host, store, shell } = mountPanel(generative);
+
+  streamPlan(store);
+
+  const label = host.querySelector<HTMLElement>('[data-source]');
+  expect(label?.hidden).toBe(false);
+  expect(label?.textContent).toBeTruthy();
+  expect(host.querySelector<HTMLElement>('.wb-live')?.hidden).toBe(false);
   shell.dispose();
 });

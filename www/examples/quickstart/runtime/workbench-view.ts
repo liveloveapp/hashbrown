@@ -1002,7 +1002,7 @@ export function mountWorkbench(
       payload !== null && typeof payload === 'object' && 'source' in payload
         ? payload.source
         : undefined;
-    provenance.textContent =
+    const sourceLabel =
       commands.lesson?.id === 'local-models'
         ? 'Browser-local model'
         : commands.lesson?.id === 'javascript-runtime'
@@ -1018,6 +1018,9 @@ export function mountWorkbench(
                 : source === 'provider'
                   ? 'Live model'
                   : 'Awaiting source';
+    // A recording has no live source to name.
+    provenance.textContent = snapshot.readOnly ? '' : sourceLabel;
+    provenance.hidden = snapshot.readOnly;
     const historical = snapshot.cursor !== null;
     // A recording that ended mid-run keeps a captured 'loading' status.
     const busy =
@@ -1078,7 +1081,7 @@ export function mountWorkbench(
       ? 'Waiting for recording'
       : embed === 'replay'
         ? recordedCommit
-          ? `Recorded at ${recordedCommit.slice(0, 7)}`
+          ? recordedCommit.slice(0, 7)
           : 'Recorded'
         : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     if (status.textContent !== statusText) status.textContent = statusText;
@@ -1108,13 +1111,11 @@ export function mountWorkbench(
           const card = element('article', '', 'wb-summary');
           card.setAttribute('aria-label', 'Captured decision');
           card.append(
-            element('span', 'Closed choice · captured result', 'wb-muted'),
             element('h2', `Next action: ${message.decision.nextAction}`),
             element(
               'p',
               `Confidence: ${Math.round(message.decision.confidence * 100)}%`,
             ),
-            element('p', 'Replay is read-only.', 'wb-muted'),
           );
           replay.append(card);
           continue;
@@ -1126,19 +1127,10 @@ export function mountWorkbench(
         const props = message.props;
         if (!props) continue;
         const card = element('article', '', 'wb-summary');
-        card.append(
-          element(
-            'span',
-            commands.lesson?.format === 'structured'
-              ? 'Typed plan · captured preview'
-              : `${message.uiComponent ?? 'SummaryCard'} · captured preview`,
-            'wb-muted',
-          ),
-          element('h2', props.title ?? 'Waiting for title'),
-        );
+        card.append(element('h2', props.title ?? 'Waiting for title'));
         const steps = element('ol');
         for (const step of props.steps ?? []) steps.append(element('li', step));
-        card.append(steps, element('p', 'Replay is read-only.', 'wb-muted'));
+        card.append(steps);
         replay.append(card);
       }
     }
@@ -1543,7 +1535,7 @@ export function mountWorkbench(
         busy,
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
-        source: provenance.textContent ?? '',
+        source: sourceLabel,
         flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
     const bottomHeading =
@@ -1772,6 +1764,7 @@ export function mountWorkbench(
     );
     play.disabled = busy || total < 2;
     syncPlayButton();
+    returnLive.hidden = embed === 'replay';
     returnLive.disabled = !historical;
     returnLive.toggleAttribute('data-live', !historical);
     liveLabel.data = historical ? 'Return to live' : 'LIVE';
