@@ -13,7 +13,9 @@ test.each(['react', 'angular'] as const)(
       const body = readDoc(sdk, ['recipes', slug])?.body ?? '';
 
       expectConceptFirstWorkbench(body, sdk, lesson);
-      expect(body).toContain(`canonical-workbench-${lesson}-${sdk}-result.png`);
+      expect(body).not.toContain(
+        `canonical-workbench-${lesson}-${sdk}-result.png`,
+      );
       expect(body).toContain('Replay');
       expect(body).toContain('workbench-authoring.ts');
       expect(body).not.toContain('scripted decision responses');

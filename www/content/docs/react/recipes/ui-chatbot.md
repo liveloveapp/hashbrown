@@ -7,14 +7,11 @@ meta:
 
 # Build a generative UI conversation
 
-<hb-docs-demo demo="canonical-workbench-ui-chatbot-react">
-</hb-docs-demo>
-
 A generative UI conversation answers with application components as well as text. Use it when a card, list, or other trusted view makes the response easier to understand and act on. The model chooses from exposed components and supplies their props; your application controls rendering and every action.
 
 Let’s make a delivery assistant that can display a status card. The first implementation is read-only. Adding an Accept or Save button later requires a separate handler that checks completion, current data, and permission.
 
-<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-ui-conversation-ownership"> </hb-diagram>
 
 ## Build a conversation with a trusted card
 
@@ -77,12 +74,12 @@ Send a follow-up through the same chat instance to retain the exchange. If a lat
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="ui-chatbot">
 </hb-workbench>
 
 Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
-
-<img src="/video/docs/canonical-workbench-ui-chatbot-react-result.png" alt="The React conversation shows an accepted SummaryCard followed by a read-only PlanReading, beside the application plan and revision." width="1600" height="1000" loading="lazy" />
 
 ## Follow both turns
 

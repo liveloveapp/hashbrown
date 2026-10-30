@@ -18,7 +18,7 @@ import {
 import { readDoc, type Sdk, SDKS } from '../../src/lib/content';
 
 test.each(SDKS)(
-  '%s concept lessons share the canonical plan and framework-specific recordings',
+  '%s concept lessons share the canonical plan and teach before their inline workbench',
   (sdk) => {
     const lessons = [
       ['components', 'ui'],
@@ -33,13 +33,12 @@ test.each(SDKS)(
 
     for (const [slug, lesson] of lessons) {
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
-      const marker = `<hb-docs-demo demo="canonical-workbench-${lesson}-${sdk}">`;
+      const video = `<hb-docs-demo demo="canonical-workbench-${lesson}-${sdk}">`;
 
-      expect(body.indexOf(marker)).toBeGreaterThan(-1);
-      expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
+      expect(body).not.toContain(video);
       expect(body).toContain('two-step plan');
       expect(body).toContain(
-        `/${sdk}.html?lesson=${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : slug === 'schema' ? 'schemas' : slug === 'transform-request-options' ? 'request-transformation' : slug}`,
+        `<hb-workbench lesson="${slug === 'components' ? 'generative-ui' : slug === 'functions' ? 'tools' : slug === 'schema' ? 'schemas' : slug === 'transform-request-options' ? 'request-transformation' : slug}">`,
       );
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
       expect(body).toContain(
@@ -117,7 +116,7 @@ function docsPages(): { path: string; sdk: Sdk; body: string }[] {
   );
 }
 
-test('inline workbench walkthroughs follow the concept and video teaser', () => {
+test('inline workbench walkthroughs follow the concept, with no video teaser', () => {
   const pages = docsPages().filter((page) =>
     page.body.includes('<hb-workbench '),
   );
@@ -127,10 +126,12 @@ test('inline workbench walkthroughs follow the concept and video teaser', () => 
     const teaser = page.body.indexOf(
       '<hb-docs-demo demo="canonical-workbench-',
     );
-    const boundary = page.body.indexOf('## Explore it in the workbench');
+    const firstSection = page.body.indexOf('\n## ');
+    const boundary = page.body.indexOf('\n## Explore it in the workbench');
     const panel = page.body.indexOf('<hb-workbench ');
-    expect(teaser, page.path).toBeGreaterThan(-1);
-    expect(boundary, page.path).toBeGreaterThan(teaser);
+    expect(teaser, page.path).toBe(-1);
+    expect(firstSection, page.path).toBeGreaterThan(-1);
+    expect(boundary, page.path).toBeGreaterThan(firstSection);
     expect(panel, page.path).toBeGreaterThan(boundary);
   }
 });

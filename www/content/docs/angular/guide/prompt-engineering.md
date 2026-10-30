@@ -14,6 +14,8 @@ A prompt is the instruction and context we give a model for a task. Good prompts
 
 Let's start with a support assistant. Its job is to explain a supplied order status. It should ask for clarification when the order is unknown, and it should never claim that reading an order changed it.
 
+<hb-diagram diagram="prompt-context-boundary"> </hb-diagram>
+
 <a id="system-prompts"></a>
 
 ## Describe a bounded task
@@ -94,7 +96,10 @@ A schema-shaped response can still contain an incorrect claim. Check important f
 
 ## Explore it in the workbench
 
-Open the **System instructions** lesson in the [workbench](/docs/angular/start/workbench). The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+Open the **System instructions** lesson in the workbench below. The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+
+<hb-workbench-launcher lesson="system-instructions">
+</hb-workbench-launcher>
 
 Inspect the declared browser instruction in **Requests**, then the safe effective policy captured at the real provider-mapping boundary. Send a request that conflicts with the configured task and observe the actual response. The capture shows what reached that boundary; a model's response alone does not prove that server policy was applied.
 

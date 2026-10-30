@@ -16,6 +16,9 @@ Connect a plain LangGraph agent to Hashbrown through a standard AG-UI endpoint. 
 
 > Release boundary: `@b4run/langgraph/ui` is not published in `@b4run/langgraph` 0.15.2. Use this guide only once a release explicitly includes that subpath. The Python source recipe below does not require a B4 Python package.
 
+<hb-diagram diagram="langgraph-agent-boundary">
+</hb-diagram>
+
 ## Describe JavaScript server tools
 
 The Node-only helper exports `toolStepMiddleware`, `emitToolStep`, `ToolStepDisplay` and `ToolStepMiddlewareOptions`. Its optional peer baseline is `@langchain/core` 1.2.12, `langchain` 1.5.12 and `@langchain/langgraph` 1.4.17. Install compatible peers in your server project alongside a release containing `/ui`.
@@ -191,6 +194,9 @@ Keep client tools in `toolCalls` through the normal framework tool API. Do not r
 
 ## Explore it in the workbench
 
-Open `/angular.html?lesson=tools` in the [conversation workbench](/docs/angular/start/workbench). Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+Open the workbench below. Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+
+<hb-workbench-launcher lesson="tools">
+</hb-workbench-launcher>
 
 This is a browser-tool exercise. It gives us a client flow to compare with the server-owned `serverToolCalls` above, but it does not run LangGraph, test the optional helper's release availability, or restore a graph checkpoint. Verify those separately with the linked plain-agent and Python recipes. Keep the difference visible in your UI: a displayed server step must never dispatch a browser handler.

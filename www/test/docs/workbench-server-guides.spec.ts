@@ -9,13 +9,13 @@ const read = (path: string) =>
   );
 
 test.each(['react', 'angular'])(
-  '%s server guides use canonical recordings and explain application boundaries',
+  '%s server guides use their inline workbench and explain application boundaries',
   (sdk) => {
     const threads = read(`${sdk}/recipes/threads.md`);
     const endpoint = read(`${sdk}/recipes/public-endpoint.md`);
 
-    expect(threads).toContain(`canonical-workbench-server-threads-${sdk}`);
-    expect(endpoint).toContain(`canonical-workbench-public-endpoint-${sdk}`);
+    expect(threads).toContain('<hb-workbench lesson="server-threads">');
+    expect(endpoint).toContain('<hb-workbench lesson="public-endpoint">');
     expect(threads).toContain('409');
     expect(threads).toContain('expectedVersion');
     expect(threads).toContain('checkpoint');
@@ -26,7 +26,7 @@ test.each(['react', 'angular'])(
     expect(endpoint).toContain('local demo session');
     expect(endpoint).not.toContain('scripted provider output');
     for (const content of [threads, endpoint]) {
-      expect(content).toContain('-result.png');
+      expect(content).not.toContain('-result.png');
       expect(content).toContain('Replay');
       expect(content).toContain('workbench-threads.ts');
     }

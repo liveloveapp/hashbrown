@@ -14,8 +14,8 @@ A custom provider connects your model SDK to Hashbrown's existing client contrac
 
 The teaser demonstrates the existing OpenAI-backed client flow. It does not demonstrate a new provider.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 For an ASP.NET Core backend using OpenAI or Azure OpenAI, start with the [tested .NET integration](/docs/angular/platform/dotnet).
 
@@ -66,6 +66,9 @@ export interface CustomTextStreamOptions {
 The client does not choose a provider model. Bind a model to the endpoint, choose one from authenticated server-side policy, or expose separate endpoints for separate model classes.
 
 ## Map the Provider Stream
+
+<hb-diagram diagram="custom-provider-event-lifecycle">
+</hb-diagram>
 
 The exact SDK types differ by vendor, but the event lifecycle remains the same. This focused text example shows the required run and message events.
 
@@ -224,6 +227,9 @@ Use the [OpenAI provider](https://github.com/liveloveapp/hashbrown/tree/main/pac
 
 ## Explore it in the workbench
 
-Open `/angular.html?lesson=first-plan` in the [conversation workbench](/docs/angular/start/workbench). Send one prompt and inspect **Requests**, **JSON**, and **UI**. Follow a single run from its input to the text events and resolved component props.
+Open the workbench below. Send one prompt and inspect **Requests**, **JSON**, and **UI**. Follow a single run from its input to the text events and resolved component props.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
 Use this as a client-side comparison for your own adapter's contract tests. The checked [workbench server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) calls the official OpenAI adapter; it does not call the custom provider you are writing. Verify your provider's lifecycle, cancellation, tool continuations, and schema handling with the tests above before connecting it to your application.

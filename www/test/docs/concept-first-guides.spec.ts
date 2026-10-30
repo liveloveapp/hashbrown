@@ -3,6 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { parseMarkdown } from '../../src/lib/markdown';
 import { CONCEPT_DIAGRAMS } from '../../src/components/elements/ConceptDiagram';
+import { DOCS_DIAGRAMS } from '../../src/components/diagrams/diagram-catalog';
 
 const root = resolve(import.meta.dirname, '../../content/docs');
 const files = (directory: string): string[] =>
@@ -18,7 +19,9 @@ const pages = files(root).map((path) => ({
   source: readFileSync(path, 'utf8'),
 }));
 
-test.each(pages)(
+const hasPanel = (source: string) => /<hb-workbench lesson="/.test(source);
+
+test.each(pages.filter(({ source }) => !hasPanel(source)))(
   '$path opens with the recorded teaser before its teaching material',
   ({ source }) => {
     const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
@@ -26,6 +29,36 @@ test.each(pages)(
     expect(afterTitle).toMatch(/^<(?:hb-docs-demo|www-atc-demo-video)\b/);
   },
 );
+
+test.each(pages.filter(({ source }) => hasPanel(source)))(
+  '$path opens with teaching material and leaves the demo to its panel',
+  ({ source }) => {
+    const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
+
+    expect(afterTitle).not.toMatch(/^<(?:hb-docs-demo|www-atc-demo-video)\b/);
+    expect(source).not.toContain('<hb-docs-demo');
+    expect(source).not.toMatch(/canonical-workbench-[a-z-]+-result\.png/);
+  },
+);
+
+test.each(
+  pages.filter(
+    ({ path, source }) =>
+      hasPanel(source) && !path.endsWith('start/workbench.md'),
+  ),
+)('$path leaves local setup to the workbench page', ({ source }) => {
+  expect(source).not.toContain('npx nx workbench-serve www');
+  expect(source).not.toContain('127.0.0.1:4370');
+  expect(source).not.toMatch(/teaser/i);
+});
+
+test.each(
+  pages.filter(({ source }) => source.includes('<hb-workbench-launcher ')),
+)('$path points at its launcher, not a lesson URL', ({ source }) => {
+  expect(source).toMatch(/workbench below/);
+  expect(source).not.toMatch(/\.html\?lesson=/);
+  expect(source).not.toContain('npx nx workbench-serve www');
+});
 
 test.each(pages.filter(({ path }) => /\/(concept|recipes)\//.test(path)))(
   '$path teaches an application example before the separate workbench implementation',
@@ -46,6 +79,13 @@ test('every authored diagram selects a supported architecture flow', () => {
   const used = new Set<string>();
 
   for (const { path, source } of pages) {
+    for (const match of source.matchAll(/<hb-diagram\s+diagram="([^"]+)"/g)) {
+      expect(
+        Object.hasOwn(DOCS_DIAGRAMS, match[1]),
+        `${path}: ${match[1]}`,
+      ).toBe(true);
+      used.add(`diagram:${match[1]}`);
+    }
     for (const match of source.matchAll(
       /<hb-concept-diagram\s+concept="([^"]+)"/g,
     )) {

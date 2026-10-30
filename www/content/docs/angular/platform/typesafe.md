@@ -14,8 +14,8 @@ A decision selects from questions and choices our application defines. Use TypeS
 
 The teaser shows the Decisions client flow backed by the TypeSafe route. Generation lessons elsewhere in the workbench use OpenAI and a different streaming contract.
 
-<hb-concept-diagram concept="decisions">
-</hb-concept-diagram>
+<hb-diagram diagram="typesafe-json-decision-boundary">
+</hb-diagram>
 
 ## Install the adapter
 
@@ -267,7 +267,10 @@ When the client sends `options: { longContext: true }`, the adapter adds TypeSaf
 
 ## Explore it in the workbench
 
-Open `/angular.html?lesson=decisions` in the [conversation workbench](/docs/angular/start/workbench). For a live local run, supply `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL` on the server as described there. This lesson starts with a fixed application-owned plan.
+Open the workbench below. To run it live on your machine, see [Run the example](/docs/angular/start/workbench#run-the-example); the server also needs `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL`. This lesson starts with a fixed application-owned plan.
+
+<hb-workbench-launcher lesson="decisions">
+</hb-workbench-launcher>
 
 Request a decision and compare the complete response with the typed choice and confidence in the inspector. The response arrives as one JSON value, rather than chat tokens. Inspect **State** before and after explicit application: receiving a decision does not apply it. The [workbench server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) supplies the application boundary around the same `HashbrownTypeSafe.decide` call used above. Deterministic fixture reports establish client behavior; use a live run to verify provider access.
 

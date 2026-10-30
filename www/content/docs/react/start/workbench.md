@@ -7,9 +7,6 @@ meta:
 
 # Conversation workbench
 
-<hb-docs-demo demo="canonical-workbench-react">
-</hb-docs-demo>
-
 I use one small example to follow a conversation from a prompt to a working interface. Ask for a two-step plan. Watch the JSON arrive, inspect the props, and accept the plan. Then ask for a shorter second step.
 
 The React and Angular versions use the same example, styles, and capture model. Each version uses its own Hashbrown API and component renderer.
@@ -18,12 +15,13 @@ The React and Angular versions use the same example, styles, and capture model. 
 
 An application can observe several layers of one interaction: the user's message, request input, protocol events, parsed values, rendered components, and application state. Those layers answer different questions. A parsed value tells us what became available; an application receipt tells us what was saved.
 
-<hb-concept-diagram concept="conversation">
-</hb-concept-diagram>
+<hb-diagram diagram="workbench-observations"> </hb-diagram>
 
 Use the normal Hashbrown APIs to build the interface first. The [Quickstart](/docs/react/start/quick) supplies a complete standalone implementation. An inspector and a recording store are optional application tooling, not prerequisites for using the SDK.
 
 ## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
 
 <hb-workbench lesson="generative-ui">
 </hb-workbench>

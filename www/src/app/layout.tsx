@@ -40,6 +40,9 @@ export const metadata: Metadata = {
     default: 'Hashbrown: AI chat and agents for React and Angular',
     template: SITE_TITLE_TEMPLATE,
   },
+  alternates: {
+    types: { 'application/rss+xml': '/blog/rss.xml' },
+  },
   twitter: {
     card: 'summary_large_image',
     site: '@liveloveappdev',

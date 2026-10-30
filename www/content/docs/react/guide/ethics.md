@@ -17,6 +17,8 @@ Hashbrown gives us tools for building the interface. We still own the product de
 <a id="transparency"></a>
 <a id="example-displaying-ai-attribution"></a>
 
+<hb-diagram diagram="proposal-lifecycle"> </hb-diagram>
+
 ## Make the proposal visible
 
 Tell the user when content was generated. Show what a proposed change will do before applying it. For example, an assistant can draft a delivery note while the user reviews and edits the text in an ordinary form. Generating the note should not silently submit the order.
@@ -82,8 +84,11 @@ Review the feature with keyboard and screen-reader navigation, small viewports, 
 
 ## Explore it in the workbench
 
-Open **Natural language forms** in the [workbench](/docs/react/start/workbench). The recording shows an actual generated plan, an editable form, and an explicit **Apply** action.
+Open the **Natural language forms** lesson in the workbench below. Its **Replay** tab shows an actual generated plan, an editable form, and an explicit **Apply** action.
 
-Watch the distinction between the model's draft, the user's edited form, and the accepted application state in **State**. The recording retains a model overwrite and an explicit correction; it does not replace that outcome with an ideal response. Scrub the timeline to compare those moments. Replay cannot apply the plan or send another request.
+<hb-workbench-launcher lesson="natural-forms">
+</hb-workbench-launcher>
+
+Watch the distinction between the model's draft, the user's edited form, and the accepted application state in **State**. The replay retains a model overwrite and an explicit correction; it does not replace that outcome with an ideal response. Scrub the timeline to compare those moments. Replay cannot apply the plan or send another request.
 
 This is a small example of an interaction boundary, not a complete policy for your product. Continue with [Natural language forms](/docs/react/recipes/natural-language-to-structured-data), [Public endpoints](/docs/react/recipes/public-endpoint), and the [production recovery reference](/docs/react/platform/b4run) for the corresponding implementation details.

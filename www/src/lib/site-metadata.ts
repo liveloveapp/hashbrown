@@ -55,7 +55,13 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
       : input.image;
   const images = image ? { images: [image] } : {};
   const alternates = input.path
-    ? { alternates: { canonical: input.path } }
+    ? {
+        alternates: {
+          canonical: input.path,
+          // Next replaces the layout's alternates wholesale, so repeat the feed link.
+          types: { 'application/rss+xml': '/blog/rss.xml' },
+        },
+      }
     : {};
   return {
     title: BRANDED_TITLE.test(input.title)

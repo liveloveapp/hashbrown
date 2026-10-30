@@ -7,14 +7,11 @@ meta:
 
 # Request transformation
 
-<hb-docs-demo demo="canonical-workbench-request-transformation-angular">
-</hb-docs-demo>
-
 Request transformation is a server-side hook for modifying the provider options after Hashbrown maps a conversation. Use it to add authorized context, set provider-specific options, or apply policy at the point where you can see the request the provider will receive.
 
 Return the complete options object. Preserve the mapped conversation, tools, and response schema unless your endpoint deliberately owns a different contract. This hook uses provider-native types, so an OpenAI Responses transform is not interchangeable with an Anthropic transform. Load required context before sending; a failed lookup should not silently remove required policy.
 
-<hb-concept-diagram concept="client-server"> </hb-concept-diagram>
+<hb-diagram diagram="concept-provider-transform"> </hb-diagram>
 
 ## Add context at the provider boundary
 
@@ -44,6 +41,8 @@ Spreading `options` preserves `input`, `tools`, `text.format`, and other mapped 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="request-transformation">
 </hb-workbench>
 
@@ -53,13 +52,7 @@ Our browser knows the conversation. Our server may know workspace context that b
 
 ### Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with server-only `OPENAI_API_KEY` and `OPENAI_MODEL`:
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/angular.html?lesson=request-transformation`. The **Transform** view opens first. Selecting the lesson does not start a request.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The **Transform** view opens first.
 
 Send the first prompt. The model reads the current plan through `readContext`, then streams a trusted `SummaryCard`. Choose **Accept plan** after successful completion, and send the follow-up to shorten the second step. The accepted plan stays at revision 1 until you explicitly accept another proposal.
 
@@ -68,8 +61,6 @@ Send the first prompt. The model reads the current plan through `readContext`, t
 The Transform view compares the mapped options before and after the actual callback. It shows the model, tool names, response format, storage setting, output limit, and added instructions. **Preserved mapped fields** shows which mapped fields were preserved. The `{ }` toggle on the captured side shows the sanitized trace.
 
 These values are captured inside the server callback, not reconstructed from the browser request. Each provider continuation has its own trace. Select **Request transformed** in the bottom timeline to inspect that callback. A request frame before the callback shows a waiting message; replay changes only the captured view.
-
-<img src="/video/docs/canonical-workbench-request-transformation-angular-result.png" alt="The Transform view compares mapped provider options and added workspace instructions beside the two-step plan." width="1600" height="1000" loading="lazy" />
 
 The sample exposes only fixed public demo context. The trace omits message input, headers, and credentials. Do not copy private workspace instructions or user content into a browser inspector or log.
 
@@ -97,7 +88,7 @@ export async function transformWorkbenchRequest(
 
 Spreading `options` preserves fields already mapped by Hashbrown. This function appends the workspace policy to existing instructions rather than replacing the chat’s system instructions. It returns a new object and does not mutate its input.
 
-The asynchronous signature also lets your server await context from an application service. The canonical example uses fixed public context so the recording is easy to follow.
+The asynchronous signature also lets your server await context from an application service. The canonical example uses fixed public context so the replay is easy to follow.
 
 ### Keep the adapter’s contract
 

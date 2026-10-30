@@ -1,12 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { renderDocsMarkdown } from '../../../../components/docs-markdown';
-import { WorkbenchLauncher } from '../../../../components/workbench/WorkbenchLauncher';
-import { WORKBENCH_CLOSEST_LESSON } from '../../../../components/workbench/workbench-page-lessons';
 import { MarkdownPage } from '../../../../components/markdown/MarkdownPage';
 import { listDocs, readDoc, type Sdk, SDKS } from '../../../../lib/content';
 import { pageMetadata } from '../../../../lib/site-metadata';
-import { buildWorkbenchSource } from '../../../../lib/workbench-source-files';
 
 type Params = { sdk: string; slug: string[] };
 
@@ -52,20 +49,5 @@ export default async function DocsPage({
     notFound();
   }
   const { content, headings } = await renderDocsMarkdown(doc.body, sdk);
-  // Pages without a panel of their own offer their closest lesson instead.
-  const closest = doc.body.includes('<hb-workbench')
-    ? undefined
-    : WORKBENCH_CLOSEST_LESSON[slug.join('/')];
-  return (
-    <MarkdownPage headings={headings}>
-      {content}
-      {closest ? (
-        <WorkbenchLauncher
-          lesson={closest}
-          sdk={sdk}
-          source={buildWorkbenchSource(closest, sdk, [])}
-        />
-      ) : null}
-    </MarkdownPage>
-  );
+  return <MarkdownPage headings={headings}>{content}</MarkdownPage>;
 }

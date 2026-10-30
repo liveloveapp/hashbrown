@@ -7,14 +7,11 @@ meta:
 
 # Tool calling
 
-<hb-docs-demo demo="canonical-workbench-tools-angular">
-</hb-docs-demo>
-
 A tool is an application function a model can ask to call. Its name, description, and argument schema tell the model when to use it. Your handler supplies the actual result, and the model can use that result in its next request.
 
 Use tools when an answer depends on current application data or a checked action. A model cannot infer today’s inventory from its training data. Give it a focused way to read inventory instead of pasting every product into every prompt. Keep reads separate from writes so a useful lookup does not also change application state.
 
-<hb-concept-diagram concept="tools"> </hb-concept-diagram>
+<hb-diagram diagram="concept-tools-round-trip"> </hb-diagram>
 
 ## Give the assistant a current value
 
@@ -69,6 +66,8 @@ The model chooses whether to call a tool; the system instruction makes the looku
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="tools">
 </hb-workbench>
 
@@ -78,9 +77,9 @@ The same conversation appears in [Generative UI](/docs/angular/concept/component
 
 ### Run the same conversation
 
-Use the [conversation workbench](/docs/angular/start/workbench) with the server environment from the [Quickstart](/docs/angular/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=tools`. Selecting a lesson does not send a request.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example).
 
-The recording uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
+The replay uses this checked Angular client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
 ### Read application state
 
@@ -114,8 +113,6 @@ The React version uses `deps` to keep handler dependencies current; the Angular 
 5. Send the follow-up. The next tool result contains revision `1` and the accepted plan.
 
 Select **Requests** to see each request and tool result in a table grouped by turn. Tool calls sit under the request that called them. Select a tool row to see its **Call** and **Result**, or select the request to see **Raw request** (exactly as sent) and **Response** (every streamed event).
-
-<img src="/video/docs/canonical-workbench-tools-angular-result.png" alt="The Requests view lists model requests and readContext results from both plan turns." width="1600" height="1000" loading="lazy" />
 
 ### Keep reads and writes deliberate
 

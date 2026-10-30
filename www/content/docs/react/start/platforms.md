@@ -14,8 +14,7 @@ Your components and client APIs stay in your application. Choose where the model
 
 The teaser shows a real OpenAI-backed client. The integration guides below explain the other runtimes separately; the recording does not verify those providers.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary"> </hb-diagram>
 
 ## Stream through a server adapter
 
@@ -56,6 +55,9 @@ If you need a complete chat interface, [Threadplane](/docs/react/recipes/threadp
 
 ## Explore it in the workbench
 
-The [workbench](/docs/react/start/workbench) uses a checked OpenAI server adapter for its public streaming lessons. Start **First plan**, inspect the request and streamed response, then follow a provider guide to configure your own endpoint. Reuse the frontend contract where the provider supports it; verify tool and schema behavior on that deployment.
+The [workbench](/docs/react/start/workbench) uses a checked OpenAI server adapter for its public streaming lessons. Open **First plan** in the workbench below, inspect the request and streamed response, then follow a provider guide to configure your own endpoint. Reuse the frontend contract where the provider supports it; verify tool and schema behavior on that deployment.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
 For the separate runtime paths, open **Decisions** for an actual TypeSafe request or **Local models** for the checked Chrome inference path. The [production recovery reference](/docs/react/platform/b4run) runs a separate opt-in server with Postgres; it is not part of the anonymous public backend.

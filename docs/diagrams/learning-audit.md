@@ -1,0 +1,28 @@
+# Onboarding and learning guide diagram audit
+
+Reviewed 20 authored pages (10 per framework). The decision follows the teaching question, not a diagram quota. Shared diagrams describe framework-neutral boundaries; examples retain their framework APIs. All additions follow the video and conceptual introduction. Existing headings, anchors, snippets and replay panels stay in place.
+
+| Page | Decision / diagram | Teaching question and placement | Source evidence |
+| --- | --- | --- | --- |
+| angular/start/intro | Retain `generative-ui` concept steps | What connects a model response to my component? The short introductory flow is enough. | `packages/angular/src`, `www/examples/quickstart/angular/src/app` |
+| react/start/intro | Retain `generative-ui` concept steps | What connects a model response to my component? The short introductory flow is enough. | `packages/react/src`, `www/examples/quickstart/react/src` |
+| angular/start/quick | Replace generic steps with `request-boundary` | Which side owns credentials and rendering? Before setup. | Quickstart Express handler and Angular provider configuration in this page; `www/examples/quickstart/server` |
+| react/start/quick | Replace generic steps with `request-boundary` | Which side owns credentials and rendering? Before setup. | Quickstart Express handler and React provider configuration in this page; `www/examples/quickstart/server` |
+| angular/start/how-it-works | Replace with `request-boundary` | How does input cross the endpoint and return as events? Before the numbered explanation. | `packages/openai/src`, `www/examples/quickstart/server` |
+| react/start/how-it-works | Replace with `request-boundary` | How does input cross the endpoint and return as events? Before the numbered explanation. | `packages/openai/src`, `www/examples/quickstart/server` |
+| angular/start/platforms | Replace with `request-boundary` | Where is a hosted provider connected? Before the adapter example; on-device models remain a separate path described below. | `packages/openai/src`, provider integration examples |
+| react/start/platforms | Replace with `request-boundary` | Where is a hosted provider connected? Before the adapter example; on-device models remain a separate path described below. | `packages/openai/src`, provider integration examples |
+| angular/start/overview | No addition | Which API fits this output and context? The comparison table maps the choices more directly. | API table and linked Angular public APIs |
+| react/start/overview | No addition | Which API fits this output and context? The comparison table maps the choices more directly. | API table and linked React public APIs |
+| angular/start/sample | Retain `tools` concept steps | How do application data and tool results relate? Existing flow plus ATC screenshots and narrative suffice. | `examples/atc`, existing ATC recording |
+| react/start/sample | Retain `tools` concept steps | How do application data and tool results relate? Existing flow plus ATC screenshots and narrative suffice. | `examples/atc`, existing ATC recording |
+| angular/start/workbench | Replace with `workbench-observations` | How can the timeline update all views without executing a run? Before workbench instructions. | `www/examples/quickstart/runtime/workbench.ts` seek and snapshot projection; `workbench-capture.ts`, `workbench-player.ts`, `workbench-view.ts` |
+| react/start/workbench | Replace with `workbench-observations` | How can the timeline update all views without executing a run? Before workbench instructions. | Same shared workbench runtime and framework-specific client |
+| angular/guide/choosing-model | Replace with `request-boundary` | Where does provider/model selection happen? Immediately before the server module. The evaluation criteria remain a table. | Existing `HashbrownOpenAI.stream.text` example and `packages/openai/src` |
+| react/guide/choosing-model | Replace with `request-boundary` | Where does provider/model selection happen? Immediately before the server module. The evaluation criteria remain a table. | Existing `HashbrownOpenAI.stream.text` example and `packages/openai/src` |
+| angular/guide/prompt-engineering | Add `prompt-context-boundary` | How are instructions and user material distinct request inputs? After introduction, before standalone prompt code. | Existing support instruction and `chatResource` examples; browser instruction caveat retained |
+| react/guide/prompt-engineering | Add `prompt-context-boundary` | How are instructions and user material distinct request inputs? After introduction, before standalone prompt code. | Existing support instruction and `useChat` examples; browser instruction caveat retained |
+| angular/guide/ethics | Add `proposal-lifecycle` | What separates a preview, review and confirmed write? Before the ordinary application examples. | Existing `canReviewDraft` completion/freshness gate and prose requiring independent server authorization; deliberately an interaction model, not SDK states |
+| react/guide/ethics | Add `proposal-lifecycle` | What separates a preview, review and confirmed write? Before the ordinary application examples. | Existing `canReviewDraft` completion/freshness gate and prose requiring independent server authorization; deliberately an interaction model, not SDK states |
+
+The proposal diagram intentionally omits failure paths and names that simplification in its text description. Applied means a confirmed application write; approval alone is not success. Prompt role separation does not authorize operations. The workbench diagram describes the existing capture projection, not persistence or replayed side effects.

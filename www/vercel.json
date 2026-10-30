@@ -7,6 +7,10 @@
     {
       "path": "/_/cron/inbox-recovery",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/_/cron/marketing",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

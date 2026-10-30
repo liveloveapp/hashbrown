@@ -7,14 +7,11 @@ meta:
 
 # Generative UI with React components
 
-<hb-docs-demo demo="canonical-workbench-ui-react">
-</hb-docs-demo>
-
 Generative UI lets a model choose from components your application already owns. You describe each component and its inputs; Hashbrown turns the model’s structured response into those trusted components. The model supplies data and layout choices. Your code still owns rendering, events, and access to application services.
 
 Use it when different requests need different presentations: a product comparison, a summary card, or a small dashboard. If every answer uses the same layout, [structured output](/docs/react/concept/structured-output) is often enough. Start with one useful component, then grow the catalog when the feature needs another way to present information.
 
-<hb-concept-diagram concept="generative-ui"> </hb-concept-diagram>
+<hb-diagram diagram="concept-trusted-components"> </hb-diagram>
 
 ## Expose a useful summary card
 
@@ -82,6 +79,8 @@ export function BookSummary() {
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="generative-ui">
 </hb-workbench>
 
@@ -91,9 +90,9 @@ I use the same plan in [Tools](/docs/react/concept/functions) and [Structured ou
 
 ### Run the same conversation
 
-Use the [conversation workbench](/docs/react/start/workbench) with the server environment from the [Quickstart](/docs/react/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=generative-ui`. Selecting a lesson does not send a request.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
-The recording uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
+The replay uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
 ### Expose one trusted component
 
@@ -130,8 +129,6 @@ const components = [
 The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The **Resolved props** section follows that selection.
 
 A partial value is useful feedback. It is still a preview. The workbench enables **Accept plan** only after a fresh, successfully completed response passes its two-step plan rules. Rendering the card does not update the accepted plan.
-
-<img src="/video/docs/canonical-workbench-ui-react-result.png" alt="The canonical plan appears in the chat beside its captured JSON and resolved component props." width="1600" height="1000" loading="lazy" />
 
 ### Start and render the conversation
 

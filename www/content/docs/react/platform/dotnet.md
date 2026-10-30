@@ -12,8 +12,8 @@ meta:
 
 The teaser demonstrates the OpenAI-backed browser flow using the TypeScript server. It does not demonstrate ASP.NET Core, Microsoft Agent Framework, Azure authentication, or the local NuGet candidate.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="dotnet-agent-boundary">
+</hb-diagram>
 
 Connect Hashbrown to an ASP.NET Core AG-UI endpoint. The browser uses the same Hashbrown APIs as a Node-backed application; the .NET server chooses the model, holds credentials, and runs its own tools.
 
@@ -578,6 +578,9 @@ Entra authentication, live cloud-account qualification, .NET 8/9, automatic nati
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=first-plan` in the [conversation workbench](/docs/react/start/workbench). Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+Open the workbench below. Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
 The bundled workbench uses a TypeScript server. It demonstrates the browser contract your .NET endpoint must satisfy, not qualification of the .NET library. Connect your application to the endpoint configured above and run the linked conformance checks for the selected provider, tool mode, confirmation, and recovery paths. Keep the tested package and SDK version boundaries on this page when doing so.

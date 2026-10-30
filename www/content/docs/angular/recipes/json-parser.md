@@ -7,14 +7,11 @@ meta:
 
 # Streaming JSON Parser
 
-<hb-docs-demo demo="canonical-workbench-json-parser-angular">
-</hb-docs-demo>
-
 A streaming JSON parser resolves useful values before the whole document arrives. Use it for a JSON source you already own: a text response, a socket, or an imported file. Choose streaming strings for fields that can display a prefix, and ordinary strings for fields that should wait for a closing quote.
 
 Let’s preview a shopping list. The parser will receive the full JSON string so far. The preview helps the user read; a separate check of the original completed document decides whether it can be used. If you already use structured chat, consume its parsed content directly.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-parser-preview-validation"> </hb-diagram>
 
 ## Preview an existing JSON source
 
@@ -61,12 +58,12 @@ Pass a growing prefix such as `{"title":"Groceries","items":["ap` and then the f
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="json-parser">
 </hb-workbench>
 
 Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
-
-<img src="/video/docs/canonical-workbench-json-parser-angular-result.png" alt="The Angular workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />
 
 ## Follow the JSON
 
@@ -77,7 +74,7 @@ Let's watch JSON become a plan. The title waits for a complete string, while ste
 5. Ask for a shorter second step. The parser follows the new assistant response rather than appending it to the old JSON document.
 6. Replay the two turns. Chat, raw JSON, resolved values, and the bottom timeline follow the same selected event.
 
-The recording uses real OpenAI output through the actual Hashbrown text SDK. `injectJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
+The replay uses real OpenAI output through the actual Hashbrown text SDK. `injectJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
 
 ## Choose which values can stream
 

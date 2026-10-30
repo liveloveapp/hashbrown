@@ -14,8 +14,8 @@ Connect your application's chat endpoint to OpenAI's Responses API. The browser 
 
 The teaser follows the real OpenAI-backed client flow. The server integration below is the reusable part; the inspector and timeline belong to the workbench.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
 
 ## Install the server adapter
 
@@ -96,6 +96,9 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 The examples below host `/run` in an ordinary application. Configure your Angular client to call that route, using the [Quickstart](/docs/angular/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/angular/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
@@ -431,6 +434,9 @@ const stream = HashbrownOpenAI.stream.text({
 
 ## Explore it in the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) and open `/angular.html?lesson=first-plan`. Ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
+Open the workbench below and ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
 The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `OpenAI` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This is the same provider path shown in the teaser.

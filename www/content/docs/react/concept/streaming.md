@@ -7,14 +7,11 @@ meta:
 
 # Streaming
 
-<hb-docs-demo demo="canonical-workbench-streaming-react">
-</hb-docs-demo>
-
 Streaming lets an interface show useful output while the response is still arriving. There are two boundaries to think about: the provider sends text chunks, and Hashbrown resolves values from those chunks according to your schema. A network chunk is rarely a complete JSON document.
 
 Use streaming strings for growing text and streaming arrays for lists whose completed items are useful early. Keep a stable layout for missing values and label the result as a preview. A visible field can still belong to a run that later fails, stops, or reaches an output limit; rendering it must not commit a business action.
 
-<hb-concept-diagram concept="streaming"> </hb-concept-diagram>
+<hb-diagram diagram="concept-streaming-boundaries"> </hb-diagram>
 
 ## Show a growing reading list
 
@@ -76,6 +73,8 @@ Provider chunk sizes vary. Several fields may resolve together. Use ordinary str
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="streaming">
 </hb-workbench>
 
@@ -85,7 +84,7 @@ I use the same conversation in [Structured output](/docs/react/concept/structure
 
 ### Run the workbench
 
-Start the [conversation workbench](/docs/react/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=streaming`. Keep the server environment and provider configuration from the [Quickstart](/docs/react/start/quick). Selecting a lesson does not start a request.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
 ### Choose what can appear early
 
@@ -124,9 +123,7 @@ Keep **JSON** selected. The center feed shows the plan preview, and the inspecto
 | Successful completion and validation | Reviewable two-step plan | Accept plan becomes available.     |
 | Explicit acceptance                  | The same plan            | Revision advances from 0 to 1.     |
 
-Provider chunk sizes and timing vary. Several values may arrive together. The recording uses real React SDK requests and OpenAI output, with unchanged provider events paced at 20 ms for filming and footage slowed to half speed for readability. It does not script provider output; the normal host adds no event delay.
-
-<img src="/video/docs/canonical-workbench-streaming-react-result.png" alt="The canonical plan preview appears beside streamed JSON and resolved values in the inspector." width="1600" height="1000" loading="lazy" />
+Provider chunk sizes and timing vary. Several values may arrive together. The replay uses real React SDK requests and OpenAI output, with unchanged provider events paced at 20 ms for filming and footage slowed to half speed for readability. It does not script provider output; the normal host adds no event delay.
 
 ### Follow the second turn
 

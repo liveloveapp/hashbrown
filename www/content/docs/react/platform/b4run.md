@@ -7,17 +7,14 @@ meta:
 
 # Durable recovery with b4.run
 
-<hb-docs-demo demo="canonical-workbench-production-recovery-react">
-</hb-docs-demo>
-
 A durable conversation must survive more than a browser refresh. When an agent pauses before a protected action, we need to retain its checkpoint, verify who may return to it, and distinguish a restored proposal from an applied business result. b4.run supplies durable runtime stores; our application owns identity, authorization, and the effect itself.
 
 For example, a support assistant may prepare a case update and wait for approval. Reading its saved conversation should show the proposal without changing the case. Approval is a new explicit request, and a repeated request must not apply the same update twice.
 
-The teaser shows that boundary in the separate TypeScript/Postgres production recovery reference: restore a recording plan after restarting the server, then explicitly approve it. It uses b4.run 0.15.5. The public anonymous workbench does not expose this server's recovery routes.
+The workbench later on this page shows that boundary in the separate TypeScript/Postgres production recovery reference: restore a recording plan after restarting the server, then explicitly approve it. It uses b4.run 0.15.5. The public anonymous workbench does not expose this server's recovery routes.
 
-<hb-concept-diagram concept="persistence">
-</hb-concept-diagram>
+<hb-diagram diagram="b4-durable-ownership">
+</hb-diagram>
 
 ## Configure durable runtime stores
 
@@ -82,6 +79,9 @@ The application stores the accepted recording plan separately. The server tool s
 
 On approval, one database transaction checks the owner and expected application revision, writes the accepted plan, and records a unique operation receipt. Repeating the same operation cannot advance the plan a second time. This protects this database effect. It does not make an email, payment, file write, or other external effect exactly once. Those operations need their own idempotency and reconciliation policy.
 
+<hb-diagram diagram="b4-recording-plan-erd">
+</hb-diagram>
+
 ## Restore without running
 
 A recovery envelope separates the configuration identifier, operational disposition, canonical conversation snapshot, and application result. This focused shape shows the reference contract; `threadId`, `messages`, `state`, and `interrupts` come from an authorized server lookup:
@@ -102,6 +102,9 @@ The client validates the envelope and binds it to the current trusted server con
 Capture the local SDK recovery revision before the asynchronous read. Apply the snapshot with `restoreConversation(snapshot, { expectedRevision })` only while idle, for the same selected thread, and while that revision still matches. Retire the lookup on thread changes and disposal. A late response must not overwrite a newer conversation.
 
 Restoration installs history without a network request, tool execution, automatic generation, or accepted-plan write. A paused snapshot creates a fresh local interrupt batch. The previous page's local batch ID is not authority.
+
+<hb-diagram diagram="b4-read-then-resume">
+</hb-diagram>
 
 ## Make resume a new decision
 
@@ -143,6 +146,8 @@ Set retention policies for conversation checkpoints, pending grants, thread owne
 Before deploying, use your verified account identity, HTTPS cookie settings, production database access policy, and the admission and failure behavior appropriate to your host. The reference demonstrates one protected database action; it does not provision a production database or deploy an account system.
 
 ## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
 
 <hb-workbench lesson="production-recovery">
 </hb-workbench>

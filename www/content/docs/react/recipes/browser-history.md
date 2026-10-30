@@ -7,14 +7,11 @@ meta:
 
 # Save text conversations
 
-<hb-docs-demo demo="canonical-workbench-save-text-conversations-react">
-</hb-docs-demo>
-
 Saving a text conversation lets a user refresh a page and continue with the earlier exchange. Browser storage works for a small, device-local draft when cross-device access and server ownership are unnecessary. Save a narrow, versioned format so a future release can recognize or reject it safely.
 
 Let’s store only completed user and assistant text. Loading it should replace history without generating a reply; the next explicit user message starts the next request.
 
-<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-browser-text-round-trip"> </hb-diagram>
 
 ## Store a bounded text document
 
@@ -113,6 +110,8 @@ For **Save**, first require a current successful run with `lastRunFinishReason` 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="save-text-conversations">
 </hb-workbench>
 
@@ -120,9 +119,7 @@ Let's keep our two-step plan after a refresh. We'll save a completed Lighthouse 
 
 The saved-text selector chooses a browser slot. The left sidebar still chooses a live conversation. Selecting a saved slot does not load its messages or send a request. We make those actions explicit so you can see what each one changes.
 
-<img src="/video/docs/canonical-workbench-save-text-conversations-react-result.png" alt="React workbench showing Lighthouse's saved text beside the current operation and restored conversation." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=save-text-conversations`](http://127.0.0.1:4370/react.html?lesson=save-text-conversations). The [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/HistoryWorkbench.tsx) uses real Hashbrown requests and provider streaming.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example). The [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/HistoryWorkbench.tsx) uses real Hashbrown requests and provider streaming.
 
 ## Save Text Deliberately
 
@@ -132,7 +129,7 @@ Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.h
 4. Select Lighthouse and load its text. Loading makes no model request.
 5. Send a follow-up, inspect the restored context in Requests, and save after the new reply succeeds.
 
-The recording makes three provider requests across independent live instances. The timeline after refresh contains this page's load and continuation. It does not reconstruct the old requests or their timings. Replay makes no requests and writes no storage.
+The replay shows three provider requests across independent live instances. The timeline after refresh contains this page's load and continuation. It does not reconstruct the old requests or their timings. Replay makes no requests and writes no storage.
 
 ## Define a Small Format
 

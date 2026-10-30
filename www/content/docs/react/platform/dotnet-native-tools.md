@@ -12,8 +12,8 @@ meta:
 
 The teaser shows the workbench's client interrupt controls and explicit continuation. It does not demonstrate .NET native mixed tools, Microsoft Agent Framework approvals, or PostgreSQL session ownership. Those need the separate server configuration and verification below.
 
-<hb-concept-diagram concept="workflow">
-</hb-concept-diagram>
+<hb-diagram diagram="dotnet-agent-boundary">
+</hb-diagram>
 
 Use this opt-in recipe when one model response needs both browser tools and registered .NET functions. Microsoft Agent Framework (MAF) retains its native pending function state while Hashbrown executes browser tools. PostgreSQL owns each continuation and fences server dispatch across replicas and restarts.
 
@@ -178,6 +178,9 @@ A live native interrupt can cause the current SDK to cancel browser calls co-emi
 
 ## What happens during a mixed turn
 
+<hb-diagram diagram="dotnet-native-mixed-turn">
+</hb-diagram>
+
 Keep the browser's normal Hashbrown tool declarations and full canonical conversation history. No browser implementation is registered for `lookupAirport`. The composed agent uses native invocable-function bypass plus public empty input/output history filters, so MAF retains pending work without appending a second transcript.
 
 For a mixed response without a protected approval, the first native stream exposes browser calls while deferred server descriptors remain private. Protected interrupts follow the decision flow above. After the browser supplies the exact outstanding results, MAF executes the stored server functions and continues. The journal captures genuine model-emitted descriptors and commits `Started` before entering a registered function. A browser-replayed server call cannot create invocation authority. Duplicate IDs, altered prefixes/arguments, conflicting configuration and unmatched results fail before new work.
@@ -239,6 +242,9 @@ The compiled documentation check is configured to compare identical framework C#
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=interrupts` in the [conversation workbench](/docs/react/start/workbench). Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
+Open the workbench below. Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
+
+<hb-workbench-launcher lesson="interrupts">
+</hb-workbench-launcher>
 
 The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed local package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.

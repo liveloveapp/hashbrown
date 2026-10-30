@@ -7,14 +7,11 @@ meta:
 
 # Messages and turns
 
-<hb-docs-demo demo="canonical-workbench-conversation-react">
-</hb-docs-demo>
-
 A conversation is a sequence of messages with roles. A user message starts a turn; the assistant’s reply answers it. The next request includes the current history, so a follow-up can refer to a name, preference, or fact established earlier.
 
 A turn and a provider request are different units. A simple text reply may need one request. A tool-using turn may need a request to choose a tool, a handler result, and another request to produce the reply. Keep that distinction in mind when showing progress or investigating a failure.
 
-<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+<hb-diagram diagram="concept-conversation-turn"> </hb-diagram>
 
 ## Create a conversation
 
@@ -87,6 +84,8 @@ Send the first message, then ask **What did I name our club, and what should we 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="conversation">
 </hb-workbench>
 
@@ -96,7 +95,7 @@ This lesson uses text chat. There are no tools or generated components, so we ca
 
 ### Inspect the two requests
 
-Open the [workbench](/docs/react/start/workbench) at `http://127.0.0.1:4370/react.html?lesson=conversation`. Send **First prompt**, then **Follow-up**. Select **Requests**, pick each turn's request, and open **Raw request** to compare the envelopes:
+In the **Live** tab above, or [on your machine](/docs/react/start/workbench#run-the-example), send **First prompt**, then **Follow-up**. Select **Requests**, pick each turn's request, and open **Raw request** to compare the envelopes:
 
 | Value      | What to look for                                                     |
 | ---------- | -------------------------------------------------------------------- |
@@ -105,8 +104,6 @@ Open the [workbench](/docs/react/start/workbench) at `http://127.0.0.1:4370/reac
 | `runId`    | The next run has a fresh identity.                                   |
 
 Drag the bottom timeline, or the overview above the request table, to revisit either turn. The chat, current request, text, and captured state move together. Replay makes no new request.
-
-<img src="/video/docs/canonical-workbench-conversation-react-result.png" alt="The React conversation workbench retains the Lighthouse plan discussion while the inspector shows the follow-up request." width="1600" height="1000" loading="lazy" />
 
 ### A message, a turn, and a request
 
