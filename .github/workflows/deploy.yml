@@ -214,7 +214,7 @@ jobs:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
           OUTCOME: ${{ steps.deploy.outcome }}
           VERIFICATION_OUTCOME: ${{ steps.docs-verification.outcome }}
-          DEPLOYMENT_CANCELLED: ${{ cancelled() }}
+          DEPLOYMENT_CANCELLED: ${{ job.status == 'cancelled' }}
           KEY: ${{ matrix.key }}
           URL: ${{ steps.deploy.outputs.url }}
           ENVIRONMENT: ${{ inputs.environment }}

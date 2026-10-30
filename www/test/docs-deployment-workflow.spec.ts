@@ -43,6 +43,9 @@ test('the actual Vercel build receives the expected full revision and failed aud
   expect(step(source, 'Record deployment status')).toContain(
     'docs-deployment-status.ts',
   );
+  expect(step(source, 'Record deployment status')).toContain(
+    "DEPLOYMENT_CANCELLED: ${{ job.status == 'cancelled' }}",
+  );
 });
 
 test('remote verification is an uncached Nx target without a local build dependency', () => {
