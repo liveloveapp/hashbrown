@@ -1,9 +1,13 @@
 # Agent-framework activities and tool-display conformance
 
-**Status:** draft for user review, 2026-10-29. Planning only; no new adapter,
-dependency installation for these frameworks, or compatibility claim is approved
-by this document. The user selected AG-UI interoperability first on 2026-10-29,
-with optional producer recipes rather than first-class framework adapters.
+**Status:** approved direction, partially delivered as of 2026-10-30.
+The user selected AG-UI interoperability first on 2026-10-29. The real Node
+baseline shipped in [#832](https://github.com/liveloveapp/hashbrown/pull/832),
+with native activity/child-execution expansion in
+[#844](https://github.com/liveloveapp/hashbrown/pull/844). See the
+[versioned capability inventory](../../../tools/conformance/agent-frameworks/capabilities.json)
+and [delivery closeout](../research/2026-10-29-tool-display-closeout.md).
+Unqualified capabilities below remain roadmap items, not compatibility claims.
 
 ## Intent and terminology
 
@@ -40,20 +44,21 @@ whenever their backend supplies equivalent protocol information. Preserve the
 For this milestone, “LangGraph directly” means plain LangGraph through AG-UI
 without a B4 agent. Bypassing AG-UI and consuming the LangGraph SDK's native
 protocol remains outside this milestone. The overall direction is selected;
-the detailed conformance design and dependency choices remain under review.
+the approved isolated Node dependencies are recorded in the executable inventory.
+New dependency additions and remaining framework profiles still need approval.
 
 ## Existing evidence
 
 | Backend | Hashbrown evidence today | Next conformance |
 | --- | --- | --- |
 | B4 | Shared fixtures, real-store consumer conformance; native app/workbench paths elsewhere in the repo | Reference rich-step profile; keep version ownership explicit. |
-| Plain LangGraph | Captured helper fixture in core; JS/Python recipes; B4-owned runnable/helper tests | Execute actual JS and Python AG-UI bridges in isolated test hosts, with and without optional helper. |
-| Microsoft Agent Framework/.NET | Native/package/browser/recovery suites under tools/conformance/dotnet | Audit and add activities, rich steps, failure/restore and subagent cases to that maintained host. |
-| Mastra | No executable suite found in Hashbrown | Add first version-pinned real bridge host and qualify ordinary tools before opt-in background/delegation features. |
+| Plain LangGraph | Real Node bridge via its local SDK seam, actual graph/ToolNode and child execution; prepared-store/browser/consumer restore profiles (#832/#844) | Actual API-server/Python bridges, durable native restart and optional rich metadata/activity recipes. |
+| Microsoft Agent Framework/.NET | Native/package/browser/recovery suites under tools/conformance/dotnet | Extend the audited activity, rich-step, failure/restore and subagent display gaps in that maintained host. |
+| Mastra | Real pinned buffered/live tools, actual native child execution and background success/failure activities (#832/#844) | Native subagent provenance remains missing upstream; observational memory, rich metadata and durable native restart remain untested. |
 | Pydantic AI, Google ADK, CrewAI, AG2, Vercel AI SDK | No framework execution lane found here | Candidates after the first milestone; rank using actual protocol gaps and demand. |
 
-The existing LangGraph fixture is not a real bridge running in Hashbrown CI.
-Tests in sibling repositories are prior art only. Hashbrown's local-model tests
+The original helper fixture remains separate from the real Node bridge hosts
+now running in CI. Tests in sibling repositories are prior art only. Hashbrown's local-model tests
 qualify model transports, not these orchestration frameworks.
 
 ## Protocol and producer boundary
@@ -88,13 +93,17 @@ private methods. Native SDK event streaming remains a distinct transport design.
 
 **Mastra:** inspect the official @ag-ui/mastra package at upstream revision
 `7e7c1109f26e77cc32d87d351fb9e0b0bf56ff7f` (source package version 2.0.2).
-Its source already provides opt-in live server tools, observational-memory
-activities and attributed subagents. Qualify these instead of rebuilding them.
+That source inspection suggested opt-in live server tools, observational-memory
+activities and attributed subagents. The installed 2.0.1 / core 1.80.0 evidence
+is authoritative for the delivered profiles: live tools and native background
+activities pass, while actual child execution emits no standard subagent
+lifecycle/provenance. Do not infer published compatibility from a different
+source revision. Observational-memory activities remain untested.
 The streamServerToolCalls option documents suspension/background tradeoffs;
-use separate scenario profiles rather than enable it globally. The untilIdle
-option documents missing terminal background delivery for a checked Mastra
-version; do not promise completion or synthesize it from parent-run success.
-Inspect publication/version compatibility before choosing the install baseline.
+use separate scenario profiles rather than enable it globally. The background profiles separately qualify `untilIdle` with core 1.80.0 and
+memory 1.39.1, including actual terminal success and failure patches. This does
+not establish compatibility for every version or observational-memory profile.
+Never synthesize completion from parent-run success.
 
 **Microsoft Agent Framework:** extend existing tests and server registration,
 not a parallel .NET host. First inventory what native serializer/history APIs
@@ -138,7 +147,8 @@ currently an already-tested Hashbrown framework.
 No runtime dependencies or new production packages in the first milestone.
 Any new isolated test-package dependencies still require user approval before
 addition. File search, OpenAI image generation, upstream posting and release
-notes remain outside this proposal. No release or PR merge is authorized here.
+notes remain outside this proposal. This document does not authorize new releases or PR merges; those require
+separate user instructions.
 
 ## Primary sources reviewed
 

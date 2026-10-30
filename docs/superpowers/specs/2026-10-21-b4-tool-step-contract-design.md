@@ -4,7 +4,7 @@
 > Baselines and remaining-work statements below are historical. The shared
 > contract's Rules remain binding. File search remains deferred.
 
-Status: approved historical design (2026-10-21); delivery inventory updated 2026-10-29.
+Status: approved historical design (2026-10-21); delivery inventory updated 2026-10-30.
 
 ## Intent
 

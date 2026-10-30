@@ -4,8 +4,30 @@
 > superpowers:executing-plans after design approval. Parent owns Git; tasks use
 > test-first steps and independent spec/quality review.
 
-**Status:** draft implementation outline for user review. Do not execute until
-its design and dependency decisions are approved.
+**Status:** approved direction with partial delivery, updated 2026-10-30.
+The executable Node baseline shipped in #832 and the activity/child-execution
+expansion in #844. The original checklist below is a broad roadmap; unchecked
+items must not erase that delivered subset or imply the entire matrix passed.
+
+## Delivered subset and execution records
+
+- [x] Approve isolated Node test dependencies and record exact per-profile pins.
+- [x] Execute real LangGraph and Mastra bridges; generate seven raw captures.
+- [x] Verify prepared-root-store replay, canonical JSON restore, next-run input
+  and Angular/React display with an independent client dispatch control.
+- [x] Prove live START where supported and native Mastra background activity
+  before tool completion, including explicit terminal success and failure.
+- [x] Execute real native child graphs/agents and document absent upstream
+  subagent lifecycle/provenance without manufacturing attribution.
+- [x] Audit the existing .NET host's display gaps without adding another host.
+
+See [baseline execution](2026-10-29-agent-framework-conformance-execution.md),
+[activity expansion](2026-10-30-framework-activity-conformance.md), the
+[capability inventory](../../../tools/conformance/agent-frameworks/capabilities.json)
+and [closeout](../research/2026-10-29-tool-display-closeout.md).
+Native durable restart, API-server/Python, rich recipes, observational memory
+and the .NET display scenarios remain separate follow-ups. File search remains
+deferred. The original tasks below retain their larger acceptance scope.
 
 **Selected direction (2026-10-29):** AG-UI interoperability first, with optional
 producer recipes. Native framework transports are outside this milestone.
@@ -31,13 +53,13 @@ Files: spec above; tools/conformance/README.md; new
 - [x] Select AG-UI interoperability first: direct LangGraph means no B4 agent
   over AG-UI. Native LangGraph SDK transport needs a separate spec. Keep file
   search deferred.
-- [ ] Inventory exact installed/current producer/bridge versions and native
+- [x] Inventory exact installed/current producer/bridge versions and native
   public hooks. Separate live, fixture-only and source-inspection evidence.
-- [ ] Request approval for exact isolated dev/test dependencies before adding
+- [x] Request approval for exact isolated dev/test dependencies before adding
   Node package manifests or Python requirements. No Hashbrown runtime dependency.
-- [ ] Define matrix rows and required scenarios from the spec; preserve gaps as
+- [x] Define matrix rows and required scenarios from the spec; preserve gaps as
   explicit unsupported/missing-upstream/not-tested rows, not skipped green tests.
-- [ ] Review and commit the inventory separately.
+- [x] Review and commit the inventory separately (#832; extended in #844).
 
 ## Task 1: Shared consumer conformance
 
@@ -117,7 +139,8 @@ Files: existing `tools/conformance/dotnet/tests`, `specs`, native fixture host a
 package-browser tests; both existing dotnet platform guides. Select exact test
 files after Task 0's gap audit, keeping one maintained server host.
 
-- [ ] Map existing native/package/browser/recovery coverage to the shared matrix.
+- [x] Map existing native/package/browser/recovery coverage to the shared matrix
+  (source audit in the conformance README; no new .NET display execution claim).
 - [ ] Add failing activity, custom-step, readable failure/restore and subagent
   cases only where missing. Preserve native serializer, dispatch fencing,
   approval-journal and owner semantics; no parallel replacement host.
