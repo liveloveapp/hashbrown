@@ -1,0 +1,81 @@
+name: Select deployment targets
+
+# Shared by ordinary validation and opt-in label previews. Keep the target
+# catalog here because workflow-level env does not cross workflow_call.
+on:
+  workflow_call:
+    inputs:
+      event:
+        description: Caller event name; main events deploy every target
+        required: true
+        type: string
+      base:
+        description: Pull request base SHA (empty for main events)
+        required: false
+        default: ''
+        type: string
+      head:
+        description: Pull request head SHA (empty for main events)
+        required: false
+        default: ''
+        type: string
+    outputs:
+      matrix:
+        description: JSON array of selected deployment targets
+        value: ${{ jobs.targets.outputs.matrix }}
+
+permissions:
+  contents: read
+
+env:
+  # Deployment targets: key = Nx project, dir = directory containing .vercel/output,
+  # project_id_secret = repository secret holding that target's Vercel project ID.
+  # builder "vercel" = build the Next.js app in `root` with `vercel build`;
+  # optional = skip while the project secret is unset (see deploy.yml).
+  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"atc","dir":"examples/atc","project_id_secret":"VERCEL_PROJECT_ID_ATC"},{"key":"lifecycle","dir":"tools/lifecycle","project_id_secret":"VERCEL_PROJECT_ID_LIFECYCLE","optional":true},{"key":"workbench","dir":"tools/workbench","project_id_secret":"VERCEL_PROJECT_ID_WORKBENCH","optional":true}]'
+
+jobs:
+  targets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        if: inputs.event == 'pull_request'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        if: inputs.event == 'pull_request'
+        run: npm ci
+
+      - name: Select targets
+        id: select
+        env:
+          EVENT: ${{ inputs.event }}
+          BASE: ${{ inputs.base }}
+          HEAD: ${{ inputs.head }}
+          NX_DAEMON: 'false'
+        run: |
+          set -o pipefail
+          if [[ "$EVENT" != "pull_request" ]]; then
+            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
+          elif git diff --name-only "$BASE...$HEAD" | grep -qxE '\.github/workflows/(pr-main|deploy|preview-label|select-deployment-targets)\.yml'; then
+            echo "Deployment workflow changed; selecting all targets."
+            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
+          else
+            affected="$(npx nx show projects --affected --base="$BASE" --head="$HEAD" --withTarget=build --type=app --json | tail -n1 | jq -c .)"
+            selected="$(jq -c --argjson affected "$affected" \
+              '[ .[] | select(.key as $key | $affected | index($key) != null) ]' <<<"$DEPLOY_TARGETS")"
+          fi
+          echo "Selected targets: $selected"
+          echo "matrix=$selected" >> "$GITHUB_OUTPUT"
