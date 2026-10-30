@@ -31,7 +31,7 @@ jobs:
   deploy:
     name: ${{ inputs.environment }} / ${{ matrix.key }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: ${{ matrix.key == 'www' && inputs.environment == 'production' && 30 || 20 }}
     permissions:
       contents: read
       deployments: write
@@ -99,6 +99,7 @@ jobs:
           DIR: ${{ matrix.dir }}
           KEY: ${{ matrix.key }}
           ROOT: ${{ matrix.root }}
+          VERCEL_GIT_COMMIT_SHA: ${{ inputs.ref }}
         run: |
           set -o pipefail
           if [[ -z "$ROOT" ]]; then
@@ -116,6 +117,10 @@ jobs:
             args+=(--prod)
           fi
           npx vercel "${args[@]}"
+
+      - name: Install documentation audit browser
+        if: steps.validate.outputs.skip != 'true' && matrix.key == 'www' && inputs.environment == 'production'
+        run: npx playwright install --with-deps chromium
 
       - name: Create GitHub deployment
         if: steps.validate.outputs.skip != 'true'
@@ -182,27 +187,46 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed $DIR to $url"
 
+      - name: Verify production documentation
+        id: docs-verification
+        if: steps.validate.outputs.skip != 'true' && matrix.key == 'www' && inputs.environment == 'production' && steps.deploy.outcome == 'success'
+        timeout-minutes: 8
+        env:
+          DOCS_DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          DOCS_DEPLOYMENT_REVISION: ${{ inputs.ref }}
+          DOCS_PRODUCTION_ORIGIN: https://hashbrown.dev
+          DOCS_DEPLOYMENT_OUTPUT: dist/docs-deployment
+        run: npx nx verify-deployment www
+
+      - name: Upload production documentation verification
+        if: always() && matrix.key == 'www' && inputs.environment == 'production' && steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-documentation-verification-${{ github.run_id }}
+          path: dist/docs-deployment
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Record deployment status
         if: ${{ always() && steps.deployment.outputs.id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
           OUTCOME: ${{ steps.deploy.outcome }}
+          VERIFICATION_OUTCOME: ${{ steps.docs-verification.outcome }}
+          DEPLOYMENT_CANCELLED: ${{ cancelled() }}
+          KEY: ${{ matrix.key }}
           URL: ${{ steps.deploy.outputs.url }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          case "$OUTCOME" in
-            success) state=success ;;
-            cancelled) state=error ;;
-            *) state=failure ;;
-          esac
+          result="$(node --import tsx www/src/tools/docs-deployment-status.ts)"
           # Deployments are per target-environment, so auto_inactive only retires older deployments of the same target.
           payload="$(jq -n \
-            --arg state "$state" \
+            --argjson result "$result" \
             --arg url "$URL" \
             --arg log_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --argjson auto_inactive "$([[ "$ENVIRONMENT" == "production" ]] && echo true || echo false)" \
-            '{ state: $state, log_url: $log_url, auto_inactive: $auto_inactive }
+            '$result + { log_url: $log_url, auto_inactive: $auto_inactive }
              + (if $url == "" then {} else { environment_url: $url } end)')"
           gh api "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" \
             -H "Accept: application/vnd.github+json" --input - <<<"$payload" > /dev/null

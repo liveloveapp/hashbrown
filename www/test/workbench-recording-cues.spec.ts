@@ -75,3 +75,9 @@ test('rejects invalid caption intervals instead of dropping or clamping them', (
   }
   expect(() => validateWorkbenchRecordingCues([], 3, 1)).toThrow(/caption/);
 });
+
+test('leaves time to inspect the UI while reading captions', () => {
+  const cues = [[0, 2, 'A caption that takes too much attention.']] as const;
+
+  expect(() => validateWorkbenchRecordingCues(cues, 2, 1)).toThrow(/caption/);
+});
