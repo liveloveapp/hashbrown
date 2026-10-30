@@ -65,7 +65,10 @@ export function pinWorkbenchInput(
   value: unknown,
   lesson: WorkbenchLessonId = 'generative-ui',
 ): RunAgentInput {
-  if (workbenchLessons.find((entry) => entry.id === lesson)?.host)
+  if (
+    workbenchLessons.find((entry) => entry.id === lesson)?.host ===
+    'production-reference'
+  )
     throw new Error('Use the separate production reference server.');
   if (
     workbenchLessons.find((entry) => entry.id === lesson)?.protocol === 'local'
@@ -384,8 +387,7 @@ export function createWorkbenchApp(options: WorkbenchServerOptions): Express {
           res.write(
             encoder.encodeSSE({
               type: EventType.RUN_ERROR,
-              message:
-                'The demo request failed. Try again in a moment.',
+              message: 'The demo request failed. Try again in a moment.',
             }),
           );
       } finally {

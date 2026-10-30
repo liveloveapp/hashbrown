@@ -115,3 +115,20 @@ test('unexpected classifier failures propagate while cancellation suppresses lat
     events.filter((event) => event.type === 'TEXT_MESSAGE_CONTENT'),
   ).toHaveLength(0);
 });
+
+test('sends only production-reference lessons to the separate server', () => {
+  const loopback = () => pinWorkbenchInput(input, 'server-threads');
+  const reference = () => pinWorkbenchInput(input, 'production-recovery');
+
+  const thrown = [loopback, reference].map((pin) => {
+    try {
+      pin();
+      return null;
+    } catch (error) {
+      return (error as Error).message;
+    }
+  });
+
+  expect(thrown[0]).not.toBe('Use the separate production reference server.');
+  expect(thrown[1]).toBe('Use the separate production reference server.');
+});
