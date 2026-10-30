@@ -84,3 +84,29 @@ test('raw model fields are suppressed while numeric usage and exact hash fields 
   assert.equal(result.markerSha256, hash);
   assert.deepEqual(result.providerUsage, [{ usage: { text: 46, output: 4 } }]);
 });
+
+test('model JSON parse failure never retains a truncated parser excerpt or raw cause', async () => {
+  const { parseModelJson } = await import('./receipt-redaction.mjs');
+  const modelText =
+    'Sensitive synthetic aircraft commentary with callsign N12345. '.repeat(20);
+  let error;
+
+  try {
+    parseModelJson(modelText);
+  } catch (caught) {
+    error = caught;
+  }
+
+  assert.equal(error?.message, 'invalid model JSON');
+  assert.equal(error?.cause, undefined);
+  assert(!String(error?.stack).includes('Sensitive'));
+});
+
+test('safe model JSON parser preserves valid structured output', async () => {
+  const { parseModelJson } = await import('./receipt-redaction.mjs');
+  const expected = { callsigns: ['N12345'], sequence: 46 };
+
+  const parsed = parseModelJson(JSON.stringify(expected));
+
+  assert.deepEqual(parsed, expected);
+});

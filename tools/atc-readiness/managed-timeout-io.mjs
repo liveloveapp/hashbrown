@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { storageContext } from './storage.mjs';
-import { createReceiptRedactor } from './receipt-redaction.mjs';
+import { createReceiptRedactor, parseModelJson } from './receipt-redaction.mjs';
 import {
   canonicalStorageSummary,
   resolveRuntimeDependency,
@@ -358,7 +358,10 @@ export async function createManagedTimeoutIO(
           .map((event) => event.delta ?? '')
           .join('');
         modelFragments.push(text);
-        assert(validate(JSON.parse(text)), 'output must match pinned schema');
+        assert(
+          validate(parseModelJson(text)),
+          'output must match pinned schema',
+        );
         const id = events.find(
           (event) => event.type === 'TEXT_MESSAGE_START',
         )?.messageId;

@@ -90,3 +90,12 @@ export function createReceiptRedactor({
     return sanitize(credentialSafe);
   };
 }
+
+/** Parse model output without retaining parser-generated excerpts, messages or causes. */
+export function parseModelJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Error('invalid model JSON');
+  }
+}

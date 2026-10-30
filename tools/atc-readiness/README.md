@@ -390,3 +390,11 @@ their existing classification; model-text sanitization happens at the receipt
 boundary. Offline tiny-delta regressions cover both managed and rollback SSE,
 credential-first ordering and body exclusion. This fixes future receipt creation;
 it does not modify or repair previously recorded evidence or authorize retries.
+
+Model JSON parsing uses `parseModelJson`, which replaces parser exceptions with
+fixed `invalid model JSON` text and no raw cause. Runtime parser excerpts may
+contain only a truncated model prefix, so matching full chunks alone cannot
+sanitize them safely. Rollback's canonical JSON uses the same parser; a strict
+canonical-output mismatch reports fixed `canonical model JSON mismatch` text
+without assertion-generated actual/expected model payloads. Offline long-chunk
+regressions cover both stream parse boundaries and canonical parse/comparison.

@@ -5,6 +5,7 @@ import { readFile, writeFile, open, lstat, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createRequire } from 'node:module';
+import { isDeepStrictEqual } from 'node:util';
 import {
   sha256,
   hashTree,
@@ -15,7 +16,7 @@ import {
   resolveRuntimeDependency,
 } from './common.mjs';
 import { storageContext } from './storage.mjs';
-import { createReceiptRedactor } from './receipt-redaction.mjs';
+import { createReceiptRedactor, parseModelJson } from './receipt-redaction.mjs';
 import { timeoutBound } from './managed-timeout-io.mjs';
 import { withRolloutRun } from './rollout-controls.mjs';
 
@@ -755,7 +756,8 @@ export async function createRollbackIO(
           0,
           'first post-EOF admission must be zero',
         );
-        assert(validate(JSON.parse(text)), 'rollback output schema mismatch');
+        const structuredOutput = parseModelJson(text);
+        assert(validate(structuredOutput), 'rollback output schema mismatch');
         assert(
           text.includes(marker),
           'rollback response correlation marker mismatch',
@@ -807,7 +809,10 @@ export async function createRollbackIO(
                   .filter((part) => part.type === 'text')
                   .map((part) => part.text)
                   .join('');
-          assert.deepEqual(JSON.parse(content), JSON.parse(text));
+          assert(
+            isDeepStrictEqual(parseModelJson(content), structuredOutput),
+            'canonical model JSON mismatch',
+          );
           providerUsage = [
             {
               responseId: ai[0].response_metadata?.id ?? null,
