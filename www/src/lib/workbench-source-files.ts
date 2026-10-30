@@ -562,6 +562,7 @@ export async function highlightWorkbenchSource(
   sdk: Sdk,
 ): Promise<WorkbenchSourceHtml> {
   return {
+    commit: workbenchSourceCommit(),
     files: await Promise.all(
       WORKBENCH_LESSON_FILES[lesson][sdk].map(async (path) => ({
         path,
