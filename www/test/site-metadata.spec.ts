@@ -52,6 +52,7 @@ test('sets a canonical URL from the page path', () => {
 
   expect(metadata.alternates).toEqual({
     canonical: '/blog/2026-10-22-hashbrown-v-0-8-0',
+    types: { 'application/rss+xml': '/blog/rss.xml' },
   });
 });
 

@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { expect, test } from 'vitest';
 import { readDoc } from '../../src/lib/content';
 
@@ -11,13 +12,10 @@ test.each(['react', 'angular'] as const)(
     ]) {
       const body = readDoc(sdk, ['recipes', slug])?.body ?? '';
 
-      const demo = body.indexOf(
-        `<hb-docs-demo demo="canonical-workbench-${lesson}-${sdk}">`,
+      expectConceptFirstWorkbench(body, sdk, lesson);
+      expect(body).not.toContain(
+        `canonical-workbench-${lesson}-${sdk}-result.png`,
       );
-
-      expect(demo).toBeGreaterThan(-1);
-      expect(demo).toBeLessThan(body.indexOf('\n## '));
-      expect(body).toContain(`canonical-workbench-${lesson}-${sdk}-result.png`);
       expect(body).toContain('Replay');
       expect(body).toContain('workbench-authoring.ts');
       expect(body).not.toContain('scripted decision responses');

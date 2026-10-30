@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -32,13 +33,8 @@ test.each(SDKS)(
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'local-models'])?.body ?? '';
 
-    const demo = body.indexOf(
-      `<hb-docs-demo demo="canonical-workbench-local-models-${sdk}">`,
-    );
-
-    expect(demo).toBeGreaterThan(-1);
-    expect(demo).toBeLessThan(body.indexOf('\n## '));
-    expect(body).toContain(
+    expectConceptFirstWorkbench(body, sdk, 'local-models');
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-local-models-${sdk}-result.png`,
     );
     expect(body).toContain('real Chrome');

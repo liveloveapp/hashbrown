@@ -1,0 +1,44 @@
+name: Preview label
+
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+# Label changes must never cancel required validation or another label’s preview.
+concurrency:
+  group: preview-label-${{ github.event.pull_request.number }}-${{ github.event.label.name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  targets:
+    name: Select preview targets
+    if: >-
+      github.event.label.name == 'preview' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/select-deployment-targets.yml
+    with:
+      event: ${{ github.event_name }}
+      base: ${{ github.event.pull_request.base.sha }}
+      head: ${{ github.event.pull_request.head.sha }}
+
+  preview:
+    name: Preview
+    needs: [targets]
+    if: >-
+      needs.targets.outputs.matrix != '' &&
+      needs.targets.outputs.matrix != '[]'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: preview
+      targets: ${{ needs.targets.outputs.matrix }}
+      ref: ${{ github.event.pull_request.head.sha }}
+      branch: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit

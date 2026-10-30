@@ -7,6 +7,18 @@ meta:
 
 # Ollama
 
+<hb-docs-demo demo="canonical-workbench-first-plan-react">
+</hb-docs-demo>
+
+Run model inference through Ollama while keeping Hashbrown's normal client APIs. Your server receives AG-UI input, selects an installed model, and translates the Ollama chat stream into AG-UI events. Choose a model with the capabilities your application needs: streaming text alone does not establish support for tools or structured output.
+
+The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate the server-side Ollama adapter. The separate Local models lesson uses a browser-native transport and is a different integration.
+
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
+
+## Install the server adapter
+
 Install the Ollama adapter, official Ollama SDK, and AG-UI SSE packages:
 
 ```sh
@@ -34,6 +46,11 @@ The model is server configuration and is not read from the client run input. By 
 The adapter maps system and developer instructions, text message history, tool definitions, tool calls, and tool results. Text and tool calls become canonical AG-UI events. Ollama thinking becomes AG-UI reasoning records and is restored as `thinking` when that assistant message is sent back for continuation. Terminal response details, including metrics and log probabilities, are preserved as Ollama `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
+
+The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
 <hb-backend-code-example>
 
@@ -327,66 +344,13 @@ const stream = HashbrownOllama.stream.text({
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 
-};
+## Explore it in the workbench
 
-````
+Open the workbench below and ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
-Ollama Cloud does not currently support structured outputs. Use a local or self-hosted model that supports `format` when setting `responseSchema`.
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
-## Ollama Cloud
+The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Ollama` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Ollama or verify its provider-specific behavior.
 
-Configure the official SDK client with the Ollama Cloud host and authorization header, then pass it to Hashbrown:
-
-```ts
-import { HashbrownOllama } from '@hashbrownai/ollama';
-import { Ollama } from 'ollama';
-
-const client = new Ollama({
-  host: 'https://ollama.com',
-  headers: {
-    Authorization: `Bearer ${process.env.OLLAMA_API_KEY!}`,
-  },
-});
-
-const stream = HashbrownOllama.stream.text({
-  client,
-  model: process.env.OLLAMA_MODEL ?? 'gpt-oss:120b',
-  input,
-});
-````
-
-## Thinking
-
-Use `transformRequestOptions` to enable thinking on a compatible model. Thinking chunks are emitted as AG-UI reasoning records and are included in provider continuation messages.
-
-```ts
-const stream = HashbrownOllama.stream.text({
-  model: process.env.OLLAMA_MODEL ?? 'deepseek-r1',
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    think: true,
-  }),
-});
-```
-
-## Transform Request Options
-
-`transformRequestOptions` receives the final Ollama SDK request after AG-UI input has been mapped. Use it for server-owned model settings.
-
-```ts
-const stream = HashbrownOllama.stream.text({
-  model: process.env.OLLAMA_MODEL ?? 'gemma3',
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    options: {
-      ...options.options,
-      temperature: 0.2,
-      num_predict: 2048,
-    },
-  }),
-});
-```
-
-[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
+For a local deployment, verify the same request against your running Ollama server and installed model. The [Local models recipe](/docs/react/recipes/local-models) explores browser-native inference separately; it does not test this server adapter.

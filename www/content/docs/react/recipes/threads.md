@@ -2,17 +2,61 @@
 title: 'Persist and Resume Threads: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Load completed text from a server-owned thread, save against its version, and recover from a conflicting write.'
+    content: 'Persist owner-scoped conversation text with atomic version checks and explicit conflict recovery.'
 ---
 
 # Persist and Resume Threads
 
+A server-owned thread stores a conversation under an authenticated owner. Use it when history must survive a browser refresh, be available on another device, or participate in server-side access control. The thread ID identifies a record; loading and authorizing that record remain application operations.
+
+Here, resuming means loading completed text and sending a follow-up. To resume a paused approval or recover native tool history, use [Interrupt and resume](/docs/react/concept/interrupt-and-resume) and the [durable recovery reference](/docs/react/platform/b4run).
+
+Let’s save completed text with an expected version. When two clients edit the same conversation, the version check preserves the unsaved conversation and exposes the conflict instead of silently overwriting another client’s work.
+
+<hb-diagram diagram="recipe-thread-version-conflict"> </hb-diagram>
+
+## Save with an expected version
+
+This application helper uses the same HTTP shape as the checked thread endpoint; it is not a Hashbrown storage API. It assumes an authenticated same-origin session, an owner-scoped server record, a bounded completed-text validator, and atomic compare-and-swap in the repository.
+
+```ts
+export type TextMessage = { role: 'user' | 'assistant'; content: string };
+
+// Call from an explicit Save action after validating completed text.
+export async function saveThread(
+  id: string,
+  expectedVersion: number,
+  messages: readonly TextMessage[],
+  signal: AbortSignal,
+): Promise<unknown> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedVersion, messages }),
+  });
+  if (response.status === 409)
+    throw new Error(
+      'The thread changed. Keep your draft and reload explicitly.',
+    );
+  if (!response.ok) throw new Error(`Save failed (${response.status})`);
+  return response.json(); // Validate the response before adopting its version or messages.
+}
+```
+
+Load the snapshot through an authenticated GET, validate its ID, nonnegative integer version, and bounded text messages, then create the chat with its thread ID and restore the validated assistant-ended history. See [Message history](/docs/react/concept/message-history) for the actual framework setters. A `threadId` alone does not retrieve history. Guard asynchronous loads so a late response cannot replace a different selected conversation.
+
+On Save, capture the loaded version and completed messages together. Adopt only a validated successful response. A `409` preserves the unsaved client conversation and offers explicit reload; do not automatically retry the old write. The server must repeat validation and authorize every read and atomic update using the verified owner. A browser refresh, text snapshot, and durable paused-agent checkpoint are different persistence requirements.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="server-threads">
+</hb-workbench>
+
 Let's move our conversation to the server. We'll save Lighthouse, refresh the browser, and ask a follow-up using the saved messages. Then we'll let another client save first and see why the version matters.
-
-<hb-docs-demo demo="canonical-workbench-server-threads-react">
-</hb-docs-demo>
-
-<img src="/video/docs/canonical-workbench-server-threads-react-result.png" alt="The React workbench pairs the text conversation with its server snapshot and captured HTTP operations." width="1600" height="1000" loading="lazy" />
 
 ## Before we start
 
@@ -31,7 +75,7 @@ This example stores completed user and assistant text. A saved conversation does
 7. Save from our browser. The server returns **409** and the unsaved conversation stays visible.
 8. Reload the server snapshot explicitly to adopt the newer saved version.
 
-The recording uses real OpenAI responses. The demo server stores records in process memory: they survive a browser refresh, but not a server restart. Use database persistence for a deployed application.
+The replay uses real OpenAI responses. The demo server stores records in process memory: they survive a browser refresh, but not a server restart. Use database persistence for a deployed application.
 
 ## Keep identity and history separate
 

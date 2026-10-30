@@ -2,13 +2,79 @@
 title: 'Predictive suggestions: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Suggest known next actions from the current plan, validate the context, and require explicit acceptance before changing application state.'
+    content: 'Request known next actions from an application snapshot and require current context and explicit acceptance.'
 ---
 
 # Predictive suggestions
 
-<hb-docs-demo demo="canonical-workbench-predictions-angular">
-</hb-docs-demo>
+Predictive suggestions offer a short list of useful next actions from the current application state. Use them to reduce navigation in an editor, planner, or dashboard. The application defines the action catalogue and executes the accepted action; the model proposes an ID and a reason.
+
+Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.
+
+<hb-diagram diagram="recipe-prediction-freshness"> </hb-diagram>
+
+## Request a suggestion from a snapshot
+
+Start with the [Angular Quickstart](/docs/angular/start/quick). The following frontend example uses its configured Hashbrown provider and same-origin `/api/chat` endpoint. Keep the provider key and model configuration on the server. Create resources in an Angular injection context; the component below supplies one.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import { structuredCompletionResource } from '@hashbrownai/angular';
+
+export const suggestionSchema = s.object('Next action for this draft', {
+  contextId: s.string('Copy the input context ID exactly'),
+  actionId: s.enumeration('A known action', ['preview', 'proofread', 'none']),
+  reason: s.string('A short reason for the suggestion'),
+});
+
+@Component({
+  selector: 'app-article-suggestions',
+  template: `
+    <button [disabled]="result.isLoading()" (click)="generate()">
+      Suggest next action
+    </button>
+    @if (result.error()) {
+      <p role="alert">Generation failed. Try again.</p>
+    } @else {
+      <pre>{{ preview() }}</pre>
+    }
+  `,
+})
+export class ArticleSuggestions {
+  readonly input = signal<{
+    contextId: string;
+    revision: number;
+    draft: string;
+  } | null>(null);
+  readonly result = structuredCompletionResource({
+    input: this.input,
+    schema: suggestionSchema,
+    system: 'Suggest one next action. Do not execute it.',
+  });
+  preview() {
+    return JSON.stringify(this.result.value(), null, 2);
+  }
+  generate() {
+    this.input.set({
+      contextId: crypto.randomUUID(),
+      revision: 3,
+      draft: 'A guide to Lisbon',
+    });
+  }
+}
+```
+
+The revision `3` and article text are fixed example data. In an editor, copy both from the current document in the request handler. `null` keeps completion idle; each button press supplies a fresh context ID. This component only previews the proposal.
+
+Before offering **Accept**, require a successful completed request, a known action ID, a bounded nonempty reason, and an exact match to the captured context ID and current document revision. Recheck them in the acceptance handler. Map `preview` and `proofread` to application functions; treat `none` as a valid empty recommendation. Dismissal changes presentation only. A new request, a changed document, cancellation, or an error makes the earlier proposal unavailable.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="predictions">
+</hb-workbench>
 
 Let's suggest what to do next with our two-step plan. The model can propose recording, reviewing, or clarifying progress. Our application owns those actions. **Only Accept applies one.**
 
@@ -16,13 +82,7 @@ The workbench uses `structuredCompletionResource`. Each request receives an expl
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with server-only `OPENAI_API_KEY` and `OPENAI_MODEL`:
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/angular.html?lesson=predictions`. The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
 
 ## Review, dismiss, and accept
 
@@ -32,8 +92,6 @@ Open `http://127.0.0.1:4370/angular.html?lesson=predictions`. The endpoint is `/
 4. Send **First prompt** again. This is a fresh request with a new context ID and the same unchanged plan. Choose **Accept** on its new recording proposal; the accepted action is saved and the revision advances to 1.
 5. Older proposals are now stale. Request fresh suggestions instead of applying an earlier snapshot. The first proposal stays marked as dismissed; accepting a later proposal does not rewrite its history.
 6. Send **Follow-up**. The third snapshot includes the accepted action, so it cannot be applied again. The model can now suggest reviewing the recorded demo.
-
-<img src="/video/docs/canonical-workbench-predictions-angular-result.png" alt="The Angular workbench shows context-bound action suggestions beside the completion JSON and accepted application action." width="1600" height="1000" loading="lazy" />
 
 ## Keep the catalogue in the application
 
@@ -55,7 +113,7 @@ export const workbenchActionLabels: Readonly<
 
 The shared schema constrains the response shape:
 
-<hb-code-example header="runtime/workbench-recipes.ts">
+<hb-code-example header="runtime/workbench-recipes.ts" moment="suggestions-ready-1">
 
 ```ts
 export const workbenchPredictionsSchema = s.object(
@@ -83,7 +141,7 @@ A valid empty array means there are no new suggestions. Show that result without
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="angular/src/app/predictions-workbench.ts">
+<hb-code-example header="angular/src/app/predictions-workbench.ts" moment="suggestions-ready-1">
 
 ```ts
 private readonly resource = structuredCompletionResource({

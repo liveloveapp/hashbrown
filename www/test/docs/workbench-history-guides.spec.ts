@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -68,12 +69,9 @@ test.each(SDKS)(
     for (const [section, slug, lesson] of lessons) {
       const body = readDoc(sdk, [section, slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
-      const marker = `<hb-docs-demo demo="${id}">`;
-
-      expect(body.indexOf(marker)).toBeGreaterThan(-1);
-      expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
-      expect(body).toContain(`/video/docs/${id}-result.png`);
-      expect(body).toContain(`/${sdk}.html?lesson=${lesson}`);
+      expectConceptFirstWorkbench(body, sdk, lesson);
+      expect(body).not.toContain(`/video/docs/${id}-result.png`);
+      expect(body).toContain(`<hb-workbench lesson="${lesson}">`);
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
       expect(body).toContain('two-step plan');
       expect(body).toContain('Lighthouse');
@@ -126,7 +124,7 @@ test.each(SDKS)('%s history excerpts match checked source', (sdk) => {
   for (const [section, slug] of lessons) {
     const body = readDoc(sdk, [section, slug])?.body ?? '';
     for (const [, file, excerpt] of body.matchAll(
-      /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+      /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
     )) {
       const source = readFileSync(
         resolve(import.meta.dirname, '../../examples/quickstart', file),

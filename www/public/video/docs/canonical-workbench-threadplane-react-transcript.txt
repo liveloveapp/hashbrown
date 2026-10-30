@@ -4,7 +4,7 @@ Actual separately installed Threadplane react presentation with the real Hashbro
 
 Threadplane shows the real streaming reply.
 
-The first turn stays in this conversation.
+First turn retained in local history.
 
 A follow-up shortens the second step.
 

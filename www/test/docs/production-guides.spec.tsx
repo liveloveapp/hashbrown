@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -35,18 +36,12 @@ test.each(SDKS)(
   '%s production guides begin with the behavior they demonstrate',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo: `canonical-workbench-${demo}-${sdk}`,
+      demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
     for (const { demo, body } of pages) {
-      expect(
-        body.indexOf(`<hb-docs-demo demo="${demo}">`),
-        demo,
-      ).toBeGreaterThan(-1);
-      expect(body.indexOf(`<hb-docs-demo demo="${demo}">`), demo).toBeLessThan(
-        body.indexOf('\n## '),
-      );
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

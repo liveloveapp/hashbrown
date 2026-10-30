@@ -7,6 +7,18 @@ meta:
 
 # Amazon Bedrock
 
+<hb-docs-demo demo="canonical-workbench-first-plan-react">
+</hb-docs-demo>
+
+Use Amazon Bedrock when the model or inference profile belongs to your AWS environment. The adapter maps AG-UI input to ConverseStream and maps native responses back to the events Hashbrown consumes. AWS credentials, region, and model access stay with the server; the browser needs only your application's endpoint.
+
+The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate a Bedrock invocation, AWS credentials, or model access.
+
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
+
+## Install the server adapter
+
 Install the Bedrock adapter, the AWS Bedrock Runtime SDK, and the AG-UI SSE encoder:
 
 ```sh
@@ -55,6 +67,11 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
+
+The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
 <hb-backend-code-example>
 
@@ -368,285 +385,11 @@ const stream = HashbrownBedrock.stream.text({
 });
 ```
 
-};
+## Explore it in the workbench
 
-````
+Open the workbench below and ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
-### Node.js Server Integration
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
-<hb-backend-code-example>
-
-<div backend="express">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownBedrock } from '@hashbrownai/bedrock';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/run', async (req, res) => {
-  const abortController = new AbortController();
-  req.once('aborted', () => abortController.abort());
-  res.once('close', () => abortController.abort());
-  const stream = HashbrownBedrock.stream.text({
-    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
-    model: process.env.BEDROCK_MODEL_ID!,
-    input: req.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.header('Content-Type', encoder.getContentType());
-  res.header('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  for await (const event of stream) {
-    res.write(encoder.encodeSSE(event));
-  }
-
-  if (!res.writableEnded) {
-    res.end();
-  }
-});
-
-app.listen(3000);
-````
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownBedrock } from '@hashbrownai/bedrock';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/run', async (request, reply) => {
-  const abortController = new AbortController();
-  request.raw.once('aborted', () => abortController.abort());
-  reply.raw.once('close', () => abortController.abort());
-  const stream = HashbrownBedrock.stream.text({
-    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
-    model: process.env.BEDROCK_MODEL_ID!,
-    input: request.body as RunAgentInput,
-    signal: abortController.signal,
-  });
-  const encoder = new EventEncoder();
-
-  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-  reply.header('Content-Type', encoder.getContentType());
-  reply.header('Connection', 'keep-alive');
-
-  for await (const event of stream) {
-    reply.raw.write(encoder.encodeSSE(event));
-  }
-
-  if (!reply.raw.writableEnded) {
-    reply.raw.end();
-  }
-});
-
-fastify.listen({ port: 3000 });
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
-import { HashbrownBedrock } from '@hashbrownai/bedrock';
-import type { Request, Response } from 'express';
-
-@Controller()
-export class RunController {
-  @Post('run')
-  async run(
-    @Body() input: RunAgentInput,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const abortController = new AbortController();
-    req.once('aborted', () => abortController.abort());
-    res.once('close', () => abortController.abort());
-    const stream = HashbrownBedrock.stream.text({
-      clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
-      model: process.env.BEDROCK_MODEL_ID!,
-      input,
-      signal: abortController.signal,
-    });
-    const encoder = new EventEncoder();
-
-    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.header('Content-Type', encoder.getContentType());
-    res.header('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    for await (const event of stream) {
-      res.write(encoder.encodeSSE(event));
-    }
-
-    if (!res.writableEnded) {
-      res.end();
-    }
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import type { RunAgentInput } from '@ag-ui/core';
-import { EventEncoder } from '@ag-ui/encoder';
-import { HashbrownBedrock } from '@hashbrownai/bedrock';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/run', async (c) => {
-  const input = (await c.req.json()) as RunAgentInput;
-  const stream = HashbrownBedrock.stream.text({
-    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
-    model: process.env.BEDROCK_MODEL_ID!,
-    input,
-    signal: c.req.raw.signal,
-  });
-  const encoder = new EventEncoder();
-  const textEncoder = new TextEncoder();
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const event of stream) {
-          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Content-Type': encoder.getContentType(),
-      },
-    },
-  );
-});
-
-export default app;
-```
-
-</div>
-
-</hb-backend-code-example>
-
-## Built-in Tools
-
-Enable Nova web grounding with `builtInTools.webSearch`:
-
-```ts
-const stream = HashbrownBedrock.stream.text({
-  clientOptions: { region: 'us-east-1' },
-  model: process.env.BEDROCK_MODEL_ID!,
-  input,
-  builtInTools: { webSearch: true },
-});
-```
-
-`true` adds `{ systemTool: { name: 'nova_grounding' } }` alongside application
-tools. The exported `BedrockBuiltInTools` type also accepts a native configuration
-object; the installed SDK currently has no search settings beyond the fixed tool
-name. Choose a Nova model and region that support grounding and grant the required
-Bedrock tool permissions. See [AWS Nova web grounding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/web-grounding.html).
-
-When Bedrock supplies a native `server_tool_use`, the adapter exposes it in
-`serverToolCalls` with its running state, label and timing. Its native result
-supplies the outcome and readable output. A matching application tool name does
-not change ownership: ordinary app calls still dispatch to your application.
-Closing an invocation or ending a run does not imply the provider tool succeeded.
-
-The public Bedrock code-execution enabling option and file search remain deferred.
-A native `nova_code_interpreter` call enabled through `transformRequestOptions`
-still becomes a provider step. Native errors and interpreter failures retain
-readable result content; application tool results remain separate.
-
-### Grounding Citations
-
-Assistant messages expose grounding through `sources` and `citations`, including
-responses where Nova supplies citations without announcing a tool invocation.
-Those responses do not create a synthetic tool call. Sources proven to come from
-a native tool result live on that tool's step; other grounding sources live on
-the answer. Citation source IDs link to either collection.
-
-Applications must retain and display Nova's returned citations and source links.
-Hashbrown is headless: your application renders those links. Citation quotes
-preserve available source text. Native document character, page, chunk and search
-result locations are source coordinates, so they are preserved for native replay
-and are not presented as answer-text offsets.
-
-### Native Conversation History
-
-The adapter stores ordered native assistant blocks in a
-`hashbrown.provider-history` CUSTOM footer on canonical message metadata. Preserve
-canonical messages and metadata when persisting history. Complete captures replay
-once in their original order, including server calls and results, interleaved
-text, citations, signed reasoning, and redacted bytes. Application tool results
-remain user-role results at their original chronological positions.
-
-Only a normally completed response with a native message stop and closed content
-blocks receives a usable complete capture. Aborted or truncated native responses
-cannot safely resume from an invented reconstruction. Legacy text, client-tool
-and supported reasoning histories retain their existing replay path; unsafe
-provider-native history without a complete capture fails with an input error.
-
-Existing integration recordings cover app-tool and streaming regressions. The
-current recorder does not preserve the native system-tool, server-result and
-citation protocol faithfully; deterministic SDK-shaped tests cover those paths.
-
-## AWS Credentials and Client Reuse
-
-`clientOptions` uses the AWS SDK default credential provider chain, including environment variables, shared AWS config, ECS task roles, EC2 instance roles, and web identity credentials.
-
-```ts
-const stream = HashbrownBedrock.stream.text({
-  clientOptions: {
-    region: 'us-east-1',
-  },
-  model: process.env.BEDROCK_MODEL_ID!,
-  input,
-});
-```
-
-Pass a configured `BedrockRuntimeClient` through `client` when you need to reuse connections, retries, or middleware. Hashbrown destroys clients it creates from `clientOptions`; it never destroys a client supplied through `client`.
-
-## Transform Request Options
-
-Use `transformRequestOptions` for provider-owned inference settings, guardrails, request metadata, performance configuration, or a forced tool choice.
-
-```ts
-const stream = HashbrownBedrock.stream.text({
-  clientOptions: { region: 'us-east-1' },
-  model: process.env.BEDROCK_MODEL_ID!,
-  input,
-  transformRequestOptions: (options) => ({
-    ...options,
-    inferenceConfig: {
-      maxTokens: 2048,
-      temperature: 0.2,
-    },
-    requestMetadata: {
-      application: 'my-app',
-    },
-  }),
-});
-```
+The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Amazon Bedrock` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Amazon Bedrock or verify its provider-specific behavior.

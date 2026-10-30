@@ -2,27 +2,90 @@
 title: 'Shared Agent State: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Share structured context with an agent and follow its updates. Follow the canonical Angular workbench.'
+    content: 'Share a small JSON document between an application and its agent.'
 ---
 
 # Shared Agent State
 
-<p class="subtitle">Share structured context with an agent and follow its updates.</p>
+Shared agent state is a JSON value exchanged alongside a conversation. It gives the application and agent a common structured view of a task: selected filters, an editing draft, or a workflow stage. It is separate from message text and from application data the agent is not allowed to change.
 
-<hb-docs-demo demo="canonical-workbench-shared-state-angular">
-</hb-docs-demo>
+Use it when both sides need to observe and update the same small document. If the assistant only needs to look up the current selection or inventory, start with a read-only [tool](/docs/angular/concept/functions); you do not need to make that application data shared agent state.
+
+Your agent must explicitly validate and map that value into the model context. Passing state to a direct provider adapter does not automatically turn it into instructions, and setting state does not start a request.
+
+<hb-diagram diagram="concept-shared-state"> </hb-diagram>
+
+## Share a small editing document
+
+Use the endpoint and client configuration from the [Quickstart](/docs/angular/start/quick). Keep `provideHashbrown` in `appConfig` and the `<app-root>` host. Import the standalone class below into `main.ts` and pass it to `bootstrapApplication()` with that same `appConfig`. Point this component at an AG-UI agent that validates this state shape and explicitly uses it as context. A direct provider adapter alone does not implement that mapping.
+
+The app sends a reading preference separately from conversation text. The button replaces the entire state value while idle; asking for a suggestion starts generation separately.
+
+```ts
+import { Component } from '@angular/core';
+import { chatResource } from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-root',
+  template: `
+    <p>Preference: {{ chat.state()?.genre }}</p>
+    <button
+      type="button"
+      [disabled]="chat.isLoading()"
+      (click)="setPreference()"
+    >
+      Choose mystery
+    </button>
+    <button type="button" [disabled]="chat.isLoading()" (click)="ask()">
+      Ask for a suggestion
+    </button>
+    @if (chat.error()) {
+      <p role="alert">The request failed.</p>
+    }
+    @for (message of chat.value(); track $index) {
+      @if (message.role === 'assistant') {
+        <p>{{ message.content }}</p>
+      }
+    }
+  `,
+})
+export class ReadingState {
+  readonly chat = chatResource({
+    system: 'Help choose a book using the preferences supplied by the agent.',
+    state: { genre: 'classics', stage: 'choosing' },
+  });
+  setPreference(): void {
+    this.chat.setState({ genre: 'mystery', stage: 'choosing' });
+  }
+  ask(): void {
+    this.chat.sendMessage({
+      role: 'user',
+      content: 'Suggest a book for this preference.',
+    });
+  }
+}
+```
+
+This minimal feature assumes no approval pauses. If your agent can interrupt, also respect `pendingInterrupts`, `isResuming`, and recovery when enabling controls. `setState` accepts JSON-compatible values and replaces rather than merges. It rejects writes while generation is scheduled or running.
+
+During a run, agent state updates are drafts. Successful completion commits them; a failed or cancelled attempt rolls them back to its starting checkpoint. Keep an editable form draft separate so the user can see which value has actually been sent.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="shared-state">
+</hb-workbench>
 
 Let's keep the same two-step plan: outline a trusted UI demo, then record it. Change its title in the app and select **Set shared state**. Nothing runs yet. Send a message, and watch the agent read that value, stream its reply, and update the shared state.
 
 The State inspector follows the selected timeline frame. The title field is an application form draft; the SDK state is a separate value. You can see exactly when the app replaces it and when the agent updates it. The captured side shows SDK state and request flags. The other side shows the local form and accepted application plan. Choose Raw for the full selected SDK observation.
 
-<img src="/video/docs/canonical-workbench-shared-state-angular-result.png" alt="Angular workbench showing shared agent state, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/angular/start/workbench), then open [`/angular.html?lesson=shared-state`](http://127.0.0.1:4370/angular.html?lesson=shared-state). The recording uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The replay uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
 The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 
-## Initialize a Small State Value
+### Initialize a Small State Value
 
 Keep shared state focused on the context both the app and agent need. Our plan has a title and a status. The two plan steps remain application-owned data.
 
@@ -49,11 +112,11 @@ export const workbenchWorkflowInitialState: WorkbenchWorkflowState = {
 
 Pass `state: workbenchWorkflowInitialState` to `chatResource`. Read the current value from `chat.state()`. TypeScript infers the state type from the initial value; without an initial value, state starts as `undefined`.
 
-## Replace State Explicitly
+### Replace State Explicitly
 
 `setState` replaces the complete value. It does not merge objects and does not start a generation. The workbench first records a local title draft, then calls the SDK setter when you select **Set shared state**. Send starts the request separately.
 
-<hb-code-example header="angular/src/app/workflow-workbench.ts">
+<hb-code-example header="angular/src/app/workflow-workbench.ts" moment="application-form-draft-0">
 
 ```ts
   applyState(): void {
@@ -76,7 +139,7 @@ Pass `state: workbenchWorkflowInitialState` to `chatResource`. Read the current 
 
 Values must be JSON-compatible: null, strings, booleans, finite numbers, arrays, and plain objects. Nested `undefined`, sparse arrays, cycles, functions, symbols, bigints, non-finite numbers, and class instances such as `Date` are rejected. Invalid values throw synchronously and preserve the previous state.
 
-## Follow Drafts and Commits
+### Follow Drafts and Commits
 
 The agent emits `STATE_SNAPSHOT` with status `draft`. After the provider completes its explanation, it emits `STATE_DELTA` to replace that status with `ready`. The inspector labels state as a draft while the request is running. Seeing the final patch does not, by itself, prove the run committed.
 
@@ -84,13 +147,13 @@ A successful run commits the draft. A failed, cancelled, retired, or retried att
 
 `setState` throws while a logical generation is scheduled or running, including debounce, retry backoff, and retries. An interrupt commits a checkpoint; the SDK allows local state changes while paused and locks writes again when resume is scheduled. This workbench keeps its title editor locked during approvals so the form stays focused on the pending decisions.
 
-## Keep State and Model Context Explicit
+### Keep State and Model Context Explicit
 
 Shared state travels in the AG-UI request. Your agent must decide how to use it. Our local agent validates it and includes it in provider instructions. That mapping supplies context; it does not grant authorization.
 
 The State panel also shows the workbench's accepted application plan and revision. Those values are separate from shared SDK state. Replaying a frame changes what you inspect without changing the live conversation or making another request.
 
-## The Run's Return Value
+### The Run's Return Value
 
 An agent can attach a return value to the AG-UI `RUN_FINISHED` event, separate from the messages and from shared state. Hashbrown exposes it as `lastRunResult` on `chatResource()` and the other chat and completion APIs.
 
@@ -104,7 +167,7 @@ Hashbrown's direct provider adapters do not produce a return value. Use it with 
 
 ---
 
-## Token Usage and Finish Reason
+### Token Usage and Finish Reason
 
 Hashbrown also reads how the last completed run ended. `lastRunUsage` holds the token counts from AG-UI's standard `RUN_FINISHED.usage` field, one entry per provider and model. `lastRunFinishReason` says why the model stopped.
 

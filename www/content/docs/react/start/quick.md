@@ -9,12 +9,9 @@ meta:
 
 Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
 
-<hb-docs-demo demo="canonical-workbench-first-plan-react">
-</hb-docs-demo>
+Generative UI means the model selects a component you expose and supplies schema-shaped values for its props. It does not write the component implementation. We'll build the complete application before looking at how the workbench records the same interaction.
 
-The recording uses the same `PlanCard` and registration as this example, inside the [conversation workbench](/docs/react/start/workbench). The model knows that component as `SummaryCard`. The inspector and timeline are workbench features; our app needs only the component, @hashbrownai/react!useUiChat:function, and an endpoint.
-
-<img src="/video/docs/canonical-workbench-first-plan-react-result.png" alt="The React first-plan lesson renders a trusted card with a title and two steps, without applying it to application state." width="1600" height="1000" loading="lazy" />
+<hb-diagram diagram="request-boundary"> </hb-diagram>
 
 ## Before we start
 
@@ -105,7 +102,7 @@ app.listen(3001, '127.0.0.1', () => {
 
 </hb-code-example>
 
-The adapter maps the request to OpenAI and returns AG-UI events. `EventEncoder` writes them as a server-sent event stream. A disconnected browser cancels the provider request.
+The adapter maps the request to OpenAI and returns AG-UI (Agent–User Interaction Protocol) events. These events describe the run and its arriving content. `EventEncoder` writes them as a server-sent event (SSE) stream over the open HTTP response. A disconnected browser cancels the provider request.
 
 Start the endpoint:
 
@@ -250,8 +247,6 @@ createRoot(root).render(
 
 </hb-code-example>
 
-
-
 The Vite starter needs its usual `<div id="root"></div>` in `index.html`.
 
 Configure the development proxy:
@@ -282,8 +277,6 @@ npm run dev
 
 Open the frontend URL and choose **Generate a plan**. Watch the title and steps appear as the response arrives. The model's wording can vary.
 
-To inspect the same interaction, open `http://127.0.0.1:4370/react.html?lesson=first-plan` after starting the [workbench](/docs/react/start/workbench). Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.
-
 <a id="debugging"></a>
 
 ## If the card does not appear
@@ -294,6 +287,19 @@ To inspect the same interaction, open `http://127.0.0.1:4370/react.html?lesson=f
 - **A response arrives without a card:** compare the exposed `SummaryCard` name, prop schema, and UI renderer. A text-chat response uses a different renderer.
 
 After fixing the cause, send again. Continue with [Debugging](/docs/react/concept/debugging) when you need to inspect the request.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="first-plan">
+</hb-workbench>
+
+Now we have a standalone app, let's inspect a second implementation of the same component contract. The workbench above uses `PlanCard`, registered as `SummaryCard`, inside the [conversation workbench](/docs/react/start/workbench). Its endpoint and capturing transport are specific to that teaching app; your standalone endpoint remains `/api/chat`.
+
+To inspect the same interaction, use the **Replay** tab above. Its **UI** view shows the registered component and resolved values. **State** stays unchanged: this is a preview, with no tools or acceptance action.
+
+Compare the declared schema with the resolved props, then scrub the bottom timeline back to the first response values. The workbench captures these observations for inspection. Replaying them sends no provider request and does not write application state.
 
 ## Keep the conversation going
 

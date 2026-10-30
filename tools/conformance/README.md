@@ -39,6 +39,13 @@ npx nx example-e2e conformance      # both, with one shared host lifecycle
 The e2e targets build both hosts first. CI runs `example-e2e` through
 `nx affected`.
 
+## Agent framework display conformance
+
+The [agent framework corpus](agent-frameworks/README.md) separates real producer
+execution, captured-event consumers and native checkpoint restore. Start with
+`npx nx agent-framework-harness-test conformance` for the dependency-free capture
+harness. Framework capabilities require separate versioned evidence.
+
 ## Local model suites
 
 These suites require explicit local opt-in and refuse to run when `CI` is

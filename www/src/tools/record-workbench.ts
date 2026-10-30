@@ -20,6 +20,11 @@ import {
 } from './workbench-media-publication';
 import { resolve } from 'node:path';
 import { prepareWorkbenchCaptures } from './workbench-capture-file';
+import {
+  type WorkbenchLessonId,
+  workbenchLessons,
+} from '../../examples/quickstart/runtime/workbench-lessons';
+import { workbenchMediaName } from '../components/workbench/workbench-media';
 import { workbenchOnboardingRecordingCues } from './workbench-onboarding-recording';
 import {
   validateWorkbenchRecordingCues,
@@ -80,36 +85,10 @@ const reports = JSON.parse(
   formFirstStepPreserved?: boolean;
   fallbackObserved?: boolean;
 }[];
-const names: Record<string, string> = {
-  'javascript-runtime': 'javascript-runtime',
-  'local-models': 'local-models',
-  'ui-kits': 'ui-kits',
-  'ui-chatbot': 'ui-chatbot',
-  'agent-decisions': 'agent-decisions',
-  'json-parser': 'json-parser',
-  'natural-forms': 'natural-forms',
-  'server-threads': 'server-threads',
-  'public-endpoint': 'public-endpoint',
-  'message-history': 'message-history',
-  'save-text-conversations': 'save-text-conversations',
-  'shared-state': 'shared-state',
-  activities: 'activities',
-  interrupts: 'interrupts',
-  'first-plan': 'first-plan',
-  conversation: 'conversation',
-  'system-instructions': 'system-instructions',
-  'generative-ui': 'ui',
-  tools: 'tools',
-  'structured-output': 'structured',
-  streaming: 'streaming',
-  schemas: 'schemas',
-  decisions: 'decisions',
-  'magic-text': 'magic-text',
-  predictions: 'predictions',
-  'ui-selection': 'ui-selection',
-  debugging: 'debugging',
-  'request-transformation': 'request-transformation',
-};
+// Production recovery has its own recorder; every other lesson records here.
+const recordable = (lesson: string): lesson is WorkbenchLessonId =>
+  lesson !== 'production-recovery' &&
+  workbenchLessons.some((item) => item.id === lesson);
 // Captures are stamped with the commit the media is published from.
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
   encoding: 'utf8',
@@ -130,7 +109,7 @@ for (const report of reports) {
       : report.lesson === 'javascript-runtime'
         ? report.source !== 'runtime' || report.provider !== 'none'
         : report.source !== 'provider') ||
-    !names[report.lesson]
+    !recordable(report.lesson)
   )
     throw new Error(
       'Only successful allowlisted provider recordings can be published.',
@@ -143,7 +122,7 @@ for (const report of reports) {
       'Decision footage must come from the real TypeSafe adapter.',
     );
   const timingScale = report.lesson === 'local-models' ? 1 : 2;
-  const id = `canonical-workbench-${names[report.lesson]}-${report.framework}`;
+  const id = `canonical-workbench-${workbenchMediaName(report.lesson)}-${report.framework}`;
   const raw = resolve(work, `${report.framework}-${report.lesson}-live.webm`);
   const base = resolve(staging, id);
   publishIds.push(id);
@@ -293,7 +272,7 @@ for (const report of reports) {
         report.phases['followup'],
         report.phases['replay'],
         report.lesson === 'decisions'
-          ? 'The next decision suggests review.'
+          ? 'Next choice: review.'
           : 'The follow-up reads the accepted plan and proposes a shorter second step.',
       ],
       [

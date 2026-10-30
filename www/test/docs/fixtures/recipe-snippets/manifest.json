@@ -1,0 +1,44 @@
+{
+  "frameworks": [
+    "angular",
+    "react"
+  ],
+  "recipes": {
+    "browser-history": [
+      "saved-text",
+      "saved-help-chat"
+    ],
+    "decisions-in-agents": [
+      "support-routing"
+    ],
+    "json-parser": [
+      "shopping-schema",
+      "shopping-preview"
+    ],
+    "magic-text": [
+      "returns-help"
+    ],
+    "natural-language-to-structured-data": [
+      "trip-draft",
+      "review-trip"
+    ],
+    "predictive-actions": [
+      "article-suggestions"
+    ],
+    "public-endpoint": [
+      "checked-reply"
+    ],
+    "threads": [
+      "save-thread"
+    ],
+    "ui-chatbot": [
+      "delivery-assistant"
+    ],
+    "ui-kits": [
+      "delivery-kit"
+    ],
+    "ui-selection": [
+      "delivery-view"
+    ]
+  }
+}

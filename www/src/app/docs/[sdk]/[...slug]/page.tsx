@@ -41,7 +41,10 @@ export default async function DocsPage({
   params: Promise<Params>;
 }) {
   const { sdk, slug } = await params;
-  const doc = isSdk(sdk) ? readDoc(sdk, slug) : undefined;
+  if (!isSdk(sdk)) {
+    notFound();
+  }
+  const doc = readDoc(sdk, slug);
   if (!doc) {
     notFound();
   }

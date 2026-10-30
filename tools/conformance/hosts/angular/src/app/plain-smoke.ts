@@ -123,6 +123,11 @@ function errorText(error: unknown): string {
         data-testid="generating-error"
         [textContent]="toErrorText(chat.generatingError())"
       ></div>
+      <pre data-testid="server-tool-calls">{{ serverToolCalls() }}</pre>
+      <pre data-testid="subagents" [attr.data-supported]="supportsSubagents">{{
+        serializedSubagents()
+      }}</pre>
+      <pre data-testid="activity-messages">{{ activityMessages() }}</pre>
       <div data-testid="tool-count">{{ toolCount() }}</div>
       <div data-testid="tool-observations">
         {{ serializedToolObservations() }}
@@ -178,6 +183,31 @@ export class PlainSmoke {
     this.threadId,
     (value) => this.threadId.set(value),
   );
+  protected readonly serverToolCalls = computed(() => {
+    const snapshot = this.chat.snapshot();
+    return JSON.stringify(
+      snapshot.status === 'error'
+        ? []
+        : snapshot.value.flatMap((message) =>
+            message.role === 'assistant' ? (message.serverToolCalls ?? []) : [],
+          ),
+    );
+  });
+  protected readonly supportsSubagents =
+    'subagents' in this.chat && typeof this.chat.subagents === 'function';
+  // The pinned published-package acceptance consumer also copies this host.
+  protected readonly serializedSubagents = computed(() => {
+    const value = 'subagents' in this.chat ? this.chat.subagents : undefined;
+    return JSON.stringify(typeof value === 'function' ? value() : []);
+  });
+  protected readonly activityMessages = computed(() => {
+    const snapshot = this.chat.snapshot();
+    return JSON.stringify(
+      snapshot.status === 'error'
+        ? []
+        : snapshot.value.filter((message) => message.role === 'activity'),
+    );
+  });
   protected readonly sharedState = computed(() =>
     JSON.stringify(this.chat.state()),
   );

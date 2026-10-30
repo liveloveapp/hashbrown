@@ -7,6 +7,18 @@ meta:
 
 # Microsoft Azure OpenAI
 
+<hb-docs-demo demo="canonical-workbench-first-plan-react">
+</hb-docs-demo>
+
+Use Azure OpenAI when your application calls a deployment managed in Azure. The Hashbrown adapter keeps the browser's AG-UI contract the same while the server supplies the Azure endpoint, authentication, and deployment name. It uses the Responses API, so endpoint and API-version configuration matter before we write the route.
+
+The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate an Azure deployment or Microsoft Entra authentication.
+
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
+
+## Install the server adapter
+
 Install the Azure adapter, the Azure OpenAI SDK, and the AG-UI SSE encoder:
 
 ```sh
@@ -127,6 +139,11 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
+
+The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 
 <hb-backend-code-example>
 
@@ -484,3 +501,12 @@ const stream = HashbrownAzure.stream.text({
 ```
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
+
+## Explore it in the workbench
+
+Open the workbench below and ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
+
+The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Azure OpenAI` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Azure OpenAI or verify its provider-specific behavior.

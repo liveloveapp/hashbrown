@@ -2,17 +2,62 @@
 title: 'Streaming JSON Parser: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Inspect actual streamed JSON, framework parser values, source completion, and final document validation in one conversation.'
+    content: 'Preview a growing JSON document with the framework parser and validate the completed source before using it.'
 ---
 
 # Streaming JSON Parser
 
+A streaming JSON parser resolves useful values before the whole document arrives. Use it for a JSON source you already own: a text response, a socket, or an imported file. Choose streaming strings for fields that can display a prefix, and ordinary strings for fields that should wait for a closing quote.
+
+Let’s preview a shopping list. The parser will receive the full JSON string so far. The preview helps the user read; a separate check of the original completed document decides whether it can be used. If you already use structured chat, consume its parsed content directly.
+
+<hb-diagram diagram="recipe-parser-preview-validation"> </hb-diagram>
+
+## Preview an existing JSON source
+
+This component does not make a model request. Its parent owns the source, passes the accumulated JSON string, and tracks successful completion separately. Create `shopping-schema.ts`:
+
+```ts
+import { s } from '@hashbrownai/core';
+
+export const shoppingSchema = s.object('A shopping list', {
+  title: s.string('A concise list title'),
+  items: s.streaming.array('Items to buy', s.streaming.string('An item name')),
+});
+```
+
+Then create the preview component:
+
+```tsx
+import { useJsonParser } from '@hashbrownai/react';
+import { shoppingSchema } from './shopping-schema';
+
+export function ShoppingPreview({ json }: { json: string }) {
+  const parser = useJsonParser(json, shoppingSchema);
+  if (parser.error) return <p role="alert">Invalid shopping list.</p>;
+  return (
+    <section aria-label="Shopping list preview">
+      <h2>{parser.value?.title ?? 'Preparing list…'}</h2>
+      <ul>
+        {parser.value?.items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+```
+
+Pass a growing prefix such as `{"title":"Groceries","items":["ap` and then the full document. The title waits for its closing quote; the item can appear as a prefix. Replacing the string with a different document resets parsing. Before enabling a save action, require successful source completion and reparse the original JSON with the complete application contract. A closed root, a retained parser value, and a successful source are separate observations.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="json-parser">
+</hb-workbench>
+
 Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
-
-<hb-docs-demo demo="canonical-workbench-json-parser-react">
-</hb-docs-demo>
-
-<img src="/video/docs/canonical-workbench-json-parser-react-result.png" alt="The React workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />
 
 ## Follow the JSON
 
@@ -23,7 +68,7 @@ Let's watch JSON become a plan. The title waits for a complete string, while ste
 5. Ask for a shorter second step. The parser follows the new assistant response rather than appending it to the old JSON document.
 6. Replay the two turns. Chat, raw JSON, resolved values, and the bottom timeline follow the same selected event.
 
-The recording uses real OpenAI output through the actual Hashbrown text SDK. `useJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
+The replay uses real OpenAI output through the actual Hashbrown text SDK. `useJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
 
 ## Choose which values can stream
 
@@ -49,10 +94,10 @@ These choices describe what our application can display as a preview. They do no
 
 ## Keep three completion checks separate
 
-| Check | What it tells us |
-| --- | --- |
-| Source lifecycle | Whether the actual SDK run is generating, successfully finished, stopped, or failed. |
-| Parser completion | Whether the parser has completed its JSON root. |
+| Check                        | What it tells us                                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Source lifecycle             | Whether the actual SDK run is generating, successfully finished, stopped, or failed.                                 |
+| Parser completion            | Whether the parser has completed its JSON root.                                                                      |
 | Original document validation | Whether parsing and validating the complete original JSON succeeds, including required fields and application rules. |
 
 A JSON root can close before the source ends. A stopped source can leave useful partial values. A streaming array can withhold an invalid member, and a parser may retain its last resolved value after an error. None of these is a completed valid plan by itself.

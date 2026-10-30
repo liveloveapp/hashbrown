@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -38,20 +39,17 @@ test.each(SDKS)(
     const pages = guides.map(([demo, slug]) => ({
       demo:
         slug[1] === 'structured-output'
-          ? `canonical-workbench-structured-${sdk}`
+          ? 'structured-output'
           : slug[1] === 'streaming'
-            ? `canonical-workbench-streaming-${sdk}`
+            ? 'streaming'
             : slug[1] === 'natural-language-to-structured-data'
-              ? `canonical-workbench-natural-forms-${sdk}`
+              ? 'natural-forms'
               : demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 
     for (const { demo, body } of pages) {
-      const media = body.indexOf(`<hb-docs-demo demo="${demo}">`);
-
-      expect(media, demo).toBeGreaterThan(-1);
-      expect(media, demo).toBeLessThan(body.indexOf('\n## '));
+      expectConceptFirstWorkbench(body, sdk, demo);
     }
   },
 );

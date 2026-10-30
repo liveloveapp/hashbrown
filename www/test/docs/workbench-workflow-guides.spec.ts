@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -13,18 +14,15 @@ const lessons = [
 ] as const;
 
 test.each(SDKS)(
-  '%s workflow guides use focused canonical recordings',
+  '%s workflow guides use focused inline workbench lessons',
   (sdk) => {
     for (const [slug, lesson] of lessons) {
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
 
-      expect(body.indexOf(`<hb-docs-demo demo="${id}">`)).toBeGreaterThan(-1);
-      expect(body.indexOf(`<hb-docs-demo demo="${id}">`)).toBeLessThan(
-        body.indexOf('\n## '),
-      );
-      expect(body).toContain(`/video/docs/${id}-result.png`);
-      expect(body).toContain(`/${sdk}.html?lesson=${lesson}`);
+      expectConceptFirstWorkbench(body, sdk, lesson);
+      expect(body).not.toContain(`/video/docs/${id}-result.png`);
+      expect(body).toContain(`<hb-workbench lesson="${lesson}">`);
       expect(body).toContain('two-step plan');
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
       expect(body).not.toMatch(/Lisbon|itinerary|trip-progress|account-123/);
@@ -39,7 +37,7 @@ test.each(SDKS)(
     for (const [slug] of lessons) {
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
       for (const [, file, excerpt] of body.matchAll(
-        /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="((?:runtime|server|react|angular)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       )) {
         const source = readFileSync(
           resolve(import.meta.dirname, '../../examples/quickstart', file),

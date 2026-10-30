@@ -1,0 +1,87 @@
+{
+  "framework": "mastra",
+  "profile": "live",
+  "versions": {
+    "@ag-ui/mastra": "2.0.1",
+    "@mastra/core": "1.80.0",
+    "@mastra/client-js": "1.57.0",
+    "@ag-ui/core": "1.0.3"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "mastra-live-thread",
+      "runId": "mastra-live-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "parentMessageId": "17aadfc7-1852-4ad1-85f4-d6a4f3a4a350",
+      "toolCallId": "weather-call",
+      "toolCallName": "getWeather"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "toolCallId": "weather-call",
+      "delta": "{\"city\":\"Paris\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "toolCallId": "weather-call"
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "toolCallId": "weather-call",
+      "content": "\"Paris: 21°C and sunny\"",
+      "messageId": "f2ed314b-de0a-41db-9890-405a2758b5d3",
+      "role": "tool"
+    },
+    {
+      "type": "TEXT_MESSAGE_CHUNK",
+      "role": "assistant",
+      "messageId": "17aadfc7-1852-4ad1-85f4-d6a4f3a4a350-agui-text",
+      "delta": "The weather in Paris is 21°C and sunny."
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "mastra-live-thread",
+      "runId": "mastra-live-run",
+      "usage": [
+        {
+          "provider": "mock-provider",
+          "model": "mock-model-id",
+          "inputTokens": 2,
+          "outputTokens": 2,
+          "totalTokens": 4
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "calls": [
+      {
+        "name": "getWeather",
+        "args": {
+          "city": "Paris"
+        },
+        "result": "\"Paris: 21°C and sunny\""
+      }
+    ],
+    "text": "The weather in Paris is 21°C and sunny."
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "real local Mastra Agent.stream",
+    "toolExecutions": 1,
+    "toolCompleted": true,
+    "toolAbortObserved": false,
+    "outcome": "success",
+    "startBeforeToolCompletion": true,
+    "activityBeforeToolCompletion": false,
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "7c321538d69c35d65b5d777646af52e58170a18ed0cdf98d48d500f264dbe75c"
+  }
+}

@@ -2,13 +2,83 @@
 title: 'UI Selection: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Choose between trusted plan views with UI decision candidates, inspect confidence, and keep application data and manual control in the app.'
+    content: 'Choose among application-owned views with typed candidates, confidence filtering, and manual control.'
 ---
 
 # UI Selection
 
-<hb-docs-demo demo="canonical-workbench-ui-selection-angular">
-</hb-docs-demo>
+Sometimes the data and components are already known, and only the choice of view needs language understanding. UI selection lets a model choose a candidate ID while the application supplies the element and all its data. Use it for a compact summary versus a detailed list, or another small set of equivalent views.
+
+Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
+
+<hb-diagram diagram="recipe-ui-selection-branches"> </hb-diagram>
+
+## Choose among application views
+
+Start with the [Angular Quickstart](/docs/angular/start/quick) and a configured [TypeSafe decision endpoint](/docs/angular/platform/typesafe). Decisions use the provider’s `decision.url` (normally `/api/decide`), separately from AG-UI chat. Pin the matching candidate schema on the server and keep TypeSafe credentials there. The resource below is created in its component injection context.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { UiDecisionComponent, uiDecisionResource } from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-delivery-summary',
+  template: `<p>Due Friday · 2 items</p>`,
+})
+export class DeliverySummary {}
+@Component({
+  selector: 'app-delivery-items',
+  template: `<ul>
+    <li>Notebook</li>
+    <li>Pen</li>
+  </ul>`,
+})
+export class DeliveryItems {}
+
+@Component({
+  selector: 'app-delivery-view',
+  imports: [UiDecisionComponent],
+  template: `
+    <button (click)="input.set('Show the individual items')">
+      Choose a view
+    </button>
+    <hb-ui-decision [resource]="choice" />
+    @if (choice.error()) {
+      <p role="alert">Choose a view manually or try again.</p>
+    }
+  `,
+})
+export class DeliveryView {
+  readonly input = signal<string | null>(null);
+  readonly choice = uiDecisionResource({
+    input: this.input,
+    system: 'Choose a delivery view matching the request.',
+    select: 'one',
+    minConfidence: 0.75,
+    candidates: [
+      {
+        id: 'summary',
+        description: 'A brief delivery overview',
+        component: DeliverySummary,
+      },
+      {
+        id: 'items',
+        description: 'A detailed item list',
+        component: DeliveryItems,
+      },
+    ],
+  });
+}
+```
+
+This example previews a choice and never changes delivery data. The candidate IDs, descriptions, order, and application-owned data must agree with the server contract. Confidence below `0.75` can leave the preview empty; display manual summary and item controls alongside it in a full screen. Confidence is a model score, not calibrated accuracy. If you persist the selected view, require a separate action and recheck the current request and application revision.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="ui-selection">
+</hb-workbench>
 
 I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 
@@ -16,13 +86,7 @@ I sometimes want the model to choose a view without generating its content. Let'
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with server-only `TYPESAFE_API_KEY` and an exact `TYPESAFE_MODEL` available to your account. The current checked recording uses `jev-1.14.0`. The shared host also needs `OPENAI_API_KEY` and `OPENAI_MODEL` for its other lessons.
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/angular.html?lesson=ui-selection`. This lesson uses the decision endpoint `/api/workbench/ui-selection`. A decision arrives whole; it is not a JSON text stream.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The replay uses `jev-1.14.0`. This lesson uses the decision endpoint `/api/workbench/ui-selection`. A decision arrives whole; it is not a JSON text stream.
 
 ## Follow the selected view
 
@@ -31,8 +95,6 @@ Open `http://127.0.0.1:4370/angular.html?lesson=ui-selection`. This lesson uses 
 3. Send **Follow-up** to ask for ordered steps. A confident result can preview that candidate; a low-confidence result remains inspectable and offers manual choice. Neither result applies the view automatically.
 4. Choose **Show steps** manually. This explicit action saves the steps view and advances the revision to 2. It does not rewrite the plan's title or steps.
 5. Use the bottom timeline to compare the complete decisions, manual choice, and application state. Replay renders the same trusted views with no active handlers, requests, or writes.
-
-<img src="/video/docs/canonical-workbench-ui-selection-angular-result.png" alt="The Angular workbench shows the application-owned ordered plan view beside its candidate components and the SDK's selection and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Register known candidates
 
@@ -75,7 +137,7 @@ This is different from [Generative UI](/docs/angular/concept/components), where 
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="angular/src/app/selection-workbench.ts">
+<hb-code-example header="angular/src/app/selection-workbench.ts" moment="selection-result-1">
 
 ```ts
 protected readonly resource = uiDecisionResource({

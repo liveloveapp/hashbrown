@@ -2,21 +2,103 @@
 title: 'System instructions: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Separate user requests, browser configuration, and server-owned policy at the actual provider boundary.'
+    content: 'Define a focused assistant task and keep trusted policy at the server boundary.'
 ---
 
 # System instructions
 
+System instructions describe the assistant’s job, relevant context, and response expectations across turns. A user message asks for the work in the current turn. Keeping those roles separate makes instructions easier to test and keeps an end user’s text from becoming trusted application policy.
+
+Start with a specific task and a small amount of relevant context. Add constraints when examples show they are needed. Browser configuration is useful for feature behavior, but policy your application relies on belongs in your endpoint. Instructions guide a model; authentication, authorization, and validation must still be enforced by code.
+
+<hb-diagram diagram="concept-system-policy"> </hb-diagram>
+
+## Give a feature one clear job
+
+Use the endpoint and client configuration from the [Quickstart](/docs/react/start/quick). Render the component below inside the existing `HashbrownProvider`.
+
+This example keeps feature guidance fixed and sends the request as a user message. Try an ordinary request, a vague request, and an unrelated request when evaluating the instruction.
+
+```tsx
+import { useChat } from '@hashbrownai/react';
+
+export function ReadingGuide() {
+  const chat = useChat({
+    system:
+      'Help readers choose a classic novel. Ask one question when preferences are unclear. Give a short explanation and do not claim to reserve books.',
+  });
+  return (
+    <main>
+      <button
+        type="button"
+        disabled={chat.isLoading}
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: 'Suggest a short classic novel for our book club.',
+          })
+        }
+      >
+        Ask
+      </button>
+      {chat.isLoading && <p role="status">Waiting for a reply…</p>}
+      {chat.error && (
+        <p role="alert">The request failed. Check the endpoint.</p>
+      )}
+      {chat.messages.map((message, index) =>
+        message.role === 'user' || message.role === 'assistant' ? (
+          <p key={index}>
+            {message.role}:{' '}
+            {typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content)}
+          </p>
+        ) : null,
+      )}
+    </main>
+  );
+}
+```
+
+For server-owned policy, normalize the request before passing it to the adapter. This complete helper requires `@ag-ui/core` in the server project. Call it with an authenticated, validated `RunAgentInput` and a prompt selected by your endpoint; the browser must not choose the trusted policy.
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+
+export function withReadingPolicy(input: RunAgentInput): RunAgentInput {
+  return {
+    ...input,
+    messages: [
+      {
+        id: 'reading-policy',
+        role: 'system',
+        content:
+          'Help choose books from our catalog. Do not claim a reservation was made.',
+      },
+      ...input.messages.filter(
+        (message) => message.role !== 'system' && message.role !== 'developer',
+      ),
+    ],
+  };
+}
+```
+
+Use `input: withReadingPolicy(validatedInput)` in your existing server adapter call. This is the policy transformation only; keep the Quickstart HTTP handler, streaming response, cancellation, and server credentials. Removing client system messages does not authorize tools or data access.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="system-instructions">
+</hb-workbench>
+
 System instructions describe the assistant's task across a conversation. The user message asks for the work we want in the current turn. Let's inspect both while we explain our two-step plan.
 
-<hb-docs-demo demo="canonical-workbench-system-instructions-react">
-</hb-docs-demo>
+Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The replay follows the real React text-chat API and OpenAI adapter.
 
-Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The recording follows the real React text-chat API and OpenAI adapter.
+### Inspect the instruction that reaches the provider
 
-## Inspect the instruction that reaches the provider
-
-Start the [workbench](/docs/react/start/workbench), then open `http://127.0.0.1:4370/react.html?lesson=system-instructions`.
+Use the **Live** tab above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
 1. Send **First prompt** to ask for the application plan.
 2. In **Instructions**, compare the browser declaration with the effective public policy.
@@ -36,7 +118,7 @@ export const workbenchBrowserInstructions =
 
 The endpoint replaces browser-supplied system and developer messages with this application policy:
 
-<hb-code-example header="runtime/workbench-onboarding.ts">
+<hb-code-example header="runtime/workbench-onboarding.ts" moment="policy-observed-1">
 
 ```ts
 export const workbenchInstructionsSystem =
@@ -47,9 +129,7 @@ export const workbenchInstructionsSystem =
 
 The inspector's **effective** value is captured from the actual mapped provider input inside the adapter callback. It includes only this known public policy, with its origin labelled. It is not a promise inferred from the browser configuration.
 
-<img src="/video/docs/canonical-workbench-system-instructions-react-result.png" alt="The React Instructions inspector compares a browser declaration with the public server policy observed at the OpenAI adapter mapping." width="1600" height="1000" loading="lazy" />
-
-## Start with a specific task
+### Start with a specific task
 
 Our policy gives the assistant a task, the plan data it needs, and a response style. The current user message asks which part to explain.
 
@@ -57,7 +137,7 @@ Keep that guidance close to the feature. Start with the smallest instruction tha
 
 For local configuration, `useChat()` accepts a `system` option, as in [Messages and turns](/docs/react/concept/ai-basics). Browser configuration is visible and can be changed. Put policy your application depends on in the endpoint.
 
-## Pin policy in your own endpoint
+### Pin policy in your own endpoint
 
 Use the text conversation from [Messages and turns](/docs/react/concept/ai-basics) with the Quickstart endpoint. Create `pin-system-prompt.ts` beside `server.ts`:
 
@@ -102,7 +182,7 @@ input: pinSystemPrompt(
 
 The helper creates a new request with our policy and preserves the rest of the run. It removes browser-supplied system and developer messages, keeping the user conversation, identifiers, tools, and forwarded properties intact. The workbench endpoint additionally validates its bounded lesson contract before calling the adapter.
 
-## Keep instructions and permissions separate
+### Keep instructions and permissions separate
 
 Send user text as a user message. Avoid building trusted policy by concatenating arbitrary user input into it. Include only the application context the task needs.
 

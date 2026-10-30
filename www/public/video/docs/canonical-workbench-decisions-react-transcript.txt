@@ -6,7 +6,7 @@ TypeSafe returns a whole decision.
 
 Use suggestion: revision 1.
 
-The next decision suggests review.
+Next choice: review.
 
 Replay follows complete choices, confidence and state. It makes no decision requests or writes.
 

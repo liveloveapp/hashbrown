@@ -1,0 +1,134 @@
+{
+  "framework": "mastra",
+  "profile": "background-failure",
+  "versions": {
+    "@ag-ui/mastra": "2.0.1",
+    "@mastra/core": "1.80.0",
+    "@mastra/client-js": "1.57.0",
+    "@ag-ui/core": "1.0.3",
+    "@mastra/memory": "1.39.1"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "mastra-background-thread",
+      "runId": "mastra-background-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "ACTIVITY_SNAPSHOT",
+      "messageId": "c985109f-123c-45ef-b779-f80235455360",
+      "activityType": "mastra-background-task",
+      "content": {
+        "taskId": "c985109f-123c-45ef-b779-f80235455360",
+        "toolName": "getWeather",
+        "toolCallId": "weather-call",
+        "status": "running",
+        "outputs": [],
+        "args": {
+          "city": "Paris"
+        }
+      }
+    },
+    {
+      "type": "ACTIVITY_DELTA",
+      "messageId": "c985109f-123c-45ef-b779-f80235455360",
+      "activityType": "mastra-background-task",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/status",
+          "value": "running"
+        },
+        {
+          "op": "add",
+          "path": "/args",
+          "value": {
+            "city": "Paris"
+          }
+        },
+        {
+          "op": "add",
+          "path": "/startedAt",
+          "value": "2026-10-30T15:48:01.189Z"
+        }
+      ]
+    },
+    {
+      "type": "ACTIVITY_DELTA",
+      "messageId": "c985109f-123c-45ef-b779-f80235455360",
+      "activityType": "mastra-background-task",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/status",
+          "value": "failed"
+        },
+        {
+          "op": "add",
+          "path": "/error",
+          "value": "Weather service unavailable"
+        },
+        {
+          "op": "add",
+          "path": "/completedAt",
+          "value": "2026-10-30T15:48:01.220Z"
+        }
+      ]
+    },
+    {
+      "type": "TEXT_MESSAGE_CHUNK",
+      "role": "assistant",
+      "messageId": "cda09035-da92-4818-96a5-02032d193658",
+      "delta": "The weather service is unavailable."
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "mastra-background-thread",
+      "runId": "mastra-background-run",
+      "usage": [
+        {
+          "provider": "mock-provider",
+          "model": "mock-model-id",
+          "inputTokens": 2,
+          "outputTokens": 2,
+          "totalTokens": 4
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "calls": [],
+    "text": "The weather service is unavailable.",
+    "activities": [
+      {
+        "activityType": "mastra-background-task",
+        "content": {
+          "toolName": "getWeather",
+          "toolCallId": "weather-call",
+          "status": "failed",
+          "outputs": [],
+          "args": {
+            "city": "Paris"
+          },
+          "error": "Weather service unavailable"
+        }
+      }
+    ]
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "real local Mastra Agent.stream",
+    "toolExecutions": 1,
+    "toolCompleted": true,
+    "toolAbortObserved": false,
+    "outcome": "failure",
+    "startBeforeToolCompletion": false,
+    "activityBeforeToolCompletion": true,
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+    "eventsSha256": "64f69c6f7cb0c673b80c687806568ddb13e2cee5e4437f21e2e2b24aeaf5312d"
+  }
+}

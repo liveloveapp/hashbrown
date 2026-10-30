@@ -1,20 +1,18 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 test.each(SDKS)(
-  '%s selection guide opens with its canonical framework recording',
+  '%s selection guide teaches before its inline workbench',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
-    const marker = `<hb-docs-demo demo="canonical-workbench-ui-selection-${sdk}">`;
-
-    expect(body.indexOf(marker)).toBeGreaterThan(-1);
-    expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
-    expect(body).toContain(
+    expectConceptFirstWorkbench(body, sdk, 'ui-selection');
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-ui-selection-${sdk}-result.png`,
     );
-    expect(body).toContain(`/${sdk}.html?lesson=ui-selection`);
+    expect(body).toContain('<hb-workbench lesson="ui-selection">');
     expect(body).toContain(`/docs/${sdk}/start/workbench`);
     expect(body).toContain('two-step plan');
     expect(body).not.toMatch(/packing|shopping|Apples|Passport/);
@@ -44,7 +42,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['recipes', 'ui-selection'])?.body ?? '';
     const excerpts = [
       ...body.matchAll(
-        /<hb-code-example header="((?:runtime|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="((?:runtime|react|angular)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       ),
     ];
     const normalize = (text: string) =>

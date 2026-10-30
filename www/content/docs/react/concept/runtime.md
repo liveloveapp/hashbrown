@@ -2,27 +2,77 @@
 title: 'JS Runtime: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Run visible JavaScript against your application plan with a narrow QuickJS host capability.'
+    content: 'Evaluate JavaScript calculations in QuickJS with explicit host capabilities.'
 ---
 
 # JavaScript runtime
 
+The JavaScript runtime evaluates a script in a separate QuickJS context and returns its result. It is useful when a calculation or transformation is easier to express as code, including code submitted by a model through a JavaScript tool. You can learn the execution boundary with an ordinary application-owned script first.
+
+The context has no browser `window`, `document`, or `fetch`. Host functions are capabilities you explicitly provide. Keep them narrow, validate their arguments in the handler, and bound their work. A runtime deadline interrupts JavaScript evaluation; it does not roll back a host side effect or impose a memory limit.
+
+<hb-diagram diagram="concept-runtime-capabilities"> </hb-diagram>
+
+## Evaluate a calculation before adding host access
+
+Use an existing React application with `@hashbrownai/react` installed and a bundler that can load Hashbrown’s QuickJS dependency. This example requires no model, API key, endpoint, or workbench session. It evaluates a fixed script with no host capabilities.
+
+```tsx
+import { useState } from 'react';
+import { useRuntime } from '@hashbrownai/react';
+
+export function ReadingEstimate() {
+  const runtime = useRuntime({ timeout: 1_000, functions: [] });
+  const [output, setOutput] = useState('');
+  const [running, setRunning] = useState(false);
+  async function estimate() {
+    if (running) return;
+    setRunning(true);
+    try {
+      const response = await runtime.run(
+        '({ books: 3, totalMinutes: 3 * 20 })',
+        new AbortController().signal,
+      );
+      setOutput(JSON.stringify(response));
+    } catch (error) {
+      setOutput(String(error));
+    } finally {
+      setRunning(false);
+    }
+  }
+  return (
+    <main>
+      <button type="button" disabled={running} onClick={estimate}>
+        Estimate reading time
+      </button>
+      <pre aria-live="polite">{output}</pre>
+    </main>
+  );
+}
+```
+
+The last expression is the script result. A successful response wraps it in `result`; evaluation errors use an `error` wrapper, and initialization or host failures may reject the promise. Showing the whole wrapper here makes that distinction visible. Check it before consuming the result in application logic.
+
+Each call creates a fresh QuickJS context, so variables do not persist between calls. Add host functions only when the calculation needs current application data. The workbench below demonstrates that next step with an explicitly validated read capability and cancellation.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="javascript-runtime">
+</hb-workbench>
+
 Let's estimate how long our plan will take. We have two steps. At 15 minutes per step, that's **30 minutes**. Change the estimate to 10 minutes per step and run it again: **20 minutes**. The plan hasn't changed. We've calculated a result from it.
 
-<hb-docs-demo demo="canonical-workbench-javascript-runtime-react">
-</hb-docs-demo>
+### Run the example
 
-![The React workbench shows submitted code, the actual QuickJS result, and application state at revision zero.](/video/docs/canonical-workbench-javascript-runtime-react-result.png)
-
-## Run the example
-
-Open the [JavaScript runtime workbench](https://workbench.hashbrown.dev/react.html?lesson=javascript-runtime). Start with **15 minutes per step**, then choose **Run in QuickJS**. Next, choose **10 minutes per step** and run again.
+In the **Live** tab above, start with **15 minutes per step**, then choose **Run in QuickJS**. Next, choose **10 minutes per step** and run again.
 
 These are application-owned scripts running through the real Hashbrown React runtime API. There is no model or provider request in this lesson. Code doesn't stream into a generated component. The workbench captures the submitted source, actual host calls, and the result or error as each occurs.
 
 Use **Code** to inspect the script, **Runtime** to inspect execution, and **State** to compare the application-owned plan. The bottom player moves through captured moments. Replay executes no scripts, host functions, requests, or application writes.
 
-## Give JavaScript a narrow capability
+### Give JavaScript a narrow capability
 
 QuickJS runs JavaScript in a separate context. It doesn't have your browser's `document`, `window`, or `fetch`. We explicitly expose one function, `readPlan`, so the script can read a detached snapshot of the current plan.
 
@@ -48,7 +98,7 @@ const runtime = useRuntime({ functions: [read], timeout: 1_000 });
 
 The [session controller](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/runtime/workbench-javascript-session.ts) owns the current run, validates the host call, forwards cancellation and captures plain values. It rejects work from an inactive conversation or an old run. The full client shows how the session and runtime are connected.
 
-## Submit the exact script
+### Submit the exact script
 
 The first script reads the plan and calculates its estimate:
 
@@ -83,7 +133,7 @@ A successful evaluation returns a wrapper such as:
 
 Check the wrapper before using the value. QuickJS evaluation errors return an `error` wrapper; initialization or host failures can also reject the promise. The workbench handles both. A result is application-rendered data, not a model reply or an applied plan.
 
-## Try a failure, then recover
+### Try a failure, then recover
 
 Choose **Missing browser global** and run `document.title`. QuickJS reports a missing browser global. Next, **Invalid host arguments** supplies a string instead of an integer revision. Our host handler rejects it explicitly.
 
@@ -91,7 +141,7 @@ Choose the estimate again. It still returns 30 minutes. A failed evaluation does
 
 The extra presets let you interrupt a loop and check context lifetime. Each call to `runtime.run` creates a new QuickJS runtime and context. Variables do not persist between runs. Keep application data in your application and expose only the functions each script needs.
 
-## Bound execution and handle cancellation
+### Bound execution and handle cancellation
 
 The example configures a 1,000 ms runtime deadline and forwards an AbortSignal to `run`. The SDK combines that signal with its deadline and passes it to exposed handlers. Forward it again when a handler calls cancellable operations such as `fetch`.
 
@@ -99,7 +149,7 @@ QuickJS checks interruption while evaluating JavaScript, including loops. Initia
 
 Timeouts don't forcibly stop arbitrary host code, roll back side effects, or impose a memory limit. Keep handlers narrow and bounded. In this example, **Stop**, navigation and disposal invalidate the run so a late outcome cannot replace the current conversation.
 
-## Let a model submit code
+### Let a model submit code
 
 Once direct execution is clear, @hashbrownai/react!useToolJavaScript:hook can wrap a runtime as a chat tool. Create a separate runtime for that integration: the workbench's `session.readPlan()` handler is bound to explicit **Run** actions and cannot be reused unchanged by a model tool.
 
@@ -109,7 +159,7 @@ Add the returned JavaScript tool to your chat's `tools` collection, using [tools
 
 Start with read-only functions. Add mutation capabilities only when their handlers can enforce your application's validation, authorization and resource limits. A sandbox doesn't replace those checks.
 
-## Next steps
+### Next steps
 
 - [Expose tools](/docs/react/concept/functions) to read application data or perform checked actions.
 - [Use structured output](/docs/react/concept/structured-output) when the task needs typed data rather than code execution.

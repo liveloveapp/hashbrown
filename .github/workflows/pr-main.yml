@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main]
-    # `labeled` so adding the `preview` label deploys a preview right away.
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -18,19 +17,15 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # Deployment targets: key = Nx project, dir = directory containing .vercel/output,
-  # project_id_secret = repository secret holding that target's Vercel project ID.
-  # builder "vercel" = build the Next.js app in `root` with `vercel build`;
-  # optional = skip while the project secret is unset (see deploy.yml).
-  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"atc","dir":"examples/atc","project_id_secret":"VERCEL_PROJECT_ID_ATC"},{"key":"lifecycle","dir":"tools/lifecycle","project_id_secret":"VERCEL_PROJECT_ID_LIFECYCLE","optional":true},{"key":"workbench","dir":"tools/workbench","project_id_secret":"VERCEL_PROJECT_ID_WORKBENCH","optional":true}]'
-
 jobs:
   ci:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      # Only protected main runs may populate the shared cache. PRs retain
+      # the workspace's anonymous read-only access and isolated writes.
+      NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && github.ref_protected && github.event_name != 'pull_request' && secrets.NX_CLOUD_ACCESS_TOKEN || '' }}
       DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
     steps:
       - name: Checkout repository
@@ -148,6 +143,7 @@ jobs:
             playwright-report/conformance
             test-results/atc
             dist/docs-workbench/verification
+            dist/docs-diagrams/ci
             playwright-report/atc
           retention-days: 7
           if-no-files-found: ignore
@@ -160,49 +156,11 @@ jobs:
        github.event.pull_request.head.repo.full_name == github.repository &&
        github.event.pull_request.user.login != 'dependabot[bot]') ||
       (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      matrix: ${{ steps.select.outputs.matrix }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        if: github.event_name == 'pull_request'
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: npm
-
-      - name: Install dependencies
-        if: github.event_name == 'pull_request'
-        run: npm ci
-
-      - name: Select targets
-        id: select
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          NX_DAEMON: 'false'
-        run: |
-          set -o pipefail
-          if [[ "$EVENT" != "pull_request" ]]; then
-            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
-          elif git diff --name-only "$BASE...$HEAD" | grep -qxE '\.github/workflows/(pr-main|deploy)\.yml'; then
-            echo "Deployment workflow changed; selecting all targets."
-            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
-          else
-            affected="$(npx nx show projects --affected --base="$BASE" --head="$HEAD" --withTarget=build --type=app --json | tail -n1 | jq -c .)"
-            selected="$(jq -c --argjson affected "$affected" \
-              '[ .[] | select(.key as $key | $affected | index($key) != null) ]' <<<"$DEPLOY_TARGETS")"
-          fi
-          echo "Selected targets: $selected"
-          echo "matrix=$selected" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/select-deployment-targets.yml
+    with:
+      event: ${{ github.event_name }}
+      base: ${{ github.event.pull_request.base.sha }}
+      head: ${{ github.event.pull_request.head.sha }}
 
   # Previews are opt-in (label a PR `preview`) and never block a merge: the
   # Vercel Hobby plan allows 5000 file uploads a day per account, and a

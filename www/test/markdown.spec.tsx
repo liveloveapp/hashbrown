@@ -1,8 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { docsComponents } from '../src/components/docs-components';
 import { readDoc } from '../src/lib/content';
 import { renderMarkdown } from '../src/lib/markdown';
+
+// next/dynamic resolves asynchronously outside Next; render the client panel
+// directly. The build check covers the split itself.
+vi.mock('../src/components/workbench/WorkbenchPanelLoader', async () => ({
+  WorkbenchPanelLoader: (
+    await import('../src/components/workbench/WorkbenchPanelClient')
+  ).WorkbenchPanelClient,
+}));
 
 const render = async (md: string) =>
   renderToStaticMarkup(
@@ -90,4 +98,53 @@ test('returns the page headings for the table of contents', async () => {
     id: 'react-quickstart',
   });
   expect(headings.map((h) => h.id)).toContain('install-hashbrown');
+});
+
+test('renders hb-workbench as the inline workbench panel for the page SDK', async () => {
+  const md = '<hb-workbench lesson="tools">\n</hb-workbench>';
+
+  const html = await render(md);
+
+  expect(html).not.toContain('data-unported');
+  expect(html).toContain('/react.html?lesson=tools');
+});
+
+test('hb-workbench with an unknown lesson fails the render', async () => {
+  const md = '<hb-workbench lesson="nope">\n</hb-workbench>';
+
+  const rendering = render(md);
+
+  await expect(rendering).rejects.toThrow('Unknown workbench lesson: nope');
+});
+
+test('renders hb-workbench-launcher as a closed launcher for the lesson', async () => {
+  const md = '<hb-workbench-launcher lesson="tools">\n</hb-workbench-launcher>';
+
+  const html = await render(md);
+
+  expect(html).not.toContain('data-unported');
+  expect(html).toContain('Try this in the workbench: <strong>Tools</strong>');
+  expect(html).not.toContain('<iframe');
+});
+
+test('hb-workbench-launcher with an unknown lesson fails the render', async () => {
+  const md = '<hb-workbench-launcher lesson="nope">\n</hb-workbench-launcher>';
+
+  const rendering = render(md);
+
+  await expect(rendering).rejects.toThrow('Unknown workbench lesson: nope');
+});
+
+test('gives each code example a stable id from its order and header', async () => {
+  const md =
+    '<hb-code-example header="src/A b.ts">\n\n```ts\na\n```\n\n</hb-code-example>\n\n<hb-code-example header="src/A b.ts">\n\n```ts\nb\n```\n\n</hb-code-example>';
+
+  const first = await render(md);
+  const second = await render(md);
+
+  expect(first.match(/id="(code-example-[^"]+)"/g)).toEqual([
+    'id="code-example-0-src-a-b-ts"',
+    'id="code-example-1-src-a-b-ts"',
+  ]);
+  expect(second).toBe(first);
 });

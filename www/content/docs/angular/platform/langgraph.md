@@ -7,9 +7,17 @@ meta:
 
 # LangGraph without B4
 
+<hb-docs-demo demo="canonical-workbench-tools-angular">
+</hb-docs-demo>
+
+The teaser demonstrates browser tool calls in the OpenAI-backed client flow. It does not demonstrate a LangGraph server, the optional `/ui` helper, or durable graph restoration.
+
 Connect a plain LangGraph agent to Hashbrown through a standard AG-UI endpoint. Your graph runs on the server; Hashbrown renders headless conversation state in the browser. You do not need a B4 agent, CLI, route or runtime. The optional Node helper supplies tool-step descriptions; your AG-UI bridge still owns tool lifecycle events.
 
 > Package baseline: `@b4run/langgraph` 0.15.7 publishes the `/ui` helper and its TypeScript declarations. Version 0.15.2 does not include that subpath. The Python source recipe below does not require a B4 Python package.
+
+<hb-diagram diagram="langgraph-agent-boundary">
+</hb-diagram>
 
 ## Describe JavaScript server tools
 
@@ -183,3 +191,12 @@ export class ConversationComponent {
 Hashbrown provides state, so your application chooses the step UI. `serverToolCalls` are display-only and are never dispatched to browser tools. Standard lifecycle is `inProgress` while arguments stream, `executing` after arguments end, and `complete` after settlement. `outcome` refines completion as `success`, `failure`, `denied` or `cancelled`; show errors and sources as well as the label. A running custom step records actual execution timing even when approval delayed execution after arguments ended.
 
 Keep client tools in `toolCalls` through the normal framework tool API. Do not register a browser implementation for a server-only tool. The helper adds no built-in UI or provider normalization. File-search integration remains deferred.
+
+## Explore it in the workbench
+
+Open the workbench below. Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+
+<hb-workbench-launcher lesson="tools">
+</hb-workbench-launcher>
+
+This is a browser-tool exercise. It gives us a client flow to compare with the server-owned `serverToolCalls` above, but it does not run LangGraph, test the optional helper's release availability, or restore a graph checkpoint. Verify those separately with the linked plain-agent and Python recipes. Keep the difference visible in your UI: a displayed server step must never dispatch a browser handler.

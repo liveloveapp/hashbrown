@@ -43,7 +43,7 @@ export function workbenchRecipeRecordingCues(
           [
             complete,
             followup,
-            'Select the citation. A reference does not verify the reply.',
+            'Open citation. A reference is not verification.',
           ],
           [
             followup,
@@ -53,7 +53,7 @@ export function workbenchRecipeRecordingCues(
           [
             replay,
             live,
-            'Replay captured Markdown, source and state. No requests or writes.',
+            'Replay shows Markdown and state. No requests or writes.',
           ],
           [live, end, 'Back live. The plan remains at revision 0.'],
         ]
@@ -105,7 +105,7 @@ export function workbenchRecipeRecordingCues(
   return cues;
 }
 
-/** Rejects unreadable or invalid intervals on the rounded, encoded caption timeline. */
+/** Rejects invalid intervals and captions above 17 characters per encoded second. */
 export function validateWorkbenchRecordingCues(
   cues: readonly WorkbenchRecordingCue[],
   duration: number,
@@ -130,7 +130,7 @@ export function validateWorkbenchRecordingCues(
       end <= start ||
       end > duration + 0.001 ||
       !text.trim() ||
-      text.length / (end - start) > 20
+      text.length / (end - start) > 17
     )
       throw new Error(`Unreadable or invalid caption: ${text}`);
     previous = end;

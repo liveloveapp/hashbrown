@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { rehypeConceptDiagrams } from './rehype-concept-diagrams';
 import { type Heading, rehypeHeadingIds } from './rehype-heading-ids';
 import { rehypeShiki } from './rehype-shiki';
 import { remarkCanonicalReference } from './remark-canonical-reference';
@@ -21,6 +22,7 @@ const processor = unified()
   .use(remarkCanonicalReference)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
+  .use(rehypeConceptDiagrams)
   .use(rehypeHeadingIds)
   .use(rehypeShiki);
 
@@ -74,6 +76,7 @@ export function renderMarkdownTree(
 ): RenderedMarkdown {
   const marked = structuredClone(tree);
   markUnported(marked, components);
+  identifyCodeExamples(marked);
   return {
     content: toJsxRuntime(marked, {
       Fragment,
@@ -126,4 +129,30 @@ function markUnported(
     }
     markUnported(child, components);
   }
+}
+
+/**
+ * Give every `hb-code-example` an id from its order on the page and its
+ * header, so a stable anchor exists on the server and the client alike.
+ */
+function identifyCodeExamples(root: Root): void {
+  let order = 0;
+  const visit = (node: Root | Element): void => {
+    for (const child of node.children) {
+      if (child.type !== 'element') continue;
+      if (child.tagName === 'hb-code-example') {
+        const header = String(child.properties['header'] ?? '');
+        const slug = header
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        child.properties = {
+          ...child.properties,
+          id: `code-example-${order++}${slug ? `-${slug}` : ''}`,
+        };
+      }
+      visit(child);
+    }
+  };
+  visit(root);
 }

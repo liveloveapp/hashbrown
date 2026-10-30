@@ -2,13 +2,71 @@
 title: 'UI Selection: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Choose between trusted plan views with UI decision candidates, inspect confidence, and keep application data and manual control in the app.'
+    content: 'Choose among application-owned views with typed candidates, confidence filtering, and manual control.'
 ---
 
 # UI Selection
 
-<hb-docs-demo demo="canonical-workbench-ui-selection-react">
-</hb-docs-demo>
+Sometimes the data and components are already known, and only the choice of view needs language understanding. UI selection lets a model choose a candidate ID while the application supplies the element and all its data. Use it for a compact summary versus a detailed list, or another small set of equivalent views.
+
+Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
+
+<hb-diagram diagram="recipe-ui-selection-branches"> </hb-diagram>
+
+## Choose among application views
+
+Start with the [React Quickstart](/docs/react/start/quick) and a configured [TypeSafe decision endpoint](/docs/react/platform/typesafe). Decisions use the provider’s `decision.url` (normally `/api/decide`), separately from AG-UI chat. Pin the matching candidate schema on the server and keep TypeSafe credentials there. Mount this component beneath `HashbrownProvider`.
+
+```tsx
+import { useState } from 'react';
+import { useUiDecision } from '@hashbrownai/react';
+
+const candidates = [
+  {
+    id: 'summary',
+    description: 'A brief delivery overview',
+    element: <p>Due Friday · 2 items</p>,
+  },
+  {
+    id: 'items',
+    description: 'A detailed item list',
+    element: (
+      <ul>
+        <li>Notebook</li>
+        <li>Pen</li>
+      </ul>
+    ),
+  },
+];
+export function DeliveryView() {
+  const [input, setInput] = useState<string | null>(null);
+  const choice = useUiDecision({
+    input,
+    system: 'Choose a delivery view matching the request.',
+    candidates,
+    select: 'one',
+    minConfidence: 0.75,
+  });
+  return (
+    <section>
+      <button onClick={() => setInput('Show the individual items')}>
+        Choose a view
+      </button>
+      {choice.ui}
+      {choice.error && <p role="alert">Choose a view manually or try again.</p>}
+    </section>
+  );
+}
+```
+
+This example previews a choice and never changes delivery data. The candidate IDs, descriptions, order, and application-owned data must agree with the server contract. Confidence below `0.75` can leave the preview empty; display manual summary and item controls alongside it in a full screen. Confidence is a model score, not calibrated accuracy. If you persist the selected view, require a separate action and recheck the current request and application revision.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="ui-selection">
+</hb-workbench>
 
 I sometimes want the model to choose a view without generating its content. Let's show the same two-step plan as a summary, then as ordered steps. The application owns both components and every prop. The model chooses only an ID.
 
@@ -16,13 +74,7 @@ I sometimes want the model to choose a view without generating its content. Let'
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/react/start/workbench) with server-only `TYPESAFE_API_KEY` and an exact `TYPESAFE_MODEL` available to your account. The current checked recording uses `jev-1.14.0`. The shared host also needs `OPENAI_API_KEY` and `OPENAI_MODEL` for its other lessons.
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/react.html?lesson=ui-selection`. This lesson uses the decision endpoint `/api/workbench/ui-selection`. A decision arrives whole; it is not a JSON text stream.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example). The replay uses `jev-1.14.0`. This lesson uses the decision endpoint `/api/workbench/ui-selection`. A decision arrives whole; it is not a JSON text stream.
 
 ## Follow the selected view
 
@@ -31,8 +83,6 @@ Open `http://127.0.0.1:4370/react.html?lesson=ui-selection`. This lesson uses th
 3. Send **Follow-up** to ask for ordered steps. A confident result can preview that candidate; a low-confidence result remains inspectable and offers manual choice. Neither result applies the view automatically.
 4. Choose **Show steps** manually. This explicit action saves the steps view and advances the revision to 2. It does not rewrite the plan's title or steps.
 5. Use the bottom timeline to compare the complete decisions, manual choice, and application state. Replay renders the same trusted views with no active handlers, requests, or writes.
-
-<img src="/video/docs/canonical-workbench-ui-selection-react-result.png" alt="The React workbench shows the application-owned ordered plan view beside its candidate components and the SDK's selection and confidence." width="1600" height="1000" loading="lazy" />
 
 ## Register known candidates
 
@@ -75,7 +125,7 @@ This is different from [Generative UI](/docs/react/concept/components), where th
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="react/src/SelectionWorkbench.tsx">
+<hb-code-example header="react/src/SelectionWorkbench.tsx" moment="selection-result-1">
 
 ```tsx
 const selection = useUiDecision({

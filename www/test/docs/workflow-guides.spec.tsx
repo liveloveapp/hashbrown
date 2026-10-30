@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
@@ -39,16 +40,8 @@ test.each(SDKS)(
     }));
 
     for (const { demo, body } of pages) {
-      const id =
-        demo === 'persistence'
-          ? `canonical-workbench-message-history-${sdk}`
-          : ['interrupts', 'shared-state', 'activities', 'ui-kits'].includes(demo)
-            ? `canonical-workbench-${demo}-${sdk}`
-            : demo;
-      const media = body.indexOf(`<hb-docs-demo demo="${id}">`);
-
-      expect(media, demo).toBeGreaterThan(-1);
-      expect(media, demo).toBeLessThan(body.indexOf('\n## '));
+      const lesson = demo === 'persistence' ? 'message-history' : demo;
+      expectConceptFirstWorkbench(body, sdk, lesson);
     }
   },
 );
@@ -65,7 +58,7 @@ test.each(SDKS)(
     expect(body).toContain(file);
     expect(body).toContain('40 messages');
     expect(body).toContain('lastRunFinishReason');
-    expect(body).toContain('canonical-workbench-save-text-conversations-');
+    expect(body).toContain('<hb-workbench lesson="save-text-conversations">');
   },
 );
 

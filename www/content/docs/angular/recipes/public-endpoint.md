@@ -2,17 +2,57 @@
 title: 'Securing a Public Endpoint: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Verify identity, authorize a thread, and apply server policy before starting a streamed model response.'
+    content: 'Authenticate, authorize, validate, and admit requests before starting a server-controlled model stream.'
 ---
 
 # Securing a Public Endpoint
 
+A browser-visible model endpoint is an application entry point. Before it can spend tokens or read customer data, the server must establish identity, authorize the requested resource, validate bounded input, and apply admission policy. A valid model schema does not establish any of those permissions.
+
+Start with the working endpoint from the [Quickstart](/docs/angular/start/quick) and the policy boundary in [System instructions](/docs/angular/concept/system-instructions). This recipe adds the checks needed before exposing that endpoint to other users.
+
+Let’s make those checks explicit at the HTTP boundary. Keep credentials, trusted instructions, model selection, and output limits on the server; use the browser request only as untrusted input.
+
+<hb-diagram diagram="recipe-public-endpoint-gates"> </hb-diagram>
+
+## Put an application boundary around the stream
+
+The following Node server helper uses the public OpenAI adapter. It assumes the enclosing endpoint has already authenticated the session, checked the exact Origin for cookie-authenticated mutations, validated a bounded AG-UI text envelope, authorized the thread, and reserved admission capacity. It is the final provider step, not a complete HTTP handler.
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import type { RunAgentInput } from '@ag-ui/core';
+
+// Server module only. Call after identity, ownership, input, and admission checks.
+export function streamCheckedReply(input: RunAgentInput, signal: AbortSignal) {
+  const apiKey = process.env['OPENAI_API_KEY'];
+  const model = process.env['OPENAI_MODEL'];
+  if (!apiKey || !model) throw new Error('Missing server model configuration');
+  return HashbrownOpenAI.stream.text({
+    apiKey,
+    model,
+    input,
+    signal,
+    transformRequestOptions: (request) => ({
+      ...request,
+      max_output_tokens: 1024,
+    }),
+  });
+}
+```
+
+Before calling this helper, replace browser system/developer messages with server-owned instructions and reject unsupported tools, resume operations, and client forwarding options. TypeScript’s `RunAgentInput` annotation does not validate an HTTP body. Connect the request disconnect to `signal`, serialize the returned AG-UI events with backpressure, dispose the iterator, and release admission capacity in `finally`.
+
+Use the [checked application endpoint](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-app.ts) for the full ordering and [provider composition](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/thread-server.ts) for integration with a verified identity adapter and atomic repository. Those are example application modules, not package exports. Return ordinary HTTP errors before opening the stream; after headers are sent, use the protocol’s terminal error event and safe public diagnostics.
+
+## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
+
+<hb-workbench lesson="public-endpoint">
+</hb-workbench>
+
 Who can start a reply? Let's make that boundary visible. We'll reject an anonymous request, load our own thread through a local demo session, and stream a real reply. Then we'll try a thread owned by someone else.
-
-<hb-docs-demo demo="canonical-workbench-public-endpoint-angular">
-</hb-docs-demo>
-
-<img src="/video/docs/canonical-workbench-public-endpoint-angular-result.png" alt="The Angular workbench shows the authorized conversation beside captured access checks, including anonymous and foreign-owner denials." width="1600" height="1000" loading="lazy" />
 
 ## Follow one request
 
@@ -22,20 +62,20 @@ Who can start a reply? Let's make that boundary visible. We'll reject an anonymo
 4. Try the foreign thread. It returns **404**, just like an unknown thread, without calling the provider.
 5. Select the captured operation in the inspector to compare the statuses with the successful chat request.
 
-The recording uses real provider output. The sign-in action is a local demonstration integration, not a production identity verifier. Its HttpOnly session cookie contains an unpredictable server-issued token; owner identity comes from the server's session lookup.
+The replay uses real provider output. The sign-in action is a local demonstration integration, not a production identity verifier. Its HttpOnly session cookie contains an unpredictable server-issued token; owner identity comes from the server's session lookup.
 
 ## Put the checks before the provider
 
 The checked endpoint applies these rules in order:
 
-| Boundary | Application rule |
-| --- | --- |
-| Identity | Resolve the existing session through a trusted verifier. Anonymous requests return 401. |
-| Origin | Require the configured Origin on cookie-authenticated mutations. A different Origin returns 403. |
-| Input | Bound the JSON body and validate the run envelope and supported text format. |
-| Ownership | Read the thread through the verified owner. Unknown and foreign threads both return 404. |
-| Admission | Apply the application's run policy before opening a stream. A rejected run returns 429. |
-| Provider policy | Use server-owned instructions, model, credentials, and output limits. |
+| Boundary        | Application rule                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| Identity        | Resolve the existing session through a trusted verifier. Anonymous requests return 401.          |
+| Origin          | Require the configured Origin on cookie-authenticated mutations. A different Origin returns 403. |
+| Input           | Bound the JSON body and validate the run envelope and supported text format.                     |
+| Ownership       | Read the thread through the verified owner. Unknown and foreign threads both return 404.         |
+| Admission       | Apply the application's run policy before opening a stream. A rejected run returns 429.          |
+| Provider policy | Use server-owned instructions, model, credentials, and output limits.                            |
 
 Origin checks protect cookie-authenticated browser mutations from cross-site submission. They do not establish identity. A client-supplied owner ID, thread ID, system instruction, or model response is not permission to access a record.
 

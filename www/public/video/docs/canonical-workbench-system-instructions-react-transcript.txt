@@ -8,7 +8,7 @@ Mapped public policy.
 
 The next turn keeps this server policy. Prompts do not grant authorization.
 
-Replay retains the captured provider evidence without another request.
+Replay shows captured policy. No new requests.
 
 Back live. No application writes.
 

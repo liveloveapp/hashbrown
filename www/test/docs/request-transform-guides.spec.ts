@@ -1,3 +1,4 @@
+import { expectConceptFirstWorkbench } from './concept-first-workbench';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -12,21 +13,16 @@ const guide = (sdk: string) =>
   );
 
 test.each(['react', 'angular'])(
-  '%s transformation guide opens with its real canonical recording',
+  '%s transformation guide teaches before its inline workbench',
   (sdk) => {
     const body = guide(sdk);
 
-    const marker = `<hb-docs-demo demo="canonical-workbench-request-transformation-${sdk}">`;
-
-    expect(body.indexOf(marker)).toBeGreaterThan(-1);
-    expect(body.indexOf(marker)).toBeLessThan(body.indexOf('\n## '));
-    expect(body).toContain(
+    expectConceptFirstWorkbench(body, sdk, 'request-transformation');
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-request-transformation-${sdk}-result.png`,
     );
-    expect(body).toContain(`/${sdk}.html?lesson=request-transformation`);
-    expect(body).toContain('OPENAI_API_KEY');
-    expect(body).toContain('OPENAI_MODEL');
-    expect(body).toContain('npx nx workbench-serve www');
+    expect(body).toContain(`/docs/${sdk}/start/workbench#run-the-example`);
+    expect(body).not.toContain('npx nx workbench-serve www');
     expect(body).toContain('actual callback');
     expect(body).toContain('authorization');
     expect(body).toContain('reasoning.encrypted_content');
@@ -41,7 +37,7 @@ test.each(['react', 'angular'])(
     const body = guide(sdk);
     const excerpts = [
       ...body.matchAll(
-        /<hb-code-example header="(server\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="(server\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       ),
     ];
     const normalize = (value: string) =>

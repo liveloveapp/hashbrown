@@ -10,15 +10,13 @@ meta:
 <hb-docs-demo demo="canonical-workbench-threadplane-react">
 </hb-docs-demo>
 
-Let's give our plan a chat screen. We'll ask for two steps, read the response as it arrives, and make the second step shorter.
+A chat screen needs a transcript, a composer, and controls for an active response. Threadplane supplies those presentation pieces. Use it when you want a composed chat experience and want to keep model policy and credentials in your Hashbrown server.
+
+React uses Hashbrown’s `useChat` runtime and passes text and callbacks into Threadplane presentation components. The two integrations have different runtime and installation requirements. Follow the matching framework instructions below.
 
 Hashbrown owns the React conversation. Threadplane gives us the transcript, composer, and Send and Stop controls. If you're replacing an existing screen, start with the [migration checklist](/docs/react/migrations/threadplane).
 
-<img src="/video/docs/canonical-workbench-threadplane-react-result.png" alt="The React Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
-
-The recording uses the actual separately installed React consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
-
-This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
+<hb-diagram diagram="recipe-threadplane-react"> </hb-diagram>
 
 ## Before we start
 
@@ -173,6 +171,14 @@ No Threadplane server or extra browser endpoint is needed.
 Send **Create a two-step plan for a trusted UI demo.** You should see your message followed by a streaming assistant reply. Then send **Make the second step shorter. Keep the title and first step exactly the same.** The same `useChat` instance sends the first question and completed assistant reply with that follow-up. Enter sends; Shift+Enter adds a line. Accepted sends clear the draft and return focus to the composer.
 
 Select **Stop** during a response to cancel the active request. With the tested Hashbrown **0.8.0** client, the unfinished assistant reply is removed; completed turns stay in the conversation. If a request fails, the page displays an error; restore the connection and explicitly send again. There is no automatic message on page load or automatic retry in this component.
+
+## Explore it in the workbench
+
+<img src="/video/docs/canonical-workbench-threadplane-react-result.png" alt="The React Threadplane chat shows the two-step trusted UI plan and its shorter second step beside the captured requests, state and bottom timeline." width="1600" height="1000" loading="lazy" />
+
+The recording uses the actual separately installed React consumer, the Hashbrown OpenAI server adapter, and real provider output. The canonical workbench adds the request inspector and synchronized timeline around Threadplane's own chat controls. Footage runs at actual speed with reading pauses and no narration.
+
+This is a text conversation. The **JSON** view shows actual protocol events. It doesn't turn the reply into a typed plan or apply it to application state. **Replay** follows captured text and requests without sending another message.
 
 Follow the two turns in the workbench. **Text** shows the response as it arrives. **Requests** shows the actual `/api/chat` envelope, response, and decoded events. Inspect the second request: it includes the first user message, the completed assistant reply, and the follow-up.
 

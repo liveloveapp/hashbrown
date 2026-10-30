@@ -7,6 +7,14 @@ meta:
 
 # Native .NET mixed tools
 
+<hb-docs-demo demo="canonical-workbench-interrupts-angular">
+</hb-docs-demo>
+
+The teaser shows the workbench's client interrupt controls and explicit continuation. It does not demonstrate .NET native mixed tools, Microsoft Agent Framework approvals, or PostgreSQL session ownership. Those need the separate server configuration and verification below.
+
+<hb-diagram diagram="dotnet-agent-boundary">
+</hb-diagram>
+
 Use this opt-in recipe when one model response needs both browser tools and registered .NET functions. Microsoft Agent Framework (MAF) retains its native pending function state while Hashbrown executes browser tools. PostgreSQL owns each continuation and fences server dispatch across replicas and restarts.
 
 The [stateless .NET recipe](/docs/angular/platform/dotnet) remains available for separate browser/server model turns and application workflow confirmations. This native composition also supports genuine MAF `ApprovalRequiredAIFunction` requests through Hashbrown's generic interrupt controls. Application workflow confirmation and its checkpoint store remain a separate composition.
@@ -170,6 +178,9 @@ A live native interrupt can cause the current SDK to cancel browser calls co-emi
 
 ## What happens during a mixed turn
 
+<hb-diagram diagram="dotnet-native-mixed-turn">
+</hb-diagram>
+
 Keep the browser's normal Hashbrown tool declarations and full canonical conversation history. No browser implementation is registered for `lookupAirport`. The composed agent uses native invocable-function bypass plus public empty input/output history filters, so MAF retains pending work without appending a second transcript.
 
 For a mixed response without a protected approval, the first native stream exposes browser calls while deferred server descriptors remain private. Protected interrupts follow the decision flow above. After the browser supplies the exact outstanding results, MAF executes the stored server functions and continues. The journal captures genuine model-emitted descriptors and commits `Started` before entering a registered function. A browser-replayed server call cannot create invocation authority. Duplicate IDs, altered prefixes/arguments, conflicting configuration and unmatched results fail before new work.
@@ -228,3 +239,12 @@ Fresh initialization uses native schema 2. Stop, drain and establish quiescence 
 For cookie authentication, keep secure/HTTP-only cookies, API 401/403 behavior, same-origin deployment and application request-forgery validation. If cross-origin hosting is necessary, allowlist exact trusted HTTPS origins, configure credentialed requests and your cookie/CSRF policy together; never combine credentials with wildcard CORS. Test those application policies with the browser before deployment.
 
 The compiled documentation check is configured to compare identical framework C# blocks and build both provider/API choices with and without native approvals and recovery against the exact local package candidate. Its intended matrix retains the original eight native programs and adds eight approval programs; the separate stateless/application verifier retains its sixteen programs, for thirty-two compiler programs in total. Compilation results must be read from the current check output. Deterministic strict-provider tests establish protocol behavior; actual live provider and published-SDK qualification are recorded separately in the [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet).
+
+## Explore it in the workbench
+
+Open the workbench below. Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
+
+<hb-workbench-launcher lesson="interrupts">
+</hb-workbench-launcher>
+
+The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed local package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.
