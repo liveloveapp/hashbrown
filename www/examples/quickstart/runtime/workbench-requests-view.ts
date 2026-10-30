@@ -7,6 +7,7 @@ import {
   type WorkbenchTurnExchanges,
 } from './workbench-requests';
 import { workbenchActiveAxis } from './workbench-requests-axis';
+import { exchangeAtPlayhead } from './workbench-requests-follow';
 import { createWorkbenchRequestsTimeline } from './workbench-requests-timeline';
 
 /** What the Requests view renders on each store change. */
@@ -20,9 +21,11 @@ export interface WorkbenchRequestsViewInput {
   readonly endpoint?: string;
   /** The provenance label, such as "Live model". */
   readonly source: string;
+  /** The main timeline's flag text, so the overview strip reads the same. */
+  readonly flag: string;
 }
 
-/** The inspector's Requests tab: overview timeline, table and detail pane. */
+/** The inspector's Requests tab: overview timeline, picker, table and detail pane. */
 export interface WorkbenchRequestsView {
   /** The `.wb-inspection` container that wraps everything. */
   readonly element: HTMLElement;
@@ -94,6 +97,15 @@ function button(
   node.onclick = action;
   return node;
 }
+
+/** Sets an attribute, or removes it for `null`. */
+function setAria(node: Element, name: string, value: string | null): void {
+  if (value === null) node.removeAttribute(name);
+  else if (node.getAttribute(name) !== value) node.setAttribute(name, value);
+}
+
+const setRole = (node: Element, role: string | null) =>
+  setAria(node, 'role', role);
 
 const record = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -286,7 +298,7 @@ function detailTabsFor(exchange: WorkbenchExchange): readonly DetailTab[] {
     },
     { key: 'Tools', label: 'Tools', count: list(input?.['tools']).length },
     { key: 'State', label: 'State' },
-    { key: 'Raw request', label: 'Raw request' },
+    { key: 'Request', label: 'Request' },
     {
       key: 'Response',
       label: 'Response',
@@ -321,11 +333,14 @@ function heading(value: string): HTMLHeadingElement {
 
 /**
  * Creates the Requests view: an overview timeline over the whole run, a table
- * of request and tool exchanges grouped by turn, and, once a row is selected,
- * a detail pane with tabs that apply to that row. Selection, the open detail
- * tab and the selected response event live in this closure, so they survive
- * the shell's re-renders. While live, an HTTP error is selected automatically
- * unless the user has already picked a row.
+ * of request and tool exchanges grouped by turn, and a detail pane with tabs
+ * that apply to the selected row. The detail follows the playhead, showing the
+ * exchange under it, until the reader picks a row; the next cursor move that
+ * the view did not make resumes following. A narrow inspector hides the strip
+ * and the table and offers the rows from a header picker instead. Selection,
+ * the open detail tab and the selected response event live in this closure,
+ * so they survive the shell's re-renders. While live, an HTTP error is
+ * selected automatically unless the user has already picked a row.
  *
  * @param options - The instance id and the seek callback.
  * @returns The view element, `update` for each store change and `dispose`.
@@ -338,7 +353,15 @@ export function createWorkbenchRequestsView(
   let turns: readonly WorkbenchTurnExchanges[] = [];
   let exchanges: readonly WorkbenchExchange[] = [];
   let selectedId: string | null = null;
+  /** True once the reader picks a row; a cursor move not made here clears it. */
   let userSelected = false;
+  /** True after the reader closes the detail; picking or a cursor move reopens it. */
+  let closed = false;
+  /** The cursor at the last update; `undefined` before the first one. */
+  let lastCursor: number | null | undefined;
+  /** The index the view itself is seeking to, so that move keeps a pick. */
+  let ownSeek: number | undefined;
+  let pickerOpen = false;
   let autoSeen: ReadonlySet<string> = new Set();
   let detailTab: string | null = null;
   let selectedEvent: number | null = null;
@@ -355,6 +378,13 @@ export function createWorkbenchRequestsView(
   let groups: ReadonlyMap<number, Group> = new Map();
 
   const root = element('div', '', 'wb-inspection wb-requests');
+  /** Seeks for the view's own controls; the move does not end a pick. */
+  function seekHere(index: number) {
+    ownSeek = index;
+    seek(index);
+    // The store renders synchronously, so the update has already seen it.
+    ownSeek = undefined;
+  }
   const timeline = createWorkbenchRequestsTimeline({ seek });
   const empty = element(
     'p',
@@ -363,6 +393,13 @@ export function createWorkbenchRequestsView(
   );
   const body = element('div', '', 'wb-requests-body');
   const tableWrap = element('div', '', 'wb-requests-table-wrap');
+  tableWrap.id = `${instanceId}-request-list`;
+  const pickbar = element('div', '', 'wb-requests-pickbar');
+  const picker = button('', 'wb-requests-picker', () => setPicker(!pickerOpen));
+  picker.setAttribute('aria-haspopup', 'listbox');
+  picker.setAttribute('aria-expanded', 'false');
+  picker.setAttribute('aria-controls', tableWrap.id);
+  pickbar.append(picker);
   const table = element('table', '', 'wb-requests-table');
   const caption = element('caption', 'Requests and tool calls by turn');
   caption.className = 'wb-visually-hidden';
@@ -381,9 +418,6 @@ export function createWorkbenchRequestsView(
   const detail = element('section', '', 'wb-requests-detail');
   detail.setAttribute('aria-label', 'Request detail');
   const detailHead = element('div', '', 'wb-requests-detail-head');
-  const back = button('Back to requests', 'wb-requests-back', () => close());
-  back.setAttribute('aria-label', 'Back to requests');
-  back.dataset.focusKey = 'back';
   const tablist = element('div', '', 'wb-requests-tabs');
   tablist.setAttribute('role', 'tablist');
   tablist.setAttribute('aria-label', 'Request detail views');
@@ -391,14 +425,14 @@ export function createWorkbenchRequestsView(
   closeButton.setAttribute('aria-label', 'Close request detail');
   closeButton.title = 'Close request detail';
   closeButton.dataset.focusKey = 'close';
-  detailHead.append(back, tablist, closeButton);
+  detailHead.append(tablist, closeButton);
   const panel = element('div', '', 'wb-requests-panel');
   panel.id = `${instanceId}-request-detail`;
   panel.setAttribute('role', 'tabpanel');
   const detailTabs = createWorkbenchTabs(tablist, panel);
   detail.append(detailHead, panel);
   body.append(tableWrap);
-  root.append(timeline.element, empty, body);
+  root.append(timeline.element, empty, pickbar, body);
 
   const find = (id: string | null) =>
     exchanges.find((exchange) => exchange.id === id);
@@ -412,27 +446,72 @@ export function createWorkbenchRequestsView(
     if (!exchange) return;
     selectedId = id;
     userSelected = true;
+    closed = false;
     rovingId = id;
     selectedEvent = null;
-    seek(exchange.firstIndex);
+    seekHere(exchange.firstIndex);
     draw();
-    // A narrow inspector replaces the table with the detail; follow it there.
-    if (getComputedStyle(tableWrap).display === 'none') back.focus();
   }
 
+  /** A row pick: selects it and, from the picker, closes the list. */
+  function pick(id: string) {
+    const fromPicker = pickerOpen;
+    if (fromPicker) pickerOpen = false;
+    select(id);
+    if (fromPicker) picker.focus();
+  }
+
+  /** Opens or closes the list; closing returns focus to the picker unless `refocus` is false. */
+  function setPicker(open: boolean, refocus = true) {
+    pickerOpen = open;
+    draw();
+    const focusId = find(selectedId) ? selectedId : rovingId;
+    if (!open) {
+      if (refocus) picker.focus();
+    } else if (focusId !== null) rows.get(focusId)?.button.focus();
+  }
+
+  const inPicker = (node: unknown) =>
+    node instanceof Node &&
+    (pickbar.contains(node) || tableWrap.contains(node));
+  /** Closes an open list when the reader presses anywhere outside it. */
+  function onPointerDown(event: Event) {
+    if (pickerOpen && !inPicker(event.target)) setPicker(false, false);
+  }
+  /** Closes an open list once focus has settled outside it. */
+  function onFocusOut(event: FocusEvent) {
+    if (!pickerOpen || inPicker(event.relatedTarget)) return;
+    // A rebuild can drop focus for a moment; check where it lands.
+    queueMicrotask(() => {
+      if (pickerOpen && !inPicker(root.ownerDocument.activeElement))
+        setPicker(false, false);
+    });
+  }
+  root.ownerDocument.addEventListener('pointerdown', onPointerDown);
+  pickbar.addEventListener('focusout', onFocusOut);
+  tableWrap.addEventListener('focusout', onFocusOut);
+
   function close() {
-    const id = selectedId;
-    if (id === null) return;
+    const id = selectedId ?? rovingId ?? exchanges[0]?.id ?? null;
     selectedId = null;
     userSelected = false;
+    closed = true;
     selectedEvent = null;
     rovingId = id;
     draw();
-    rows.get(id)?.button.focus();
+    if (id !== null) rows.get(id)?.button.focus();
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape' || selectedId === null) return;
+    if (event.key !== 'Escape') return;
+    if (pickerOpen) {
+      event.preventDefault();
+      setPicker(false);
+      return;
+    }
+    // A narrow inspector has no close control: the detail is all it shows.
+    if (!detailShown() || getComputedStyle(closeButton).display === 'none')
+      return;
     event.preventDefault();
     close();
   }
@@ -441,6 +520,12 @@ export function createWorkbenchRequestsView(
   table.addEventListener('keydown', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement) || !target.dataset.exchange) return;
+    if (event.key === 'Enter' && pickerOpen) {
+      // Claim Enter so the button's own click does not pick a second time.
+      event.preventDefault();
+      pick(target.dataset.exchange);
+      return;
+    }
     const order = exchanges.map((exchange) => exchange.id);
     const at = order.indexOf(target.dataset.exchange);
     const next =
@@ -472,7 +557,7 @@ export function createWorkbenchRequestsView(
     const tr = element('tr');
     tr.dataset.exchange = exchange.id;
     const name = element('td', '', 'wb-requests-name');
-    const rowButton = button(exchange.name, '', () => select(exchange.id));
+    const rowButton = button(exchange.name, '', () => pick(exchange.id));
     rowButton.dataset.exchange = exchange.id;
     rowButton.addEventListener('focus', () => {
       rovingId = exchange.id;
@@ -498,6 +583,15 @@ export function createWorkbenchRequestsView(
     track.append(bar);
     fall.append(track);
     tr.append(name, typeCell, status, start, duration, count, fall);
+    // The whole row picks; the button stays its one focusable control.
+    tr.addEventListener('click', (event) => {
+      if (event.target instanceof Node && rowButton.contains(event.target))
+        return;
+      const fromPicker = pickerOpen;
+      pick(exchange.id);
+      // A picker pick returns focus to the picker; a table pick keeps it on the row.
+      if (!fromPicker) rowButton.focus();
+    });
     return {
       tr,
       button: rowButton,
@@ -536,6 +630,17 @@ export function createWorkbenchRequestsView(
       group.heading.textContent = userText
         ? `Turn ${turn} · ${truncate(userText.replace(/\s+/g, ' '), 60)}`
         : `Turn ${turn}`;
+      setRole(group.tbody, pickerOpen ? 'group' : null);
+      setAria(
+        group.tbody,
+        'aria-label',
+        pickerOpen ? group.heading.textContent : null,
+      );
+      setRole(group.heading, pickerOpen ? 'presentation' : null);
+      setRole(
+        group.tbody.firstElementChild as Element,
+        pickerOpen ? 'presentation' : null,
+      );
       nextGroups.set(turn, group);
       const turnRows = turnExchanges.map((exchange) => {
         const row = rows.get(exchange.id) ?? createRow(exchange);
@@ -551,7 +656,7 @@ export function createWorkbenchRequestsView(
           cursor !== null && exchange.firstIndex > at,
         );
         row.button.textContent = exchange.name;
-        row.button.setAttribute('aria-pressed', String(selected));
+        listRoles(row, selected);
         row.compact.textContent = statusText;
         row.compact.dataset.tone = tone;
         row.type.textContent = typeOf(exchange);
@@ -588,9 +693,60 @@ export function createWorkbenchRequestsView(
         ...[...nextGroups.values()].map((group) => group.tbody),
       ]),
     );
-    table.toggleAttribute('data-narrow', selectedId !== null);
+    table.toggleAttribute('data-narrow', detailShown());
+    setRole(tableWrap, pickerOpen ? 'listbox' : null);
+    setAria(tableWrap, 'aria-label', pickerOpen ? 'Requests' : null);
+    setRole(table, pickerOpen ? 'presentation' : null);
+    head.hidden = pickerOpen;
     syncRoving();
   }
+
+  /**
+   * Row semantics: a table row with a pressed button, or, while the picker is
+   * open, a listbox option (the button) inside presentational cells.
+   */
+  function listRoles(row: Row, selected: boolean) {
+    setRole(row.tr, pickerOpen ? 'presentation' : null);
+    [...row.tr.children].forEach((cell) =>
+      setRole(cell, pickerOpen ? 'presentation' : null),
+    );
+    setRole(row.button, pickerOpen ? 'option' : null);
+    setAria(row.button, 'aria-selected', pickerOpen ? String(selected) : null);
+    setAria(row.button, 'aria-pressed', pickerOpen ? null : String(selected));
+  }
+
+  function drawPicker() {
+    const exchange = find(selectedId);
+    const chevron = element('span', '▾', 'wb-requests-picker-chevron');
+    chevron.setAttribute('aria-hidden', 'true');
+    const status = exchange ? statusOf(exchange) : undefined;
+    const parts = [
+      element(
+        'span',
+        exchange
+          ? `${exchange.name} · Turn ${exchange.turn}`
+          : 'No request yet',
+        'wb-requests-picker-name',
+      ),
+      ...(exchange && status
+        ? [
+            toned(status.text, status.tone),
+            element('span', ms(exchange.endMs - exchange.startMs), 'wb-num'),
+          ]
+        : []),
+    ];
+    const label = JSON.stringify(parts.map((part) => part.textContent));
+    // Rebuild only on change, so a screen reader is not told it changed.
+    if (picker.dataset.label !== label) {
+      picker.dataset.label = label;
+      picker.replaceChildren(...parts, chevron);
+    }
+    picker.setAttribute('aria-expanded', String(pickerOpen));
+    pickbar.hidden = exchanges.length === 0;
+  }
+
+  /** The detail shows unless the reader closed it or nothing was captured. */
+  const detailShown = () => !closed && exchanges.length > 0;
 
   function overviewBody(
     exchange: WorkbenchExchange,
@@ -737,7 +893,7 @@ export function createWorkbenchRequestsView(
       item.toggleAttribute('data-future', cursor !== null && index > at);
       const row = button('', '', () => {
         selectedEvent = index;
-        seek(index);
+        seekHere(index);
         draw();
       });
       row.dataset.eventIndex = String(index);
@@ -829,7 +985,7 @@ export function createWorkbenchRequestsView(
         code(requestInput?.['context'] ?? null),
       ];
     }
-    if (tab === 'Raw request') {
+    if (tab === 'Request') {
       const copy = button('Copy', 'wb-requests-copy', () => {
         try {
           navigator.clipboard
@@ -839,7 +995,7 @@ export function createWorkbenchRequestsView(
           // Copy is a convenience; without clipboard access it does nothing.
         }
       });
-      copy.setAttribute('aria-label', 'Copy raw request');
+      copy.setAttribute('aria-label', 'Copy request');
       copy.dataset.focusKey = 'copy';
       const bar = element('div', '', 'wb-requests-toolbar');
       bar.append(element('span', 'As captured', 'wb-muted'), copy);
@@ -850,12 +1006,25 @@ export function createWorkbenchRequestsView(
   }
 
   function drawDetail(input: WorkbenchRequestsViewInput) {
-    const exchange = find(selectedId);
-    if (!exchange) {
+    if (!detailShown()) {
       detail.remove();
       delete detail.dataset.detail;
       tabsKey = '';
       panelKey = '';
+      return;
+    }
+    detail.dataset.detail = '';
+    if (!detail.isConnected) body.append(detail);
+    const exchange = find(selectedId);
+    if (!exchange) {
+      // The playhead is before the first request.
+      if (tabsKey === 'none') return;
+      tablist.replaceChildren();
+      tabCounts = new Map();
+      panel.removeAttribute('aria-labelledby');
+      panel.replaceChildren(element('p', 'No request yet', 'wb-muted'));
+      tabsKey = 'none';
+      panelKey = 'none';
       return;
     }
     const tabs = detailTabsFor(exchange);
@@ -863,8 +1032,6 @@ export function createWorkbenchRequestsView(
       ? (detailTab as string)
       : tabs[0].key;
     detailTab = active;
-    detail.dataset.detail = '';
-    if (!detail.isConnected) body.append(detail);
     const nextTabsKey = JSON.stringify([
       exchange.id,
       tabs.map((tab) => tab.key),
@@ -958,29 +1125,24 @@ export function createWorkbenchRequestsView(
     const axis = workbenchActiveAxis(events);
     const at = cursor ?? events.length - 1;
     const atEvent = events[at];
-    const current = atEvent
-      ? exchanges
-          .filter(
-            (exchange) =>
-              exchange.turn === atEvent.turn && exchange.firstIndex <= at,
-          )
-          .at(-1)
-      : undefined;
+    const current = atEvent ? exchangeAtPlayhead(exchanges, events, at) : null;
     timeline.update({
       events,
       cursor,
       busy: input.busy,
       axis,
       exchanges,
-      flag: current?.name ?? '',
+      flag: input.flag,
       valueText: atEvent
         ? `Event ${at + 1} of ${events.length}, turn ${atEvent.turn}: ${current ? `${current.name} · ` : ''}${eventBadge(atEvent)}`
         : 'No captured events',
     });
     empty.hidden = exchanges.length > 0;
     body.hidden = exchanges.length === 0;
-    root.toggleAttribute('data-open', selectedId !== null);
+    root.toggleAttribute('data-open', detailShown());
+    root.toggleAttribute('data-picking', pickerOpen);
     drawTable(events, cursor, current?.id, axis.percentAt);
+    drawPicker();
     drawDetail(input);
   }
 
@@ -995,6 +1157,8 @@ export function createWorkbenchRequestsView(
         autoSeen = new Set();
         selectedId = null;
         userSelected = false;
+        closed = false;
+        pickerOpen = false;
         selectedEvent = null;
         detailTab = null;
         tabsKey = '';
@@ -1013,13 +1177,32 @@ export function createWorkbenchRequestsView(
         userSelected = false;
         selectedEvent = null;
       }
-      if (input.snapshot.cursor === null && !userSelected) {
+      const { cursor } = input.snapshot;
+      // A scrub, play, step or key press resumes following; the view's own
+      // seeks (a row pick, a response event) do not.
+      if (cursor !== lastCursor) {
+        // A closed detail stays closed; only a pick, a new run or a live
+        // HTTP error opens it again.
+        if (lastCursor !== undefined && cursor !== ownSeek)
+          userSelected = false;
+        lastCursor = cursor;
+      }
+      if (!userSelected && !closed) {
+        const at = cursor ?? events.length - 1;
+        const followed = exchangeAtPlayhead(exchanges, events, at)?.id ?? null;
+        if (followed !== selectedId) {
+          selectedId = followed;
+          selectedEvent = null;
+        }
+      }
+      if (cursor === null && !userSelected) {
         const failures = exchanges.filter(
           (exchange) => isHttpError(exchange) && !autoSeen.has(exchange.id),
         );
         const failure = failures.at(-1);
         if (failure) {
           selectedId = failure.id;
+          closed = false;
           selectedEvent = null;
           autoSeen = new Set([...autoSeen, ...failures.map(({ id }) => id)]);
         }
@@ -1028,6 +1211,7 @@ export function createWorkbenchRequestsView(
     },
     dispose: () => {
       root.removeEventListener('keydown', onKeydown);
+      root.ownerDocument.removeEventListener('pointerdown', onPointerDown);
       timeline.dispose();
       detailTabs.dispose();
     },

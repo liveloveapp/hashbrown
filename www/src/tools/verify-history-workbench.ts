@@ -1,3 +1,4 @@
+import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { assertWorkbenchSavedTextInspection } from './workbench-history-inspection';
 import type { RunAgentInput } from '@ag-ui/core';
@@ -82,7 +83,10 @@ export async function verifyHistoryWorkbench(options: {
       root.getByRole('button', { name, exact: true });
     const send = root.locator('[data-send]');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const observed = async () => {
       await tab('History');
@@ -118,12 +122,8 @@ export async function verifyHistoryWorkbench(options: {
       await tab('Saved text');
       const bytes = (await storage())[slot === 'Lighthouse' ? 0 : 1];
       assertWorkbenchSavedTextInspection(
-        JSON.parse(
-          await root.locator('.wb-inspector .wb-inspection pre').innerText(),
-        ),
-        JSON.parse(
-          await root.locator('.wb-inspector [data-detail] pre').innerText(),
-        ),
+        await readInspectorJson(root, 'top'),
+        await readInspectorJson(root, 'bottom'),
         { slot, encoded: bytes, action, canSave, successfulGeneration },
       );
     };

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
@@ -153,7 +154,7 @@ function pointer(target: EventTarget, type: string, clientX: number) {
   );
 }
 
-test('renders the overview, a turn-grouped table and no selection', () => {
+test('renders the overview, a turn-grouped table and follows the latest request', () => {
   const { host, store, shell } = mountRequests();
 
   recordToolTurn(store);
@@ -174,7 +175,12 @@ test('renders the overview, a turn-grouped table and no selection', () => {
   expect(
     host.querySelector('[role=slider][aria-label="Seek request timeline"]'),
   ).not.toBeNull();
-  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelector(
+      '.wb-requests-table tr[aria-selected=true] button[data-exchange]',
+    )?.textContent,
+  ).toBe('Continuation');
+  expect(host.querySelector('[data-detail]')).not.toBeNull();
   expect(
     host.querySelector('.wb-inspector .wb-inspection')?.textContent,
   ).toContain('Model request');
@@ -203,7 +209,7 @@ test('selecting a row seeks, narrows the table and opens request tabs', () => {
     'Messages 2',
     'Tools 1',
     'State',
-    'Raw request',
+    'Request',
     'Response 5',
   ]);
   expect(host.querySelector('[data-detail]')).not.toBeNull();
@@ -249,9 +255,17 @@ test("auto-selects a live HTTP error but never replaces a user's selection", () 
   recordDeniedTurn(store, 'Second');
   const auto = selectedName();
   const autoTurn = auto?.closest('tbody')?.getAttribute('data-turn');
+  // While loading the store ignores seeks, so the pick leaves the cursor live.
+  store.send('Third');
+  store.record('request', requestPayload('denied-Third'));
   rowButton(host, 'readContext').click();
-  store.live();
-  recordDeniedTurn(store, 'Third');
+  store.record('response', {
+    status: 403,
+    url,
+    source: 'demo-failure',
+    problem: 'Demo denial is enabled',
+  });
+  store.settle('error');
 
   expect(auto?.textContent).toBe('Model request');
   expect(autoTurn).toBe('2');
@@ -390,7 +404,7 @@ test('Response lists events and seeks on click', () => {
   shell.dispose();
 });
 
-test('Raw request highlights the captured payload and copies it', async () => {
+test('Request highlights the captured payload and copies it', async () => {
   const { host, store, shell } = mountRequests();
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', {
@@ -399,11 +413,9 @@ test('Raw request highlights the captured payload and copies it', async () => {
   });
   recordToolTurn(store);
   rowButton(host, 'Model request').click();
-  detailTab(host, 'Raw request').click();
+  detailTab(host, 'Request').click();
 
-  host
-    .querySelector<HTMLButtonElement>('[aria-label="Copy raw request"]')
-    ?.click();
+  host.querySelector<HTMLButtonElement>('[aria-label="Copy request"]')?.click();
 
   const block = host.querySelector('[data-detail] pre');
   expect(block?.querySelector('.wb-tok-key')).not.toBeNull();
@@ -520,10 +532,12 @@ test('drops a user selection when the conversation is cleared', () => {
   recordToolTurn(store);
   inspectorTab('Requests');
 
-  expect(host.querySelector('[data-detail]')).toBeNull();
-  expect(
-    host.querySelectorAll('.wb-requests-table tr[aria-selected=true]'),
-  ).toHaveLength(0);
+  const selected = [
+    ...host.querySelectorAll(
+      '.wb-requests-table tr[aria-selected=true] button[data-exchange]',
+    ),
+  ].map((node) => node.textContent);
+  expect(selected).toEqual(['Continuation']);
   shell.dispose();
 });
 
@@ -624,10 +638,10 @@ test('keeps the tab buttons and a static panel in place while the selected reque
   store.record('request', requestPayload('r1'));
   store.record('response', { status: 200, url, source: 'provider' });
   rowButton(host, 'Model request').click();
-  detailTab(host, 'Raw request').click();
+  detailTab(host, 'Request').click();
   const tabsBefore = detailTabs(host);
   const rawBefore = host.querySelector('[data-detail] pre');
-  const copyBefore = host.querySelector('[aria-label="Copy raw request"]');
+  const copyBefore = host.querySelector('[aria-label="Copy request"]');
 
   store.record('event', { type: 'RUN_STARTED' });
   store.record('event', {
@@ -638,13 +652,9 @@ test('keeps the tab buttons and a static panel in place while the selected reque
 
   expect(detailTabs(host)).toEqual(tabsBefore);
   expect(host.querySelector('[data-detail] pre')).toBe(rawBefore);
-  expect(host.querySelector('[aria-label="Copy raw request"]')).toBe(
-    copyBefore,
-  );
+  expect(host.querySelector('[aria-label="Copy request"]')).toBe(copyBefore);
   expect(detailTab(host, 'Response').textContent).toBe('Response 3');
-  expect(detailTab(host, 'Raw request').getAttribute('aria-selected')).toBe(
-    'true',
-  );
+  expect(detailTab(host, 'Request').getAttribute('aria-selected')).toBe('true');
   shell.dispose();
 });
 
@@ -726,5 +736,368 @@ test('automatically roves request detail tabs across rebuilt tab buttons without
     detailTab(host, 'Overview'),
   ]);
   expect(store.getSnapshot()).toBe(snapshot);
+  shell.dispose();
+});
+
+function turnRow(host: HTMLElement, turn: number, name: string) {
+  const found = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      `.wb-requests-table tbody[data-turn="${turn}"] button[data-exchange]`,
+    ),
+  ].find((node) => node.textContent === name);
+  if (!found) throw new Error(`Missing ${name} row in turn ${turn}`);
+  return found;
+}
+
+function selectedRow(host: HTMLElement) {
+  const row = host.querySelector<HTMLElement>(
+    '.wb-requests-table tr[aria-selected=true]',
+  );
+  return {
+    name: row?.querySelector('button[data-exchange]')?.textContent,
+    turn: row?.closest('tbody')?.getAttribute('data-turn'),
+  };
+}
+
+function turnRequestIndex(store: Store, turn: number) {
+  return store
+    .getSnapshot()
+    .events.findIndex(
+      (event) => event.turn === turn && event.kind === 'request',
+    );
+}
+
+test('follows the playhead into the Turn 2 model request', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  recordToolTurn(store);
+
+  store.seek(turnRequestIndex(store, 2));
+
+  expect(selectedRow(host)).toEqual({ name: 'Model request', turn: '2' });
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'Sent: 2 messages',
+  );
+  shell.dispose();
+});
+
+test('a picked row holds the detail until the playhead moves, then it follows again', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  recordToolTurn(store);
+  store.seek(turnRequestIndex(store, 2) + 2);
+
+  turnRow(host, 1, 'readContext').click();
+  const picked = selectedRow(host);
+  store.seek(turnRequestIndex(store, 2) + 1);
+
+  expect(picked).toEqual({ name: 'readContext', turn: '1' });
+  expect(selectedRow(host)).toEqual({ name: 'Model request', turn: '2' });
+  shell.dispose();
+});
+
+test('shows No request yet while the playhead is before the first request', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+
+  store.seek(0);
+
+  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+    'No request yet',
+  );
+  expect(
+    host.querySelectorAll('.wb-requests-table tr[aria-selected=true]'),
+  ).toHaveLength(0);
+  shell.dispose();
+});
+
+test('has no Back to requests button and names the request tab Request', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+
+  rowButton(host, 'Model request').click();
+
+  const buttons = [...host.querySelectorAll('button')].map(
+    (node) => node.textContent,
+  );
+  expect(buttons).not.toContain('Back to requests');
+  expect(host.querySelector('.wb-requests-back')).toBeNull();
+  expect(detailTab(host, 'Request').textContent).toBe('Request');
+  shell.dispose();
+});
+
+test('the picker opens the requests as a listbox and Enter picks a row', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  const closedText = picker.textContent;
+
+  picker.click();
+  const listbox = host.querySelector<HTMLElement>(
+    '.wb-requests [role=listbox]',
+  );
+  const options = [
+    ...(listbox?.querySelectorAll<HTMLElement>('[role=option]') ?? []),
+  ];
+  const expanded = picker.getAttribute('aria-expanded');
+  const enter = press(options[0], 'Enter');
+
+  expect(closedText).toContain('Continuation · Turn 1');
+  expect(closedText).toContain('200');
+  expect(closedText).toMatch(/\d+ ms/);
+  expect(expanded).toBe('true');
+  expect(options.map((option) => option.textContent)).toEqual([
+    expect.stringContaining('Model request'),
+    expect.stringContaining('readContext'),
+    expect.stringContaining('Continuation'),
+  ]);
+  expect(enter.defaultPrevented).toBe(true);
+  expect(selectedRow(host)).toEqual({ name: 'Model request', turn: '1' });
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('.wb-requests [role=listbox]')).toBeNull();
+  expect(picker.textContent).toContain('Model request · Turn 1');
+  expect(document.activeElement).toBe(picker);
+  shell.dispose();
+});
+
+test('the picker marks current and future rows and Escape closes it', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  store.seek(turnRequestIndex(store, 1));
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const rows = [
+    ...host.querySelectorAll<HTMLElement>('[role=listbox] tr[data-exchange]'),
+  ];
+  const marks = rows.map((row) => [
+    row.hasAttribute('data-current'),
+    row.hasAttribute('data-future'),
+  ]);
+  const option = host.querySelector<HTMLElement>(
+    '[role=option]',
+  ) as HTMLElement;
+  option.focus();
+
+  const escape = press(option, 'Escape');
+
+  expect(marks).toEqual([
+    [true, false],
+    [false, true],
+    [false, true],
+  ]);
+  expect(escape.defaultPrevented).toBe(true);
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(document.activeElement).toBe(picker);
+  expect(host.querySelector('[data-detail]')).not.toBeNull();
+  shell.dispose();
+});
+
+test('the strip flag reads the same as the main timeline flag', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const flags = () => [
+    host.querySelector('.wb-requests-flag')?.textContent,
+    host.querySelector('.wb-flag')?.textContent,
+  ];
+
+  store.seek(turnRequestIndex(store, 1));
+  const atRequest = flags();
+  store.seek(store.getSnapshot().events.length - 2);
+  const nearEnd = flags();
+
+  expect(atRequest[0]).toBe(atRequest[1]);
+  expect(atRequest[0]).not.toBe('');
+  expect(nearEnd[0]).toBe(nearEnd[1]);
+  shell.dispose();
+});
+
+test('a replay overview never falls back to a live source label', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const post = vi
+    .spyOn(window, 'postMessage')
+    .mockImplementation(() => undefined);
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: {
+        id: 'tools',
+        title: 'Tools',
+        format: 'ui',
+        inspector: 'Requests',
+        endpoint: '/api/workbench/tools',
+      },
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: createWorkbenchLayoutStore(fakeStorage()), embed: 'replay' },
+  );
+  const recorded = createWorkbenchStore();
+  recorded.send('Plan');
+  recorded.record('request', requestPayload('r1'));
+  recorded.record('response', { status: 500, url, problem: 'Server error' });
+  recorded.settle('error');
+  const capture = {
+    ...createWorkbenchCapture(recorded.getSnapshot(), {
+      lesson: 'tools',
+      framework: 'react',
+      recordedAt: '2026-10-28T00:00:00.000Z',
+    }),
+    commit: '0123456789abcdef',
+  };
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: { type: 'hb-workbench:load', version: 1, capture },
+      origin: 'https://hashbrown.dev',
+      source: window,
+    }),
+  );
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: { type: 'hb-workbench:seek', version: 1, milestone: 'request-1' },
+      origin: 'https://hashbrown.dev',
+      source: window,
+    }),
+  );
+
+  const detail = host.querySelector('[data-detail]')?.textContent ?? '';
+  expect(store.getSnapshot().readOnly).toBe(true);
+  expect(detail).toContain('Server error');
+  expect(detail).not.toContain('Source');
+  expect(detail).not.toContain('Awaiting source');
+  expect(detail).not.toContain('Live model');
+  shell.dispose();
+  host.remove();
+  post.mockRestore();
+});
+
+test('clicking any cell of a request row selects it', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const firstRequest = store
+    .getSnapshot()
+    .events.findIndex((event) => event.kind === 'request');
+  const row = rowButton(host, 'Model request').closest('tr') as HTMLElement;
+
+  row.querySelector<HTMLElement>('td.wb-requests-status')?.click();
+
+  expect(selectedRow(host)).toEqual({ name: 'Model request', turn: '1' });
+  expect(store.getSnapshot().cursor).toBe(firstRequest);
+  expect(row.querySelectorAll('button, [tabindex="0"]')).toHaveLength(1);
+  shell.dispose();
+});
+
+test('clicking the duration of a picker row picks it and closes the list', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const row = [
+    ...host.querySelectorAll<HTMLElement>('[role=listbox] tr[data-exchange]'),
+  ].find((node) => node.textContent?.includes('readContext')) as HTMLElement;
+
+  (row.querySelectorAll<HTMLElement>('td.wb-num')[1] as HTMLElement).click();
+
+  expect(selectedRow(host).name).toBe('readContext');
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(document.activeElement).toBe(picker);
+  shell.dispose();
+});
+
+test('a closed detail stays closed while the playhead moves', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  rowButton(host, 'Model request').click();
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Close request detail"]')
+    ?.click();
+
+  store.seek(1);
+  store.seek(2);
+
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelector('.wb-requests-table')?.hasAttribute('data-narrow'),
+  ).toBe(false);
+  shell.dispose();
+});
+
+test('the close button and Escape close the detail before the first request', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  store.seek(0);
+  const closeButton = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Close request detail"]',
+  ) as HTMLButtonElement;
+
+  closeButton.click();
+  const afterClick = host.querySelector('[data-detail]');
+  rowButton(host, 'Model request').click();
+  store.seek(0);
+  const reopened = host.querySelector('[data-detail]');
+  const escape = press(
+    host.querySelector('[data-detail]') as HTMLElement,
+    'Escape',
+  );
+
+  expect(afterClick).toBeNull();
+  expect(reopened).not.toBeNull();
+  expect(escape.defaultPrevented).toBe(true);
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  shell.dispose();
+});
+
+test('the picker closes on a pointer press outside it', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const inside = host.querySelector('[role=option]') as HTMLElement;
+  inside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  const stillOpen = host.querySelector('[role=listbox]');
+
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+
+  expect(stillOpen).not.toBeNull();
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  shell.dispose();
+});
+
+test('the picker closes when focus leaves it', async () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const outside = document.createElement('button');
+  document.body.append(outside);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const option = host.querySelector('[role=option]') as HTMLElement;
+  option.focus();
+
+  outside.focus();
+  await Promise.resolve();
+
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(outside);
+  outside.remove();
   shell.dispose();
 });

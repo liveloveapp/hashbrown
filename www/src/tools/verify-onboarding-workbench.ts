@@ -1,4 +1,5 @@
 import { saveWorkbenchCapture } from './workbench-capture-file';
+import { expectInspectionText } from './verify-inspector-modes';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -80,11 +81,14 @@ export async function verifyOnboardingWorkbench(options: {
       exact: true,
     });
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const revision = async () => {
       await tab('State');
-      await expect(inspection).toContainText('"revision": 0');
+      await expectInspectionText(inspection, '"revision": 0');
     };
     const complete = async () => {
       await expect(status).toContainText('complete', { timeout: 90_000 });
@@ -136,7 +140,9 @@ export async function verifyOnboardingWorkbench(options: {
     expect(count()).toBe(0);
     expect(httpRequests).toBe(0);
     await expect(
-      root.getByRole('tab', { name: 'Markdown', exact: true }),
+      root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name: 'Markdown', exact: true }),
     ).toHaveCount(0);
     await expect(
       root.getByRole('button', { name: 'Accept plan', exact: true }),

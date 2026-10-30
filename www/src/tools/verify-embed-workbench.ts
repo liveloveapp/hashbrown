@@ -236,9 +236,10 @@ async function verifyEmbedCase(
     await expect(frame.locator('.wb:visible')).toHaveCount(1);
     await expect(frame.locator('.wb-lessons')).toHaveCount(0);
     await expect(frame.locator('.wb:visible .wb-composer')).toBeHidden();
+    // A replay names its recording by commit alone, or "Recorded" without one.
     await expect(
-      frame.locator('.wb:visible .wb-chat .wb-panel-head'),
-    ).toContainText('Recorded');
+      frame.locator('.wb:visible .wb-chat .wb-panel-head [role="status"]'),
+    ).toHaveText(/^(?:[0-9a-f]{7}|Recorded)$/);
     // A docs column is under the workbench's 800px phone breakpoint; the embed
     // must still fit the frame with the inspector beside the chat.
     await expect(frame.locator('.wb:visible .wb-playback')).toBeInViewport({

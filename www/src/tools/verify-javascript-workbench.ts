@@ -1,6 +1,7 @@
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
+import { readApplicationState } from './verify-inspector-modes';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -130,11 +131,14 @@ export async function verifyJavaScriptWorkbench(options: {
     const output = root.locator('[data-runtime-output]');
     const editor = root.locator('[data-runtime-code]');
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
     const status = root.locator('.wb-chat .wb-panel-head');
     await tab('State');
-    const originalState = await root.locator('.wb-inspection pre').innerText();
+    const originalState = await readApplicationState(root);
     const execute = async (
       preset: string,
       expected: RegExp,
@@ -172,7 +176,7 @@ export async function verifyJavaScriptWorkbench(options: {
     await hold();
     mark('recovered');
     await tab('State');
-    const initialState = await root.locator('.wb-inspection pre').innerText();
+    const initialState = await readApplicationState(root);
     expect(JSON.parse(initialState).revision).toBe(0);
     expect(initialState).toBe(originalState);
     await tab('Runtime');
@@ -195,9 +199,7 @@ export async function verifyJavaScriptWorkbench(options: {
       .getByRole('button', { name: 'Return to live', exact: true })
       .click();
     await tab('State');
-    expect(await root.locator('.wb-inspection pre').innerText()).toBe(
-      initialState,
-    );
+    expect(await readApplicationState(root)).toBe(initialState);
     expect(await seek.getAttribute('max')).toBe(eventCount);
     expect(
       await page.evaluate(

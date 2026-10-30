@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { readApplicationState } from './verify-inspector-modes';
 
 /** Exercises actual browser keyboard navigation without generating requests or applying state. */
 export async function verifyWorkbenchKeyboard(
@@ -103,7 +104,9 @@ export async function verifyWorkbenchKeyboard(
   ).toBeDisabled();
   await inspector.getByRole('tab', { name: 'State', exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(root.locator('.wb-inspection')).toContainText('"revision": 0');
+  await expect
+    .poll(() => readApplicationState(root))
+    .toContain('"revision": 0');
   await root.locator('.wb-inspector > [role=tabpanel]').focus();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowRight');

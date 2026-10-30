@@ -576,92 +576,70 @@ body {
   color: var(--wb-ink);
   font-weight: 600;
 }
-.wb-selection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--wb-line);
-  background: #fcfcfd;
-  color: var(--wb-muted);
-  font-size: 12px;
-}
-.wb-chip {
-  padding: 1px 6px;
-  border: 1px solid var(--wb-line);
-  border-radius: 6px;
-  background: var(--wb-panel);
-  color: var(--wb-ink);
-  font: 11px/1.6 var(--wb-mono-font);
-}
-.wb-chip-active {
-  border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
-  color: var(--wb-cobalt);
-}
-.wb-pair {
+.wb-mode-panel {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
 }
 .wb-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
-.wb-section + .wb-section {
-  border-top: 1px solid var(--wb-line);
-}
-@container (min-width: 560px) {
-  .wb-pair {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-rows: auto;
-    grid-template-rows: minmax(0, 1fr);
-  }
-  .wb-section + .wb-section {
-    border-top: 0;
-    border-left: 1px solid var(--wb-line);
-  }
-}
 .wb-section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 8px;
   padding: 12px 16px 8px;
 }
-/* A long heading wraps within its own column, so the sub-label and raw toggle stay on the first line. */
+/* The title stays on one line and truncates first, so the mode toggle keeps its natural width. */
 .wb .wb-section-head h3 {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
 }
-.wb-section-sub {
-  flex: 0 1 auto;
-  text-align: right;
+.wb-segmented {
+  flex: none;
+  flex-wrap: nowrap;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-code);
+}
+.wb .wb-segmented button {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wb-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.wb .wb-segmented button:hover:enabled {
+  color: var(--wb-ink);
+}
+.wb .wb-segmented [aria-checked='true'] {
+  background: var(--wb-panel);
+  box-shadow: 0 0 0 1px var(--wb-line);
+  color: var(--wb-ink);
+  font-weight: 600;
+}
+.wb-caption {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--wb-line);
   color: var(--wb-muted);
   font-size: 12px;
-}
-.wb .wb-raw {
-  flex: none;
-  white-space: nowrap;
-  min-height: 22px;
-  padding: 0 6px;
-  border-radius: 6px;
-  color: var(--wb-muted);
-  font: 11px/1.6 var(--wb-mono-font);
-}
-.wb .wb-raw::after {
-  content: ' raw';
-}
-.wb .wb-raw[aria-pressed='true'] {
-  border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
-  color: var(--wb-cobalt);
 }
 .wb-inspection {
   flex: 1;
@@ -717,11 +695,67 @@ body {
   max-height: none;
   overflow: visible;
 }
-.wb .wb-section[data-detail] > pre {
-  flex: 1;
-  min-height: 0;
-  margin: 0 16px 12px;
-  max-height: none;
+/* State tree (see workbench-tree.ts). */
+.wb-tree {
+  flex: 1 0 auto;
+  padding: 8px 0;
+  background: var(--wb-code);
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  font: 12px/1.6 var(--wb-mono-font);
+}
+.wb-tree [role='treeitem'] {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px 0 calc(12px + var(--wb-tree-depth, 0) * 16px);
+  color: var(--wb-ink);
+  cursor: default;
+}
+.wb-tree [role='treeitem'][aria-expanded] {
+  cursor: pointer;
+}
+.wb-tree [role='treeitem'][aria-expanded]::before {
+  content: '\25B8';
+  width: 10px;
+  flex: none;
+  color: var(--wb-muted);
+}
+.wb-tree [role='treeitem'][aria-expanded='true']::before {
+  content: '\25BE';
+}
+.wb-tree [role='treeitem']:not([aria-expanded])::before {
+  content: '';
+  width: 10px;
+  flex: none;
+}
+.wb-tree [role='treeitem']:hover {
+  background: var(--wb-hover);
+}
+.wb-tree [role='treeitem']:focus-visible {
+  outline: 2px solid var(--wb-cobalt);
+  outline-offset: -2px;
+}
+/* A light cobalt tint marks values that changed at this event; it settles a step lighter. */
+.wb-tree [role='treeitem'][data-changed] {
+  background: color-mix(in srgb, var(--wb-cobalt) 6%, transparent);
+  animation: wb-tree-changed 600ms ease-out;
+}
+@keyframes wb-tree-changed {
+  from {
+    background: color-mix(in srgb, var(--wb-cobalt) 14%, transparent);
+  }
+}
+.wb-tree-key {
+  flex: none;
+  color: var(--wb-tok-key);
+}
+.wb-tree-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wb-tok-string);
 }
 .wb-inspection [role='alert'] {
   padding: 8px 12px;
@@ -835,11 +869,12 @@ body {
 .wb-requests-playhead::before {
   content: '';
   position: absolute;
-  /* Centred on the strip so it clears the flag above and the axis below. */
-  top: calc(50% - 6px);
-  left: -5px;
-  width: 12px;
-  height: 12px;
+  /* Centred on the strip so it clears the flag above and the axis below, and on the 2px line (border-box: the 3px ring is inside the 16px). */
+  top: calc(50% - 8px);
+  left: -7px;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
   border: 3px solid var(--wb-cobalt);
   border-radius: 999px;
   background: #fff;
@@ -869,7 +904,11 @@ body {
 .wb-requests-flag:empty {
   display: none;
 }
+.wb-requests-pickbar {
+  display: none;
+}
 .wb-requests-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -939,6 +978,9 @@ body {
 }
 .wb .wb-requests-name button:hover {
   background: var(--wb-hover);
+}
+.wb-requests-table tr[data-exchange] {
+  cursor: pointer;
 }
 .wb-requests-table tr[data-kind='tool'] .wb-requests-name {
   padding-left: 32px;
@@ -1045,28 +1087,41 @@ body {
   padding: 0 8px;
   border-bottom: 1px solid var(--wb-line);
 }
+/* One segmented row that scrolls sideways rather than wrapping. */
 .wb-requests-tabs {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
+  margin: 6px 0;
+  padding: 2px;
+  overflow-x: auto;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-code);
+  scrollbar-width: thin;
+}
+.wb-requests-tabs:empty {
+  display: none;
 }
 .wb .wb-requests-tabs button {
-  min-height: 0;
-  padding: 8px 8px 6px;
+  flex: none;
+  min-height: 24px;
+  padding: 0 8px;
   border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--wb-muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 .wb .wb-requests-tabs button:hover {
   color: var(--wb-ink);
 }
 .wb .wb-requests-tabs [aria-selected='true'] {
-  border-bottom-color: var(--wb-cobalt);
+  background: var(--wb-panel);
+  box-shadow: 0 0 0 1px var(--wb-line);
   color: var(--wb-ink);
   font-weight: 600;
 }
@@ -1076,6 +1131,7 @@ body {
 }
 .wb .wb-requests-close {
   flex: none;
+  margin-left: auto;
   width: 28px;
   height: 28px;
   min-height: 0;
@@ -1085,13 +1141,34 @@ body {
   background: transparent;
   color: var(--wb-muted);
 }
-.wb .wb-requests-back {
-  display: none;
-  flex: none;
-  min-height: 28px;
-  padding: 2px 8px;
+/* The narrow header picker: the request in the detail, opening the list. */
+.wb .wb-requests-picker {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--wb-line);
   border-radius: 8px;
+  background: var(--wb-panel);
   font-size: 12px;
+  text-align: left;
+}
+.wb .wb-requests-picker:hover {
+  background: var(--wb-hover);
+}
+.wb-requests-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wb-requests-picker-chevron {
+  margin-left: auto;
+  color: var(--wb-muted);
 }
 .wb-requests-panel {
   flex: 1;
@@ -1227,8 +1304,19 @@ body {
   text-align: left;
   text-decoration: underline;
 }
-/* A narrow inspector keeps the overview, drops the timing columns and swaps the table for the detail. */
+/*
+ * A narrow inspector drops the overview strip (the main timeline scrubs) and
+ * shows the detail alone; the header picker opens the table as a list over it.
+ */
 @container wb-requests (max-width: 559px) {
+  .wb-requests-overview {
+    display: none;
+  }
+  .wb-requests-pickbar:not([hidden]) {
+    display: flex;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--wb-line);
+  }
   .wb-requests-table
     :is(th, td):is(:nth-child(4), :nth-child(6), :nth-child(7)) {
     display: none;
@@ -1239,12 +1327,20 @@ body {
   .wb-requests[data-open] .wb-requests-table-wrap {
     display: none;
   }
+  .wb-requests[data-open][data-picking] .wb-requests-table-wrap {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: block;
+    border-bottom: 1px solid var(--wb-line);
+    background: var(--wb-panel);
+    box-shadow: 0 8px 16px rgb(0 0 0 / 0.08);
+  }
+  .wb-requests[data-picking] .wb-requests-table[data-narrow] td:nth-child(5) {
+    display: table-cell;
+  }
   .wb-requests-detail {
     border-left: 0;
-  }
-  .wb .wb-requests-back {
-    display: inline-flex;
-    align-items: center;
   }
   .wb .wb-requests-close {
     display: none;
@@ -1676,11 +1772,7 @@ app-workflow-workbench-conversation[hidden] {
   .wb-chat {
     min-height: 440px;
   }
-  .wb-pair {
-    grid-auto-rows: auto;
-  }
-  .wb .wb-inspection > pre,
-  .wb .wb-section[data-detail] > pre {
+  .wb .wb-inspection > pre {
     max-height: 320px;
     overflow: auto;
   }
@@ -1751,11 +1843,15 @@ app-workflow-workbench-conversation[hidden] {
     outline-offset: -2px;
   }
   .wb .wb-requests-tabs [aria-selected='true'] {
-    border-bottom-color: Highlight;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wb-tree [role='treeitem'][data-changed] {
+    animation: none;
+  }
   .wb-layout,
   .wb *,
   .wb *::before {

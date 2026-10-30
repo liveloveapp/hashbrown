@@ -70,7 +70,15 @@ import {
 } from './workbench-capture';
 import { createWorkbenchSplit } from './workbench-split';
 import { attachWorkbenchScrub } from './workbench-scrub';
+import {
+  createInspectorModeMemory,
+  defaultInspectorMode,
+  workbenchInspectorModes,
+  workbenchStateTree,
+} from './workbench-inspector-modes';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
+import { createWorkbenchSegmented } from './workbench-segmented';
+import { createWorkbenchTree } from './workbench-tree';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -256,6 +264,41 @@ function pre(value: unknown, tab: string): HTMLPreElement {
     renderWorkbenchCode(source ?? 'Waiting for captured data', language),
   );
   return block;
+}
+
+function workbenchStateMoment(
+  frame: WorkbenchSnapshot['events'][number] | null | undefined,
+  snapshot: WorkbenchSnapshot,
+  format?: WorkbenchLesson['format'],
+) {
+  return {
+    turn: frame?.turn ?? snapshot.turn,
+    status: frame?.status ?? snapshot.status,
+    event: frame ? workbenchEventLabel(frame, format) : 'Ready',
+    source: frame?.source ?? 'Application',
+  };
+}
+
+/**
+ * Builds the State tree value for a frame: its application state (or the
+ * snapshot's when the frame has none) with the selected moment under `moment`.
+ * The current and previous frames use it, so the highlight diff compares like
+ * with like.
+ *
+ * @param frame - The frame to show, or none before the first event.
+ * @param snapshot - The snapshot supplying fallbacks.
+ * @param format - The lesson format, which names the moment's event.
+ * @returns The State tree value.
+ */
+export function workbenchStateTreeValue(
+  frame: WorkbenchSnapshot['events'][number] | null | undefined,
+  snapshot: WorkbenchSnapshot,
+  format?: WorkbenchLesson['format'],
+): Record<string, unknown> {
+  return workbenchStateTree(
+    frame?.application ?? snapshot.application,
+    workbenchStateMoment(frame, snapshot, format),
+  );
 }
 
 /** Names the captured teaching moment without hiding its original payload in Raw. */
@@ -673,12 +716,11 @@ export function mountWorkbench(
   const tabs = element('div', '', 'wb-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
-  const selection = element('div', '', 'wb-selection');
-  // One tab panel holds either the captured/detail pair or the Requests view.
+  // One tab panel holds either the single mode panel or the Requests view.
   const tabPanel = element('div', '', 'wb-tabpanel');
   tabPanel.id = `${instanceId}-inspection`;
   tabPanel.setAttribute('role', 'tabpanel');
-  const pair = element('div', '', 'wb-pair');
+  const pair = element('div', '', 'wb-mode-panel');
   tabPanel.append(pair);
   const requestsView = createWorkbenchRequestsView({
     instanceId,
@@ -692,22 +734,22 @@ export function mountWorkbench(
   const captured = element('section', '', 'wb-section');
   captured.dataset.captured = '';
   const capturedHeading = element('h3');
-  let rawFrame = false;
-  const rawFrameToggle = button('{ }', () => {
-    rawFrame = !rawFrame;
-    render();
+  const modeMemory = createInspectorModeMemory();
+  // Long-lived so branches the reader opened or closed survive re-renders and scrubbing.
+  const stateTree = createWorkbenchTree({ label: 'Application state' });
+  const modeControl = createWorkbenchSegmented({
+    label: 'Inspector view',
+    onChange: (id) => {
+      modeMemory.set(tab, id);
+      render();
+    },
   });
-  rawFrameToggle.className = 'wb-raw';
-  rawFrameToggle.setAttribute('aria-label', 'Show captured frame');
-  rawFrameToggle.setAttribute('aria-pressed', 'false');
-  const capturedSub = element('span', '', 'wb-section-sub');
   const capturedHeader = element('header', '', 'wb-section-head');
-  capturedHeader.append(capturedHeading, capturedSub, rawFrameToggle);
+  capturedHeader.append(capturedHeading, modeControl.element);
   const inspection = element('div', '', 'wb-inspection');
-  captured.append(capturedHeader, inspection);
-  const detail = element('section', '', 'wb-section');
-  detail.dataset.detail = '';
-  pair.append(captured, detail);
+  const caption = element('p', '', 'wb-caption');
+  captured.append(capturedHeader, inspection, caption);
+  pair.append(captured);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = (
     options.inspectorTabs ?? [
@@ -771,12 +813,7 @@ export function mountWorkbench(
   });
   tabs.append(...tabButtons);
   const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
-  inspector.append(
-    element('h2', 'Inspector', 'wb-panel-head'),
-    tabs,
-    selection,
-    tabPanel,
-  );
+  inspector.append(tabs, tabPanel);
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
   let rawEvents = false;
@@ -929,6 +966,8 @@ export function mountWorkbench(
       layoutStore.set({ rail: !layoutStore.get().rail });
       return;
     }
+    // A replay embed has no live run to return to.
+    if (shortcut === 'live' && embed === 'replay') return;
     const target = shortcutTargets[shortcut];
     if (target.disabled) return;
     event.preventDefault();
@@ -1002,7 +1041,7 @@ export function mountWorkbench(
       payload !== null && typeof payload === 'object' && 'source' in payload
         ? payload.source
         : undefined;
-    provenance.textContent =
+    const sourceLabel =
       commands.lesson?.id === 'local-models'
         ? 'Browser-local model'
         : commands.lesson?.id === 'javascript-runtime'
@@ -1018,6 +1057,9 @@ export function mountWorkbench(
                 : source === 'provider'
                   ? 'Live model'
                   : 'Awaiting source';
+    // A recording has no live source to name.
+    provenance.textContent = snapshot.readOnly ? '' : sourceLabel;
+    provenance.hidden = snapshot.readOnly;
     const historical = snapshot.cursor !== null;
     // A recording that ended mid-run keeps a captured 'loading' status.
     const busy =
@@ -1077,7 +1119,7 @@ export function mountWorkbench(
       ? 'Waiting for recording'
       : embed === 'replay'
         ? recordedCommit
-          ? `Recorded at ${recordedCommit.slice(0, 7)}`
+          ? recordedCommit.slice(0, 7)
           : 'Recorded'
         : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     if (status.textContent !== statusText) status.textContent = statusText;
@@ -1107,13 +1149,11 @@ export function mountWorkbench(
           const card = element('article', '', 'wb-summary');
           card.setAttribute('aria-label', 'Captured decision');
           card.append(
-            element('span', 'Closed choice · captured result', 'wb-muted'),
             element('h2', `Next action: ${message.decision.nextAction}`),
             element(
               'p',
               `Confidence: ${Math.round(message.decision.confidence * 100)}%`,
             ),
-            element('p', 'Replay is read-only.', 'wb-muted'),
           );
           replay.append(card);
           continue;
@@ -1125,19 +1165,10 @@ export function mountWorkbench(
         const props = message.props;
         if (!props) continue;
         const card = element('article', '', 'wb-summary');
-        card.append(
-          element(
-            'span',
-            commands.lesson?.format === 'structured'
-              ? 'Typed plan · captured preview'
-              : `${message.uiComponent ?? 'SummaryCard'} · captured preview`,
-            'wb-muted',
-          ),
-          element('h2', props.title ?? 'Waiting for title'),
-        );
+        card.append(element('h2', props.title ?? 'Waiting for title'));
         const steps = element('ol');
         for (const step of props.steps ?? []) steps.append(element('li', step));
-        card.append(steps, element('p', 'Replay is read-only.', 'wb-muted'));
+        card.append(steps);
         replay.append(card);
       }
     }
@@ -1368,7 +1399,7 @@ export function mountWorkbench(
             }
           : undefined
         : workbenchRecipeInspection(snapshot, commands.lesson?.format, tab));
-    capturedHeading.textContent =
+    const topHeading =
       recipeView?.heading ??
       (tab === 'Instructions'
         ? 'Browser declaration and effective provider policy'
@@ -1392,20 +1423,6 @@ export function mountWorkbench(
                     ? 'Application state'
                     : 'Requests and tools');
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
-    selection.replaceChildren(
-      element(
-        'span',
-        frame ? workbenchEventLabel(frame, commands.lesson?.format) : 'Live',
-        'wb-chip wb-chip-active',
-      ),
-      element(
-        'span',
-        frame
-          ? `Turn ${frame.turn} · ${frame.elapsedMs} ms · event ${selectedIndex + 1}/${snapshot.events.length}${historical ? '' : ' · live'}`
-          : `Turn ${snapshot.turn} · live`,
-      ),
-      element('span', provenance.textContent, 'wb-chip'),
-    );
     const requestContext =
       frame?.kind === 'request' ||
       frame?.kind === 'tool' ||
@@ -1538,131 +1555,165 @@ export function mountWorkbench(
                           kind: event.kind,
                           payload: event.payload,
                         }));
-    rawFrameToggle.setAttribute('aria-pressed', String(rawFrame));
-    // In raw mode the section heading names the frame, so the body needs no second heading.
-    if (rawFrame)
-      capturedHeading.textContent = frame
-        ? `${frame.kind} · ${frame.source}`
-        : 'No selected event';
-    capturedSub.textContent = rawFrame
-      ? 'captured frame'
-      : (frame?.status ?? snapshot.status) === 'loading'
-        ? 'streaming'
-        : 'captured';
+    const milestones = rawEvents
+      ? withWorkbenchMilestoneIds(
+          snapshot.events.map((event, index) => ({
+            index,
+            turn: event.turn,
+            label: workbenchEventLabel(event, commands.lesson?.format),
+          })),
+        )
+      : workbenchMilestones(snapshot.events, commands.lesson?.format);
+    const activeMilestone = milestones
+      .filter((item) => item.index <= selectedIndex)
+      .at(-1);
     if (onRequests)
       requestsView.update({
         snapshot,
         busy,
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
-        source: provenance.textContent ?? '',
+        source: snapshot.readOnly ? '' : sourceLabel,
+        flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
-    // The pair is off-screen on the Requests tab; skip highlighting it.
-    if (!onRequests)
-      rebuildKeepingFocus(inspection, 'data-sequence', () => {
-        inspection.replaceChildren();
-        if (rawFrame) {
-          inspection.append(
-            pre(
-              commands.lesson?.format === 'history'
-                ? {
-                    sdk: frame?.history?.sdk ?? null,
-                    event: {
-                      kind: frame?.kind,
-                      source: frame?.source,
-                      payload: frame?.payload,
-                    },
-                  }
-                : commands.lesson?.format === 'workflow'
-                  ? {
-                      sdk: frame?.workflow ?? null,
-                      event: {
-                        kind: frame?.kind,
-                        source: frame?.source,
-                        payload: frame?.payload,
-                      },
-                    }
-                  : tab === 'Transform' && transform
-                    ? transform
-                    : frame?.payload,
-              tab,
-            ),
-          );
-        } else {
-          inspection.append(pre(value, tab));
-        }
-      });
-    const detailHeader = element('header', '', 'wb-section-head');
-    detailHeader.append(
-      element(
-        'h3',
-        recipeView?.detailHeading ??
-          (tab === 'Transform'
-            ? 'Preserved mapped fields'
-            : tab === 'Schema'
-              ? 'Preview validation'
+    const bottomHeading =
+      recipeView?.detailHeading ??
+      (tab === 'Transform'
+        ? 'Preserved mapped fields'
+        : tab === 'Schema'
+          ? 'Preview validation'
+          : tab === 'JSON' || tab === 'UI'
+            ? commands.lesson?.format === 'decision'
+              ? 'Typed choice and confidence'
+              : commands.lesson?.format === 'structured'
+                ? 'Typed plan'
+                : 'Resolved props'
+            : tab === 'State'
+              ? 'Selected moment'
+              : requestContext?.kind === 'tool'
+                ? 'Browser tool result'
+                : 'Request payload');
+    const bottomValue = recipeView
+      ? recipeView.detail
+      : tab === 'Transform'
+        ? (transform?.preserved ?? null)
+        : tab === 'Schema'
+          ? {
+              preview: frame?.props ?? null,
+              passesApplicationRules: isWorkbenchPlan(frame?.props),
+              responseStatus: frame?.status ?? snapshot.status,
+              note: 'Preview values do not authorize applying a plan.',
+            }
+          : tab === 'JSON' || tab === 'UI'
+            ? commands.lesson?.format === 'decision'
+              ? (frame?.decision ?? null)
+              : frame?.props
+            : tab === 'State'
+              ? workbenchStateMoment(frame, snapshot, commands.lesson?.format)
+              : requestContext?.payload;
+    const rawValue =
+      commands.lesson?.format === 'history'
+        ? {
+            sdk: frame?.history?.sdk ?? null,
+            event: {
+              kind: frame?.kind,
+              source: frame?.source,
+              payload: frame?.payload,
+            },
+          }
+        : commands.lesson?.format === 'workflow'
+          ? {
+              sdk: frame?.workflow ?? null,
+              event: {
+                kind: frame?.kind,
+                source: frame?.source,
+                payload: frame?.payload,
+              },
+            }
+          : tab === 'Transform' && transform
+            ? transform
+            : frame?.payload;
+    const modes = workbenchInspectorModes({
+      tab: tab.toLowerCase(),
+      format: commands.lesson?.format,
+      frame,
+      application: value,
+      top: { heading: topHeading, value },
+      bottom: { heading: bottomHeading, value: bottomValue },
+      raw: rawValue,
+      recipe: !!recipeView,
+    });
+    const remembered = modeMemory.get(tab);
+    const modeId = modes.some((mode) => mode.id === remembered)
+      ? (remembered as string)
+      : defaultInspectorMode(tab.toLowerCase(), modes);
+    const mode = modes.find((item) => item.id === modeId) ?? modes[0];
+    // The title names the tab's subject, never the selected mode.
+    const descriptor =
+      value && typeof value === 'object' && 'component' in value
+        ? value.component
+        : undefined;
+    const componentName =
+      tab === 'UI'
+        ? (frame?.uiComponent ??
+          (typeof descriptor === 'string' ? descriptor : undefined))
+        : undefined;
+    const title =
+      componentName ??
+      (tab === 'JSON'
+        ? 'Model output'
+        : tab === 'State'
+          ? 'Application state'
+          : topHeading);
+    if (capturedHeading.textContent !== title) {
+      capturedHeading.textContent = title;
+      capturedHeading.title = title;
+    }
+    modeControl.sync(modes, mode.id);
+    const sourcePhrase = frame
+      ? options.inspection
+        ? 'Captured protocol and runtime observations'
+        : commands.lesson?.id === 'javascript-runtime'
+          ? 'Captured native QuickJS values and application-owned state'
+          : uiView
+            ? tab === 'UI'
+              ? 'SDK component observations and application-owned state'
+              : 'Framework kit configuration and checked application policy'
+            : workflowView
+              ? 'Captured SDK observations and separately recorded application form drafts'
               : tab === 'JSON' || tab === 'UI'
-                ? commands.lesson?.format === 'decision'
-                  ? 'Typed choice and confidence'
-                  : commands.lesson?.format === 'structured'
-                    ? 'Typed plan'
-                    : 'Resolved props'
-                : tab === 'State'
-                  ? 'Selected moment'
-                  : requestContext?.kind === 'tool'
-                    ? 'Browser tool result'
-                    : 'Request payload'),
-      ),
-      element(
-        'span',
-        frame
-          ? options.inspection
-            ? 'Captured protocol and runtime observations.'
-            : commands.lesson?.id === 'javascript-runtime'
-              ? 'Captured native QuickJS values and application-owned state.'
-              : uiView
-                ? tab === 'UI'
-                  ? 'SDK component observations and application-owned state.'
-                  : 'Framework kit configuration and checked application policy.'
-                : workflowView
-                  ? 'Captured SDK observations and separately recorded application form drafts.'
-                  : `Captured from ${tab === 'JSON' || tab === 'UI' ? 'SDK parsed output' : frame.source}.`
-          : 'Waiting for captured data.',
-        'wb-section-sub',
-      ),
-    );
+                ? 'SDK parsed output'
+                : frame.source
+      : 'Waiting for captured data';
+    caption.textContent = frame
+      ? `${sourcePhrase} · turn ${frame.turn} · event ${selectedIndex + 1}/${snapshot.events.length}${
+          (frame.status ?? snapshot.status) === 'loading' ? ' · streaming' : ''
+        }${historical ? '' : ' · live'}`
+      : sourcePhrase;
+    // The panel is off-screen on the Requests tab; skip highlighting it.
     if (!onRequests)
-      detail.replaceChildren(
-        detailHeader,
-        pre(
-          recipeView
-            ? recipeView.detail
-            : tab === 'Transform'
-              ? (transform?.preserved ?? null)
-              : tab === 'Schema'
-                ? {
-                    preview: frame?.props ?? null,
-                    passesApplicationRules: isWorkbenchPlan(frame?.props),
-                    responseStatus: frame?.status ?? snapshot.status,
-                    note: 'Preview values do not authorize applying a plan.',
-                  }
-                : tab === 'JSON' || tab === 'UI'
-                  ? commands.lesson?.format === 'decision'
-                    ? (frame?.decision ?? null)
-                    : frame?.props
-                  : tab === 'State'
-                    ? {
-                        turn: frame?.turn ?? snapshot.turn,
-                        status: frame?.status ?? snapshot.status,
-                        event: frame
-                          ? workbenchEventLabel(frame, commands.lesson?.format)
-                          : 'Ready',
-                        source: frame?.source ?? 'Application',
-                      }
-                    : requestContext?.payload,
-          tab,
-        ),
-      );
+      if (tab === 'State' && mode.id === 'tree') {
+        const previousFrame = snapshot.events[selectedIndex - 1];
+        // Recipe lessons derive state per render, not per frame: no highlight.
+        const previousTree =
+          !recipeView && previousFrame
+            ? workbenchStateTreeValue(
+                previousFrame,
+                snapshot,
+                commands.lesson?.format,
+              )
+            : undefined;
+        stateTree.update(mode.value, previousTree);
+        // Keep the same node attached so focus and scroll survive a render.
+        [...inspection.childNodes]
+          .filter((node) => node !== stateTree.element)
+          .forEach((node) => node.remove());
+        if (stateTree.element.parentNode !== inspection)
+          inspection.prepend(stateTree.element);
+      } else
+        rebuildKeepingFocus(inspection, 'data-sequence', () => {
+          inspection.replaceChildren(pre(mode.value ?? undefined, tab));
+        });
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =
       commands.lesson?.format === 'workflow' &&
@@ -1689,18 +1740,6 @@ export function mountWorkbench(
     }
     rawToggle.setAttribute('aria-pressed', String(rawEvents));
     const total = snapshot.events.length;
-    const milestones = rawEvents
-      ? withWorkbenchMilestoneIds(
-          snapshot.events.map((event, index) => ({
-            index,
-            turn: event.turn,
-            label: workbenchEventLabel(event, commands.lesson?.format),
-          })),
-        )
-      : workbenchMilestones(snapshot.events, commands.lesson?.format);
-    const activeMilestone = milestones
-      .filter((item) => item.index <= selectedIndex)
-      .at(-1);
     rebuildKeepingFocus(events, 'data-index', () => {
       events.replaceChildren();
       milestones.forEach(({ index, label, id }) => {
@@ -1762,7 +1801,8 @@ export function mountWorkbench(
     );
     play.disabled = busy || total < 2;
     syncPlayButton();
-    returnLive.disabled = !historical;
+    returnLive.hidden = embed === 'replay';
+    returnLive.disabled = embed === 'replay' || !historical;
     returnLive.toggleAttribute('data-live', !historical);
     liveLabel.data = historical ? 'Return to live' : 'LIVE';
     const last = snapshot.events.at(-1);
@@ -1828,6 +1868,7 @@ export function mountWorkbench(
       detachScrub();
       requestsView.dispose();
       inspectorTabs.dispose();
+      modeControl.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
       unsubscribe();

@@ -205,7 +205,10 @@ try {
           .getByText('Outline the demo', { exact: true }),
       ).toBeVisible();
       await mark('approved');
-      await page.getByRole('tab', { name: 'State', exact: true }).click();
+      await page
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name: 'State', exact: true })
+        .click();
       await mark('replay');
       const runRequestsBeforeReplay = runRequests;
       await page.getByRole('slider', { name: 'Seek captured event' }).focus();
