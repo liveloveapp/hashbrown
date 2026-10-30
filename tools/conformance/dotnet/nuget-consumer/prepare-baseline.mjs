@@ -96,10 +96,12 @@ export async function prepareBaseline(metadata, archivedDirectory) {
   await fs.rm(path.join(root, 'extracted'), { recursive: true });
   await fs.rm(path.join(root, 'original.tar'));
   const source = path.join(root, 'source');
-  // The historical global.json disables roll-forward. Its original bytes were
-  // verified above; build it under the current pin's latestPatch policy.
+  // The historical global.json disables roll-forward. Build under the current
+  // pin's latestPatch policy, then restore its verified original bytes.
+  const pinned = path.join(source, 'global.json');
+  const original = await fs.readFile(pinned);
   const policy = sdkPolicy(manifest.sdk);
-  await fs.writeFile(path.join(source, 'global.json'), policy);
+  await fs.writeFile(pinned, policy);
   const sdk = (
     await run(
       'dotnet',
@@ -146,26 +148,26 @@ export async function prepareBaseline(metadata, archivedDirectory) {
       path.join(root, 'logs/build.log'),
     );
   }
-  for (const [file, hash] of Object.entries(manifest.files))
-    if (file !== 'global.json')
-      assert.equal(
-        await hashFile(path.join(source, file)),
-        hash,
-        'Historical source changed while building',
-      );
   assert.equal(
-    await fs.readFile(path.join(source, 'global.json'), 'utf8'),
+    await fs.readFile(pinned, 'utf8'),
     policy,
     'Historical source changed while building',
   );
+  await fs.writeFile(pinned, original);
+  for (const [file, hash] of Object.entries(manifest.files))
+    assert.equal(
+      await hashFile(path.join(source, file)),
+      hash,
+      'Historical source changed while building',
+    );
   const observer = path.join(root, 'observer');
   for (const file of [
     'Hashbrown.Conformance.csproj',
     'packages.lock.json',
-    'global.json',
     'nuget.config',
   ])
     await fs.copyFile(path.join(source, file), path.join(observer, file));
+  await fs.writeFile(path.join(observer, 'global.json'), policy);
   await fs.copyFile(
     path.join(here, 'observe-database.cs.txt'),
     path.join(observer, 'Program.cs'),
