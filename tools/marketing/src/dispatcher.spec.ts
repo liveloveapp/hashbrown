@@ -177,6 +177,34 @@ describe('dispatchMarketing', () => {
     });
   });
 
+  test('a post published with warnings stores them and raises post_warning', async () => {
+    repository.leaseDuePosts.mockResolvedValue([
+      post({
+        channel: 'linkedin',
+        draft: { channel: 'linkedin', text: 'hi', firstComment: 'link' },
+      }),
+    ]);
+    const { deps } = setup({
+      post: async () => ({
+        ...result,
+        channel: 'linkedin',
+        warnings: ['first comment failed', 'second thing'],
+      }),
+    });
+
+    const outcome = await dispatchMarketing(deps);
+
+    expect(repository.markPublished).toHaveBeenCalledWith(deps.executor, 'p1', {
+      externalId: 'ext-1',
+      externalUrl: 'https://x.com/i/status/1',
+      publishedAt: new Date('2026-10-29T14:00:01Z'),
+      warning: 'first comment failed; second thing',
+    });
+    expect(repository.markRetry).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ published: 1, failed: 0 });
+    expect(outcome.operatorAlerts).toEqual(['post_warning']);
+  });
+
   test('an adapter error schedules a retry', async () => {
     repository.leaseDuePosts.mockResolvedValue([post()]);
     const { deps } = setup({

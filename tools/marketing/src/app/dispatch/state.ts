@@ -14,7 +14,12 @@ const state = z
         failed: z.number().int().nonnegative(),
         held: z.number().int().nonnegative(),
         operatorAlerts: z.array(
-          z.enum(['post_failed', 'blog_not_live', 'credential_expiring']),
+          z.enum([
+            'post_failed',
+            'post_warning',
+            'blog_not_live',
+            'credential_expiring',
+          ]),
         ),
       })
       .strict()

@@ -12,6 +12,7 @@ import {
   approvePosts,
   importWeek,
   listPostsByStatus,
+  listPublishedWithWarnings,
   readPost,
   readWeek,
   setPostStatus,
@@ -59,6 +60,8 @@ export interface WeekOperations {
   setPostStatus(id: string, status: 'held' | 'cancelled'): Promise<void>;
   updateBlogDraft(id: string, patch: Partial<BlogDraft>): Promise<void>;
   listPostsByStatus(statuses: readonly PostStatus[]): Promise<QueuedPost[]>;
+  /** Published posts with a warning in `lastError`, published since `since`. */
+  listPublishedWithWarnings(since: Date): Promise<QueuedPost[]>;
   /** Absent when `MARKETING_CREDENTIALS_KEY` is not set. */
   expiringWithin?(
     now: Date,
@@ -76,6 +79,10 @@ export interface WeekRunnerDependencies {
   writeOutput(line: string): void;
   writeError(line: string): void;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How far back `status` looks for published posts that carry a warning. */
+const WARNING_LOOKBACK_DAYS = 14;
 
 class WeekUsageError extends Error {
   constructor(message: string) {
@@ -363,14 +370,20 @@ async function execute(
       for (const post of last?.posts ?? []) {
         (byStatus[post.status] ??= []).push(post);
       }
-      const attention = (
-        await operations.listPostsByStatus(['failed', 'held'])
-      ).map((post) => ({
+      // Failed and held posts, then the last two weeks' posts that went live
+      // with a follow-up step left to do by hand (lastError says what).
+      const attention = [
+        ...(await operations.listPostsByStatus(['failed', 'held'])),
+        ...(await operations.listPublishedWithWarnings(
+          new Date(now.getTime() - WARNING_LOOKBACK_DAYS * DAY_MS),
+        )),
+      ].map((post) => ({
         id: post.id,
         channel: post.channel,
         kind: post.kind,
         status: post.status,
         scheduledAt: post.scheduledAt,
+        externalUrl: post.externalUrl,
         lastError: post.lastError,
       }));
       const credentials = operations.expiringWithin
@@ -417,6 +430,8 @@ export function createWeekOperations(
     setPostStatus: (id, status) => setPostStatus(executor, id, status),
     updateBlogDraft: (id, patch) => updateBlogDraft(executor, id, patch),
     listPostsByStatus: (statuses) => listPostsByStatus(executor, statuses),
+    listPublishedWithWarnings: (since) =>
+      listPublishedWithWarnings(executor, since),
     expiringWithin: credentials
       ? (now, days) => credentials.expiringWithin(now, days)
       : undefined,
@@ -485,6 +500,7 @@ function offlineOperations(
     setPostStatus: unavailable,
     updateBlogDraft: unavailable,
     listPostsByStatus: unavailable,
+    listPublishedWithWarnings: unavailable,
     readBlogBody,
   };
 }

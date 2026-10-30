@@ -52,7 +52,7 @@ export interface DispatchResult {
   failed: number;
   held: number;
   operatorAlerts: Array<
-    'post_failed' | 'blog_not_live' | 'credential_expiring'
+    'post_failed' | 'post_warning' | 'blog_not_live' | 'credential_expiring'
   >;
 }
 
@@ -222,12 +222,19 @@ async function dispatchSocial(
     return;
   }
 
+  // A warning is a follow-up step that failed after the post went live.
+  const warning =
+    result.warnings && result.warnings.length > 0
+      ? result.warnings.join('; ')
+      : undefined;
   await markPublished(executor, post.id, {
     externalId: result.postId,
     externalUrl: result.url,
     publishedAt: new Date(result.postedAt),
+    ...(warning === undefined ? {} : { warning }),
   });
   tally.published += 1;
+  if (warning !== undefined) tally.alerts.add('post_warning');
 }
 
 async function dispatchPost(

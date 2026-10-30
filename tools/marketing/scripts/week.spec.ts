@@ -55,6 +55,7 @@ function operations(overrides: Partial<WeekOperations> = {}): WeekOperations {
     setPostStatus: vi.fn(async () => undefined),
     updateBlogDraft: vi.fn(async () => undefined),
     listPostsByStatus: vi.fn(async () => []),
+    listPublishedWithWarnings: vi.fn(async () => []),
     expiringWithin: vi.fn(async () => []),
     readBlogBody: vi.fn(async () => undefined),
     ...overrides,
@@ -289,6 +290,37 @@ test('status groups last week by status and lists failed and held posts', async 
   expect(result.credentials).toEqual([
     { channel: 'x', expiresAt: '2026-11-10T00:00:00.000Z' },
   ]);
+});
+
+test('status lists published posts that carry a warning, with the reason', async () => {
+  const failed = post({ status: 'failed', lastError: 'boom' });
+  const warned = post({
+    id: '00000000-0000-4000-8000-0000000000b2',
+    channel: 'linkedin',
+    status: 'published',
+    externalUrl: 'https://www.linkedin.com/feed/update/1/',
+    lastError: 'first comment failed; add it by hand',
+  });
+  const ops = operations({
+    listPostsByStatus: vi.fn(async () => [failed]),
+    listPublishedWithWarnings: vi.fn(async () => [warned]),
+  });
+  const h = harness(ops);
+
+  expect(await h.run('status')).toBe(0);
+
+  expect(ops.listPublishedWithWarnings).toHaveBeenCalledWith(
+    new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
+  );
+  const { attention } = JSON.parse(h.out[0]);
+  expect(attention).toHaveLength(2);
+  expect(attention[1]).toMatchObject({
+    id: warned.id,
+    channel: 'linkedin',
+    status: 'published',
+    externalUrl: 'https://www.linkedin.com/feed/update/1/',
+    lastError: 'first comment failed; add it by hand',
+  });
 });
 
 test('status reports credentials as unavailable without a key', async () => {

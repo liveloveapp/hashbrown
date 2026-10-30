@@ -12,6 +12,7 @@ import {
   holdWithDependents,
   importWeek,
   leaseDuePosts,
+  listPublishedWithWarnings,
   markFailed,
   markPublished,
   markPublishing,
@@ -251,6 +252,43 @@ test('markPublished records the result and clears the lease', async () => {
     published_at: NOW,
     lease_until: null,
   });
+});
+
+test('markPublished stores a warning as last_error and lists it', async () => {
+  const warned = await insertPost();
+  const clean = await insertPost();
+  await leaseDuePosts(executor, NOW, 10);
+
+  await markPublished(executor, warned, {
+    externalId: '1',
+    externalUrl: 'https://www.linkedin.com/feed/update/1/',
+    publishedAt: NOW,
+    warning: 'first comment failed; add it by hand',
+  });
+  await markPublished(executor, clean, {
+    externalId: '2',
+    externalUrl: 'https://x.com/i/status/2',
+    publishedAt: NOW,
+  });
+  const listed = (
+    await listPublishedWithWarnings(executor, new Date(NOW.getTime() - HOUR))
+  ).filter((post) => post.weekId === weekId);
+  const later = (
+    await listPublishedWithWarnings(executor, new Date(NOW.getTime() + HOUR))
+  ).filter((post) => post.weekId === weekId);
+
+  expect(await statusOf(warned)).toMatchObject({
+    status: 'published',
+    last_error: 'first comment failed; add it by hand',
+  });
+  expect(await statusOf(clean)).toMatchObject({
+    status: 'published',
+    last_error: null,
+  });
+  expect(listed.map((post) => [post.id, post.lastError])).toEqual([
+    [warned, 'first comment failed; add it by hand'],
+  ]);
+  expect(later).toEqual([]);
 });
 
 test('markFailed records the error and clears the lease', async () => {

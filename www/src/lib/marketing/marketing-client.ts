@@ -30,10 +30,11 @@ export const MARKETING_THREAD_ID = '844cc27b-a87f-442f-8a3f-92f8a86ced44';
 
 /** An alert the marketing service raises for a human operator. */
 export type MarketingOperatorAlert =
-  'post_failed' | 'blog_not_live' | 'credential_expiring';
+  'post_failed' | 'post_warning' | 'blog_not_live' | 'credential_expiring';
 
 const OPERATOR_ALERTS: readonly string[] = [
   'post_failed',
+  'post_warning',
   'blog_not_live',
   'credential_expiring',
 ];

@@ -25,8 +25,13 @@ test('dispatch state rejects unknown keys, an unknown trigger and an unknown ale
   expect(badAlert.success).toBe(false);
 });
 
-test('the dispatch state accepts exactly the three operator alerts', () => {
-  const alerts = ['post_failed', 'blog_not_live', 'credential_expiring'];
+test('the dispatch state accepts exactly the four operator alerts', () => {
+  const alerts = [
+    'post_failed',
+    'post_warning',
+    'blog_not_live',
+    'credential_expiring',
+  ];
   const parse = (operatorAlerts: string[]) =>
     schema.safeParse({
       trigger: 'cron',
@@ -34,8 +39,8 @@ test('the dispatch state accepts exactly the three operator alerts', () => {
     }).success;
 
   const accepted = alerts.map((alert) => parse([alert]));
-  const rejected = parse(['fourth_alert']);
+  const rejected = parse(['fifth_alert']);
 
-  expect(accepted).toEqual([true, true, true]);
+  expect(accepted).toEqual([true, true, true, true]);
   expect(rejected).toBe(false);
 });

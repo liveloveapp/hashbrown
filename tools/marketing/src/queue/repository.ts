@@ -166,20 +166,28 @@ export async function markPublishing(
  * (a hold can land while its publish was already in flight), a `cancelled`
  * one never is.
  *
+ * @param result - Where the post lives. `warning` is a follow-up step that
+ *   failed after the post went live (a LinkedIn first comment); it is stored
+ *   as `last_error` on the published row, which is otherwise cleared.
  * @throws {PostStateError} When the post is missing or not `approved`,
  *   `publishing` or `held`; the row is left unchanged.
  */
 export async function markPublished(
   executor: SqlExecutor,
   id: string,
-  result: { externalId: string; externalUrl: string; publishedAt: Date },
+  result: {
+    externalId: string;
+    externalUrl: string;
+    publishedAt: Date;
+    warning?: string;
+  },
 ): Promise<void> {
   await requireUpdated(
     executor,
     id,
     `update marketing_posts
      set status = 'published', external_id = $2, external_url = $3,
-         published_at = $4::timestamptz, last_error = null, lease_until = null
+         published_at = $4::timestamptz, last_error = $5, lease_until = null
      where id = $1::uuid and status in ('approved', 'publishing', 'held')
      returning id`,
     [
@@ -187,6 +195,7 @@ export async function markPublished(
       result.externalId,
       result.externalUrl,
       result.publishedAt.toISOString(),
+      result.warning ?? null,
     ],
     `Post ${id} cannot be marked published from its current status`,
   );
@@ -561,6 +570,24 @@ export async function listPostsByStatus(
     `select * from marketing_posts where status = any($1::text[])
      order by scheduled_at, created_at, id`,
     [statuses],
+  );
+  return rows.map(toPost);
+}
+
+/**
+ * Lists the published posts that carry a warning (a non-null `last_error`)
+ * and were published at or after `since`, across all weeks, by publish time.
+ */
+export async function listPublishedWithWarnings(
+  executor: SqlExecutor,
+  since: Date,
+): Promise<QueuedPost[]> {
+  const { rows } = await executor.execute<PostRow>(
+    `select * from marketing_posts
+     where status = 'published' and last_error is not null
+       and published_at >= $1::timestamptz
+     order by published_at, id`,
+    [since.toISOString()],
   );
   return rows.map(toPost);
 }
