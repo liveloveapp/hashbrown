@@ -601,10 +601,7 @@ test('unmounting while Source loads aborts the fetch', async () => {
     <WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />,
   );
   fireEvent.click(sourceTab());
-  const [, init] = fetchMock.mock.calls[0] as unknown as [
-    string,
-    RequestInit,
-  ];
+  const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
   const before = init.signal?.aborted;
 
   unmount();
@@ -1443,13 +1440,22 @@ test('the server render has the narrow video and the tabbed panel, each shown by
   ).replace(/\s+/g, ' ');
   expect(narrow.classList.contains(styles.narrow)).toBe(true);
   expect(narrow.querySelector('video')).not.toBeNull();
+  // Browsers fetch a video poster even when hidden, so desktop must not see one.
+  expect(narrow.querySelector('video')?.hasAttribute('poster')).toBe(false);
+  expect(narrow.querySelector('video')?.dataset['poster']).toBe(
+    '/video/docs/canonical-workbench-tools-react-poster.png',
+  );
   expect(narrow.querySelector('[role="tablist"]')).toBeNull();
   expect(tabbed.classList.contains(styles.wide)).toBe(true);
   expect(tabbed.querySelector('[role="tablist"]')).not.toBeNull();
   expect(tabbed.querySelector('video')).toBeNull();
   expect(tabbed.querySelector('img')?.getAttribute('loading')).toBe('lazy');
-  expect(css).toContain('@media (max-width: 799px) { .wide { display: none; } }');
-  expect(css).toContain('@media (min-width: 800px) { .narrow { display: none; } }');
+  expect(css).toContain(
+    '@media (max-width: 799px) { .wide { display: none; } }',
+  );
+  expect(css).toContain(
+    '@media (min-width: 800px) { .narrow { display: none; } }',
+  );
 });
 
 test('a phone hydrates the server render into the video alone, with no observer or frame', async () => {
@@ -1463,7 +1469,10 @@ test('a phone hydrates the server render into the video alone, with no observer 
   const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   await act(async () => {
-    const root = hydrateRoot(host, <WorkbenchPanel lesson="tools" sdk="react" />);
+    const root = hydrateRoot(
+      host,
+      <WorkbenchPanel lesson="tools" sdk="react" />,
+    );
     onTestFinished(() => root.unmount());
   });
 

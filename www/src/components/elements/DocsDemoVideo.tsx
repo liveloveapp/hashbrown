@@ -5,9 +5,17 @@ import styles from './DocsDemoVideo.module.css';
 /**
  * An on-demand recorded demo for an `hb-docs-demo` Markdown element.
  *
- * The `demo` prop selects a stable identifier from the media catalog.
+ * The `demo` prop selects a stable identifier from the media catalog. With
+ * `deferPoster`, the poster URL is kept in `data-poster` for a client parent to
+ * apply: browsers fetch a video poster even when it is hidden.
  */
-export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
+export function DocsDemoVideo({
+  demo,
+  deferPoster = false,
+}: {
+  demo: DocsDemoId;
+  deferPoster?: boolean;
+}) {
   if (!Object.hasOwn(DOCS_DEMOS, demo)) {
     throw new Error(`Unknown documentation demo: ${demo}`);
   }
@@ -22,7 +30,8 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
       <video
         aria-label={media.title}
         aria-describedby={captionId}
-        poster={`${base}-poster.png`}
+        poster={deferPoster ? undefined : `${base}-poster.png`}
+        data-poster={deferPoster ? `${base}-poster.png` : undefined}
         width={width}
         height={height}
         style={{ aspectRatio: `${width} / ${height}` }}

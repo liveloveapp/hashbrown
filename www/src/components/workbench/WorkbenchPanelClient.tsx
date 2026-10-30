@@ -171,9 +171,7 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
           {openLink}
         </NarrowPanel>
       )}
-      {(!hydrated || !narrow) && (
-        <TabbedPanel {...props} openLink={openLink} />
-      )}
+      {(!hydrated || !narrow) && <TabbedPanel {...props} openLink={openLink} />}
     </>
   );
 }
@@ -187,6 +185,16 @@ function NarrowPanel({
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  // The server render leaves the poster unset so desktop never fetches it;
+  // apply it once this panel is the one showing.
+  useEffect(() => {
+    if (!isNarrow()) return;
+    panel.current
+      ?.querySelectorAll<HTMLVideoElement>('video[data-poster]')
+      .forEach((video) => {
+        video.poster = video.dataset['poster'] ?? '';
+      });
+  }, []);
   useSeeItRun(
     useCallback((detail) => {
       // Before hydration both panels listen; only the one showing acts.
