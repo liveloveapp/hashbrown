@@ -5,14 +5,14 @@ import { expect, test } from 'vitest';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 test.each(SDKS)(
-  '%s magic-text guide opens with its canonical framework recording',
+  '%s magic-text guide teaches before its inline workbench',
   (sdk) => {
     const body = readDoc(sdk, ['recipes', 'magic-text'])?.body ?? '';
     expectConceptFirstWorkbench(body, sdk, 'magic-text');
-    expect(body).toContain(
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-magic-text-${sdk}-result.png`,
     );
-    expect(body).toContain(`/${sdk}.html?lesson=magic-text`);
+    expect(body).toContain('<hb-workbench lesson="magic-text">');
     expect(body).toContain(`/docs/${sdk}/start/workbench`);
     expect(body).toContain('two-step plan');
     expect(body).not.toMatch(/packing|shopping|Apples|Passport/);

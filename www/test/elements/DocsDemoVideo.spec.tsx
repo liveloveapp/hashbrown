@@ -134,7 +134,7 @@ test.each(SDKS)(
 );
 
 test.each(SDKS)(
-  'opens matching %s guides with the recorded demos before their first section',
+  'opens matching %s guides with teaching before their inline workbench',
   (sdk) => {
     const lessons: Record<(typeof demos)[number][1], string> = {
       components: 'generative-ui',
