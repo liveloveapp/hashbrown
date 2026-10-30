@@ -272,7 +272,7 @@ for (const report of reports) {
         report.phases['followup'],
         report.phases['replay'],
         report.lesson === 'decisions'
-          ? 'The next decision suggests review.'
+          ? 'Next choice: review.'
           : 'The follow-up reads the accepted plan and proposes a shorter second step.',
       ],
       [

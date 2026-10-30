@@ -8,11 +8,17 @@ import { DOCS_DIAGRAMS } from '../components/diagrams/diagram-catalog';
 import { listDocs, readDoc, SDKS } from '../lib/content';
 import {
   type DiagramGeometry,
+  diagramNavigationIssue,
+  diagramRequestIssue,
   geometryIssues,
   inventoryIssues,
 } from '../lib/diagram-checks';
 import { diagramTargetsIn } from '../lib/element-inventory';
 import { repoRoot } from '../lib/repo-root';
+import {
+  diagnosticOrigin,
+  requireDeploymentOrigin,
+} from '../lib/docs-deployment';
 
 const root = repoRoot();
 const output = resolve(
@@ -39,10 +45,7 @@ let startupError: Error | undefined;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function start(): Promise<string> {
   if (process.env.DOCS_DIAGRAM_ORIGIN) {
-    const url = new URL(process.env.DOCS_DIAGRAM_ORIGIN);
-    if (!['http:', 'https:'].includes(url.protocol))
-      throw new Error('Expected an HTTP diagram audit origin');
-    return url.origin;
+    return requireDeploymentOrigin(process.env.DOCS_DIAGRAM_ORIGIN);
   }
   const reservation = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -159,12 +162,16 @@ const results: {
   issues: string[];
 }[] = [];
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+let auditedOrigin = diagnosticOrigin(process.env.DOCS_DIAGRAM_ORIGIN);
+let fatalError: string | undefined;
 try {
   const origin = await start();
+  auditedOrigin = origin;
   browser = await chromium.launch();
   for (const width of [1440, 320]) {
     const context = await browser.newContext({
       viewport: { width, height: 1000 },
+      serviceWorkers: 'block',
     });
     await context.addInitScript({ content: 'window.__name = (f) => f;' });
     const page = await context.newPage();
@@ -172,8 +179,12 @@ try {
     page.on('pageerror', (error) => pageErrors.push(error.message));
     // The audit operates only static diagrams. Never send a model/workbench request.
     await context.route('**/*', (route) => {
-      if (route.request().method() === 'POST') {
-        pageErrors.push(`Unexpected POST: ${route.request().url()}`);
+      const issue = diagramRequestIssue(
+        route.request().method(),
+        route.request().url(),
+      );
+      if (issue) {
+        pageErrors.push(issue);
         return route.abort();
       }
       return route.continue();
@@ -183,6 +194,9 @@ try {
       const response = await page.goto(origin + target.path, {
         waitUntil: 'load',
       });
+      const navigationIssue = diagramNavigationIssue(origin, page.url());
+      if (navigationIssue)
+        throw new Error(`${target.path}: ${navigationIssue}`);
       await page.evaluate(() => document.fonts.ready);
       const figures = page.locator('figure[data-diagram]');
       const actual = await figures.evaluateAll((elements) =>
@@ -323,6 +337,10 @@ try {
     }
     await context.close();
   }
+} catch (error) {
+  fatalError = error instanceof Error ? error.message : String(error);
+  console.error(`Diagram audit failed: ${fatalError}`);
+  process.exitCode = 1;
 } finally {
   await browser?.close();
   if (server && server.exitCode === null) {
@@ -337,7 +355,22 @@ try {
   await writeFile(join(output, 'server.log'), logs);
   await writeFile(
     join(output, 'report.json'),
-    JSON.stringify({ targets, definitions: catalog.length, results }, null, 2),
+    JSON.stringify(
+      {
+        origin: auditedOrigin,
+        expectedRevision: process.env.DOCS_DIAGRAM_EXPECTED_REVISION,
+        passed:
+          !fatalError &&
+          results.length > 0 &&
+          results.every((result) => !result.issues.length),
+        fatalError,
+        targets,
+        definitions: catalog.length,
+        results,
+      },
+      null,
+      2,
+    ),
   );
 }
 const failures = results.filter((result) => result.issues.length);

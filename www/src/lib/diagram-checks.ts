@@ -77,3 +77,27 @@ export function geometryIssues(
   }
   return issues;
 }
+
+/** Allow only read-only browser traffic; diagnostics omit credentials and queries. */
+export function diagramRequestIssue(
+  method: string,
+  value: string,
+): string | undefined {
+  const normalized = method.toUpperCase();
+  if (normalized === 'GET' || normalized === 'HEAD') return undefined;
+  const url = new URL(value);
+  const safeUrl = ['https:', 'http:'].includes(url.protocol)
+    ? `${url.origin}${url.pathname}`
+    : url.protocol;
+  return `Unexpected ${normalized}: ${safeUrl}`;
+}
+
+/** Reject cross-origin document redirects without retaining credentials or query values. */
+export function diagramNavigationIssue(
+  origin: string,
+  value: string,
+): string | undefined {
+  const url = new URL(value);
+  if (url.origin === origin) return undefined;
+  return `Diagram navigation left audited origin ${origin}; received ${url.origin}${url.pathname}`;
+}

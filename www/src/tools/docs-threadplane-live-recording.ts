@@ -28,7 +28,7 @@ export function threadplaneLiveRecordingCues(
 ): readonly WorkbenchRecordingCue[] {
   const steps = [
     ['firstComplete', 'Threadplane shows the real streaming reply.'],
-    ['followup', 'The first turn stays in this conversation.'],
+    ['followup', 'First turn retained in local history.'],
     ['secondComplete', 'A follow-up shortens the second step.'],
     ['inspected', 'Inspect actual requests and protocol JSON.'],
     ['replay', 'The application plan remains unchanged.'],

@@ -9,6 +9,8 @@ meta:
 
 A browser-visible model endpoint is an application entry point. Before it can spend tokens or read customer data, the server must establish identity, authorize the requested resource, validate bounded input, and apply admission policy. A valid model schema does not establish any of those permissions.
 
+Start with the working endpoint from the [Quickstart](/docs/react/start/quick) and the policy boundary in [System instructions](/docs/react/concept/system-instructions). This recipe adds the checks needed before exposing that endpoint to other users.
+
 Let’s make those checks explicit at the HTTP boundary. Keep credentials, trusted instructions, model selection, and output limits on the server; use the browser request only as untrusted input.
 
 <hb-diagram diagram="recipe-public-endpoint-gates"> </hb-diagram>
