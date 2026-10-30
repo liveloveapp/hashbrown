@@ -74,7 +74,7 @@ test.each(active)(
       expect(
         text.length / (end - start),
         `${from}: ${text}`,
-      ).toBeLessThanOrEqual(20);
+      ).toBeLessThanOrEqual(17);
       previous = end;
     }
   },

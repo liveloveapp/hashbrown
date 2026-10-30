@@ -119,4 +119,6 @@ Choose **New conversation** in the workbench. It starts with no messages and mak
 
 The current chat instance retains its messages while it lives. A page refresh does not automatically load them again. A `threadId` identifies a conversation; it is not a database or a persistence strategy.
 
+Next, use [System instructions](/docs/react/concept/system-instructions) to give the conversation a consistent job, then [Tool calling](/docs/react/concept/functions) to answer with current application data.
+
 Continue with [Message history](/docs/react/concept/message-history) when you need to save and restore messages. That is separate from the workbench's read-only inspection timeline.

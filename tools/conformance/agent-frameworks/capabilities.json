@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "scope": "Initial Node AG-UI server-tool conformance; each capability is version-specific. Consumer replay is separate from native framework restore.",
+  "profiles": [
+    {
+      "framework": "langgraph",
+      "profile": "local-sdk-seam",
+      "fixture": "langgraph-server-tool.json",
+      "versions": {
+        "@ag-ui/langgraph": "0.0.45",
+        "@langchain/langgraph": "1.5.3",
+        "@langchain/core": "1.3.2",
+        "langchain": "1.6.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "passed",
+        "nativeCheckpointRestore": "not-tested",
+        "activities": "not-tested",
+        "subagents": "not-tested",
+        "citationsAndAttribution": "not-tested"
+      }
+    },
+    {
+      "framework": "mastra",
+      "profile": "buffered",
+      "fixture": "mastra-buffered-server-tool.json",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "unsupported",
+        "nativeCheckpointRestore": "not-tested",
+        "activities": "not-tested",
+        "subagents": "not-tested",
+        "citationsAndAttribution": "not-tested"
+      }
+    },
+    {
+      "framework": "mastra",
+      "profile": "live",
+      "fixture": "mastra-live-server-tool.json",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capabilities": {
+        "actualServerToolExecution": "passed",
+        "canonicalConsumerRestore": "passed",
+        "reactDisplay": "passed",
+        "angularDisplay": "passed",
+        "sameNameClientNotReexecuted": "passed",
+        "liveStartBeforeToolCompletion": "passed",
+        "nativeCheckpointRestore": "not-tested",
+        "activities": "not-tested",
+        "subagents": "not-tested",
+        "citationsAndAttribution": "not-tested"
+      }
+    }
+  ],
+  "producerGaps": [
+    {
+      "framework": "langgraph",
+      "capability": "failed-tool-result",
+      "status": "missing-upstream",
+      "detail": "A handled ToolNode error reaches MESSAGES_SNAPSHOT as a tool error, but this bridge emits no TOOL_CALL_RESULT for the failure."
+    },
+    {
+      "framework": "langgraph",
+      "capability": "cancelled-outcome",
+      "status": "missing-upstream",
+      "detail": "Public abortRun reaches the real blocked tool via the injected SDK seam; terminal RUN_FINISHED has no cancelled outcome. Real API-server cancellation is not tested."
+    },
+    {
+      "framework": "mastra",
+      "capability": "failed-tool-outcome",
+      "status": "missing-upstream",
+      "detail": "The real failure is JSON error text inside TOOL_CALL_RESULT.content with no top-level error marker. Hashbrown must not infer failure by parsing human-readable result bodies."
+    },
+    {
+      "framework": "mastra",
+      "capability": "attributed-subagents",
+      "status": "not-tested",
+      "detail": "The inspected upstream source has newer APIs than the pinned published bridge. No subagent conformance claim is made for this baseline."
+    }
+  ],
+  "existingDotnetHost": {
+    "status": "not-tested",
+    "scope": "Source audit only in this change; existing server-tool/recovery/native-history suites remain maintained separately. Activity, rich-step and subagent display cases are follow-ups."
+  },
+  "deferred": [
+    "file-search",
+    "python-langgraph",
+    "langgraph-api-server",
+    "native-framework-checkpoint-restore",
+    "rich-metadata-recipes",
+    "mastra-memory-activities",
+    "framework-subagents",
+    "strands"
+  ]
+}

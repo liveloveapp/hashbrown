@@ -1,0 +1,770 @@
+{
+  "framework": "langgraph",
+  "profile": "local-sdk-seam",
+  "versions": {
+    "@ag-ui/langgraph": "0.0.45",
+    "@langchain/langgraph": "1.5.3",
+    "@langchain/core": "1.3.2",
+    "langchain": "1.6.0",
+    "@ag-ui/core": "1.0.3"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "langgraph-local-sdk-seam-thread",
+      "runId": "langgraph-local-sdk-seam-run"
+    },
+    {
+      "type": "STEP_STARTED",
+      "stepName": "__start__"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {}
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STEP_FINISHED",
+      "stepName": "__start__"
+    },
+    {
+      "type": "STEP_STARTED",
+      "stepName": "model"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "toolCallId": "weather-call",
+      "toolCallName": "getWeather",
+      "parentMessageId": "weather-assistant"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "toolCallId": "weather-call",
+      "delta": "{\"city\":\"Paris\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "toolCallId": "weather-call"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "tool_call_chunks": [
+                {
+                  "name": "getWeather",
+                  "args": "{\"city\":\"Paris\"}",
+                  "id": "weather-call",
+                  "index": 0,
+                  "type": "tool_call_chunk"
+                }
+              ],
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STEP_FINISHED",
+      "stepName": "model"
+    },
+    {
+      "type": "STEP_STARTED",
+      "stepName": "tools"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "tool_call_chunks": [
+                {
+                  "name": "getWeather",
+                  "args": "{\"city\":\"Paris\"}",
+                  "id": "weather-call",
+                  "index": 0,
+                  "type": "tool_call_chunk"
+                }
+              ],
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "tool_call_chunks": [
+                {
+                  "name": "getWeather",
+                  "args": "{\"city\":\"Paris\"}",
+                  "id": "weather-call",
+                  "index": 0,
+                  "type": "tool_call_chunk"
+                }
+              ],
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "tool_call_chunks": [
+                {
+                  "name": "getWeather",
+                  "args": "{\"city\":\"Paris\"}",
+                  "id": "weather-call",
+                  "index": 0,
+                  "type": "tool_call_chunk"
+                }
+              ],
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "tool_call_chunks": [
+                {
+                  "name": "getWeather",
+                  "args": "{\"city\":\"Paris\"}",
+                  "id": "weather-call",
+                  "index": 0,
+                  "type": "tool_call_chunk"
+                }
+              ],
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "toolCallId": "weather-call",
+      "content": "Paris: 21°C and sunny",
+      "messageId": "f23b7224-8fa0-4366-88bd-ea2b995e01f3",
+      "role": "tool"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STEP_FINISHED",
+      "stepName": "tools"
+    },
+    {
+      "type": "STEP_STARTED",
+      "stepName": "model"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "TEXT_MESSAGE_START",
+      "role": "assistant",
+      "messageId": "weather-answer"
+    },
+    {
+      "type": "TEXT_MESSAGE_CONTENT",
+      "messageId": "weather-answer",
+      "delta": "The weather in Paris is 21°C and sunny."
+    },
+    {
+      "type": "TEXT_MESSAGE_END",
+      "messageId": "weather-answer"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-answer",
+              "content": "The weather in Paris is 21°C and sunny.",
+              "tool_calls": [],
+              "invalid_tool_calls": [],
+              "tool_call_chunks": [],
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "kwargs": {
+              "id": "weather-answer",
+              "content": "The weather in Paris is 21°C and sunny.",
+              "tool_calls": [],
+              "invalid_tool_calls": [],
+              "tool_call_chunks": [],
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessage"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessage"],
+            "kwargs": {
+              "id": "weather-answer",
+              "content": "The weather in Paris is 21°C and sunny.",
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "STEP_FINISHED",
+      "stepName": "model"
+    },
+    {
+      "type": "STATE_SNAPSHOT",
+      "snapshot": {
+        "messages": [
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "HumanMessage"],
+            "kwargs": {
+              "id": "question",
+              "content": "What is the weather in Paris?",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessage"],
+            "kwargs": {
+              "id": "weather-assistant",
+              "content": "",
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [
+                {
+                  "name": "getWeather",
+                  "args": {
+                    "city": "Paris"
+                  },
+                  "id": "weather-call",
+                  "type": "tool_call"
+                }
+              ],
+              "invalid_tool_calls": []
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "ToolMessage"],
+            "kwargs": {
+              "id": "weather-result",
+              "content": "Paris: 21°C and sunny",
+              "tool_call_id": "weather-call",
+              "name": "getWeather",
+              "additional_kwargs": {},
+              "response_metadata": {}
+            }
+          },
+          {
+            "lc": 1,
+            "type": "constructor",
+            "id": ["langchain_core", "messages", "AIMessage"],
+            "kwargs": {
+              "id": "weather-answer",
+              "content": "The weather in Paris is 21°C and sunny.",
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "tool_calls": [],
+              "invalid_tool_calls": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "MESSAGES_SNAPSHOT",
+      "messages": [
+        {
+          "id": "question",
+          "role": "user",
+          "content": "What is the weather in Paris?"
+        },
+        {
+          "id": "weather-assistant",
+          "role": "assistant",
+          "content": "",
+          "toolCalls": [
+            {
+              "id": "weather-call",
+              "type": "function",
+              "function": {
+                "name": "getWeather",
+                "arguments": "{\"city\":\"Paris\"}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "weather-result",
+          "role": "tool",
+          "content": "Paris: 21°C and sunny",
+          "toolCallId": "weather-call"
+        },
+        {
+          "id": "weather-answer",
+          "role": "assistant",
+          "content": "The weather in Paris is 21°C and sunny.",
+          "toolCalls": []
+        }
+      ]
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "langgraph-local-sdk-seam-thread",
+      "runId": "langgraph-local-sdk-seam-run"
+    }
+  ],
+  "expected": {
+    "calls": [
+      {
+        "name": "getWeather",
+        "args": {
+          "city": "Paris"
+        },
+        "result": "Paris: 21°C and sunny"
+      }
+    ],
+    "text": "The weather in Paris is 21°C and sunny."
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server",
+    "toolExecutions": 1,
+    "toolCompleted": true,
+    "toolAbortObserved": false,
+    "outcome": "success",
+    "startBeforeToolCompletion": true,
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "db0c08987398d5e1df4a99e3dda9a4fa2a087cf00d06099d977644286370a965",
+    "eventsSha256": "c9c2b4ff23344e5e2363001f2730f5085a81ee19339814ec2a72c0cf8b3464f0"
+  }
+}
