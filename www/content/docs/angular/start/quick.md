@@ -102,7 +102,7 @@ app.listen(3001, '127.0.0.1', () => {
 
 </hb-code-example>
 
-The adapter maps the request to OpenAI and returns AG-UI events. `EventEncoder` writes them as a server-sent event stream. A disconnected browser cancels the provider request.
+The adapter maps the request to OpenAI and returns AG-UI (Agent–User Interaction Protocol) events. These events describe the run and its arriving content. `EventEncoder` writes them as a server-sent event (SSE) stream over the open HTTP response. A disconnected browser cancels the provider request.
 
 Start the endpoint:
 

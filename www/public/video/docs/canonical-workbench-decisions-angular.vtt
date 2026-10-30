@@ -7,7 +7,7 @@ TypeSafe returns a whole decision.
 Use suggestion: revision 1.
 
 00:00:06.024 --> 00:00:08.062
-The next decision suggests review.
+Next choice: review.
 
 00:00:08.062 --> 00:00:14.094
 Replay follows complete choices, confidence and state. It makes no decision requests or writes.

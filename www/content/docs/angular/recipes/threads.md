@@ -9,6 +9,8 @@ meta:
 
 A server-owned thread stores a conversation under an authenticated owner. Use it when history must survive a browser refresh, be available on another device, or participate in server-side access control. The thread ID identifies a record; loading and authorizing that record remain application operations.
 
+Here, resuming means loading completed text and sending a follow-up. To resume a paused approval or recover native tool history, use [Interrupt and resume](/docs/angular/concept/interrupt-and-resume) and the [durable recovery reference](/docs/angular/platform/b4run).
+
 Let’s save completed text with an expected version. When two clients edit the same conversation, the version check preserves the unsaved conversation and exposes the conflict instead of silently overwriting another client’s work.
 
 <hb-diagram diagram="recipe-thread-version-conflict"> </hb-diagram>

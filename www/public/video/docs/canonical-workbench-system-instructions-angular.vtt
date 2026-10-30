@@ -10,7 +10,7 @@ Mapped public policy.
 The next turn keeps this server policy. Prompts do not grant authorization.
 
 00:00:19.170 --> 00:00:22.814
-Replay retains the captured provider evidence without another request.
+Replay shows captured policy. No new requests.
 
 00:00:22.814 --> 00:00:27.600
 Back live. No application writes.

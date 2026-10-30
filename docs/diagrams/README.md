@@ -70,3 +70,21 @@ npx tsx www/src/tools/diagram-report.ts
 ```
 
 The report starts and stops its own Next server on an available port. Results and failure screenshots go to `dist/docs-diagrams/ci`; failed PR checks upload that directory with the other runtime diagnostics. To inspect a deployed build, set `DOCS_DIAGRAM_ORIGIN=https://hashbrown.dev`. `DOCS_DIAGRAM_OUTPUT` selects a separate report directory.
+
+## Verify a production deployment
+
+The production `www` deployment now runs the browser audit before GitHub marks that deployment successful. The Vercel build receives the full source revision. Verification reads that revision from the existing static Source bundle at `/workbench-source/react/generative-ui`, both at the immutable deployment URL and at `https://hashbrown.dev`.
+
+Readiness checks have bounded retries for alias propagation. The browser sweep runs once against the public website, then both identities are checked again. A changed revision or a browser assertion fails verification; the workflow does not keep retrying assertions until they pass. This binds the checked content to the expected source revision. It does not claim that two separate builds of the same revision have identical hosting configuration.
+
+Run the same check manually against an already deployed build:
+
+```sh
+DOCS_DEPLOYMENT_URL=https://your-production-deployment.vercel.app \
+DOCS_DEPLOYMENT_REVISION=FULL_40_CHARACTER_GIT_SHA \
+npx nx verify-deployment www
+```
+
+The check writes `dist/docs-deployment/verification.json`, browser logs, the diagram report and failure screenshots. The deployment workflow retains these as a seven-day artifact on success or failure. Failed startup or navigation is recorded as a fatal audit error. Browser service workers are disabled, and every request except GET or HEAD is blocked; rejected request diagnostics omit URL credentials and query values. Verification never sends a model request or performs an application write.
+
+Preview deployments and other deployment targets keep their existing behavior. Production `www` has a separate, explicit verification result: an uploaded deployment whose audit fails is reported as failed verification, with its URL retained for inspection. This check does not publish an SDK release.
