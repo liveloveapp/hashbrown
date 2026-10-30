@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
+import { repoRoot } from '../src/lib/repo-root';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
-import type { WorkbenchLessonId } from '../examples/quickstart/runtime/workbench-lessons';
+import type {
+  WorkbenchLesson,
+  WorkbenchLessonId,
+} from '../examples/quickstart/runtime/workbench-lessons';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 function fakeStorage() {
@@ -18,10 +24,10 @@ function mountPanel(
   lesson: {
     id: string;
     inspector: string;
-    format: 'ui';
+    format: WorkbenchLesson['format'];
     title: string;
   },
-  format?: 'decision',
+  format?: 'decision' | 'selection',
 ) {
   const host = document.createElement('div');
   document.body.append(host);
@@ -108,6 +114,106 @@ test('shows one section with a mode toggle on the UI tab', () => {
     [...host.querySelectorAll('h2')].some((h) => h.textContent === 'Inspector'),
   ).toBe(false);
   shell.dispose();
+});
+
+function checkedMode(host: HTMLElement) {
+  return host.querySelector('[role=radio][aria-checked=true]')?.textContent;
+}
+
+function panelTitle(host: HTMLElement) {
+  return host.querySelector('[data-captured] .wb-section-head h3')?.textContent;
+}
+
+test('the UI and JSON modes stay the same before and after JSON streams', () => {
+  const { host, store, shell } = mountPanel(generative);
+  streamPlan(store);
+  const read = (tab: string) => {
+    clickTab(host, tab);
+    return { labels: modeLabels(host), checked: checkedMode(host) };
+  };
+  const streamed = { ui: read('UI'), json: read('JSON') };
+
+  store.seek(0);
+  const prompt = { ui: read('UI'), json: read('JSON') };
+  const waiting = host.querySelector('.wb-inspection pre')?.textContent;
+
+  expect(store.getSnapshot().frame?.json ?? '').toBe('');
+  expect(prompt).toEqual(streamed);
+  expect(streamed.ui).toEqual({
+    labels: ['Schema', 'Raw', 'Parsed', 'Resolved'],
+    checked: 'Resolved',
+  });
+  expect(streamed.json).toEqual({
+    labels: ['Raw', 'Parsed', 'Resolved'],
+    checked: 'Parsed',
+  });
+  expect(waiting).toBe('Waiting for captured data');
+  shell.dispose();
+});
+
+test('ui-selection keeps its recipe modes with the confidence in the bottom mode', () => {
+  const { host, store, shell } = mountPanel(
+    {
+      id: 'ui-selection',
+      title: 'UI selection',
+      format: 'selection',
+      inspector: 'JSON',
+    },
+    'selection',
+  );
+  const request = store.send('Show summary');
+  store.recordRecipe(
+    { kind: 'selection', selected: ['summary'], confidence: 0.9 },
+    request.id,
+  );
+  store.settle('complete', 'stop');
+
+  const labels = modeLabels(host);
+  chooseMode(host, labels[1] ?? '');
+  const bottom = host.querySelector('.wb-inspection pre')?.textContent ?? '';
+
+  expect(labels).toEqual(['Whole UI', 'SDK selection', 'Raw']);
+  expect(bottom).toContain('"confidence"');
+  expect(bottom).toContain('"selected"');
+  shell.dispose();
+});
+
+test('titles the panel by tab without repeating the selected mode', () => {
+  const { host, store, shell } = mountPanel(generative);
+  streamPlan(store);
+
+  const ui = panelTitle(host);
+  chooseMode(host, 'Schema');
+  const uiSchema = panelTitle(host);
+  clickTab(host, 'JSON');
+  const json = panelTitle(host);
+  chooseMode(host, 'Resolved');
+  const jsonResolved = panelTitle(host);
+  clickTab(host, 'State');
+  const state = panelTitle(host);
+
+  expect(ui).toBe('SummaryCard');
+  expect(uiSchema).toBe('SummaryCard');
+  expect(json).toBe('Model output');
+  expect(jsonResolved).toBe('Model output');
+  expect(state).toBe('Application state');
+  shell.dispose();
+});
+
+test('the panel title truncates on one line beside a toggle that never wraps', () => {
+  const css = readFileSync(
+    join(repoRoot(), 'www/examples/quickstart/runtime/workbench.css'),
+    'utf8',
+  );
+
+  const title = css.match(/\.wb \.wb-section-head h3 \{([^}]*)\}/)?.[1] ?? '';
+  const toggle = css.match(/\.wb-segmented \{([^}]*)\}/)?.[1] ?? '';
+
+  expect(title).toContain('white-space: nowrap');
+  expect(title).toContain('overflow: hidden');
+  expect(title).toContain('text-overflow: ellipsis');
+  expect(toggle).toContain('flex: none');
+  expect(toggle).toContain('flex-wrap: nowrap');
 });
 
 test('Raw shows the frame json and the choice survives a tab round trip', () => {

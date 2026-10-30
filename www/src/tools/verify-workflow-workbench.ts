@@ -83,10 +83,11 @@ export async function verifyWorkflowWorkbench(options: {
       const interpreted = stateTree
         ? stateTree['moment']
         : await readInspectorJson(root, 'bottom');
+      // The title names the tab's captured subject whatever mode is shown.
       const headings = {
-        State: 'Application form and accepted plan',
-        Activities: 'Validated progress and linked messages',
-        Interrupts: 'Application approval form and outcome',
+        State: 'Application state',
+        Activities: 'SDK activities',
+        Interrupts: 'SDK pending interrupt batch',
       };
       if (name !== 'State')
         await expect(capturedSection.locator('h3')).toContainText(

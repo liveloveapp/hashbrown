@@ -562,6 +562,15 @@ export function createWorkbenchRequestsView(
     track.append(bar);
     fall.append(track);
     tr.append(name, typeCell, status, start, duration, count, fall);
+    // The whole row picks; the button stays its one focusable control.
+    tr.addEventListener('click', (event) => {
+      if (event.target instanceof Node && rowButton.contains(event.target))
+        return;
+      const fromPicker = pickerOpen;
+      pick(exchange.id);
+      // A picker pick returns focus to the picker; a table pick keeps it on the row.
+      if (!fromPicker) rowButton.focus();
+    });
     return {
       tr,
       button: rowButton,

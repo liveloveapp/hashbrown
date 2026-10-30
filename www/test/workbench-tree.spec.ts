@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from 'vitest';
+import { repoRoot } from '../src/lib/repo-root';
 import {
   changedPaths,
   createWorkbenchTree,
@@ -113,4 +116,24 @@ test('marks changed rows and exposes the value as JSON', () => {
     false,
   );
   expect(JSON.parse(tree.element.dataset.json ?? 'null')).toEqual(next);
+});
+
+test('the changed-value highlight is a light cobalt tint, never a grey band', () => {
+  const css = readFileSync(
+    join(repoRoot(), 'www/examples/quickstart/runtime/workbench.css'),
+    'utf8',
+  );
+
+  const rule =
+    css.match(/\[role='treeitem'\]\[data-changed\] \{([^}]*)\}/)?.[1] ?? '';
+  const keyframes =
+    css.match(/@keyframes wb-tree-changed \{([\s\S]*?)\n\}/)?.[1] ?? '';
+  const tints = [
+    ...`${rule}${keyframes}`.matchAll(/var\(--wb-cobalt\) (\d+)%/g),
+  ].map((match) => Number(match[1]));
+
+  expect(`${rule}${keyframes}`).not.toContain('--wb-tick');
+  expect(`${rule}${keyframes}`).not.toContain('--wb-hover');
+  expect(tints.length).toBeGreaterThan(0);
+  expect(Math.max(...tints)).toBeLessThanOrEqual(16);
 });

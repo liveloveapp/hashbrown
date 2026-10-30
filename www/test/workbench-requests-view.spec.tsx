@@ -981,3 +981,39 @@ test('a replay overview never falls back to a live source label', () => {
   host.remove();
   post.mockRestore();
 });
+
+test('clicking any cell of a request row selects it', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const firstRequest = store
+    .getSnapshot()
+    .events.findIndex((event) => event.kind === 'request');
+  const row = rowButton(host, 'Model request').closest('tr') as HTMLElement;
+
+  row.querySelector<HTMLElement>('td.wb-requests-status')?.click();
+
+  expect(selectedRow(host)).toEqual({ name: 'Model request', turn: '1' });
+  expect(store.getSnapshot().cursor).toBe(firstRequest);
+  expect(row.querySelectorAll('button, [tabindex="0"]')).toHaveLength(1);
+  shell.dispose();
+});
+
+test('clicking the duration of a picker row picks it and closes the list', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const row = [
+    ...host.querySelectorAll<HTMLElement>('[role=listbox] tr[data-exchange]'),
+  ].find((node) => node.textContent?.includes('readContext')) as HTMLElement;
+
+  (row.querySelectorAll<HTMLElement>('td.wb-num')[1] as HTMLElement).click();
+
+  expect(selectedRow(host).name).toBe('readContext');
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(document.activeElement).toBe(picker);
+  shell.dispose();
+});

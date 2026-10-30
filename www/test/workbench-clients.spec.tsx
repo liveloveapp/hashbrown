@@ -244,7 +244,7 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(rawTitle).toBe(titleBefore);
   expect(rawBody).toContain(String(frame?.kind));
   expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
-    'Resolved props',
+    'Model output',
   );
   shell.dispose();
 });
@@ -849,7 +849,12 @@ test('plain text onboarding UI inspector describes text rendering without expose
     expect(inspector?.textContent).toContain('"generatedProps": false');
     expect(inspector?.textContent).toContain('"exposedComponents": []');
     chooseInspectorMode(host, 'bottom');
-    expect(host.textContent).toContain('Text rendering and request outcome');
+    expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
+      'Plain text renderer',
+    );
+    expect(inspector?.textContent).toContain(
+      'rendered directly without a UI schema',
+    );
     expect(inspector?.textContent).not.toMatch(/SummaryCard|steps|string\[\]/);
     shell.dispose();
   }

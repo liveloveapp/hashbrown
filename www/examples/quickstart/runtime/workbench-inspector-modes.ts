@@ -49,6 +49,10 @@ function shortLabel(heading: string): string {
 /**
  * Builds the modes a compact inspector tab can toggle between.
  *
+ * The UI and JSON tabs of a generative lesson (format `ui`, without a recipe
+ * override) always get Raw, Parsed and Resolved, whether or not the current
+ * frame has streamed JSON yet; modes without data hold `undefined`.
+ *
  * @param input - The tab, output format, frame and the sections it displays.
  * @returns The ordered modes for the tab.
  */
@@ -64,27 +68,23 @@ export function workbenchInspectorModes(input: {
   recipe?: boolean;
 }): readonly WorkbenchInspectorMode[] {
   const { tab, format, frame, application, top, bottom, raw, recipe } = input;
-  const hasJson =
-    !!frame?.json &&
-    !recipe &&
-    format !== 'decision' &&
-    format !== 'structured';
+  // Decided by the lesson, not the frame, so the list holds while JSON streams in.
+  const generative = format === 'ui' && !recipe;
+  const json = frame?.json || undefined;
+  const streamed = (): WorkbenchInspectorMode[] => [
+    { id: 'raw', label: 'Raw', value: json },
+    {
+      id: 'parsed',
+      label: 'Parsed',
+      value: parsePartialJson(json ?? ''),
+    },
+    { id: 'resolved', label: 'Resolved', value: frame?.props ?? undefined },
+  ];
 
-  if (hasJson && frame && tab === 'ui') {
-    return [
-      { id: 'schema', label: 'Schema', value: top.value },
-      { id: 'raw', label: 'Raw', value: frame.json },
-      { id: 'parsed', label: 'Parsed', value: parsePartialJson(frame.json) },
-      { id: 'resolved', label: 'Resolved', value: frame.props },
-    ];
+  if (generative && tab === 'ui') {
+    return [{ id: 'schema', label: 'Schema', value: top.value }, ...streamed()];
   }
-  if (hasJson && frame && tab === 'json') {
-    return [
-      { id: 'raw', label: 'Raw', value: frame.json },
-      { id: 'parsed', label: 'Parsed', value: parsePartialJson(frame.json) },
-      { id: 'resolved', label: 'Resolved', value: frame.props },
-    ];
-  }
+  if (generative && tab === 'json') return streamed();
   if (tab === 'state') {
     const state = {
       ...(application as Record<string, unknown>),

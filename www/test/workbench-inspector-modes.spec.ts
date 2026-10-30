@@ -13,6 +13,7 @@ const frame = {
 } as unknown as WorkbenchFrame;
 
 const sections = {
+  format: 'ui' as const,
   application: { turn: 1 },
   top: { heading: 'Typed choice and confidence', value: 'top-value' },
   bottom: { heading: 'Validation result', value: 'bottom-value' },
@@ -88,10 +89,10 @@ test('offers tree, json and raw on the State tab with the moment merged in', () 
 
 test('falls back to top, bottom and raw for the decision format', () => {
   const modes = workbenchInspectorModes({
+    ...sections,
     tab: 'ui',
     format: 'decision',
     frame,
-    ...sections,
   });
 
   expect(modes).toEqual([
@@ -101,14 +102,44 @@ test('falls back to top, bottom and raw for the decision format', () => {
   ]);
 });
 
-test('falls back when there is no frame json', () => {
-  const modes = workbenchInspectorModes({
-    tab: 'json',
-    frame: null,
+test('keeps the generative modes stable before any JSON has streamed', () => {
+  const waiting = { json: '' } as unknown as WorkbenchFrame;
+
+  const before = workbenchInspectorModes({
     ...sections,
+    tab: 'json',
+    frame: waiting,
+  });
+  const empty = workbenchInspectorModes({
+    ...sections,
+    tab: 'ui',
+    frame: null,
   });
 
-  expect(modes.map((mode) => mode.id)).toEqual(['top', 'bottom', 'raw']);
+  expect(before.map((mode) => mode.id)).toEqual(['raw', 'parsed', 'resolved']);
+  expect(before.map((mode) => mode.value)).toEqual([
+    undefined,
+    undefined,
+    undefined,
+  ]);
+  expect(empty.map((mode) => mode.id)).toEqual([
+    'schema',
+    'raw',
+    'parsed',
+    'resolved',
+  ]);
+});
+
+test('keeps top, bottom and raw for formats that do not stream generative props', () => {
+  const formats = ['text', 'history', 'workflow', 'selection'] as const;
+
+  const ids = formats.map((format) =>
+    workbenchInspectorModes({ ...sections, format, tab: 'json', frame }).map(
+      (mode) => mode.id,
+    ),
+  );
+
+  expect(ids).toEqual(formats.map(() => ['top', 'bottom', 'raw']));
 });
 
 test('chooses a default mode per tab', () => {
@@ -116,10 +147,10 @@ test('chooses a default mode per tab', () => {
   const json = workbenchInspectorModes({ tab: 'json', frame, ...sections });
   const state = workbenchInspectorModes({ tab: 'state', frame, ...sections });
   const other = workbenchInspectorModes({
+    ...sections,
     tab: 'ui',
     format: 'structured',
     frame,
-    ...sections,
   });
 
   expect(defaultInspectorMode('ui', ui)).toBe('resolved');

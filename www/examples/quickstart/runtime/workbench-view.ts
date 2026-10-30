@@ -1617,14 +1617,27 @@ export function mountWorkbench(
       ? (remembered as string)
       : defaultInspectorMode(tab.toLowerCase(), modes);
     const mode = modes.find((item) => item.id === modeId) ?? modes[0];
-    const fromBottom = mode.id === 'bottom' || mode.id === 'resolved';
-    const componentName =
-      tab === 'UI' && commands.lesson?.id === 'generative-ui'
-        ? frame?.uiComponent
+    // The title names the tab's subject, never the selected mode.
+    const descriptor =
+      value && typeof value === 'object' && 'component' in value
+        ? value.component
         : undefined;
-    capturedHeading.textContent = fromBottom
-      ? bottomHeading
-      : (componentName ?? topHeading);
+    const componentName =
+      tab === 'UI'
+        ? (frame?.uiComponent ??
+          (typeof descriptor === 'string' ? descriptor : undefined))
+        : undefined;
+    const title =
+      componentName ??
+      (tab === 'JSON'
+        ? 'Model output'
+        : tab === 'State'
+          ? 'Application state'
+          : topHeading);
+    if (capturedHeading.textContent !== title) {
+      capturedHeading.textContent = title;
+      capturedHeading.title = title;
+    }
     modeControl.sync(modes, mode.id);
     const sourcePhrase = frame
       ? options.inspection

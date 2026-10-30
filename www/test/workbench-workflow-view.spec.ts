@@ -50,9 +50,10 @@ test('activity and approval lessons focus their actual SDK inspector with applic
     expect(host.textContent).toContain('Application-owned workflow controls');
     expect(host.textContent).not.toContain('SummaryCard');
     chooseInspectorMode(host, 'bottom');
-    expect(inspectorPanelText(host)).toContain(
-      'Selected SDK values for application controls',
+    expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
+      'Application-owned workflow controls',
     );
+    expect(inspectorPanelText(host)).toContain('"activityIds"');
     shell.dispose();
   }
 });

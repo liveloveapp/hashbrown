@@ -591,18 +591,22 @@ body {
 }
 .wb-section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 8px;
   padding: 12px 16px 8px;
 }
-/* A long heading wraps within its own column, so the mode toggle stays beside it. */
+/* The title stays on one line and truncates first, so the mode toggle keeps its natural width. */
 .wb .wb-section-head h3 {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
 }
 .wb-segmented {
   flex: none;
+  flex-wrap: nowrap;
   display: inline-flex;
   gap: 2px;
   padding: 2px;
@@ -732,13 +736,14 @@ body {
   outline: 2px solid var(--wb-cobalt);
   outline-offset: -2px;
 }
+/* A light cobalt tint marks values that changed at this event; it settles a step lighter. */
 .wb-tree [role='treeitem'][data-changed] {
-  background: var(--wb-cobalt-soft);
+  background: color-mix(in srgb, var(--wb-cobalt) 6%, transparent);
   animation: wb-tree-changed 600ms ease-out;
 }
 @keyframes wb-tree-changed {
   from {
-    background: var(--wb-tick);
+    background: color-mix(in srgb, var(--wb-cobalt) 14%, transparent);
   }
 }
 .wb-tree-key {
@@ -973,6 +978,9 @@ body {
 }
 .wb .wb-requests-name button:hover {
   background: var(--wb-hover);
+}
+.wb-requests-table tr[data-exchange] {
+  cursor: pointer;
 }
 .wb-requests-table tr[data-kind='tool'] .wb-requests-name {
   padding-left: 32px;
