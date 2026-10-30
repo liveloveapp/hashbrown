@@ -116,3 +116,17 @@ test('hb-workbench with an unknown lesson fails the render', async () => {
 
   await expect(rendering).rejects.toThrow('Unknown workbench lesson: nope');
 });
+
+test('gives each code example a stable id from its order and header', async () => {
+  const md =
+    '<hb-code-example header="src/A b.ts">\n\n```ts\na\n```\n\n</hb-code-example>\n\n<hb-code-example header="src/A b.ts">\n\n```ts\nb\n```\n\n</hb-code-example>';
+
+  const first = await render(md);
+  const second = await render(md);
+
+  expect(first.match(/id="(code-example-[^"]+)"/g)).toEqual([
+    'id="code-example-0-src-a-b-ts"',
+    'id="code-example-1-src-a-b-ts"',
+  ]);
+  expect(second).toBe(first);
+});

@@ -109,7 +109,7 @@ The recording uses this checked Angular client with real provider requests. The 
 
 The following excerpt is from the checked workbench client. Open the complete client for the component implementation, application state, and acceptance guard.
 
-<hb-code-example header="angular/src/app/workbench.ts">
+<hb-code-example header="angular/src/app/workbench.ts" moment="parsed-output-1">
 
 ```ts
 const components = [
