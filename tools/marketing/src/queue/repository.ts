@@ -533,3 +533,34 @@ export async function readWeek(
     posts: postRows.map(toPost),
   };
 }
+
+/**
+ * Reads one post.
+ *
+ * @returns The post, or `undefined` when none has this id.
+ */
+export async function readPost(
+  executor: SqlExecutor,
+  id: string,
+): Promise<QueuedPost | undefined> {
+  const { rows } = await executor.execute<PostRow>(
+    'select * from marketing_posts where id = $1::uuid',
+    [id],
+  );
+  return rows[0] ? toPost(rows[0]) : undefined;
+}
+
+/**
+ * Lists the posts in any of the given statuses across all weeks, by schedule.
+ */
+export async function listPostsByStatus(
+  executor: SqlExecutor,
+  statuses: readonly QueuedPost['status'][],
+): Promise<QueuedPost[]> {
+  const { rows } = await executor.execute<PostRow>(
+    `select * from marketing_posts where status = any($1::text[])
+     order by scheduled_at, created_at, id`,
+    [statuses],
+  );
+  return rows.map(toPost);
+}

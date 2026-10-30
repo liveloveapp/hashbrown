@@ -37,7 +37,8 @@ const devtoDraft = z.strictObject({
   }),
 });
 
-const draftSchemas = {
+/** The draft shape of each channel; a draft must match its post's channel. */
+export const draftSchemas = {
   x: xDraft,
   linkedin: linkedinDraft,
   blog: blogDraft,
@@ -45,7 +46,7 @@ const draftSchemas = {
 } as const;
 
 /** The calendar date (`YYYY-MM-DD`) of an instant in America/New_York. */
-function newYorkDate(instant: Date): string {
+export function newYorkDate(instant: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: TIME_ZONE,
     year: 'numeric',
@@ -54,7 +55,8 @@ function newYorkDate(instant: Date): string {
   }).format(instant);
 }
 
-function addDays(date: string, days: number): string {
+/** Adds whole days to a `YYYY-MM-DD` calendar date. */
+export function addDays(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS)
     .toISOString()
     .slice(0, 10);
