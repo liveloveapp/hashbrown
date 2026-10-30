@@ -23,8 +23,6 @@ export interface WorkbenchPanelProps {
    * the Source tab is hidden without it.
    */
   readonly source?: WorkbenchSourceData;
-  /** Milestones the page's prose refers to (unused until moments land). */
-  readonly moments?: readonly string[];
 }
 
 /**
@@ -36,12 +34,7 @@ export interface WorkbenchPanelProps {
  * client bundle, which gets only the plain values below and the pre-rendered
  * video.
  */
-export function WorkbenchPanel({
-  lesson,
-  sdk,
-  source,
-  moments,
-}: WorkbenchPanelProps) {
+export function WorkbenchPanel({ lesson, sdk, source }: WorkbenchPanelProps) {
   const origin = workbenchOrigin();
   const mediaId = workbenchMediaId(lesson, sdk);
   const media = DOCS_DEMOS[mediaId];
@@ -70,7 +63,6 @@ export function WorkbenchPanel({
       openHref={openHref}
       fallback={<DocsDemoVideo demo={mediaId} />}
       source={source}
-      moments={moments}
     />
   );
 }

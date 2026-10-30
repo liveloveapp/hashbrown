@@ -57,8 +57,6 @@ export interface WorkbenchPanelClientProps {
    * without it. The highlighted files load when the tab first opens.
    */
   readonly source?: WorkbenchSourceData;
-  /** Milestones the page's prose refers to (unused until moments land). */
-  readonly moments?: readonly string[];
 }
 
 type Tab = 'replay' | 'live' | 'source';
@@ -150,7 +148,7 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
   );
   if (narrow) {
     return (
-      <NarrowPanel>
+      <NarrowPanel title={props.title}>
         {props.fallback}
         {openLink}
       </NarrowPanel>
@@ -160,7 +158,13 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
 }
 
 // The video fallback has nothing to seek: See it run only scrolls and marks.
-function NarrowPanel({ children }: { children: ReactNode }) {
+function NarrowPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   const panel = useRef<HTMLDivElement>(null);
   useSeeItRun(
     useCallback((detail) => {
@@ -172,6 +176,8 @@ function NarrowPanel({ children }: { children: ReactNode }) {
     <div
       className={styles.panel}
       data-component="workbench-panel"
+      role="region"
+      aria-label={`${title} workbench`}
       tabIndex={-1}
       ref={panel}
     >
@@ -267,6 +273,10 @@ function TabbedPanel({
         .finally(() => clearTimeout(fetchTimer));
     };
     let capture: Promise<WorkbenchCapture> | null = null;
+    // Each ready starts a generation; only the latest one posts load, so a
+    // second ready while the capture downloads cannot load twice and undo a
+    // seek made after the first load.
+    let generation = 0;
     isLoaded.current = false;
     const embed = createEmbedClient(frame, origin, {
       // StrictMode and reloads can say ready twice; load again each time.
@@ -275,10 +285,11 @@ function TabbedPanel({
         isLoaded.current = false;
         // A reload restarts the replay: seek back to where the reader was.
         pendingMoment.current = lastMoment.current;
+        const current = ++generation;
         if (!readyFor(message, 'replay', lesson, sdk)) return fail();
         capture ??= fetchCapture();
         capture.then((value) => {
-          if (disposed) return;
+          if (disposed || current !== generation) return;
           embed.post({
             type: 'hb-workbench:load',
             version: 1,
@@ -548,7 +559,16 @@ function TabbedPanel({
         )}
       </div>
       {source && (
-        <div {...panelProps('source')}>
+        <div
+          {...panelProps('source')}
+          // Hold the Replay frame's box while loading, so opening Source
+          // never shrinks the panel.
+          style={
+            sourceLoad.status === 'loading'
+              ? { aspectRatio: FRAME_RATIO }
+              : undefined
+          }
+        >
           <WorkbenchSourceView
             source={source}
             load={sourceLoad}

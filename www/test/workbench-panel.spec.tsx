@@ -1160,3 +1160,139 @@ test('See it run on a narrow screen moves focus to the panel', () => {
     'workbench-panel',
   );
 });
+
+function seeks(post: ReturnType<typeof spyOnFrame>) {
+  return post.mock.calls.filter(
+    ([message]) => (message as { type: string }).type === 'hb-workbench:seek',
+  );
+}
+
+function loads(post: ReturnType<typeof spyOnFrame>) {
+  return post.mock.calls.filter(
+    ([message]) => (message as { type: string }).type === 'hb-workbench:load',
+  );
+}
+
+test('two readys before the capture arrives post one load, and a pending See it run still seeks', async () => {
+  const { fetchMock, intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  let resolveFetch: (value: {
+    ok: boolean;
+    json: () => Promise<unknown>;
+  }) => void = () => undefined;
+  fetchMock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+  );
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  const post = spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  seeItRun();
+  await fromFrame(frame, ready);
+
+  await act(async () => {
+    resolveFetch({ ok: true, json: async () => capture });
+    for (let tick = 0; tick < 10; tick++) await Promise.resolve();
+  });
+  await fromFrame(frame, loaded);
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(loads(post)).toEqual([
+    [{ type: 'hb-workbench:load', version: 1, capture }, origin],
+  ]);
+  expect(seeks(post)).toEqual([
+    [{ type: 'hb-workbench:seek', version: 1, milestone: 'tool-call' }, origin],
+  ]);
+});
+
+test('a reload after a seek seeks back to the last moment', async () => {
+  const { intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  const post = spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+  seeItRun('tool-readcontext-1');
+
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+
+  expect(loads(post)).toHaveLength(2);
+  expect(seeks(post)).toEqual([
+    [
+      {
+        type: 'hb-workbench:seek',
+        version: 1,
+        milestone: 'tool-readcontext-1',
+      },
+      origin,
+    ],
+    [
+      {
+        type: 'hb-workbench:seek',
+        version: 1,
+        milestone: 'tool-readcontext-1',
+      },
+      origin,
+    ],
+  ]);
+});
+
+test('an unknown moment after See it run keeps the replay and the open link', async () => {
+  const { intersect } = setup();
+  vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(vi.fn());
+  addSnippet();
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+  intersect();
+  const frame = replayFrame() as HTMLIFrameElement;
+  spyOnFrame(frame);
+  await fromFrame(frame, ready);
+  await fromFrame(frame, loaded);
+  seeItRun('no-such-moment');
+
+  await fromFrame(frame, {
+    type: 'hb-workbench:rejected',
+    version: 1,
+    reason: 'milestone',
+  });
+
+  expect(replayFrame()).not.toBeNull();
+  expect(document.querySelector('video')).toBeNull();
+  expect(
+    document.querySelector(`a[href="${origin}/react.html?lesson=tools"]`)
+      ?.textContent,
+  ).toContain('Open full workbench');
+});
+
+test('the narrow panel is a region named for the lesson', () => {
+  setup({ narrow: true });
+  render(<WorkbenchPanel lesson="tools" sdk="react" />);
+
+  const panel = document.querySelector('[data-component="workbench-panel"]');
+
+  expect(panel?.getAttribute('role')).toBe('region');
+  expect(panel?.getAttribute('aria-label')).toBe('Tools workbench');
+});
+
+test('Source holds the replay frame box while it loads', async () => {
+  const { fetchMock } = setup();
+  fetchMock.mockImplementation(() => new Promise(() => undefined));
+  render(<WorkbenchPanel lesson="tools" sdk="react" source={pageSource} />);
+  const sourceTab = document.querySelectorAll<HTMLElement>('[role="tab"]')[2];
+
+  fireEvent.click(sourceTab);
+
+  const panel = document.getElementById(
+    sourceTab.getAttribute('aria-controls') as string,
+  );
+  expect(panel?.textContent).toContain('Loading source');
+  expect(panel?.style.aspectRatio).toBe('4 / 3');
+});
