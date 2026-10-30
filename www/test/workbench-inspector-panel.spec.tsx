@@ -254,19 +254,22 @@ test('highlights nothing on the first State render of a new conversation', () =>
   shell.dispose();
 });
 
-function mountReplayEmbed() {
+function mountReplayEmbed(
+  lesson: Parameters<typeof mountPanel>[0] = generative,
+  format?: 'decision',
+) {
   const post = vi
     .spyOn(window, 'postMessage')
     .mockImplementation(() => undefined);
   const host = document.createElement('div');
   document.body.append(host);
-  const store = createWorkbenchStore();
+  const store = createWorkbenchStore(format);
   const shell = mountWorkbench(
     host,
     store,
     {
       framework: 'React',
-      lesson: generative,
+      lesson,
       send: vi.fn(),
       stop: vi.fn(),
       reset: vi.fn(),
@@ -281,12 +284,17 @@ function mountReplayEmbed() {
   return { host, store };
 }
 
-function loadRecording(store: ReturnType<typeof createWorkbenchStore>) {
-  const source = createWorkbenchStore();
-  streamPlan(source);
+function loadRecording(
+  lesson: string,
+  source: ReturnType<typeof createWorkbenchStore> = (() => {
+    const recorded = createWorkbenchStore();
+    streamPlan(recorded);
+    return recorded;
+  })(),
+) {
   const capture = {
     ...createWorkbenchCapture(source.getSnapshot(), {
-      lesson: generative.id,
+      lesson,
       framework: 'react',
       recordedAt: '2026-10-28T00:00:00.000Z',
     }),
@@ -305,12 +313,9 @@ function loadRecording(store: ReturnType<typeof createWorkbenchStore>) {
 test('a loaded replay embed drops the source label, live button and read-only notes', () => {
   const { host, store } = mountReplayEmbed();
 
-  loadRecording(store);
+  loadRecording(generative.id);
 
   const text = host.textContent ?? '';
-  const muted = Array.from(host.querySelectorAll('.wb-muted')).map(
-    (node) => node.textContent ?? '',
-  );
   expect(store.getSnapshot().readOnly).toBe(true);
   expect(text).not.toContain('Live model');
   expect(text).not.toContain('Awaiting source');
@@ -318,7 +323,9 @@ test('a loaded replay embed drops the source label, live button and read-only no
   expect(text).not.toContain('captured preview');
   expect(text).not.toContain('Recorded at');
   expect(host.querySelector<HTMLElement>('.wb-live')?.hidden).toBe(true);
-  expect(muted.some((value) => /^[0-9a-f]{7}$/.test(value))).toBe(true);
+  expect(host.querySelector('[role=status]')?.textContent).toMatch(
+    /^[0-9a-f]{7}$/,
+  );
 });
 
 test('a live workbench keeps its source label and live button', () => {
@@ -331,4 +338,35 @@ test('a live workbench keeps its source label and live button', () => {
   expect(label?.textContent).toBeTruthy();
   expect(host.querySelector<HTMLElement>('.wb-live')?.hidden).toBe(false);
   shell.dispose();
+});
+
+test('a decision replay drops the captured-result and read-only notes', () => {
+  const decisions = {
+    id: 'decisions',
+    title: 'Decisions',
+    format: 'decision' as 'ui',
+    inspector: 'JSON',
+  };
+  const { host, store } = mountReplayEmbed(decisions, 'decision');
+  const recorded = createWorkbenchStore('decision');
+  recorded.send('Decide');
+  const requestId = recorded
+    .getSnapshot()
+    .frame?.messages.filter((message) => message.role === 'user')
+    .at(-1)?.id;
+  recorded.recordDecision(
+    { nextAction: 'review', confidence: 0.9 },
+    requestId ?? '',
+  );
+  recorded.settle('complete', 'stop');
+
+  loadRecording(decisions.id, recorded);
+  store.live();
+
+  const text = host.textContent ?? '';
+  expect(store.getSnapshot().readOnly).toBe(true);
+  expect(text).toContain('Next action: review');
+  expect(text).not.toContain('Closed choice');
+  expect(text).not.toContain('captured result');
+  expect(text).not.toContain('Replay is read-only.');
 });

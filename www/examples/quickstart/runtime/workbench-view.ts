@@ -1535,7 +1535,7 @@ export function mountWorkbench(
         busy,
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
-        source: sourceLabel,
+        source: snapshot.readOnly ? '' : sourceLabel,
         flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
     const bottomHeading =

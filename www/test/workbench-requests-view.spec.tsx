@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
@@ -913,4 +914,70 @@ test('the strip flag reads the same as the main timeline flag', () => {
   expect(atRequest[0]).not.toBe('');
   expect(nearEnd[0]).toBe(nearEnd[1]);
   shell.dispose();
+});
+
+test('a replay overview never falls back to a live source label', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const post = vi
+    .spyOn(window, 'postMessage')
+    .mockImplementation(() => undefined);
+  const store = createWorkbenchStore();
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: {
+        id: 'tools',
+        title: 'Tools',
+        format: 'ui',
+        inspector: 'Requests',
+        endpoint: '/api/workbench/tools',
+      },
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: createWorkbenchLayoutStore(fakeStorage()), embed: 'replay' },
+  );
+  const recorded = createWorkbenchStore();
+  recorded.send('Plan');
+  recorded.record('request', requestPayload('r1'));
+  recorded.record('response', { status: 500, url, problem: 'Server error' });
+  recorded.settle('error');
+  const capture = {
+    ...createWorkbenchCapture(recorded.getSnapshot(), {
+      lesson: 'tools',
+      framework: 'react',
+      recordedAt: '2026-10-28T00:00:00.000Z',
+    }),
+    commit: '0123456789abcdef',
+  };
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: { type: 'hb-workbench:load', version: 1, capture },
+      origin: 'https://hashbrown.dev',
+      source: window,
+    }),
+  );
+
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: { type: 'hb-workbench:seek', version: 1, milestone: 'request-1' },
+      origin: 'https://hashbrown.dev',
+      source: window,
+    }),
+  );
+
+  const detail = host.querySelector('[data-detail]')?.textContent ?? '';
+  expect(store.getSnapshot().readOnly).toBe(true);
+  expect(detail).toContain('Server error');
+  expect(detail).not.toContain('Source');
+  expect(detail).not.toContain('Awaiting source');
+  expect(detail).not.toContain('Live model');
+  shell.dispose();
+  host.remove();
+  post.mockRestore();
 });
