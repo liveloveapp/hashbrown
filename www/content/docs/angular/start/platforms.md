@@ -55,7 +55,7 @@ If you need a complete chat interface, [Threadplane](/docs/angular/recipes/threa
 
 ## Explore it in the workbench
 
-The [workbench](/docs/angular/start/workbench) uses a checked OpenAI server adapter for its public streaming lessons. Start **First plan**, inspect the request and streamed response, then follow a provider guide to configure your own endpoint. Reuse the frontend contract where the provider supports it; verify tool and schema behavior on that deployment.
+The [workbench](/docs/angular/start/workbench) uses a checked OpenAI server adapter for its public streaming lessons. Open **First plan** in the workbench below, inspect the request and streamed response, then follow a provider guide to configure your own endpoint. Reuse the frontend contract where the provider supports it; verify tool and schema behavior on that deployment.
 
 <hb-workbench-launcher lesson="first-plan">
 </hb-workbench-launcher>

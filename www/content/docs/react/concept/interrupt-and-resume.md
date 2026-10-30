@@ -98,6 +98,8 @@ The start button sends an ordinary request through this same chat instance. The 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="interrupts">
 </hb-workbench>
 
@@ -105,9 +107,7 @@ Let's explain the same two-step plan, pause for two approvals, and continue once
 
 Approval in this example permits another explanation. It does not execute either plan step, record a video, or write a file. A later user turn creates a fresh approval batch with fresh form choices.
 
-<img src="/video/docs/canonical-workbench-interrupts-react-result.png" alt="React workbench showing interrupt and resume, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=interrupts`](http://127.0.0.1:4370/react.html?lesson=interrupts). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example). The replay uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
 The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 

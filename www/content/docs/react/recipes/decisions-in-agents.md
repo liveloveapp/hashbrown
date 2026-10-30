@@ -51,12 +51,12 @@ The [standalone support agent](https://github.com/liveloveapp/hashbrown/blob/mai
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="agent-decisions">
 </hb-workbench>
 
 Let's put a decision inside our agent. We'll ask which part of the same two-step plan the user wants explained, then call our own outline or recording handler. When the choice is uncertain, we'll ask for clarification.
-
-<img src="/video/docs/canonical-workbench-agent-decisions-react-result.png" alt="The React conversation shows an application handler reply beside the actual server route decision, confidence, and fallback state." width="1600" height="1000" loading="lazy" />
 
 ## Follow the decision
 
@@ -67,7 +67,7 @@ Let's put a decision inside our agent. We'll ask which part of the same two-step
 5. Ask how to record the prepared demo. Inspect the next proposed route and the handler permitted by its confidence.
 6. Replay both turns and compare their requests, route choices, handler replies, and unchanged application state.
 
-These recordings use real TypeSafe decisions and keep the actual scores visible. A proposed route below 0.75 still produces clarification, even when that route looks reasonable. A decision response arrives whole. The reply is text supplied by our application handler; it is not streamed model prose.
+The replay uses real TypeSafe decisions and keep the actual scores visible. A proposed route below 0.75 still produces clarification, even when that route looks reasonable. A decision response arrives whole. The reply is text supplied by our application handler; it is not streamed model prose.
 
 ## Keep the routes small
 

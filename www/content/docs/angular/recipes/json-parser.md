@@ -58,12 +58,12 @@ Pass a growing prefix such as `{"title":"Groceries","items":["ap` and then the f
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="json-parser">
 </hb-workbench>
 
 Let's watch JSON become a plan. The title waits for a complete string, while step text grows as it arrives. Then we'll check the original document before calling the result complete.
-
-<img src="/video/docs/canonical-workbench-json-parser-angular-result.png" alt="The Angular workbench pairs the plan preview with actual parser observations, the original JSON, and final validation." width="1600" height="1000" loading="lazy" />
 
 ## Follow the JSON
 
@@ -74,7 +74,7 @@ Let's watch JSON become a plan. The title waits for a complete string, while ste
 5. Ask for a shorter second step. The parser follows the new assistant response rather than appending it to the old JSON document.
 6. Replay the two turns. Chat, raw JSON, resolved values, and the bottom timeline follow the same selected event.
 
-The recording uses real OpenAI output through the actual Hashbrown text SDK. `injectJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
+The replay uses real OpenAI output through the actual Hashbrown text SDK. `injectJsonParser` receives the accumulated assistant JSON. There is no browser timer generating replacement model tokens.
 
 ## Choose which values can stream
 

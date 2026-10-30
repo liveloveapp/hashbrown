@@ -68,6 +68,8 @@ The model chooses whether to call a tool; the system instruction makes the looku
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="tools">
 </hb-workbench>
 
@@ -77,9 +79,9 @@ The same conversation appears in [Generative UI](/docs/react/concept/components)
 
 ### Run the same conversation
 
-Use the [conversation workbench](/docs/react/start/workbench) with the server environment from the [Quickstart](/docs/react/start/quick). Start it with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/react.html?lesson=tools`. Selecting a lesson does not send a request.
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
-The recording uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
+The replay uses this checked React client with real provider requests. The local server keeps credentials, instructions, tools, and response schema on the server. Refresh clears the in-memory conversations and accepted plan.
 
 ### Read application state
 
@@ -114,8 +116,6 @@ The React version uses `deps` to keep handler dependencies current; the Angular 
 5. Send the follow-up. The next tool result contains revision `1` and the accepted plan.
 
 Select **Requests** to see each request and tool result in a table grouped by turn. Tool calls sit under the request that called them. Select a tool row to see its **Call** and **Result**, or select the request to see **Raw request** (exactly as sent) and **Response** (every streamed event).
-
-<img src="/video/docs/canonical-workbench-tools-react-result.png" alt="The Requests view lists model requests and readContext results from both plan turns." width="1600" height="1000" loading="lazy" />
 
 ### Keep reads and writes deliberate
 

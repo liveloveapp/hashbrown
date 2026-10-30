@@ -74,12 +74,12 @@ Export the exposed component from a shared module as your catalogue grows. Compo
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="ui-kits">
 </hb-workbench>
 
 Let's put two components in one kit. We'll ask for a summary of our two-step plan, accept it, then ask for an ordered view with a shorter second step. The kit carries the same component descriptions, schemas, and renderers into both requests.
-
-<img src="/video/docs/canonical-workbench-ui-kits-react-result.png" alt="The React workbench shows two trusted component presentations, the selected component, and the accepted plan in application state." width="1600" height="1000" loading="lazy" />
 
 ## Try the same kit twice
 

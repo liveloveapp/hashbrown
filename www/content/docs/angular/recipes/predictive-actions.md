@@ -71,6 +71,8 @@ Before offering **Accept**, require a successful completed request, a known acti
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="predictions">
 </hb-workbench>
 
@@ -80,13 +82,7 @@ The workbench uses `structuredCompletionResource`. Each request receives an expl
 
 ## Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with server-only `OPENAI_API_KEY` and `OPENAI_MODEL`:
-
-```sh
-npx nx workbench-serve www
-```
-
-Open `http://127.0.0.1:4370/angular.html?lesson=predictions`. The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The endpoint is `/api/workbench/predictions`. No request starts until you send a prompt.
 
 ## Review, dismiss, and accept
 
@@ -96,8 +92,6 @@ Open `http://127.0.0.1:4370/angular.html?lesson=predictions`. The endpoint is `/
 4. Send **First prompt** again. This is a fresh request with a new context ID and the same unchanged plan. Choose **Accept** on its new recording proposal; the accepted action is saved and the revision advances to 1.
 5. Older proposals are now stale. Request fresh suggestions instead of applying an earlier snapshot. The first proposal stays marked as dismissed; accepting a later proposal does not rewrite its history.
 6. Send **Follow-up**. The third snapshot includes the accepted action, so it cannot be applied again. The model can now suggest reviewing the recorded demo.
-
-<img src="/video/docs/canonical-workbench-predictions-angular-result.png" alt="The Angular workbench shows context-bound action suggestions beside the completion JSON and accepted application action." width="1600" height="1000" loading="lazy" />
 
 ## Keep the catalogue in the application
 

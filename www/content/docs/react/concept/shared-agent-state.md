@@ -75,6 +75,8 @@ During a run, agent state updates are drafts. Successful completion commits them
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="shared-state">
 </hb-workbench>
 
@@ -82,9 +84,7 @@ Let's keep the same two-step plan: outline a trusted UI demo, then record it. Ch
 
 The State inspector follows the selected timeline frame. The title field is an application form draft; the SDK state is a separate value. You can see exactly when the app replaces it and when the agent updates it. The captured side shows SDK state and request flags. The other side shows the local form and accepted application plan. Choose Raw for the full selected SDK observation.
 
-<img src="/video/docs/canonical-workbench-shared-state-react-result.png" alt="React workbench showing shared agent state, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/react/start/workbench), then open [`/react.html?lesson=shared-state`](http://127.0.0.1:4370/react.html?lesson=shared-state). The recording uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
+Use the panel above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example). The replay uses the [checked React client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/WorkflowWorkbench.tsx) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
 The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 
@@ -119,7 +119,7 @@ Pass `state: workbenchWorkflowInitialState` to `useChat`. Read the current value
 
 `setState` replaces the complete value. It does not merge objects and does not start a generation. The workbench first records a local title draft, then calls the SDK setter when you select **Set shared state**. Send starts the request separately.
 
-<hb-code-example header="react/src/WorkflowWorkbench.tsx">
+<hb-code-example header="react/src/WorkflowWorkbench.tsx" moment="application-form-draft-0">
 
 ```tsx
 const state = {

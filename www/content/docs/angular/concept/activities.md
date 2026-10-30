@@ -45,6 +45,8 @@ On the producer side, send `ACTIVITY_SNAPSHOT` with a unique message ID, an acti
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="activities">
 </hb-workbench>
 
@@ -52,9 +54,7 @@ Let's explain our two-step plan and show the work around the reply. The agent va
 
 These stages describe work the agent performed. They do not mean the demo was outlined or recorded. The plan remains application data.
 
-<img src="/video/docs/canonical-workbench-activities-angular-result.png" alt="Angular workbench showing activities, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/angular/start/workbench), then open [`/angular.html?lesson=activities`](http://127.0.0.1:4370/angular.html?lesson=activities). The recording uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The replay uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
 The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 

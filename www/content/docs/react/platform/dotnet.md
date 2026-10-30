@@ -578,7 +578,7 @@ Entra authentication, live cloud-account qualification, .NET 8/9, automatic nati
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=first-plan` in the [conversation workbench](/docs/react/start/workbench). Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+Open the workbench below. Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
 
 <hb-workbench-launcher lesson="first-plan">
 </hb-workbench-launcher>

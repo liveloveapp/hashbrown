@@ -95,7 +95,7 @@ A schema-shaped response can still contain an incorrect claim. Check important f
 
 ## Explore it in the workbench
 
-Open the **System instructions** lesson in the [workbench](/docs/react/start/workbench). The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
+Open the **System instructions** lesson in the workbench below. The example changes domains from support to the shared two-step plan, but the separation of user request and server policy is the same.
 
 <hb-workbench-launcher lesson="system-instructions">
 </hb-workbench-launcher>

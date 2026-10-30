@@ -383,7 +383,7 @@ const stream = HashbrownAnthropic.stream.text({
 
 ## Explore it in the workbench
 
-Start the [conversation workbench](/docs/react/start/workbench) and open `/react.html?lesson=first-plan`. Ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
+Open the workbench below and ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
 <hb-workbench-launcher lesson="first-plan">
 </hb-workbench-launcher>

@@ -44,10 +44,12 @@ Use the [Quickstart](/docs/angular/start/quick) for the complete HTTP handler an
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="first-plan">
 </hb-workbench>
 
-Now follow those boundaries in a concrete implementation. The recording uses the real Angular client and OpenAI adapter. Its `first-plan` lesson renders `SummaryCard`; the inspector and timeline record what happened without becoming part of the component API.
+Now follow those boundaries in a concrete implementation. The replay uses the real Angular client and OpenAI adapter. Its `first-plan` lesson renders `SummaryCard`; the inspector and timeline record what happened without becoming part of the component API.
 
 ### Follow the request
 
@@ -57,7 +59,7 @@ Now follow those boundaries in a concrete implementation. The recording uses the
 4. **Hashbrown parses the streamed values.** The schema describes a title and an array of steps. Streaming fields become available as the response arrives, so we can render a preview before the entire response is complete.
 5. **Our component renders.** `hb-render-message` resolves `SummaryCard` to the application component we exposed. Its props come from the generated response. Its markup and behavior come from our code.
 
-Open the [workbench](/docs/angular/start/workbench) at `http://127.0.0.1:4370/angular.html?lesson=first-plan`. Step through the bottom timeline, drag it anywhere, and compare **Requests**, **JSON**, and **UI**. They describe the same run at the selected moment.
+In the **Replay** tab above, step through the bottom timeline, drag it anywhere, and compare **Requests**, **JSON**, and **UI**. They describe the same run at the selected moment.
 
 ### What goes to the model?
 

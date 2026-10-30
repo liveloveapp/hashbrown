@@ -267,7 +267,7 @@ When the client sends `options: { longContext: true }`, the adapter adds TypeSaf
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=decisions` in the [conversation workbench](/docs/react/start/workbench). For a live local run, supply `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL` on the server as described there. This lesson starts with a fixed application-owned plan.
+Open the workbench below. To run it live on your machine, see [Run the example](/docs/react/start/workbench#run-the-example); the server also needs `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL`. This lesson starts with a fixed application-owned plan.
 
 <hb-workbench-launcher lesson="decisions">
 </hb-workbench-launcher>

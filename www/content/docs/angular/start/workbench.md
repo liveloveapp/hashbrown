@@ -21,6 +21,8 @@ Use the normal Hashbrown APIs to build the interface first. The [Quickstart](/do
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="generative-ui">
 </hb-workbench>
 

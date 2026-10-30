@@ -242,7 +242,7 @@ The compiled documentation check is configured to compare identical framework C#
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=interrupts` in the [conversation workbench](/docs/react/start/workbench). Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
+Open the workbench below. Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
 
 <hb-workbench-launcher lesson="interrupts">
 </hb-workbench-launcher>

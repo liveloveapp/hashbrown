@@ -227,7 +227,7 @@ Use the [OpenAI provider](https://github.com/liveloveapp/hashbrown/tree/main/pac
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=first-plan` in the [conversation workbench](/docs/react/start/workbench). Send one prompt and inspect **Requests**, **JSON**, and **UI**. Follow a single run from its input to the text events and resolved component props.
+Open the workbench below. Send one prompt and inspect **Requests**, **JSON**, and **UI**. Follow a single run from its input to the text events and resolved component props.
 
 <hb-workbench-launcher lesson="first-plan">
 </hb-workbench-launcher>

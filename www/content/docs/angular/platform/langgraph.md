@@ -194,7 +194,7 @@ Keep client tools in `toolCalls` through the normal framework tool API. Do not r
 
 ## Explore it in the workbench
 
-Open `/angular.html?lesson=tools` in the [conversation workbench](/docs/angular/start/workbench). Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+Open the workbench below. Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
 
 <hb-workbench-launcher lesson="tools">
 </hb-workbench-launcher>

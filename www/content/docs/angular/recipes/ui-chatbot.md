@@ -88,12 +88,12 @@ Send a follow-up through the same chat instance to retain the exchange. If a lat
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="ui-chatbot">
 </hb-workbench>
 
 Let's give our conversation something to work with. The assistant will propose a two-step plan. We'll accept it, then ask the assistant to read the plan we accepted. One turn proposes a change; the next reports application state.
-
-<img src="/video/docs/canonical-workbench-ui-chatbot-angular-result.png" alt="The Angular conversation shows an accepted SummaryCard followed by a read-only PlanReading, beside the application plan and revision." width="1600" height="1000" loading="lazy" />
 
 ## Follow both turns
 

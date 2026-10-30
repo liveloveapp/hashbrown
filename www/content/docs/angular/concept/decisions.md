@@ -67,6 +67,8 @@ Input changes trigger decisions; editing a draft should not send requests unless
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="decisions">
 </hb-workbench>
 
@@ -76,9 +78,9 @@ Let’s ask a closed question. The allowed answers are `record`, `review`, and `
 
 ### Run the workbench
 
-Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx workbench-serve www`, then open `http://127.0.0.1:4370/angular.html?lesson=decisions`. Keep the server environment and provider configuration from the [Quickstart](/docs/angular/start/quick). Selecting a lesson does not start a request.
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example).
 
-Set `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` in the server environment as well. The recording pins `jev-1.14.0`; see [TypeSafe models](https://docs.typesafe.ai/models.md) for supported versions. Credentials stay on the server. Without those settings, the decision endpoint reports that it is unavailable; the generation lessons still work with OpenAI.
+A local run also needs `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` in the server environment. The replay pins `jev-1.14.0`; see [TypeSafe models](https://docs.typesafe.ai/models.md) for supported versions. Credentials stay on the server. Without those settings, the decision endpoint reports that it is unavailable; the generation lessons still work with OpenAI.
 
 ### Ask one useful question
 
@@ -151,8 +153,6 @@ Read the [complete Angular client](https://github.com/liveloveapp/hashbrown/blob
 4. Send “The demo is recorded. What should I do next?” The new input includes the current application snapshot, and the decision returns `review`.
 
 Decisions evaluate the input snapshot supplied for each request. They do not automatically load a chat history. The workbench keeps both requests in one feed so we can inspect what changed.
-
-<img src="/video/docs/canonical-workbench-decisions-angular-result.png" alt="The app-owned plan appears beside the complete decision response and the SDK's typed choice and confidence." width="1600" height="1000" loading="lazy" />
 
 ### Treat confidence as application policy
 
