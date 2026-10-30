@@ -57,6 +57,7 @@
   overflow: visible;
   width: 100%;
   height: auto;
+  margin-inline: auto;
   font-family: var(--font-sans);
 }
 .figure .scrollHint {
@@ -220,6 +221,7 @@
   }
   .canvas {
     min-width: 0 !important;
+    max-width: 100% !important;
   }
   .figure {
     break-inside: avoid;

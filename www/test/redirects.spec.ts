@@ -58,7 +58,7 @@ test('/call redirects temporarily to the Google Calendar booking page', async ()
 // A cron more often than daily needs hashbrown-www on a Vercel Pro team; a
 // Hobby team rejects the deploy. See "Scheduling the tick" in
 // docs/superpowers/runbooks/2026-10-21-growth-lifecycle-service.md.
-test('vercel.json schedules lifecycle every thirty minutes and inbox recovery every five', () => {
+test('vercel.json schedules lifecycle every thirty minutes, inbox recovery every five and marketing every fifteen', () => {
   const path = resolve(__dirname, '../vercel.json');
 
   const config = JSON.parse(readFileSync(path, 'utf8'));
@@ -66,6 +66,7 @@ test('vercel.json schedules lifecycle every thirty minutes and inbox recovery ev
   expect(config.crons).toEqual([
     { path: '/_/cron/lifecycle', schedule: '*/30 * * * *' },
     { path: '/_/cron/inbox-recovery', schedule: '*/5 * * * *' },
+    { path: '/_/cron/marketing', schedule: '*/15 * * * *' },
   ]);
 });
 

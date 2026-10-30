@@ -51,7 +51,10 @@ For on-device inference, follow [Local Models](/docs/react/recipes/local-models)
 
 ## Explore it in the workbench
 
-Use the [workbench](/docs/react/start/workbench) to compare result shapes after choosing an API. Start with **Messages and turns** for text, **Structured output** for typed data, and **Generative UI** for trusted components. Each lesson uses the same plan so the changed API is easier to spot.
+Use the workbench below to compare result shapes after choosing an API; the [workbench guide](/docs/react/start/workbench) covers every lesson. Start with **Messages and turns** for text, **Structured output** for typed data, and **Generative UI** for trusted components. Each lesson uses the same plan so the changed API is easier to spot.
+
+<hb-workbench-launcher lesson="generative-ui">
+</hb-workbench-launcher>
 
 Inspect **Requests** and **JSON**, then compare the live renderer and application **State**. A different output API changes how the response is interpreted; it does not grant permission to apply it. The teaser demonstrates generative UI with real OpenAI output, not every API in the table.
 

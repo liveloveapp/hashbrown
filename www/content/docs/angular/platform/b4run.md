@@ -7,14 +7,11 @@ meta:
 
 # Durable recovery with b4.run
 
-<hb-docs-demo demo="canonical-workbench-production-recovery-angular">
-</hb-docs-demo>
-
 A durable conversation must survive more than a browser refresh. When an agent pauses before a protected action, we need to retain its checkpoint, verify who may return to it, and distinguish a restored proposal from an applied business result. b4.run supplies durable runtime stores; our application owns identity, authorization, and the effect itself.
 
 For example, a support assistant may prepare a case update and wait for approval. Reading its saved conversation should show the proposal without changing the case. Approval is a new explicit request, and a repeated request must not apply the same update twice.
 
-The teaser shows that boundary in the separate TypeScript/Postgres production recovery reference: restore a recording plan after restarting the server, then explicitly approve it. It uses b4.run 0.15.5. The public anonymous workbench does not expose this server's recovery routes.
+The workbench later on this page shows that boundary in the separate TypeScript/Postgres production recovery reference: restore a recording plan after restarting the server, then explicitly approve it. It uses b4.run 0.15.5. The public anonymous workbench does not expose this server's recovery routes.
 
 <hb-diagram diagram="b4-durable-ownership">
 </hb-diagram>
@@ -149,6 +146,8 @@ Set retention policies for conversation checkpoints, pending grants, thread owne
 Before deploying, use your verified account identity, HTTPS cookie settings, production database access policy, and the admission and failure behavior appropriate to your host. The reference demonstrates one protected database action; it does not provision a production database or deploy an account system.
 
 ## Explore it in the workbench
+
+The workbench below replays a recorded run of this lesson.
 
 <hb-workbench lesson="production-recovery">
 </hb-workbench>

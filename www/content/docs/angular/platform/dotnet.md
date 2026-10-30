@@ -527,6 +527,9 @@ Entra authentication, live cloud-account qualification, .NET 8/9, automatic nati
 
 ## Explore it in the workbench
 
-Open `/angular.html?lesson=first-plan` in the [conversation workbench](/docs/angular/start/workbench). Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+Open the workbench below. Send a prompt and compare **Requests**, **JSON**, and **UI**. Follow the AG-UI response into resolved props and a trusted component; the preview does not change application state.
+
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
 
 The bundled workbench uses a TypeScript server. It demonstrates the browser contract your .NET endpoint must satisfy, not qualification of the .NET library. Connect your application to the endpoint configured above and run the linked conformance checks for the selected provider, tool mode, confirmation, and recovery paths. Keep the tested package and SDK version boundaries on this page when doing so.

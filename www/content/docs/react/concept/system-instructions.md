@@ -7,9 +7,6 @@ meta:
 
 # System instructions
 
-<hb-docs-demo demo="canonical-workbench-system-instructions-react">
-</hb-docs-demo>
-
 System instructions describe the assistant’s job, relevant context, and response expectations across turns. A user message asks for the work in the current turn. Keeping those roles separate makes instructions easier to test and keeps an end user’s text from becoming trusted application policy.
 
 Start with a specific task and a small amount of relevant context. Add constraints when examples show they are needed. Browser configuration is useful for feature behavior, but policy your application relies on belongs in your endpoint. Instructions guide a model; authentication, authorization, and validation must still be enforced by code.
@@ -90,16 +87,18 @@ Use `input: withReadingPolicy(validatedInput)` in your existing server adapter c
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="system-instructions">
 </hb-workbench>
 
 System instructions describe the assistant's task across a conversation. The user message asks for the work we want in the current turn. Let's inspect both while we explain our two-step plan.
 
-Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The recording follows the real React text-chat API and OpenAI adapter.
+Here the application supplies a fixed copy of the plan as context. The endpoint owns that policy; the browser supplies the current user request. The replay follows the real React text-chat API and OpenAI adapter.
 
 ### Inspect the instruction that reaches the provider
 
-Start the [workbench](/docs/react/start/workbench), then open `http://127.0.0.1:4370/react.html?lesson=system-instructions`.
+Use the **Live** tab above, or [run the workbench on your machine](/docs/react/start/workbench#run-the-example).
 
 1. Send **First prompt** to ask for the application plan.
 2. In **Instructions**, compare the browser declaration with the effective public policy.
@@ -129,8 +128,6 @@ export const workbenchInstructionsSystem =
 </hb-code-example>
 
 The inspector's **effective** value is captured from the actual mapped provider input inside the adapter callback. It includes only this known public policy, with its origin labelled. It is not a promise inferred from the browser configuration.
-
-<img src="/video/docs/canonical-workbench-system-instructions-react-result.png" alt="The React Instructions inspector compares a browser declaration with the public server policy observed at the OpenAI adapter mapping." width="1600" height="1000" loading="lazy" />
 
 ### Start with a specific task
 

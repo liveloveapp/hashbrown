@@ -14,15 +14,15 @@ const lessons = [
 ] as const;
 
 test.each(SDKS)(
-  '%s workflow guides use focused canonical recordings',
+  '%s workflow guides use focused inline workbench lessons',
   (sdk) => {
     for (const [slug, lesson] of lessons) {
       const body = readDoc(sdk, ['concept', slug])?.body ?? '';
       const id = `canonical-workbench-${lesson}-${sdk}`;
 
       expectConceptFirstWorkbench(body, sdk, lesson);
-      expect(body).toContain(`/video/docs/${id}-result.png`);
-      expect(body).toContain(`/${sdk}.html?lesson=${lesson}`);
+      expect(body).not.toContain(`/video/docs/${id}-result.png`);
+      expect(body).toContain(`<hb-workbench lesson="${lesson}">`);
       expect(body).toContain('two-step plan');
       expect(body).toContain(`/docs/${sdk}/start/workbench`);
       expect(body).not.toMatch(/Lisbon|itinerary|trip-progress|account-123/);

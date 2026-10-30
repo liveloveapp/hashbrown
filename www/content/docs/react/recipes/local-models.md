@@ -7,9 +7,6 @@ meta:
 
 # Local models
 
-<hb-docs-demo demo="canonical-workbench-local-models-react">
-</hb-docs-demo>
-
 A local model generates on the user’s device instead of sending prompts to a hosted provider. Use it when on-device processing fits your privacy, latency, or connectivity requirements and the supported devices can run the model. Availability, downloads, preparation, inference, and cancellation are separate application states.
 
 Let’s extract a trip destination and duration from a short request. We will explicitly prepare the browser-managed model, stream a typed draft, and check successful completion and validate the parsed destination and day count before showing a ready brief. A local transport uses the same structured chat contract; it does not remove validation or authorization requirements.
@@ -35,13 +32,13 @@ Start with the [React Quickstart](/docs/react/start/quick). The recorded workben
 
 Use a supported **desktop** Chrome on HTTPS or localhost. Check [Chrome's current Prompt API requirements](https://developer.chrome.com/docs/ai/prompt-api) and let **Prepare model** check the actual device. Browser version alone does not establish availability: model installation, languages, device resources and browser policy also matter.
 
-Edge's adapter has separate eligibility and setup requirements; follow [Microsoft's Prompt API instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api). These recordings establish Chrome inference on the test machine, not Edge or native mobile inference.
+Edge's adapter has separate eligibility and setup requirements; follow [Microsoft's Prompt API instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api). The replays establish Chrome inference on the test machine, not Edge or native mobile inference.
 
 The first explicit preparation may download a browser-managed model. Show the actual progress and allow **Stop preparation**. Model downloads, application assets and telemetry have separate network behavior; local generation does not make the whole application offline. The workbench disables Hashbrown development telemetry.
 
 ## Build a standalone trip brief
 
-The complete application below uses ordinary trip data and needs no workbench capture helpers. Create the shared runtime file and framework client at the shown paths; retain the Quickstart frontend setup. The recording later in this page uses a separate two-step plan lesson.
+The complete application below uses ordinary trip data and needs no workbench capture helpers. Create the shared runtime file and framework client at the shown paths; retain the Quickstart frontend setup. The workbench later on this page uses a separate two-step plan lesson.
 
 ## Share the schema and preparation logic
 
@@ -500,18 +497,18 @@ The recorder separately checks unavailable APIs, download progress/failure, canc
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="local-models">
 </hb-workbench>
 
 Let's build the same two-step plan on the user's device. First, prepare the model. Then ask it to outline and record a trusted UI demo. We'll inspect the local request, follow the JSON into a typed preview, and explicitly accept the plan before asking for a shorter second step.
 
-![The React workbench shows native model preparation and transport metadata beside the locally generated plan.](/video/docs/canonical-workbench-local-models-react-result.png)
-
-The recording uses real Chrome inference through the actual React client and `experimental_chrome` transport. Each framework has its own recording. The existing dedicated test profile had a model available under its requested v4 browser configuration; that configuration does not identify the loaded model or establish availability on another device. No new model download, scripted answer, or hosted model request supplies this footage. Playback runs at actual speed, with pauses for reading and no narration.
+The replay uses real Chrome inference through the actual React client and `experimental_chrome` transport. Each framework has its own recording. The existing dedicated test profile had a model available under its requested v4 browser configuration; that configuration does not identify the loaded model or establish availability on another device. No new model download, scripted answer, or hosted model request supplies this footage. Playback runs at actual speed, with pauses for reading and no narration.
 
 ## Follow the local turn
 
-Open the [local-model workbench](https://workbench.hashbrown.dev/react.html?lesson=local-models) in a supported desktop Chrome browser. Choose **Prepare model**. Generation stays disabled until preparation succeeds.
+Open the **Live** tab above in a supported desktop Chrome browser. Choose **Prepare model**. Generation stays disabled until preparation succeeds.
 
 1. Send the first prompt. Hashbrown sends the request to the browser's native model.
 2. Inspect **Requests**. The row says **LOCAL Chrome Prompt API**, with the effective SDK envelope and native stream events. There is no HTTP model response.

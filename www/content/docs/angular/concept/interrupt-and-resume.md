@@ -7,9 +7,6 @@ meta:
 
 # Interrupt and Resume
 
-<hb-docs-demo demo="canonical-workbench-interrupts-angular">
-</hb-docs-demo>
-
 An interrupt pauses an agent run so a person can supply information or make a decision. Resume returns those answers to the paused interaction. It continues the same user turn rather than inventing a new user message or replaying saved tool calls in the browser.
 
 Use this for approval, missing input, or a choice the application must leave to the user. The server owns the checkpoint and checks what an answer permits. The client owns the form and submits every answer for the pending batch together. An approval permits the next step; it does not prove that step ran or succeeded.
@@ -109,6 +106,8 @@ The start button sends an ordinary request through this same chat instance. The 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="interrupts">
 </hb-workbench>
 
@@ -116,9 +115,7 @@ Let's explain the same two-step plan, pause for two approvals, and continue once
 
 Approval in this example permits another explanation. It does not execute either plan step, record a video, or write a file. A later user turn creates a fresh approval batch with fresh form choices.
 
-<img src="/video/docs/canonical-workbench-interrupts-angular-result.png" alt="Angular workbench showing interrupt and resume, the chat, paired inspector, and bottom player." width="1600" height="1000" loading="lazy" />
-
-Run the [canonical workbench](/docs/angular/start/workbench), then open [`/angular.html?lesson=interrupts`](http://127.0.0.1:4370/angular.html?lesson=interrupts). The recording uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
+Use the panel above, or [run the workbench on your machine](/docs/angular/start/workbench#run-the-example). The replay uses the [checked Angular client](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflow-workbench.ts) and [local agent](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-workflows.ts).
 
 The client makes real Hashbrown requests. The local AG-UI agent explicitly maps shared state into model instructions and wraps the provider's streamed text with workflow events. Direct provider adapters do not create these events or approval decisions automatically.
 

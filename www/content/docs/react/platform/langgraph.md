@@ -217,6 +217,9 @@ Keep client tools in `toolCalls` through the normal framework tool API. Do not r
 
 ## Explore it in the workbench
 
-Open `/react.html?lesson=tools` in the [conversation workbench](/docs/react/start/workbench). Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+Open the workbench below. Ask for a plan, then inspect the `readContext` call, its result, and the continuation in **Requests**. The tool reads application context without accepting the proposal.
+
+<hb-workbench-launcher lesson="tools">
+</hb-workbench-launcher>
 
 This is a browser-tool exercise. It gives us a client flow to compare with the server-owned `serverToolCalls` above, but it does not run LangGraph, test the optional helper's release availability, or restore a graph checkpoint. Verify those separately with the linked plain-agent and Python recipes. Keep the difference visible in your UI: a displayed server step must never dispatch a browser handler.

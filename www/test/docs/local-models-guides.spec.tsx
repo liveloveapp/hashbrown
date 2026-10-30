@@ -34,7 +34,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['recipes', 'local-models'])?.body ?? '';
 
     expectConceptFirstWorkbench(body, sdk, 'local-models');
-    expect(body).toContain(
+    expect(body).not.toContain(
       `/video/docs/canonical-workbench-local-models-${sdk}-result.png`,
     );
     expect(body).toContain('real Chrome');

@@ -97,3 +97,7 @@ tools/growth/.provision/
 # Lifecycle service local output
 tools/lifecycle/.b4/
 tools/lifecycle/.vercel/
+
+# Marketing service local output
+tools/marketing/.b4/
+tools/marketing/.vercel/

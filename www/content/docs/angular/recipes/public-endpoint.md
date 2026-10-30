@@ -7,9 +7,6 @@ meta:
 
 # Securing a Public Endpoint
 
-<hb-docs-demo demo="canonical-workbench-public-endpoint-angular">
-</hb-docs-demo>
-
 A browser-visible model endpoint is an application entry point. Before it can spend tokens or read customer data, the server must establish identity, authorize the requested resource, validate bounded input, and apply admission policy. A valid model schema does not establish any of those permissions.
 
 Let’s make those checks explicit at the HTTP boundary. Keep credentials, trusted instructions, model selection, and output limits on the server; use the browser request only as untrusted input.
@@ -48,12 +45,12 @@ Use the [checked application endpoint](https://github.com/liveloveapp/hashbrown/
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="public-endpoint">
 </hb-workbench>
 
 Who can start a reply? Let's make that boundary visible. We'll reject an anonymous request, load our own thread through a local demo session, and stream a real reply. Then we'll try a thread owned by someone else.
-
-<img src="/video/docs/canonical-workbench-public-endpoint-angular-result.png" alt="The Angular workbench shows the authorized conversation beside captured access checks, including anonymous and foreign-owner denials." width="1600" height="1000" loading="lazy" />
 
 ## Follow one request
 
@@ -63,7 +60,7 @@ Who can start a reply? Let's make that boundary visible. We'll reject an anonymo
 4. Try the foreign thread. It returns **404**, just like an unknown thread, without calling the provider.
 5. Select the captured operation in the inspector to compare the statuses with the successful chat request.
 
-The recording uses real provider output. The sign-in action is a local demonstration integration, not a production identity verifier. Its HttpOnly session cookie contains an unpredictable server-issued token; owner identity comes from the server's session lookup.
+The replay uses real provider output. The sign-in action is a local demonstration integration, not a production identity verifier. Its HttpOnly session cookie contains an unpredictable server-issued token; owner identity comes from the server's session lookup.
 
 ## Put the checks before the provider
 

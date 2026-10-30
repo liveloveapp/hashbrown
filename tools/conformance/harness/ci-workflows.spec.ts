@@ -117,6 +117,12 @@ test('both callers share target selection with explicit PR and main inputs', () 
       optional: true,
     },
     {
+      key: 'marketing',
+      dir: 'tools/marketing',
+      project_id_secret: 'VERCEL_PROJECT_ID_MARKETING',
+      optional: true,
+    },
+    {
       key: 'workbench',
       dir: 'tools/workbench',
       project_id_secret: 'VERCEL_PROJECT_ID_WORKBENCH',

@@ -1,0 +1,81 @@
+{
+  "name": "marketing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/marketing/src",
+  "projectType": "application",
+  "tags": [],
+  "implicitDependencies": ["growth"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/marketing",
+        "forwardAllArgs": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config tools/marketing/vitest.config.mts"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config tools/marketing/vitest.integration.config.mts --reporter=verbose"
+      }
+    },
+    "week": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/marketing/scripts/week.mts",
+        "forwardAllArgs": true
+      }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "node --import tsx tools/marketing/scripts/b4-cli.mts check",
+          "tsc --noEmit -p tools/marketing/tsconfig.json",
+          "tsc --noEmit -p tools/marketing/tsconfig.spec.json"
+        ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": ["{projectRoot}/.b4/build", "{projectRoot}/.vercel/output"],
+      "options": {
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p tools/marketing/tsconfig.json",
+          "tsc --noEmit -p tools/marketing/tsconfig.spec.json",
+          "node --import tsx tools/marketing/scripts/b4-cli.mts build --clean",
+          "node --import tsx tools/marketing/scripts/verify-vercel-adapter.mts"
+        ]
+      },
+      "configurations": {
+        "production": {}
+      }
+    },
+    "x-auth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/marketing/src/channels/x/auth-cli.mts"
+      }
+    },
+    "linkedin-auth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/marketing/src/channels/linkedin/auth-cli.mts"
+      }
+    }
+  }
+}

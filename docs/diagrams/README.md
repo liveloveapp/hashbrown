@@ -54,3 +54,19 @@ npx vitest run --config www/vitest.config.mts www/test/docs-diagrams.spec.tsx ww
 The tests validate definitions, Markdown integration, unknown references, unique catalog identifiers, readable wrapped labels, equivalent modal text, every audit row, and catalog usage. The production build renders each used definition. Run `npx nx e2e www` for route and mobile layout checks.
 
 Review the rendered diagram as well. Check that labels stay inside the canvas, do not cover nodes or other labels, and attach clearly to the right relationship. Open the expanded view with a keyboard, read its description, and close it with Escape. At phone width, the diagram should scroll within its figure while the document keeps its normal width. Verify database relationships and execution ownership against source rather than inferring them from a visual pattern.
+
+## Keep the reading path short
+
+Use a natural canvas width of **740 pixels or less**. Cards and labels keep their text size; a narrow drawing stays at its authored size rather than stretching to fill the article. Prefer a downward handoff or two columns to a long horizontal chain. Keep branches where the reader needs to distinguish outcomes. Put supporting detail in the caption and text description instead of adding another lane.
+
+The [readability audit](readability-audit.md) records the before and after widths. The pass preserves all 45 definitions and their placements. Request boundaries use a vertical request/return path; schema and validation diagrams use two columns; persistence tables stack so field names and key/type columns remain legible. Sequence diagrams keep their actors and use narrower cards with wrapped messages. The descriptions still explain the ownership, validation and persistence rules behind each diagram.
+
+The browser audit now runs in `www:e2e` after the production build. It checks every Markdown placement in Angular and React at desktop and 320px, using loaded fonts and native dialogs. It checks text and node geometry, article fit, contained mobile scrolling, expansion, both Tab directions, Escape, Close and restored focus. Unexpected POST requests fail the audit and are blocked. Unit fixtures verify that the audit detects broken geometry and missing or duplicate placements.
+
+To run only this audit against a local production build:
+
+```sh
+npx tsx www/src/tools/diagram-report.ts
+```
+
+The report starts and stops its own Next server on an available port. Results and failure screenshots go to `dist/docs-diagrams/ci`; failed PR checks upload that directory with the other runtime diagnostics. To inspect a deployed build, set `DOCS_DIAGRAM_ORIGIN=https://hashbrown.dev`. `DOCS_DIAGRAM_OUTPUT` selects a separate report directory.

@@ -7,9 +7,6 @@ meta:
 
 # Persist and Resume Threads
 
-<hb-docs-demo demo="canonical-workbench-server-threads-react">
-</hb-docs-demo>
-
 A server-owned thread stores a conversation under an authenticated owner. Use it when history must survive a browser refresh, be available on another device, or participate in server-side access control. The thread ID identifies a record; loading and authorizing that record remain application operations.
 
 Let’s save completed text with an expected version. When two clients edit the same conversation, the version check preserves the unsaved conversation and exposes the conflict instead of silently overwriting another client’s work.
@@ -52,12 +49,12 @@ On Save, capture the loaded version and completed messages together. Adopt only 
 
 ## Explore it in the workbench
 
+The workbench below replays a recorded run of this lesson.
+
 <hb-workbench lesson="server-threads">
 </hb-workbench>
 
 Let's move our conversation to the server. We'll save Lighthouse, refresh the browser, and ask a follow-up using the saved messages. Then we'll let another client save first and see why the version matters.
-
-<img src="/video/docs/canonical-workbench-server-threads-react-result.png" alt="The React workbench pairs the text conversation with its server snapshot and captured HTTP operations." width="1600" height="1000" loading="lazy" />
 
 ## Before we start
 
@@ -76,7 +73,7 @@ This example stores completed user and assistant text. A saved conversation does
 7. Save from our browser. The server returns **409** and the unsaved conversation stays visible.
 8. Reload the server snapshot explicitly to adopt the newer saved version.
 
-The recording uses real OpenAI responses. The demo server stores records in process memory: they survive a browser refresh, but not a server restart. Use database persistence for a deployed application.
+The replay uses real OpenAI responses. The demo server stores records in process memory: they survive a browser refresh, but not a server restart. Use database persistence for a deployed application.
 
 ## Keep identity and history separate
 

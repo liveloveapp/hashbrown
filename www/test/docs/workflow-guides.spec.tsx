@@ -58,7 +58,7 @@ test.each(SDKS)(
     expect(body).toContain(file);
     expect(body).toContain('40 messages');
     expect(body).toContain('lastRunFinishReason');
-    expect(body).toContain('canonical-workbench-save-text-conversations-');
+    expect(body).toContain('<hb-workbench lesson="save-text-conversations">');
   },
 );
 

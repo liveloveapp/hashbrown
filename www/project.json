@@ -89,7 +89,8 @@
       "options": {
         "commands": [
           "tsx www/src/tools/route-report.ts",
-          "tsx www/src/tools/mobile-layout-report.ts"
+          "tsx www/src/tools/mobile-layout-report.ts",
+          "tsx www/src/tools/diagram-report.ts"
         ],
         "parallel": false
       },

@@ -143,6 +143,7 @@ jobs:
             playwright-report/conformance
             test-results/atc
             dist/docs-workbench/verification
+            dist/docs-diagrams/ci
             playwright-report/atc
           retention-days: 7
           if-no-files-found: ignore

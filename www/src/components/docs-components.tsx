@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import type { Sdk } from '../lib/content';
 import type { MarkdownComponents } from '../lib/markdown';
-import type { WorkbenchPageData } from '../lib/workbench-source-files';
+import {
+  buildWorkbenchSource,
+  type WorkbenchPageData,
+} from '../lib/workbench-source-files';
 import { CodeExample } from './CodeExample';
 import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
@@ -22,6 +25,7 @@ import {
 } from './icons';
 import { NextStep, NextSteps } from './NextSteps';
 import { SymbolLink } from './SymbolLink';
+import { WorkbenchLauncher } from './workbench/WorkbenchLauncher';
 import { WorkbenchPanel } from './workbench/WorkbenchPanel';
 import { DocsDiagram } from './diagrams/DocsDiagram';
 import { assertWorkbenchLesson } from './workbench/workbench-lessons';
@@ -63,6 +67,16 @@ export function docsComponents(
       />
     );
   };
+  const DocsWorkbenchLauncher = ({ lesson = '' }: { lesson?: string }) => {
+    const id = assertWorkbenchLesson(lesson);
+    return (
+      <WorkbenchLauncher
+        lesson={id}
+        sdk={panelSdk}
+        source={buildWorkbenchSource(id, panelSdk, [])}
+      />
+    );
+  };
   return {
     table: ScrollTable,
     'hb-code-example': CodeExample,
@@ -73,6 +87,7 @@ export function docsComponents(
     'hb-concept-diagram': ConceptDiagram,
     'hb-diagram': DocsDiagram,
     'hb-workbench': DocsWorkbench,
+    'hb-workbench-launcher': DocsWorkbenchLauncher,
     'hb-magic-text-demo': MagicTextDemo,
     'hb-next-steps': NextSteps,
     'hb-next-step': DocsNextStep,
