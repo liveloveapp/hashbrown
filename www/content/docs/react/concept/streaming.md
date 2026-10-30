@@ -7,9 +7,6 @@ meta:
 
 # Streaming
 
-<hb-docs-demo demo="canonical-workbench-streaming-react">
-</hb-docs-demo>
-
 Streaming lets an interface show useful output while the response is still arriving. There are two boundaries to think about: the provider sends text chunks, and Hashbrown resolves values from those chunks according to your schema. A network chunk is rarely a complete JSON document.
 
 Use streaming strings for growing text and streaming arrays for lists whose completed items are useful early. Keep a stable layout for missing values and label the result as a preview. A visible field can still belong to a run that later fails, stops, or reaches an output limit; rendering it must not commit a business action.

@@ -7,9 +7,6 @@ meta:
 
 # Interrupt and Resume
 
-<hb-docs-demo demo="canonical-workbench-interrupts-angular">
-</hb-docs-demo>
-
 An interrupt pauses an agent run so a person can supply information or make a decision. Resume returns those answers to the paused interaction. It continues the same user turn rather than inventing a new user message or replaying saved tool calls in the browser.
 
 Use this for approval, missing input, or a choice the application must leave to the user. The server owns the checkpoint and checks what an answer permits. The client owns the form and submits every answer for the pending batch together. An approval permits the next step; it does not prove that step ran or succeeded.

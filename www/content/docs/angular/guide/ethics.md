@@ -86,6 +86,9 @@ Review the feature with keyboard and screen-reader navigation, small viewports, 
 
 Open **Natural language forms** in the [workbench](/docs/angular/start/workbench). The recording shows an actual generated plan, an editable form, and an explicit **Apply** action.
 
+<hb-workbench-launcher lesson="natural-forms">
+</hb-workbench-launcher>
+
 Watch the distinction between the model's draft, the user's edited form, and the accepted application state in **State**. The recording retains a model overwrite and an explicit correction; it does not replace that outcome with an ideal response. Scrub the timeline to compare those moments. Replay cannot apply the plan or send another request.
 
 This is a small example of an interaction boundary, not a complete policy for your product. Continue with [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data), [Public endpoints](/docs/angular/recipes/public-endpoint), and the [production recovery reference](/docs/angular/platform/b4run) for the corresponding implementation details.

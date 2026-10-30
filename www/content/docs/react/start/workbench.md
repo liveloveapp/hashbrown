@@ -7,9 +7,6 @@ meta:
 
 # Conversation workbench
 
-<hb-docs-demo demo="canonical-workbench-react">
-</hb-docs-demo>
-
 I use one small example to follow a conversation from a prompt to a working interface. Ask for a two-step plan. Watch the JSON arrive, inspect the props, and accept the plan. Then ask for a shorter second step.
 
 The React and Angular versions use the same example, styles, and capture model. Each version uses its own Hashbrown API and component renderer.

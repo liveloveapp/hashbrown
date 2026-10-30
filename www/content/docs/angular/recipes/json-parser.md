@@ -7,9 +7,6 @@ meta:
 
 # Streaming JSON Parser
 
-<hb-docs-demo demo="canonical-workbench-json-parser-angular">
-</hb-docs-demo>
-
 A streaming JSON parser resolves useful values before the whole document arrives. Use it for a JSON source you already own: a text response, a socket, or an imported file. Choose streaming strings for fields that can display a prefix, and ordinary strings for fields that should wait for a closing quote.
 
 Let’s preview a shopping list. The parser will receive the full JSON string so far. The preview helps the user read; a separate check of the original completed document decides whether it can be used. If you already use structured chat, consume its parsed content directly.

@@ -7,9 +7,6 @@ meta:
 
 # Securing a Public Endpoint
 
-<hb-docs-demo demo="canonical-workbench-public-endpoint-react">
-</hb-docs-demo>
-
 A browser-visible model endpoint is an application entry point. Before it can spend tokens or read customer data, the server must establish identity, authorize the requested resource, validate bounded input, and apply admission policy. A valid model schema does not establish any of those permissions.
 
 Let’s make those checks explicit at the HTTP boundary. Keep credentials, trusted instructions, model selection, and output limits on the server; use the browser request only as untrusted input.

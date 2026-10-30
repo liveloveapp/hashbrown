@@ -7,9 +7,6 @@ meta:
 
 # Tool calling
 
-<hb-docs-demo demo="canonical-workbench-tools-angular">
-</hb-docs-demo>
-
 A tool is an application function a model can ask to call. Its name, description, and argument schema tell the model when to use it. Your handler supplies the actual result, and the model can use that result in its next request.
 
 Use tools when an answer depends on current application data or a checked action. A model cannot infer today’s inventory from its training data. Give it a focused way to read inventory instead of pasting every product into every prompt. Keep reads separate from writes so a useful lookup does not also change application state.

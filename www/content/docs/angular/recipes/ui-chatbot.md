@@ -7,9 +7,6 @@ meta:
 
 # Build a generative UI conversation
 
-<hb-docs-demo demo="canonical-workbench-ui-chatbot-angular">
-</hb-docs-demo>
-
 A generative UI conversation answers with application components as well as text. Use it when a card, list, or other trusted view makes the response easier to understand and act on. The model chooses from exposed components and supplies their props; your application controls rendering and every action.
 
 Let’s make a delivery assistant that can display a status card. The first implementation is read-only. Adding an Accept or Save button later requires a separate handler that checks completion, current data, and permission.

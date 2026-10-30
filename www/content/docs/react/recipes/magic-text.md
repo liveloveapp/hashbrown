@@ -7,9 +7,6 @@ meta:
 
 # Magic Text in React
 
-<hb-docs-demo demo="canonical-workbench-magic-text-react">
-</hb-docs-demo>
-
 Streaming Markdown turns a growing assistant string into readable headings, lists, links, and citations. Use it when the answer is prose and the reader benefits from seeing it before the request finishes. The conversation API owns messages and cancellation; the renderer owns formatting.
 
 Let’s build a help panel that explains a returns policy. We will render the original assistant text as it grows, and finish parsing when the request stops, including a stopped or failed partial answer.

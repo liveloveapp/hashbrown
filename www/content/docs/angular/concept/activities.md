@@ -7,9 +7,6 @@ meta:
 
 # Activities
 
-<hb-docs-demo demo="canonical-workbench-activities-angular">
-</hb-docs-demo>
-
 Activities describe work an agent is performing without asking the model to call another tool. They are structured, display-only messages: a search started, a document was checked, or a reply finished. Use them when progress helps the user understand a wait.
 
 A tool result supplies information for the model’s next step. An activity supplies information for the interface and stays out of the outgoing model conversation. Emit progress from the code doing the work, and update it when that work reaches the reported stage. A timer or optimistic label is not evidence of completion.

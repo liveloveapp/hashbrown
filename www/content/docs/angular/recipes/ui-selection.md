@@ -7,9 +7,6 @@ meta:
 
 # UI Selection
 
-<hb-docs-demo demo="canonical-workbench-ui-selection-angular">
-</hb-docs-demo>
-
 Sometimes the data and components are already known, and only the choice of view needs language understanding. UI selection lets a model choose a candidate ID while the application supplies the element and all its data. Use it for a compact summary versus a detailed list, or another small set of equivalent views.
 
 Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.

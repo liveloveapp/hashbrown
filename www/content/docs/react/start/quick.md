@@ -7,9 +7,6 @@ meta:
 
 # React Quickstart
 
-<hb-docs-demo demo="canonical-workbench-first-plan-react">
-</hb-docs-demo>
-
 Let's build a two-step plan. We'll write the card, expose its props, and ask the model to render it. One request is enough to see how generative UI works.
 
 Generative UI means the model selects a component you expose and supplies schema-shaped values for its props. It does not write the component implementation. We'll build the complete application before looking at how the workbench records the same interaction.

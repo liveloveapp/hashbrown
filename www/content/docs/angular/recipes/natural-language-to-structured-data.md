@@ -7,9 +7,6 @@ meta:
 
 # Natural language forms
 
-<hb-docs-demo demo="canonical-workbench-natural-forms-angular">
-</hb-docs-demo>
-
 Natural-language input can give a form a useful first draft. A customer describes a trip; the model proposes a destination and duration; the customer corrects those fields before submitting. This works well when prose is easier to start with than a blank form, but precise controls still matter.
 
 Keep generated data, editable fields, and submitted application state separate. A response arriving in the browser must not submit the form or overwrite edits made while generation was in progress.

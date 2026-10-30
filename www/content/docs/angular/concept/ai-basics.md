@@ -7,9 +7,6 @@ meta:
 
 # Messages and turns
 
-<hb-docs-demo demo="canonical-workbench-conversation-angular">
-</hb-docs-demo>
-
 A conversation is a sequence of messages with roles. A user message starts a turn; the assistant’s reply answers it. The next request includes the current history, so a follow-up can refer to a name, preference, or fact established earlier.
 
 A turn and a provider request are different units. A simple text reply may need one request. A tool-using turn may need a request to choose a tool, a handler result, and another request to produce the reply. Keep that distinction in mind when showing progress or investigating a failure.

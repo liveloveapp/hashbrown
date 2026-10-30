@@ -7,9 +7,6 @@ meta:
 
 # Introduction
 
-<hb-docs-demo demo="canonical-workbench-first-plan-react">
-</hb-docs-demo>
-
 Hashbrown is an open source framework for building generative user interfaces in React. It connects a model response to the components and behavior your application already owns.
 
 A model can help a user search, summarize, plan, or complete a form. The interface still needs a clear contract: what the model may return, how to display a response while it arrives, and which actions the application permits. Hashbrown gives us APIs for those boundaries.

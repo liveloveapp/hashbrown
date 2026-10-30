@@ -7,9 +7,6 @@ meta:
 
 # Structured output
 
-<hb-docs-demo demo="canonical-workbench-structured-angular">
-</hb-docs-demo>
-
 Structured output gives an application typed data instead of prose it must interpret. A response schema describes the fields you need. Hashbrown parses the arriving response into that shape, and your application decides how to display or use it.
 
 Use it for extracting form values, classifying a request with explanations, or producing a proposal for review. Choose [generative UI](/docs/angular/concept/components) when the model should also choose components. A valid shape is one part of accepting a result: completion, business rules, and permission to perform a write still belong to the application.

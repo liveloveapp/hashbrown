@@ -7,9 +7,6 @@ meta:
 
 # Request transformation
 
-<hb-docs-demo demo="canonical-workbench-request-transformation-react">
-</hb-docs-demo>
-
 Request transformation is a server-side hook for modifying the provider options after Hashbrown maps a conversation. Use it to add authorized context, set provider-specific options, or apply policy at the point where you can see the request the provider will receive.
 
 Return the complete options object. Preserve the mapped conversation, tools, and response schema unless your endpoint deliberately owns a different contract. This hook uses provider-native types, so an OpenAI Responses transform is not interchangeable with an Anthropic transform. Load required context before sending; a failed lookup should not silently remove required policy.

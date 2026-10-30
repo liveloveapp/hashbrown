@@ -7,9 +7,6 @@ meta:
 
 # Message history
 
-<hb-docs-demo demo="canonical-workbench-message-history-angular">
-</hb-docs-demo>
-
 Message history is the conversation context sent with the next request. Earlier user messages establish facts and goals; assistant messages and tool exchanges show what happened. A model does not remember a browser session independently of the context your application provides.
 
 Use initial messages to seed a new chat, and explicit replacement when the user selects a saved conversation or clears the current one. Storage, access control, retention, and selection are application concerns. A thread ID names a conversation; it does not load its transcript or make a browser text copy a durable agent checkpoint.

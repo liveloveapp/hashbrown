@@ -244,4 +244,7 @@ The compiled documentation check is configured to compare identical framework C#
 
 Open `/angular.html?lesson=interrupts` in the [conversation workbench](/docs/angular/start/workbench). Send the initial prompt, inspect the pending batch, and submit a complete explicit decision. Follow the continuation within that user turn and check that a new turn receives a fresh batch.
 
+<hb-workbench-launcher lesson="interrupts">
+</hb-workbench-launcher>
+
 The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed local package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.

@@ -7,9 +7,6 @@ meta:
 
 # Debugging
 
-<hb-docs-demo demo="canonical-workbench-debugging-angular">
-</hb-docs-demo>
-
 Debugging an AI feature means finding the boundary where expected behavior stopped: the browser request, your endpoint, provider mapping, event stream, parser, tool handler, or renderer. Start with the evidence for the failing turn before changing the prompt or schema.
 
 Check HTTP status and the terminal event separately. A stream can begin with HTTP 200 and later report `RUN_ERROR`; a completed run can still report `length` or `refusal`. Preserve the current application value while investigating. A visible partial answer and an idle loading flag do not establish successful completion.

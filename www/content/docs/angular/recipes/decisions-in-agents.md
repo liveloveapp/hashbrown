@@ -7,9 +7,6 @@ meta:
 
 # Decisions in Agents
 
-<hb-docs-demo demo="canonical-workbench-agent-decisions-angular">
-</hb-docs-demo>
-
 An agent decision maps a request to a small set of application-owned handlers. Use this when the next step has a known set of valid routes, such as order tracking, returns information, or clarification. A typed route is easier to validate and inspect than instructions that ask a model to invent a workflow.
 
 Let’s route a support question. The server will decode a closed decision schema, check its confidence, then select a fixed read-only response. Uncertain input gets a clarification question.

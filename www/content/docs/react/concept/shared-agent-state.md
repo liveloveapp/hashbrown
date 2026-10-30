@@ -7,9 +7,6 @@ meta:
 
 # Shared Agent State
 
-<hb-docs-demo demo="canonical-workbench-shared-state-react">
-</hb-docs-demo>
-
 Shared agent state is a JSON value exchanged alongside a conversation. It gives the application and agent a common structured view of a task: selected filters, an editing draft, or a workflow stage. It is separate from message text and from application data the agent is not allowed to change.
 
 Use it when both sides need to observe and update the same small document. Your agent must explicitly validate and map that value into the model context. Passing state to a direct provider adapter does not automatically turn it into instructions, and setting state does not start a request.

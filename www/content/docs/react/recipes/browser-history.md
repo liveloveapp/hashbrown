@@ -7,9 +7,6 @@ meta:
 
 # Save text conversations
 
-<hb-docs-demo demo="canonical-workbench-save-text-conversations-react">
-</hb-docs-demo>
-
 Saving a text conversation lets a user refresh a page and continue with the earlier exchange. Browser storage works for a small, device-local draft when cross-device access and server ownership are unnecessary. Save a narrow, versioned format so a future release can recognize or reject it safely.
 
 Let’s store only completed user and assistant text. Loading it should replace history without generating a reply; the next explicit user message starts the next request.

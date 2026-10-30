@@ -269,6 +269,9 @@ When the client sends `options: { longContext: true }`, the adapter adds TypeSaf
 
 Open `/angular.html?lesson=decisions` in the [conversation workbench](/docs/angular/start/workbench). For a live local run, supply `TYPESAFE_API_KEY` and the pinned `TYPESAFE_MODEL` on the server as described there. This lesson starts with a fixed application-owned plan.
 
+<hb-workbench-launcher lesson="decisions">
+</hb-workbench-launcher>
+
 Request a decision and compare the complete response with the typed choice and confidence in the inspector. The response arrives as one JSON value, rather than chat tokens. Inspect **State** before and after explicit application: receiving a decision does not apply it. The [workbench server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) supplies the application boundary around the same `HashbrownTypeSafe.decide` call used above. Deterministic fixture reports establish client behavior; use a live run to verify provider access.
 
 ## Next Steps

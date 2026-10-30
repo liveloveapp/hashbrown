@@ -7,9 +7,6 @@ meta:
 
 # JavaScript runtime
 
-<hb-docs-demo demo="canonical-workbench-javascript-runtime-angular">
-</hb-docs-demo>
-
 The JavaScript runtime evaluates a script in a separate QuickJS context and returns its result. It is useful when a calculation or transformation is easier to express as code, including code submitted by a model through a JavaScript tool. You can learn the execution boundary with an ordinary application-owned script first.
 
 The context has no browser `window`, `document`, or `fetch`. Host functions are capabilities you explicitly provide. Keep them narrow, validate their arguments in the handler, and bound their work. A runtime deadline interrupts JavaScript evaluation; it does not roll back a host side effect or impose a memory limit.

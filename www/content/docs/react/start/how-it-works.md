@@ -7,9 +7,6 @@ meta:
 
 # How Hashbrown works
 
-<hb-docs-demo demo="canonical-workbench-first-plan-react">
-</hb-docs-demo>
-
 A Hashbrown application has two cooperating parts. The client owns the interface and conversation state. Your server owns the provider connection and required policy. They exchange run input and AG-UI events so the interface can update while a response arrives.
 
 Let's look at that flow independently of any particular demo. A support assistant, a form helper, and a planning app can use the same boundaries.

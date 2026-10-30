@@ -7,9 +7,6 @@ meta:
 
 # Durable recovery with b4.run
 
-<hb-docs-demo demo="canonical-workbench-production-recovery-react">
-</hb-docs-demo>
-
 A durable conversation must survive more than a browser refresh. When an agent pauses before a protected action, we need to retain its checkpoint, verify who may return to it, and distinguish a restored proposal from an applied business result. b4.run supplies durable runtime stores; our application owns identity, authorization, and the effect itself.
 
 For example, a support assistant may prepare a case update and wait for approval. Reading its saved conversation should show the proposal without changing the case. Approval is a new explicit request, and a repeated request must not apply the same update twice.

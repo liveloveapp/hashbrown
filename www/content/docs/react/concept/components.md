@@ -7,9 +7,6 @@ meta:
 
 # Generative UI with React components
 
-<hb-docs-demo demo="canonical-workbench-ui-react">
-</hb-docs-demo>
-
 Generative UI lets a model choose from components your application already owns. You describe each component and its inputs; Hashbrown turns the model’s structured response into those trusted components. The model supplies data and layout choices. Your code still owns rendering, events, and access to application services.
 
 Use it when different requests need different presentations: a product comparison, a summary card, or a small dashboard. If every answer uses the same layout, [structured output](/docs/react/concept/structured-output) is often enough. Start with one useful component, then grow the catalog when the feature needs another way to present information.

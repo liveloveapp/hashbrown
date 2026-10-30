@@ -7,9 +7,6 @@ meta:
 
 # UI Kits
 
-<hb-docs-demo demo="canonical-workbench-ui-kits-react">
-</hb-docs-demo>
-
 A UI kit packages components with the descriptions and prop schemas the model needs to use them. Share a kit when several conversations should use the same cards, status messages, and formatting rules. The application supplies executable components; the model selects from that catalogue and generates schema-constrained data.
 
 Let’s package a delivery status card. We can pass the resulting kit into any UI conversation without repeating its component contract. Start with a read-only card so rendering a response has no application side effect.

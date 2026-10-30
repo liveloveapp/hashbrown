@@ -7,9 +7,6 @@ meta:
 
 # Skillet schemas
 
-<hb-docs-demo demo="canonical-workbench-schemas-angular">
-</hb-docs-demo>
-
 A schema is a contract for values: which fields exist, what each field means, and which types are allowed. Hashbrown uses schemas for tool arguments, structured responses, and component inputs. Keeping that contract beside the feature makes the model’s options and the application’s expectations easier to compare.
 
 Skillet is exported as `s` from `@hashbrownai/core`. Its schemas also infer TypeScript types, so you can describe a value once and reuse that description in your UI. Use descriptions to explain meaning, constraints to bound values, and ordinary application checks for facts a schema cannot establish, such as whether a delivery date is available.

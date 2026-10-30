@@ -60,6 +60,9 @@ Changing providers also means checking provider capabilities. An adapter transla
 
 Open [Structured output](/docs/angular/concept/structured-output) in the [workbench](/docs/angular/start/workbench). The teaser uses real OpenAI output; it is one observed run, not a benchmark or a comparison between providers.
 
+<hb-workbench-launcher lesson="structured-output">
+</hb-workbench-launcher>
+
 1. Run the same first prompt with your current server model configuration. Inspect **Requests** and **JSON** and record the completed result.
 2. Change the server-owned `OPENAI_MODEL`, restart the local host, and begin a fresh conversation. Reuse the prompt and response schema.
 3. Compare resolved values, completion, and the application's acceptance checks. Replay each capture to inspect it without another provider request.

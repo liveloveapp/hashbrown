@@ -7,9 +7,6 @@ meta:
 
 # Decisions
 
-<hb-docs-demo demo="canonical-workbench-decisions-angular">
-</hb-docs-demo>
-
 A decision answers a closed question using options your application defines. Instead of generating free-form text, the model returns a typed choice, boolean, or bounded score with metadata. That makes decisions useful for routing a request or suggesting the next step in a known workflow.
 
 Keep exact calculations and deterministic rules in code. Use a decision when interpreting language or ambiguous context is the useful part. Give choices distinct meanings and include a clarification path when the available information is insufficient. Confidence is model metadata, not a calibrated probability or permission to execute an action.

@@ -7,9 +7,6 @@ meta:
 
 # Predictive suggestions
 
-<hb-docs-demo demo="canonical-workbench-predictions-react">
-</hb-docs-demo>
-
 Predictive suggestions offer a short list of useful next actions from the current application state. Use them to reduce navigation in an editor, planner, or dashboard. The application defines the action catalogue and executes the accepted action; the model proposes an ID and a reason.
 
 Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.

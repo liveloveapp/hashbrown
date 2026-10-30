@@ -7,9 +7,6 @@ meta:
 
 # System instructions
 
-<hb-docs-demo demo="canonical-workbench-system-instructions-react">
-</hb-docs-demo>
-
 System instructions describe the assistant’s job, relevant context, and response expectations across turns. A user message asks for the work in the current turn. Keeping those roles separate makes instructions easier to test and keeps an end user’s text from becoming trusted application policy.
 
 Start with a specific task and a small amount of relevant context. Add constraints when examples show they are needed. Browser configuration is useful for feature behavior, but policy your application relies on belongs in your endpoint. Instructions guide a model; authentication, authorization, and validation must still be enforced by code.

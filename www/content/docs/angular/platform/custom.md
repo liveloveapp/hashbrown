@@ -229,4 +229,7 @@ Use the [OpenAI provider](https://github.com/liveloveapp/hashbrown/tree/main/pac
 
 Open `/angular.html?lesson=first-plan` in the [conversation workbench](/docs/angular/start/workbench). Send one prompt and inspect **Requests**, **JSON**, and **UI**. Follow a single run from its input to the text events and resolved component props.
 
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
+
 Use this as a client-side comparison for your own adapter's contract tests. The checked [workbench server](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) calls the official OpenAI adapter; it does not call the custom provider you are writing. Verify your provider's lifecycle, cancellation, tool continuations, and schema handling with the tests above before connecting it to your application.

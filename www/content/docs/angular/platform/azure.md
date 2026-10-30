@@ -504,4 +504,7 @@ const stream = HashbrownAzure.stream.text({
 
 Start the [conversation workbench](/docs/angular/start/workbench) and open `/angular.html?lesson=first-plan`. Ask for a two-step plan. In **Requests**, compare the AG-UI input with the streamed response; in **UI**, follow the resolved props into the trusted card. **State** stays unchanged because this lesson previews a plan without accepting it.
 
+<hb-workbench-launcher lesson="first-plan">
+</hb-workbench-launcher>
+
 The workbench's [server route](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/server/workbench-app.ts) adds bounded lesson policy around an OpenAI adapter. Compare that route with the `Azure OpenAI` route above: the client contract stays AG-UI, while authentication, native request options, and capability support belong to the selected provider. This exercise does not call Azure OpenAI or verify its provider-specific behavior.
