@@ -1,0 +1,108 @@
+{
+  "runtimeSource": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+  "merge": {
+    "observedAt": "2026-10-29T19:23:24.147529+00:00",
+    "url": "https://github.com/liveloveapp/hashbrown/pull/828",
+    "state": "MERGED",
+    "mergedAt": "2026-10-29T19:23:02Z",
+    "headSha": "151d16df9c639d4c91d47d8167c5d63f96815f72",
+    "mergeCommit": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+    "ciRun": 40939268749,
+    "ciConclusion": "success",
+    "normalSquash": true,
+    "productionSettingsChanged": false
+  },
+  "localChecks": [
+    {
+      "name": "install",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 15.4
+    },
+    {
+      "name": "affected",
+      "command": [
+        "npx",
+        "nx",
+        "run-many",
+        "-t",
+        "build,test,lint",
+        "-p",
+        "core,openai,atc-server,atc-shared",
+        "--skip-nx-cache"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 31.61
+    },
+    {
+      "name": "browser",
+      "command": ["npx", "nx", "e2e", "atc-e2e", "--skip-nx-cache"],
+      "exitCode": 0,
+      "elapsedSeconds": 146.98
+    },
+    {
+      "name": "b4-build",
+      "command": ["npx", "nx", "build", "atc", "--skip-nx-cache"],
+      "exitCode": 0,
+      "elapsedSeconds": 16.5
+    }
+  ],
+  "artifacts": {
+    "observedAt": "2026-10-29T19:27:28.528Z",
+    "fresh": {
+      "sourceCommit": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+      "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+      "functionTreeSha256": "376e86a3445d342b3b327154e232e13f747124cafe5fc8ad48af8440ade19f86",
+      "outputTreeSha256": "b942f1ff301ddda899f3cb2db6b563399ef605f1d2b9bb9ed54c4a34971544f7",
+      "lockSha256": "8e371794b4c3679c2dcd39f26ba4810a702cc7a31784d2131399d1436cc09b94"
+    },
+    "previous": {
+      "sourceCommit": "6d414a37d25ab336192e52fd4d00b26321758ee7",
+      "artifactSha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+      "functionTreeSha256": "7e7584369e3f7d06c452ae639cc7e87ea39d2936b1695281de795848b8f43802",
+      "outputTreeSha256": "707995a20ddc7e16019b7cff8a5971132451dd6b73e9cc9d7cc9da8afde2c376",
+      "lockSha256": "8e371794b4c3679c2dcd39f26ba4810a702cc7a31784d2131399d1436cc09b94"
+    },
+    "equal": {
+      "artifactSha256": true,
+      "functionTreeSha256": false,
+      "outputTreeSha256": false,
+      "lockSha256": true
+    },
+    "newDeployments": false,
+    "newHostedProbes": false
+  },
+  "generatedCommentEquivalence": {
+    "sourceCommit": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+    "previousSource": "6d414a37d25ab336192e52fd4d00b26321758ee7",
+    "rawFunctionTreeEqual": false,
+    "rawEntrypointEqual": true,
+    "rawFunctionDifferenceFiles": ["index.mjs"],
+    "onlyChanges": "three generated single-line source-label comments contain a random build UUID",
+    "normalizedIndexSha256": "77bda30aac67047097c70699b4276986299a0b00774f6259f44cef122e3530d0",
+    "normalizedIndexEqual": true,
+    "normalizedCommentsEach": 3,
+    "mutatedArtifacts": false,
+    "newHostedExecutions": false,
+    "previousDeploymentBindingsPreserved": true
+  },
+  "browserPasses": 86,
+  "productionBackendChanged": false,
+  "newHostedExecutions": false,
+  "newPreviewSecretsPulled": false,
+  "projectMetadataObservedAt": "2026-10-29T19:22:38.548Z",
+  "productionB4DatabaseCookieMetadata": "preview-only; no production ATC_CHAT_BACKEND key",
+  "additionalFaultDesignStatus": "independently reviewed; human approval pending",
+  "newFaultBudgetProposed": 16,
+  "previousLoadReservations": 99,
+  "previousRecoveryReservations": 10,
+  "neonManagementAccessAvailableInExistingEnv": false,
+  "productionTrafficTargets": "requested; not yet supplied"
+}

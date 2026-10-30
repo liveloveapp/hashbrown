@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 1,
+  "status": "readiness-incomplete; production B4 not enabled",
+  "generatedAt": "2026-10-30T00:36:21.048Z",
+  "runtime": {
+    "sourceCommit": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+    "version": "0.15.7",
+    "lockSha256": "8e371794b4c3679c2dcd39f26ba4810a702cc7a31784d2131399d1436cc09b94",
+    "registryManifestSha256": "4eb883798a57f993bb4f3883a6ac54f54d2fc7f1ce8f2b4585fd803da53187d4",
+    "packages": {
+      "@b4run/cli": {
+        "version": "0.15.7",
+        "integrity": "sha512-0gw1AU76M3FYWNm+KuUYd+P7aU27fH3R6F9ziExx7FHkVU+EDULHZWJzyQwPV69MSt+gs7jhdcVeIxdEiw2AJQ=="
+      },
+      "@b4run/core": {
+        "version": "0.15.7",
+        "integrity": "sha512-aKUXgZW9y7uprf+CsGAiuAXhy7IK5SIA9DwL4XZ0fuzr0bmkzBneAST40/JBMLb/0aN4f1afZ5JlMY9e7n5odw=="
+      },
+      "@b4run/sdk": {
+        "version": "0.15.7",
+        "integrity": "sha512-6hOWKpVOWGPIcoQuBFd/4tKadoRjjEzjJq6OWgWWWcQ+690LXQU50ZUXJqaHMHu/OYNGiF2CPveo1dQUamzf9Q=="
+      },
+      "@b4run/postgres-storage": {
+        "version": "0.15.7",
+        "integrity": "sha512-+veynXK4B4vVCU0ZxO/uCTHujC9DPfB2KUL2jRLBS6SbUMq4QlTn1smfJaGy8AdWh9BVo5ev2y4ZMrgnEf1V8g=="
+      }
+    },
+    "outputs": {
+      "openai": {
+        "outputTreeSha256": "10bba1637ed73ca693fcdf474c5dd658b9e5a37fdea576280824579fe01e6f39",
+        "functionTreeSha256": "68023779b9c00f7f71eabf117f7c41c6106b8153dc64a3918085cfeb85b82dee",
+        "entrySha256": "574c7cb15069ec46428fd3a2a8b39961dc862541e23a73f6bc6151728bc4b76a",
+        "config": {
+          "runtime": "nodejs24.x",
+          "handler": "index.mjs",
+          "launcherType": "Nodejs",
+          "supportsResponseStreaming": true,
+          "maxDuration": 60
+        }
+      },
+      "b4run": {
+        "outputTreeSha256": "f5bd505b504331ce911ada28d7aca549194e3aa004a4cbb040406aadcb3f0555",
+        "functionTreeSha256": "e548d9853c38d2b166be93e66c827827d13ae5933159033d274bdf32e25bb801",
+        "entrySha256": "864c94a387056c4c8f940ac14b9a961603d9d340772dfbeb3056f6860adafc14",
+        "config": {
+          "handler": "atc.mjs",
+          "launcherType": "Nodejs",
+          "runtime": "nodejs24.x",
+          "supportsResponseStreaming": true,
+          "maxDuration": 60,
+          "supportsCancellation": true
+        }
+      }
+    },
+    "sourceAttribution": "Frozen merged #828 runtime; harness/report commits are separate; later source fixes have no hosted replay"
+  },
+  "timeout": {
+    "attempts": [
+      {
+        "runId": "d05936b5-dd9e-444a-8e16-1486db2bce51",
+        "harnessCommit": "1eaac27ea2f3d11f5919f81af78fab0f4d600df9",
+        "status": "inconclusive",
+        "qualified": false,
+        "httpReservations": 2,
+        "normalSeedFirstEofAdmissions": 0,
+        "requiredOwnerObservationPresent": false,
+        "cleanup": {
+          "errors": [],
+          "closed": true
+        },
+        "originalReceiptSha256": "7cf93b22d6bf166ab31ef82f015d47c67fdb1971945c06e433d57f15f67e03ac",
+        "laterAuthenticatedTimeoutLog": {
+          "source": "owned-deployment-request-logs",
+          "deploymentId": "dpl_EwREse9dJe6gwV3tkFqweA1TnEtx",
+          "origin": "https://hashbrown-52gjt8054-blovedev.vercel.app",
+          "requestId": "pdx1::iad1::6nx2j-1793315776487-85549e553123",
+          "timestampMs": 1793315776487,
+          "normalizedClassification": "platform-invocation-duration-exceeded",
+          "rawErrorCode": null,
+          "rawHeaderRequestId": "pdx1::iad1::6nx2j-1793315776487-85549e553123",
+          "nativeLogRequestId": "6nx2j-1793315776487-85549e553123",
+          "responseStatusCode": 200,
+          "timeoutSeconds": 1,
+          "platformMessageSha256": "aea360dd5096ef9c4511698bb6ceb6b4ab6158cd2a2da3e488d6c9f2a57030e5",
+          "normalizationRule": "vercel-regional-header-native-id-epoch-and-exact-one-second-runtime-log-v1"
+        },
+        "laterLogDoesNotQualifyRecovery": true
+      },
+      {
+        "runId": "b7ec7836-fab5-433e-84b4-9cc21c3afe96",
+        "harnessCommit": "697a744eafd6cb5f47cf5107daf6e71b13117793",
+        "status": "inconclusive",
+        "qualified": false,
+        "httpReservations": 2,
+        "normalSeedFirstEofAdmissions": 0,
+        "requiredOwnerObservationPresent": false,
+        "cleanup": {
+          "errors": [],
+          "closed": true
+        },
+        "originalReceiptSha256": "4b84d5a12d7d2c2cd1132ed71828c04f4e03503db5b0da14ea871e9cbc5f1aab",
+        "laterAuthenticatedTimeoutLog": {
+          "source": "owned-deployment-request-logs",
+          "deploymentId": "dpl_EwREse9dJe6gwV3tkFqweA1TnEtx",
+          "origin": "https://hashbrown-52gjt8054-blovedev.vercel.app",
+          "requestId": "pdx1::iad1::qrjq5-1793316378584-1ec38ff84cb0",
+          "timestampMs": 1793316378584,
+          "normalizedClassification": "platform-invocation-duration-exceeded",
+          "rawErrorCode": null,
+          "rawHeaderRequestId": "pdx1::iad1::qrjq5-1793316378584-1ec38ff84cb0",
+          "nativeLogRequestId": "qrjq5-1793316378584-1ec38ff84cb0",
+          "responseStatusCode": 200,
+          "timeoutSeconds": 1,
+          "platformMessageSha256": "aea360dd5096ef9c4511698bb6ceb6b4ab6158cd2a2da3e488d6c9f2a57030e5",
+          "normalizationRule": "vercel-regional-header-native-id-epoch-and-exact-one-second-runtime-log-v1"
+        },
+        "laterLogDoesNotQualifyRecovery": true
+      }
+    ],
+    "faultLimit": 2,
+    "faultsRemaining": 0,
+    "result": "inconclusive; active owner plus durable input was not observed"
+  },
+  "restart": {
+    "status": "not executed",
+    "managementKeyAvailable": false,
+    "verifiedDisposableComputeAvailable": false,
+    "sharedComputeRestarted": false,
+    "storageHaFailoverClaimed": false
+  },
+  "rollback": {
+    "execution": {
+      "runId": "4e20a4a1-0542-49ee-a88c-0b46812b3c6f",
+      "harnessCommit": "144ccd8f6529addbeea41bd8e74f388b54a492fd",
+      "runtimeCommit": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+      "status": "qualified",
+      "qualified": true,
+      "attempts": 2,
+      "aliasRemoved": true,
+      "closed": true,
+      "cleanupErrors": [],
+      "finishedAt": "2026-10-29T23:56:10.732Z"
+    },
+    "initialAliasIdentityCheck": {
+      "status": "failed closed on omitted direct team field; no creation retry",
+      "ownerProof": "authenticated project.accountId joined to alias.projectId",
+      "rawAliasTeamFieldPresent": false,
+      "joinedOwnerEvidenceSha256": "2d554d132b6a8a53432d74137d0d66d3745fad0c35ccb228ddb54011cb97c8b5"
+    },
+    "fullSerializedIdentityAndHashAuditIntact": false,
+    "originalReceiptSha256": "7ae0943bf092844d7c9b8e6bbd21767a006dc00a8d335984a750930176b54231",
+    "actualRoutes": [
+      {
+        "deploymentId": "dpl_AGGjf6pWPP15UK3yxF62TCFCN7hB",
+        "requestId": "pdx1::iad1::r5mjp-1793317887895-43803173876a",
+        "nativeLogRequestId": "r5mjp-1793317887895-43803173876a",
+        "timestampMs": 1793317887895,
+        "responseStatusCode": 200,
+        "normalizationRule": "vercel-regional-header-native-id-epoch-v1",
+        "nativeIdsBasis": "locally serialized native AG-UI run/thread IDs correlated through the exact authenticated HTTP request ID",
+        "logQueryCount": 4
+      },
+      {
+        "deploymentId": "dpl_2kP8FKWhmcwU52kCd9aEVph2Njto",
+        "requestId": "pdx1::iad1::pqzw8-1793318031740-e5c4245f3758",
+        "nativeLogRequestId": "pqzw8-1793318031740-e5c4245f3758",
+        "timestampMs": 1793318031740,
+        "responseStatusCode": 200,
+        "normalizationRule": "vercel-regional-header-native-id-epoch-v1",
+        "nativeIdsBasis": "locally serialized native AG-UI run/thread IDs correlated through the exact authenticated HTTP request ID",
+        "logQueryCount": 4
+      }
+    ],
+    "aliasJournalSha256": "38f1c489e4ed9ff7610c80274bc42d94ff805e2e26d62f76d13770e41a83b162",
+    "routeJournalSha256": "4fd617509086440cb7837108b235415378be5b8609a6a1d262abdabd998d3f5e",
+    "restorationAndRemoval": {
+      "checkedAt": "2026-10-29T23:56:10.931Z",
+      "runId": "4e20a4a1-0542-49ee-a88c-0b46812b3c6f",
+      "alias": "readiness-atc-b4-4e20a4a1054249eea88c0b46812b3c6f.vercel.app",
+      "actions": [
+        "absence-verified"
+      ],
+      "aliasAbsent": true,
+      "productionChanged": false,
+      "modelRequests": 0
+    },
+    "directOpenAIStateWriteAssertion": "passed in live protocol; original canonical hash strings were subsequently overredacted",
+    "settledStateAssertions": "both full state comparisons passed after >=75 seconds in live protocol; raw serialized digest audit is impaired",
+    "conversationMigrationClaimed": false
+  },
+  "accounting": {
+    "capUsd": 10,
+    "reservePerHttpUsd": 0.973728,
+    "maxUpstreamAttemptsPerReservation": 9,
+    "allReservationsPermanentlyRetained": true,
+    "httpReservations": 6,
+    "phaseReservations": {
+      "timeout": 4,
+      "restart": 0,
+      "rollback": 2
+    },
+    "retainedLiabilityUsd": 5.842368,
+    "lastAcceptedPredispatchModeledSubtotalUsd": 0.0013995,
+    "latestPinnedObserverAccepted": false,
+    "latestFailure": "overredacted rollback authority identifiers rejected",
+    "totalBillKnown": false,
+    "paidChecksResumedAfterRejection": false,
+    "oldLoadLedgerCount": 99,
+    "oldRecoveryLedgerCount": 10,
+    "ledgerSha256": "7571bc6d14ff03314870f6c4497ec47cba3d2e7371c02d3f67bc1c6e8120ec20",
+    "adapterSha256": "be98a0cdeb5645528fc575ae676b7b8562dea25b97b392a95eaeae69ba53d218",
+    "originalReceiptMovedOrReplaced": false,
+    "admissionPolicyChanged": false
+  },
+  "readOnlySupplement": {
+    "status": "supplemental-only; pinned guard remains rejected",
+    "noResumptionAuthority": true,
+    "originalReceiptModified": false,
+    "transactionReadOnlyVerified": true,
+    "records": [
+      {
+        "backend": "b4",
+        "reservationOrdinal": 5,
+        "threadIdSha256": "e88b6cc5753d342d83c0597f8171216b46ba3361f96fbebf10156d1336041150",
+        "laterAdmissionCount": 0,
+        "checkpointTupleSha256": "f51fd679ee7a8a501411a7b1170a954069419ddaf2e793f749364cb567693c4f",
+        "messageCount": 2,
+        "providerUsage": [
+          {
+            "responseIdSha256": "39eac6f6df0a4675a406b91b9d1163f91af45f37d84ba09b617f99172b70a96a",
+            "model": "gpt-5-mini-2025-08-07",
+            "usage": {
+              "input_tokens": 1433,
+              "output_tokens": 224
+            },
+            "modeledTokenCostUsd": 0.00080625
+          }
+        ]
+      },
+      {
+        "backend": "openai",
+        "reservationOrdinal": 6,
+        "threadIdSha256": "2c98a4e840a88221cea4b670005441a72ceb1c84a894dfc4715ec42702687761",
+        "laterAdmissionCount": 0,
+        "checkpointTupleSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+        "messageCount": 0,
+        "providerUsage": []
+      }
+    ],
+    "cleanup": {
+      "errors": [],
+      "closed": true
+    },
+    "sha256": "6ac8b041030f570cb7673a91664bb0cb61aacdc38b378950947faf1428d63891",
+    "timeAttribution": "Later read-only reporting snapshot, not replacement for original EOF/75-second evidence"
+  },
+  "cleanup": {
+    "faultRetirement": {
+      "checkedAt": "2026-10-30T00:05:05.633Z",
+      "id": "dpl_EwREse9dJe6gwV3tkFqweA1TnEtx",
+      "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+      "removedOrAlreadyAbsent": true,
+      "authenticatedAbsenceVerified": true,
+      "normalPreviewDeletionRequests": 0,
+      "productionChanged": false,
+      "modelRequests": 0
+    },
+    "ownedTestAliasAbsent": true,
+    "normalPreviews": [
+      {
+        "role": "normal-a",
+        "id": "dpl_AGGjf6pWPP15UK3yxF62TCFCN7hB",
+        "url": "https://hashbrown-evmnzyybv-blovedev.vercel.app",
+        "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+        "ownerId": "team_DjeixPtTYBQG210UovUdTJW8",
+        "serviceTarget": null,
+        "inspectionTarget": "preview",
+        "readyState": "READY",
+        "sourceCommitMetadata": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+        "remoteBytesAttested": false
+      },
+      {
+        "role": "normal-b",
+        "id": "dpl_AebqdykGNg2FfdQLKMFpgT66BJbn",
+        "url": "https://hashbrown-mi32qow2r-blovedev.vercel.app",
+        "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+        "ownerId": "team_DjeixPtTYBQG210UovUdTJW8",
+        "serviceTarget": null,
+        "inspectionTarget": "preview",
+        "readyState": "READY",
+        "sourceCommitMetadata": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+        "remoteBytesAttested": false
+      },
+      {
+        "role": "openai",
+        "id": "dpl_2kP8FKWhmcwU52kCd9aEVph2Njto",
+        "url": "https://hashbrown-7sfp4156e-blovedev.vercel.app",
+        "projectId": "prj_777QtswW89lM4qrgpeR2C7jLPxGq",
+        "ownerId": "team_DjeixPtTYBQG210UovUdTJW8",
+        "serviceTarget": null,
+        "inspectionTarget": "preview",
+        "readyState": "READY",
+        "sourceCommitMetadata": "a2f92a4f02ab1dfc38051a44e509afb439634793",
+        "remoteBytesAttested": false
+      }
+    ],
+    "productionWritesByThisTask": 0,
+    "productionSelectorMetadata": [],
+    "productionValuesRead": false,
+    "credentialFiles": {
+      "temporaryNames": [
+        "preview.env",
+        "secrets.json"
+      ],
+      "removed": true,
+      "absenceVerified": true,
+      "removedAt": "2026-10-30T00:36:21.048Z",
+      "originalRootEnvWriteOperations": 0
+    },
+    "syntheticRowsRetained": true,
+    "sharedStatePruned": false,
+    "credentialValueScan": {
+      "method": "exact known credential values plus URL/JSON encodings; original secrets retained only in process memory during final scan",
+      "matches": 0,
+      "completedAt": "2026-10-30T00:36:23.396Z"
+    }
+  },
+  "verification": {
+    "isolatedB4ArtifactSha256": "5346ab27984a650581bb41f1449ba3ed8e9fb1e685b3812009431021702a7002",
+    "isolatedOpenAIArtifactSha256": "7fdb91ee87e21d588b6f83192b11d6939f837724be6293a572e15333233602bb",
+    "lastRecordedToolChecks": {
+      "checkedAt": "2026-10-30T00:33:03.591632+00:00",
+      "harnessCommit": "2cfd1f249203b0a3c9c16c9967d41d39649708c6",
+      "checks": [
+        {
+          "check": "tests",
+          "exitCode": 0,
+          "log": "final-readiness-tests.log",
+          "tests": 236
+        },
+        {
+          "check": "lint",
+          "exitCode": 0,
+          "log": "final-readiness-lint.log",
+          "tests": null
+        }
+      ]
+    },
+    "finalSanitizerFixReview": {
+      "commit": "b9a2667e7a89e7f2c0b0e9e62152e84ec1578390",
+      "specApproved": true,
+      "qualityApproved": true,
+      "hostedReplayPerformed": false
+    },
+    "hostedReplayAfterSanitizerFix": false,
+    "portableFixtures": {
+      "commit": "2cfd1f249203b0a3c9c16c9967d41d39649708c6",
+      "fixtureCount": 15,
+      "independentScopeReviewApproved": true
+    }
+  },
+  "productionFollowups": [
+    "Revised, separately approved managed-timeout experiment: both original fault attempts were inconclusive and exhausted",
+    "Scoped Neon API credential plus independently verified disposable compute ownership and actual restart/provider evidence",
+    "Explicit reviewed accounting-evidence continuation before new paid calls; retain the malformed original and every reservation",
+    "Production operating owner, initial traffic/SLO/spend targets, isolated storage, stable signing key, monitoring and offline retention decisions",
+    "Explicit enablement decision after actual validation and review; this report does not authorize production cutover"
+  ]
+}
