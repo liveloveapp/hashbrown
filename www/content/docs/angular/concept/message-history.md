@@ -14,7 +14,7 @@ Message history is the conversation context sent with the next request. Earlier 
 
 Use initial messages to seed a new chat, and explicit replacement when the user selects a saved conversation or clears the current one. Storage, access control, retention, and selection are application concerns. A thread ID names a conversation; it does not load its transcript or make a browser text copy a durable agent checkpoint.
 
-<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+<hb-diagram diagram="concept-history-context"> </hb-diagram>
 
 ## Seed and replace a completed text exchange
 

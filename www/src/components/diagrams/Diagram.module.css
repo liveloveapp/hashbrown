@@ -1,0 +1,230 @@
+.figure {
+  margin: var(--space-8) 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  min-width: 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-bg);
+}
+.figure .title {
+  margin: 0;
+  font: 600 1rem/1.5 var(--font-sans);
+  min-width: 0;
+}
+.button {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--control-md);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-input);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font: 400 0.875rem/1.5 var(--font-sans);
+  cursor: pointer;
+}
+.button:hover {
+  border-color: var(--color-rule-strong);
+}
+.button:focus-visible,
+.viewport:focus-visible,
+.description summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -3px;
+}
+.viewport {
+  width: 100%;
+  overflow: auto;
+  padding: var(--space-6) var(--space-3);
+  overscroll-behavior-inline: contain;
+}
+.canvas {
+  display: block;
+  /* The surrounding viewport owns scrolling and clipping; keep SVG's own
+     hidden overflow from presenting a second clipping boundary. */
+  overflow: visible;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+.figure .scrollHint {
+  margin: 0;
+  padding: var(--space-2) var(--space-6) 0;
+  font: 400 0.875rem/1.5 var(--font-sans);
+  color: var(--color-muted);
+}
+.scrollHint[hidden] {
+  display: none;
+}
+.node > rect {
+  fill: var(--color-bg);
+  stroke: var(--color-rule-strong);
+  stroke-width: 1;
+}
+.accentNode > rect {
+  fill: var(--color-highlight);
+  stroke: var(--color-accent);
+  stroke-width: 1;
+}
+.nodeTitle {
+  fill: var(--color-ink);
+  font-size: 19px;
+  font-weight: 600;
+}
+.nodeDetail {
+  fill: var(--color-muted);
+  font-size: 16px;
+}
+.connection,
+.return {
+  color: var(--color-accent);
+}
+.return {
+  color: var(--color-muted);
+}
+.connection > polyline,
+.return > polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.return > polyline {
+  stroke-dasharray: 6 5;
+}
+.connection > polygon,
+.return > polygon {
+  fill: currentColor;
+}
+.edgeLabel {
+  fill: var(--color-muted);
+  font-size: 15px;
+  stroke: var(--color-surface);
+  stroke-width: 8px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.cardinality {
+  fill: var(--color-ink);
+  font: 14px var(--font-code);
+}
+.boundary,
+.lifeline {
+  fill: none;
+  stroke: var(--color-rule-strong);
+  stroke-width: 1;
+  stroke-dasharray: 5 5;
+}
+.groupLabel {
+  fill: var(--color-muted);
+  font: 12px var(--font-code);
+  letter-spacing: 1px;
+}
+.divider {
+  stroke: var(--color-rule);
+  fill: none;
+}
+.field {
+  fill: var(--color-ink);
+  font: 14px var(--font-code);
+}
+.fieldType {
+  fill: var(--color-muted);
+  font: 13px var(--font-code);
+}
+.figure .caption,
+.figure .description {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font: 400 1rem/1.6 var(--font-sans);
+}
+.description summary {
+  min-height: var(--control-lg);
+  align-content: center;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+.figure .description p {
+  margin: var(--space-3) 0 0;
+  font-size: 1rem;
+}
+.dialog {
+  width: calc(100vw - 48px);
+  max-width: 1440px;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.dialog::backdrop {
+  background: var(--color-overlay);
+}
+.dialog .header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.dialog .viewport {
+  max-height: calc(100dvh - 240px);
+}
+.dialog .caption {
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .header {
+    padding: var(--space-4);
+    align-items: flex-start;
+  }
+  .button {
+    min-height: var(--control-lg);
+  }
+  .figure .caption,
+  .figure .description {
+    padding: var(--space-4);
+  }
+  .viewport {
+    padding: var(--space-5) 0;
+  }
+  .dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+}
+@media print {
+  .scrollHint {
+    display: none;
+  }
+  .button,
+  .dialog {
+    display: none;
+  }
+  .viewport {
+    overflow: visible;
+    padding: 8px;
+  }
+  .canvas {
+    min-width: 0 !important;
+  }
+  .figure {
+    break-inside: avoid;
+  }
+  .description {
+    display: none;
+  }
+}

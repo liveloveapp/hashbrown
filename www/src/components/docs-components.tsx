@@ -23,6 +23,7 @@ import {
 import { NextStep, NextSteps } from './NextSteps';
 import { SymbolLink } from './SymbolLink';
 import { WorkbenchPanel } from './workbench/WorkbenchPanel';
+import { DocsDiagram } from './diagrams/DocsDiagram';
 import { assertWorkbenchLesson } from './workbench/workbench-lessons';
 
 /**
@@ -70,6 +71,7 @@ export function docsComponents(
     'www-atc-demo-video': AtcDemoVideo,
     'hb-docs-demo': DocsDemoVideo,
     'hb-concept-diagram': ConceptDiagram,
+    'hb-diagram': DocsDiagram,
     'hb-workbench': DocsWorkbench,
     'hb-magic-text-demo': MagicTextDemo,
     'hb-next-steps': NextSteps,

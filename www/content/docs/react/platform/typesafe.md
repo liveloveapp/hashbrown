@@ -14,8 +14,8 @@ A decision selects from questions and choices our application defines. Use TypeS
 
 The teaser shows the Decisions client flow backed by the TypeSafe route. Generation lessons elsewhere in the workbench use OpenAI and a different streaming contract.
 
-<hb-concept-diagram concept="decisions">
-</hb-concept-diagram>
+<hb-diagram diagram="typesafe-json-decision-boundary">
+</hb-diagram>
 
 ## Install the adapter
 

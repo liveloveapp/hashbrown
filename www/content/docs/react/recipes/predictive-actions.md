@@ -14,7 +14,7 @@ Predictive suggestions offer a short list of useful next actions from the curren
 
 Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-prediction-freshness"> </hb-diagram>
 
 ## Request a suggestion from a snapshot
 
@@ -120,7 +120,7 @@ export const workbenchActionLabels: Readonly<
 
 The shared schema constrains the response shape:
 
-<hb-code-example header="runtime/workbench-recipes.ts">
+<hb-code-example header="runtime/workbench-recipes.ts" moment="suggestions-ready-1">
 
 ```ts
 export const workbenchPredictionsSchema = s.object(
@@ -148,7 +148,7 @@ A valid empty array means there are no new suggestions. Show that result without
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="react/src/PredictionsWorkbench.tsx">
+<hb-code-example header="react/src/PredictionsWorkbench.tsx" moment="suggestions-ready-1">
 
 ```tsx
 const completion = useStructuredCompletion({

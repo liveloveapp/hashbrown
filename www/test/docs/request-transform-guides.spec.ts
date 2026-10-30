@@ -39,7 +39,7 @@ test.each(['react', 'angular'])(
     const body = guide(sdk);
     const excerpts = [
       ...body.matchAll(
-        /<hb-code-example header="(server\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="(server\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       ),
     ];
     const normalize = (value: string) =>

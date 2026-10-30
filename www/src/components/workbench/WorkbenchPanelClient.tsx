@@ -3,6 +3,7 @@
 import {
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -13,7 +14,8 @@ import type { Sdk } from '@/lib/content';
 // Type-only: the runtime capture module imports @hashbrownai/core.
 import type { WorkbenchCapture } from '../../../examples/quickstart/runtime/workbench-capture';
 import type { WorkbenchChildMessage } from '../../../examples/quickstart/runtime/workbench-messages';
-import { createEmbedClient } from './embed-client';
+import { SEE_IT_RUN_EVENT, type SeeItRunDetail } from '../SeeItRunButton';
+import { createEmbedClient, type EmbedClient } from './embed-client';
 // Type-only: the lesson tables and video catalog stay on the server.
 import type {
   WorkbenchLessonId,
@@ -105,6 +107,31 @@ function readyFor(
   );
 }
 
+// Scroll the panel into view and mark the snippet the reader jumped from,
+// clearing any earlier mark. Returns the snippet's element, if there is one.
+function revealSnippet(
+  panel: HTMLElement | null,
+  detail: SeeItRunDetail,
+): HTMLElement | null {
+  panel?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  document
+    .querySelectorAll('[data-highlighted][data-component="code-example"]')
+    .forEach((element) => element.removeAttribute('data-highlighted'));
+  const snippet = document.getElementById(detail.snippet);
+  snippet?.setAttribute('data-highlighted', '');
+  return snippet;
+}
+
+// Calls `onRun` for each See it run event on the page. One panel per page.
+function useSeeItRun(onRun: (detail: SeeItRunDetail) => void) {
+  useEffect(() => {
+    const listener = (event: Event) =>
+      onRun((event as CustomEvent<SeeItRunDetail>).detail);
+    document.addEventListener(SEE_IT_RUN_EVENT, listener);
+    return () => document.removeEventListener(SEE_IT_RUN_EVENT, listener);
+  }, [onRun]);
+}
+
 /**
  * The interactive half of the docs workbench panel: tabs, lazy frames and the
  * replay load protocol. Falls back to the server-rendered video.
@@ -123,13 +150,34 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
   );
   if (narrow) {
     return (
-      <div className={styles.panel}>
+      <NarrowPanel>
         {props.fallback}
         {openLink}
-      </div>
+      </NarrowPanel>
     );
   }
   return <TabbedPanel {...props} openLink={openLink} />;
+}
+
+// The video fallback has nothing to seek: See it run only scrolls and marks.
+function NarrowPanel({ children }: { children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useSeeItRun(
+    useCallback((detail) => {
+      revealSnippet(panel.current, detail);
+      panel.current?.focus({ preventScroll: true });
+    }, []),
+  );
+  return (
+    <div
+      className={styles.panel}
+      data-component="workbench-panel"
+      tabIndex={-1}
+      ref={panel}
+    >
+      {children}
+    </div>
+  );
 }
 
 function TabbedPanel({
@@ -162,7 +210,15 @@ function TabbedPanel({
   const [sourceLoad, setSourceLoad] = useState<WorkbenchSourceLoad>({
     status: 'idle',
   });
+  const [snippetFile, setSnippetFile] = useState<{
+    path: string;
+    seq: number;
+  } | null>(null);
   const sourceRequested = useRef(false);
+  const client = useRef<EmbedClient | null>(null);
+  const isLoaded = useRef(false);
+  const pendingMoment = useRef<string | null>(null);
+  const lastMoment = useRef<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
 
@@ -211,15 +267,19 @@ function TabbedPanel({
         .finally(() => clearTimeout(fetchTimer));
     };
     let capture: Promise<WorkbenchCapture> | null = null;
-    const client = createEmbedClient(frame, origin, {
+    isLoaded.current = false;
+    const embed = createEmbedClient(frame, origin, {
       // StrictMode and reloads can say ready twice; load again each time.
       ready: (message) => {
         clearTimeout(timer);
+        isLoaded.current = false;
+        // A reload restarts the replay: seek back to where the reader was.
+        pendingMoment.current = lastMoment.current;
         if (!readyFor(message, 'replay', lesson, sdk)) return fail();
         capture ??= fetchCapture();
         capture.then((value) => {
           if (disposed) return;
-          client.post({
+          embed.post({
             type: 'hb-workbench:load',
             version: 1,
             capture: value,
@@ -228,18 +288,67 @@ function TabbedPanel({
           timer = setTimeout(fail, LOAD_TIMEOUT_MS);
         }, fail);
       },
-      loaded: () => clearTimeout(timer),
+      loaded: () => {
+        clearTimeout(timer);
+        isLoaded.current = true;
+        // A See it run that came before the replay loaded seeks now.
+        const moment = pendingMoment.current;
+        pendingMoment.current = null;
+        if (moment) {
+          embed.post({
+            type: 'hb-workbench:seek',
+            version: 1,
+            milestone: moment,
+          });
+        }
+      },
       rejected: fail,
       state: () => undefined,
     });
+    client.current = embed;
     return () => {
       disposed = true;
+      isLoaded.current = false;
+      client.current = null;
       clearTimeout(timer);
       clearTimeout(fetchTimer);
       controller.abort();
-      client.dispose();
+      embed.dispose();
     };
   }, [frame, origin, mediaId, lesson, sdk]);
+
+  // See it run: show the Replay (mounting it if need be), seek once it has
+  // loaded, mark the snippet and point Source at the snippet's file. A page
+  // with no working replay still scrolls and marks.
+  useSeeItRun(
+    useCallback(
+      (detail) => {
+        const snippet = revealSnippet(panel.current, detail);
+        setTab('replay');
+        // The reader jumped away from the button: carry focus to the Replay.
+        tabRefs.current.get('replay')?.focus({ preventScroll: true });
+        const header = snippet?.dataset['header'];
+        if (header)
+          setSnippetFile((last) => ({
+            path: header,
+            seq: (last?.seq ?? 0) + 1,
+          }));
+        if (!hasCapture || failed) return;
+        lastMoment.current = detail.moment;
+        setNear(true);
+        if (isLoaded.current && client.current) {
+          client.current.post({
+            type: 'hb-workbench:seek',
+            version: 1,
+            milestone: detail.moment,
+          });
+        } else {
+          pendingMoment.current = detail.moment;
+        }
+      },
+      [hasCapture, failed],
+    ),
+  );
 
   // The live frame must say ready for this lesson and SDK, or it is replaced
   // by a note and the hosted link: never a blank or broken frame.
@@ -324,7 +433,7 @@ function TabbedPanel({
   });
 
   return (
-    <div className={styles.panel} ref={panel}>
+    <div className={styles.panel} data-component="workbench-panel" ref={panel}>
       <div className={styles.bar}>
         <div
           role="tablist"
@@ -431,6 +540,7 @@ function TabbedPanel({
             source={source}
             load={sourceLoad}
             visible={tab === 'source'}
+            select={snippetFile}
           />
         </div>
       )}

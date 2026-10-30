@@ -14,7 +14,7 @@ An interrupt pauses an agent run so a person can supply information or make a de
 
 Use this for approval, missing input, or a choice the application must leave to the user. The server owns the checkpoint and checks what an answer permits. The client owns the form and submits every answer for the pending batch together. An approval permits the next step; it does not prove that step ran or succeeded.
 
-<hb-concept-diagram concept="workflow"> </hb-concept-diagram>
+<hb-diagram diagram="concept-interrupt-resume"> </hb-diagram>
 
 ## Return an explicit answer for the whole batch
 
@@ -147,7 +147,7 @@ Keep form drafts attached to the original displayed `batchId`. Do not replace it
 
 The workbench builds a complete `resume` argument from the original batch:
 
-<hb-code-example header="runtime/workbench-workflow-form.ts">
+<hb-code-example header="runtime/workbench-workflow-form.ts" moment="resume-requested-1">
 
 ```ts
   return {

@@ -3,7 +3,7 @@ import type { Plugin } from 'unified';
 
 function containsDiagram(node: Element): boolean {
   return (
-    node.tagName === 'hb-concept-diagram' ||
+    ['hb-concept-diagram', 'hb-diagram'].includes(node.tagName) ||
     node.children.some(
       (child) => child.type === 'element' && containsDiagram(child),
     )
@@ -34,7 +34,7 @@ function normalize(node: Root | Element): Root | Element {
     if (
       meaningful.length !== 1 ||
       meaningful[0].type !== 'element' ||
-      meaningful[0].tagName !== 'hb-concept-diagram'
+      !['hb-concept-diagram', 'hb-diagram'].includes(meaningful[0].tagName)
     ) {
       throw new Error('Concept diagrams must occupy their own paragraph');
     }

@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Show a card titled \"Potato harvest\" holding two metric components: acres planted (12) and tonnes picked (30).",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"ui\":[{\"card\":{\"props\":{\"title\":\"Potato harvest\"},\"children\":[{\"metric\":{\"props\":{\"label\":\"acres planted\",\"value\":12}}},{\"metric\":{\"props\":{\"label\":\"tonnes picked\",\"value\":30}}}]}}]}"
+      },
+      "recordedTimings": {
+        "ttftMs": 3428,
+        "interChunkDelaysMs": [
+          0, 21, 0, 22, 28, 17, 19, 29, 16, 26, 24, 16, 24, 21, 25, 19, 147, 26,
+          0, 25
+        ],
+        "totalDurationMs": 3933
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

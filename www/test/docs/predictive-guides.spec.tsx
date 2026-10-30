@@ -45,7 +45,7 @@ test.each(SDKS)(
     const body = readDoc(sdk, ['recipes', 'predictive-actions'])?.body ?? '';
     const excerpts = [
       ...body.matchAll(
-        /<hb-code-example header="((?:runtime|react|angular)\/[^"]+)">\s*```[^\n]+\n([\s\S]*?)\n```/g,
+        /<hb-code-example header="((?:runtime|react|angular)\/[^"]+)"(?: moment="[^"]+")?>\s*```[^\n]+\n([\s\S]*?)\n```/g,
       ),
     ];
     const normalize = (text: string) =>

@@ -14,8 +14,7 @@ Your components and client APIs stay in your application. Choose where the model
 
 The teaser shows a real OpenAI-backed client. The integration guides below explain the other runtimes separately; the recording does not verify those providers.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary"> </hb-diagram>
 
 ## Stream through a server adapter
 

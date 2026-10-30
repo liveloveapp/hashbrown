@@ -14,7 +14,7 @@ A browser-visible model endpoint is an application entry point. Before it can sp
 
 Let’s make those checks explicit at the HTTP boundary. Keep credentials, trusted instructions, model selection, and output limits on the server; use the browser request only as untrusted input.
 
-<hb-concept-diagram concept="client-server"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-public-endpoint-gates"> </hb-diagram>
 
 ## Put an application boundary around the stream
 

@@ -14,7 +14,7 @@ A schema is a contract for values: which fields exist, what each field means, an
 
 Skillet is exported as `s` from `@hashbrownai/core`. Its schemas also infer TypeScript types, so you can describe a value once and reuse that description in your UI. Use descriptions to explain meaning, constraints to bound values, and ordinary application checks for facts a schema cannot establish, such as whether a delivery date is available.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="concept-schema-consumers"> </hb-diagram>
 
 ## Describe an application contract
 
@@ -62,7 +62,7 @@ Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx w
 
 Both frameworks and the server use this shared schema:
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="parsed-output-1">
 
 ```ts
 export const workbenchPlanSchema = s.object('A two-step plan proposal', {

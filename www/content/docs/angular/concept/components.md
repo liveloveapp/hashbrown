@@ -14,7 +14,7 @@ Generative UI lets a model choose from components your application already owns.
 
 Use it when different requests need different presentations: a product comparison, a summary card, or a small dashboard. If every answer uses the same layout, [structured output](/docs/angular/concept/structured-output) is often enough. Start with one useful component, then grow the catalog when the feature needs another way to present information.
 
-<hb-concept-diagram concept="generative-ui"> </hb-concept-diagram>
+<hb-diagram diagram="concept-trusted-components"> </hb-diagram>
 
 ## Expose a useful summary card
 
@@ -109,7 +109,7 @@ The recording uses this checked Angular client with real provider requests. The 
 
 The following excerpt is from the checked workbench client. Open the complete client for the component implementation, application state, and acceptance guard.
 
-<hb-code-example header="angular/src/app/workbench.ts">
+<hb-code-example header="angular/src/app/workbench.ts" moment="parsed-output-1">
 
 ```ts
 const components = [

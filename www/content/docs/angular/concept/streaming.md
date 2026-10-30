@@ -14,7 +14,7 @@ Streaming lets an interface show useful output while the response is still arriv
 
 Use streaming strings for growing text and streaming arrays for lists whose completed items are useful early. Keep a stable layout for missing values and label the result as a preview. A visible field can still belong to a run that later fails, stops, or reaches an output limit; rendering it must not commit a business action.
 
-<hb-concept-diagram concept="streaming"> </hb-concept-diagram>
+<hb-diagram diagram="concept-streaming-boundaries"> </hb-diagram>
 
 ## Show a growing reading list
 
@@ -92,7 +92,7 @@ Start the [conversation workbench](/docs/angular/start/workbench) with `npx nx w
 
 The streaming lesson uses this shared response schema:
 
-<hb-code-example header="runtime/workbench.ts">
+<hb-code-example header="runtime/workbench.ts" moment="streaming-json-1">
 
 ```ts
 export const workbenchStreamingPlanSchema = s.object(

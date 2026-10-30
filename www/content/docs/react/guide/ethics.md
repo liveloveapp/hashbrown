@@ -17,6 +17,8 @@ Hashbrown gives us tools for building the interface. We still own the product de
 <a id="transparency"></a>
 <a id="example-displaying-ai-attribution"></a>
 
+<hb-diagram diagram="proposal-lifecycle"> </hb-diagram>
+
 ## Make the proposal visible
 
 Tell the user when content was generated. Show what a proposed change will do before applying it. For example, an assistant can draft a delivery note while the user reviews and edits the text in an ordinary form. Generating the note should not silently submit the order.

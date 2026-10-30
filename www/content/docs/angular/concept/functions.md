@@ -14,7 +14,7 @@ A tool is an application function a model can ask to call. Its name, description
 
 Use tools when an answer depends on current application data or a checked action. A model cannot infer today’s inventory from its training data. Give it a focused way to read inventory instead of pasting every product into every prompt. Keep reads separate from writes so a useful lookup does not also change application state.
 
-<hb-concept-diagram concept="tools"> </hb-concept-diagram>
+<hb-diagram diagram="concept-tools-round-trip"> </hb-diagram>
 
 ## Give the assistant a current value
 
@@ -86,7 +86,7 @@ The recording uses this checked Angular client with real provider requests. The 
 
 `createTool()` describes a function the model can call. This handler reads the current application snapshot. Recording the result makes it inspectable; reading context does not change the plan.
 
-<hb-code-example header="angular/src/app/workbench.ts">
+<hb-code-example header="angular/src/app/workbench.ts" moment="tool-result-1">
 
 ```ts
       createTool({

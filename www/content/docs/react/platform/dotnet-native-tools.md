@@ -12,8 +12,8 @@ meta:
 
 The teaser shows the workbench's client interrupt controls and explicit continuation. It does not demonstrate .NET native mixed tools, Microsoft Agent Framework approvals, or PostgreSQL session ownership. Those need the separate server configuration and verification below.
 
-<hb-concept-diagram concept="workflow">
-</hb-concept-diagram>
+<hb-diagram diagram="dotnet-agent-boundary">
+</hb-diagram>
 
 Use this opt-in recipe when one model response needs both browser tools and registered .NET functions. Microsoft Agent Framework (MAF) retains its native pending function state while Hashbrown executes browser tools. PostgreSQL owns each continuation and fences server dispatch across replicas and restarts.
 
@@ -177,6 +177,9 @@ The guarantee is at most one owned executor dispatch for an original call, not e
 A live native interrupt can cause the current SDK to cancel browser calls co-emitted in the same response. The cancelled original browser handler does not execute. On decision continuation, native MAF settles that original call with its genuine rejection result; the model can request a fresh browser call with a fresh ID, which the SDK can execute once. Do not promise execution of the cancelled original sibling or an automatic fresh call. Keep full canonical history and normal browser declarations.
 
 ## What happens during a mixed turn
+
+<hb-diagram diagram="dotnet-native-mixed-turn">
+</hb-diagram>
 
 Keep the browser's normal Hashbrown tool declarations and full canonical conversation history. No browser implementation is registered for `lookupAirport`. The composed agent uses native invocable-function bypass plus public empty input/output history filters, so MAF retains pending work without appending a second transcript.
 

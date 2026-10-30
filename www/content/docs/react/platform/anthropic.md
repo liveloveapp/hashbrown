@@ -14,8 +14,8 @@ Connect an AG-UI endpoint to Anthropic's Messages API when your application uses
 
 The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate a Claude request, extended thinking, or Anthropic built-in tools.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
 
 ## Install the server adapter
 
@@ -67,6 +67,9 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 

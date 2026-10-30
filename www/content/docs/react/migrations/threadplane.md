@@ -16,6 +16,9 @@ We can replace the transcript and composer in a Hashbrown chat screen while keep
 
 The [Threadplane recipe](/docs/react/recipes/threadplane) contains the complete component, mounting code, and local source-package setup. At the referenced revision, the React components are private source packages; follow those build and local-install steps rather than assuming an npm registry package exists.
 
+<hb-diagram diagram="threadplane-react-ownership">
+</hb-diagram>
+
 ## 1. Keep the conversation owner
 
 Find the component that calls `useChat`. Keep that hook and its existing `system`, tools, transport, and thread configuration. Replace the presentation around it.

@@ -1,0 +1,32 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Show a card titled \"Potato harvest\" holding two metric components: acres planted (12) and tonnes picked (30).",
+        "model": "qwen2.5:14b",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\n  \"ui\": [\n    {\n      \"card\": {\n        \"props\": {\n          \"title\": \"Potato harvest\"\n        },\n        \"children\": [\n          {\n            \"metric\": {\n              \"props\": {\n                \"label\": \"Acres planted\",\n                \"value\": 12\n              }\n            }\n          },\n          {\n            \"metric\": {\n              \"props\": {\n                \"label\": \"Tonnes picked\",\n                \"value\": 30\n              }\n            }\n          }\n        ]\n      }\n    }\n  ]\n}"
+      },
+      "recordedTimings": {
+        "ttftMs": 7844,
+        "interChunkDelaysMs": [
+          27, 54, 61, 50, 59, 50, 50, 47, 50, 59, 58, 52, 58, 52, 58, 54, 55,
+          51, 60, 50, 66, 47, 56, 50, 51, 71, 49, 49, 46, 48, 59, 47, 45, 48,
+          49, 52, 53, 73, 58, 71, 87, 134, 133, 117, 131, 122, 126, 125, 90,
+          123, 132, 113, 117, 68, 90, 118, 114, 118, 123, 118, 113, 129, 72, 65,
+          72, 89, 116, 96, 104, 110, 104, 101, 83, 103, 132, 129, 120, 93, 122,
+          127, 121, 117, 117, 94, 108, 112, 122, 86, 98, 131, 132, 115, 119, 67,
+          100, 99, 84, 68, 90, 104, 92, 111, 101, 113, 90, 105, 87, 108, 99,
+          114, 110, 107, 98
+        ],
+        "totalDurationMs": 17785
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

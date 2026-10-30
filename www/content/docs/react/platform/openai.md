@@ -14,8 +14,8 @@ Connect your application's chat endpoint to OpenAI's Responses API. The browser 
 
 The teaser follows the real OpenAI-backed client flow. The server integration below is the reusable part; the inspector and timeline belong to the workbench.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary">
+</hb-diagram>
 
 ## Install the server adapter
 
@@ -96,6 +96,9 @@ const input = {
 ```
 
 ### Node.js Server Integration
+
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 The examples below host `/run` in an ordinary application. Configure your React client to call that route, using the [Quickstart](/docs/react/start/quick) for the framework setup. They show provider mapping, SSE encoding, and disconnect cancellation. Add your application's validation, identity, authorization, and request limits before exposing the route; see [Securing a public endpoint](/docs/react/recipes/public-endpoint). A TypeScript assertion on the request body does not validate it.
 

@@ -2,6 +2,9 @@ import { resolve } from 'node:path';
 import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
+  GENERATIVE_UI_PROMPT,
+  generativeUiResponseSchema,
+  parseGenerativeUi,
   runProviderAGUIWithAimock,
   startAimock,
   startRecordedAimock,
@@ -480,6 +483,40 @@ test(
     expect(JSON.parse(streamedContent(events))).toEqual({
       text: expect.any(String),
       ok: expect.any(Boolean),
+    });
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI renders generative UI from the Hashbrown UI schema',
+  async () => {
+    const input = baseInput(GENERATIVE_UI_PROMPT);
+    const responseSchema = generativeUiResponseSchema();
+    input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+    let capturedTextFormat: unknown;
+
+    const events = await withRecording((run) =>
+      run(input, {
+        transformRequestOptions: (options) => {
+          capturedTextFormat = options.text?.format;
+          return options;
+        },
+      }),
+    );
+
+    expect(capturedTextFormat).toEqual({
+      type: 'json_schema',
+      name: 'schema',
+      schema: responseSchema,
+      strict: true,
+    });
+    expectCanonicalTextRun(events, input);
+    expect(parseGenerativeUi(streamedContent(events))).toEqual({
+      title: expect.any(String),
+      metrics: expect.arrayContaining([
+        { label: expect.any(String), value: expect.any(Number) },
+      ]),
     });
   },
   RECORDED_TIMEOUT_MS,

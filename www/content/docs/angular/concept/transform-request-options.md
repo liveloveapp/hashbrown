@@ -14,7 +14,7 @@ Request transformation is a server-side hook for modifying the provider options 
 
 Return the complete options object. Preserve the mapped conversation, tools, and response schema unless your endpoint deliberately owns a different contract. This hook uses provider-native types, so an OpenAI Responses transform is not interchangeable with an Anthropic transform. Load required context before sending; a failed lookup should not silently remove required policy.
 
-<hb-concept-diagram concept="client-server"> </hb-concept-diagram>
+<hb-diagram diagram="concept-provider-transform"> </hb-diagram>
 
 ## Add context at the provider boundary
 
@@ -77,7 +77,7 @@ The sample exposes only fixed public demo context. The trace omits message input
 
 The server owns a public `canonical-docs` workspace policy. It asks for a concise two-step plan using the trusted `SummaryCard` and `readContext` tool, and reminds the model that the user must accept a proposal before application state changes.
 
-<hb-code-example header="server/workbench-transform.ts">
+<hb-code-example header="server/workbench-transform.ts" moment="request-transformed-1">
 
 ```ts
 export async function transformWorkbenchRequest(
@@ -103,7 +103,7 @@ The asynchronous signature also lets your server await context from an applicati
 
 The checked OpenAI boundary uses the callback here:
 
-<hb-code-example header="server/workbench-openai.ts">
+<hb-code-example header="server/workbench-openai.ts" moment="request-transformed-1">
 
 ```ts
 transformRequestOptions: async (mapped) => {

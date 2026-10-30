@@ -14,8 +14,7 @@ A Hashbrown application has two cooperating parts. The client owns the interface
 
 Let's look at that flow independently of any particular demo. A support assistant, a form helper, and a planning app can use the same boundaries.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary"> </hb-diagram>
 
 ## Follow the application flow
 

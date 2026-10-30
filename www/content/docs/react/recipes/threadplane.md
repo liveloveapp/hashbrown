@@ -16,6 +16,8 @@ React uses Hashbrown’s `useChat` runtime and passes text and callbacks into Th
 
 Hashbrown owns the React conversation. Threadplane gives us the transcript, composer, and Send and Stop controls. If you're replacing an existing screen, start with the [migration checklist](/docs/react/migrations/threadplane).
 
+<hb-diagram diagram="recipe-threadplane-react"> </hb-diagram>
+
 ## Before we start
 
 Start with the [Quickstart](/docs/react/start/quick) server and a Vite application using TypeScript. The installed consumer for this walkthrough uses **React and React DOM 19.2.8** with **Hashbrown core and React 0.8.0**.

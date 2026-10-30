@@ -14,7 +14,7 @@ Sometimes the data and components are already known, and only the choice of view
 
 Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-ui-selection-branches"> </hb-diagram>
 
 ## Choose among application views
 
@@ -134,7 +134,7 @@ This is different from [Generative UI](/docs/react/concept/components), where th
 
 The checked client connects the lesson to the real SDK:
 
-<hb-code-example header="react/src/SelectionWorkbench.tsx">
+<hb-code-example header="react/src/SelectionWorkbench.tsx" moment="selection-result-1">
 
 ```tsx
 const selection = useUiDecision({

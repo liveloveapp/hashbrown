@@ -14,7 +14,7 @@ A decision answers a closed question using options your application defines. Ins
 
 Keep exact calculations and deterministic rules in code. Use a decision when interpreting language or ambiguous context is the useful part. Give choices distinct meanings and include a clarification path when the available information is insufficient. Confidence is model metadata, not a calibrated probability or permission to execute an action.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="concept-decision-choices"> </hb-diagram>
 
 ## Route a reading request
 
@@ -103,7 +103,7 @@ export const workbenchDecisionSchema = s.object(
 
 <hb-expander title="Checked React decision setup">
 
-<hb-code-example header="react/src/DecisionWorkbench.tsx">
+<hb-code-example header="react/src/DecisionWorkbench.tsx" moment="decision-1">
 
 ```ts
 const decision = useDecision({
