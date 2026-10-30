@@ -1,6 +1,6 @@
 # Activities and tool-call display: delivery closeout
 
-Updated 2026-10-30 against Hashbrown main `ea830dab` (including #832/#844)
+Updated 2026-10-30 against Hashbrown main `3128dde8` (including #832/#844)
 and published B4.run packages 0.15.8. GitHub merge state was checked for every PR below. This is the
 current inventory; the original specs retain their historical baseline and
 binding Rules. This report does not claim the entire effort is finished.
@@ -29,6 +29,10 @@ require retained execution state. Other adapters retain their own native-history
 policies. A native execution image output is not OpenAI image-generation support.
 
 ## Release evidence and historical corrections
+
+[B4.run 0.15.8](https://github.com/cacheplane/b4run/releases/tag/v0.15.8) is
+public and immutable. All 21 npm packages match the escrow manifest; the five
+postpublication smoke checks and independent artifact audit passed.
 
 The actual plain-LangGraph import is `@b4run/langgraph/ui`, replacing the original
 unshipped `/tool-step` proposal. Published 0.15.8 includes `./dist/ui.js` and
@@ -116,7 +120,7 @@ passed another repository's versions or tests.
 
 ## Closeout verification
 
-The refreshed website suite passed 2,390 tests across 269 files, followed by
+The refreshed website suite passed 2,391 tests across 269 files, followed by
 website lint and a production build. Existing API Extractor/compiler and
 forgotten-export, color-environment and dynamic filesystem tracing warnings
 remain. #832/#844's CI and the versioned corpus establish
