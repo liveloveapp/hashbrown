@@ -1017,3 +1017,87 @@ test('clicking the duration of a picker row picks it and closes the list', () =>
   expect(document.activeElement).toBe(picker);
   shell.dispose();
 });
+
+test('a closed detail stays closed while the playhead moves', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  rowButton(host, 'Model request').click();
+  host
+    .querySelector<HTMLButtonElement>('[aria-label="Close request detail"]')
+    ?.click();
+
+  store.seek(1);
+  store.seek(2);
+
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  expect(
+    host.querySelector('.wb-requests-table')?.hasAttribute('data-narrow'),
+  ).toBe(false);
+  shell.dispose();
+});
+
+test('the close button and Escape close the detail before the first request', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  store.seek(0);
+  const closeButton = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Close request detail"]',
+  ) as HTMLButtonElement;
+
+  closeButton.click();
+  const afterClick = host.querySelector('[data-detail]');
+  rowButton(host, 'Model request').click();
+  store.seek(0);
+  const reopened = host.querySelector('[data-detail]');
+  const escape = press(
+    host.querySelector('[data-detail]') as HTMLElement,
+    'Escape',
+  );
+
+  expect(afterClick).toBeNull();
+  expect(reopened).not.toBeNull();
+  expect(escape.defaultPrevented).toBe(true);
+  expect(host.querySelector('[data-detail]')).toBeNull();
+  shell.dispose();
+});
+
+test('the picker closes on a pointer press outside it', () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const inside = host.querySelector('[role=option]') as HTMLElement;
+  inside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  const stillOpen = host.querySelector('[role=listbox]');
+
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+
+  expect(stillOpen).not.toBeNull();
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  shell.dispose();
+});
+
+test('the picker closes when focus leaves it', async () => {
+  const { host, store, shell } = mountRequests();
+  recordToolTurn(store);
+  const outside = document.createElement('button');
+  document.body.append(outside);
+  const picker = host.querySelector<HTMLButtonElement>(
+    '.wb-requests [aria-haspopup=listbox]',
+  ) as HTMLButtonElement;
+  picker.click();
+  const option = host.querySelector('[role=option]') as HTMLElement;
+  option.focus();
+
+  outside.focus();
+  await Promise.resolve();
+
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(picker.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(outside);
+  outside.remove();
+  shell.dispose();
+});

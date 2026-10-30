@@ -5,6 +5,7 @@ import {
   defaultInspectorMode,
   parsePartialJson,
   workbenchInspectorModes,
+  workbenchStateTree,
 } from '../examples/quickstart/runtime/workbench-inspector-modes';
 
 const frame = {
@@ -202,4 +203,33 @@ test('keeps recipe sections instead of the JSON modes when a lesson recipe suppl
 
   expect(modes.map((mode) => mode.id)).toEqual(['top', 'bottom', 'raw']);
   expect(modes[1].value).toBe('bottom-value');
+});
+
+test('the State tree keeps a non-object application under value', () => {
+  const inputs = [null, 'Waiting', ['a']];
+
+  const trees = inputs.map((application) =>
+    workbenchStateTree(application, 'moment'),
+  );
+
+  expect(trees).toEqual([
+    { value: null, moment: 'moment' },
+    { value: 'Waiting', moment: 'moment' },
+    { value: ['a'], moment: 'moment' },
+  ]);
+  expect(workbenchStateTree({ turn: 1 }, 'm')).toEqual({
+    turn: 1,
+    moment: 'm',
+  });
+});
+
+test('the State tab tree does not spread a string application', () => {
+  const modes = workbenchInspectorModes({
+    ...sections,
+    application: 'Waiting',
+    tab: 'state',
+    frame,
+  });
+
+  expect(modes[0].value).toEqual({ value: 'Waiting', moment: 'bottom-value' });
 });

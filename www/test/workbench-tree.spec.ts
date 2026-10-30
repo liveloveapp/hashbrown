@@ -137,3 +137,28 @@ test('the changed-value highlight is a light cobalt tint, never a grey band', ()
   expect(tints.length).toBeGreaterThan(0);
   expect(Math.max(...tints)).toBeLessThanOrEqual(16);
 });
+
+test('opens a top-level branch that first appears after the first render', () => {
+  const tree = createWorkbenchTree({ label: 'State' });
+  tree.update({ revision: 1 }, undefined);
+
+  tree.update(state, { revision: 1 });
+
+  expect(paths(tree.element)).toEqual([
+    '/revision',
+    '/plan',
+    '/plan/title',
+    '/plan/steps',
+  ]);
+});
+
+test('keeps a branch the reader closed closed when it disappears and returns', () => {
+  const tree = createWorkbenchTree({ label: 'State' });
+  tree.update(state, undefined);
+  rowFor(tree.element, '/plan').click();
+
+  tree.update({ revision: 2 }, state);
+  tree.update(state, { revision: 2 });
+
+  expect(paths(tree.element)).toEqual(['/revision', '/plan']);
+});

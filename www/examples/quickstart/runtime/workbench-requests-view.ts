@@ -461,24 +461,45 @@ export function createWorkbenchRequestsView(
     if (fromPicker) picker.focus();
   }
 
-  function setPicker(open: boolean) {
+  /** Opens or closes the list; closing returns focus to the picker unless `refocus` is false. */
+  function setPicker(open: boolean, refocus = true) {
     pickerOpen = open;
     draw();
     const focusId = find(selectedId) ? selectedId : rovingId;
-    if (!open) picker.focus();
-    else if (focusId !== null) rows.get(focusId)?.button.focus();
+    if (!open) {
+      if (refocus) picker.focus();
+    } else if (focusId !== null) rows.get(focusId)?.button.focus();
   }
 
+  const inPicker = (node: unknown) =>
+    node instanceof Node &&
+    (pickbar.contains(node) || tableWrap.contains(node));
+  /** Closes an open list when the reader presses anywhere outside it. */
+  function onPointerDown(event: Event) {
+    if (pickerOpen && !inPicker(event.target)) setPicker(false, false);
+  }
+  /** Closes an open list once focus has settled outside it. */
+  function onFocusOut(event: FocusEvent) {
+    if (!pickerOpen || inPicker(event.relatedTarget)) return;
+    // A rebuild can drop focus for a moment; check where it lands.
+    queueMicrotask(() => {
+      if (pickerOpen && !inPicker(root.ownerDocument.activeElement))
+        setPicker(false, false);
+    });
+  }
+  root.ownerDocument.addEventListener('pointerdown', onPointerDown);
+  pickbar.addEventListener('focusout', onFocusOut);
+  tableWrap.addEventListener('focusout', onFocusOut);
+
   function close() {
-    const id = selectedId;
-    if (id === null) return;
+    const id = selectedId ?? rovingId ?? exchanges[0]?.id ?? null;
     selectedId = null;
     userSelected = false;
     closed = true;
     selectedEvent = null;
     rovingId = id;
     draw();
-    rows.get(id)?.button.focus();
+    if (id !== null) rows.get(id)?.button.focus();
   }
 
   function onKeydown(event: KeyboardEvent) {
@@ -489,7 +510,7 @@ export function createWorkbenchRequestsView(
       return;
     }
     // A narrow inspector has no close control: the detail is all it shows.
-    if (selectedId === null || getComputedStyle(closeButton).display === 'none')
+    if (!detailShown() || getComputedStyle(closeButton).display === 'none')
       return;
     event.preventDefault();
     close();
@@ -1160,10 +1181,10 @@ export function createWorkbenchRequestsView(
       // A scrub, play, step or key press resumes following; the view's own
       // seeks (a row pick, a response event) do not.
       if (cursor !== lastCursor) {
-        if (lastCursor !== undefined && cursor !== ownSeek) {
+        // A closed detail stays closed; only a pick, a new run or a live
+        // HTTP error opens it again.
+        if (lastCursor !== undefined && cursor !== ownSeek)
           userSelected = false;
-          closed = false;
-        }
         lastCursor = cursor;
       }
       if (!userSelected && !closed) {
@@ -1190,6 +1211,7 @@ export function createWorkbenchRequestsView(
     },
     dispose: () => {
       root.removeEventListener('keydown', onKeydown);
+      root.ownerDocument.removeEventListener('pointerdown', onPointerDown);
       timeline.dispose();
       detailTabs.dispose();
     },

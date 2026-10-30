@@ -73,6 +73,7 @@ import {
   createInspectorModeMemory,
   defaultInspectorMode,
   workbenchInspectorModes,
+  workbenchStateTree,
 } from './workbench-inspector-modes';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
 import { createWorkbenchSegmented } from './workbench-segmented';
@@ -262,6 +263,41 @@ function pre(value: unknown, tab: string): HTMLPreElement {
     renderWorkbenchCode(source ?? 'Waiting for captured data', language),
   );
   return block;
+}
+
+function workbenchStateMoment(
+  frame: WorkbenchSnapshot['events'][number] | null | undefined,
+  snapshot: WorkbenchSnapshot,
+  format?: WorkbenchLesson['format'],
+) {
+  return {
+    turn: frame?.turn ?? snapshot.turn,
+    status: frame?.status ?? snapshot.status,
+    event: frame ? workbenchEventLabel(frame, format) : 'Ready',
+    source: frame?.source ?? 'Application',
+  };
+}
+
+/**
+ * Builds the State tree value for a frame: its application state (or the
+ * snapshot's when the frame has none) with the selected moment under `moment`.
+ * The current and previous frames use it, so the highlight diff compares like
+ * with like.
+ *
+ * @param frame - The frame to show, or none before the first event.
+ * @param snapshot - The snapshot supplying fallbacks.
+ * @param format - The lesson format, which names the moment's event.
+ * @returns The State tree value.
+ */
+export function workbenchStateTreeValue(
+  frame: WorkbenchSnapshot['events'][number] | null | undefined,
+  snapshot: WorkbenchSnapshot,
+  format?: WorkbenchLesson['format'],
+): Record<string, unknown> {
+  return workbenchStateTree(
+    frame?.application ?? snapshot.application,
+    workbenchStateMoment(frame, snapshot, format),
+  );
 }
 
 /** Names the captured teaching moment without hiding its original payload in Raw. */
@@ -929,6 +965,8 @@ export function mountWorkbench(
       layoutStore.set({ rail: !layoutStore.get().rail });
       return;
     }
+    // A replay embed has no live run to return to.
+    if (shortcut === 'live' && embed === 'replay') return;
     const target = shortcutTargets[shortcut];
     if (target.disabled) return;
     event.preventDefault();
@@ -1571,14 +1609,7 @@ export function mountWorkbench(
               ? (frame?.decision ?? null)
               : frame?.props
             : tab === 'State'
-              ? {
-                  turn: frame?.turn ?? snapshot.turn,
-                  status: frame?.status ?? snapshot.status,
-                  event: frame
-                    ? workbenchEventLabel(frame, commands.lesson?.format)
-                    : 'Ready',
-                  source: frame?.source ?? 'Application',
-                }
+              ? workbenchStateMoment(frame, snapshot, commands.lesson?.format)
               : requestContext?.payload;
     const rawValue =
       commands.lesson?.format === 'history'
@@ -1666,18 +1697,11 @@ export function mountWorkbench(
         // Recipe lessons derive state per render, not per frame: no highlight.
         const previousTree =
           !recipeView && previousFrame
-            ? {
-                ...previousFrame.application,
-                moment: {
-                  turn: previousFrame.turn,
-                  status: previousFrame.status ?? snapshot.status,
-                  event: workbenchEventLabel(
-                    previousFrame,
-                    commands.lesson?.format,
-                  ),
-                  source: previousFrame.source,
-                },
-              }
+            ? workbenchStateTreeValue(
+                previousFrame,
+                snapshot,
+                commands.lesson?.format,
+              )
             : undefined;
         stateTree.update(mode.value, previousTree);
         // Keep the same node attached so focus and scroll survive a render.
@@ -1778,7 +1802,7 @@ export function mountWorkbench(
     play.disabled = busy || total < 2;
     syncPlayButton();
     returnLive.hidden = embed === 'replay';
-    returnLive.disabled = !historical;
+    returnLive.disabled = embed === 'replay' || !historical;
     returnLive.toggleAttribute('data-live', !historical);
     liveLabel.data = historical ? 'Return to live' : 'LIVE';
     const last = snapshot.events.at(-1);

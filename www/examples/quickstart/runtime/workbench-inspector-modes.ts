@@ -47,6 +47,25 @@ function shortLabel(heading: string): string {
 }
 
 /**
+ * Merges application state and the selected moment into the State tree value.
+ * Only a plain object is spread; any other value is kept under `value`.
+ *
+ * @param application - The application state shown on the State tab.
+ * @param moment - The selected moment, shown as the `moment` branch.
+ * @returns The value the State tree, JSON and highlight diff read.
+ */
+export function workbenchStateTree(
+  application: unknown,
+  moment: unknown,
+): Record<string, unknown> {
+  return application !== null &&
+    typeof application === 'object' &&
+    !Array.isArray(application)
+    ? { ...(application as Record<string, unknown>), moment }
+    : { value: application, moment };
+}
+
+/**
  * Builds the modes a compact inspector tab can toggle between.
  *
  * The UI and JSON tabs of a generative lesson (format `ui`, without a recipe
@@ -86,10 +105,7 @@ export function workbenchInspectorModes(input: {
   }
   if (generative && tab === 'json') return streamed();
   if (tab === 'state') {
-    const state = {
-      ...(application as Record<string, unknown>),
-      moment: bottom.value,
-    };
+    const state = workbenchStateTree(application, bottom.value);
     return [
       { id: 'tree', label: 'Tree', value: state },
       { id: 'json', label: 'JSON', value: state },

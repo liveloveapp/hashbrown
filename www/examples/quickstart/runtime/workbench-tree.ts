@@ -140,7 +140,8 @@ export function changedPaths(
 
 /**
  * Creates a long-lived expandable tree. It keeps which branches are open
- * across updates, keyed by path.
+ * across updates, keyed by path. The root and top-level branches open the
+ * first time they appear, unless the reader has since closed them.
  *
  * @param options - `label` names the tree for assistive technology.
  * @returns The tree element and an `update` that renders a value, highlighting
@@ -154,13 +155,21 @@ export function createWorkbenchTree(options: { label: string }): {
   element.className = 'wb-tree';
   element.setAttribute('role', 'tree');
   element.setAttribute('aria-label', options.label);
-  let open: ReadonlySet<string> | undefined;
+  let open: ReadonlySet<string> = new Set();
+  // Default-open paths already offered once; the reader's choice wins after that.
+  let offered: ReadonlySet<string> = new Set();
   let current: unknown;
   let changed: ReadonlySet<string> = new Set();
   let focusPath: string | undefined;
 
   const render = () => {
-    if (open === undefined) open = defaultOpenPaths(current);
+    const fresh = [...defaultOpenPaths(current)].filter(
+      (path) => !offered.has(path),
+    );
+    if (fresh.length) {
+      offered = new Set([...offered, ...fresh]);
+      open = new Set([...open, ...fresh]);
+    }
     const rows = workbenchTreeRows(current, open);
     if (!rows.some((row) => row.path === focusPath)) focusPath = rows[0]?.path;
     const hadFocus = element.contains(element.ownerDocument.activeElement);

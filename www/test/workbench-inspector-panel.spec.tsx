@@ -10,7 +10,10 @@ import type {
   WorkbenchLesson,
   WorkbenchLessonId,
 } from '../examples/quickstart/runtime/workbench-lessons';
-import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+import {
+  mountWorkbench,
+  workbenchStateTreeValue,
+} from '../examples/quickstart/runtime/workbench-view';
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -476,4 +479,44 @@ test('a decision replay drops the captured-result and read-only notes', () => {
   expect(text).not.toContain('Closed choice');
   expect(text).not.toContain('captured result');
   expect(text).not.toContain('Replay is read-only.');
+});
+
+test('the L shortcut does not return a replay embed to live', () => {
+  const { host, store } = mountReplayEmbed();
+  loadRecording(generative.id);
+  store.seek(0);
+
+  const key = new KeyboardEvent('keydown', {
+    key: 'l',
+    bubbles: true,
+    cancelable: true,
+  });
+  document.body.dispatchEvent(key);
+
+  expect(store.getSnapshot().cursor).toBe(0);
+  expect(key.defaultPrevented).toBe(false);
+  expect(host.querySelector<HTMLButtonElement>('.wb-live')?.disabled).toBe(
+    true,
+  );
+});
+
+test('a frame without application state falls back like the current frame does', () => {
+  const store = createWorkbenchStore();
+  streamPlan(store);
+  const snapshot = store.getSnapshot();
+  const frame = snapshot.frame as NonNullable<typeof snapshot.frame>;
+  const bare = { ...frame, application: undefined };
+
+  const fallback = workbenchStateTreeValue(
+    bare as unknown as typeof frame,
+    snapshot,
+    'ui',
+  );
+  const full = workbenchStateTreeValue(
+    { ...frame, application: snapshot.application },
+    snapshot,
+    'ui',
+  );
+
+  expect(fallback).toEqual(full);
 });
