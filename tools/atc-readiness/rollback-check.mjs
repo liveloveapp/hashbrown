@@ -15,6 +15,7 @@ import {
   resolveRuntimeDependency,
 } from './common.mjs';
 import { storageContext } from './storage.mjs';
+import { createReceiptRedactor } from './receipt-redaction.mjs';
 import { timeoutBound } from './managed-timeout-io.mjs';
 import { withRolloutRun } from './rollout-controls.mjs';
 
@@ -595,7 +596,18 @@ export async function createRollbackIO(
         'ajv',
       );
     const validate = new Ajv({ strict: false }).compile(schema);
-    let redact = context.redact;
+    const modelText = [];
+    const cookies = [];
+    const credentialValues = () => [
+      ...Object.values(context.secrets),
+      ...cookies,
+    ];
+    const redactCredentials = (value) =>
+      context.redact(createRedactor(credentialValues())(value));
+    const redact = createReceiptRedactor({
+      redactCredentials,
+      modelText: () => modelText,
+    });
     const query = (sql, values, bounds) =>
       timeoutBound(() => context.database.query(sql, values), bounds);
     const snapshot = async (bounds) => {
@@ -656,13 +668,7 @@ export async function createRollbackIO(
           forwardedProps: { hashbrown: { responseSchema: schema } },
         };
         let text = '';
-        const fragments = [];
-        const secretValues = [
-          ...Object.values(context.secrets),
-          marker,
-          body.messages[0].content,
-        ];
-        redact = (value) => context.redact(createRedactor(secretValues)(value));
+        modelText.push(marker, body.messages[0].content);
         const events = [];
         const response = await timeoutBound(
           (signal) =>
@@ -678,6 +684,10 @@ export async function createRollbackIO(
             ),
           bounds,
         );
+        for (const header of response.headers.getSetCookie()) {
+          const pair = header.split(';')[0];
+          cookies.push(pair, pair.slice(pair.indexOf('=') + 1));
+        }
         const requestId = response.headers.get('x-vercel-id');
         bounds.onRequestObserved?.({
           runId,
@@ -697,7 +707,7 @@ export async function createRollbackIO(
               timeoutMs: Math.max(1, bounds.deadlineMs - Date.now()),
               runId,
               threadId: bounds.threadId,
-              redact: (value) => redact(value),
+              redact: redactCredentials,
               onEvent: (event) => {
                 events.push(event);
                 if (event.type === 'RUN_FINISHED')
@@ -717,13 +727,7 @@ export async function createRollbackIO(
                 if (event.type === 'TEXT_MESSAGE_CONTENT') {
                   const delta = event.delta ?? '';
                   text += delta;
-                  fragments.push(delta);
-                  redact = (value) =>
-                    context.redact(
-                      createRedactor([...secretValues, text, ...fragments])(
-                        value,
-                      ),
-                    );
+                  modelText.push(delta);
                 }
                 assert(
                   event.type !== 'TOOL_CALL_START',
@@ -733,6 +737,7 @@ export async function createRollbackIO(
             }),
           bounds,
         );
+        modelText.push(text);
         // First database operation after EOF must be the exact admission count.
         const canonical = await timeoutBound(
           () =>
@@ -1069,7 +1074,7 @@ export async function runRollbackCheck(
         initializingIO.catch(() => undefined);
         await initializingIO;
         const secretRedactor = redact;
-        redact = (value) => secretRedactor(io.redact(value));
+        redact = (value) => secretRedactor(io.redact(secretRedactor(value)));
         await runRollbackProtocol({
           plan,
           control,

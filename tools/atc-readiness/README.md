@@ -374,3 +374,19 @@ is invented. Optional alias `teamId` or `team.id` fields, when present, must sti
 agree. Restore/delete cleanup uses this same fresh ownership proof each time.
 No environment/decryption endpoint or decrypt option is used, and returned
 project environment fields are ignored.
+
+Receipt sanitization separates credentials from model text. Complete credentials
+and every observed cookie pair/value are redacted globally before model-text
+filtering, including values that happen to look like UUIDs or SHA256 digests.
+Wrapper management-secret redactors remain both a pre-pass and an outer pass.
+The shared `receipt-redaction.mjs` helper applies model chunks only to the fixed
+`error`, `message`, `cause`, `cleanupErrors` and `aliasCleanupError` diagnostic
+fields. Explicit raw body/model-text fields are suppressed; both IO adapters
+still construct response receipts from a fixed selection of metadata, hashes and
+numeric usage, never response bodies. Tiny model deltas therefore cannot rewrite
+receipt keys, authority IDs, canonical digests or provider model/response IDs.
+Transport readers use credential-only filtering so parser diagnostics retain
+their existing classification; model-text sanitization happens at the receipt
+boundary. Offline tiny-delta regressions cover both managed and rollback SSE,
+credential-first ordering and body exclusion. This fixes future receipt creation;
+it does not modify or repair previously recorded evidence or authorize retries.

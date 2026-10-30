@@ -854,3 +854,145 @@ for (const failClose of [false, true]) {
     },
   );
 }
+
+test('managed tiny-delta SSE keeps request/hash/provider metadata and sanitizes diagnostics', async () => {
+  const { createManagedTimeoutIO } = await import('./managed-timeout-io.mjs');
+  const { createServer } = await import('node:http');
+  const { once } = await import('node:events');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { createRedactor } = await import('./common.mjs');
+  const stage = await mkdtemp('/private/tmp/managed-tiny-deltas-');
+  await writeFile(stage + '/schema.json', '{}');
+  const credential = 'complete-managed-credential-46a';
+  const cookie = 'atc_visitor=signed-managed-cookie-46a';
+  const rawModel = '{"text":"46a private model phrase"}';
+  let body;
+  let truncate = false;
+  const server = createServer(async (request, response) => {
+    let bytes = '';
+    for await (const chunk of request) bytes += chunk;
+    body = JSON.parse(bytes);
+    response.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'x-vercel-id': 'iad1::46a-managed-request',
+      'set-cookie': cookie + '; HttpOnly',
+    });
+    for (const event of [
+      { type: 'RUN_STARTED', runId: body.runId, threadId: body.threadId },
+      { type: 'TEXT_MESSAGE_START', messageId: 'message-46a' },
+      ...[...rawModel].map((delta) => ({
+        type: 'TEXT_MESSAGE_CONTENT',
+        delta,
+      })),
+      ...(!truncate
+        ? [
+            {
+              type: 'RUN_FINISHED',
+              runId: body.runId,
+              threadId: body.threadId,
+              model: 'gpt-5.4-mini',
+              responseId: 'resp_46a',
+            },
+          ]
+        : []),
+    ])
+      response.write('data: ' + JSON.stringify(event) + '\n\n');
+    response.end();
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const origin = 'http://127.0.0.1:' + server.address().port;
+  const context = {
+    manifest: { deployments: [{ origin }] },
+    secrets: { managedCredential: credential },
+    redact: createRedactor([credential]),
+    databaseErrors: [],
+    database: {
+      query: async (sql) => ({
+        rows: sql.includes('count(*)') ? [{ count: 0 }] : [],
+      }),
+      end: async () => undefined,
+    },
+    storage: {
+      postgresCheckpointer: () => ({
+        listNamespaces: async () => [],
+        getTuple: async () => ({
+          checkpoint: { channel_values: { messages: [] } },
+        }),
+        close: async () => undefined,
+      }),
+      createPostgresThreadsStore: () => ({
+        getThread: async () => ({}),
+        close: async () => undefined,
+      }),
+    },
+  };
+  const control = {
+    signal: new AbortController().signal,
+    deadlineMs: Date.now() + 5000,
+  };
+  let io;
+  try {
+    io = await createManagedTimeoutIO(
+      { schemaPath: stage + '/schema.json' },
+      { fault: { deployment: { origin } } },
+      control,
+      { openContext: async () => context, compileSchema: () => () => true },
+    );
+    const runId = '46a12345-1234-4234-8234-123456789abc';
+    const request = await io.request('normal', {
+      ...control,
+      runId,
+      input: 'seed',
+    });
+
+    const result = io.redact({
+      ...request,
+      errorBodySha256: 'a'.repeat(64),
+      error: new Error(
+        rawModel +
+          ' ' +
+          body.messages[0].content +
+          ' ' +
+          cookie +
+          ' ' +
+          credential,
+      ),
+      rawCredentials: { credential, cookie },
+      responseBody: rawModel,
+    });
+
+    assert.equal(result.runId, runId);
+    assert.equal(result.requestId, 'iad1::46a-managed-request');
+    assert.equal(result.terminalModel, 'gpt-5.4-mini');
+    assert.equal(result.terminalProviderResponseId, 'resp_46a');
+    assert.equal(result.errorBodySha256, 'a'.repeat(64));
+    assert.deepEqual(result.snapshot, request.snapshot);
+    for (const value of [
+      rawModel,
+      body.messages[0].content,
+      cookie,
+      credential,
+    ])
+      assert(!JSON.stringify(result).includes(value));
+    assert.equal(result.responseBody, '[REDACTED]');
+    assert(
+      !Object.hasOwn(request, 'body') &&
+        !Object.hasOwn(request, 'text') &&
+        !Object.hasOwn(request, 'responseBody'),
+    );
+    truncate = true;
+    const incomplete = await io.request('fault', {
+      ...control,
+      input: 'fault',
+      runId: '46a12345-1234-4234-8234-123456789abd',
+    });
+    assert.equal(incomplete.completed, false);
+    assert.equal(incomplete.transportFailure, 'Error');
+  } finally {
+    if (io) await io.close();
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(stage, { recursive: true, force: true });
+  }
+});

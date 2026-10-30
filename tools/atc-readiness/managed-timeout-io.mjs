@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { storageContext } from './storage.mjs';
+import { createReceiptRedactor } from './receipt-redaction.mjs';
 import {
   canonicalStorageSummary,
   resolveRuntimeDependency,
@@ -68,6 +69,7 @@ export async function createManagedTimeoutIO(
   const threadId = 'readiness-managed-timeout-' + randomUUID();
   const history = [];
   const modelFragments = [];
+  const cookies = [];
   const inputs = Object.fromEntries(
     ['seed', 'fault', 'followup'].map((kind) => [
       kind,
@@ -129,7 +131,19 @@ export async function createManagedTimeoutIO(
         return opened;
       });
     context = await timeoutBound(() => opening, control);
-    redact = context.redact;
+    const credentialValues = () => [
+      ...Object.values(context.secrets),
+      ...cookies,
+    ];
+    const redactCredentials = (value) =>
+      context.redact(createRedactor(credentialValues())(value));
+    redact = createReceiptRedactor({
+      redactCredentials,
+      modelText: () => [
+        ...modelFragments,
+        ...Object.values(inputs).map((input) => input.content),
+      ],
+    });
     saver = context.storage.postgresCheckpointer({
       pool: context.database,
       tablePrefix: 'atc',
@@ -265,6 +279,10 @@ export async function createManagedTimeoutIO(
         result.platformErrorCode = response.headers.get('x-vercel-error');
         result.retryAfter = response.headers.get('retry-after');
         result.throttled = response.status === 429;
+        for (const header of response.headers.getSetCookie()) {
+          const pair = header.split(';')[0];
+          cookies.push(pair, pair.slice(pair.indexOf('=') + 1));
+        }
         bounds.onRequestObserved?.({ ...result });
         if (kind === 'conflict') {
           await timeoutBound(() => response.body?.cancel(), bounds);
@@ -276,11 +294,6 @@ export async function createManagedTimeoutIO(
             .find((value) => value.startsWith('atc_visitor='))
             ?.split(';')[0];
           assert(cookie, 'signed visitor cookie required');
-          redact = createRedactor([
-            ...Object.values(context.secrets),
-            cookie,
-            ...Object.values(inputs).map((input) => input.content),
-          ]);
         }
         if (!response.ok) {
           // Retain an error body digest, never model or cookie text. Bound bytes and cancel remainder.
@@ -314,7 +327,8 @@ export async function createManagedTimeoutIO(
           timeoutMs: Math.max(1, bounds.deadlineMs - Date.now()),
           threadId,
           runId,
-          redact,
+          // Preserve native parser diagnostics for transport classification; sanitize model text at the receipt boundary.
+          redact: redactCredentials,
           onEvent: (event) => {
             events.push(event);
             if (event.type === 'RUN_FINISHED') {
@@ -328,13 +342,6 @@ export async function createManagedTimeoutIO(
             }
             if (event.type === 'TEXT_MESSAGE_CONTENT' && event.delta) {
               modelFragments.push(event.delta);
-              redact = createRedactor([
-                ...Object.values(context.secrets),
-                cookie,
-                ...modelFragments,
-                modelFragments.join(''),
-                ...Object.values(inputs).map((input) => input.content),
-              ]);
             }
           },
         });
@@ -350,13 +357,7 @@ export async function createManagedTimeoutIO(
           .filter((event) => event.type === 'TEXT_MESSAGE_CONTENT')
           .map((event) => event.delta ?? '')
           .join('');
-        redact = createRedactor([
-          ...Object.values(context.secrets),
-          cookie,
-          text,
-          ...modelFragments,
-          ...Object.values(inputs).map((input) => input.content),
-        ]);
+        modelFragments.push(text);
         assert(validate(JSON.parse(text)), 'output must match pinned schema');
         const id = events.find(
           (event) => event.type === 'TEXT_MESSAGE_START',
@@ -367,13 +368,7 @@ export async function createManagedTimeoutIO(
           role: 'assistant',
           content: text,
         });
-        redact = createRedactor([
-          ...Object.values(context.secrets),
-          cookie,
-          text,
-          ...modelFragments,
-          ...Object.values(inputs).map((input) => input.content),
-        ]);
+
         result.completed = true;
         return result;
       } catch (error) {

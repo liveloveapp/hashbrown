@@ -639,7 +639,7 @@ export async function runComputeRestart(options, expected, adapters) {
           },
         });
         const secretRedactor = redact;
-        redact = (value) => secretRedactor(io.redact(value));
+        redact = (value) => secretRedactor(io.redact(secretRedactor(value)));
         await runRestartProtocol({
           control,
           io,

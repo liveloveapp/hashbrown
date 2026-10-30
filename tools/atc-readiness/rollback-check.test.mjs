@@ -1174,3 +1174,178 @@ test('cleanup freshly verifies project ownership and refuses mutations after own
   assert.equal(receipt.aliasRemoved, false);
   assert(receipt.aliasCleanupError);
 });
+
+test('valid tiny-delta rollback SSE preserves metadata while sanitizing model diagnostics and credentials', async () => {
+  const { createRollbackIO } = await import('./rollback-check.mjs');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { createRedactor, sha256 } = await import('./common.mjs');
+  const stage = await mkdtemp('/private/tmp/rollback-tiny-deltas-');
+  await writeFile(stage + '/schema.json', '{}');
+  const credential = 'complete-database-credential-46a';
+  const cookie = 'atc_visitor=signed-cookie-whole-46a';
+  let body, rawModel;
+  const context = {
+    secrets: { databaseCredential: credential },
+    redact: createRedactor([credential]),
+    databaseErrors: [],
+    database: {
+      query: async (sql) => ({
+        rows: sql.includes('count(*)') ? [{ count: 0 }] : [],
+      }),
+      end: async () => undefined,
+    },
+    storage: {
+      postgresCheckpointer: () => ({
+        listNamespaces: async () => [],
+        getTuple: async () => undefined,
+        close: async () => undefined,
+      }),
+      createPostgresThreadsStore: () => ({
+        getThread: async () => undefined,
+        close: async () => undefined,
+      }),
+    },
+  };
+  const dependencies = {
+    openContext: async () => context,
+    Ajv: class {
+      compile() {
+        return (value) => typeof value.text === 'string';
+      }
+    },
+    routeProof: async ({ runId, threadId, requestId }) => ({
+      source: 'owned-deployment-request-logs',
+      alias: plan.alias,
+      deploymentId: 'openai',
+      runId,
+      threadId,
+      requestId,
+    }),
+    fetch: async (_, options) => {
+      body = JSON.parse(options.body);
+      rawModel = JSON.stringify({
+        text: body.messages[0].content + ' 46a private model phrase.',
+      });
+      const events = [
+        { type: 'RUN_STARTED', runId: body.runId, threadId: body.threadId },
+        ...[...rawModel].map((delta) => ({
+          type: 'TEXT_MESSAGE_CONTENT',
+          delta,
+        })),
+        {
+          type: 'RUN_FINISHED',
+          runId: body.runId,
+          threadId: body.threadId,
+          model: 'gpt-5.4-mini',
+          responseId: 'resp_46a',
+        },
+      ];
+      return new Response(
+        events
+          .map((event) => 'data: ' + JSON.stringify(event) + '\n\n')
+          .join(''),
+        {
+          headers: {
+            'content-type': 'text/event-stream',
+            'x-vercel-id': 'iad1::46a-request',
+            'set-cookie': cookie + '; HttpOnly',
+          },
+        },
+      );
+    },
+  };
+  let io;
+  try {
+    io = await createRollbackIO(
+      { schemaPath: stage + '/schema.json' },
+      { schemaSha256: sha256('{}') },
+      plan,
+      bounds(),
+      dependencies,
+    );
+    const runId = '46a12345-1234-4234-8234-123456789abc';
+    const request = await io.request({
+      ...bounds(),
+      runId,
+      threadId: 'readiness-rollback-' + runId,
+      backend: 'openai',
+      deployment: openai,
+    });
+
+    const result = io.redact({
+      threadIds: [request.threadId],
+      attempts: [{ id: runId, ...request }],
+      canonicalSha256: 'a'.repeat(64),
+      error: new Error(
+        rawModel +
+          ' ' +
+          body.messages[0].content +
+          ' ' +
+          credential +
+          ' ' +
+          cookie,
+      ),
+      rawCredentials: { credential, cookie },
+      responseBody: rawModel,
+    });
+
+    assert.equal(result.attempts[0].id, runId);
+    assert.equal(result.attempts[0].runId, runId);
+    assert.equal(result.attempts[0].requestId, 'iad1::46a-request');
+    assert.equal(result.threadIds[0], request.threadId);
+    assert.equal(result.attempts[0].terminalModel, 'gpt-5.4-mini');
+    assert.equal(result.attempts[0].terminalProviderResponseId, 'resp_46a');
+    assert.equal(result.canonicalSha256, 'a'.repeat(64));
+    assert.equal(result.attempts[0].outputSha256, sha256(rawModel));
+    for (const value of [
+      rawModel,
+      body.messages[0].content,
+      credential,
+      cookie,
+    ])
+      assert(!JSON.stringify(result).includes(value));
+    assert.equal(result.responseBody, '[REDACTED]');
+    assert(
+      !Object.hasOwn(request, 'body') &&
+        !Object.hasOwn(request, 'text') &&
+        !Object.hasOwn(request, 'responseBody'),
+    );
+  } finally {
+    if (io) await io.close();
+    await rm(stage, { recursive: true, force: true });
+  }
+});
+
+test('wrapper management credentials redact before tiny model fragments can alter them', async () => {
+  const { runRollbackCheck } = await import('./rollback-check.mjs');
+  const { createReceiptRedactor } = await import('./receipt-redaction.mjs');
+  const { createRedactor } = await import('./common.mjs');
+  const { rm } = await import('node:fs/promises');
+  const f = await wrapperFixture();
+  f.adapters.vercelToken = 'operator-credential-alpha46a';
+  f.dependencies.createIO = async () => ({
+    redact: createReceiptRedactor({
+      redactCredentials: createRedactor(),
+      modelText: () => ['a'],
+    }),
+    snapshot: async () => ({}),
+    request: async () => {
+      throw Error(f.adapters.vercelToken);
+    },
+    close: async () => undefined,
+  });
+  try {
+    const receipt = await runRollbackCheck(
+      f.context,
+      f.expected,
+      f.adapters,
+      f.dependencies,
+    );
+
+    assert.equal(receipt.error, '[REDACTED]');
+    assert(!JSON.stringify(receipt).includes('operator-credential'));
+    assert.match(receipt.attempts[0].id, /^[a-f0-9-]{36}$/);
+  } finally {
+    await rm(f.stage, { recursive: true, force: true });
+  }
+});
