@@ -27,7 +27,9 @@ export function encryptCredentials(
   key: string,
 ): string {
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv('aes-256-gcm', keyBytes(key), iv);
+  const cipher = createCipheriv('aes-256-gcm', keyBytes(key), iv, {
+    authTagLength: TAG_BYTES,
+  });
   const encrypted = Buffer.concat([
     cipher.update(JSON.stringify(value), 'utf8'),
     cipher.final(),
@@ -50,6 +52,8 @@ export function decryptCredentials(
     'aes-256-gcm',
     keyBytes(key),
     bytes.subarray(0, IV_BYTES),
+    // Pinned, so a truncated tag is refused instead of checked on fewer bytes.
+    { authTagLength: TAG_BYTES },
   );
   decipher.setAuthTag(bytes.subarray(IV_BYTES, IV_BYTES + TAG_BYTES));
   const decrypted = Buffer.concat([

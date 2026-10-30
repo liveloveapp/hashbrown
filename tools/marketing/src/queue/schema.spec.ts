@@ -154,3 +154,65 @@ test('rejects two posts with the same key', () => {
 
   expect(result.success).toBe(false);
 });
+
+test('rejects a link on an x draft, pointing at text', () => {
+  const [post] = week().posts;
+  const result = WeekImport.safeParse(
+    week({
+      posts: [
+        {
+          ...post,
+          draft: {
+            channel: 'x',
+            text: 'Hi',
+            link: { url: 'https://hashbrown.dev' },
+          },
+        },
+      ],
+    }),
+  );
+
+  expect(result.success).toBe(false);
+  expect(result.error?.issues.map((issue) => issue.message).join('\n')).toMatch(
+    /put the URL in text/,
+  );
+});
+
+function devtoWeek(tags: string[]) {
+  const [post] = week().posts;
+  return week({
+    posts: [
+      {
+        ...post,
+        key: 'devto',
+        channel: 'devto',
+        kind: 'blog',
+        draft: {
+          channel: 'devto',
+          blogSlug: 'signals',
+          article: { title: 'Signals', tags, description: 'D' },
+        },
+      },
+    ],
+  });
+}
+
+test('accepts four dev.to tags of lowercase letters and digits', () => {
+  const result = WeekImport.safeParse(
+    devtoWeek(['angular', 'react', 'ai', 'a'.repeat(30)]),
+  );
+
+  expect(result.success).toBe(true);
+});
+
+test.each([
+  ['five tags', ['a', 'b', 'c', 'd', 'e']],
+  ['an uppercase tag', ['Angular']],
+  ['a hyphenated tag', ['gen-ui']],
+  ['an empty tag', ['']],
+  ['a tag over 30 characters', ['a'.repeat(31)]],
+])('rejects a dev.to draft with %s', (_, tags) => {
+  const result = WeekImport.safeParse(devtoWeek(tags));
+
+  expect(result.success).toBe(false);
+});

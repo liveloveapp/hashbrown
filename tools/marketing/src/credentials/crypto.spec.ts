@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createCipheriv, randomBytes } from 'node:crypto';
 
 import { expect, test } from 'vitest';
 
@@ -39,4 +39,17 @@ test('a key that is not 32 bytes throws', () => {
 
   expect(() => encryptCredentials(credentials, short)).toThrow(/32 bytes/);
   expect(() => decryptCredentials('AAAA', short)).toThrow(/32 bytes/);
+});
+
+test('decryptCredentials refuses a truncated auth tag', () => {
+  // A valid 4-byte prefix of a real tag: GCM accepts it unless the tag
+  // length is pinned to 16 bytes.
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', Buffer.from(key, 'base64'), iv);
+  cipher.final();
+  const truncated = Buffer.concat([iv, cipher.getAuthTag().subarray(0, 4)]);
+
+  expect(() => decryptCredentials(truncated.toString('base64'), key)).toThrow(
+    /authentication tag/i,
+  );
 });

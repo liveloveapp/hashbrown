@@ -8,8 +8,20 @@ const link = z.object({ url: z.url(), previewTitle: z.string().optional() });
 const xDraft = z.strictObject({
   channel: z.literal('x'),
   text: z.string().min(1),
-  link: link.optional(),
+  // The X adapter posts `text` only, so a link here would be silently lost.
+  link: z
+    .never({
+      error: 'X drafts have no link; put the URL in text',
+    })
+    .optional(),
 });
+
+// What `channels/validation.ts` enforces when the post is dispatched.
+const DEVTO_MAX_TAGS = 4;
+const devtoTag = z
+  .string()
+  .max(30, 'a dev.to tag is at most 30 characters')
+  .regex(/^[a-z0-9]+$/, 'a dev.to tag is lowercase letters and digits only');
 
 const linkedinDraft = z.strictObject({
   channel: z.literal('linkedin'),
@@ -32,7 +44,9 @@ const devtoDraft = z.strictObject({
   blogSlug: z.string().min(1),
   article: z.strictObject({
     title: z.string().min(1),
-    tags: z.array(z.string()),
+    tags: z
+      .array(devtoTag)
+      .max(DEVTO_MAX_TAGS, `dev.to accepts at most ${DEVTO_MAX_TAGS} tags`),
     description: z.string(),
   }),
 });
