@@ -6,10 +6,13 @@ import {
   decodeWorkbenchHistory,
   workbenchHistorySystem,
 } from '../runtime/workbench-history';
-import { isWorkbenchLoopbackHostname } from '../runtime/workbench-lessons';
+import {
+  isWorkbenchLoopbackHostname,
+  workbenchLoopbackLessonIds,
+} from '../runtime/workbench-lessons';
 import type { WorkbenchServerOptions } from './workbench-app';
 
-const lessons = ['server-threads', 'public-endpoint'] as const;
+const lessons = workbenchLoopbackLessonIds;
 const cookieName = 'workbench_demo_session';
 
 function localOrigin(request: Request): string | null {

@@ -1,3 +1,9 @@
+/**
+ * Options for a {@link TransportError}: whether a caller may retry, and the
+ * status and code the transport reported.
+ *
+ * @public
+ */
 export interface TransportErrorOptions {
   /** Indicates whether the error condition is retryable. Defaults to true. */
   retryable?: boolean;

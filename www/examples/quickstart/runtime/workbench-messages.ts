@@ -1,11 +1,13 @@
 import type { WorkbenchStore } from './workbench';
 import {
+  isRecord,
   parseWorkbenchCapture,
   WORKBENCH_CAPTURE_VERSION,
   type WorkbenchCapture,
   type WorkbenchCaptureMilestone,
 } from './workbench-capture';
 import type { WorkbenchLesson, WorkbenchLessonId } from './workbench-lessons';
+import { matchesWorkbenchDocsOrigin } from './workbench-origins';
 import { workbenchMilestones } from './workbench-timeline';
 
 /** The current docs ↔ workbench message protocol version. */
@@ -50,29 +52,16 @@ export type WorkbenchChildMessage =
       playing: boolean;
     };
 
-const docsOrigins = new Set([
-  'https://hashbrown.dev',
-  'https://www.hashbrown.dev',
-]);
-const previewOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
-const localOrigin = /^http:\/\/localhost:\d+$/;
-
 /**
  * Whether a docs page at this origin may drive the workbench: the docs site,
- * a one-label Vercel preview, or a localhost dev server with a port.
+ * a one-label Vercel preview, or a localhost dev server with a port. The
+ * same list (`WORKBENCH_DOCS_ORIGINS`) sets the hosted workbench's
+ * `frame-ancestors`.
  *
  * @param origin - A `MessageEvent.origin`.
  */
 export function isAllowedParentOrigin(origin: string): boolean {
-  return (
-    docsOrigins.has(origin) ||
-    previewOrigin.test(origin) ||
-    localOrigin.test(origin)
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return matchesWorkbenchDocsOrigin(origin);
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 import { createWorkbenchCapture } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { isAllowedParentOrigin } from '../examples/quickstart/runtime/workbench-messages';
+import { WORKBENCH_DOCS_ORIGINS } from '../examples/quickstart/runtime/workbench-origins';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 const docsOrigin = 'https://hashbrown.dev';
@@ -29,7 +30,10 @@ function recordedCapture({ settled = true } = {}) {
   };
 }
 
-function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
+function mountReplay(
+  store: WorkbenchStore = createWorkbenchStore(),
+  embed: 'replay' | 'live' = 'replay',
+) {
   const post = vi
     .spyOn(window, 'postMessage')
     .mockImplementation(() => undefined);
@@ -51,7 +55,7 @@ function mountReplay(store: WorkbenchStore = createWorkbenchStore()) {
       stop: vi.fn(),
       reset: vi.fn(),
     },
-    { layout: createWorkbenchLayoutStore(), embed: 'replay' },
+    { layout: createWorkbenchLayoutStore(), embed },
   );
   onTestFinished(() => {
     mounted.dispose();
@@ -276,6 +280,35 @@ test('isAllowedParentOrigin accepts docs, previews and localhost only', () => {
     ...accepted.map(() => true),
     ...rejected.map(() => false),
   ]);
+});
+
+test('every docs origin in the shared list is accepted', () => {
+  const examples = WORKBENCH_DOCS_ORIGINS.map((source) =>
+    source.replace('*.', 'preview-1.').replace(':*', ':4200'),
+  );
+
+  const results = examples.map(isAllowedParentOrigin);
+
+  expect(examples).toEqual([
+    'https://hashbrown.dev',
+    'https://www.hashbrown.dev',
+    'https://preview-1.vercel.app',
+    'http://localhost:4200',
+  ]);
+  expect(results).toEqual(examples.map(() => true));
+});
+
+test('a live workbench ignores load, seek and play and posts nothing', () => {
+  const { store, post } = mountReplay(createWorkbenchStore(), 'live');
+  post.mockClear();
+
+  load();
+  fromParent({ type: 'hb-workbench:seek', version: 1, milestone: 'prompt-1' });
+  fromParent({ type: 'hb-workbench:play', version: 1 });
+
+  expect(post).not.toHaveBeenCalled();
+  expect(store.getSnapshot().readOnly).toBe(false);
+  expect(store.getSnapshot().events).toEqual([]);
 });
 
 test('play reports each step and the stop at the end of the recording', () => {

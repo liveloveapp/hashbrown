@@ -1,9 +1,0 @@
-predictive-suggestions
-
-Recorded through the checked React component after both React and Angular passed the same browser checks. Scripted AG-UI or decision responses, presentation styles added, no live model and no narration. Application state is local and clears on refresh.
-
-The first two seconds preview the final result. The complete interaction follows.
-
-Request city packing suggestions. Accept Passport into the separate packing list, then dismiss Phone charger. These local edits start no new request. Request hiking suggestions explicitly and accept Water bottle. Suggestions never apply automatically.
-
-The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

@@ -1,4 +1,5 @@
 import { workbenchLessons } from '../../../../../examples/quickstart/runtime/workbench-lessons';
+import { findWorkbenchLesson } from '../../../../components/workbench/workbench-lessons';
 import { type Sdk, SDKS } from '../../../../lib/content';
 import { highlightWorkbenchSource } from '../../../../lib/workbench-source-files';
 
@@ -26,7 +27,7 @@ export async function GET(
   { params }: { params: Promise<WorkbenchSourceParams> },
 ) {
   const { sdk, lesson } = await params;
-  const match = workbenchLessons.find((item) => item.id === lesson);
+  const match = findWorkbenchLesson(lesson);
   if (!SDKS.includes(sdk as Sdk) || !match) {
     return new Response('Not found', { status: 404 });
   }
