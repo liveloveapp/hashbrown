@@ -11,6 +11,9 @@ import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { FinalizeRequestMiddleware } from '@smithy/types';
 import {
   type AimockHandle,
+  GENERATIVE_UI_PROMPT,
+  generativeUiResponseSchema,
+  parseGenerativeUi,
   runProviderAGUIWithAimock,
   startRecordedAimock,
 } from '@hashbrownai/testing/aimock';
@@ -653,6 +656,42 @@ test(
     expect(JSON.parse(textContent(events))).toEqual({
       text: expect.any(String),
       ok: expect.any(Boolean),
+    });
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Bedrock renders generative UI from the Hashbrown UI schema',
+  async () => {
+    const input = baseInput(GENERATIVE_UI_PROMPT);
+    const responseSchema = generativeUiResponseSchema();
+    input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+    let outputConfig: unknown;
+
+    const events = await withRecording((run) =>
+      run(input, {
+        transformRequestOptions: (options) => {
+          outputConfig = options.outputConfig;
+          return options;
+        },
+      }),
+    );
+
+    expect(outputConfig).toEqual({
+      textFormat: {
+        type: 'json_schema',
+        structure: {
+          jsonSchema: { schema: JSON.stringify(responseSchema) },
+        },
+      },
+    });
+    expectCanonicalTextRun(events, input);
+    expect(parseGenerativeUi(textContent(events))).toEqual({
+      title: expect.any(String),
+      metrics: expect.arrayContaining([
+        { label: expect.any(String), value: expect.any(Number) },
+      ]),
     });
   },
   RECORDED_TIMEOUT_MS,
