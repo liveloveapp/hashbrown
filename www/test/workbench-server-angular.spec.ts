@@ -1,88 +1,18 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { computed, signal } from '@angular/core';
-import ts from 'typescript';
-import * as capture from '../examples/quickstart/runtime/workbench';
-import * as lessons from '../examples/quickstart/runtime/workbench-lessons';
-import * as transport from '../examples/quickstart/runtime/workbench-transport';
-import * as view from '../examples/quickstart/runtime/workbench-view';
-import * as history from '../examples/quickstart/runtime/workbench-history';
-import * as actions from '../examples/quickstart/runtime/workbench-history-client';
-import * as server from '../examples/quickstart/runtime/workbench-server-history';
-import * as controls from '../examples/quickstart/runtime/workbench-server-controls';
 import { expect, test, vi } from 'vitest';
-const sdk = {
-  chat: vi.fn(),
-  effects: [] as (() => void)[],
-  destroy: [] as (() => void)[],
-};
-// Evaluate the unchanged session class after TypeScript decorator compilation.
-// Browser verification separately compiles and exercises the Angular template.
-function sessionClass() {
-  const source = readFileSync(
-    'www/examples/quickstart/angular/src/app/server-workbench.ts',
-    'utf8',
-  );
-  const code = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      experimentalDecorators: true,
-      target: ts.ScriptTarget.ES2022,
-    },
-  }).outputText;
-  const exports: Record<string, unknown> = {};
-  const modules: Record<string, unknown> = {
-    '@angular/core': {
-      computed,
-      signal,
-      Injectable: () => (value: unknown) => value,
-      Component: () => (value: unknown) => value,
-      ChangeDetectionStrategy: { OnPush: 0 },
-      inject: () => ({ onDestroy: (fn: () => void) => sdk.destroy.push(fn) }),
-      effect: (fn: () => void) => sdk.effects.push(fn),
-    },
-    '@hashbrownai/angular': { chatResource: sdk.chat },
-    '../../../runtime/workbench': capture,
-    '../../../runtime/workbench-lessons': lessons,
-    '../../../runtime/workbench-transport': transport,
-    '../../../runtime/workbench-view': view,
-    '../../../runtime/workbench-history': history,
-    '../../../runtime/workbench-history-client': actions,
-    '../../../runtime/workbench-server-history': server,
-    '../../../runtime/workbench-server-controls': controls,
-  };
-  new Function('require', 'exports', code)(
-    (id: string) => modules[id],
-    exports,
-  );
-  return exports['ServerWorkbenchSession'] as new () => {
-    store: capture.WorkbenchStore;
-    active: ReturnType<typeof signal<boolean>>;
-    mount(): void;
-    send(content: string): void;
-    controller: ReturnType<typeof server.createWorkbenchServerHistory>;
-  };
-}
+import {
+  serverWorkbenchAngularChat as angularChat,
+  serverWorkbenchSessionClass,
+  serverWorkbenchSessionSdk,
+} from './workbench-server-angular-session';
+const sdk = serverWorkbenchSessionSdk();
+const sessionClass = () => serverWorkbenchSessionClass(sdk);
 
 test('Angular applies reactive SDK identity and explicit replacement before enabling send', async () => {
   window.history.replaceState(null, '', '?lesson=server-threads');
   sdk.effects = [];
   sdk.destroy = [];
-  const runtime = {
-    value: signal<unknown[]>([]),
-    error: signal<unknown>(undefined),
-    isLoading: signal(false),
-    isSending: signal(false),
-    isReceiving: signal(false),
-    isGenerating: signal(false),
-    isResuming: signal(false),
-    pendingInterrupts: signal<unknown>(undefined),
-    recovery: signal({ required: false }),
-    lastRunFinishReason: signal<string | undefined>(undefined),
-    sendMessage: vi.fn(),
-    setMessages: vi.fn((messages: unknown[]) => runtime.value.set(messages)),
-    stop: vi.fn(),
-  };
+  const runtime = angularChat();
   sdk.chat.mockReturnValue(runtime);
   const threads = {
     'server-threads': { Lighthouse: 'server-light', Harbor: 'server-harbor' },
@@ -135,4 +65,24 @@ test('Angular applies reactive SDK identity and explicit replacement before enab
     expect.objectContaining({ content: 'Continue' }),
   );
   sdk.destroy.forEach((fn) => fn());
+});
+
+test('an Angular replay embed never asks the server for a session', async () => {
+  window.history.replaceState(null, '', '?lesson=server-threads&embed=replay');
+  sdk.effects = [];
+  sdk.destroy = [];
+  sdk.chat.mockReturnValue(angularChat());
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+  const Session = sessionClass();
+  const session = new Session();
+  session.active.set(true);
+
+  session.mount();
+  await session.controller.startSession();
+
+  expect(session.controller.access).toBe('replay');
+  expect(fetch).not.toHaveBeenCalled();
+  sdk.destroy.forEach((fn) => fn());
+  vi.unstubAllGlobals();
 });

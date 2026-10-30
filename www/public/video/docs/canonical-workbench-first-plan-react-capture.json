@@ -1846,5 +1846,12 @@
       },
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 0, "label": "Prompt" },
+    { "id": "request-1", "index": 1, "label": "Request" },
+    { "id": "streaming-json-1", "index": 6, "label": "Streaming JSON" },
+    { "id": "parsed-output-1", "index": 46, "label": "Parsed output" },
+    { "id": "complete-1", "index": 51, "label": "Complete" }
   ]
 }

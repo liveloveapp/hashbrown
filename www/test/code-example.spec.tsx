@@ -49,3 +49,37 @@ test('See it run names its snippet file', () => {
     getByRole('button', { name: 'See it run: src/tools.ts' }),
   ).toBeTruthy();
 });
+
+test('See it run carries the lines its snippet quotes', () => {
+  cleanup();
+  const received: unknown[] = [];
+  const listener = (event: Event) =>
+    received.push((event as CustomEvent).detail);
+  document.addEventListener('hb-workbench:see-it-run', listener);
+  const { getByText, container } = render(
+    <CodeExample
+      header="src/tools.ts"
+      id="code-example-2"
+      moment="tool-call"
+      lines={{ start: 10, end: 12 }}
+    >
+      <pre>code</pre>
+    </CodeExample>,
+  );
+
+  fireEvent.click(getByText('See it run'));
+
+  document.removeEventListener('hb-workbench:see-it-run', listener);
+  expect(
+    container
+      .querySelector('[data-component="code-example"]')
+      ?.getAttribute('data-lines'),
+  ).toBe('10-12');
+  expect(received).toEqual([
+    {
+      moment: 'tool-call',
+      snippet: 'code-example-2',
+      lines: { start: 10, end: 12 },
+    },
+  ]);
+});

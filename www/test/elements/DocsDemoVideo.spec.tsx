@@ -9,16 +9,24 @@ import { docsComponents } from '../../src/components/docs-components';
 import { listDocs, readDoc, SDKS } from '../../src/lib/content';
 import { renderMarkdown } from '../../src/lib/markdown';
 
-const demos = [
-  ['generative-ui', 'components'],
-  ['streaming-data', 'streaming'],
-  ['structured-form', 'structured-output'],
-  ['browser-tools', 'functions'],
-  ['schemas', 'schema'],
-  ['decisions', 'decisions'],
+const conceptPages = [
+  'components',
+  'streaming',
+  'structured-output',
+  'functions',
+  'schema',
+  'decisions',
 ] as const;
 
-test.each(['magic-text', 'predictive-suggestions', 'ui-selection'] as const)(
+const recordings = [
+  'canonical-workbench-first-plan-react',
+  'canonical-workbench-conversation-angular',
+  'canonical-workbench-ui-react',
+  'canonical-workbench-interrupts-angular',
+  'canonical-workbench-threadplane-react',
+] as const;
+
+test.each(recordings)(
   'renders the %s recording at its captured aspect ratio',
   async (demo) => {
     const markdown = `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`;
@@ -27,23 +35,13 @@ test.each(['magic-text', 'predictive-suggestions', 'ui-selection'] as const)(
     const html = renderToStaticMarkup(result.content);
     const video = html.match(/<video\b[^>]*>/)?.[0] ?? '';
 
-    expect(video).toContain('width="1440"');
-    expect(video).toContain('height="900"');
-    expect(video).toContain('style="aspect-ratio:1440 / 900"');
+    expect(video).toContain('width="1600"');
+    expect(video).toContain('height="1000"');
+    expect(video).toContain('style="aspect-ratio:1600 / 1000"');
   },
 );
 
-test.each([
-  ...demos,
-  ['debugging', 'debugging'],
-  ['welcome-card', 'quick'],
-  ['conversation', 'ai-basics'],
-  ['persistence', 'message-history'],
-  ['interrupts', 'interrupt-and-resume'],
-  ['shared-state', 'shared-agent-state'],
-  ['activities', 'activities'],
-  ['ui-kits', 'ui-kits'],
-] as const)(
+test.each(recordings)(
   'renders the %s Markdown demo with accessible on-demand playback',
   async (demo) => {
     const markdown = `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`;
@@ -56,47 +54,40 @@ test.each([
     expect(video).toContain('preload="none"');
     expect(video).toContain('playsInline=""');
     expect(video).toContain('aria-label=');
-    expect(video).toContain('width="1440"');
-    expect(video).toContain('height="810"');
     expect(video).not.toMatch(/autoplay/i);
     expect(html).toContain(`/video/docs/${demo}.webm`);
     expect(html).toContain(`/video/docs/${demo}.mp4`);
     expect(html).toContain('kind="captions"');
     expect(html).toContain(`/video/docs/${demo}.vtt`);
     expect(html).toContain(`/video/docs/${demo}-transcript.txt`);
-    expect(html).toContain('scripted');
+    expect(html).toContain(DOCS_DEMOS[demo].recording);
     expect(html).not.toContain('data-unported');
     expect(html).not.toMatch(/<p>\s*<figure/);
   },
 );
 
-test.each([
-  ...demos,
-  ['debugging', 'debugging'],
-  ['welcome-card', 'quick'],
-  ['conversation', 'ai-basics'],
-  ['persistence', 'message-history'],
-  ['interrupts', 'interrupt-and-resume'],
-  ['shared-state', 'shared-agent-state'],
-  ['activities', 'activities'],
-  ['ui-kits', 'ui-kits'],
-] as const)('ships complete local media for the %s demo', (demo) => {
-  const publicDir = resolve(import.meta.dirname, '../../public/video/docs');
-  const files = [
-    `${demo}.mp4`,
-    `${demo}.webm`,
-    `${demo}-poster.png`,
-    `${demo}.vtt`,
-    `${demo}-transcript.txt`,
-  ];
+test.each(Object.keys(DOCS_DEMOS))(
+  'ships complete local media for the %s demo',
+  (demo) => {
+    const publicDir = resolve(import.meta.dirname, '../../public/video/docs');
+    const files = [
+      `${demo}.mp4`,
+      `${demo}.webm`,
+      `${demo}-poster.png`,
+      `${demo}.vtt`,
+      `${demo}-transcript.txt`,
+    ];
 
-  const present = files.filter((file) => existsSync(resolve(publicDir, file)));
+    const present = files.filter((file) =>
+      existsSync(resolve(publicDir, file)),
+    );
 
-  expect(present).toEqual(files);
-  expect(readFileSync(resolve(publicDir, `${demo}.vtt`), 'utf8')).toMatch(
-    /^WEBVTT/,
-  );
-});
+    expect(present).toEqual(files);
+    expect(readFileSync(resolve(publicDir, `${demo}.vtt`), 'utf8')).toMatch(
+      /^WEBVTT/,
+    );
+  },
+);
 
 test.each(SDKS)(
   '%s documentation has no legacy Vimeo embeds or links',
@@ -136,7 +127,7 @@ test.each(SDKS)(
 test.each(SDKS)(
   'opens matching %s guides with teaching before their inline workbench',
   (sdk) => {
-    const lessons: Record<(typeof demos)[number][1], string> = {
+    const lessons: Record<(typeof conceptPages)[number], string> = {
       components: 'generative-ui',
       functions: 'tools',
       'structured-output': 'structured-output',
@@ -144,7 +135,7 @@ test.each(SDKS)(
       schema: 'schemas',
       decisions: 'decisions',
     };
-    const pages = demos.map(([, slug]) => ({
+    const pages = conceptPages.map((slug) => ({
       demo: lessons[slug],
       body: readDoc(sdk, ['concept', slug])?.body ?? '',
     }));
@@ -169,8 +160,8 @@ test('rejects an unknown recording identifier instead of generating broken media
 test('associates each recorded video with its own concise visible description', () => {
   const html = renderToStaticMarkup(
     <>
-      <DocsDemoVideo demo="canonical-workbench-react" />
-      <DocsDemoVideo demo="canonical-workbench-react" />
+      <DocsDemoVideo demo="canonical-workbench-ui-react" />
+      <DocsDemoVideo demo="canonical-workbench-ui-react" />
     </>,
   );
 
@@ -182,7 +173,7 @@ test('associates each recorded video with its own concise visible description', 
   expect(new Set(descriptions).size).toBe(2);
   for (const id of descriptions) {
     expect(html).toContain(
-      `<p id="${id}">${DOCS_DEMOS['canonical-workbench-react'].caption}</p>`,
+      `<p id="${id}">${DOCS_DEMOS['canonical-workbench-ui-react'].caption}</p>`,
     );
   }
 });

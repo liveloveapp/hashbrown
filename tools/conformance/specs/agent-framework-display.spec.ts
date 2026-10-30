@@ -75,13 +75,24 @@ for (const filename of readdirSync(corpus)
     profile: string;
     events: AGUIEvent[];
     expected: {
-      calls: { name: string; args: unknown; result?: string }[];
+      calls: {
+        name: string;
+        args: unknown;
+        result?: string;
+        resultText?: string;
+      }[];
       text: string;
+      activities?: { activityType: string; content: Record<string, unknown> }[];
     };
   };
 
-  for (const sameNameClient of [false, true]) {
-    test(`${fixture.framework} ${fixture.profile} ${sameNameClient ? 'does not rerun a completed same-name client call' : 'displays undeclared server calls'}`, async ({
+  const clientProfiles = fixture.expected.calls.every(
+    (call) => call.name === 'getWeather',
+  )
+    ? [false, true]
+    : [false];
+  for (const sameNameClient of clientProfiles) {
+    test(`${fixture.framework} ${fixture.profile} ${fixture.expected.activities?.length ? (sameNameClient ? 'displays activity without invoking its same-name browser tool' : 'displays background activity') : sameNameClient ? 'does not rerun a completed same-name client call' : 'displays undeclared server calls'}`, async ({
       page,
     }) => {
       const endpoint = await startIndependentEndpoint({
@@ -108,11 +119,55 @@ for (const filename of readdirSync(corpus)
           expectedCalls.map(() => 'complete'),
         );
         expect(observed.map((call) => call.result)).toEqual(
-          expectedCalls.map((call) => ({
+          expectedCalls.map((call, index) => ({
             status: 'fulfilled',
-            value: call.result,
+            value: fixture.events.filter(
+              (event) => event.type === EventType.TOOL_CALL_RESULT,
+            )[index]?.content,
           })),
         );
+        const activities = JSON.parse(
+          await page.getByTestId('activity-messages').innerText(),
+        ) as {
+          id: string;
+          activityType: string;
+          content: Record<string, unknown>;
+        }[];
+        expect(activities).toHaveLength(
+          fixture.expected.activities?.length ?? 0,
+        );
+        for (const [index, expected] of (
+          fixture.expected.activities ?? []
+        ).entries()) {
+          const activity = activities[index];
+          expect(activity.activityType).toBe(expected.activityType);
+          expect(activity.content).toMatchObject(expected.content);
+          expect(activity.content['taskId']).toBe(activity.id);
+          for (const field of ['startedAt', 'completedAt']) {
+            const patch = fixture.events
+              .flatMap((event) =>
+                event.type === EventType.ACTIVITY_DELTA &&
+                event.messageId === activity.id
+                  ? event.patch
+                  : [],
+              )
+              .find(
+                (patch) => patch.op === 'add' && patch.path === `/${field}`,
+              );
+            expect(patch).toBeDefined();
+            expect(activity.content[field]).toBe(
+              patch && 'value' in patch ? patch.value : undefined,
+            );
+          }
+        }
+        await expect(page.getByTestId('subagents')).toHaveAttribute(
+          'data-supported',
+          'true',
+        );
+        await expect(page.getByTestId('subagents')).toHaveText('[]');
+        expect(
+          observed.every((call) => !Object.hasOwn(call, 'subagentRunId')),
+        ).toBe(true);
         await expect(driver.toolCount()).toHaveText('0');
         await expect(driver.error()).toBeEmpty();
         await expect(driver.generatingError()).toBeEmpty();

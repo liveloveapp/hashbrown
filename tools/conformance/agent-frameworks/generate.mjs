@@ -5,6 +5,7 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCapture, verifyCapture } from './harness/evidence.mjs';
 import { runLangGraphScenario } from './node/langgraph.mjs';
+import { runMastraDelegationScenario } from './node/mastra-delegation.mjs';
 import { runMastraScenario } from './node/mastra.mjs';
 import { installedVersions } from './node/scenario.mjs';
 
@@ -42,6 +43,19 @@ for (const path of sources.sort()) {
 const sourceSha256 = hash.digest('hex');
 const scenarios = [
   ['langgraph-server-tool.json', () => runLangGraphScenario()],
+  [
+    'langgraph-native-subgraph.json',
+    () => runLangGraphScenario({ profile: 'native-subgraph' }),
+  ],
+  ['mastra-native-delegation.json', () => runMastraDelegationScenario()],
+  [
+    'mastra-background-failure.json',
+    () => runMastraScenario({ profile: 'background', outcome: 'failure' }),
+  ],
+  [
+    'mastra-background-activity.json',
+    () => runMastraScenario({ profile: 'background' }),
+  ],
   [
     'mastra-buffered-server-tool.json',
     () => runMastraScenario({ profile: 'buffered' }),

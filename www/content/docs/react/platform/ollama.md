@@ -17,6 +17,18 @@ The teaser demonstrates the OpenAI-backed client flow. It does not demonstrate t
 <hb-diagram diagram="request-boundary">
 </hb-diagram>
 
+## Verify the local model and protocol
+
+The [October 25 qualification](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-model-qualification.md) used Ollama 0.40.11 and `qwen2.5:14b` Q4_K_M on the session's M1 Max. The provider/compatibility gate passed 7/10 cases; the Angular/React gate passed 12/20. Schema-plus-tools cases omitted required lookups, dependent workflows changed an exact receipt, and a token-limited Responses case reported `stop` rather than `length`. These failures remain visible; they are not a claim that every Ollama model or route fails.
+
+The native Ollama SDK route shown here and an OpenAI-compatible route to Ollama are different protocol paths. Ollama documents a [subset of OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility); a successful text request does not qualify tools combined with a final schema, exact dependent results, or terminal status handling.
+
+As of October 30, 2026, the proposed [structured-tool grammar fix #18975](https://github.com/ollama/ollama/pull/18975) and [Responses truncation fix #17239](https://github.com/ollama/ollama/pull/17239) were still open. [Ollama 0.40.13](https://github.com/ollama/ollama/releases/tag/v0.40.13) is newer than the measured server. Neither a newer version nor a proposed fix substitutes for rerunning the same gates. A protocol fix also does not establish that a model copies application receipts correctly.
+
+Before choosing a model, test exact tool arguments and call order, dependent values, final structured output, truncation, cancellation and a subsequent request. Keep permissions in application handlers. Use a narrow schema and expose only the components required by the workflow. The [local conformance suites](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) separate deterministic contracts from opt-in inference; live qualification stays local and refuses CI.
+
+For a genuinely local deployment, select a locally installed model and verify the configured host. `localhost` in a container or application server refers to that environment, not automatically the user's device. The cloud example later on this page sends inference to Ollama Cloud and requires a separate data-sharing decision.
+
 ## Install the server adapter
 
 Install the Ollama adapter, official Ollama SDK, and AG-UI SSE packages:

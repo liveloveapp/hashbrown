@@ -18315,5 +18315,18 @@
       "props": null,
       "status": "complete"
     }
+  ],
+  "milestones": [
+    { "id": "prompt-1", "index": 1, "label": "Prompt" },
+    { "id": "request-1", "index": 3, "label": "Request" },
+    { "id": "streaming-text-1", "index": 10, "label": "Streaming text" },
+    { "id": "complete-1", "index": 115, "label": "Complete" },
+    { "id": "text-keep-1", "index": 116, "label": "Text keep" },
+    { "id": "text-clear-1", "index": 117, "label": "Text clear" },
+    { "id": "text-restore-1", "index": 120, "label": "Text restore" },
+    { "id": "prompt-2", "index": 123, "label": "Prompt" },
+    { "id": "request-2", "index": 125, "label": "Request" },
+    { "id": "streaming-text-2", "index": 132, "label": "Streaming text" },
+    { "id": "complete-2", "index": 183, "label": "Complete" }
   ]
 }

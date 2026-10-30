@@ -309,9 +309,7 @@ export function Workbench() {
                 getWorkbenchLesson(window.location.search).id,
               )
             ? UiKitWorkbenchConversation
-            : ['server-threads', 'public-endpoint'].includes(
-                  getWorkbenchLesson(window.location.search).id,
-                )
+            : getWorkbenchLesson(window.location.search).host === 'loopback'
               ? ServerWorkbenchConversation
               : ['agent-decisions', 'json-parser', 'natural-forms'].includes(
                     getWorkbenchLesson(window.location.search).id,

@@ -27,3 +27,9 @@ Playwright checked the production page at 1440px, 375px and 320px: the tree is v
 The subsequent visual refinement matches the docs sidenav: Hanken Grotesk, 14px/20px file rows, 32px desktop height, 4px/12px padding, 8px corner radius, white background and soft Hashbrown selection. Folder labels use 13px/18px semibold text. Workbench file-code and chevron paths use rounded 24-unit, 2px stroke geometry. Removed highlight legend/dots and outer panel/card borders; GitHub uses an accessible icon link. Browser measurements confirm matching typography and spacing, a 44px mobile logo target, and no overflow at 320px or 375px.
 
 Existing warnings remain in API extraction, Nx deprecations, Next middleware migration and filesystem tracing. The site's GitHub metadata request returned HTTP 403 during the browser check; source loading succeeded.
+
+## Integration with main
+
+Resolved conflicts with the subsequent hydration, source-cache and snippet-navigation improvements on main. Server markup retains its CSS-controlled video fallback; hydrated source pages keep one responsive tabbed panel, without mobile replay frames or observers. Deferred video posters and cached light source highlighting are preserved. Manual explorer selection clears the previous snippet scroll target.
+
+Added regressions for mobile Source hydration and clearing snippet scroll targets. Production build, lint and all 2,396 docs tests pass after integration. Browser checks confirm mobile Source visibility, lazy source loading, the video poster, and selection persistence when resizing to desktop. Independent review found no further issues.

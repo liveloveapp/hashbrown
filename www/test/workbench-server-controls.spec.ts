@@ -20,7 +20,12 @@ test('server controls guard anonymous writes and retain explicit denial actions'
   });
   const host = document.createElement('div');
 
-  const controls = mountWorkbenchServerControls(host, store, controller);
+  const controls = mountWorkbenchServerControls(
+    host,
+    store,
+    controller,
+    'React',
+  );
   const button = (text: string) => {
     const result = [...host.querySelectorAll('button')].find(
       (node) => node.textContent === text,
@@ -67,7 +72,12 @@ test('replay before the first server capture never displays current live session
     ),
   });
   const host = document.createElement('div');
-  const controls = mountWorkbenchServerControls(host, store, controller);
+  const controls = mountWorkbenchServerControls(
+    host,
+    store,
+    controller,
+    'React',
+  );
   await controller.startSession();
 
   store.seek(index);
@@ -80,3 +90,45 @@ test('replay before the first server capture never displays current live session
   controls.dispose();
   controller.dispose();
 });
+
+test.each([
+  ['React', '/docs/react/start/workbench#run-the-example'],
+  ['Angular', '/docs/angular/start/workbench#run-the-example'],
+] as const)(
+  'off a loopback host, %s server controls are a run-locally notice',
+  (framework, path) => {
+    const store = createWorkbenchStore('history');
+    const observation = { messages: [], isLoading: false };
+    observeHistory(store, observation);
+    const fetch = vi.fn();
+    const controller = createWorkbenchServerHistory({
+      store,
+      lesson: 'server-threads',
+      observation: () => observation,
+      active: () => true,
+      replace: vi.fn(),
+      fetch,
+      access: 'hosted',
+    });
+    const host = document.createElement('div');
+
+    const controls = mountWorkbenchServerControls(
+      host,
+      store,
+      controller,
+      framework,
+    );
+
+    expect(host.textContent).toBe(
+      'This lesson runs on a local server. Run the example',
+    );
+    expect(host.querySelector('a')?.getAttribute('href')).toBe(
+      `https://hashbrown.dev${path}`,
+    );
+    expect(host.querySelectorAll('button')).toHaveLength(0);
+    expect(host.querySelector('[role=alert]')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    controls.dispose();
+    controller.dispose();
+  },
+);

@@ -13,6 +13,8 @@ import { expect, test } from 'vitest';
 import {
   createWorkbenchCapture,
   parseWorkbenchCapture,
+  withWorkbenchCaptureMilestones,
+  type WorkbenchCapture,
 } from '../examples/quickstart/runtime/workbench-capture';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
@@ -47,8 +49,22 @@ test('publishing stamps the commit and keeps every event', () => {
     JSON.parse(publishWorkbenchCapture(raw, 'abc123')),
   );
 
-  expect(published).toEqual({ ...capture, commit: 'abc123' });
+  expect(published).toEqual({
+    ...withWorkbenchCaptureMilestones(capture),
+    commit: 'abc123',
+  });
   expect(published?.events.length).toBe(capture.events.length);
+});
+
+test('publishing records the milestones docs moments resolve against', () => {
+  const raw = JSON.stringify(recordedCapture());
+
+  const published = JSON.parse(publishWorkbenchCapture(raw, 'abc123'));
+
+  expect(published.milestones).toEqual([
+    { id: 'prompt-1', index: 0, label: 'Prompt' },
+    { id: 'streaming-json-1', index: 2, label: 'Streaming JSON' },
+  ]);
 });
 
 test('publishing refuses captures over 2 MB', () => {
@@ -209,7 +225,7 @@ test('preparing a batch stamps every capture by report', () => {
     );
 
     expect(JSON.parse(prepared.get('react-generative-ui') ?? 'null')).toEqual({
-      ...capture,
+      ...withWorkbenchCaptureMilestones(capture),
       commit: 'abc123',
     });
   } finally {
@@ -250,7 +266,10 @@ test('staging writes each stamped capture beside its published id', () => {
           'utf8',
         ),
       ),
-    ).toEqual({ ...capture, commit: 'abc123' });
+    ).toEqual({
+      ...withWorkbenchCaptureMilestones(capture as WorkbenchCapture),
+      commit: 'abc123',
+    });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

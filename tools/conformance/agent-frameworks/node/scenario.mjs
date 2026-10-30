@@ -51,6 +51,7 @@ export async function captureScenario(
   let toolAbortObserved = false;
   let toolExecutions = 0;
   let startBeforeToolCompletion = false;
+  let activityBeforeToolCompletion = false;
   const execute = async ({ city }, { signal } = {}) => {
     assert.equal(city, 'Paris');
     toolExecutions += 1;
@@ -91,6 +92,8 @@ export async function captureScenario(
   };
   const capture = captureEvents(agent.run(input), {
     onEvent(event) {
+      if (event.type === 'ACTIVITY_SNAPSHOT')
+        activityBeforeToolCompletion = !toolCompleted;
       if (event.type === 'TOOL_CALL_START') {
         startBeforeToolCompletion = !toolCompleted;
         started();
@@ -149,6 +152,7 @@ export async function captureScenario(
       toolAbortObserved,
       outcome,
       startBeforeToolCompletion,
+      activityBeforeToolCompletion,
       nativeCheckpointRestore: 'not-tested',
     },
   };

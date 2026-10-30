@@ -58,7 +58,7 @@ test('popover content renders the symbol without nested popovers', async () => {
   const md = 'Use @hashbrownai/react!useChat:function here.';
 
   const html = renderToStaticMarkup(
-    (await renderDocsMarkdown(md, 'react')).content,
+    (await renderDocsMarkdown(md, 'react', 'test')).content,
   );
 
   expect(html).toMatch(/<h1[^>]*>useChat<\/h1>/);
@@ -73,7 +73,7 @@ test('private, external and unknown references get no popover', async () => {
   ].join(' ');
 
   const html = renderToStaticMarkup(
-    (await renderDocsMarkdown(md, 'angular')).content,
+    (await renderDocsMarkdown(md, 'angular', 'test')).content,
   );
 
   expect(html).not.toContain('data-symbol-popover');

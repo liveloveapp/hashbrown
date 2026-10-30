@@ -48,6 +48,10 @@ export default async function DocsPage({
   if (!doc) {
     notFound();
   }
-  const { content, headings } = await renderDocsMarkdown(doc.body, sdk);
+  const { content, headings } = await renderDocsMarkdown(
+    doc.body,
+    sdk,
+    `${sdk}/${slug.join('/')}`,
+  );
   return <MarkdownPage headings={headings}>{content}</MarkdownPage>;
 }

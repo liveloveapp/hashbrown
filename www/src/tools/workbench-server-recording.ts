@@ -1,3 +1,4 @@
+import { isWorkbenchLoopbackLesson } from '../../examples/quickstart/runtime/workbench-lessons';
 import type { WorkbenchRecordingCue } from './workbench-recording-cues';
 
 /** Builds readable captions from measured server conversation interactions. */
@@ -8,7 +9,7 @@ export function workbenchServerRecordingCues(
   },
   encodedDuration: number,
 ): readonly WorkbenchRecordingCue[] | undefined {
-  if (!['server-threads', 'public-endpoint'].includes(report.lesson))
+  if (!isWorkbenchLoopbackLesson(report.lesson))
     return undefined;
   const steps =
     report.lesson === 'server-threads'
