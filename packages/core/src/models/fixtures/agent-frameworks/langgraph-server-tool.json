@@ -29,7 +29,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -55,7 +59,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -73,7 +81,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -91,7 +103,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -124,7 +140,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -142,7 +162,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -160,7 +184,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -206,7 +234,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -244,7 +276,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -282,7 +318,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -320,7 +360,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -365,7 +409,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -393,7 +441,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -413,7 +465,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -433,7 +489,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -453,7 +513,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -487,7 +551,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -507,7 +575,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -527,7 +599,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-answer",
               "content": "The weather in Paris is 21°C and sunny.",
@@ -548,7 +624,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessageChunk"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessageChunk"
+            ],
             "kwargs": {
               "id": "weather-answer",
               "content": "The weather in Paris is 21°C and sunny.",
@@ -569,7 +649,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -580,7 +664,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessage"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -602,7 +690,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -615,7 +707,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessage"
+            ],
             "kwargs": {
               "id": "weather-answer",
               "content": "The weather in Paris is 21°C and sunny.",
@@ -639,7 +735,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "HumanMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "HumanMessage"
+            ],
             "kwargs": {
               "id": "question",
               "content": "What is the weather in Paris?",
@@ -650,7 +750,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessage"
+            ],
             "kwargs": {
               "id": "weather-assistant",
               "content": "",
@@ -672,7 +776,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "ToolMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "ToolMessage"
+            ],
             "kwargs": {
               "id": "weather-result",
               "content": "Paris: 21°C and sunny",
@@ -685,7 +793,11 @@
           {
             "lc": 1,
             "type": "constructor",
-            "id": ["langchain_core", "messages", "AIMessage"],
+            "id": [
+              "langchain_core",
+              "messages",
+              "AIMessage"
+            ],
             "kwargs": {
               "id": "weather-answer",
               "content": "The weather in Paris is 21°C and sunny.",
