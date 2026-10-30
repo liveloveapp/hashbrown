@@ -655,6 +655,25 @@ test('TARGETS includes hashbrown-lifecycle with no domains and a 60 second fluid
   assert.ok(target?.env.includes('RESEND_API_KEY'));
 });
 
+test('TARGETS includes hashbrown-marketing with no domains and a 60 second fluid timeout', () => {
+  const target = TARGETS.find((t) => t.key === 'marketing');
+
+  assert.equal(target?.project, 'hashbrown-marketing');
+  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_MARKETING');
+  assert.deepEqual(target?.domains, []);
+  assert.deepEqual(target?.resources, {
+    fluid: true,
+    functionDefaultTimeout: 60,
+  });
+  assert.deepEqual(target?.requiredEnv, ['MARKETING_SERVICE_SECRET']);
+  assert.ok(target?.env.includes('MARKETING_CREDENTIALS_KEY'));
+  assert.ok(target?.env.includes('MARKETING_SERVICE_SECRET'));
+  assert.ok(!target?.env.includes('CRON_SECRET'));
+  assert.ok(!target?.env.includes('MARKETING_CRON_ENABLED'));
+  assert.ok(!target?.env.includes('DATABASE_URL'));
+  assert.ok(!target?.env.includes('B4_DATABASE_URL'));
+});
+
 test('TARGETS www lists the growth env keys', () => {
   const target = TARGETS.find((t) => t.key === 'www');
 
@@ -662,6 +681,8 @@ test('TARGETS www lists the growth env keys', () => {
     'OPENAI_API_KEY',
     'LIFECYCLE_SERVICE_SECRET',
     'CRON_SECRET',
+    'MARKETING_CRON_ENABLED',
+    'MARKETING_SERVICE_SECRET',
     'NEXT_PUBLIC_POSTHOG_TOKEN',
     'NEXT_PUBLIC_POSTHOG_HOST',
     'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
@@ -672,6 +693,7 @@ test('TARGETS www lists the growth env keys', () => {
   assert.deepEqual(target?.envPerTarget, [
     'GROWTH_DATABASE_ENVIRONMENT',
     'LIFECYCLE_URL',
+    'MARKETING_URL',
   ]);
 });
 
@@ -721,8 +743,17 @@ test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secr
     lifecycle?.project_id_secret,
   );
   assert.deepEqual(
+    targets.find((t) => t.key === 'marketing'),
+    {
+      key: 'marketing',
+      dir: 'tools/marketing',
+      project_id_secret: 'VERCEL_PROJECT_ID_MARKETING',
+      optional: true,
+    },
+  );
+  assert.deepEqual(
     targets.map((t) => t.key),
-    ['www', 'atc', 'lifecycle', 'workbench'],
+    ['www', 'atc', 'lifecycle', 'marketing', 'workbench'],
   );
 });
 
