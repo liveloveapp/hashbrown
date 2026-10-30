@@ -1,0 +1,86 @@
+{
+  "framework": "mastra",
+  "profile": "buffered",
+  "versions": {
+    "@ag-ui/mastra": "2.0.1",
+    "@mastra/core": "1.80.0",
+    "@mastra/client-js": "1.57.0",
+    "@ag-ui/core": "1.0.3"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "threadId": "mastra-buffered-thread",
+      "runId": "mastra-buffered-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "parentMessageId": "71af6806-6d10-46dc-9e13-8d263f64efea",
+      "toolCallId": "weather-call",
+      "toolCallName": "getWeather"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "toolCallId": "weather-call",
+      "delta": "{\"city\":\"Paris\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "toolCallId": "weather-call"
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "toolCallId": "weather-call",
+      "content": "\"Paris: 21°C and sunny\"",
+      "messageId": "8b51db80-0f3b-4b1e-8a84-9188f2f4c60d",
+      "role": "tool"
+    },
+    {
+      "type": "TEXT_MESSAGE_CHUNK",
+      "role": "assistant",
+      "messageId": "71af6806-6d10-46dc-9e13-8d263f64efea-agui-text",
+      "delta": "The weather in Paris is 21°C and sunny."
+    },
+    {
+      "type": "RUN_FINISHED",
+      "threadId": "mastra-buffered-thread",
+      "runId": "mastra-buffered-run",
+      "usage": [
+        {
+          "provider": "mock-provider",
+          "model": "mock-model-id",
+          "inputTokens": 2,
+          "outputTokens": 2,
+          "totalTokens": 4
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "calls": [
+      {
+        "name": "getWeather",
+        "args": {
+          "city": "Paris"
+        },
+        "result": "\"Paris: 21°C and sunny\""
+      }
+    ],
+    "text": "The weather in Paris is 21°C and sunny."
+  },
+  "evidence": {
+    "realFrameworkExecution": true,
+    "transport": "real local Mastra Agent.stream",
+    "toolExecutions": 1,
+    "toolCompleted": true,
+    "toolAbortObserved": false,
+    "outcome": "success",
+    "startBeforeToolCompletion": false,
+    "nativeCheckpointRestore": "not-tested"
+  },
+  "provenance": {
+    "sourceSha256": "db0c08987398d5e1df4a99e3dda9a4fa2a087cf00d06099d977644286370a965",
+    "eventsSha256": "b224d5b2c44c1be3ecbc60d047bb343520d9d70278d702bda989eb623937cbc6"
+  }
+}

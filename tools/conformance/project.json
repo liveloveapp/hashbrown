@@ -50,7 +50,8 @@
         "{workspaceRoot}/tsconfig.base.json",
         "{workspaceRoot}/jest.preset.js",
         "{workspaceRoot}/eslint.config.mjs"
-      ]
+      ],
+      "dependsOn": ["agent-framework-harness-test", "agent-framework-test"]
     },
     "conformance-e2e": {
       "executor": "nx:run-commands",
@@ -442,6 +443,61 @@
       "options": {
         "command": "playwright test --config tools/conformance/local-webllm-tools-live.playwright.config.ts"
       }
+    },
+    "agent-framework-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/conformance.playwright.config.ts agent-framework-display.spec.ts"
+      }
+    },
+    "agent-framework-harness-test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/tools/conformance/agent-frameworks/node/capture.mjs"
+      ],
+      "options": {
+        "command": "node --test tools/conformance/agent-frameworks/harness/*.spec.mjs"
+      }
+    },
+    "agent-framework-install": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "npm ci --prefix tools/conformance/agent-frameworks/node --ignore-scripts --no-audit --no-fund",
+          "npm ls --all --prefix tools/conformance/agent-frameworks/node"
+        ]
+      }
+    },
+    "agent-framework-test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["agent-framework-install"],
+      "options": {
+        "parallel": false,
+        "commands": [
+          "node --test tools/conformance/agent-frameworks/node/*.spec.mjs",
+          "node tools/conformance/agent-frameworks/generate.mjs --check"
+        ]
+      }
+    },
+    "agent-framework-capture": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["agent-framework-install"],
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/generate.mjs --write"
+      }
     }
   },
   "implicitDependencies": [
@@ -452,6 +508,7 @@
     "openai",
     "runtime-smoke-angular",
     "runtime-smoke-react",
-    "ollama"
+    "ollama",
+    "hashbrown-agent-framework-conformance"
   ]
 }
