@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, realpath } from 'node:fs/promises';
 import { createRedactor, sha256 } from './common.mjs';
 import { createManagedTimeoutIO } from './managed-timeout-io.mjs';
 import { createRollbackIO } from './rollback-check.mjs';
@@ -17,7 +19,9 @@ for (const adapter of [
     adapter +
       ' uses fixed model diagnostics without parser or assertion excerpts',
     async () => {
-      const stage = await mkdtemp('/private/tmp/model-json-boundary-');
+      const stage = await realpath(
+        await mkdtemp(join(tmpdir(), 'model-json-boundary-')),
+      );
       await writeFile(stage + '/schema.json', '{}');
       const modelText =
         'Sensitive synthetic aircraft commentary with callsign N12345. '.repeat(

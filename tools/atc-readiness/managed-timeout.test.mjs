@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { realpath } from 'node:fs/promises';
 import {
   runTimeoutProtocol,
   validatePlatformTimeoutProof,
@@ -318,7 +321,9 @@ for (const options of [{ mutate: true }, { nonzero: true }]) {
 test('fault provenance is rejected before opening database or HTTP', async () => {
   const { runManagedTimeout } = await import('./managed-timeout.mjs');
   const { mkdtemp, readFile, rm } = await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/timeout-preflight-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'timeout-preflight-')),
+  );
   let proofCalls = 0;
 
   try {
@@ -394,7 +399,7 @@ test('real HTTP stream adapter takes first EOF query as admissions and closes pa
   const { createServer } = await import('node:http');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
   const { once } = await import('node:events');
-  const stage = await mkdtemp('/private/tmp/timeout-http-');
+  const stage = await realpath(await mkdtemp(join(tmpdir(), 'timeout-http-')));
   await writeFile(stage + '/schema.json', '{}');
   const queries = [];
   const closed = [];
@@ -513,7 +518,9 @@ test('preflight binds raw fault output and rejects edits outside the one timeout
   const { hashTree, sha256 } = await import('./common.mjs');
   const { mkdtemp, mkdir, writeFile, rm, cp } =
     await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/timeout-variant-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'timeout-variant-')),
+  );
   const normal = stage + '/normal';
   const fault = stage + '/fault';
   await mkdir(normal + '/functions/api/run.func', { recursive: true });
@@ -604,7 +611,9 @@ test('control cancellation bounds an otherwise stalled operation', async () => {
 test('cleanup failure is surfaced after partially initialized storage', async () => {
   const { createManagedTimeoutIO } = await import('./managed-timeout-io.mjs');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/timeout-cleanup-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'timeout-cleanup-')),
+  );
   await writeFile(stage + '/schema.json', '{}');
   let closed = false;
   const context = {
@@ -670,7 +679,7 @@ test('fault HTTP 429 durably stops the reviewed timeout phase', async () => {
     await import('node:fs');
   const { randomUUID } = await import('node:crypto');
   const { sha256 } = await import('./common.mjs');
-  const stage = mkdtempSync('/private/tmp/timeout-throttle-');
+  const stage = realpathSync(mkdtempSync(join(tmpdir(), 'timeout-throttle-')));
   const prior = {};
   for (const [name, count, limit] of [
     ['load', 99, 120],
@@ -800,7 +809,9 @@ for (const failClose of [false, true]) {
         await import('./managed-timeout-io.mjs');
       const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
       const { setTimeout: delay } = await import('node:timers/promises');
-      const stage = await mkdtemp('/private/tmp/timeout-expired-cleanup-');
+      const stage = await realpath(
+        await mkdtemp(join(tmpdir(), 'timeout-expired-cleanup-')),
+      );
       await writeFile(stage + '/schema.json', '{}');
       const closed = [];
       const controller = new AbortController();
@@ -861,7 +872,9 @@ test('managed tiny-delta SSE keeps request/hash/provider metadata and sanitizes 
   const { once } = await import('node:events');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
   const { createRedactor } = await import('./common.mjs');
-  const stage = await mkdtemp('/private/tmp/managed-tiny-deltas-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'managed-tiny-deltas-')),
+  );
   await writeFile(stage + '/schema.json', '{}');
   const credential = 'complete-managed-credential-46a';
   const cookie = 'atc_visitor=signed-managed-cookie-46a';

@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { realpath } from 'node:fs/promises';
 import { createNeonRestart, runRestartProtocol } from './compute-restart.mjs';
 
 const identity = {
@@ -382,7 +385,9 @@ test('disposable database verification rejects nonempty tables and wrong roles b
 test('missing management auth leaves durable restart fence uncreated', async () => {
   const { runComputeRestart } = await import('./compute-restart.mjs');
   const { mkdtemp, readdir, rm } = await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/restart-noauth-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'restart-noauth-')),
+  );
   try {
     const result = await runComputeRestart(
       { stagingDirectory: stage },
@@ -488,7 +493,9 @@ test('managed HTTP adapter publishes actual headers before stream completion', a
   const { createServer } = await import('node:http');
   const { once } = await import('node:events');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/restart-header-correlation-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'restart-header-correlation-')),
+  );
   await writeFile(stage + '/schema.json', '{}');
   let seen;
   const observed = new Promise((resolve) => {

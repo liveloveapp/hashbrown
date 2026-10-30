@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { realpath } from 'node:fs/promises';
 import {
   validateRollbackPlan,
   runRollbackProtocol,
@@ -170,7 +173,9 @@ test('artifact verification supports real filesystem routing and binds normal ha
   const { verifyRollbackArtifacts } = await import('./rollback-check.mjs');
   const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
   const { hashTree, sha256 } = await import('./common.mjs');
-  const stage = await mkdtemp('/private/tmp/rollback-artifacts-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'rollback-artifacts-')),
+  );
   const actualPlan = structuredClone(plan);
   const paths = {};
   try {
@@ -254,7 +259,7 @@ test('real rollback SSE adapter validates fresh marker and first EOF admission q
   const { createRollbackIO } = await import('./rollback-check.mjs');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
   const { sha256 } = await import('./common.mjs');
-  const stage = await mkdtemp('/private/tmp/rollback-http-');
+  const stage = await realpath(await mkdtemp(join(tmpdir(), 'rollback-http-')));
   await writeFile(stage + '/schema.json', '{}');
   const calls = [];
   const closed = [];
@@ -555,7 +560,9 @@ for (const identityChange of [
 
 async function wrapperFixture({ failAt, loseOwnership = false } = {}) {
   const { mkdtemp } = await import('node:fs/promises');
-  const stage = await mkdtemp('/private/tmp/rollback-early-cleanup-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'rollback-early-cleanup-')),
+  );
   const runId = '12345678-1234-4234-8234-123456789abc';
   const actualPlan = { ...plan, runId, createdForRun: runId };
   const calls = [];
@@ -768,7 +775,9 @@ test('wrapper cleanup remains idempotent across coordinator and outer failure pa
 async function initializationFixture({ closeFailure = false } = {}) {
   const { mkdtemp, writeFile } = await import('node:fs/promises');
   const { sha256 } = await import('./common.mjs');
-  const stage = await mkdtemp('/private/tmp/rollback-initialization-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'rollback-initialization-')),
+  );
   await writeFile(stage + '/schema.json', '{}');
   const calls = [];
   const context = {
@@ -1179,7 +1188,9 @@ test('valid tiny-delta rollback SSE preserves metadata while sanitizing model di
   const { createRollbackIO } = await import('./rollback-check.mjs');
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
   const { createRedactor, sha256 } = await import('./common.mjs');
-  const stage = await mkdtemp('/private/tmp/rollback-tiny-deltas-');
+  const stage = await realpath(
+    await mkdtemp(join(tmpdir(), 'rollback-tiny-deltas-')),
+  );
   await writeFile(stage + '/schema.json', '{}');
   const credential = 'complete-database-credential-46a';
   const cookie = 'atc_visitor=signed-cookie-whole-46a';
