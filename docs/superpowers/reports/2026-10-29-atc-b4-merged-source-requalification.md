@@ -1,8 +1,10 @@
 # ATC B4 merged-source requalification and rollout follow-ups
 
+This report records the earlier local-requalification phase. Later hosted executions and their limitations are in the [managed-readiness follow-ups](./2026-10-29-atc-b4-managed-readiness-followups.md).
+
 [PR #828](https://github.com/liveloveapp/hashbrown/pull/828) was normally squash-merged on 2026-10-29 at 19:23:02 UTC as `a2f92a4f02ab1dfc38051a44e509afb439634793`. Its updated exact head `151d16df9c639d4c91d47d8167c5d63f96815f72` passed normal required CI [40939268749](https://github.com/liveloveapp/hashbrown/actions/runs/40939268749). No bypass or policy change was used. Production B4 was not enabled.
 
-This follow-up freezes that merge rather than following moving main. [Sanitized evidence](./2026-10-29-atc-b4-merged-source-requalification-evidence.json) records the exact checks and hashes. The [new fault-test design](../specs/2026-10-29-atc-b4-rollout-followups-design.md) is proposed and independently reviewed; its new fault scenarios and additional request budget have not executed.
+This follow-up freezes that merge rather than following moving main. [Sanitized evidence](./2026-10-29-atc-b4-merged-source-requalification-evidence.json) records the exact checks and hashes. The [new fault-test design](../specs/2026-10-29-atc-b4-rollout-followups-design.md) is proposed and independently reviewed; its new fault scenarios and additional request budget had not executed at that phase.
 
 ## Source assessment and local checks
 

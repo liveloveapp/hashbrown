@@ -8,6 +8,10 @@
 
 **Tech stack:** Existing Node.js ESM, node:test, published B4 0.15.7, existing Postgres/Ajv/Vercel dependencies; no added dependency.
 
+## Recorded execution status
+
+Source implementation, independent spec/quality review and 236 offline tests/lint are complete. Phase A requalification remains bound to the frozen merged source. Both Phase B fault attempts were inconclusive and exhausted their limit; compute restart was not executed without management access. Preview rollback live assertions qualified, but subsequent overredaction impaired its serialized audit record. The original receipt and all six reservations remain unchanged, the pinned observer rejects it, and no further paid checks may run under the current evidence state. See the [actual follow-up report](../reports/2026-10-29-atc-b4-managed-readiness-followups.md) for execution, cleanup and remaining decisions. The checklist below retains the reviewed implementation/execution requirements; it is not a statement that every hosted outcome passed.
+
 ## Task 1 — Record approval and prerequisites
 
 - [ ] Record the human's latest instruction as approval to proceed with the reviewed design and at most 16 additional reservations; retain the former phase ledgers unchanged.
