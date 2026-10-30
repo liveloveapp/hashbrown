@@ -1,4 +1,5 @@
 import { saveWorkbenchCapture } from './workbench-capture-file';
+import { expectInspectionText } from './verify-inspector-modes';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -62,13 +63,13 @@ export async function verifyDecisionWorkbench(options: {
   mark('firstComplete');
   await page.getByRole('tab', { name: 'State', exact: true }).click();
   const inspection = page.locator('.wb:visible .wb-inspector .wb-inspection');
-  await expect(inspection).toContainText('"revision": 0');
-  await expect(inspection).toContainText('"nextAction": null');
+  await expectInspectionText(inspection, '"revision": 0');
+  await expectInspectionText(inspection, '"nextAction": null');
   if (recording) await page.waitForTimeout(800);
   mark('accept');
   await apply.click();
-  await expect(inspection).toContainText('"revision": 1');
-  await expect(inspection).toContainText('"nextAction": "record"');
+  await expectInspectionText(inspection, '"revision": 1');
+  await expectInspectionText(inspection, '"nextAction": "record"');
   await expect(apply).toBeDisabled();
   await expect(apply).toHaveText('Suggestion used');
   if (recording) await page.waitForTimeout(800);
@@ -114,15 +115,15 @@ export async function verifyDecisionWorkbench(options: {
     .getByRole('button', { name: /^Suggestion applied[.]/ })
     .first()
     .press('Enter');
-  await expect(inspection).toContainText('"revision": 1');
+  await expectInspectionText(inspection, '"revision": 1');
   if (recording) await page.waitForTimeout(600);
   await page.getByRole('slider', { name: 'Seek captured event' }).fill('0');
-  await expect(inspection).toContainText('"revision": 0');
-  await expect(inspection).toContainText('"nextAction": null');
+  await expectInspectionText(inspection, '"revision": 0');
+  await expectInspectionText(inspection, '"nextAction": null');
   await page
     .getByRole('button', { name: 'Return to live', exact: true })
     .click();
-  await expect(inspection).toContainText('"revision": 1');
+  await expectInspectionText(inspection, '"revision": 1');
   expect(requests).toHaveLength(count);
   mark('returnedLive');
   await page.getByRole('tab', { name: 'JSON', exact: true }).click();
@@ -164,7 +165,7 @@ export async function verifyDecisionWorkbench(options: {
         ).toBeDisabled();
       } else await expect(page.getByRole('alert').first()).toBeVisible();
       await page.getByRole('tab', { name: 'State', exact: true }).click();
-      await expect(inspection).toContainText('"revision": 0');
+      await expectInspectionText(inspection, '"revision": 0');
     }
     await newConversation();
     options.outcome('delay');
@@ -192,7 +193,7 @@ export async function verifyDecisionWorkbench(options: {
       cards.getByRole('button', { name: 'Use suggestion', exact: true }),
     ).toBeEnabled();
     await page.getByRole('tab', { name: 'State', exact: true }).click();
-    await expect(inspection).toContainText('"revision": 0');
+    await expectInspectionText(inspection, '"revision": 0');
   }
   if (!recording) {
     await page.setViewportSize({ width: 390, height: 844 });

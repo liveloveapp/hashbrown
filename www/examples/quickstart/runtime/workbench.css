@@ -691,6 +691,67 @@ body {
   max-height: none;
   overflow: visible;
 }
+/* State tree (see workbench-tree.ts). */
+.wb-tree {
+  flex: 1 0 auto;
+  padding: 8px 0;
+  background: var(--wb-code);
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  font: 12px/1.6 var(--wb-mono-font);
+}
+.wb-tree [role='treeitem'] {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px 0 calc(12px + var(--wb-tree-depth, 0) * 16px);
+  color: var(--wb-ink);
+  cursor: default;
+}
+.wb-tree [role='treeitem'][aria-expanded] {
+  cursor: pointer;
+}
+.wb-tree [role='treeitem'][aria-expanded]::before {
+  content: '\25B8';
+  width: 10px;
+  flex: none;
+  color: var(--wb-muted);
+}
+.wb-tree [role='treeitem'][aria-expanded='true']::before {
+  content: '\25BE';
+}
+.wb-tree [role='treeitem']:not([aria-expanded])::before {
+  content: '';
+  width: 10px;
+  flex: none;
+}
+.wb-tree [role='treeitem']:hover {
+  background: var(--wb-hover);
+}
+.wb-tree [role='treeitem']:focus-visible {
+  outline: 2px solid var(--wb-cobalt);
+  outline-offset: -2px;
+}
+.wb-tree [role='treeitem'][data-changed] {
+  background: var(--wb-cobalt-soft);
+  animation: wb-tree-changed 600ms ease-out;
+}
+@keyframes wb-tree-changed {
+  from {
+    background: var(--wb-tick);
+  }
+}
+.wb-tree-key {
+  flex: none;
+  color: var(--wb-tok-key);
+}
+.wb-tree-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wb-tok-string);
+}
 .wb-inspection [role='alert'] {
   padding: 8px 12px;
   border: 1px solid #fecaca;
@@ -1720,6 +1781,9 @@ app-workflow-workbench-conversation[hidden] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wb-tree [role='treeitem'][data-changed] {
+    animation: none;
+  }
   .wb-layout,
   .wb *,
   .wb *::before {

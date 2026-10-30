@@ -190,3 +190,25 @@ test('captions a loading capture as streaming and the newest event as live', () 
   expect(replay).not.toContain('live');
   shell.dispose();
 });
+
+test('the State tab shows a tree whose closed branches survive a new event', () => {
+  const { host, store, shell } = mountPanel(generative);
+  streamPlan(store);
+  clickTab(host, 'State');
+  const tree = host.querySelector<HTMLElement>('[data-captured] [role=tree]');
+  const branch = tree?.querySelector<HTMLElement>(
+    '[role=treeitem][aria-expanded=true]',
+  );
+  const path = branch?.dataset.path;
+  branch?.click();
+
+  store.record('event', { type: 'RUN_FINISHED' });
+
+  expect(tree).not.toBeNull();
+  expect(host.querySelector('[data-captured] [role=tree]')).toBe(tree);
+  expect(
+    tree?.querySelector(`[data-path="${path}"]`)?.getAttribute('aria-expanded'),
+  ).toBe('false');
+  expect(JSON.parse(tree?.dataset.json ?? 'null')).toHaveProperty('moment');
+  shell.dispose();
+});

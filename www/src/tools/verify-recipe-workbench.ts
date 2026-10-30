@@ -8,7 +8,11 @@ import type { Decision } from '@hashbrownai/core';
 import { workbenchSelectionMinConfidence } from '../../examples/quickstart/runtime/workbench-recipes';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
-import { readInspectorJson, showInspectorMode } from './verify-inspector-modes';
+import {
+  expectInspectionText,
+  readInspectorJson,
+  showInspectorMode,
+} from './verify-inspector-modes';
 import { writeFileSync } from 'node:fs';
 
 type RecipeLesson = 'magic-text' | 'predictions' | 'ui-selection';
@@ -131,7 +135,7 @@ export async function verifyRecipeWorkbench(options: {
     };
     const revision = async (value: number) => {
       await tab('State');
-      await expect(inspection).toContainText(`"revision": ${value}`);
+      await expectInspectionText(inspection, `"revision": ${value}`);
     };
     const complete = async () => {
       await expect(chatStatus).toContainText('complete', { timeout: 90_000 });
@@ -276,7 +280,7 @@ export async function verifyRecipeWorkbench(options: {
       mark('accept');
       await freshRecord.click();
       await revision(1);
-      await expect(inspection).toContainText('"nextAction": "record"');
+      await expectInspectionText(inspection, '"nextAction": "record"');
       await expect(predictions.nth(1).locator('button:enabled')).toHaveCount(0);
       await expect(predictions.first().locator('button:enabled')).toHaveCount(
         0,
@@ -334,7 +338,7 @@ export async function verifyRecipeWorkbench(options: {
           .click();
       else await useView.click();
       await revision(1);
-      await expect(inspection).toContainText('"selectedView": "summary"');
+      await expectInspectionText(inspection, '"selectedView": "summary"');
     }
     await hold();
     await tab(lesson === 'magic-text' ? 'Markdown' : 'JSON');
@@ -410,7 +414,7 @@ export async function verifyRecipeWorkbench(options: {
         await expect(useView).toBeEnabled();
       }
       await revision(1);
-      await expect(inspection).toContainText('"selectedView": "summary"');
+      await expectInspectionText(inspection, '"selectedView": "summary"');
     }
     mark('secondComplete');
     if (lesson === 'predictions') mark('followupComplete');
@@ -467,7 +471,7 @@ export async function verifyRecipeWorkbench(options: {
         .getByRole('button', { name: 'Show steps', exact: true })
         .click();
       await revision(2);
-      await expect(inspection).toContainText('"selectedView": "steps"');
+      await expectInspectionText(inspection, '"selectedView": "steps"');
       await expect(
         root.getByRole('article', { name: 'Plan steps', exact: true }).last(),
       ).toBeVisible();
@@ -574,7 +578,7 @@ export async function verifyRecipeWorkbench(options: {
         ).toHaveCount(lowConfidenceSecondChoice ? 0 : 1);
         await expect(root.locator('[data-live] button:enabled')).toHaveCount(0);
         await revision(1);
-        await expect(inspection).toContainText('"selectedView": "summary"');
+        await expectInspectionText(inspection, '"selectedView": "summary"');
         await root
           .getByRole('button', { name: /^Selection result[.]/ })
           .first()
@@ -632,7 +636,7 @@ export async function verifyRecipeWorkbench(options: {
           .getByRole('button', { name: 'Show summary', exact: true })
           .click();
         await revision(1);
-        await expect(inspection).toContainText('"selectedView": "summary"');
+        await expectInspectionText(inspection, '"selectedView": "summary"');
         expect(requestCount()).toBe(manualCount);
         for (const outcome of ['low', 'error', 'unknown'] as const) {
           await newConversation();
@@ -650,7 +654,7 @@ export async function verifyRecipeWorkbench(options: {
             .getByRole('button', { name: 'Show steps', exact: true })
             .click();
           await revision(1);
-          await expect(inspection).toContainText('"selectedView": "steps"');
+          await expectInspectionText(inspection, '"selectedView": "steps"');
         }
         await newConversation();
         options.decisionOutcome('delay');
@@ -665,7 +669,7 @@ export async function verifyRecipeWorkbench(options: {
           .click();
         await revision(1);
         await page.waitForTimeout(900);
-        await expect(inspection).toContainText('"selectedView": "steps"');
+        await expectInspectionText(inspection, '"selectedView": "steps"');
         await expect(selections).toHaveCount(0);
         expect(requestCount()).toBe(pendingStart + 1);
         options.decisionOutcome('success');

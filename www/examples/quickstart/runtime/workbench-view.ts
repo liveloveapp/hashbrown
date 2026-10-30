@@ -76,6 +76,7 @@ import {
 } from './workbench-inspector-modes';
 import { createWorkbenchRequestsView } from './workbench-requests-view';
 import { createWorkbenchSegmented } from './workbench-segmented';
+import { createWorkbenchTree } from './workbench-tree';
 import { workbenchRecipePrompts } from './workbench-recipes';
 import {
   workbenchRecipeEventLabel,
@@ -697,6 +698,9 @@ export function mountWorkbench(
   captured.dataset.captured = '';
   const capturedHeading = element('h3');
   const modeMemory = createInspectorModeMemory();
+  // Long-lived so branches the reader opened or closed survive re-renders and scrubbing.
+  const stateTree = createWorkbenchTree({ label: 'Application state' });
+  const treeValues = new Map<number, unknown>();
   const modeControl = createWorkbenchSegmented({
     label: 'Inspector view',
     onChange: (id) => {
@@ -1640,9 +1644,36 @@ export function mountWorkbench(
       : sourcePhrase;
     // The panel is off-screen on the Requests tab; skip highlighting it.
     if (!onRequests)
-      rebuildKeepingFocus(inspection, 'data-sequence', () => {
-        inspection.replaceChildren(pre(mode.value ?? undefined, tab));
-      });
+      if (tab === 'State' && mode.id === 'tree') {
+        const previousFrame = snapshot.events[selectedIndex - 1];
+        const previousTree = recipeView
+          ? treeValues.get(selectedIndex - 1)
+          : previousFrame && mode.value && typeof mode.value === 'object'
+            ? {
+                ...mode.value,
+                moment: {
+                  turn: previousFrame.turn,
+                  status: previousFrame.status ?? snapshot.status,
+                  event: workbenchEventLabel(
+                    previousFrame,
+                    commands.lesson?.format,
+                  ),
+                  source: previousFrame.source,
+                },
+              }
+            : undefined;
+        treeValues.set(selectedIndex, mode.value);
+        stateTree.update(mode.value, previousTree);
+        // Keep the same node attached so focus and scroll survive a render.
+        [...inspection.childNodes]
+          .filter((node) => node !== stateTree.element)
+          .forEach((node) => node.remove());
+        if (stateTree.element.parentNode !== inspection)
+          inspection.prepend(stateTree.element);
+      } else
+        rebuildKeepingFocus(inspection, 'data-sequence', () => {
+          inspection.replaceChildren(pre(mode.value ?? undefined, tab));
+        });
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =
       commands.lesson?.format === 'workflow' &&

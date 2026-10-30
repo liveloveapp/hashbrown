@@ -1,4 +1,5 @@
 import { saveWorkbenchCapture } from './workbench-capture-file';
+import { expectInspectionText } from './verify-inspector-modes';
 import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
@@ -84,7 +85,7 @@ export async function verifyOnboardingWorkbench(options: {
     };
     const revision = async () => {
       await tab('State');
-      await expect(inspection).toContainText('"revision": 0');
+      await expectInspectionText(inspection, '"revision": 0');
     };
     const complete = async () => {
       await expect(status).toContainText('complete', { timeout: 90_000 });

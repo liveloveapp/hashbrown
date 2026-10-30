@@ -380,8 +380,9 @@ export async function verifyWorkflowWorkbench(options: {
     );
     // State has Tree/JSON/Raw only; its Tree holds both old sections.
     const evidenceMode = lesson === 'shared-state' ? 'tree' : 'bottom';
-    await showInspectorMode(root, evidenceMode);
-    const interpretedBeforeRaw = await inspection.locator('pre').innerText();
+    const interpretedBeforeRaw = JSON.stringify(
+      await readInspectorJson(root, evidenceMode),
+    );
     await showInspectorMode(root, 'raw');
     await expect(
       root.locator('.wb-inspector [role="radio"][data-mode="raw"]'),
@@ -412,8 +413,7 @@ export async function verifyWorkflowWorkbench(options: {
         recoveryRequired: rawCapture.sdk.recoveryRequired ?? false,
       });
     }
-    await showInspectorMode(root, evidenceMode);
-    expect(await inspection.locator('pre').innerText()).toBe(
+    expect(JSON.stringify(await readInspectorJson(root, evidenceMode))).toBe(
       interpretedBeforeRaw,
     );
     await hold();

@@ -1,3 +1,4 @@
+import { readApplicationState } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
@@ -1093,9 +1094,9 @@ try {
           page.locator('.wb:visible .wb-summary button:enabled'),
         ).toHaveCount(0);
         await page.getByRole('tab', { name: 'State', exact: true }).click();
-        await expect(
-          page.locator('.wb:visible .wb-inspector .wb-inspection'),
-        ).toContainText('"revision": 0');
+        await expect
+          .poll(() => readApplicationState(page.locator('.wb:visible')))
+          .toContain('"revision": 0');
         await gate.uncheck();
         await page
           .getByRole('button', { name: 'First prompt', exact: true })
@@ -1151,16 +1152,16 @@ try {
       )
         await page.waitForTimeout(700);
       await page.getByRole('tab', { name: 'State', exact: true }).click();
-      await expect(
-        page.locator('.wb:visible .wb-inspector .wb-inspection'),
-      ).toContainText('"revision": 0');
+      await expect
+        .poll(() => readApplicationState(page.locator('.wb:visible')))
+        .toContain('"revision": 0');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(900);
       mark('accept');
       await accept.click();
-      await expect(
-        page.locator('.wb:visible .wb-inspector .wb-inspection'),
-      ).toContainText('"revision": 1');
+      await expect
+        .poll(() => readApplicationState(page.locator('.wb:visible')))
+        .toContain('"revision": 1');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(900);
       await page
@@ -1301,9 +1302,9 @@ try {
         .getByRole('button', { name: /^Plan accepted[.]/ })
         .first()
         .press('Enter');
-      await expect(
-        page.locator('.wb:visible .wb-inspector .wb-inspection'),
-      ).toContainText('"revision": 1');
+      await expect
+        .poll(() => readApplicationState(page.locator('.wb:visible')))
+        .toContain('"revision": 1');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(700);
       const slider = page.getByRole('slider', { name: 'Seek captured event' });
@@ -1337,18 +1338,18 @@ try {
         await page.getByRole('tab', { name: 'State', exact: true }).click();
       }
       await slider.fill('0');
-      await expect(
-        page.locator('.wb:visible .wb-inspector .wb-inspection'),
-      ).toContainText('"revision": 0');
+      await expect
+        .poll(() => readApplicationState(page.locator('.wb:visible')))
+        .toContain('"revision": 0');
       await expect(page.locator('[data-replay]')).not.toContainText(
         'Record a demo',
       );
       await page
         .getByRole('button', { name: 'Return to live', exact: true })
         .click();
-      await expect(
-        page.locator('.wb:visible .wb-inspector .wb-inspection'),
-      ).toContainText('"revision": 1');
+      await expect
+        .poll(() => readApplicationState(page.locator('.wb:visible')))
+        .toContain('"revision": 1');
       expect(requests).toHaveLength(count);
       expect(browserRequests).toBe(httpCount);
       const replayRequests = browserRequests - httpCount;
@@ -1367,9 +1368,9 @@ try {
         await expect(
           page.getByRole('article', { name: 'Summary card' }),
         ).toHaveCount(2);
-        await expect(
-          page.locator('.wb:visible .wb-inspector .wb-inspection'),
-        ).toContainText('"revision": 1');
+        await expect
+          .poll(() => readApplicationState(page.locator('.wb:visible')))
+          .toContain('"revision": 1');
         expect(requests).toHaveLength(count);
       }
       await page
@@ -1425,9 +1426,9 @@ try {
               page.locator('.wb:visible .wb-chat .wb-panel-head'),
             ).toContainText('complete');
             await page.getByRole('tab', { name: 'State', exact: true }).click();
-            await expect(
-              page.locator('.wb:visible .wb-inspector .wb-inspection'),
-            ).toContainText('"revision": 0');
+            await expect
+              .poll(() => readApplicationState(page.locator('.wb:visible')))
+              .toContain('"revision": 0');
           }
         }
         outcome = 'success';

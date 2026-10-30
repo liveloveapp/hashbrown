@@ -15,7 +15,13 @@ export function inspectorPanelText(host: HTMLElement): string {
 /** Chooses a panel mode and returns the text of its code block. */
 export function inspectorPre(host: HTMLElement, id: string): string | null {
   chooseInspectorMode(host, id);
-  return host.querySelector('[data-captured] pre')?.textContent ?? null;
+  // The State tree exposes its value as JSON on the tree element.
+  return (
+    host.querySelector<HTMLElement>('[data-captured] [role=tree]')?.dataset
+      .json ??
+    host.querySelector('[data-captured] pre')?.textContent ??
+    null
+  );
 }
 
 /**

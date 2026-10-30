@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 /**
  * Chooses a mode in the inspector panel's toggle by its explicit mode id,
@@ -28,8 +28,13 @@ export async function readInspectorJson(
   id: string,
 ): Promise<ReturnType<typeof JSON.parse>> {
   await showInspectorMode(root, id);
+  const panel = root.locator('.wb-inspector .wb-inspection');
+  // The State tree exposes its value as JSON on the tree element.
+  const tree = panel.locator('[role="tree"]');
   return JSON.parse(
-    await root.locator('.wb-inspector .wb-inspection pre').innerText(),
+    (await tree.count())
+      ? ((await tree.getAttribute('data-json')) ?? 'null')
+      : await panel.locator('pre').innerText(),
   );
 }
 
@@ -67,4 +72,26 @@ export async function readFirstSection(
   return selected === 'State'
     ? JSON.parse(await readApplicationState(root))
     : readInspectorJson(root, 'top');
+}
+
+/**
+ * Waits until the inspector panel shows the text. The State tree is read
+ * through the JSON it exposes, since its rows do not contain JSON syntax.
+ *
+ * @param panel - The `.wb-inspection` locator.
+ * @param text - The substring to wait for.
+ */
+export async function expectInspectionText(
+  panel: Locator,
+  text: string,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      panel.evaluate(
+        (node) =>
+          node.querySelector<HTMLElement>('[role="tree"]')?.dataset['json'] ??
+          (node as HTMLElement).innerText,
+      ),
+    )
+    .toContain(text);
 }
