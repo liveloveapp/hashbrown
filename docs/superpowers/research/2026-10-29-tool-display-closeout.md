@@ -1,7 +1,7 @@
 # Activities and tool-call display: delivery closeout
 
-Updated 2026-10-30 against Hashbrown main `82695371` (#844) and B4.run main
-`c8e0583d` (#1124). GitHub merge state was checked for every PR below. This is the
+Updated 2026-10-30 against Hashbrown main `ea830dab` (including #832/#844)
+and published B4.run packages 0.15.8. GitHub merge state was checked for every PR below. This is the
 current inventory; the original specs retain their historical baseline and
 binding Rules. This report does not claim the entire effort is finished.
 
@@ -16,6 +16,7 @@ binding Rules. This report does not claim the entire effort is finished.
 | Bedrock | [#736](https://github.com/liveloveapp/hashbrown/pull/736) | Provider steps, native history and Nova citations. Native interpreter normalization does not add a public code-execution enabling key. |
 | Plain LangGraph | [B4 #1098](https://github.com/cacheplane/b4run/pull/1098), [Hashbrown #743](https://github.com/liveloveapp/hashbrown/pull/743) | Node `/ui` helper, Python restore recipe, Hashbrown consumer fixture and both framework guides. |
 | B4 provider built-ins | [B4 #1114](https://github.com/cacheplane/b4run/pull/1114) | Typed agent enabling, normalization, durable annotations and Google integration. |
+| B4 open-icon authoring | [B4 #1124](https://github.com/cacheplane/b4run/pull/1124), [SDK 0.15.8](https://www.npmjs.com/package/@b4run/sdk/v/0.15.8) | Custom nonempty icon names survive authoring, legacy/restore and parked-permission views; known-name narrowing stays intact and bundled glyphs fall back safely. |
 | Headless UX helpers | [#805](https://github.com/liveloveapp/hashbrown/pull/805) | Labels, grouping, summaries, sources/attribution and duration/presentation policy. |
 | Subagents | [#812](https://github.com/liveloveapp/hashbrown/pull/812) | Standard lifecycle and output provenance, nesting, suspension/resume and restore. |
 | Framework baseline | [#832](https://github.com/liveloveapp/hashbrown/pull/832) | Real pinned Node LangGraph and Mastra bridge execution, captured events, prepared-store replay/restore and both browser consumers. |
@@ -30,13 +31,18 @@ policies. A native execution image output is not OpenAI image-generation support
 ## Release evidence and historical corrections
 
 The actual plain-LangGraph import is `@b4run/langgraph/ui`, replacing the original
-unshipped `/tool-step` proposal. On this review date npm lists 0.15.7 with both
-`./dist/ui.js` and `./dist/ui.d.ts` under `exports['./ui']`. The original 0.15.2
-release warning in Hashbrown's guides is stale. Version 0.15.3 is not currently
-listed on npm; use verified available versions rather than treating its recovery
-history as a current install instruction. This review inspects the published
-export map and imports the installed 0.15.7 helper, verifying emitToolStep and
-toolStepMiddleware are functions. It is not a fresh live agent qualification.
+unshipped `/tool-step` proposal. Published 0.15.8 includes `./dist/ui.js` and
+`./dist/ui.d.ts` under `exports['./ui']`. The old 0.15.2 warning is historical;
+use a verified available release rather than treating the 0.15.3 recovery record
+as a current install instruction.
+
+An isolated npm installation of `@b4run/sdk` and `@b4run/langgraph` 0.15.8 verified
+custom-icon acceptance, rejection of empty/non-string icons, and unchanged
+membership in the ten recommended glyph names. It also imported all 27 shared
+fixtures and `foldToolStepEvents`, imported `emitToolStep`/`toolStepMiddleware`,
+and read the published `/ui` declarations. The isolated peer versions were
+`@langchain/core` 1.3.2, `langchain` 1.6.0 and `@langchain/langgraph` 1.5.3.
+This verifies the distribution, not a fresh live agent qualification.
 
 Early unchecked plans and statements such as “today neither project gets this
 right” describe the October 21 baseline. Do not reinterpret their historical
@@ -44,12 +50,6 @@ checkboxes as missing implementation or rewrite the shared merge Rules.
 
 ## Still open
 
-- **B4 open-icon release:** [B4 #1124](https://github.com/cacheplane/b4run/pull/1124)
-  merged as `c8e0583d`. It accepts custom nonempty icon names through authoring,
-  legacy/restore and parked-permission projections. The known-name predicate
-  retains its narrowing semantics; bundled glyph kits fall back safely for
-  custom names. Publication verification is pending; do not claim the existing
-  0.15.7 package contains this change.
 - **OpenAI image generation:** a separate remaining adapter slice. Azure image
   generation remains outside this streaming enabling table.
 - **Upstream AG-UI contribution:** prepare a concrete profile proposal only with
@@ -63,7 +63,8 @@ checkboxes as missing implementation or rewrite the shared merge Rules.
   frameworks need their own inventory and versioned qualification.
 - **File search stays deferred across this effort.** Generated-file citations
   from code execution do not enable file search. No store configuration is added.
-- **Hashbrown release notes remain user-owned.** No publication is included here.
+- **Hashbrown release notes remain user-owned.** This documentation PR does not
+  publish Hashbrown.
 
 ## Current framework evidence and limits
 
@@ -115,7 +116,7 @@ passed another repository's versions or tests.
 
 ## Closeout verification
 
-The refreshed website suite passed 2,307 tests across 267 files, followed by
+The refreshed website suite passed 2,390 tests across 269 files, followed by
 website lint and a production build. Existing API Extractor/compiler and
 forgotten-export, color-environment and dynamic filesystem tracing warnings
 remain. #832/#844's CI and the versioned corpus establish

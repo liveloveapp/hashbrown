@@ -86,7 +86,7 @@ qualify model transports, not these orchestration frameworks.
 **LangGraph:** qualify Node and Python separately, including unstreamed late
 START, held CUSTOM steps, errors, interrupts, checkpoint restore and parallel
 children. Baseline without /ui first, then optional @b4run/langgraph/ui. The
-published 0.15.7 export is available; do not imply it fixes every upstream bridge.
+published 0.15.8 export is available; do not imply it fixes every upstream bridge.
 For Python, reuse the checkpoint-pinned snapshot projection recipe. For Node,
 audit the bridge's current extension points before proposing a wrapper around
 private methods. Native SDK event streaming remains a distinct transport design.
