@@ -138,3 +138,24 @@ test('remembers the chosen mode per tab without leaking between tabs', () => {
   expect(memory.get('json')).toBe('resolved');
   expect(memory.get('state')).toBeUndefined();
 });
+
+test('drops trailing connector words from the two-word mode labels', () => {
+  const input = {
+    tab: 'model',
+    frame: null,
+    application: {},
+    raw: null,
+  };
+
+  const modes = workbenchInspectorModes({
+    ...input,
+    top: { heading: 'Browser-local model', value: 1 },
+    bottom: { heading: 'Preparation and inference', value: 2 },
+  });
+
+  expect(modes.map((mode) => mode.label)).toEqual([
+    'Browser-local model',
+    'Preparation',
+    'Raw',
+  ]);
+});

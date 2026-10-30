@@ -1,3 +1,4 @@
+import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -60,12 +61,8 @@ export async function verifyServerWorkbench(options: {
     };
     const state = async () => {
       await tab('Server');
-      const source = JSON.parse(
-        await root.locator('.wb-inspector .wb-inspection pre').innerText(),
-      );
-      const detail = JSON.parse(
-        await root.locator('.wb-inspector [data-detail] pre').innerText(),
-      );
+      const source = await readInspectorJson(root, 'top');
+      const detail = await readInspectorJson(root, 'bottom');
       return { ...source, ...detail } as WorkbenchServerHistoryState;
     };
     const messages = async () => {

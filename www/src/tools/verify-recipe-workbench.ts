@@ -8,6 +8,7 @@ import type { Decision } from '@hashbrownai/core';
 import { workbenchSelectionMinConfidence } from '../../examples/quickstart/runtime/workbench-recipes';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
+import { readInspectorJson, showInspectorMode } from './verify-inspector-modes';
 import { writeFileSync } from 'node:fs';
 
 type RecipeLesson = 'magic-text' | 'predictions' | 'ui-selection';
@@ -97,7 +98,7 @@ export async function verifyRecipeWorkbench(options: {
           html: article.innerHTML,
         })),
         inspector: text('.wb-inspector .wb-inspection'),
-        context: text('.wb-inspector [data-detail]'),
+        context: text('.wb-inspector [data-captured]'),
       };
     });
     writeFileSync(
@@ -231,7 +232,8 @@ export async function verifyRecipeWorkbench(options: {
       const url = page.url();
       mark('citation');
       await citation.click();
-      await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
+      await showInspectorMode(root, 'bottom');
+      await expect(root.locator('.wb-inspector [data-captured]')).toContainText(
         'https://hashbrown.dev',
       );
       expect(page.url()).toBe(url);
@@ -303,9 +305,10 @@ export async function verifyRecipeWorkbench(options: {
       const useView = selections
         .first()
         .getByRole('button', { name: 'Use view', exact: true });
-      const detail = JSON.parse(
-        await root.locator('.wb-inspector [data-detail] pre').innerText(),
-      ) as { selected: string[]; confidence: number };
+      const detail = (await readInspectorJson(root, 'bottom')) as {
+        selected: string[];
+        confidence: number;
+      };
       expect(detail.confidence).toBe(firstConfidence);
       expect(detail.selected).toEqual(firstManualChoice ? [] : ['summary']);
       if (firstManualChoice) {
@@ -384,9 +387,10 @@ export async function verifyRecipeWorkbench(options: {
       const useView = selections
         .last()
         .getByRole('button', { name: 'Use view', exact: true });
-      const detail = JSON.parse(
-        await root.locator('.wb-inspector [data-detail] pre').innerText(),
-      ) as { selected: string[]; confidence: number };
+      const detail = (await readInspectorJson(root, 'bottom')) as {
+        selected: string[];
+        confidence: number;
+      };
       expect(detail.confidence).toBe(secondChoiceConfidence);
       expect(detail.selected).toEqual(
         lowConfidenceSecondChoice ? [] : ['steps'],
@@ -548,12 +552,14 @@ export async function verifyRecipeWorkbench(options: {
           .last()
           .press('Enter');
         await tab('JSON');
-        await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
-          `"confidence": ${secondChoiceConfidence}`,
-        );
-        const capturedSelection = JSON.parse(
-          await root.locator('.wb-inspector [data-detail] pre').innerText(),
-        ) as { selected: string[]; confidence: number };
+        await showInspectorMode(root, 'bottom');
+        await expect(
+          root.locator('.wb-inspector [data-captured]'),
+        ).toContainText(`"confidence": ${secondChoiceConfidence}`);
+        const capturedSelection = (await readInspectorJson(root, 'bottom')) as {
+          selected: string[];
+          confidence: number;
+        };
         expect(capturedSelection.selected).toEqual(
           lowConfidenceSecondChoice ? [] : ['steps'],
         );
@@ -595,7 +601,8 @@ export async function verifyRecipeWorkbench(options: {
     if (lesson === 'magic-text') {
       const beforeCitation = requestCount();
       await text.last().locator('a[role="doc-noteref"]').first().click();
-      await expect(root.locator('.wb-inspector [data-detail]')).toContainText(
+      await showInspectorMode(root, 'bottom');
+      await expect(root.locator('.wb-inspector [data-captured]')).toContainText(
         'https://hashbrown.dev',
       );
       expect(requestCount()).toBe(beforeCitation);
@@ -691,11 +698,12 @@ export async function verifyRecipeWorkbench(options: {
           if (lesson === 'magic-text') {
             await tab('Markdown');
             await expect(text.last()).toBeVisible();
+            await showInspectorMode(root, 'bottom');
             await expect(
-              root.locator('.wb-inspector [data-detail]'),
+              root.locator('.wb-inspector [data-captured]'),
             ).toContainText('"isComplete": true');
             await expect(
-              root.locator('.wb-inspector [data-detail]'),
+              root.locator('.wb-inspector [data-captured]'),
             ).toContainText('"outcome": "error"');
             if (outcome === 'error') {
               options.outcome('success');

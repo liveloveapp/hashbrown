@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 /**
  * Asserts the shell opens at its recording defaults: expanded sidebar, every
- * section open, a 44/56 split, and the inspector pair side by side (or, on the Requests tab, the
+ * section open, a 44/56 split, and one inspector panel (or, on the Requests tab, the
  * overview slider above the table).
  */
 export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
@@ -17,7 +17,7 @@ export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
   ).toHaveCount(0);
   const requests = root.locator('.wb-inspector .wb-requests');
   if ((await requests.count()) > 0) {
-    // The Requests tab shows an overview and a table; the pair does not exist.
+    // The Requests tab shows an overview and a table; there is no inspector panel.
     await expect(
       requests.getByRole('slider', { name: 'Seek request timeline' }),
     ).toBeVisible();
@@ -25,18 +25,12 @@ export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
     await expect(requests.locator('table.wb-requests-table')).toBeAttached();
     return;
   }
-  const captured = await root
-    .locator('.wb-inspector [data-captured]')
-    .boundingBox();
-  const detail = await root
-    .locator('.wb-inspector [data-detail]')
-    .boundingBox();
-  expect(captured).not.toBeNull();
-  expect(detail).not.toBeNull();
-  expect(
-    Math.abs((captured?.y ?? 0) - (detail?.y ?? Infinity)),
-  ).toBeLessThanOrEqual(1);
-  expect(detail?.x ?? 0).toBeGreaterThan(captured?.x ?? 0);
+  // One panel per tab: a single section with a mode toggle, no side-by-side pair.
+  await expect(root.locator('.wb-inspector [data-captured]')).toHaveCount(1);
+  await expect(root.locator('.wb-inspector [data-detail]')).toHaveCount(0);
+  await expect(
+    root.getByRole('radiogroup', { name: 'Inspector view', exact: true }),
+  ).toBeVisible();
 }
 
 /**

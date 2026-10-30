@@ -25,8 +25,25 @@ export function parsePartialJson(text: string): unknown {
   }
 }
 
+const connectors = new Set([
+  'and',
+  'of',
+  'the',
+  'for',
+  'with',
+  'to',
+  'by',
+  'from',
+]);
+
 function shortLabel(heading: string): string {
-  return heading.split(/\s+/).filter(Boolean).slice(0, 2).join(' ');
+  const words = heading.split(/\s+/).filter(Boolean).slice(0, 2);
+  while (
+    words.length > 1 &&
+    connectors.has(words[words.length - 1].toLowerCase())
+  )
+    words.pop();
+  return words.join(' ');
 }
 
 /**

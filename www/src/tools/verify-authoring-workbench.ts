@@ -1,3 +1,4 @@
+import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -78,14 +79,8 @@ export async function verifyAuthoringWorkbench(options: {
     const tab = async (name: string) => {
       await root.getByRole('tab', { name, exact: true }).click();
     };
-    const inspection = async () =>
-      JSON.parse(
-        await root.locator('.wb-inspector .wb-inspection pre').innerText(),
-      );
-    const detail = async () =>
-      JSON.parse(
-        await root.locator('.wb-inspector [data-detail] pre').innerText(),
-      );
+    const inspection = async () => readInspectorJson(root, 'top');
+    const detail = async () => readInspectorJson(root, 'bottom');
     const parser = async () => {
       await tab('Parser');
       return { ...(await inspection()), ...(await detail()) } as {

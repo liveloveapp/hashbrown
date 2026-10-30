@@ -54,6 +54,7 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
+import { showInspectorMode } from './verify-inspector-modes';
 import { hostedWorkbenchLessons as workbenchLessons } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 
@@ -1051,7 +1052,7 @@ try {
       await expect(page.locator('.wb:visible .wb-inspector')).toBeVisible();
       if (lesson.inspector !== 'Requests')
         await expect(
-          page.locator('.wb:visible .wb-inspector [data-detail]'),
+          page.locator('.wb:visible .wb-inspector [data-captured]'),
         ).toBeVisible();
       await expectWorkbenchDefaultLayout(page);
       await expect(
@@ -1080,8 +1081,9 @@ try {
         await expect(
           page.locator('.wb:visible .wb-inspector .wb-inspection'),
         ).toContainText('403');
+        await showInspectorMode(page.locator('.wb:visible'), 'bottom');
         await expect(
-          page.locator('.wb:visible .wb-inspector [data-detail]'),
+          page.locator('.wb:visible .wb-inspector [data-captured]'),
         ).toContainText('Demo denial is enabled');
         expect(requests).toHaveLength(start);
         expect(browserRequests).toBe(1);

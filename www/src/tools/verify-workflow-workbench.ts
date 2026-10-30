@@ -1,3 +1,4 @@
+import { readInspectorJson, showInspectorMode } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -58,7 +59,7 @@ export async function verifyWorkflowWorkbench(options: {
     const approvals = root.locator('.wb-workflow-approvals');
     const activities = root.locator('.wb-workflow-activity');
     const capturedSection = root.locator('.wb-inspector [data-captured]');
-    const interpretedSection = root.locator('.wb-inspector [data-detail]');
+    const caption = capturedSection.locator('.wb-caption');
     const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
       await root.getByRole('tab', { name, exact: true }).click();
@@ -67,21 +68,28 @@ export async function verifyWorkflowWorkbench(options: {
       name: 'State' | 'Activities' | 'Interrupts',
     ) => {
       await tab(name);
-      const capturedValue = JSON.parse(
-        await inspection.locator('pre').innerText(),
-      );
-      const interpreted = JSON.parse(
-        await interpretedSection.locator('pre').innerText(),
-      );
+      // The State tab merges both sections in its Tree mode, with the
+      // application half under `moment`.
+      const stateTree =
+        name === 'State' ? await readInspectorJson(root, 'tree') : undefined;
+      const capturedValue = stateTree
+        ? Object.fromEntries(
+            Object.entries(stateTree).filter(([key]) => key !== 'moment'),
+          )
+        : await readInspectorJson(root, 'top');
+      const interpreted = stateTree
+        ? stateTree['moment']
+        : await readInspectorJson(root, 'bottom');
       const headings = {
         State: 'Application form and accepted plan',
         Activities: 'Validated progress and linked messages',
         Interrupts: 'Application approval form and outcome',
       };
-      await expect(interpretedSection).toContainText(headings[name]);
-      await expect(interpretedSection).toContainText(
-        'Captured SDK observations',
-      );
+      if (name !== 'State')
+        await expect(capturedSection.locator('h3')).toContainText(
+          headings[name],
+        );
+      await expect(caption).toContainText('Captured SDK observations');
       expect(interpreted).not.toHaveProperty('sdk');
       if (name === 'State') {
         expect(capturedValue).not.toHaveProperty('messages');
@@ -147,7 +155,10 @@ export async function verifyWorkflowWorkbench(options: {
     await expect(root.locator('.wb-detail')).toHaveCount(0);
     await expect(root.getByRole('tablist')).toHaveCount(1);
     await expect(capturedSection).toBeVisible();
-    await expect(interpretedSection).toBeVisible();
+    await expect(
+      root.getByRole('radiogroup', { name: 'Inspector view', exact: true }),
+    ).toBeVisible();
+    await expect(root.locator('.wb-inspector [data-detail]')).toHaveCount(0);
     await expect(root).not.toHaveClass(/\bwb-rail\b/);
     await expect(root.locator('.wb-split')).toHaveAttribute(
       'aria-valuenow',
@@ -156,11 +167,6 @@ export async function verifyWorkflowWorkbench(options: {
     await expect(
       root.locator('.wb-nav-heading[aria-expanded=false]'),
     ).toHaveCount(0);
-    const capturedBox = await capturedSection.boundingBox();
-    const interpretedBox = await interpretedSection.boundingBox();
-    expect(capturedBox).not.toBeNull();
-    expect(interpretedBox).not.toBeNull();
-    expect(capturedBox?.y).toBe(interpretedBox?.y);
     await expect(
       root.getByRole('button', { name: 'Play', exact: true }).locator('svg'),
     ).toHaveCount(1);
@@ -372,18 +378,12 @@ export async function verifyWorkflowWorkbench(options: {
     expect(replayEvidence.interpreted.outcome).toBe(
       lesson === 'interrupts' ? 'paused' : 'complete',
     );
-    const rawFrame = root.getByRole('button', {
-      name: 'Show captured frame',
-      exact: true,
-    });
-    const interpretedBeforeRaw = await interpretedSection
-      .locator('pre')
-      .innerText();
-    await rawFrame.click();
-    await expect(rawFrame).toHaveAttribute('aria-pressed', 'true');
-    await expect(capturedSection.locator(':scope > header h3')).toContainText(
-      '·',
-    );
+    await showInspectorMode(root, 'bottom');
+    const interpretedBeforeRaw = await inspection.locator('pre').innerText();
+    await showInspectorMode(root, 'raw');
+    await expect(
+      root.locator('.wb-inspector [role="radio"][data-mode="raw"]'),
+    ).toHaveAttribute('aria-checked', 'true');
     const rawCapture = JSON.parse(await inspection.locator('pre').innerText());
     expect(rawCapture.sdk.messages.length).toBeGreaterThan(0);
     expect(rawCapture.event).toEqual(
@@ -410,11 +410,11 @@ export async function verifyWorkflowWorkbench(options: {
         recoveryRequired: rawCapture.sdk.recoveryRequired ?? false,
       });
     }
-    expect(await interpretedSection.locator('pre').innerText()).toBe(
+    await showInspectorMode(root, 'bottom');
+    expect(await inspection.locator('pre').innerText()).toBe(
       interpretedBeforeRaw,
     );
-    await rawFrame.click();
-    await expect(rawFrame).toHaveAttribute('aria-pressed', 'false');
+    await showInspectorMode(root, 'top');
     await hold();
     await root.getByRole('slider', { name: 'Seek captured event' }).fill('0');
     await expect(root.locator('.wb-workflow-reply')).toHaveCount(0);
@@ -457,17 +457,7 @@ export async function verifyWorkflowWorkbench(options: {
       ).toBe(true);
       await expect(state).toBeVisible();
       if (lesson === 'interrupts') await expect(approvals).toBeVisible();
-      const narrowCaptured = await capturedSection.boundingBox();
-      const narrowInterpreted = await interpretedSection.boundingBox();
-      expect(narrowCaptured).not.toBeNull();
-      expect(narrowInterpreted).not.toBeNull();
-      if (!narrowCaptured || !narrowInterpreted)
-        throw new Error(
-          'Missing workflow inspector sections on narrow viewport',
-        );
-      expect(narrowInterpreted.y).toBeGreaterThanOrEqual(
-        narrowCaptured.y + narrowCaptured.height,
-      );
+      await expect(capturedSection).toBeVisible();
       await page.setViewportSize({ width: 1600, height: 1000 });
     }
     if (!live) {

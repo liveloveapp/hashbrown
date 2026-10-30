@@ -1633,12 +1633,14 @@ export function mountWorkbench(
                 : frame.source
       : 'Waiting for captured data';
     caption.textContent = frame
-      ? `${sourcePhrase} · turn ${frame.turn} · event ${selectedIndex + 1}/${snapshot.events.length}`
+      ? `${sourcePhrase} · turn ${frame.turn} · event ${selectedIndex + 1}/${snapshot.events.length}${
+          (frame.status ?? snapshot.status) === 'loading' ? ' · streaming' : ''
+        }${historical ? '' : ' · live'}`
       : sourcePhrase;
     // The panel is off-screen on the Requests tab; skip highlighting it.
     if (!onRequests)
       rebuildKeepingFocus(inspection, 'data-sequence', () => {
-        inspection.replaceChildren(pre(mode.value, tab));
+        inspection.replaceChildren(pre(mode.value ?? undefined, tab));
       });
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =

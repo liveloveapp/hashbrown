@@ -233,7 +233,9 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(host.querySelector('.wb-inspection')?.textContent).toContain(
     'Trusted plan',
   );
-  expect(caption).toMatch(/^SDK parsed output · turn 1 · event \d+\/\d+$/);
+  expect(caption).toMatch(
+    /^SDK parsed output · turn 1 · event \d+\/\d+ · live$/,
+  );
   expect(tabs).not.toContain('Details');
   expect(tabs).not.toContain('Raw');
   expect(tabs).not.toContain('Console');
@@ -260,7 +262,7 @@ test('captions the panel with the loading turn and its event position', () => {
   store.send('Create a plan');
 
   expect(host.querySelector('.wb-caption')?.textContent).toMatch(
-    /· turn 1 · event 1\/1$/,
+    /· turn 1 · event 1\/1 · streaming · live$/,
   );
   shell.dispose();
 });

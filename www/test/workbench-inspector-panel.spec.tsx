@@ -12,15 +12,18 @@ function fakeStorage() {
   };
 }
 
-function mountPanel(lesson: {
-  id: string;
-  inspector: string;
-  format: 'ui';
-  title: string;
-}) {
+function mountPanel(
+  lesson: {
+    id: string;
+    inspector: string;
+    format: 'ui';
+    title: string;
+  },
+  format?: 'decision',
+) {
   const host = document.createElement('div');
   document.body.append(host);
-  const store = createWorkbenchStore();
+  const store = createWorkbenchStore(format);
   const shell = mountWorkbench(
     host,
     store,
@@ -116,7 +119,7 @@ test('Raw shows the frame json and the choice survives a tab round trip', () => 
   clickTab(host, 'UI');
 
   expect(json).not.toBe('');
-  expect(rawText).toContain('Trusted plan');
+  expect(rawText).toBe(json);
   expect(
     host.querySelector('[role=radio][aria-checked=true]')?.textContent,
   ).toBe('Raw');
@@ -130,7 +133,7 @@ test('captions the panel with its source, turn and event position', () => {
   streamPlan(store);
 
   expect(host.querySelector('.wb-inspector .wb-caption')?.textContent).toMatch(
-    /· turn \d+ · event \d+\/\d+$/,
+    /· turn \d+ · event \d+\/\d+( · live)?$/,
   );
   shell.dispose();
 });
@@ -148,5 +151,42 @@ test('a recipe lesson shows its two recipe modes plus Raw', () => {
   const labels = modeLabels(host);
   expect(labels).toHaveLength(3);
   expect(labels[2]).toBe('Raw');
+  shell.dispose();
+});
+
+test('shows the waiting text instead of null before a decision arrives', () => {
+  const { host, store, shell } = mountPanel(
+    {
+      id: 'decisions',
+      title: 'Decisions',
+      format: 'decision' as 'ui',
+      inspector: 'JSON',
+    },
+    'decision',
+  );
+
+  store.send('Decide');
+  chooseMode(host, 'Typed choice');
+
+  expect(host.querySelector('.wb-inspection pre')?.textContent).toBe(
+    'Waiting for captured data',
+  );
+  shell.dispose();
+});
+
+test('captions a loading capture as streaming and the newest event as live', () => {
+  const { host, store, shell } = mountPanel(generative);
+
+  store.send('Create a plan');
+  const loading = host.querySelector('.wb-caption')?.textContent;
+  store.settle('complete', 'stop');
+  const live = host.querySelector('.wb-caption')?.textContent;
+  store.seek(0);
+  const replay = host.querySelector('.wb-caption')?.textContent;
+
+  expect(loading).toMatch(/· event 1\/1 · streaming · live$/);
+  expect(live).toMatch(/· turn 1 · event \d+\/\d+ · live$/);
+  expect(replay).toMatch(/· turn 1 · event 1\/\d+/);
+  expect(replay).not.toContain('live');
   shell.dispose();
 });
