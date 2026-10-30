@@ -864,11 +864,12 @@ body {
 .wb-requests-playhead::before {
   content: '';
   position: absolute;
-  /* Centred on the strip so it clears the flag above and the axis below. */
-  top: calc(50% - 6px);
-  left: -5px;
-  width: 12px;
-  height: 12px;
+  /* Centred on the strip so it clears the flag above and the axis below, and on the 2px line (border-box: the 3px ring is inside the 16px). */
+  top: calc(50% - 8px);
+  left: -7px;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
   border: 3px solid var(--wb-cobalt);
   border-radius: 999px;
   background: #fff;
