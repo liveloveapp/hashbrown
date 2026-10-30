@@ -16,6 +16,9 @@ Connect a plain LangGraph agent to Hashbrown through a standard AG-UI endpoint. 
 
 > Release boundary: `@b4run/langgraph/ui` is not published in `@b4run/langgraph` 0.15.2. Use this guide only once a release explicitly includes that subpath. The Python source recipe below does not require a B4 Python package.
 
+<hb-diagram diagram="langgraph-agent-boundary">
+</hb-diagram>
+
 ## Describe JavaScript server tools
 
 The Node-only helper exports `toolStepMiddleware`, `emitToolStep`, `ToolStepDisplay` and `ToolStepMiddlewareOptions`. Its optional peer baseline is `@langchain/core` 1.2.12, `langchain` 1.5.12 and `@langchain/langgraph` 1.4.17. Install compatible peers in your server project alongside a release containing `/ui`.

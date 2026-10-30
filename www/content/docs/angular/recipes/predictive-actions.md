@@ -14,7 +14,7 @@ Predictive suggestions offer a short list of useful next actions from the curren
 
 Let’s suggest the next step for an article draft. Each explicit request captures a revision and a fresh context ID. If the draft changes while the response arrives, those suggestions become stale.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-prediction-freshness"> </hb-diagram>
 
 ## Request a suggestion from a snapshot
 

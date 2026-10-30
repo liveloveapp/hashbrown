@@ -14,7 +14,7 @@ A conversation is a sequence of messages with roles. A user message starts a tur
 
 A turn and a provider request are different units. A simple text reply may need one request. A tool-using turn may need a request to choose a tool, a handler result, and another request to produce the reply. Keep that distinction in mind when showing progress or investigating a failure.
 
-<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+<hb-diagram diagram="concept-conversation-turn"> </hb-diagram>
 
 ## Create a conversation
 

@@ -14,7 +14,7 @@ Sometimes the data and components are already known, and only the choice of view
 
 Let’s choose how to display a delivery. A low-confidence choice should leave manual controls available. Selecting a view does not grant access to its data.
 
-<hb-concept-diagram concept="decisions"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-ui-selection-branches"> </hb-diagram>
 
 ## Choose among application views
 

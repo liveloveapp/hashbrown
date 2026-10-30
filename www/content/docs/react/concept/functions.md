@@ -14,7 +14,7 @@ A tool is an application function a model can ask to call. Its name, description
 
 Use tools when an answer depends on current application data or a checked action. A model cannot infer today’s inventory from its training data. Give it a focused way to read inventory instead of pasting every product into every prompt. Keep reads separate from writes so a useful lookup does not also change application state.
 
-<hb-concept-diagram concept="tools"> </hb-concept-diagram>
+<hb-diagram diagram="concept-tools-round-trip"> </hb-diagram>
 
 ## Give the assistant a current value
 

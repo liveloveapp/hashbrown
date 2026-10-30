@@ -14,7 +14,7 @@ Natural-language input can give a form a useful first draft. A customer describe
 
 Keep generated data, editable fields, and submitted application state separate. A response arriving in the browser must not submit the form or overwrite edits made while generation was in progress.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-form-state-boundaries"> </hb-diagram>
 
 ## Generate a form draft
 

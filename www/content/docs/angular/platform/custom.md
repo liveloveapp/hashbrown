@@ -14,8 +14,8 @@ A custom provider connects your model SDK to Hashbrown's existing client contrac
 
 The teaser demonstrates the existing OpenAI-backed client flow. It does not demonstrate a new provider.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="direct-provider-request-boundary">
+</hb-diagram>
 
 For an ASP.NET Core backend using OpenAI or Azure OpenAI, start with the [tested .NET integration](/docs/angular/platform/dotnet).
 
@@ -66,6 +66,9 @@ export interface CustomTextStreamOptions {
 The client does not choose a provider model. Bind a model to the endpoint, choose one from authenticated server-side policy, or expose separate endpoints for separate model classes.
 
 ## Map the Provider Stream
+
+<hb-diagram diagram="custom-provider-event-lifecycle">
+</hb-diagram>
 
 The exact SDK types differ by vendor, but the event lifecycle remains the same. This focused text example shows the required run and message events.
 

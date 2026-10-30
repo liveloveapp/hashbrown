@@ -14,7 +14,7 @@ A generative UI conversation answers with application components as well as text
 
 Let’s make a delivery assistant that can display a status card. The first implementation is read-only. Adding an Accept or Save button later requires a separate handler that checks completion, current data, and permission.
 
-<hb-concept-diagram concept="conversation"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-ui-conversation-ownership"> </hb-diagram>
 
 ## Build a conversation with a trusted card
 

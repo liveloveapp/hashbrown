@@ -28,8 +28,7 @@ Write down a small set of representative inputs before comparing models. Include
 
 A fast first token is useful for a text preview. A short, valid completed result may matter more for a decision or an application write. Measure the behavior your user actually needs.
 
-<hb-concept-diagram concept="client-server">
-</hb-concept-diagram>
+<hb-diagram diagram="request-boundary"> </hb-diagram>
 
 ## Select the model on the server
 

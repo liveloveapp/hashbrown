@@ -16,6 +16,8 @@ Angular uses Threadplane’s AG-UI agent runtime, rather than a Hashbrown chat r
 
 Threadplane owns the Angular chat screen and its AG-UI frontend runtime. Hashbrown streams the response from our server. If you're replacing a `chatResource` screen, start with the [migration checklist](/docs/angular/migrations/threadplane).
 
+<hb-diagram diagram="recipe-threadplane-angular"> </hb-diagram>
+
 ## Before we start
 
 Start with the [Quickstart server](/docs/angular/start/quick) and an Angular application. This walkthrough’s installed build uses **Angular 22.1.1** and **Threadplane chat and AG-UI 0.3.3**. The packages support Angular 20–22; satisfy the peer dependencies for the version you choose. Hashbrown's text adapter accepts the standard AG-UI run input and streams AG-UI events, which Threadplane's adapter can consume.

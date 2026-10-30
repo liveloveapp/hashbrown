@@ -14,7 +14,7 @@ Saving a text conversation lets a user refresh a page and continue with the earl
 
 Let’s store only completed user and assistant text. Loading it should replace history without generating a reply; the next explicit user message starts the next request.
 
-<hb-concept-diagram concept="persistence"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-browser-text-round-trip"> </hb-diagram>
 
 ## Store a bounded text document
 

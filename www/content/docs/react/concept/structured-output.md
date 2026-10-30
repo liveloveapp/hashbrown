@@ -14,7 +14,7 @@ Structured output gives an application typed data instead of prose it must inter
 
 Use it for extracting form values, classifying a request with explanations, or producing a proposal for review. Choose [generative UI](/docs/react/concept/components) when the model should also choose components. A valid shape is one part of accepting a result: completion, business rules, and permission to perform a write still belong to the application.
 
-<hb-concept-diagram concept="structured-output"> </hb-concept-diagram>
+<hb-diagram diagram="concept-structured-contract"> </hb-diagram>
 
 ## Extract a book request
 

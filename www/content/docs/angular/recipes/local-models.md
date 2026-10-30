@@ -14,7 +14,7 @@ A local model generates on the user’s device instead of sending prompts to a h
 
 Let’s extract a trip destination and duration from a short request. We will explicitly prepare the browser-managed model, stream a typed draft, and check successful completion and validate the parsed destination and day count before showing a ready brief. A local transport uses the same structured chat contract; it does not remove validation or authorization requirements.
 
-<hb-concept-diagram concept="local-models"> </hb-concept-diagram>
+<hb-diagram diagram="recipe-native-model-preparation"> </hb-diagram>
 
 ## Choose where the model runs
 
