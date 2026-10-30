@@ -27,6 +27,88 @@
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/packages/dotnet/.gitignore"
+    ],
+    "suiteTooling": [
+      "{projectRoot}/project.json",
+      "{projectRoot}/test-suites.ts",
+      "{projectRoot}/jest.config.ts",
+      "{projectRoot}/tsconfig.spec.json",
+      "{projectRoot}/harness/**/*.ts",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/jest.preset.js",
+      "{workspaceRoot}/.nvmrc"
+    ],
+    "harnessTests": [
+      "suiteTooling",
+      "{projectRoot}/jest.harness.config.ts",
+      "{projectRoot}/tests/fixtures/**/*.ts",
+      "{projectRoot}/tests/live-browser-fixture.spec.ts",
+      "{projectRoot}/tests/live-budget.spec.ts",
+      "{projectRoot}/tests/live-configuration.spec.ts",
+      "{projectRoot}/tests/live-diagnostics.spec.ts",
+      "{projectRoot}/tests/live-failure-phase.spec.ts",
+      "{projectRoot}/tests/live-native-approval.spec.ts",
+      "{projectRoot}/tests/live-native-stage.spec.ts",
+      "{projectRoot}/tests/live-wait-policy.spec.ts",
+      "{projectRoot}/tests/local-native-approval-browser.spec.ts",
+      "{projectRoot}/tests/recovery-timings.spec.ts",
+      "{projectRoot}/tests/routed-endpoint.spec.ts",
+      "{projectRoot}/tests/stable-model-router.spec.ts",
+      "{projectRoot}/tests/terminate-fixture.spec.ts",
+      "{projectRoot}/tests/wait-for-native-recovery.spec.ts"
+    ],
+    "runtimeTests": [
+      "suiteTooling",
+      "{projectRoot}/jest.runtime.config.ts",
+      "{projectRoot}/**/*.cs",
+      "{projectRoot}/**/*.csproj",
+      "{projectRoot}/**/*.props",
+      "{projectRoot}/**/*.targets",
+      "{projectRoot}/global.json",
+      "{projectRoot}/nuget.config",
+      "{projectRoot}/packages.lock.json",
+      "{projectRoot}/tests/fixtures/**/*",
+      "{projectRoot}/nuget-consumer/role-shape.cjs",
+      "{projectRoot}/nuget-consumer/role-shape.d.cts",
+      "{workspaceRoot}/packages/dotnet/**/*",
+      "{workspaceRoot}/packages/core/**/*",
+      "{workspaceRoot}/tools/conformance/hosts/{react,angular}/src/recovery.ts",
+      "{workspaceRoot}/tools/conformance/harness/{app-driver,event-gate}.ts",
+      "{projectRoot}/tests/browser-tool-schema.spec.ts",
+      "{projectRoot}/tests/durable-interrupts.spec.ts",
+      "{projectRoot}/tests/endpoint-registration.spec.ts",
+      "{projectRoot}/tests/feasibility.spec.ts",
+      "{projectRoot}/tests/interrupt-resume.spec.ts",
+      "{projectRoot}/tests/live-approval-journal.spec.ts",
+      "{projectRoot}/tests/live-fixture.spec.ts",
+      "{projectRoot}/tests/native-approval-adapter.spec.ts",
+      "{projectRoot}/tests/native-approval-admission-order.spec.ts",
+      "{projectRoot}/tests/native-approval-admission.spec.ts",
+      "{projectRoot}/tests/native-approval-decisions.spec.ts",
+      "{projectRoot}/tests/native-approval-durability.spec.ts",
+      "{projectRoot}/tests/native-approval-host.spec.ts",
+      "{projectRoot}/tests/native-approval-publication.spec.ts",
+      "{projectRoot}/tests/native-approval-store.spec.ts",
+      "{projectRoot}/tests/native-recovery-client.spec.ts",
+      "{projectRoot}/tests/native-session-durability.spec.ts",
+      "{projectRoot}/tests/native-session-host.spec.ts",
+      "{projectRoot}/tests/native-session-projection.spec.ts",
+      "{projectRoot}/tests/native-session-store.spec.ts",
+      "{projectRoot}/tests/pending-interrupts.spec.ts",
+      "{projectRoot}/tests/provider-authentication.spec.ts",
+      "{projectRoot}/tests/recovery-observer.spec.ts",
+      "{projectRoot}/tests/recovery-store-validation.spec.ts",
+      "{projectRoot}/tests/recovery.spec.ts",
+      "{projectRoot}/tests/request-contract.spec.ts",
+      "{projectRoot}/tests/responses-contract.spec.ts",
+      "{projectRoot}/tests/responses-recovery-evidence.spec.ts",
+      "{projectRoot}/tests/responses-recovery-native.spec.ts",
+      "{projectRoot}/tests/retention.spec.ts",
+      "{projectRoot}/tests/server-identity.spec.ts",
+      "{projectRoot}/tests/stateless-responses.spec.ts",
+      "{projectRoot}/tests/tools.spec.ts"
     ]
   },
   "implicitDependencies": [
@@ -77,31 +159,9 @@
       "dependsOn": ["restore"]
     },
     "test": {
-      "executor": "@nx/jest:jest",
-      "cache": true,
-      "dependsOn": ["build"],
-      "options": {
-        "jestConfig": "tools/conformance/dotnet/jest.config.ts",
-        "runInBand": true
-      },
-      "inputs": [
-        "sourceTests",
-        {
-          "runtime": "dotnet --version"
-        },
-        {
-          "runtime": "node --version"
-        },
-        {
-          "runtime": "node -p \"process.platform + '-' + process.arch\""
-        },
-        {
-          "env": "DOTNET_TEST_POSTGRES"
-        },
-        {
-          "env": "HASHBROWN_DOTNET_HOST_MODE"
-        }
-      ]
+      "executor": "nx:noop",
+      "cache": false,
+      "dependsOn": ["test-harness", "test-runtime", "test-package"]
     },
     "lint": {
       "executor": "nx:run-commands",
@@ -112,8 +172,8 @@
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
           "eslint harness/terminate-fixture.ts harness/wait-for-native-recovery.ts harness/browser-smoke-selection.ts tests/terminate-fixture.spec.ts tests/wait-for-native-recovery.spec.ts tests/browser-smoke-selection.spec.ts smoke.playwright.config.ts package-smoke.playwright.config.ts",
-          "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts",
-          "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts"
+          "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts test-suites.ts",
+          "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts test-suites.ts"
         ]
       },
       "dependsOn": ["build"],
@@ -247,6 +307,87 @@
       "options": {
         "command": "node tools/conformance/dotnet/nuget-consumer/run.mjs --pr"
       }
+    },
+    "test-harness": {
+      "executor": "@nx/jest:jest",
+      "cache": true,
+      "dependsOn": [],
+      "options": {
+        "jestConfig": "tools/conformance/dotnet/jest.harness.config.ts",
+        "runInBand": true
+      },
+      "inputs": [
+        "harnessTests",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "runtime": "node --version"
+        },
+        {
+          "runtime": "node -p \"process.platform + '-' + process.arch\""
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        },
+        {
+          "env": "HASHBROWN_DOTNET_HOST_MODE"
+        }
+      ]
+    },
+    "test-runtime": {
+      "executor": "@nx/jest:jest",
+      "cache": true,
+      "dependsOn": ["build"],
+      "options": {
+        "jestConfig": "tools/conformance/dotnet/jest.runtime.config.ts",
+        "runInBand": true
+      },
+      "inputs": [
+        "runtimeTests",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "runtime": "node --version"
+        },
+        {
+          "runtime": "node -p \"process.platform + '-' + process.arch\""
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        },
+        {
+          "env": "HASHBROWN_DOTNET_HOST_MODE"
+        }
+      ]
+    },
+    "test-package": {
+      "executor": "@nx/jest:jest",
+      "cache": true,
+      "dependsOn": ["test-runtime"],
+      "options": {
+        "jestConfig": "tools/conformance/dotnet/jest.package.config.ts",
+        "runInBand": true
+      },
+      "inputs": [
+        "sourceTests",
+        {
+          "runtime": "dotnet --version"
+        },
+        {
+          "runtime": "node --version"
+        },
+        {
+          "runtime": "node -p \"process.platform + '-' + process.arch\""
+        },
+        {
+          "env": "DOTNET_TEST_POSTGRES"
+        },
+        {
+          "env": "HASHBROWN_DOTNET_HOST_MODE"
+        }
+      ]
     }
   }
 }

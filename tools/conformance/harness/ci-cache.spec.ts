@@ -1,5 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const {
+  dotnetTestSuites,
+}: {
+  dotnetTestSuites: Record<
+    'harness' | 'runtime' | 'package',
+    readonly string[]
+  >;
+} = require(join(process.cwd(), 'tools/conformance/dotnet/test-suites'));
 import {
   filterUsingGlobPatterns,
   getTargetInputs,
@@ -114,7 +124,7 @@ test('source .NET test inputs cover the package guard closure and imported clien
     ]),
   ];
 
-  const covered = includes(node, 'test', files);
+  const covered = includes(node, 'test-package', files);
 
   expect(files.filter((file) => !covered.includes(file))).toEqual([]);
 });
@@ -131,10 +141,10 @@ test('source .NET tests do not hash unrelated browser UI and provider packages',
     'www/content/docs/react/start/workbench.md',
   ];
 
-  const inputs = getTargetInputs(nx, node, 'test');
+  const inputs = getTargetInputs(nx, node, 'test-package');
 
   expect(inputs.dependencyInputs).toEqual([]);
-  expect(includes(node, 'test', unrelated)).toEqual([]);
+  expect(includes(node, 'test-package', unrelated)).toEqual([]);
 });
 
 test('package qualification remains fresh and SDK builds retain commit provenance', () => {
@@ -158,3 +168,104 @@ test('package qualification remains fresh and SDK builds retain commit provenanc
     runtime: 'git rev-parse HEAD',
   });
 });
+
+for (const suite of ['harness', 'runtime']) {
+  test(`source .NET ${suite} cache excludes other suites and unrelated documentation`, () => {
+    const node = project('tools/conformance/dotnet');
+    const unrelated = [
+      '.github/workflows/pr-main.yml',
+      '.github/workflows/nightly.yml',
+      'www/content/docs/react/platform/dotnet.md',
+      'tools/conformance/dotnet/tests/package-upgrade.spec.ts',
+      ...(suite === 'harness'
+        ? [
+            'packages/dotnet/src/Hashbrown/Run.cs',
+            'packages/core/src/chat-runtime.ts',
+            'tools/conformance/dotnet/tests/recovery.spec.ts',
+          ]
+        : ['tools/conformance/dotnet/tests/live-budget.spec.ts']),
+    ];
+    const nx = readJson('nx.json') as NxJsonConfiguration;
+
+    const inputs = getTargetInputs(nx, node, `test-${suite}`);
+
+    expect(inputs.dependencyInputs).toEqual([]);
+    expect(includes(node, `test-${suite}`, unrelated)).toEqual([]);
+  });
+}
+
+test('source .NET runtime cache includes SDK, imported recovery and executable fixture dependencies', () => {
+  const node = project('tools/conformance/dotnet');
+  const files = [
+    'tools/conformance/dotnet/tests/recovery.spec.ts',
+    'tools/conformance/dotnet/tests/fixtures/native-approval-host.cs.txt',
+    'tools/conformance/dotnet/Program.cs',
+    'tools/conformance/dotnet/Hashbrown.Conformance.csproj',
+    'tools/conformance/dotnet/packages.lock.json',
+    'tools/conformance/dotnet/global.json',
+    'tools/conformance/dotnet/harness/http-fixture.ts',
+    'tools/conformance/dotnet/harness/dotnet-host.ts',
+    'tools/conformance/dotnet/nuget-consumer/role-shape.cjs',
+    'packages/dotnet/src/Hashbrown/Run.cs',
+    'packages/dotnet/src/Hashbrown/Hashbrown.csproj',
+    'packages/core/src/chat-runtime.ts',
+    'tools/conformance/hosts/react/src/recovery.ts',
+    'tools/conformance/hosts/angular/src/recovery.ts',
+    'tools/conformance/harness/app-driver.ts',
+    'tools/conformance/harness/event-gate.ts',
+    'tools/conformance/dotnet/jest.config.ts',
+    'tools/conformance/dotnet/jest.runtime.config.ts',
+    'tools/conformance/dotnet/test-suites.ts',
+    'tools/conformance/dotnet/tsconfig.spec.json',
+    'package.json',
+    'package-lock.json',
+    'tsconfig.base.json',
+    'jest.preset.js',
+  ];
+
+  const covered = includes(node, 'test-runtime', files);
+
+  expect(covered).toEqual(files);
+});
+
+test('source .NET harness cache includes its tests, shared utilities and TypeScript fixtures', () => {
+  const node = project('tools/conformance/dotnet');
+  const files = [
+    'tools/conformance/dotnet/tests/live-browser-fixture.spec.ts',
+    'tools/conformance/dotnet/tests/fixtures/live-native-approval.ts',
+    'tools/conformance/dotnet/harness/live-browser-fixture.ts',
+    'tools/conformance/dotnet/jest.config.ts',
+    'tools/conformance/dotnet/jest.harness.config.ts',
+    'tools/conformance/dotnet/test-suites.ts',
+    'tools/conformance/dotnet/tsconfig.spec.json',
+    'package.json',
+    'package-lock.json',
+    'tsconfig.base.json',
+    'jest.preset.js',
+  ];
+
+  const covered = includes(node, 'test-harness', files);
+
+  expect(covered).toEqual(files);
+});
+
+for (const suite of ['harness', 'runtime', 'package'] as const) {
+  test(`source .NET ${suite} cache covers every spec assigned to its manifest group`, () => {
+    const node = project('tools/conformance/dotnet');
+    const specs = dotnetTestSuites[suite].map(
+      (file) => `tools/conformance/dotnet/${file}`,
+    );
+
+    const covered = includes(node, `test-${suite}`, specs);
+
+    expect(covered).toEqual(specs);
+    if (suite !== 'package') {
+      const other = Object.entries(dotnetTestSuites)
+        .filter(([name]) => name !== suite)
+        .flatMap(([, files]) =>
+          files.map((file) => `tools/conformance/dotnet/${file}`),
+        );
+      expect(includes(node, `test-${suite}`, other)).toEqual([]);
+    }
+  });
+}
