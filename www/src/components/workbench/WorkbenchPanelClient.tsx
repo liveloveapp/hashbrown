@@ -148,7 +148,7 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
       Open full workbench <span aria-hidden="true">↗</span>
     </a>
   );
-  if (narrow) {
+  if (narrow && !props.source) {
     return (
       <NarrowPanel>
         {props.fallback}
@@ -156,7 +156,7 @@ export function WorkbenchPanelClient(props: WorkbenchPanelClientProps) {
       </NarrowPanel>
     );
   }
-  return <TabbedPanel {...props} openLink={openLink} />;
+  return <TabbedPanel {...props} narrow={narrow} openLink={openLink} />;
 }
 
 // The video fallback has nothing to seek: See it run only scrolls and marks.
@@ -195,12 +195,16 @@ function TabbedPanel({
   fallback,
   source,
   openLink,
-}: WorkbenchPanelClientProps & { openLink: ReactNode }) {
+  narrow,
+}: WorkbenchPanelClientProps & { openLink: ReactNode; narrow: boolean }) {
   const id = useId();
-  const tabs: readonly Tab[] = source
-    ? ['replay', 'live', 'source']
-    : ['replay', 'live'];
-  const [tab, setTab] = useState<Tab>('replay');
+  const tabs: readonly Tab[] = narrow
+    ? ['replay', 'source']
+    : source
+      ? ['replay', 'live', 'source']
+      : ['replay', 'live'];
+  const [selectedTab, setTab] = useState<Tab>('replay');
+  const tab = narrow && selectedTab === 'live' ? 'replay' : selectedTab;
   const [liveMounted, setLiveMounted] = useState(false);
   const [near, setNear] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -225,7 +229,7 @@ function TabbedPanel({
   // Mount the replay frame only as the panel nears the viewport.
   useEffect(() => {
     const element = panel.current;
-    if (near || !hasCapture || !element) return;
+    if (narrow || near || !hasCapture || !element) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -236,7 +240,7 @@ function TabbedPanel({
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [near, hasCapture]);
+  }, [narrow, near, hasCapture]);
 
   // Fetch the capture after the frame is ready and load it. Fall back to the
   // video on no ready, a ready for another embed, a failed or hung fetch, no
@@ -464,7 +468,7 @@ function TabbedPanel({
         {openLink}
       </div>
       <div {...panelProps('replay')}>
-        {!hasCapture || failed ? (
+        {narrow || !hasCapture || failed ? (
           fallback
         ) : near ? (
           <>
@@ -513,7 +517,7 @@ function TabbedPanel({
               </>
             )}
           </p>
-        ) : liveMounted ? (
+        ) : liveMounted && !narrow ? (
           <iframe
             ref={setLiveFrame}
             className={styles.frame}

@@ -468,7 +468,7 @@ export async function highlightWorkbenchSource(
         html: await highlightCode(
           readFileSync(quickstartPath(path), 'utf8').replace(/\n$/, ''),
           languageOf(path),
-          { transformers: [lineNumbers] },
+          { transformers: [lineNumbers], theme: 'github-light' },
         ),
       })),
     ),
