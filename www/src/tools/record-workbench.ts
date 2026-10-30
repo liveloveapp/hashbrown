@@ -14,10 +14,7 @@ import {
 /** Records the verified live lesson clients and publishes their local documentation media. */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import {
-  publishWorkbenchMedia,
-  workbenchMediaSuffixes,
-} from './workbench-media-publication';
+import { publishWorkbenchMedia } from './workbench-media-publication';
 import { resolve } from 'node:path';
 import { prepareWorkbenchCaptures } from './workbench-capture-file';
 import {
@@ -331,12 +328,6 @@ for (const report of reports) {
       `${base}-transcript.txt`,
       `${report.framework.toUpperCase()} · Local models\n\nActual native Chrome inference through the real Hashbrown framework structured-chat APIs and experimental_chrome transport. The existing dedicated test profile uses requested v4 browser configuration; this does not identify the loaded model or establish default-device availability. Model already available; no new model download. Actual-speed footage with reading pauses; no narration or hosted model request. Native stream EOF leads to SDK terminal events; original JSON validation and application acceptance are separate.\n\n${cues.map(([, , text]) => text).join('\n\n')}\n\nEach native turn receives explicit application context. Only fresh successful valid proposals can be accepted. Replay opens no sessions, makes no prompts or requests, and writes no application state. Separate labelled API fixtures test unsupported states, cancellation, malformed output and recovery; they are not inference footage.\n`,
     );
-  }
-  if (report.lesson === 'generative-ui') {
-    const overview = `canonical-workbench-${report.framework}`;
-    for (const suffix of workbenchMediaSuffixes)
-      copyFileSync(base + suffix, resolve(staging, overview + suffix));
-    publishIds.push(overview);
   }
   console.log(
     `${id}: ${duration.toFixed(2)}s; ${report.source} source verified and staged`,

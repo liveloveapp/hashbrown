@@ -6,45 +6,33 @@ import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
 import { readDoc, SDKS } from '../../src/lib/content';
 
 const guides = [
-  ['structured-form', ['concept', 'structured-output']],
-  ['streaming-data', ['concept', 'streaming']],
-  ['structured-form', ['recipes', 'natural-language-to-structured-data']],
+  ['structured-output', ['concept', 'structured-output']],
+  ['streaming', ['concept', 'streaming']],
+  ['natural-forms', ['recipes', 'natural-language-to-structured-data']],
 ] as const;
 
-test.each(['structured-form', 'streaming-data'])(
-  '%s has accessible, locally hosted recording assets',
-  (id) => {
-    const root = resolve(import.meta.dirname, '../../public/video/docs');
-    const suffixes = [
-      '.mp4',
-      '.webm',
-      '-poster.png',
-      '.vtt',
-      '-transcript.txt',
-    ];
+test.each(
+  ['structured', 'streaming', 'natural-forms'].flatMap((media) =>
+    SDKS.map((sdk) => `canonical-workbench-${media}-${sdk}`),
+  ),
+)('%s has accessible, locally hosted recording assets', (id) => {
+  const root = resolve(import.meta.dirname, '../../public/video/docs');
+  const suffixes = ['.mp4', '.webm', '-poster.png', '.vtt', '-transcript.txt'];
 
-    const missing = suffixes.filter(
-      (suffix) => !existsSync(resolve(root, id + suffix)),
-    );
+  const missing = suffixes.filter(
+    (suffix) => !existsSync(resolve(root, id + suffix)),
+  );
 
-    expect(id in DOCS_DEMOS).toBe(true);
-    expect(missing).toEqual([]);
-    expect(readFileSync(resolve(root, `${id}.vtt`), 'utf8')).toMatch(/^WEBVTT/);
-  },
-);
+  expect(id in DOCS_DEMOS).toBe(true);
+  expect(missing).toEqual([]);
+  expect(readFileSync(resolve(root, `${id}.vtt`), 'utf8')).toMatch(/^WEBVTT/);
+});
 
 test.each(SDKS)(
   '%s typed-data guides lead with their own recorded behavior',
   (sdk) => {
     const pages = guides.map(([demo, slug]) => ({
-      demo:
-        slug[1] === 'structured-output'
-          ? 'structured-output'
-          : slug[1] === 'streaming'
-            ? 'streaming'
-            : slug[1] === 'natural-language-to-structured-data'
-              ? 'natural-forms'
-              : demo,
+      demo,
       body: readDoc(sdk, slug)?.body ?? '',
     }));
 

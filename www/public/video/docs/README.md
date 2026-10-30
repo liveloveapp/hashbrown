@@ -1,6 +1,6 @@
 # Documentation demo media
 
-Current guides use 60 canonical recordings: the 28 Angular/React lesson pairs, two workbench overviews, and the separately installed Threadplane pair. Each recording has MP4, WebM, a poster, a result screenshot, measured WebVTT captions, and a plain-text walkthrough. See [the media inventory](../../../../docs/docs-media-inventory.md) for current guide paths and source boundaries.
+Current guides use 60 canonical recordings: the 28 Angular/React workbench lesson pairs, the production-recovery pair, and the separately installed Threadplane pair. Each recording has MP4, WebM, a poster, a result screenshot, measured WebVTT captions, and a plain-text walkthrough. See [the media inventory](../../../../docs/docs-media-inventory.md) for current guide paths and source boundaries.
 
 The standard recorder is `npx nx workbench-demo www`, with `WORKBENCH_LESSONS` selecting the teaching focus. Provider keys and model settings stay in the server environment. Hosted chat clips use actual provider output, with unchanged events paced at 20 ms and footage slowed to half speed. Decisions arrive whole. JavaScript runtime clips show real application-owned QuickJS execution without a model request. Local-model and Threadplane clips run at actual speed with reading pauses. None has narration.
 
@@ -19,7 +19,6 @@ No model calls or storage writes occur during synchronized replay. Provider even
 are paced unchanged for filming and footage is shown at half speed. Originals
 and reports remain in unique ignored capture directories. No narration.
 
-
 ## Canonical server-owned threads and public endpoints
 
 Updated 2026-10-27. The Angular and React `recipes/threads` and
@@ -34,18 +33,15 @@ advances the repository version; a stale save genuinely returns 409 and preserve
 unsaved SDK text until explicit reload. Only successful completed bounded text is
 saved. This is not an agent checkpoint.
 
-Access shows an anonymous 401, an authorized model request and a foreign-owner
-404. The local demo session is server-minted; the process-memory repository is
+Access shows an anonymous 401, an authorized model request and a foreign-owner 404. The local demo session is server-minted; the process-memory repository is
 isolated per session. These integrations demonstrate boundaries and are not
 production authentication or durable storage. No credentials appear in captures.
 
 All twenty-one lessons have two framework paths (42 total). Each new recording
 has MP4/WebM, measured captions, poster, result and an honest walkthrough.
 Unchanged provider events are paced 20 ms for filming and footage is half speed.
-Replay is inert. Preserve legacy examples/media for independent fixtures and
-bookmarks. Unique ignored capture directories retain masters and reports.
+Replay is inert. Unique ignored capture directories retain masters and reports.
 No SDK release.
-
 
 ## Canonical agent decisions, JSON parsing and natural forms
 
@@ -66,7 +62,7 @@ All twenty-eight lessons have two framework paths (56 total). Each new ID has bo
 codecs, measured captions, poster/result and a truthful walkthrough. Unchanged
 protocol event pacing and half-speed footage are disclosed. Replay performs no
 requests or writes. Unique ignored capture directories retain masters/reports.
-Keep legacy assets and standalone fixtures for old bookmarks. No SDK release.
+No SDK release.
 
 ## Canonical UI kits and chatbot
 

@@ -11,26 +11,23 @@ const guides = [
   ['javascript-runtime', ['concept', 'runtime']],
 ] as const;
 
-test.each(guides)(
-  'production guide media %s has complete accessible local assets',
-  (id) => {
-    const root = resolve(import.meta.dirname, '../../public/video/docs');
+test.each(
+  guides.flatMap(([lesson]) =>
+    SDKS.map((sdk) => `canonical-workbench-${lesson}-${sdk}`),
+  ),
+)('production guide media %s has complete accessible local assets', (id) => {
+  const root = resolve(import.meta.dirname, '../../public/video/docs');
 
-    const files = [
-      '.mp4',
-      '.webm',
-      '-poster.png',
-      '.vtt',
-      '-transcript.txt',
-    ].map((suffix) => `${id}${suffix}`);
+  const files = ['.mp4', '.webm', '-poster.png', '.vtt', '-transcript.txt'].map(
+    (suffix) => `${id}${suffix}`,
+  );
 
-    expect(id in DOCS_DEMOS).toBe(true);
-    expect(files.filter((file) => existsSync(resolve(root, file)))).toEqual(
-      files,
-    );
-    expect(readFileSync(resolve(root, `${id}.vtt`), 'utf8')).toMatch(/^WEBVTT/);
-  },
-);
+  expect(id in DOCS_DEMOS).toBe(true);
+  expect(files.filter((file) => existsSync(resolve(root, file)))).toEqual(
+    files,
+  );
+  expect(readFileSync(resolve(root, `${id}.vtt`), 'utf8')).toMatch(/^WEBVTT/);
+});
 
 test.each(SDKS)(
   '%s production guides begin with the behavior they demonstrate',
