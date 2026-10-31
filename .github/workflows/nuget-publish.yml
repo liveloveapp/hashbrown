@@ -1,0 +1,208 @@
+name: Publish qualified NuGet preview
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: nuget-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Qualify exact release archives
+    if: github.ref == 'refs/heads/main' && github.repository == 'liveloveapp/hashbrown'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      archive: ${{ steps.proof.outputs.archive }}
+      symbols: ${{ steps.proof.outputs.symbols }}
+      archiveSha256: ${{ steps.proof.outputs.archiveSha256 }}
+      symbolsSha256: ${{ steps.proof.outputs.symbolsSha256 }}
+      proofDirectory: ${{ steps.proof.outputs.proofDirectory }}
+    env:
+      NX_DAEMON: 'false'
+      NX_NO_CLOUD: 'true'
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+      PG_CONTAINER: hashbrown-nuget-qualify-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Require successful exact-SHA main CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/pr-main.yml/runs" \
+            -f head_sha="$GITHUB_SHA" -f branch=main -f per_page=100 > "$RUNNER_TEMP/main-ci.json"
+          node scripts/nuget-release.mjs require-ci "$RUNNER_TEMP/main-ci.json"
+      - run: npm ci
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start owned PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name "$PG_CONTAINER" \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec "$PG_CONTAINER" pg_isready -U postgres; then exit 0; fi
+            sleep 1
+          done
+          docker logs "$PG_CONTAINER"
+          exit 1
+      - name: Run full package acceptance once
+        run: npx nx package-acceptance dotnet-conformance
+      - name: Validate immutable release proof
+        id: proof
+        run: node scripts/nuget-release.mjs validate test-results/dotnet-package
+      - name: Upload sanitized qualified archives and proof
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-package-release
+          path: test-results/dotnet-package
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop owned PostgreSQL
+        if: always()
+        run: docker rm --force "$PG_CONTAINER" || true
+
+  publish:
+    name: Publish qualified package through NuGet OIDC
+    needs: qualify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: nuget
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: dotnet-package-release
+          path: ${{ runner.temp }}/qualified
+      - name: Revalidate proof and qualification job hashes before login
+        id: proof
+        env:
+          EXPECTED_ARCHIVE_SHA256: ${{ needs.qualify.outputs.archiveSha256 }}
+          EXPECTED_SYMBOLS_SHA256: ${{ needs.qualify.outputs.symbolsSha256 }}
+        run: node scripts/nuget-release.mjs validate "$RUNNER_TEMP/qualified"
+      - name: Exchange trusted publisher identity
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Push exact qualified archive and matching portable symbols
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          QUALIFIED_ARCHIVE: ${{ runner.temp }}/qualified/${{ steps.proof.outputs.archive }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # dotnet pushes the matching .snupkg next to this exact .nupkg automatically.
+          dotnet nuget push "$QUALIFIED_ARCHIVE" \
+            --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
+
+  verify-public:
+    name: Qualify the public repository-signed package
+    needs: [qualify, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      NX_DAEMON: 'false'
+      NX_NO_CLOUD: 'true'
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+      PG_CONTAINER: hashbrown-nuget-public-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: dotnet-package-release
+          path: ${{ runner.temp }}/qualified
+      - name: Revalidate original qualified artifact
+        id: proof
+        env:
+          EXPECTED_ARCHIVE_SHA256: ${{ needs.qualify.outputs.archiveSha256 }}
+          EXPECTED_SYMBOLS_SHA256: ${{ needs.qualify.outputs.symbolsSha256 }}
+        run: node scripts/nuget-release.mjs validate "$RUNNER_TEMP/qualified"
+      - name: Download public version and require organization ownership
+        id: public
+        run: node scripts/nuget-release.mjs download-public "$RUNNER_TEMP/public-nuget"
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start owned PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name "$PG_CONTAINER" \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec "$PG_CONTAINER" pg_isready -U postgres; then exit 0; fi
+            sleep 1
+          done
+          docker logs "$PG_CONTAINER"
+          exit 1
+      - name: Verify signature and payload, then run the full public acceptance graph without packing
+        env:
+          PUBLIC_ARCHIVE: ${{ steps.public.outputs.archive }}
+          QUALIFIED_ARCHIVE: ${{ runner.temp }}/qualified/${{ steps.proof.outputs.archive }}
+        run: >-
+          node tools/conformance/dotnet/nuget-consumer/run.mjs
+          --published-archive "$PUBLIC_ARCHIVE"
+          --qualified-archive "$QUALIFIED_ARCHIVE"
+      - name: Retain public download provenance
+        if: always() && steps.public.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p test-results/dotnet-package
+          cp "$RUNNER_TEMP/public-nuget/public-download.json" test-results/dotnet-package/public-download.json
+      - name: Upload sanitized public acceptance proof
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-public-acceptance
+          path: test-results/dotnet-package
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop owned PostgreSQL
+        if: always()
+        run: docker rm --force "$PG_CONTAINER" || true

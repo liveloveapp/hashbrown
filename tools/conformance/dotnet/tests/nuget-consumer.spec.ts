@@ -180,6 +180,9 @@ try {
  const trusted=JSON.parse(await fs.readFile(prepared.metadata,'utf8'));
  assert.ok((await fs.readdir(trusted.restoreNegative.sentinel)).includes('hashbrown.aspnetcore.nuspec'),'Sentinel nuspec must use the canonical global-cache filename');
  const archive=await fs.readFile(path.join(trusted.root,trusted.archive));
+ const {execFileSync}=await import('node:child_process');
+ assert.throws(()=>execFileSync('dotnet',[path.join(trusted.root,'package-hash/bin/Release/net10.0/PackageHash.dll'),'--published-archive',path.join(trusted.root,trusted.archive)],{encoding:'utf8',stdio:'pipe'}),/repository signature/i);
+
  for(const identity of [{...trusted.identity,id:'Wrong.Id'},{...trusted.identity,version:'0.1.0-preview.999'}])assert.throws(()=>v.validateArchive(archive,identity,trusted.revision),/candidate ID|version/i);
  const repository=path.join(parent,'repository');await fs.mkdir(repository);
  for(const file of Object.keys(trusted.sources)) {await fs.mkdir(path.dirname(path.join(repository,file)),{recursive:true});await fs.copyFile(path.join(trusted.repository,file),path.join(repository,file));}
@@ -657,6 +660,105 @@ assert.deepEqual(plan.map(x=>x.name),['candidate','npm','initial-qualification',
 assert.ok(plan.find(x=>x.name==='smoke').argv.includes('--smoke'));
 assert.ok(plan.find(x=>x.name==='regressions').argv.includes('--regressions'));
 `);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('public import requires signed identical payloads and the current repository revision', () => {
+  const body = `
+const revision='abc';
+const payload={
+ [v.IDENTITY.id+'.nuspec']:Buffer.from('<id>'+v.IDENTITY.id+'</id><version>'+v.IDENTITY.version+'</version><repository commit="abc" />'),
+ ['lib/net10.0/'+v.IDENTITY.id+'.dll']:Buffer.from('implementation'),
+ 'README.md':Buffer.from('readme'),
+};
+const signed={...payload,'.signature.p7s':Buffer.from('repository signature')};
+v.validatePublishedPayloads(signed,payload,v.IDENTITY,revision);
+assert.throws(()=>v.validatePublishedPayloads(payload,payload,v.IDENTITY,revision),/signature/i);
+assert.throws(()=>v.validatePublishedPayloads(signed,payload,v.IDENTITY,'wrong'),/revision/i);
+for(const mutation of [x=>x['README.md']=Buffer.from('changed'),x=>delete x['README.md'],x=>x['extra.txt']=Buffer.from('extra')]) {
+ const changed={...signed};mutation(changed);
+ assert.throws(()=>v.validatePublishedPayloads(changed,payload,v.IDENTITY,revision),/payload/i);
+}
+assert.throws(()=>v.validatePublishedPayloads(signed,signed,v.IDENTITY,revision),/unsigned/i);
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('public acceptance import is explicit full only and preserves the complete graph', () => {
+  const body = `
+const {acceptanceOptions,acceptancePlan}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/run.mjs')}`)});
+const args=['--published-archive','/tmp/public.nupkg','--qualified-archive','/tmp/original.nupkg'];
+assert.deepEqual(acceptanceOptions([]),{profile:'full'});
+assert.deepEqual(acceptanceOptions(['--pr']),{profile:'pr'});
+assert.deepEqual(acceptanceOptions(args),{profile:'full',publishedArchive:'/tmp/public.nupkg',qualifiedArchive:'/tmp/original.nupkg'});
+for(const invalid of [args.slice(0,2),args.slice(2),['--pr',...args], [...args,'--reuse'],['--published-archive','relative',...args.slice(2)],['--metadata','/tmp/reuse'],['--published-archive','/tmp/public.zip',...args.slice(2)],['--published-archive','/tmp/../tmp/original.nupkg',...args.slice(2)]])assert.throws(()=>acceptanceOptions(invalid),/archive|argument|reuse|absolute/i);
+const plan=acceptancePlan('/tmp/current.json','/tmp/npm.json','full',acceptanceOptions(args));
+assert.deepEqual(plan[0].argv.slice(-4),args);
+assert.deepEqual(plan.map(x=>x.name),acceptancePlan('/tmp/current.json','/tmp/npm.json').map(x=>x.name));
+assert.throws(()=>acceptancePlan('/tmp/current.json','/tmp/npm.json','pr',acceptanceOptions(args)),/full/i);
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('published staging never packs source and rejects canonical mismatches before consumer restore', () => {
+  const body = `
+const {stagePublishedCandidate,writeRestoreSentinel}=await import(${JSON.stringify(`file://${resolve('tools/conformance/dotnet/nuget-consumer/prepare.mjs')}`)});
+const {createHash}=await import('node:crypto');
+const zip=entries=>{
+ const locals=[],directory=[];let offset=0;
+ for(const [name,bytes] of Object.entries(entries)) {
+  const label=Buffer.from(name);const local=Buffer.alloc(30);local.writeUInt32LE(0x04034b50);local.writeUInt32LE(bytes.length,18);local.writeUInt32LE(bytes.length,22);local.writeUInt16LE(label.length,26);
+  const central=Buffer.alloc(46);central.writeUInt32LE(0x02014b50);central.writeUInt32LE(bytes.length,20);central.writeUInt32LE(bytes.length,24);central.writeUInt16LE(label.length,28);central.writeUInt32LE(offset,42);
+  locals.push(local,label,bytes);directory.push(central,label);offset+=local.length+label.length+bytes.length;
+ }
+ const end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(Object.keys(entries).length,8);end.writeUInt16LE(Object.keys(entries).length,10);end.writeUInt32LE(Buffer.concat(directory).length,12);end.writeUInt32LE(offset,16);
+ return Buffer.concat([...locals,...directory,end]);
+};
+const root=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'published-staging-')));
+try {
+ const nuspec=Buffer.from('<id>'+v.IDENTITY.id+'</id><version>'+v.IDENTITY.version+'</version><repository commit="revision" />');
+ const entries={[v.IDENTITY.id+'.nuspec']:nuspec,['lib/net10.0/'+v.IDENTITY.id+'.dll']:Buffer.from('DLL')};
+ const original=zip(entries);const published=zip({...entries,'.signature.p7s':Buffer.from('synthetic branch-test signature')});
+ const qualifiedArchive=path.join(root,'original.nupkg'),publishedArchive=path.join(root,'public.nupkg');
+ await fs.writeFile(qualifiedArchive,original);await fs.writeFile(publishedArchive,published);await fs.writeFile(qualifiedArchive.replace('.nupkg','.snupkg'),zip({[v.IDENTITY.id+'.nuspec']:nuspec,['lib/net10.0/'+v.IDENTITY.id+'.pdb']:Buffer.from('symbols')}));
+ const canonical=createHash('sha512').update(original).digest('base64');
+ const sentinel=path.join(root,'sentinel');const source=path.join(root,'candidate-feed');
+ assert.notEqual(canonical,await v.hashFile(publishedArchive,'sha512','base64'));
+ await writeRestoreSentinel(sentinel,publishedArchive,source,canonical);
+ assert.equal(JSON.parse(await fs.readFile(path.join(sentinel,'.nupkg.metadata'),'utf8')).contentHash,canonical);
+ assert.equal(JSON.parse(await fs.readFile(path.join(sentinel,'.nupkg.metadata'),'utf8')).source,source);
+ assert.equal(await fs.readFile(path.join(sentinel,v.IDENTITY.id.toLowerCase()+'.'+v.IDENTITY.version+'.nupkg.sha512'),'utf8'),canonical);
+ assert.deepEqual(await fs.readFile(path.join(sentinel,'public.nupkg')),published);
+
+ for(const mismatch of [false,true]) {
+  const owned=path.join(root,mismatch?'mismatch':'valid');await fs.mkdir(path.join(owned,'candidate-feed'),{recursive:true});
+  const commands=[];
+  const execute=async(command,args)=>{
+   commands.push(args);assert.equal(command,'dotnet');assert.ok(!['pack','restore'].includes(args[0]),'Source pack/restore forbidden');
+   if(args[0]==='nuget'){assert.deepEqual(args.slice(0,3),['nuget','verify','--all']);return '';}
+   assert.equal(args[1],'--published-archive');
+   return JSON.stringify(Object.fromEntries(args.slice(2).map(file=>[file,{repositorySignatureUrl:'https://api.nuget.org/v3/index.json',contentHash:mismatch&&file.endsWith(v.IDENTITY.version+'.nupkg')?'changed':canonical}])));
+  };
+  const action=()=>stagePublishedCandidate(owned,{publishedArchive,qualifiedArchive},v.IDENTITY,'revision',path.join(owned,'package-hash'),{},execute);
+  if(mismatch)await assert.rejects(action,/canonical hash differs/i);
+  else {
+   const result=await action();assert.equal(result.canonicalHash,canonical);assert.equal(result.signatureVerification,'passed');
+   assert.deepEqual(await fs.readFile(path.join(owned,'candidate-feed',v.IDENTITY.id+'.'+v.IDENTITY.version+'.nupkg')),published);
+   assert.ok((await fs.readdir(path.join(owned,'candidate-feed'))).some(name=>name.endsWith('.snupkg')));
+  }
+  assert.equal(commands.length,2);assert.ok(commands.every(args=>!['pack','restore'].includes(args[0])));
+ }
+} finally {await fs.rm(root,{recursive:true,force:true});}
+`;
+
+  const result = probe(body);
 
   expect(result.trim()).toBe('passed');
 });

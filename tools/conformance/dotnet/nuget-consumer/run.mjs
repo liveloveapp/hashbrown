@@ -191,7 +191,17 @@ export function preparedRecord(output, field) {
 }
 
 /** Defines the closed ordered acceptance graph; every command is executed at most once. */
-export function acceptancePlan(pointer, npmMetadata, profile = 'full') {
+export function acceptancePlan(
+  pointer,
+  npmMetadata,
+  profile = 'full',
+  imported = {},
+) {
+  const publicArgs = publishedArguments(imported);
+  assert.ok(
+    !publicArgs.length || profile === 'full',
+    'Public archives require full acceptance',
+  );
   assert.ok(
     profile === 'full' || profile === 'pr',
     'Explicit acceptance profile required',
@@ -208,7 +218,11 @@ export function acceptancePlan(pointer, npmMetadata, profile = 'full') {
     timeout: minutes * 60_000,
   });
   return [
-    phase('candidate', [path.join(here, 'prepare.mjs'), ...metadata], 10),
+    phase(
+      'candidate',
+      [path.join(here, 'prepare.mjs'), ...metadata, ...publicArgs],
+      10,
+    ),
     phase('npm', [path.join(here, '../live-consumer/prepare.mjs')], 10),
     phase(
       'initial-qualification',
@@ -445,9 +459,58 @@ export function acceptanceProfile(args) {
   return 'pr';
 }
 
+/** Validates the closed pair of absolute public and qualified archive paths. */
+export function publishedArguments(options = {}) {
+  const keys = Object.keys(options).filter((key) => key !== 'profile');
+  if (!keys.length) return [];
+  assert.deepEqual(
+    keys.sort(),
+    ['publishedArchive', 'qualifiedArchive'],
+    'Both archive arguments required',
+  );
+  for (const key of keys)
+    assert.ok(
+      typeof options[key] === 'string' &&
+        path.isAbsolute(options[key]) &&
+        options[key].endsWith('.nupkg'),
+      'Archive must be absolute',
+    );
+  assert.notEqual(
+    path.resolve(options.publishedArchive),
+    path.resolve(options.qualifiedArchive),
+    'Distinct archives required',
+  );
+  return [
+    '--published-archive',
+    options.publishedArchive,
+    '--qualified-archive',
+    options.qualifiedArchive,
+  ];
+}
+
+/** Selects the closed full public import mode or the unchanged source profiles. */
+export function acceptanceOptions(args) {
+  if (args.length === 0 || (args.length === 1 && args[0] === '--pr'))
+    return { profile: acceptanceProfile(args) };
+  assert.ok(
+    args.length === 4 &&
+      args[0] === '--published-archive' &&
+      args[2] === '--qualified-archive',
+    'Both archive arguments required; candidate reuse is forbidden',
+  );
+  const options = {
+    profile: 'full',
+    publishedArchive: args[1],
+    qualifiedArchive: args[3],
+  };
+  publishedArguments(options);
+  return options;
+}
+
 /** Qualifies one fresh candidate through every approved external consumer acceptance boundary. */
 export async function runAcceptance() {
-  const profile = acceptanceProfile(process.argv.slice(2));
+  const imported = acceptanceOptions(process.argv.slice(2));
+  const { profile } = imported;
   await validateAcceptanceInputs(repository);
   const temporary = await fs.realpath(
     await fs.mkdtemp(path.join(os.tmpdir(), 'hashbrown-package-gate-')),
@@ -495,9 +558,12 @@ export async function runAcceptance() {
       ) + '\n',
     );
   try {
-    const preparation = acceptancePlan(pointer, '', profile).slice(0, 2);
+    const preparation = acceptancePlan(pointer, '', profile, imported).slice(
+      0,
+      2,
+    );
     preparation[0].after = async () => {
-      report.packInvocations++;
+      if (!imported.publishedArchive) report.packInvocations++;
       candidate = await validateAcceptanceInputs(repository, pointer);
       report.candidate = {
         root: candidate.root,
@@ -610,7 +676,7 @@ export async function runAcceptance() {
         loaded: rows.filter((row) => row.event === 'verified-loaded').length,
       };
     }
-    assert.equal(report.packInvocations, 1);
+    assert.equal(report.packInvocations, imported.publishedArchive ? 0 : 1);
     assert.equal(report.npmPreparations, 1);
     report.status = 'passed';
   } catch (error) {
