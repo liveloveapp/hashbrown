@@ -360,6 +360,6 @@ The implementation plans must identify the exact Nx targets for each slice.
 - A public dashboard service, database, model-quality benchmark or flaky timing
   league table.
 
-The next deliverable is a bounded implementation plan for the foundation after
-the user reviews this design. Implementation and Python dependency installation
-have not started.
+The approved foundation implementation and verification are tracked in the
+[foundation plan](../plans/2026-10-30-conformance-foundation.md). Pydantic execution
+and Python dependency installation remain a separate, unstarted slice.
