@@ -4,8 +4,11 @@ import { formatPostDate } from './post-date';
 import styles from './PostPreview.module.css';
 import { TeamAvatars } from './TeamAvatars';
 
-/** The post fields a preview card shows (everything but the body). */
-export type PostSummary = Omit<BlogPost, 'body'>;
+/**
+ * The post fields a preview card shows: everything but the body and the
+ * publish gate, which `listBlogPosts` has already applied.
+ */
+export type PostSummary = Omit<BlogPost, 'body' | 'published' | 'publishAt'>;
 
 /**
  * Drop a post's markdown body so only the preview fields reach the client.

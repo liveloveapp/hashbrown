@@ -23,14 +23,16 @@ export interface Source {
   note: string;
 }
 
-/** A blog post that ships as a merged pull request on the site repo. */
+/**
+ * A blog post that ships as a pull request on the site repo. Brian merges it;
+ * its `publishAt` frontmatter keeps it hidden until `scheduledAt`.
+ */
 export interface BlogDraft {
   channel: 'blog';
   slug: string;
   title: string;
+  /** The post's PR, for the weekly report. The dispatcher never touches it. */
   prNumber?: number;
-  branchUpdatedAt?: string;
-  mergedAt?: string;
 }
 
 /** A dev.to cross-post of a blog post, published after the blog is live. */

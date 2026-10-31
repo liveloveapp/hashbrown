@@ -7,6 +7,7 @@ tags:
   - sample
 team:
   - brian
+published: true
 ---
 
 I love airplanes.

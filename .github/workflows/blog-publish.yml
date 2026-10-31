@@ -1,0 +1,69 @@
+name: Blog Publish
+
+# Blog pages are static, so a post merged ahead of its `publishAt` appears
+# only after a build that runs past that time. Every 15 minutes this checks
+# for posts that came due in the last 48 hours but still answer 404 on
+# hashbrown.dev, and redeploys www to production when it finds one. Once the
+# post is live the check finds nothing, so a post triggers one deploy.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Off the top of the hour, when GitHub's scheduler is busiest.
+    - cron: '7,22,37,52 * * * *'
+
+# One run at a time; a tick that arrives during a deploy waits, then sees the
+# post live and does nothing.
+concurrency:
+  group: blog-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  due:
+    name: Find due posts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      redeploy: ${{ steps.check.outputs.redeploy }}
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout: |
+            .nvmrc
+            www/content/blog
+            www/scripts
+
+      - name: Record the commit
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Check hashbrown.dev for due posts
+        id: check
+        run: node www/scripts/due-blog-posts.mjs >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Redeploy www
+    needs: due
+    if: needs.due.outputs.redeploy == 'true'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      targets: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"}]'
+      ref: ${{ needs.due.outputs.sha }}
+      branch: main
+    secrets: inherit

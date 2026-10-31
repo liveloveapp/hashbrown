@@ -163,9 +163,12 @@ test('show lists posts with voice issues, reading blog bodies', async () => {
     result.posts[0].voiceIssues.map((i: { rule: string }) => i.rule),
   ).toContain('em_dash');
   expect(ops.readBlogBody).toHaveBeenCalledWith('hello');
-  expect(
-    result.posts[1].voiceIssues.map((i: { rule: string }) => i.rule),
-  ).toContain('em_dash');
+  const blogRules = result.posts[1].voiceIssues.map(
+    (i: { rule: string }) => i.rule,
+  );
+  expect(blogRules).toContain('em_dash');
+  // The body has no frontmatter, so it has no publishAt at the slot either.
+  expect(blogRules).toContain('blog_schedule');
 });
 
 test('edit prints voice issues for an em dash', async () => {

@@ -1,16 +1,10 @@
-import { describe, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import type { BlogDraft, QueuedPost } from '../queue/types.ts';
-import type { GitHubClient } from './github.ts';
-import {
-  advanceBlogPost,
-  blogUrl,
-  LIVE_DEADLINE_MS,
-  MERGE_GRACE_MS,
-} from './publisher.ts';
+import { advanceBlogPost, blogUrl, LIVE_GRACE_MS } from './publisher.ts';
 
 const SCHEDULED = new Date('2026-10-29T14:00:00Z');
-const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
 
 function post(
   draft: Partial<BlogDraft> = {},
@@ -39,262 +33,53 @@ function post(
   } as QueuedPost & { draft: BlogDraft };
 }
 
-function setup(
-  state: Partial<Awaited<ReturnType<GitHubClient['pullState']>>> = {},
-  live = false,
-) {
-  const github = {
-    updateBranch: vi.fn(async () => undefined),
-    pullState: vi.fn(async () => ({
-      state: 'open' as const,
-      merged: false,
-      mergeable: true,
-      mergeableState: 'clean',
-      ...state,
-    })),
-    merge: vi.fn(async () => undefined),
-    readFile: vi.fn(async () => ''),
-  };
-  const isLive = vi.fn(async () => live);
-  return { github, isLive, deps: { github, isLive } };
-}
+const at = (offsetMs: number) => new Date(SCHEDULED.getTime() + offsetMs);
 
-const before = new Date(SCHEDULED.getTime() - HOUR);
-const at = (ms: number) => new Date(SCHEDULED.getTime() + ms);
+test('waits before the slot without checking the page', async () => {
+  const isLive = vi.fn();
 
-test('blogUrl builds the canonical URL', () => {
-  expect(blogUrl('a-b')).toBe('https://hashbrown.dev/blog/a-b');
+  expect(await advanceBlogPost(post(), at(-MINUTE), { isLive })).toEqual({
+    kind: 'wait',
+  });
+  expect(isLive).not.toHaveBeenCalled();
 });
 
-test('constants', () => {
-  expect(LIVE_DEADLINE_MS).toBe(24 * HOUR);
-  expect(MERGE_GRACE_MS).toBe(2 * HOUR);
+test('publishes once the page answers', async () => {
+  const isLive = vi.fn(async () => true);
+
+  expect(await advanceBlogPost(post(), at(0), { isLive })).toEqual({
+    kind: 'published',
+    url: 'https://hashbrown.dev/blog/my-post',
+    at: at(0),
+  });
+  expect(isLive).toHaveBeenCalledWith(blogUrl('my-post'));
 });
 
-test('fails without a PR number', async () => {
-  const { deps } = setup();
-  const step = await advanceBlogPost(
-    post({ prNumber: undefined }),
-    SCHEDULED,
-    deps,
+test('keeps waiting for the page within the grace', async () => {
+  const isLive = async () => false;
+
+  expect(await advanceBlogPost(post(), at(LIVE_GRACE_MS), { isLive })).toEqual({
+    kind: 'wait',
+  });
+});
+
+test('reports not live after the grace, naming the slot', async () => {
+  const step = await advanceBlogPost(post(), at(LIVE_GRACE_MS + MINUTE), {
+    isLive: async () => false,
+  });
+
+  expect(step).toMatchObject({ kind: 'not_live' });
+  expect(step.kind === 'not_live' && step.reason).toContain(
+    'publishAt at or before 2026-10-29T14:00:00.000Z',
   );
-  expect(step).toEqual({ kind: 'failed', reason: 'no blog PR' });
 });
 
-describe('before scheduledAt', () => {
-  test('updates the branch once', async () => {
-    const { deps, github } = setup();
-    const step = await advanceBlogPost(post(), before, deps);
-    expect(step).toEqual({ kind: 'branch_updated', at: before });
-    expect(github.updateBranch).toHaveBeenCalledWith(5);
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('waits when the branch was already updated', async () => {
-    const { deps, github } = setup();
-    const step = await advanceBlogPost(
-      post({ branchUpdatedAt: before.toISOString() }),
-      before,
-      deps,
-    );
-    expect(step).toEqual({ kind: 'wait' });
-    expect(github.updateBranch).not.toHaveBeenCalled();
-  });
-});
-
-describe('at or after scheduledAt, not merged', () => {
-  test('waits while mergeable is null', async () => {
-    const { deps, github } = setup({
-      mergeable: null,
-      mergeableState: 'unknown',
-    });
-    expect(await advanceBlogPost(post(), SCHEDULED, deps)).toEqual({
-      kind: 'wait',
-    });
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('updates the branch again when behind', async () => {
-    const { deps, github } = setup({ mergeableState: 'behind' });
-    const now = at(10 * 60 * 1000);
-    expect(await advanceBlogPost(post(), now, deps)).toEqual({
-      kind: 'branch_updated',
-      at: now,
-    });
-    expect(github.updateBranch).toHaveBeenCalledWith(5);
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test.each(['clean', 'unstable', 'has_hooks'])('merges when %s', async (s) => {
-    const { deps, github } = setup({ mergeableState: s });
-    expect(await advanceBlogPost(post(), SCHEDULED, deps)).toEqual({
-      kind: 'merged',
-      at: SCHEDULED,
-    });
-    expect(github.merge).toHaveBeenCalledWith(5);
-  });
-
-  test('does not merge a clean state with mergeable false', async () => {
-    const { deps, github } = setup({
-      mergeable: false,
-      mergeableState: 'clean',
-    });
-    const step = await advanceBlogPost(post(), at(HOUR), deps);
-    expect(step.kind).toBe('failed');
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('waits on blocked inside the grace period', async () => {
-    const { deps } = setup({ mergeableState: 'blocked' });
-    expect(await advanceBlogPost(post(), at(HOUR), deps)).toEqual({
-      kind: 'wait',
-    });
-  });
-
-  test('fails blocked at the grace period with the state', async () => {
-    const { deps } = setup({ mergeableState: 'blocked' });
-    const step = await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps);
-    expect(step).toMatchObject({ kind: 'failed' });
-    expect((step as { reason: string }).reason).toContain('blocked');
-  });
-
-  test.each(['dirty', 'draft'])('fails %s immediately', async (s) => {
-    const { deps, github } = setup({ mergeableState: s });
-    const step = await advanceBlogPost(post(), SCHEDULED, deps);
-    expect(step.kind).toBe('failed');
-    expect((step as { reason: string }).reason).toContain(s);
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('fails an unrecognised state inside the grace period', async () => {
-    const { deps } = setup({ mergeableState: 'weird' });
-    const step = await advanceBlogPost(post(), at(HOUR), deps);
-    expect(step.kind).toBe('failed');
-  });
-
-  test('fails mergeable false immediately', async () => {
-    const { deps } = setup({ mergeable: false, mergeableState: 'blocked' });
-    expect((await advanceBlogPost(post(), SCHEDULED, deps)).kind).toBe(
-      'failed',
-    );
-  });
-
-  test.each([
-    ['behind', true],
-    ['unknown', null],
-  ])('fails %s at the grace period', async (s, mergeable) => {
-    const { deps, github } = setup({ mergeableState: s, mergeable });
-    const step = await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps);
-    expect(step.kind).toBe('failed');
-    expect(github.updateBranch).not.toHaveBeenCalled();
-  });
-});
-
-describe('merged', () => {
-  const mergedAt = new Date(SCHEDULED.getTime() + 5 * 60 * 1000).toISOString();
-
-  test('publishes when live', async () => {
-    const { deps, isLive } = setup({ merged: true }, true);
-    const now = at(HOUR);
-    expect(await advanceBlogPost(post({ mergedAt }), now, deps)).toEqual({
-      kind: 'published',
-      url: 'https://hashbrown.dev/blog/my-post',
-      at: now,
-    });
-    expect(isLive).toHaveBeenCalledWith('https://hashbrown.dev/blog/my-post');
-  });
-
-  test('counts a PR merged by hand as merged', async () => {
-    const { deps, github } = setup({ merged: true }, true);
-    const step = await advanceBlogPost(post(), at(HOUR), deps);
-    expect(step.kind).toBe('published');
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('waits when not live yet', async () => {
-    const { deps } = setup({ merged: true }, false);
-    expect(await advanceBlogPost(post({ mergedAt }), at(HOUR), deps)).toEqual({
-      kind: 'wait',
-    });
-  });
-
-  test('is not_live after the deadline', async () => {
-    const { deps } = setup({ merged: true }, false);
-    const now = new Date(Date.parse(mergedAt) + LIVE_DEADLINE_MS + 1);
-    const step = await advanceBlogPost(post({ mergedAt }), now, deps);
-    expect(step.kind).toBe('not_live');
-  });
-
-  test('waits exactly at the deadline', async () => {
-    const { deps } = setup({ merged: true }, false);
-    const now = new Date(Date.parse(mergedAt) + LIVE_DEADLINE_MS);
-    expect(await advanceBlogPost(post({ mergedAt }), now, deps)).toEqual({
-      kind: 'wait',
-    });
-  });
-});
-
-describe('closed and failing PRs', () => {
-  test.each([
-    ['before', before],
-    ['after', SCHEDULED],
-  ])('fails a closed PR %s scheduledAt without other calls', async (_, now) => {
-    const { deps, github } = setup({ state: 'closed', merged: false });
-    expect(await advanceBlogPost(post(), now, deps)).toEqual({
-      kind: 'failed',
-      reason: 'PR closed without merge',
-    });
-    expect(github.updateBranch).not.toHaveBeenCalled();
-    expect(github.merge).not.toHaveBeenCalled();
-  });
-
-  test('a PR merged by hand before scheduledAt goes to the live path', async () => {
-    const { deps, github } = setup({ state: 'closed', merged: true }, true);
-    const step = await advanceBlogPost(post(), before, deps);
-    expect(step.kind).toBe('published');
-    expect(github.updateBranch).not.toHaveBeenCalled();
-  });
-
-  test('updateBranch throwing before scheduledAt waits', async () => {
-    const { deps, github } = setup();
-    github.updateBranch.mockRejectedValue(new Error('HTTP 409'));
-    expect(await advanceBlogPost(post(), before, deps)).toEqual({
-      kind: 'wait',
-    });
-  });
-
-  test('merge throwing before grace waits', async () => {
-    const { deps, github } = setup();
-    github.merge.mockRejectedValue(new Error('HTTP 409'));
-    expect(await advanceBlogPost(post(), at(HOUR), deps)).toEqual({
-      kind: 'wait',
-    });
-  });
-
-  test('merge throwing at grace fails naming the operation', async () => {
-    const { deps, github } = setup();
-    github.merge.mockRejectedValue(new Error('HTTP 405: nope'));
-    const step = await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps);
-    expect(step).toEqual({
-      kind: 'failed',
-      reason: 'merge failed: HTTP 405: nope',
-    });
-  });
-
-  test('updateBranch throwing when behind at grace is not attempted, fails', async () => {
-    const { deps } = setup({ mergeableState: 'behind' });
-    expect((await advanceBlogPost(post(), at(MERGE_GRACE_MS), deps)).kind).toBe(
-      'failed',
-    );
-  });
-
-  test('a mergeable PR past grace still merges', async () => {
-    const { deps, github } = setup();
-    const now = at(MERGE_GRACE_MS + HOUR);
-    expect(await advanceBlogPost(post(), now, deps)).toEqual({
-      kind: 'merged',
-      at: now,
-    });
-    expect(github.merge).toHaveBeenCalledWith(5);
-  });
+test('lets live-check errors propagate for the retry cap', async () => {
+  await expect(
+    advanceBlogPost(post(), at(0), {
+      isLive: async () => {
+        throw new Error('timeout');
+      },
+    }),
+  ).rejects.toThrow('timeout');
 });

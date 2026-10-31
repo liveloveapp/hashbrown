@@ -156,7 +156,6 @@ export const TARGETS = Object.freeze([
       'MARKETING_SERVICE_SECRET',
       'MARKETING_DRY_RUN',
       'MARKETING_CREDENTIALS_KEY',
-      'MARKETING_GITHUB_TOKEN',
       'X_CLIENT_ID',
       'X_CLIENT_SECRET',
       'LINKEDIN_CLIENT_ID',

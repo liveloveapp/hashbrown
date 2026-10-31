@@ -1,6 +1,6 @@
 import { advanceBlogPost, blogUrl } from './blog/publisher.ts';
 import { toDevtoMarkdown } from './blog/devto-markdown.ts';
-import { createGitHubClient, type GitHubClient } from './blog/github.ts';
+import { readBlogMarkdown } from './blog/source.ts';
 import { OutcomeUnknownError } from './channels/http.ts';
 import { createAdapters } from './channels/registry.ts';
 import type { ChannelAdapter, Draft, SocialChannel } from './channels/types.ts';
@@ -17,7 +17,6 @@ import {
   markPublishing,
   markRetry,
   PostStateError,
-  updateBlogDraft,
 } from './queue/repository.ts';
 import type { BlogDraft, DevtoDraft, QueuedPost } from './queue/types.ts';
 
@@ -46,10 +45,11 @@ export interface DispatchDependencies {
   executor: SqlExecutor;
   adapters: Record<SocialChannel, ChannelAdapter>;
   credentials: CredentialStore;
-  github: GitHubClient;
+  /** Reads a merged post's markdown from `main` for its dev.to cross-post. */
+  readBlogMarkdown: (slug: string) => Promise<string>;
   isLive: (url: string) => Promise<boolean>;
   now: () => Date;
-  /** Dry run: no GitHub calls and no live check; posts get placeholder results. */
+  /** Dry run: no live check and no markdown read; posts get placeholder results. */
   dryRun: boolean;
 }
 
@@ -141,16 +141,6 @@ async function dispatchBlog(
   switch (step.kind) {
     case 'wait':
       return;
-    case 'branch_updated':
-      await updateBlogDraft(executor, post.id, {
-        branchUpdatedAt: step.at.toISOString(),
-      });
-      return;
-    case 'merged':
-      await updateBlogDraft(executor, post.id, {
-        mergedAt: step.at.toISOString(),
-      });
-      return;
     case 'published':
       await markPublished(executor, post.id, {
         externalId: post.draft.slug,
@@ -158,10 +148,6 @@ async function dispatchBlog(
         publishedAt: step.at,
       });
       tally.published += 1;
-      return;
-    case 'failed':
-      await markFailed(executor, post.id, step.reason);
-      await failBlog(deps, post, step.reason, tally);
       return;
     case 'not_live': {
       const held = await holdWithDependents(executor, post.id, step.reason);
@@ -181,10 +167,7 @@ async function buildDraft(
   const url = blogUrl(blogSlug);
   const text = deps.dryRun
     ? `dry run: ${url}`
-    : toDevtoMarkdown(
-        await deps.github.readFile(`www/content/blog/${blogSlug}.md`, 'main'),
-        url,
-      );
+    : toDevtoMarkdown(await deps.readBlogMarkdown(blogSlug), url);
   return {
     channel: 'devto',
     text,
@@ -345,17 +328,6 @@ async function headIsLive(url: string): Promise<boolean> {
   return response.status === 200;
 }
 
-const DISABLED_GITHUB: GitHubClient = {
-  updateBranch: async () => disabled(),
-  pullState: async () => disabled(),
-  merge: async () => disabled(),
-  readFile: async () => disabled(),
-};
-
-function disabled(): never {
-  throw new Error('GitHub is disabled in dry run');
-}
-
 /**
  * `MARKETING_DRY_RUN`: `1` or `true` is a dry run; unset, empty, `0` or
  * `false` is live.
@@ -370,9 +342,8 @@ function parseDryRun(value: string | undefined): boolean {
 }
 
 /**
- * Builds the tick's dependencies from the environment. In dry run
- * (`MARKETING_DRY_RUN` is `1` or `true`) GitHub is disabled and its token is
- * not required.
+ * Builds the tick's dependencies from the environment. Dry run is
+ * `MARKETING_DRY_RUN` set to `1` or `true`.
  *
  * @param fetchImpl - The fetch the adapters use; defaults to `globalThis.fetch`.
  * @throws When a required variable is missing, naming each, or
@@ -383,11 +354,7 @@ export function createDispatchDependencies(
   fetchImpl?: typeof fetch,
 ): DispatchDependencies {
   const dryRun = parseDryRun(env['MARKETING_DRY_RUN']);
-  const required = [
-    'DATABASE_URL',
-    'MARKETING_CREDENTIALS_KEY',
-    ...(dryRun ? [] : ['MARKETING_GITHUB_TOKEN']),
-  ];
+  const required = ['DATABASE_URL', 'MARKETING_CREDENTIALS_KEY'];
   const missing = required.filter((name) => !env[name]);
   if (missing.length > 0) {
     throw new Error(`Missing environment variables: ${missing.join(', ')}`);
@@ -402,9 +369,7 @@ export function createDispatchDependencies(
     executor,
     credentials,
     adapters: createAdapters({ credentials, env, dryRun, fetch: fetchImpl }),
-    github: dryRun
-      ? DISABLED_GITHUB
-      : createGitHubClient(env['MARKETING_GITHUB_TOKEN'] as string),
+    readBlogMarkdown: (slug) => readBlogMarkdown(slug, fetchImpl),
     isLive: headIsLive,
     now: () => new Date(),
     dryRun,

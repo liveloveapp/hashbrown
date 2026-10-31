@@ -36,7 +36,7 @@ export interface BlogPostingJsonLd {
  * @param post - The post's metadata (the body is not needed).
  */
 export function blogPostingJsonLd(
-  post: Omit<BlogPost, 'body'>,
+  post: Omit<BlogPost, 'body' | 'published' | 'publishAt'>,
 ): BlogPostingJsonLd {
   const url = `${SITE_URL}/blog/${post.slug}`;
   return {

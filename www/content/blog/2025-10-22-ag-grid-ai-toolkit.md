@@ -6,6 +6,7 @@ tags:
   - story
 team:
   - mike
+published: true
 ---
 
 AG Grid introduced the `AiToolkitModule` in v34.3.0, providing a set of utilities for connecting the grid with LLMs. The documentation walks through building a natural-language input for setting the grid state. We took AG Grid’s finance demo and paired this new toolkit with Hashbrown’s tool-calling primitives so an assistant can group, pivot, filter, and sort the grid on demand:

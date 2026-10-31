@@ -56,8 +56,6 @@ const blogDraft = z.strictObject({
   slug: z.string().min(1),
   title: z.string().min(1),
   prNumber: z.number().int().positive().optional(),
-  branchUpdatedAt: z.iso.datetime({ offset: true }).optional(),
-  mergedAt: z.iso.datetime({ offset: true }).optional(),
 });
 
 const devtoDraft = z.strictObject({

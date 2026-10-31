@@ -105,7 +105,7 @@ Mix, adapted to what actually happened: one `release` if anything shipped, two t
 Blog post:
 
 - File: `www/content/blog/<slug>.md` in the current checkout, where `<slug>` is `<publish date>-<kebab-title>`, e.g. `2026-11-04-typed-decisions-in-angular`. The slug is the file name without `.md`; it is the URL (`https://hashbrown.dev/blog/<slug>`), the blog draft's `slug`, the dev.to draft's `blogSlug` and the branch name `blog/<slug>`. Pick it once; renaming later means changing all of them.
-- Frontmatter, as in recent posts: `title` (quoted if it has a colon), `slug` (same as the file name), `description` (one sentence, also the dev.to description), `tags` (reuse existing ones: `release`, `story`, `sample`, `talk`), `team: [brian]` as a YAML list. The date comes from the file name. No `ogImage`; the site generates the share card.
+- Frontmatter, as in recent posts: `title` (quoted if it has a colon), `slug` (same as the file name), `description` (one sentence, also the dev.to description), `tags` (reuse existing ones: `release`, `story`, `sample`, `talk`), `team: [brian]` as a YAML list, `published: true`, and `publishAt` set to the blog row's `scheduledAt` exactly, quoted, with its offset (e.g. `publishAt: '2026-11-04T10:00:00-05:00'`). The site hides the post until `publishAt`, which is what lets Brian merge the PR early; a `publishAt` later than the slot makes dispatch hold the blog and its promos. The displayed date comes from the file name. No `ogImage`; the site generates the share card.
 - Shape and voice per `docs/marketing/voice.md` ("Blog").
 
 Week JSON (scratchpad, e.g. `<scratchpad>/week-W.json`), following the example at the end. Rules the schema enforces: `weekStart` is W; `key`s are unique (use `mon-x`, `tue-li`, `blog`, `devto`, `wed-x-promo`...); `channel` is `x | linkedin | blog | devto`; `kind` is `release | qa | topical | guide | take | blog_promo | blog` (`blog` for the blog and dev.to rows); every `scheduledAt` falls between W and W+6 in America/New_York; `draft.channel` equals `channel`; drafts are strict objects:
@@ -165,14 +165,14 @@ Whole week or blog, in this order, stopping and reporting on any failure. The bl
    ```
 
 2. Push: `git -C "$WT" push -u origin "blog/$SLUG"`.
-3. Open the PR: `gh pr create --repo liveloveapp/hashbrown --base main --head "blog/$SLUG" --title "docs(blog): <title>" --body "<one line on the post>. The marketing dispatcher merges this at <blog day and time> ET once PR Gate is green; please don't merge it earlier."` Read the number with `gh pr view "blog/$SLUG" --repo liveloveapp/hashbrown --json number -q .number`.
+3. Open the PR: `gh pr create --repo liveloveapp/hashbrown --base main --head "blog/$SLUG" --title "docs(blog): <title>" --body "<one line on the post>. Merge any time before <blog day and time> ET: the post stays hidden until its publishAt, and the Blog Publish workflow redeploys www when it comes due."` Read the number with `gh pr view "blog/$SLUG" --repo liveloveapp/hashbrown --json number -q .number`.
 4. `week set-pr --post <blog post id> --pr <number>`.
 5. `week approve --week W` for the whole week, or `week approve --post <blog post id>` when Brian named only the blog.
 6. Clean up: `git -C "$REPO" worktree remove "$WT"`. If `git -C "$REPO" status --porcelain "www/content/blog/$SLUG.md"` shows `??` and `git -C "$REPO" show "blog/$SLUG:www/content/blog/$SLUG.md" | cmp -s - "$REPO/www/content/blog/$SLUG.md"` succeeds, delete the local copy so it cannot clash when Brian pulls `main`. Later blog edits go to the PR branch (`gh pr checkout` or a new worktree on `blog/<slug>`).
 
 ## Step 8: Report the schedule
 
-Run `week show --week W` and report the schedule as a day-by-day list in America/New_York: time, channel, kind, status and the first line of each post, plus the PR URL. Call out anything not `approved` (held, cancelled, still draft) and that the blog promos and dev.to wait for the blog to be live.
+Run `week show --week W` and report the schedule as a day-by-day list in America/New_York: time, channel, kind, status and the first line of each post, plus the PR URL. Call out anything not `approved` (held, cancelled, still draft) and that the blog promos and dev.to wait for the blog to be live. Remind Brian to merge the blog PR before its slot: nothing merges it for him, and an unmerged post holds the blog, dev.to and promos 2 hours after the slot.
 
 ## Example week JSON
 
