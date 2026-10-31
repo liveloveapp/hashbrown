@@ -40,18 +40,18 @@ export {
   type UseJsonParserResult,
 } from './hooks/use-json-parser';
 export {
-  createMagicTextNodeRenderers,
-  type MagicTextCaret,
-  type MagicTextCaretRenderProps,
-  type MagicTextCaretRenderer,
-  MagicTextRenderer,
-  type MagicTextCitationRenderData,
-  type MagicTextNodeRendererKey,
-  type MagicTextNodeRenderer,
-  type MagicTextNodeRendererProps,
-  type MagicTextNodeRenderers,
-  type MagicTextRendererProps,
-} from './magic-text-renderer';
+  createProseNodeRenderers,
+  type ProseCaret,
+  type ProseCaretRenderProps,
+  type ProseCaretRenderer,
+  ProseRenderer,
+  type ProseCitationRenderData,
+  type ProseNodeRendererKey,
+  type ProseNodeRenderer,
+  type ProseNodeRendererProps,
+  type ProseNodeRenderers,
+  type ProseRendererProps,
+} from './prose-renderer';
 export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
 export { useRuntimeFunction } from './hooks/use-runtime-function';
 export {

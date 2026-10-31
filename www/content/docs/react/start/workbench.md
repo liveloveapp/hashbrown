@@ -63,7 +63,7 @@ The lessons are:
 | [Decisions](/docs/react/concept/decisions)                                        | `/react.html?lesson=decisions`               | Complete typed choices, confidence and explicit application.               |
 | [Debugging](/docs/react/concept/debugging)                                        | `/react.html?lesson=debugging`               | Local HTTP denial, same-conversation recovery, and captured evidence.      |
 | [Request transformation](/docs/react/concept/transform-request-options)           | `/react.html?lesson=request-transformation`  | Actual server callback, added instructions, and preserved provider fields. |
-| [Magic Text](/docs/react/recipes/magic-text)                                      | `/react.html?lesson=magic-text`              | Streamed Markdown and actual source-reference selection.                   |
+| [Prose](/docs/react/recipes/prose)                                      | `/react.html?lesson=prose`              | Streamed Markdown and actual source-reference selection.                   |
 | [Predictive suggestions](/docs/react/recipes/predictive-actions)                  | `/react.html?lesson=predictions`             | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/react/recipes/ui-selection)                                  | `/react.html?lesson=ui-selection`            | Whole candidate decisions, app-owned views, and manual choice.             |
 | [Shared agent state](/docs/react/concept/shared-agent-state)                      | `/react.html?lesson=shared-state`            | Explicit local state replacement, agent drafts, commit, and rollback.      |
@@ -83,7 +83,7 @@ The lessons are:
 
 Selecting a lesson opens a fresh local page; it does not send a request. Conversations remain in memory within the current page. The player's scrubber shows meaningful milestones by default. Choose **Raw events** to put every captured stream frame on the scrubber.
 
-Magic Text, predictive suggestions, and UI selection begin with the same application-owned plan at revision zero. Magic Text explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions. UI Kits and UI chatbot begin without an accepted plan; an explicit acceptance creates one.
+Prose, predictive suggestions, and UI selection begin with the same application-owned plan at revision zero. Prose explains it without changing it. Predictive suggestions apply only after explicit acceptance. UI selection chooses a trusted view, and **Use view** or a manual choice commits that view. Predictions use completion snapshots; UI selection uses whole TypeSafe decisions. UI Kits and UI chatbot begin without an accepted plan; an explicit acceptance creates one.
 
 The onboarding lessons keep the first steps small. **First plan** streams a trusted preview without tools or acceptance. **Messages and turns** uses plain text to follow history. **System instructions** compares browser configuration with policy observed at the provider boundary. Their **State** views remain unchanged.
 

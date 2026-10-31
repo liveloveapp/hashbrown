@@ -1,13 +1,13 @@
-# Canonical recipe workbench: Magic Text, predictions and UI selection
+# Canonical recipe workbench: Prose, predictions and UI selection
 
 Continue the approved canonical two-step plan workspace and its LLA four-panel
 layout, bottom timeline, independent conversations, captured frames and inert
-replay. The next default batch is Magic Text, predictive suggestions and UI
+replay. The next default batch is Prose, predictive suggestions and UI
 selection, in both Angular and React. No SDK release or new dependencies.
 
 ## Lesson contracts
 
-- **Magic Text** uses actual `useChat` / `chatResource` and the SDK's Magic Text
+- **Prose** uses actual `useChat` / `chatResource` and the SDK's Prose
   renderer. A server-owned prompt explains the application-owned two-step plan
   in bounded Markdown (heading, emphasis, two-item list, supplied documentation
   footnote). A follow-up shortens the explanation. Capture raw Markdown,
@@ -77,7 +77,7 @@ source excerpts, setup and focused error/recovery guidance. Update both overview
 guides, media catalogue and inventory. Retain legacy assets only for bookmarks
 or independent fixture checks, with their source notes intact.
 
-Six new media IDs: canonical-workbench-{magic-text,predictions,ui-selection}-{react,angular}.
+Six new media IDs: canonical-workbench-{prose,predictions,ui-selection}-{react,angular}.
 Record real Hashbrown/OpenAI for text and predictions, real Hashbrown/TypeSafe
 for selection. The selection recording preserves the confidence threshold and
 finishes with an explicit manual steps choice at revision 2. If the second model

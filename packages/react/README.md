@@ -15,7 +15,7 @@
   <br>
 </p>
 
-`@hashbrownai/react` gives you Hashbrown's hooks and components for React: chat and UI chat hooks, tools, UI kits, and Magic Text rendering.
+`@hashbrownai/react` gives you Hashbrown's hooks and components for React: chat and UI chat hooks, tools, UI kits, and Prose rendering.
 
 ## Getting Started
 

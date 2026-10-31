@@ -98,7 +98,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Threads', path: 'recipes/threads' },
       { text: 'Save text conversations', path: 'recipes/browser-history' },
-      { text: 'Magic Text', path: 'recipes/magic-text' },
+      { text: 'Prose', path: 'recipes/prose' },
       { text: 'JSON Parser', path: 'recipes/json-parser' },
       { text: 'Threadplane', path: 'recipes/threadplane' },
       { text: 'Local Models', path: 'recipes/local-models' },
@@ -141,6 +141,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     ordered: false,
     collapsible: true,
     entries: [
+      { text: 'Rename Markdown rendering to prose', path: 'migrations/prose' },
       { text: 'Move chat to Threadplane', path: 'migrations/threadplane' },
       { text: 'Upgrade to v0.8', path: 'migrations/v0-8' },
       { text: 'Upgrade to v0.7', path: 'migrations/v0-7' },

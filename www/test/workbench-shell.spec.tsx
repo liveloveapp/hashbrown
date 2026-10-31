@@ -1057,8 +1057,8 @@ test.each([false, true])(
         framework: 'React',
         managedChat: true,
         lesson: {
-          id: 'magic-text',
-          title: 'Magic Text',
+          id: 'prose',
+          title: 'Prose',
           format: 'text',
           inspector: 'Text',
         },

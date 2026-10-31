@@ -10,7 +10,7 @@ import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
 import { ConceptDiagram } from './elements/ConceptDiagram';
 import { DocsDemoVideo } from './elements/DocsDemoVideo';
-import { MagicTextDemo } from './elements/MagicTextDemo';
+import { ProseDemo } from './elements/ProseDemo';
 import { ScrollTable } from './elements/ScrollTable';
 import { Expander } from './Expander';
 import {
@@ -90,7 +90,7 @@ export function docsComponents(
     'hb-diagram': DocsDiagram,
     'hb-workbench': DocsWorkbench,
     'hb-workbench-launcher': DocsWorkbenchLauncher,
-    'hb-magic-text-demo': MagicTextDemo,
+    'hb-prose-demo': ProseDemo,
     'hb-next-steps': NextSteps,
     'hb-next-step': DocsNextStep,
     'hb-expander': Expander,

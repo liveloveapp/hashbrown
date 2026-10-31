@@ -58,7 +58,7 @@ document never scrolls sideways.
     changing every client).
   - **Concepts**: Generative UI, Tools, Structured output, Streaming, Schemas, Decisions.
   - **Production**: Debugging, Request transformation.
-  - **Recipes**: Magic Text, Predictive suggestions, UI selection.
+  - **Recipes**: Prose, Predictive suggestions, UI selection.
 - The grouping and the per-lesson icons are the builder's call (see "Calls made").
   Lessons stay `<a href="?lesson=">` links with `aria-current="page"`. That
   keeps today's "opens a fresh page, no request" behaviour.

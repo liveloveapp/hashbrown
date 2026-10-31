@@ -14,7 +14,7 @@ vi.mock('@hashbrownai/react', () => ({
   useUiDecision: sdk.selection,
   useChat: sdk.chat,
   useTool: (tool: unknown) => tool,
-  MagicTextRenderer: ({
+  ProseRenderer: ({
     children,
     isComplete,
     caret,
@@ -46,7 +46,7 @@ vi.mock('@hashbrownai/react', () => ({
 }));
 import { PredictionsWorkbenchConversation } from '../examples/quickstart/react/src/PredictionsWorkbench';
 import { SelectionWorkbenchConversation } from '../examples/quickstart/react/src/SelectionWorkbench';
-import { MagicTextWorkbenchConversation } from '../examples/quickstart/react/src/MagicTextWorkbench';
+import { ProseWorkbenchConversation } from '../examples/quickstart/react/src/ProseWorkbench';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -182,8 +182,8 @@ test('selection offers manual choice before a request and never starts the SDK f
   await act(() => root.unmount());
 });
 
-test('Magic Text retains captured SDK Markdown and citation selection is inert in history', async () => {
-  window.history.replaceState(null, '', '?lesson=magic-text');
+test('Prose retains captured SDK Markdown and citation selection is inert in history', async () => {
+  window.history.replaceState(null, '', '?lesson=prose');
   const chat = {
     messages: [],
     lastAssistantMessage: undefined,
@@ -202,7 +202,7 @@ test('Magic Text retains captured SDK Markdown and citation selection is inert i
 
   await act(() =>
     root.render(
-      <MagicTextWorkbenchConversation active navigation={navigation} />,
+      <ProseWorkbenchConversation active navigation={navigation} />,
     ),
   );
   expect(chat.sendMessage).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ test('Magic Text retains captured SDK Markdown and citation selection is inert i
   });
   await act(() =>
     root.render(
-      <MagicTextWorkbenchConversation active navigation={{ ...navigation }} />,
+      <ProseWorkbenchConversation active navigation={{ ...navigation }} />,
     ),
   );
   await act(() => button(host, 'Source').click());
@@ -430,8 +430,8 @@ test('low-confidence selection exposes manual choice and never enables Use view'
   await act(() => root.unmount());
 });
 
-test('Magic Text preserves parser completion at a partial historical frame while hiding its caret', async () => {
-  window.history.replaceState(null, '', '?lesson=magic-text');
+test('Prose preserves parser completion at a partial historical frame while hiding its caret', async () => {
+  window.history.replaceState(null, '', '?lesson=prose');
   const chat = {
     messages: [],
     lastAssistantMessage: undefined,
@@ -450,7 +450,7 @@ test('Magic Text preserves parser completion at a partial historical frame while
 
   await act(() =>
     root.render(
-      <MagicTextWorkbenchConversation active navigation={navigation} />,
+      <ProseWorkbenchConversation active navigation={navigation} />,
     ),
   );
   await send(host);
@@ -468,7 +468,7 @@ test('Magic Text preserves parser completion at a partial historical frame while
   });
   await act(() =>
     root.render(
-      <MagicTextWorkbenchConversation active navigation={{ ...navigation }} />,
+      <ProseWorkbenchConversation active navigation={{ ...navigation }} />,
     ),
   );
   expect(
@@ -660,7 +660,7 @@ test('plain onboarding captures escaped replies and retained turns without tools
 
     await act(() =>
       root.render(
-        <MagicTextWorkbenchConversation active navigation={navigation} />,
+        <ProseWorkbenchConversation active navigation={navigation} />,
       ),
     );
     expect(chat.sendMessage).not.toHaveBeenCalled();
@@ -687,7 +687,7 @@ test('plain onboarding captures escaped replies and retained turns without tools
     });
     await act(() =>
       root.render(
-        <MagicTextWorkbenchConversation
+        <ProseWorkbenchConversation
           active
           navigation={{ ...navigation }}
         />,

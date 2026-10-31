@@ -50,7 +50,7 @@ test('exposeMarkdown uses custom description verbatim', () => {
   expect(component.description).toBe('Custom markdown description.');
 });
 
-test('exposeMarkdown maps node value and completion state to MagicTextRenderer', () => {
+test('exposeMarkdown maps node value and completion state to ProseRenderer', () => {
   const { container } = renderMarkdownNode({
     Markdown: {
       props: {
@@ -74,9 +74,9 @@ test('exposeMarkdown maps node value and completion state to MagicTextRenderer',
   });
 
   const paragraph = container.querySelector(
-    'p[data-magic-text-node="paragraph"]',
+    'p[data-prose-node="paragraph"]',
   );
-  const caret = container.querySelector('[data-magic-text-caret]');
+  const caret = container.querySelector('[data-prose-caret]');
 
   expect(paragraph?.textContent).toBe('streaming paragraph');
   expect(paragraph?.getAttribute('data-node-open')).toBe('true');
@@ -105,7 +105,7 @@ test('exposeMarkdown uses partial markdown text when node value is absent', () =
   });
 
   const paragraph = container.querySelector(
-    'p[data-magic-text-node="paragraph"]',
+    'p[data-prose-node="paragraph"]',
   );
 
   expect(paragraph?.textContent).toBe('partial markdown');
@@ -136,7 +136,7 @@ test('exposeMarkdown finalizes rendering when children node is complete', () => 
   });
 
   const paragraph = container.querySelector(
-    'p[data-magic-text-node="paragraph"]',
+    'p[data-prose-node="paragraph"]',
   );
 
   expect(paragraph?.getAttribute('data-node-open')).toBe('false');
@@ -168,7 +168,7 @@ test('exposeMarkdown allows disabling the default caret', () => {
     exposeMarkdown({ segmenter: false, caret: false }),
   );
 
-  const caret = container.querySelector('[data-magic-text-caret]');
+  const caret = container.querySelector('[data-prose-caret]');
 
   expect(caret).toBeNull();
 });

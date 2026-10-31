@@ -85,7 +85,7 @@ test('groups every lesson exactly once in sidebar order', () => {
       'recipes',
       'Recipes',
       [
-        'magic-text',
+        'prose',
         'predictions',
         'ui-selection',
         'ui-kits',
