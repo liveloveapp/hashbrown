@@ -1,3 +1,4 @@
+import { assertWorkbenchCaptureAfterReload } from '../../examples/quickstart/runtime/workbench-lessons';
 import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { assertWorkbenchSavedTextInspection } from './workbench-history-inspection';
@@ -181,6 +182,7 @@ export async function verifyHistoryWorkbench(options: {
       const writes = storageEvents.length;
       await hold();
       mark('reload');
+      assertWorkbenchCaptureAfterReload(lesson);
       await page.reload();
       await expect(send).toBeEnabled();
       expect((await observed()).messages).toEqual([]);

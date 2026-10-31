@@ -38,8 +38,7 @@ export function WorkbenchPanel({ lesson, sdk, source }: WorkbenchPanelProps) {
   const origin = workbenchOrigin();
   const mediaId = workbenchMediaId(lesson, sdk);
   const media = DOCS_DEMOS[mediaId];
-  const { width, height } =
-    'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
+  const { width, height } = media.dimensions;
   // Lessons the hosted workbench cannot run get no hosted link: production
   // references are not served, and loopback lessons show only a run-locally
   // notice there. Their Live tab points at the instructions instead.
