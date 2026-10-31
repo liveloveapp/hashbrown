@@ -19,7 +19,7 @@
   "transport": "http-sse",
   "execution": {
     "kind": "local",
-    "id": "pydantic-recipe-2026-10-31T19:38:39.699Z"
+    "id": "pydantic-recipe-2026-10-31T19:58:25.799Z"
   },
   "sourceInputs": [
     {
@@ -28,7 +28,7 @@
     },
     {
       "path": ".github/workflows/pr-main.yml",
-      "sha256": "9337a2949903758c08d84ff07683f4d1ec70a2126e5875a14eff0937e269c8d1"
+      "sha256": "f13072ce1ab3cf52b7ae06f304c4a96da2768a0102c08a6de485cf24268b27f0"
     },
     {
       "path": "packages/core/project.json",
@@ -52,7 +52,7 @@
     },
     {
       "path": "packages/pydantic-ai/README.md",
-      "sha256": "7de3d5a9d87510cd83b7560f48331f1b72fe7a35267a26a0f98051f2c523d255"
+      "sha256": "a93e6551ae53863e503567b531175a6b5f03412dd01a37dffd6e39dcc846b3c9"
     },
     {
       "path": "packages/pydantic-ai/check.py",
@@ -60,7 +60,7 @@
     },
     {
       "path": "packages/pydantic-ai/project.json",
-      "sha256": "72055f5fdc4d64cff34f78f9536df73cebbbf327f41c08f8cd15d6eb9464e9a3"
+      "sha256": "3a1b4bb0fee86f2c3e52fb56fe00c12dfaf77051c2f70fcd86326ed3353c1861"
     },
     {
       "path": "packages/pydantic-ai/pyproject.toml",
@@ -72,11 +72,15 @@
     },
     {
       "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/adapter.py",
-      "sha256": "01e0b1ad447dbe7642199cd3c152054e6cda1549705de9de858b74dae4981db4"
+      "sha256": "943f95ce2b860509733fccb515ecb68fea80208ec6669b48182195d07361e235"
+    },
+    {
+      "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/py.typed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "path": "packages/pydantic-ai/tests/adapter_test.py",
-      "sha256": "8e713597138981b57908894b27e01043a14622f5a227fa11e3d373fe2f7f8641"
+      "sha256": "9ecc85866d765abe5fec43ed98b5ee83d8fd84e2b1e1f5bb814cf237cf26d674"
     },
     {
       "path": "tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs",
@@ -195,86 +199,86 @@
       "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
     }
   ],
-  "sourceSha256": "c7c29666662c7bee25b38f47159b2636dfe6fe5a3049540f3549b19fbdd5886c",
+  "sourceSha256": "42e62a1a29fb7947db2d8376dbfc3bd3844de64a899ec2a8b22c2036b3d8da32",
   "wire": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
-    "sha256": "51faeb8170e8b040a68bb86bc09df576d382b149c209c2859397c75ebc068df5"
+    "sha256": "9b6de024f0635a37326602796e4bfc81e04f11957a472b6a54cf5b0a3be1451f"
   },
   "executionSummary": {
     "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
-    "sha256": "837430cf11093b0b0ab2b4d74640fbdda2cfdd92119645ae3cb5356b614a842e"
+    "sha256": "962963ffa44c8ff0925f50489684078809d87767315211e96fb250aba7257e2e"
   },
   "events": [
     {
       "type": "RUN_STARTED",
-      "timestamp": 1793475523637,
+      "timestamp": 1793476710056,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "protocolVersion": "1.0"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793475523640,
-      "messageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88",
+      "timestamp": 1793476710058,
+      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793475523640,
-      "messageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88"
+      "timestamp": 1793476710058,
+      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
     },
     {
       "type": "TOOL_CALL_START",
-      "timestamp": 1793475523640,
+      "timestamp": 1793476710059,
       "toolCallId": "capture-server-tool-server",
       "toolCallName": "serverTool",
-      "parentMessageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88"
+      "parentMessageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
     },
     {
       "type": "TOOL_CALL_ARGS",
-      "timestamp": 1793475523640,
+      "timestamp": 1793476710059,
       "toolCallId": "capture-server-tool-server",
       "delta": "{\"city\":\"London\"}"
     },
     {
       "type": "TOOL_CALL_END",
-      "timestamp": 1793475523640,
+      "timestamp": 1793476710059,
       "toolCallId": "capture-server-tool-server"
     },
     {
       "type": "TOOL_CALL_RESULT",
-      "timestamp": 1793475523645,
+      "timestamp": 1793476710063,
       "metadata": {
         "hashbrown.tool": {
           "v": 1,
           "outcome": "success"
         }
       },
-      "messageId": "d5174f1a-24a1-4616-ad78-f4b26ce1a4d6",
+      "messageId": "25be9133-0011-4df4-8b58-531f1fcc75e6",
       "toolCallId": "capture-server-tool-server",
       "content": "server-result:London",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793475523647,
-      "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9",
+      "timestamp": 1793476710064,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_CONTENT",
-      "timestamp": 1793475523647,
-      "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9",
+      "timestamp": 1793476710064,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
       "delta": "Tool result: server-result:London"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793475523647,
-      "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9"
+      "timestamp": 1793476710065,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3"
     },
     {
       "type": "RUN_FINISHED",
-      "timestamp": 1793475523649,
+      "timestamp": 1793476710066,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "outcome": {
@@ -282,5 +286,5 @@
       }
     }
   ],
-  "eventsSha256": "511a47dc38ebc039b97b50d36ef2fd30243a0991c485ef22bf78cd9ad1385976"
+  "eventsSha256": "0437c1c1c8cdcf15837644c3885bdd43209377be3bec4344ef0090d205c23318"
 }

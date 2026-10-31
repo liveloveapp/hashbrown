@@ -1,52 +1,52 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793475523836,
+    "timestamp": 1793476710243,
     "threadId": "capture-approval-deny",
     "runId": "approval-deny-resume",
     "protocolVersion": "1.0"
   },
   {
     "type": "TOOL_CALL_RESULT",
-    "timestamp": 1793475523838,
+    "timestamp": 1793476710244,
     "metadata": {
       "hashbrown.tool": {
         "v": 1,
         "outcome": "denied"
       }
     },
-    "messageId": "1ed8e66b-4fa0-4bb2-9818-4ec52f3febeb",
+    "messageId": "48b35356-6b58-43fb-be73-9e8c0227322f",
     "toolCallId": "capture-approval-deny-approval",
     "content": "The tool call was denied.",
     "role": "tool"
   },
   {
     "type": "REASONING_ENCRYPTED_VALUE",
-    "timestamp": 1793475523838,
+    "timestamp": 1793476710244,
     "subtype": "message",
-    "entityId": "1ed8e66b-4fa0-4bb2-9818-4ec52f3febeb",
+    "entityId": "48b35356-6b58-43fb-be73-9e8c0227322f",
     "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"denied\"}}"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793475523839,
-    "messageId": "0c548935-112b-4cf0-a5c3-4b0f6d45c9c6",
+    "timestamp": 1793476710246,
+    "messageId": "910dbb8a-c408-4fbf-918d-9e0de4724303",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793475523839,
-    "messageId": "0c548935-112b-4cf0-a5c3-4b0f6d45c9c6",
+    "timestamp": 1793476710246,
+    "messageId": "910dbb8a-c408-4fbf-918d-9e0de4724303",
     "delta": "Tool result: The tool call was denied."
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793475523840,
-    "messageId": "0c548935-112b-4cf0-a5c3-4b0f6d45c9c6"
+    "timestamp": 1793476710246,
+    "messageId": "910dbb8a-c408-4fbf-918d-9e0de4724303"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793475523841,
+    "timestamp": 1793476710247,
     "threadId": "capture-approval-deny",
     "runId": "approval-deny-resume",
     "outcome": {

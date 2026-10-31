@@ -1,12 +1,12 @@
-data: {"type":"RUN_STARTED","timestamp":1793475523748,"threadId":"capture-disconnect","runId":"capture-disconnect-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793476710158,"threadId":"capture-disconnect","runId":"capture-disconnect-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793475523751,"messageId":"08e9ceb3-2b2e-4283-9f4c-b8c1319fe1b0","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793476710161,"messageId":"1d95d9f0-4384-43d5-bb00-7635b021790c","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793475523751,"messageId":"08e9ceb3-2b2e-4283-9f4c-b8c1319fe1b0"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793476710161,"messageId":"1d95d9f0-4384-43d5-bb00-7635b021790c"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793475523751,"toolCallId":"capture-disconnect-server","toolCallName":"serverTool","parentMessageId":"08e9ceb3-2b2e-4283-9f4c-b8c1319fe1b0"}
+data: {"type":"TOOL_CALL_START","timestamp":1793476710161,"toolCallId":"capture-disconnect-server","toolCallName":"serverTool","parentMessageId":"1d95d9f0-4384-43d5-bb00-7635b021790c"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793475523752,"toolCallId":"capture-disconnect-server","delta":"{\"city\":\"London\"}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793476710161,"toolCallId":"capture-disconnect-server","delta":"{\"city\":\"London\"}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793475523752,"toolCallId":"capture-disconnect-server"}
+data: {"type":"TOOL_CALL_END","timestamp":1793476710162,"toolCallId":"capture-disconnect-server"}
 

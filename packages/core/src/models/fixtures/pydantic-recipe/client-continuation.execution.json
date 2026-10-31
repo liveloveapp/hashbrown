@@ -11,7 +11,7 @@
       "parts": [
         {
           "content": "client-tool",
-          "timestamp": "2026-10-31T19:38:43.794895Z",
+          "timestamp": "2026-10-31T19:58:30.201199Z",
           "part_kind": "user-prompt"
         }
       ],
@@ -56,7 +56,7 @@
       },
       "model_name": null,
       "model_id": null,
-      "timestamp": "2026-10-31T19:38:43.794949Z",
+      "timestamp": "2026-10-31T19:58:30.201242Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -84,16 +84,16 @@
           "tool_call_id": "capture-client-tool-client",
           "tool_kind": null,
           "metadata": null,
-          "timestamp": "2026-10-31T19:38:43.794977Z",
+          "timestamp": "2026-10-31T19:58:30.201271Z",
           "outcome": "success",
           "retry": null,
           "part_kind": "tool-return"
         }
       ],
-      "timestamp": "2026-10-31T19:38:43.796866Z",
+      "timestamp": "2026-10-31T19:58:30.203606Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19378-b4d3-717f-95dd-7e9d181f1194",
+      "run_id": "01a1938a-cf39-742a-a41c-c5be1777da29",
       "conversation_id": "capture-client-tool",
       "metadata": {
         "__pydantic_ai__": {
@@ -129,7 +129,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:38:43.798329Z",
+      "timestamp": "2026-10-31T19:58:30.204886Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -137,7 +137,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19378-b4d3-717f-95dd-7e9d181f1194",
+      "run_id": "01a1938a-cf39-742a-a41c-c5be1777da29",
       "conversation_id": "capture-client-tool",
       "metadata": null,
       "workspace_ref": null,
@@ -152,14 +152,14 @@
         "parts": [
           {
             "content": "client-tool",
-            "timestamp": "2026-10-31T19:38:43.782783Z",
+            "timestamp": "2026-10-31T19:58:30.190771Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:38:43.784740Z",
+        "timestamp": "2026-10-31T19:58:30.192465Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19378-b4c7-73c0-8a3a-e5ca73d015a7",
+        "run_id": "01a1938a-cf2f-70d3-94e7-2410c8c24de4",
         "conversation_id": "capture-client-tool",
         "metadata": {
           "__pydantic_ai__": {
@@ -174,7 +174,7 @@
         "parts": [
           {
             "content": "client-tool",
-            "timestamp": "2026-10-31T19:38:43.794895Z",
+            "timestamp": "2026-10-31T19:58:30.201199Z",
             "part_kind": "user-prompt"
           }
         ],
@@ -219,7 +219,7 @@
         },
         "model_name": null,
         "model_id": null,
-        "timestamp": "2026-10-31T19:38:43.794949Z",
+        "timestamp": "2026-10-31T19:58:30.201242Z",
         "kind": "response",
         "provider_name": null,
         "provider_url": null,
@@ -247,16 +247,16 @@
             "tool_call_id": "capture-client-tool-client",
             "tool_kind": null,
             "metadata": null,
-            "timestamp": "2026-10-31T19:38:43.794977Z",
+            "timestamp": "2026-10-31T19:58:30.201271Z",
             "outcome": "success",
             "retry": null,
             "part_kind": "tool-return"
           }
         ],
-        "timestamp": "2026-10-31T19:38:43.796866Z",
+        "timestamp": "2026-10-31T19:58:30.203606Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19378-b4d3-717f-95dd-7e9d181f1194",
+        "run_id": "01a1938a-cf39-742a-a41c-c5be1777da29",
         "conversation_id": "capture-client-tool",
         "metadata": {
           "__pydantic_ai__": {
@@ -386,7 +386,7 @@
       }
     },
     {
-      "id": "d4b9e31a-e6e5-44d7-928f-580183f21f4a",
+      "id": "9ec48c01-9ebd-44d4-9ff5-21b395a781c6",
       "role": "assistant",
       "content": "Tool result: controlled-client-result:London"
     }

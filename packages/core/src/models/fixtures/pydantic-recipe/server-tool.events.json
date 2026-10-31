@@ -1,74 +1,74 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793475523637,
+    "timestamp": 1793476710056,
     "threadId": "capture-server-tool",
     "runId": "capture-server-tool-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793475523640,
-    "messageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88",
+    "timestamp": 1793476710058,
+    "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793475523640,
-    "messageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88"
+    "timestamp": 1793476710058,
+    "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793475523640,
+    "timestamp": 1793476710059,
     "toolCallId": "capture-server-tool-server",
     "toolCallName": "serverTool",
-    "parentMessageId": "726c4165-78e3-49b5-8ed7-63e6860d2c88"
+    "parentMessageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793475523640,
+    "timestamp": 1793476710059,
     "toolCallId": "capture-server-tool-server",
     "delta": "{\"city\":\"London\"}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793475523640,
+    "timestamp": 1793476710059,
     "toolCallId": "capture-server-tool-server"
   },
   {
     "type": "TOOL_CALL_RESULT",
-    "timestamp": 1793475523645,
+    "timestamp": 1793476710063,
     "metadata": {
       "hashbrown.tool": {
         "v": 1,
         "outcome": "success"
       }
     },
-    "messageId": "d5174f1a-24a1-4616-ad78-f4b26ce1a4d6",
+    "messageId": "25be9133-0011-4df4-8b58-531f1fcc75e6",
     "toolCallId": "capture-server-tool-server",
     "content": "server-result:London",
     "role": "tool"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793475523647,
-    "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9",
+    "timestamp": 1793476710064,
+    "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793475523647,
-    "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9",
+    "timestamp": 1793476710064,
+    "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
     "delta": "Tool result: server-result:London"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793475523647,
-    "messageId": "487551c3-03e2-4236-8c48-54db1a5179a9"
+    "timestamp": 1793476710065,
+    "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793475523649,
+    "timestamp": 1793476710066,
     "threadId": "capture-server-tool",
     "runId": "capture-server-tool-run",
     "outcome": {
