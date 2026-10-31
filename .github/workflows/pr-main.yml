@@ -128,7 +128,7 @@ jobs:
         run: npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e --parallel=3
 
       - name: Run affected conformance suites
-        run: npx nx affected -t example-e2e --parallel=1
+        run: npx tsx tools/conformance/harness/run-browser-suites.ts "$RUNNER_TEMP/ci-tasks.json"
 
       - name: Run required .NET package acceptance
         if: steps.setup.outputs.dotnet == 'true'
