@@ -32,5 +32,4 @@ project; the Neon integration injects `DATABASE_URL` and `B4_DATABASE_URL`.
 
 ## Status
 
-The dispatch workflow currently returns an empty result. The queue
-repository, channel adapters and publishing logic land in later tasks.
+The dispatcher leases approved, due queue rows and sends them through the channel adapters. X and LinkedIn rows require a reviewed PNG/JPEG with a static `hashbrown.dev/marketing/` URL, accurate alt text and SHA-256 digest. Missing images block approval and dispatch; download or upload failures block public post creation. Dry run validates metadata without social API calls. See `docs/marketing/runbook.md` for image limits, OAuth setup and rollout.
