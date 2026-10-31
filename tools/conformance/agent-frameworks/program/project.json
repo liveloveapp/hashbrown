@@ -15,6 +15,7 @@
       "{workspaceRoot}/tools/conformance/project.json",
       "{workspaceRoot}/tools/conformance/hosts/**/*",
       "{workspaceRoot}/packages/{core,angular,react,testing}/**/*",
+      "{workspaceRoot}/www/project.json",
       "{workspaceRoot}/www/content/docs/{react,angular}/platform/compatibility.md",
       "{workspaceRoot}/.github/workflows/{pr-main,framework-compatibility}.yml",
       "{workspaceRoot}/package.json",

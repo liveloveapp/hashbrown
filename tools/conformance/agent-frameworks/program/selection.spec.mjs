@@ -82,6 +82,7 @@ for (const path of [
   `${base}/program/report.mjs`,
   `${base}/program/qualification.json`,
   'www/content/docs/react/platform/compatibility.md',
+  'www/project.json',
 ]) {
   test(`real Nx selects documentation checks without framework installation for ${path}`, () => {
     const projects = affected(path);

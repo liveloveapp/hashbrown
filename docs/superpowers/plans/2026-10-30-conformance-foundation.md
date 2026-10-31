@@ -94,3 +94,5 @@ session. No additional execution-choice or merge confirmation is required.
 - Real uncached baseline at `be014d0b`: all three producer/capture, prepared-core/next-request and React/Angular browser stages passed for seven pinned profiles. Latest-version candidate remains not-run.
 - Integration program gates after Task 4: 68 tests/build/lint passed. Conformance build/lint and 128 tests across 20 suites passed.
 - Initial full website invocation: 2,460 passed, four new-page policy/audit failures; the explicit reference-page registration fix passed all 297 focused checks; final full website verification follows the main refresh.
+- After the current-main refresh and narrow website metadata cache regression, program gates passed 69 tests/build/lint; the complete website suite passed 2,432 tests across 268 files and lint passed. Production build and route/layout checks are next.
+- The mandatory global lint hook initially lacked exact .NET SDK 10.0.402 (machine had 10.0.403); an official hash-verified temporary SDK resolved it without changing repository pins or bypassing hooks.
