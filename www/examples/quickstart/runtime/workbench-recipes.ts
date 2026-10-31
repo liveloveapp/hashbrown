@@ -86,7 +86,7 @@ export const workbenchPredictionsSchema = s.object(
 );
 /** Explicit first and follow-up prompts used by both framework recipe clients. */
 export const workbenchRecipePrompts = {
-  'magic-text': [
+  'prose': [
     'Explain the current plan with a documentation citation.',
     'Make the explanation shorter.',
   ],

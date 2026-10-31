@@ -1,0 +1,11 @@
+REACT · prose
+
+Read-only replay of the existing OpenAI capture through the renamed prose workbench. No new provider requests or writes. The capture retains its original recordedAt and commit provenance; lesson IDs and endpoint paths have been migrated to prose. Playback uses recorded timing with bounded pauses. No narration.
+
+Replay of an OpenAI capture. Prose renders streamed Markdown and citations.
+
+The follow-up stays in the same conversation. The application plan remains unchanged.
+
+Source references do not verify an answer.
+
+The original capture used the real Hashbrown SDK and browser readContext tool. The application plan remains at revision zero.

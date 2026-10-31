@@ -5,7 +5,7 @@ import { createUiJsonSchema, markdownComponent } from '@hashbrownai/core';
 import { createUiKit } from './ui-kit.fn';
 import {
   exposeMarkdown,
-  type MagicTextRendererComponentType,
+  type ProseRendererComponentType,
 } from './expose-markdown.fn';
 
 @Component({
@@ -78,7 +78,7 @@ test('exposeMarkdown uses custom description verbatim', () => {
   expect(component.description).toBe('Custom markdown description.');
 });
 
-test('exposeMarkdown maps node value and completion state to built-in MagicText', () => {
+test('exposeMarkdown maps node value and completion state to built-in Prose', () => {
   const component = exposeMarkdown({ segmenter: false });
 
   const fixture = TestBed.configureTestingModule({
@@ -94,8 +94,8 @@ test('exposeMarkdown maps node value and completion state to built-in MagicText'
   fixture.detectChanges();
 
   const host = fixture.nativeElement as HTMLElement;
-  const paragraph = host.querySelector('p[data-magic-text-node="paragraph"]');
-  const caret = host.querySelector('[data-magic-text-caret]');
+  const paragraph = host.querySelector('p[data-prose-node="paragraph"]');
+  const caret = host.querySelector('[data-prose-caret]');
 
   expect(paragraph?.textContent).toBe('streaming paragraph');
   expect(paragraph?.getAttribute('data-node-open')).toBe('true');
@@ -117,7 +117,7 @@ test('exposeMarkdown uses partial markdown text when node value is absent', () =
   fixture.detectChanges();
 
   const paragraph = (fixture.nativeElement as HTMLElement).querySelector(
-    'p[data-magic-text-node="paragraph"]',
+    'p[data-prose-node="paragraph"]',
   );
 
   expect(paragraph?.textContent).toBe('partial markdown');
@@ -139,10 +139,10 @@ test('exposeMarkdown finalizes built-in rendering when children node is complete
   fixture.detectChanges();
 
   const paragraph = (fixture.nativeElement as HTMLElement).querySelector(
-    'p[data-magic-text-node="paragraph"]',
+    'p[data-prose-node="paragraph"]',
   );
   const caret = (fixture.nativeElement as HTMLElement).querySelector(
-    '[data-magic-text-caret]',
+    '[data-prose-caret]',
   );
 
   expect(paragraph?.getAttribute('data-node-open')).toBe('false');
@@ -171,7 +171,7 @@ test('exposeMarkdown uses custom renderer and maps only text/isComplete', () => 
   );
   const defaultMarkdownNode = (
     fixture.nativeElement as HTMLElement
-  ).querySelector('[data-magic-text-root]');
+  ).querySelector('[data-prose-root]');
 
   expect(output?.textContent).toBe('custom stream');
   expect(output?.getAttribute('data-complete')).toBe('false');
@@ -207,7 +207,7 @@ test('exposeMarkdown throws when custom renderer is missing text input', () => {
   const act = () =>
     exposeMarkdown({
       renderer:
-        MissingTextRendererComponent as unknown as MagicTextRendererComponentType,
+        MissingTextRendererComponent as unknown as ProseRendererComponentType,
     } as unknown as Parameters<typeof exposeMarkdown>[0]);
 
   expect(act).toThrow(
@@ -218,7 +218,7 @@ test('exposeMarkdown throws when custom renderer is missing text input', () => {
 test('exposeMarkdown throws when custom renderer is not an Angular component', () => {
   const act = () =>
     exposeMarkdown({
-      renderer: {} as unknown as MagicTextRendererComponentType,
+      renderer: {} as unknown as ProseRendererComponentType,
     } as unknown as Parameters<typeof exposeMarkdown>[0]);
 
   expect(act).toThrow('Custom markdown renderer must be an Angular component.');
@@ -228,7 +228,7 @@ test('exposeMarkdown throws when custom renderer is missing isComplete input', (
   const act = () =>
     exposeMarkdown({
       renderer:
-        MissingCompleteRendererComponent as unknown as MagicTextRendererComponentType,
+        MissingCompleteRendererComponent as unknown as ProseRendererComponentType,
     } as unknown as Parameters<typeof exposeMarkdown>[0]);
 
   expect(act).toThrow(

@@ -219,7 +219,7 @@ export async function verifyOnboardingWorkbench(options: {
     } else {
       await expect(replies).toHaveCount(1);
       await expect(
-        replies.locator('h1,h2,h3,strong,em,a,hb-magic-text'),
+        replies.locator('h1,h2,h3,strong,em,a,hb-prose'),
       ).toHaveCount(0);
       if (lesson === 'conversation')
         await expect(replies.first()).toContainText('Lighthouse');

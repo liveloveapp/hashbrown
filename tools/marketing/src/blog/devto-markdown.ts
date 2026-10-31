@@ -7,11 +7,11 @@ const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
 const CODE_EXAMPLE_OPEN = /^\s*<hb-code-example\s+header="([^"]*)"\s*>\s*$/;
 const SITE_ONLY_TAG =
-  /^\s*(?:<\/hb-code-example>|<\/?hb-carousel(?:\s[^>]*)?>|<\/hb-magic-text-demo>|<\/www-atc-demo-video>)\s*$/;
+  /^\s*(?:<\/hb-code-example>|<\/?hb-carousel(?:\s[^>]*)?>|<\/hb-prose-demo>|<\/www-atc-demo-video>)\s*$/;
 /** Interactive or video-only elements: the opening tag (and a same-line close) becomes a link. */
 const DEMO_LINKS: [RegExp, string][] = [
   [
-    /^\s*<hb-magic-text-demo\s*>(?:\s*<\/hb-magic-text-demo>)?\s*$/,
+    /^\s*<hb-prose-demo\s*>(?:\s*<\/hb-prose-demo>)?\s*$/,
     'See the interactive demo on hashbrown.dev',
   ],
   [
@@ -95,7 +95,7 @@ function rewriteLine(line: string, base: string): string {
  *   closed only by a matching fence) and inline code spans are never changed.
  * - Site-only components become plain markdown: `<hb-code-example header="x">`
  *   becomes a bold `**x**` label above its code block; `<hb-carousel>` is
- *   unwrapped and its images kept; the interactive `<hb-magic-text-demo>` and
+ *   unwrapped and its images kept; the interactive `<hb-prose-demo>` and
  *   the video-only `<www-atc-demo-video>` (single-line or open/close on separate
  *   lines) become one link line to the post on hashbrown.dev, so the lead-in
  *   sentence still makes sense; the Loom `<iframe>` wrapper becomes

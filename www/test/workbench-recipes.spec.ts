@@ -12,7 +12,7 @@ import {
 
 test('new lessons have explicit protocols and fixed initial application state', () => {
   const expected = [
-    ['magic-text', 'text', 'chat'],
+    ['prose', 'text', 'chat'],
     ['predictions', 'predictions', 'chat'],
     ['ui-selection', 'selection', 'decision'],
   ];
@@ -194,7 +194,7 @@ test('server pins text, prediction and selection contracts by trusted lesson', (
     forwardedProps: {},
   };
 
-  const text = pinWorkbenchInput(input, 'magic-text');
+  const text = pinWorkbenchInput(input, 'prose');
   const predictions = pinWorkbenchInput(input, 'predictions');
   expect(text.tools.map((tool) => tool.name)).toEqual(['readContext']);
   expect(text.forwardedProps).toEqual({ hashbrown: { ui: false } });

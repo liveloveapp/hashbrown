@@ -156,11 +156,11 @@ test('unwraps hb-carousel and keeps its images, made absolute', () => {
   );
 });
 
-test('replaces hb-magic-text-demo with a link to the post', () => {
+test('replaces hb-prose-demo with a link to the post', () => {
   const md =
-    "Use the slider below to simulate streaming Markdown through Hashbrown's Magic Text parser:\n\n<hb-magic-text-demo></hb-magic-text-demo>\n\nWe have a full recipe.";
+    "Use the slider below to simulate streaming Markdown through Hashbrown's Prose parser:\n\n<hb-prose-demo></hb-prose-demo>\n\nWe have a full recipe.";
   expect(convert(md)).toBe(
-    `Use the slider below to simulate streaming Markdown through Hashbrown's Magic Text parser:\n\n[See the interactive demo on hashbrown.dev](${POST_URL})\n\nWe have a full recipe.`,
+    `Use the slider below to simulate streaming Markdown through Hashbrown's Prose parser:\n\n[See the interactive demo on hashbrown.dev](${POST_URL})\n\nWe have a full recipe.`,
   );
 });
 
