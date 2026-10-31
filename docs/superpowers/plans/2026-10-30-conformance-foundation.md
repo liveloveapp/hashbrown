@@ -57,11 +57,12 @@ export async function loadInventory(root) {
 
 ## Task 2: Deterministic public report and stale-output gate
 
-- [ ] Write `program/report.spec.mjs` first. Assert exact versions and native transport limits are visible, both SDK pages carry the same evidence/status body, planned Pydantic is not tested, .NET remains an audit, `recipe-required` is not a tested recipe, gaps are retained, source links identify immutable commits, historical qualification differs from current health, Markdown is escaped, malformed records cannot render, and missing/stale files fail check mode.
-- [ ] Run the focused file RED, implement a small pure renderer and explicit `--write`/`--check` CLI, rerun GREEN. No current clock/randomness or live network in generation; qualification dates come from reviewed inputs.
-- [ ] Generate the two compatibility pages with normal docs frontmatter and explanatory text, accessible status labels and per-profile detail tables. Use compact family overview plus exact cells/versions/evidence, not an unqualified framework badge. Include planned work and limitations. Do not claim latest compatibility from a pinned historical record.
-- [ ] Run the generator twice and confirm byte identity; alter a test-owned output and verify check mode fails. Check links and ensure no nested table layout forces an unusably wide mobile view.
-- [ ] Commit renderer/tests/generated content after spec and quality review.
+- [x] Write `program/report.spec.mjs` first. Assert exact versions and native transport limits are visible, both SDK pages carry the same evidence/status body, planned Pydantic is not tested, .NET remains an audit, `recipe-required` is not a tested recipe, gaps are retained, source links identify immutable commits, historical qualification differs from current health, Markdown is escaped, malformed records cannot render, and missing/stale files fail check mode.
+- [x] Run the focused file RED, implement a small pure renderer and explicit `--write`/`--check` CLI, rerun GREEN. No current clock/randomness or live network in generation; qualification dates come from reviewed inputs.
+  Reuse validation through a small `assertValidatedInventory` export: the validator registers its detached result and snapshot in a private WeakMap; rendering rejects unvalidated or subsequently changed objects. This avoids a second weaker schema validator in the renderer.
+- [x] Generate the two compatibility pages with normal docs frontmatter and explanatory text, accessible status labels and per-profile detail tables. Use compact family overview plus exact cells/versions/evidence, not an unqualified framework badge. Include planned work and limitations. Do not claim latest compatibility from a pinned historical record.
+- [x] Run the generator twice and confirm byte identity; alter a test-owned output and verify check mode fails. Check links and ensure no nested table layout forces an unusably wide mobile view.
+- [x] Commit renderer/tests/generated content after spec and quality review.
 
 ## Task 3: Nx affected checks and weekly baseline health
 

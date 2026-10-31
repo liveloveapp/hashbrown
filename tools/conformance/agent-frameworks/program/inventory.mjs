@@ -11,6 +11,7 @@ import {
 } from './inventory-evidence.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
+const validatedInventories = new WeakMap();
 const statuses = [
   'passed',
   'recipe-required',
@@ -192,7 +193,7 @@ export function validateInventory({
       qualification: record,
     };
   });
-  return JSON.parse(
+  const inventory = JSON.parse(
     JSON.stringify({
       schemaVersion: 1,
       catalog,
@@ -209,6 +210,25 @@ export function validateInventory({
       existingDotnetHost: legacy.existingDotnetHost,
       runHealth: qualification.runHealth ?? { status: 'not-run' },
     }),
+  );
+  validatedInventories.set(inventory, JSON.stringify(inventory));
+  return inventory;
+}
+
+/**
+ * Assert that an inventory came from this validator and has not changed since validation.
+ * Authenticating the detached value lets pure renderers reuse the full evidence schema.
+ * @param inventory - The exact value returned by validateInventory or loadInventory.
+ */
+export function assertValidatedInventory(inventory) {
+  assert.ok(
+    validatedInventories.has(inventory),
+    'Expected a validated inventory',
+  );
+  assert.equal(
+    JSON.stringify(inventory),
+    validatedInventories.get(inventory),
+    'Validated inventory changed',
   );
 }
 
