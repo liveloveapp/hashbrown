@@ -13,7 +13,7 @@ test.each(
     'decisions',
     'debugging',
     'request-transformation',
-    'magic-text',
+    'prose',
     'predictions',
     'ui-selection',
     'first-plan',

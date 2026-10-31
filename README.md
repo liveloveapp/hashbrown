@@ -186,7 +186,7 @@ React:
 | [Generative UI](https://hashbrown.dev/docs/angular/concept/components)            | The model composes your components. Bundle them into UI kits.                   |
 | [Client-side tools](https://hashbrown.dev/docs/angular/concept/functions)         | The model calls functions in your app. Connect MCP servers too.                 |
 | [Structured output](https://hashbrown.dev/docs/angular/concept/structured-output) | Skillet schemas turn model output into typed JSON.                              |
-| [Streaming](https://hashbrown.dev/docs/angular/concept/streaming)                 | Strings, arrays, and objects parse as they arrive. Magic Text streams Markdown. |
+| [Streaming](https://hashbrown.dev/docs/angular/concept/streaming)                 | Strings, arrays, and objects parse as they arrive. Prose streams Markdown. |
 | [Any model](https://hashbrown.dev/docs/angular/start/platforms)                   | OpenAI, Anthropic, Gemini, Bedrock, Azure, Ollama, or a model in the browser.   |
 | [Code execution](https://hashbrown.dev/docs/angular/concept/runtime)              | Run model-written JavaScript in a sandbox.                                      |
 

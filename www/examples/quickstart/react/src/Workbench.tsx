@@ -9,7 +9,7 @@ import { WorkflowWorkbenchConversation } from './WorkflowWorkbench';
 import { PlanCard } from './PlanCard';
 import { firstPlanComponents } from './FirstPlanApp';
 import { workbenchFirstPlanSystem } from '../../runtime/workbench-onboarding';
-import { MagicTextWorkbenchConversation } from './MagicTextWorkbench';
+import { ProseWorkbenchConversation } from './ProseWorkbench';
 import { PredictionsWorkbenchConversation } from './PredictionsWorkbench';
 import { SelectionWorkbenchConversation } from './SelectionWorkbench';
 import { DecisionWorkbenchConversation } from './DecisionWorkbench';
@@ -323,7 +323,7 @@ export function Workbench() {
                     ? WorkflowWorkbenchConversation
                     : getWorkbenchLesson(window.location.search).format ===
                         'text'
-                      ? MagicTextWorkbenchConversation
+                      ? ProseWorkbenchConversation
                       : getWorkbenchLesson(window.location.search).format ===
                           'predictions'
                         ? PredictionsWorkbenchConversation

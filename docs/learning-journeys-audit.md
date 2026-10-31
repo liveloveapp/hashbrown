@@ -81,7 +81,7 @@ Every row covers both framework routes. “Retained” means no editorial issue 
 | `recipes/decisions-in-agents`                 | Retained                |
 | `recipes/json-parser`                         | Retained                |
 | `recipes/local-models`                        | Retained                |
-| `recipes/magic-text`                          | Retained                |
+| `recipes/prose`                          | Retained                |
 | `recipes/natural-language-to-structured-data` | Retained                |
 | `recipes/predictive-actions`                  | Retained                |
 | `recipes/public-endpoint`                     | Clarified; see findings |

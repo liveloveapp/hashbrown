@@ -1,7 +1,7 @@
 'use client';
 
 import { s } from '@hashbrownai/core';
-import { exposeComponent, MagicTextRenderer } from '@hashbrownai/react';
+import { exposeComponent, ProseRenderer } from '@hashbrownai/react';
 import Link from 'next/link';
 import { createContext, type ReactNode, useContext } from 'react';
 import { FileCodeIcon, FileIcon } from '../site/icons';
@@ -112,9 +112,9 @@ export function SearchMarkdown({ content }: { content: string }) {
   const { isLoading } = useContext(SearchOverlayContext);
 
   return (
-    <MagicTextRenderer className={styles.markdown} isComplete={!isLoading}>
+    <ProseRenderer className={styles.markdown} isComplete={!isLoading}>
       {content}
-    </MagicTextRenderer>
+    </ProseRenderer>
   );
 }
 

@@ -14,7 +14,7 @@ export function workbenchRecipeRecordingCues(
   },
   encodedDuration: number,
 ): readonly WorkbenchRecordingCue[] | undefined {
-  if (!['magic-text', 'predictions', 'ui-selection'].includes(report.lesson))
+  if (!['prose', 'predictions', 'ui-selection'].includes(report.lesson))
     return undefined;
   if (
     report.lesson === 'ui-selection' &&
@@ -33,12 +33,12 @@ export function workbenchRecipeRecordingCues(
     live = phase('returnedLive');
   const end = encodedDuration / 2;
   const cues: readonly WorkbenchRecordingCue[] =
-    report.lesson === 'magic-text'
+    report.lesson === 'prose'
       ? [
           [
             0,
             complete,
-            'Real text chat streams Markdown. Magic Text renders headings, emphasis and list items as the reply arrives.',
+            'Real text chat streams Markdown. Prose renders headings, emphasis and list items as the reply arrives.',
           ],
           [
             complete,

@@ -78,7 +78,7 @@ test('rejects events with missing structure or non-finite numbers', () => {
   expect(results.every((result) => result === null)).toBe(true);
 });
 
-function streamedCapture(lesson: 'generative-ui' | 'magic-text') {
+function streamedCapture(lesson: 'generative-ui' | 'prose') {
   const store = createWorkbenchStore();
   store.send('Plan');
   store.record('event', { type: 'TEXT_MESSAGE_CONTENT', delta: '{' });
@@ -92,7 +92,7 @@ function streamedCapture(lesson: 'generative-ui' | 'magic-text') {
 
 test('stamping records milestones computed with the lesson format', () => {
   const ui = streamedCapture('generative-ui');
-  const text = streamedCapture('magic-text');
+  const text = streamedCapture('prose');
 
   const stampedUi = withWorkbenchCaptureMilestones(ui);
   const stampedText = withWorkbenchCaptureMilestones(text);

@@ -63,7 +63,7 @@ test('onboarding captions reject missing or backwards evidence and respect measu
 });
 
 test('onboarding captions leave existing lessons to their existing recorder', () => {
-  const report = { lesson: 'magic-text', phases };
+  const report = { lesson: 'prose', phases };
 
   const result = workbenchOnboardingRecordingCues(report, 22);
 

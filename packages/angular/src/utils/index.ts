@@ -6,7 +6,7 @@ export { toDeepSignal, type DeepSignal } from './deep-signal';
 export * from './expose-component.fn';
 export * from './expose-markdown.fn';
 export * from './inject-imperative-json-parser.fn';
-export * from './inject-magic-text-parser.fn';
+export * from './inject-prose-parser.fn';
 export * from './inject-json-parser.fn';
 export * from './signals';
 export * from './types';

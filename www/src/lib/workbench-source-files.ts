@@ -55,8 +55,8 @@ const structured = lesson(
 );
 const text = (runtime: string) =>
   lesson(
-    [react('MagicTextWorkbench.tsx')],
-    [angular('magic-text-workbench.ts')],
+    [react('ProseWorkbench.tsx')],
+    [angular('prose-workbench.ts')],
     ['server/workbench-app.ts', runtime],
   );
 const uiKit = lesson(
@@ -145,7 +145,7 @@ export const WORKBENCH_LESSON_FILES: Readonly<
   ),
   conversation: text('runtime/workbench-onboarding.ts'),
   'system-instructions': text('runtime/workbench-onboarding.ts'),
-  'magic-text': text('runtime/workbench-recipes.ts'),
+  'prose': text('runtime/workbench-recipes.ts'),
   predictions: recipe('PredictionsWorkbench.tsx', 'predictions-workbench.ts'),
   'ui-selection': recipe('SelectionWorkbench.tsx', 'selection-workbench.ts'),
   'javascript-runtime': lesson(
