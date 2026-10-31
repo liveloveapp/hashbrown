@@ -1,18 +1,18 @@
-data: {"type":"RUN_STARTED","timestamp":1793474124899,"threadId":"capture-failure","runId":"capture-failure-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793475523658,"threadId":"capture-failure","runId":"capture-failure-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793474124903,"messageId":"1cd316a3-f3ae-4a14-8ca7-37b7a8acf471","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793475523660,"messageId":"1f87af53-ad0f-4c48-bf56-9d6592681a8f","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793474124903,"messageId":"1cd316a3-f3ae-4a14-8ca7-37b7a8acf471"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793475523660,"messageId":"1f87af53-ad0f-4c48-bf56-9d6592681a8f"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793474124903,"toolCallId":"capture-failure-server","toolCallName":"failingTool","parentMessageId":"1cd316a3-f3ae-4a14-8ca7-37b7a8acf471"}
+data: {"type":"TOOL_CALL_START","timestamp":1793475523660,"toolCallId":"capture-failure-server","toolCallName":"failingTool","parentMessageId":"1f87af53-ad0f-4c48-bf56-9d6592681a8f"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793474124903,"toolCallId":"capture-failure-server","delta":"{\"city\":\"London\"}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793475523661,"toolCallId":"capture-failure-server","delta":"{\"city\":\"London\"}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793474124903,"toolCallId":"capture-failure-server"}
+data: {"type":"TOOL_CALL_END","timestamp":1793475523661,"toolCallId":"capture-failure-server"}
 
-data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"failure","error":{"message":"Tool execution was interrupted by an error."}}},"messageId":"2f5570ea-8aa7-4f19-94b1-2c0b3c1dd3cf","toolCallId":"capture-failure-server","content":"Tool execution was interrupted by an error.","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"failure","error":{"message":"Tool execution was interrupted by an error."}}},"messageId":"6757b2f4-6196-4e26-a353-b2a1f1078148","toolCallId":"capture-failure-server","content":"Tool execution was interrupted by an error.","role":"tool"}
 
-data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"2f5570ea-8aa7-4f19-94b1-2c0b3c1dd3cf","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"failed\"}}"}
+data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"6757b2f4-6196-4e26-a353-b2a1f1078148","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"failed\"}}"}
 
-data: {"type":"RUN_ERROR","timestamp":1793474124905,"message":"controlled callback failure:London"}
+data: {"type":"RUN_ERROR","timestamp":1793475523662,"message":"controlled callback failure:London"}
 

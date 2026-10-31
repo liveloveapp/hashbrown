@@ -11,14 +11,14 @@
       "parts": [
         {
           "content": "server-tool",
-          "timestamp": "2026-10-31T19:15:25.125041Z",
+          "timestamp": "2026-10-31T19:38:43.865594Z",
           "part_kind": "user-prompt"
         }
       ],
-      "timestamp": "2026-10-31T19:15:25.126737Z",
+      "timestamp": "2026-10-31T19:38:43.867484Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+      "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
       "conversation_id": "capture-isolation-a",
       "metadata": {
         "__pydantic_ai__": {
@@ -56,7 +56,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:15:25.127937Z",
+      "timestamp": "2026-10-31T19:38:43.886154Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -64,7 +64,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+      "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
       "conversation_id": "capture-isolation-a",
       "metadata": null,
       "workspace_ref": null,
@@ -80,16 +80,16 @@
           "tool_call_id": "capture-isolation-a-server",
           "tool_kind": null,
           "metadata": null,
-          "timestamp": "2026-10-31T19:15:25.179747Z",
+          "timestamp": "2026-10-31T19:38:43.942108Z",
           "outcome": "success",
           "retry": null,
           "part_kind": "tool-return"
         }
       ],
-      "timestamp": "2026-10-31T19:15:25.180501Z",
+      "timestamp": "2026-10-31T19:38:43.942886Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+      "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
       "conversation_id": "capture-isolation-a",
       "metadata": null,
       "state": "complete"
@@ -121,7 +121,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:15:25.181673Z",
+      "timestamp": "2026-10-31T19:38:43.944050Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -129,7 +129,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+      "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
       "conversation_id": "capture-isolation-a",
       "metadata": null,
       "workspace_ref": null,
@@ -144,14 +144,14 @@
         "parts": [
           {
             "content": "server-tool",
-            "timestamp": "2026-10-31T19:15:25.125041Z",
+            "timestamp": "2026-10-31T19:38:43.865594Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:15:25.126737Z",
+        "timestamp": "2026-10-31T19:38:43.867484Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+        "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
         "conversation_id": "capture-isolation-a",
         "metadata": {
           "__pydantic_ai__": {
@@ -166,14 +166,14 @@
         "parts": [
           {
             "content": "server-tool",
-            "timestamp": "2026-10-31T19:15:25.125041Z",
+            "timestamp": "2026-10-31T19:38:43.865594Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:15:25.126737Z",
+        "timestamp": "2026-10-31T19:38:43.867484Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+        "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
         "conversation_id": "capture-isolation-a",
         "metadata": {
           "__pydantic_ai__": {
@@ -211,7 +211,7 @@
         },
         "model_name": "function::model_stream",
         "model_id": "function:function::model_stream",
-        "timestamp": "2026-10-31T19:15:25.127937Z",
+        "timestamp": "2026-10-31T19:38:43.886154Z",
         "kind": "response",
         "provider_name": null,
         "provider_url": null,
@@ -219,7 +219,7 @@
         "provider_details": null,
         "provider_response_id": null,
         "finish_reason": null,
-        "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+        "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
         "conversation_id": "capture-isolation-a",
         "metadata": null,
         "workspace_ref": null,
@@ -235,16 +235,16 @@
             "tool_call_id": "capture-isolation-a-server",
             "tool_kind": null,
             "metadata": null,
-            "timestamp": "2026-10-31T19:15:25.179747Z",
+            "timestamp": "2026-10-31T19:38:43.942108Z",
             "outcome": "success",
             "retry": null,
             "part_kind": "tool-return"
           }
         ],
-        "timestamp": "2026-10-31T19:15:25.180501Z",
+        "timestamp": "2026-10-31T19:38:43.942886Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19363-5d45-777a-99ba-cf46fff7c50d",
+        "run_id": "01a19378-b51a-7242-91f2-671f39ba7238",
         "conversation_id": "capture-isolation-a",
         "metadata": null,
         "state": "complete"
@@ -276,7 +276,7 @@
       "content": "server-tool"
     },
     {
-      "id": "ab6c5aa5-a497-4682-bed5-b47c5ce3fd48",
+      "id": "b2e63e05-3274-456c-b38f-59dc64c019aa",
       "role": "assistant",
       "toolCalls": [
         {
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "id": "7a10b90c-5fc7-4ab5-aa17-8f38469a8809",
+      "id": "2c1cd9f1-a2f1-417c-8655-24a3c2e62844",
       "role": "tool",
       "content": "server-result:London",
       "toolCallId": "capture-isolation-a-server",
@@ -302,7 +302,7 @@
       }
     },
     {
-      "id": "95d8f605-f46e-4cc3-9b0c-afbe7eda5217",
+      "id": "e0ddf8eb-7314-4408-9f8c-81618fa68781",
       "role": "assistant",
       "content": "Tool result: server-result:London"
     }

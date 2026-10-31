@@ -320,6 +320,11 @@ npx nx example-e2e pydantic-ai-recipe-conformance
 npx nx compatibility-baseline pydantic-ai-recipe-conformance
 ```
 
+The Angular terminal-tool fixture uses the public `lastAssistantMessage()` signal
+to display retained tool results alongside `error()`. Angular Resource `value()`
+continues to throw in its error state and its error snapshot has no value. This
+is a generic consumer pattern; the fixture adds no Python-specific interpretation.
+
 The recipe qualifies typed tool outcomes, native approval/resume and live standard
 activities/state independently of richer capabilities. Same-name tool registration
 still follows native rejection. Backend restart, browser reload/reconnect,

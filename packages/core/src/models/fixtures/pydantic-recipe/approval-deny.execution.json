@@ -11,7 +11,7 @@
       "parts": [
         {
           "content": "approval",
-          "timestamp": "2026-10-31T19:15:25.078083Z",
+          "timestamp": "2026-10-31T19:38:43.836085Z",
           "part_kind": "user-prompt"
         }
       ],
@@ -56,7 +56,7 @@
       },
       "model_name": null,
       "model_id": null,
-      "timestamp": "2026-10-31T19:15:25.078132Z",
+      "timestamp": "2026-10-31T19:38:43.836126Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -68,7 +68,7 @@
       "conversation_id": null,
       "metadata": {
         "__pydantic_ai__": {
-          "ui_message_id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84"
+          "ui_message_id": "4210611b-0390-4fc3-8116-e84b18ceab8e"
         }
       },
       "workspace_ref": null,
@@ -84,16 +84,16 @@
           "tool_call_id": "capture-approval-deny-approval",
           "tool_kind": null,
           "metadata": null,
-          "timestamp": "2026-10-31T19:15:25.080085Z",
+          "timestamp": "2026-10-31T19:38:43.837995Z",
           "outcome": "denied",
           "retry": null,
           "part_kind": "tool-return"
         }
       ],
-      "timestamp": "2026-10-31T19:15:25.080640Z",
+      "timestamp": "2026-10-31T19:38:43.838522Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+      "run_id": "01a19378-b4fc-71e2-a015-ef2a0beb2a53",
       "conversation_id": "capture-approval-deny",
       "metadata": null,
       "state": "complete"
@@ -125,7 +125,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:15:25.081704Z",
+      "timestamp": "2026-10-31T19:38:43.839606Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -133,7 +133,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+      "run_id": "01a19378-b4fc-71e2-a015-ef2a0beb2a53",
       "conversation_id": "capture-approval-deny",
       "metadata": null,
       "workspace_ref": null,
@@ -148,14 +148,14 @@
         "parts": [
           {
             "content": "approval",
-            "timestamp": "2026-10-31T19:15:25.067950Z",
+            "timestamp": "2026-10-31T19:38:43.827159Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:15:25.069566Z",
+        "timestamp": "2026-10-31T19:38:43.828643Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19363-5d0c-7114-8501-26a302e11549",
+        "run_id": "01a19378-b4f3-71d0-b29c-3b9f2af44fd9",
         "conversation_id": "capture-approval-deny",
         "metadata": {
           "__pydantic_ai__": {
@@ -170,7 +170,7 @@
         "parts": [
           {
             "content": "approval",
-            "timestamp": "2026-10-31T19:15:25.078083Z",
+            "timestamp": "2026-10-31T19:38:43.836085Z",
             "part_kind": "user-prompt"
           }
         ],
@@ -215,7 +215,7 @@
         },
         "model_name": null,
         "model_id": null,
-        "timestamp": "2026-10-31T19:15:25.078132Z",
+        "timestamp": "2026-10-31T19:38:43.836126Z",
         "kind": "response",
         "provider_name": null,
         "provider_url": null,
@@ -227,7 +227,7 @@
         "conversation_id": null,
         "metadata": {
           "__pydantic_ai__": {
-            "ui_message_id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84"
+            "ui_message_id": "4210611b-0390-4fc3-8116-e84b18ceab8e"
           }
         },
         "workspace_ref": null,
@@ -243,16 +243,16 @@
             "tool_call_id": "capture-approval-deny-approval",
             "tool_kind": null,
             "metadata": null,
-            "timestamp": "2026-10-31T19:15:25.080085Z",
+            "timestamp": "2026-10-31T19:38:43.837995Z",
             "outcome": "denied",
             "retry": null,
             "part_kind": "tool-return"
           }
         ],
-        "timestamp": "2026-10-31T19:15:25.080640Z",
+        "timestamp": "2026-10-31T19:38:43.838522Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+        "run_id": "01a19378-b4fc-71e2-a015-ef2a0beb2a53",
         "conversation_id": "capture-approval-deny",
         "metadata": null,
         "state": "complete"
@@ -287,7 +287,7 @@
           "content": "approval"
         },
         {
-          "id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84",
+          "id": "4210611b-0390-4fc3-8116-e84b18ceab8e",
           "role": "assistant",
           "toolCalls": [
             {
@@ -323,7 +323,7 @@
       "content": "approval"
     },
     {
-      "id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84",
+      "id": "4210611b-0390-4fc3-8116-e84b18ceab8e",
       "role": "assistant",
       "toolCalls": [
         {
@@ -337,7 +337,7 @@
       ]
     },
     {
-      "id": "0463113d-66a1-496f-91b1-56bc0f8a2df6",
+      "id": "375f82a9-03f8-4ca9-95ff-0842de2aafcf",
       "role": "tool",
       "content": "The tool call was denied.",
       "toolCallId": "capture-approval-deny-approval",
@@ -350,7 +350,7 @@
       }
     },
     {
-      "id": "feaa83a8-f491-4b57-b8b8-fffc9c02dffc",
+      "id": "5b5ec9f5-e431-41a1-8d20-9f9c1f7dbff8",
       "role": "assistant",
       "content": "Tool result: The tool call was denied."
     }

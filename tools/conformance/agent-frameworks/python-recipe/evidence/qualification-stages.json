@@ -1,0 +1,531 @@
+{
+  "profileId": "pydantic-ai/asgi-compatibility",
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-recipe-2026-10-31T19:38:39.699Z"
+  },
+  "sourceSha256": "c7c29666662c7bee25b38f47159b2636dfe6fe5a3049540f3549b19fbdd5886c",
+  "captureSha256": "f42541c54a74af36079b0a75adefe7761c92199e7288d631e477c61376541e9f",
+  "sourceCommit": "d856ac7ad23adf533b71c217096c1163d5a82f53",
+  "startedAt": "2026-10-31T19:38:39.699Z",
+  "completedAt": "2026-10-31T19:40:30.725Z",
+  "commands": [
+    {
+      "id": "package-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:39.700Z",
+      "completedAt": "2026-10-31T19:38:40.911Z",
+      "exitCode": 0
+    },
+    {
+      "id": "installed-wheel",
+      "file": "npx",
+      "args": [
+        "nx",
+        "install",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:40.911Z",
+      "completedAt": "2026-10-31T19:38:42.906Z",
+      "exitCode": 0
+    },
+    {
+      "id": "capture-real-producer",
+      "file": "node",
+      "args": [
+        "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
+        "--write"
+      ],
+      "startedAt": "2026-10-31T19:38:42.906Z",
+      "completedAt": "2026-10-31T19:38:44.114Z",
+      "exitCode": 0
+    },
+    {
+      "id": "package-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:44.114Z",
+      "completedAt": "2026-10-31T19:38:47.548Z",
+      "exitCode": 0
+    },
+    {
+      "id": "package-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:47.548Z",
+      "completedAt": "2026-10-31T19:38:48.492Z",
+      "exitCode": 0
+    },
+    {
+      "id": "recipe-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:48.492Z",
+      "completedAt": "2026-10-31T19:38:50.117Z",
+      "exitCode": 0
+    },
+    {
+      "id": "producer-consumer-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:50.117Z",
+      "completedAt": "2026-10-31T19:39:01.788Z",
+      "exitCode": 0
+    },
+    {
+      "id": "recipe-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:01.788Z",
+      "completedAt": "2026-10-31T19:39:03.519Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static",
+        "--runInBand"
+      ],
+      "startedAt": "2026-10-31T19:39:03.519Z",
+      "completedAt": "2026-10-31T19:39:23.599Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:23.599Z",
+      "completedAt": "2026-10-31T19:39:29.768Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:29.768Z",
+      "completedAt": "2026-10-31T19:39:34.497Z",
+      "exitCode": 0
+    },
+    {
+      "id": "browser-react-and-angular",
+      "file": "npx",
+      "args": [
+        "nx",
+        "example-e2e",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:34.497Z",
+      "completedAt": "2026-10-31T19:40:30.282Z",
+      "exitCode": 0
+    }
+  ],
+  "observations": [
+    {
+      "scenarioId": "tools.server-execution",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.server-execution",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "canonical-persistence",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.same-name-client-inert",
+      "stage": "producer-execution",
+      "result": "fail",
+      "basis": "Native duplicate tool name rejection observed before execution."
+    },
+    {
+      "scenarioId": "tools.live-start",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.live-start",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.native",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.native",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.native",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.native",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.native",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.live-start",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "activities.live-start",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "approvals.resume",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "approvals.resume",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "approvals.resume",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "approvals.resume",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "approvals.resume",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "state.snapshot-patch",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "state.snapshot-patch",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "state.snapshot-patch",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.thread-isolation",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.thread-isolation",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.thread-isolation",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.thread-isolation",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "recovery.thread-isolation",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Actual source-bound installed-wheel producer, prepared consumer and browser checks completed successfully."
+    }
+  ],
+  "browserScope": "Both current Hashbrown React and Angular production smoke consumers; ordinary requests retain native protocol negotiation."
+}

@@ -1,0 +1,207 @@
+{
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-recipe-2026-10-31T19:38:39.699Z"
+  },
+  "sourceSha256": "c7c29666662c7bee25b38f47159b2636dfe6fe5a3049540f3549b19fbdd5886c",
+  "versions": {
+    "pydantic-ai-slim": "2.64.0",
+    "ag-ui-protocol": "1.0.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0"
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "uv": "0.11.3"
+  },
+  "realFrameworkExecution": true,
+  "wire": {
+    "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
+    "sha256": "51faeb8170e8b040a68bb86bc09df576d382b149c209c2859397c75ebc068df5"
+  },
+  "callbackObservationsRef": {
+    "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.execution.json",
+    "sha256": "1b48cc0fb53c9fdf0af629c502ec0b6ae067d7fd511fda1500c71ca398789e45"
+  },
+  "liveObservationsRef": {
+    "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.live.json",
+    "sha256": "2ba86d74899a5767de9660586371a12b6738e2a0b9414ea10503a9784a171d2c"
+  },
+  "packageInstallationRef": {
+    "path": "tools/conformance/agent-frameworks/python-recipe/evidence/package-installation.json",
+    "sha256": "41eb55189b5940ecee3c9ef020462855766b0c9fc018687911b92b0a2ec0b277"
+  },
+  "outcomeObservationsRef": {
+    "path": "tools/conformance/agent-frameworks/python-recipe/evidence/outcome-observations.json",
+    "sha256": "c096020225ed922db4ee372ed2668ed5a55efe45f8300bc4fdeb575dbd4ce460"
+  },
+  "commands": [
+    {
+      "id": "package-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:39.700Z",
+      "completedAt": "2026-10-31T19:38:40.911Z",
+      "exitCode": 0
+    },
+    {
+      "id": "installed-wheel",
+      "file": "npx",
+      "args": [
+        "nx",
+        "install",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:40.911Z",
+      "completedAt": "2026-10-31T19:38:42.906Z",
+      "exitCode": 0
+    },
+    {
+      "id": "capture-real-producer",
+      "file": "node",
+      "args": [
+        "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
+        "--write"
+      ],
+      "startedAt": "2026-10-31T19:38:42.906Z",
+      "completedAt": "2026-10-31T19:38:44.114Z",
+      "exitCode": 0
+    },
+    {
+      "id": "package-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:44.114Z",
+      "completedAt": "2026-10-31T19:38:47.548Z",
+      "exitCode": 0
+    },
+    {
+      "id": "package-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "pydantic-ai",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:47.548Z",
+      "completedAt": "2026-10-31T19:38:48.492Z",
+      "exitCode": 0
+    },
+    {
+      "id": "recipe-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:48.492Z",
+      "completedAt": "2026-10-31T19:38:50.117Z",
+      "exitCode": 0
+    },
+    {
+      "id": "producer-consumer-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:38:50.117Z",
+      "completedAt": "2026-10-31T19:39:01.788Z",
+      "exitCode": 0
+    },
+    {
+      "id": "recipe-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:01.788Z",
+      "completedAt": "2026-10-31T19:39:03.519Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-tests",
+      "file": "npx",
+      "args": [
+        "nx",
+        "test",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static",
+        "--runInBand"
+      ],
+      "startedAt": "2026-10-31T19:39:03.519Z",
+      "completedAt": "2026-10-31T19:39:23.599Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-build",
+      "file": "npx",
+      "args": [
+        "nx",
+        "build",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:23.599Z",
+      "completedAt": "2026-10-31T19:39:29.768Z",
+      "exitCode": 0
+    },
+    {
+      "id": "core-lint",
+      "file": "npx",
+      "args": [
+        "nx",
+        "lint",
+        "core",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:29.768Z",
+      "completedAt": "2026-10-31T19:39:34.497Z",
+      "exitCode": 0
+    },
+    {
+      "id": "browser-react-and-angular",
+      "file": "npx",
+      "args": [
+        "nx",
+        "example-e2e",
+        "pydantic-ai-recipe-conformance",
+        "--skip-nx-cache",
+        "--output-style=static"
+      ],
+      "startedAt": "2026-10-31T19:39:34.497Z",
+      "completedAt": "2026-10-31T19:40:30.282Z",
+      "exitCode": 0
+    }
+  ],
+  "scope": "Optional generic adapter; no backend durable recovery, file search, subagent attribution, citations, structured UI or media claims."
+}

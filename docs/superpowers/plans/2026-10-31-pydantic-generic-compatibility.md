@@ -40,12 +40,12 @@ Files: new tools/conformance/agent-frameworks/python-recipe host/controller/capt
 
 Files: tools/conformance/agent-frameworks/program/{pydantic-qualification.json,additional-qualification.mjs,catalog.json,report*.mjs}, conformance README and CI setup/workflows as needed.
 
-- [ ] Add recipe record separately; tests reject fabricated stages, stale package/capture inputs, modified baseline and failed provenance. Extend validator only with demonstrated recipe evidence.
-- [ ] Add actual affected graph/cache tests for package, recipe host, consumers and evidence; preserve isolation of unrelated projects. Extend existing weekly job with pinned recipe execution.
-- [ ] Regenerate public compatibility docs and verify deterministic output. No release notes or file search.
+- [x] Add recipe record separately; tests reject fabricated stages, stale package/capture inputs, modified baseline and failed provenance. Extend validator only with demonstrated recipe evidence.
+- [x] Add actual affected graph/cache tests for package, recipe host, consumers and evidence; preserve isolation of unrelated projects. Extend existing weekly job with pinned recipe execution.
+- [x] Regenerate public compatibility docs and verify deterministic output. No release notes or file search.
 
 ## Task 5: Review, PR and green merge
 
-- [ ] Run affected package build/test/lint, producer installed-wheel tests, prepared root-store tests, both browser suites, program evidence checks and website checks as appropriate. Record warnings.
-- [ ] Independently review spec and quality, fix findings, verify no B4 coupling in adapter, no keys/dependency leakage.
+- [x] Run affected package build/test/lint, producer installed-wheel tests, prepared root-store tests, both browser suites, program evidence checks and website checks as appropriate. Record warnings.
+- [x] Independently review spec and quality, fix findings, verify no B4 coupling in adapter, no keys/dependency leakage.
 - [ ] Commit, push, open and attach PR. Address review/CI, update if required without stopping other merges, merge only with current green checks (authorized). Confirm actual merge.

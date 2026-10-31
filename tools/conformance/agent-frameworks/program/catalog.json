@@ -332,7 +332,7 @@
       "profile": "planned",
       "status": "not-tested",
       "kind": "planned",
-      "detail": "Broader Pydantic AI capability profiles remain not-tested. The separate asgi-baseline record qualifies selected deterministic HTTP scenarios. Native same-name tool registration is rejected upstream; generic typed tool failure and cancellation require enrichment. No native restart, approval/state, structured UI, media, rich-step or subagent qualification is claimed.",
+      "detail": "Broader native Pydantic AI qualification remains planned. Separate asgi-baseline and asgi-compatibility records report native and optional-adapter evidence. The recipe adds typed terminal outcomes, approval/resume, activity/state progress and thread isolation. Same-name native/frontend tool registration remains rejected. Native backend restart, subagents, citations, structured output, trusted UI, media, browser reload/reconnect and abnormal EOF remain unqualified; file search is deferred.",
       "scenarioIds": [
         "tools.server-execution",
         "recovery.canonical-consumer-restore",

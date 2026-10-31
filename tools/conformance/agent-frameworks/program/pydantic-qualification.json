@@ -800,6 +800,1228 @@
         }
       ],
       "evidenceCommit": "e14e5d185721bb72098753222d183cd64df327ef"
+    },
+    {
+      "framework": "pydantic-ai",
+      "profile": "asgi-compatibility",
+      "versions": {
+        "pydantic-ai-slim": "2.64.0",
+        "ag-ui-protocol": "1.0.0",
+        "starlette": "1.10.0",
+        "uvicorn": "0.54.0"
+      },
+      "runtime": {
+        "python": "3.12.12",
+        "uv": "0.11.3"
+      },
+      "platform": "darwin/arm64",
+      "protocol": {
+        "requested": "1.0 in retained probes except cancel-default; omitted in ordinary browser requests",
+        "effective": "Native AG-UI envelope; neutral per-tool outcomes independent of run cancellation negotiation"
+      },
+      "transport": "http-sse",
+      "execution": {
+        "kind": "local",
+        "id": "pydantic-recipe-2026-10-31T19:38:39.699Z"
+      },
+      "sourceInputs": [
+        {
+          "path": ".github/workflows/framework-compatibility.yml",
+          "sha256": "fb834d5352b5f26dc29989e5a8cee03f74954db4a5bf0251d26ecf3aa7e35755"
+        },
+        {
+          "path": ".github/workflows/pr-main.yml",
+          "sha256": "9337a2949903758c08d84ff07683f4d1ec70a2126e5875a14eff0937e269c8d1"
+        },
+        {
+          "path": "packages/core/project.json",
+          "sha256": "fdd517e1986f36aa85cc0d6a9f34ed612ce6721e88d732e624f9a1e1bd620a7b"
+        },
+        {
+          "path": "packages/core/src/effects/generate-message.effects.spec.ts",
+          "sha256": "ac2c4b983404687ae652add597afd2802410b65617e000a64f9db39818911545"
+        },
+        {
+          "path": "packages/core/src/models/pydantic-recipe.conformance.spec.ts",
+          "sha256": "52b201a654d18eba5944ab75412a6236fce86bc85ee969abf6d058ff2b6d19e1"
+        },
+        {
+          "path": "packages/core/src/models/tool-outcome.spec.ts",
+          "sha256": "10927257bff245b4df0cf68657d8ca7c2dbb36758c46e0dadd189e1aa73f04b8"
+        },
+        {
+          "path": "packages/pydantic-ai/.gitignore",
+          "sha256": "ea4e560ffac3f984d5724da98bc1c0b9d09d82d05db797129fafbe18e9c46b83"
+        },
+        {
+          "path": "packages/pydantic-ai/README.md",
+          "sha256": "7de3d5a9d87510cd83b7560f48331f1b72fe7a35267a26a0f98051f2c523d255"
+        },
+        {
+          "path": "packages/pydantic-ai/check.py",
+          "sha256": "f96bb77510dcd2239f74b5b8540779ce21ce29fb1a99088398350c422dc1260d"
+        },
+        {
+          "path": "packages/pydantic-ai/project.json",
+          "sha256": "72055f5fdc4d64cff34f78f9536df73cebbbf327f41c08f8cd15d6eb9464e9a3"
+        },
+        {
+          "path": "packages/pydantic-ai/pyproject.toml",
+          "sha256": "50961a9da4879a8202781b7a4e51858c012e9b5b25055c898bed4aa1e283df6f"
+        },
+        {
+          "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/__init__.py",
+          "sha256": "a40d295a4193f3603a5b493fde2ab0161125ddbe5fc005465e15ebb7baeddfbd"
+        },
+        {
+          "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/adapter.py",
+          "sha256": "01e0b1ad447dbe7642199cd3c152054e6cda1549705de9de858b74dae4981db4"
+        },
+        {
+          "path": "packages/pydantic-ai/tests/adapter_test.py",
+          "sha256": "8e713597138981b57908894b27e01043a14622f5a227fa11e3d373fe2f7f8641"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs",
+          "sha256": "76dc97c31f1247d05b44089a19e66a0540b8408127fd440b2293e610bf5b2dcc"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/.python-version",
+          "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
+          "sha256": "9d24d0378737abc2c5f98d50b76c61ca8c7c43413f3217a197f1fa9cea76dae2"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/capture.spec.mjs",
+          "sha256": "f21ff429578d1b90a930e4cc13247a8e3467c88415b95f762b4d74f84cc854f5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/controller.mjs",
+          "sha256": "412ce9dba3f4a30b483fdb6a177aee33e4d1592caf39f149248cdf871ee39fe5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/host.py",
+          "sha256": "e647b9d593e5f269844c6fab3a1d0fcd5cd1649b8329ef8059f3ec4ea367f0b4"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/install.mjs",
+          "sha256": "d06297c3ccd2d1de7d0068b280b8d6bc972ac3c5a71cf9d2a7bc2f7b55e59d0c"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/normalize.mjs",
+          "sha256": "29e52a05ecb9e830eb3cf3c78b4b5d14a8b94c789ca29400620adbed78a35f60"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/project.json",
+          "sha256": "3078a99838a76870ddf108d8b334cb7a6707fe61908ffa0e013d254b23bb1e34"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/pyproject.toml",
+          "sha256": "ec4521449d5cadfee5beb50a84ea509efa41ea432f1fb434329fd15830ca7c0e"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/qualify.mjs",
+          "sha256": "c25824bca112b116ab24a16defa86e3efda291c6334b60c9077693e333f7b5f7"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/qualify.spec.mjs",
+          "sha256": "c09374bf6427ac90a71231fc0436e7a2d278d5844271394e3777048192321694"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/recipe.spec.mjs",
+          "sha256": "aeee514a61445f5153b3867f37c27ca6efb7b6fefec514419d4b35ba0ffe3908"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/uv.lock",
+          "sha256": "7e4a513b0b39717178783f2c6e07a92dab078e80dc38f4446956e001f6801b4d"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/.python-version",
+          "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/capture.mjs",
+          "sha256": "61383a9f776b2644ea3582e260e891fd75ecce41d787b5c4c1766d73b89cb03e"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/normalize.mjs",
+          "sha256": "58a01898693dd2e9acac399bd4b49cf3f6f87b8bb7466f236950398e8a06e8a5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/pyproject.toml",
+          "sha256": "7602e50a6a11e354ade9be0de3de09d6977109449f6993fc95522c74be343418"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/uv.lock",
+          "sha256": "c0738cdbad799556c26d95c9a1fecbdf9ec57bb659529e2de7b22f46fea0e416"
+        },
+        {
+          "path": "tools/conformance/harness/app-driver.ts",
+          "sha256": "f68a28a8adeed9018d66529d0696b2d2856ffa7da1c286e38a0740d6fe9005a0"
+        },
+        {
+          "path": "tools/conformance/harness/ci-selection.ts",
+          "sha256": "40f8d4d061386f37c9e43d6b1d10ac5f7d367b9782510d4469450b02a667d0bd"
+        },
+        {
+          "path": "tools/conformance/harness/select-ci-setup.ts",
+          "sha256": "ca4017d699f5be846e88992605d263cd0b59a3cf6948fbd6ed3ff18253baa682"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/app/plain-smoke.ts",
+          "sha256": "f8e56d6db48fc998e412eeb0e3d1c0959f64313a3a221afbfb642450d173d308"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/app/terminal-tool-smoke.ts",
+          "sha256": "774fefd4d8559c2ce381b1f565f424fb8c854d13caed0ba76fd8e80a2b5a7503"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/main.ts",
+          "sha256": "46e343ddf1e37d260f455d628bfc2da11c8794b64aeeb5b2289150bdbcf8dd87"
+        },
+        {
+          "path": "tools/conformance/hosts/react/src/plain-smoke.tsx",
+          "sha256": "692d16069b604235ddbae24842384aa93ef147d2c5d43f2fd852895fd448c224"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe.playwright.config.ts",
+          "sha256": "b2a874dec965f67d07c70c52e8ed781fdfcdbcd8c70ba4e4a127e2d491ac7b9e"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe/pydantic-recipe.spec.ts",
+          "sha256": "07a8f98f64749a263ec9eb1d1964f8e6ad372130c9d5987681f014c775d0af8d"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe/tsconfig.json",
+          "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
+        }
+      ],
+      "id": "pydantic-ai/asgi-compatibility",
+      "mode": "recipe",
+      "recipe": {
+        "id": "hashbrown-pydantic-ai",
+        "version": "0.1.0"
+      },
+      "qualifiedAt": "2026-10-31",
+      "sourceCommit": "d856ac7ad23adf533b71c217096c1163d5a82f53",
+      "recordPath": "tools/conformance/agent-frameworks/program/pydantic-qualification.json",
+      "capture": {
+        "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-capture.json",
+        "sha256": "f42541c54a74af36079b0a75adefe7761c92199e7288d631e477c61376541e9f",
+        "sourceSha256": "c7c29666662c7bee25b38f47159b2636dfe6fe5a3049540f3549b19fbdd5886c"
+      },
+      "sources": [
+        {
+          "path": ".github/workflows/framework-compatibility.yml",
+          "sha256": "fb834d5352b5f26dc29989e5a8cee03f74954db4a5bf0251d26ecf3aa7e35755"
+        },
+        {
+          "path": ".github/workflows/pr-main.yml",
+          "sha256": "9337a2949903758c08d84ff07683f4d1ec70a2126e5875a14eff0937e269c8d1"
+        },
+        {
+          "path": "packages/core/project.json",
+          "sha256": "fdd517e1986f36aa85cc0d6a9f34ed612ce6721e88d732e624f9a1e1bd620a7b"
+        },
+        {
+          "path": "packages/core/src/effects/generate-message.effects.spec.ts",
+          "sha256": "ac2c4b983404687ae652add597afd2802410b65617e000a64f9db39818911545"
+        },
+        {
+          "path": "packages/core/src/models/pydantic-recipe.conformance.spec.ts",
+          "sha256": "52b201a654d18eba5944ab75412a6236fce86bc85ee969abf6d058ff2b6d19e1"
+        },
+        {
+          "path": "packages/core/src/models/tool-outcome.spec.ts",
+          "sha256": "10927257bff245b4df0cf68657d8ca7c2dbb36758c46e0dadd189e1aa73f04b8"
+        },
+        {
+          "path": "packages/pydantic-ai/.gitignore",
+          "sha256": "ea4e560ffac3f984d5724da98bc1c0b9d09d82d05db797129fafbe18e9c46b83"
+        },
+        {
+          "path": "packages/pydantic-ai/README.md",
+          "sha256": "7de3d5a9d87510cd83b7560f48331f1b72fe7a35267a26a0f98051f2c523d255"
+        },
+        {
+          "path": "packages/pydantic-ai/check.py",
+          "sha256": "f96bb77510dcd2239f74b5b8540779ce21ce29fb1a99088398350c422dc1260d"
+        },
+        {
+          "path": "packages/pydantic-ai/project.json",
+          "sha256": "72055f5fdc4d64cff34f78f9536df73cebbbf327f41c08f8cd15d6eb9464e9a3"
+        },
+        {
+          "path": "packages/pydantic-ai/pyproject.toml",
+          "sha256": "50961a9da4879a8202781b7a4e51858c012e9b5b25055c898bed4aa1e283df6f"
+        },
+        {
+          "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/__init__.py",
+          "sha256": "a40d295a4193f3603a5b493fde2ab0161125ddbe5fc005465e15ebb7baeddfbd"
+        },
+        {
+          "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/adapter.py",
+          "sha256": "01e0b1ad447dbe7642199cd3c152054e6cda1549705de9de858b74dae4981db4"
+        },
+        {
+          "path": "packages/pydantic-ai/tests/adapter_test.py",
+          "sha256": "8e713597138981b57908894b27e01043a14622f5a227fa11e3d373fe2f7f8641"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs",
+          "sha256": "76dc97c31f1247d05b44089a19e66a0540b8408127fd440b2293e610bf5b2dcc"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/.python-version",
+          "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
+          "sha256": "9d24d0378737abc2c5f98d50b76c61ca8c7c43413f3217a197f1fa9cea76dae2"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/capture.spec.mjs",
+          "sha256": "f21ff429578d1b90a930e4cc13247a8e3467c88415b95f762b4d74f84cc854f5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/controller.mjs",
+          "sha256": "412ce9dba3f4a30b483fdb6a177aee33e4d1592caf39f149248cdf871ee39fe5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/host.py",
+          "sha256": "e647b9d593e5f269844c6fab3a1d0fcd5cd1649b8329ef8059f3ec4ea367f0b4"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/install.mjs",
+          "sha256": "d06297c3ccd2d1de7d0068b280b8d6bc972ac3c5a71cf9d2a7bc2f7b55e59d0c"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/normalize.mjs",
+          "sha256": "29e52a05ecb9e830eb3cf3c78b4b5d14a8b94c789ca29400620adbed78a35f60"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/project.json",
+          "sha256": "3078a99838a76870ddf108d8b334cb7a6707fe61908ffa0e013d254b23bb1e34"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/pyproject.toml",
+          "sha256": "ec4521449d5cadfee5beb50a84ea509efa41ea432f1fb434329fd15830ca7c0e"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/qualify.mjs",
+          "sha256": "c25824bca112b116ab24a16defa86e3efda291c6334b60c9077693e333f7b5f7"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/qualify.spec.mjs",
+          "sha256": "c09374bf6427ac90a71231fc0436e7a2d278d5844271394e3777048192321694"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/recipe.spec.mjs",
+          "sha256": "aeee514a61445f5153b3867f37c27ca6efb7b6fefec514419d4b35ba0ffe3908"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/uv.lock",
+          "sha256": "7e4a513b0b39717178783f2c6e07a92dab078e80dc38f4446956e001f6801b4d"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/.python-version",
+          "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/capture.mjs",
+          "sha256": "61383a9f776b2644ea3582e260e891fd75ecce41d787b5c4c1766d73b89cb03e"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/normalize.mjs",
+          "sha256": "58a01898693dd2e9acac399bd4b49cf3f6f87b8bb7466f236950398e8a06e8a5"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/pyproject.toml",
+          "sha256": "7602e50a6a11e354ade9be0de3de09d6977109449f6993fc95522c74be343418"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python/uv.lock",
+          "sha256": "c0738cdbad799556c26d95c9a1fecbdf9ec57bb659529e2de7b22f46fea0e416"
+        },
+        {
+          "path": "tools/conformance/harness/app-driver.ts",
+          "sha256": "f68a28a8adeed9018d66529d0696b2d2856ffa7da1c286e38a0740d6fe9005a0"
+        },
+        {
+          "path": "tools/conformance/harness/ci-selection.ts",
+          "sha256": "40f8d4d061386f37c9e43d6b1d10ac5f7d367b9782510d4469450b02a667d0bd"
+        },
+        {
+          "path": "tools/conformance/harness/select-ci-setup.ts",
+          "sha256": "ca4017d699f5be846e88992605d263cd0b59a3cf6948fbd6ed3ff18253baa682"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/app/plain-smoke.ts",
+          "sha256": "f8e56d6db48fc998e412eeb0e3d1c0959f64313a3a221afbfb642450d173d308"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/app/terminal-tool-smoke.ts",
+          "sha256": "774fefd4d8559c2ce381b1f565f424fb8c854d13caed0ba76fd8e80a2b5a7503"
+        },
+        {
+          "path": "tools/conformance/hosts/angular/src/main.ts",
+          "sha256": "46e343ddf1e37d260f455d628bfc2da11c8794b64aeeb5b2289150bdbcf8dd87"
+        },
+        {
+          "path": "tools/conformance/hosts/react/src/plain-smoke.tsx",
+          "sha256": "692d16069b604235ddbae24842384aa93ef147d2c5d43f2fd852895fd448c224"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe.playwright.config.ts",
+          "sha256": "b2a874dec965f67d07c70c52e8ed781fdfcdbcd8c70ba4e4a127e2d491ac7b9e"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe/pydantic-recipe.spec.ts",
+          "sha256": "07a8f98f64749a263ec9eb1d1964f8e6ad372130c9d5987681f014c775d0af8d"
+        },
+        {
+          "path": "tools/conformance/pydantic-recipe/tsconfig.json",
+          "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.events.json",
+          "sha256": "a55a15dc1f04fbbf5b61ac5851d0318a5c5303f25f1f6a8b57a44e509d7d2294"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.execution.json",
+          "sha256": "7fe13caeb961eabe343b2e07975cad5ee3c140f636dc4286c170c25b573a6105"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.request.json",
+          "sha256": "9b912d13a6e5bf8097a1bc508ba2a3d0e0b458e35972c787e378a4754145206d"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.sse",
+          "sha256": "556ec211ae58b1a3818c38bacc537b6bf33773809910e1771767634ddc7931cd"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.events.json",
+          "sha256": "cf855caa2b254e04776038837bb5499f9f66171e46843f07cd91b2a5780d5fb0"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.execution.json",
+          "sha256": "0aae568ab0c94405bb092a19a35e31ec4ec97009882b00adb01c0fb903bf1a82"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.request.json",
+          "sha256": "81505181743e9dd46dbcf7851f5e1bbcb30566c806c1ba962206f60e0965ea99"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.sse",
+          "sha256": "e2e3fedc033171b60872b5c8bd1e78e839de15866f740a350ca23260d3ba07e3"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.events.json",
+          "sha256": "a0d2abe5e644b6a520026541613c568f18966dc2272cee2f27c965c058acbbdd"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.execution.json",
+          "sha256": "44a6766ce370dd0c3d7cb891f0387115c00dbf606ddcf646d361f1e85c4431e3"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.request.json",
+          "sha256": "c141bc9974b70d2a99bf6ab7d4a0d2921d5bf03cf2d5ae17a12b5a045cf588f8"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.sse",
+          "sha256": "e10968748bdb97afa035ba08956e4e436a4c8c866e14c3e265569c36384ea037"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.events.json",
+          "sha256": "475d51de862bc8bd7a55ee33896fc65fb2399af122823ce81dacc8af388f3ada"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.execution.json",
+          "sha256": "ddfb8471881ac9970d9c2913d8b68705567906372066235a5af555eb69f1d501"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.request.json",
+          "sha256": "1a43bfa53eb08807e6ab9af29f5eee8af04d972ec40ad26c447d74b3bde47034"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.sse",
+          "sha256": "ff8ffef6479be3c8cd890add1235a570bfa67156520446d2c71b589de9e581a6"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.events.json",
+          "sha256": "a30c88130dfb494497bfa2d2b1383cd88f67cd8f1434e1d6c4aa2fc7cdcf0ab6"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.execution.json",
+          "sha256": "ba495f8aac2234790d31e8436ceff2334e3fb554934843e55fd29b3cda072275"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.request.json",
+          "sha256": "766234d17df826399600b212401e2c7b9411606c0c9ab616ed7238720786233f"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.sse",
+          "sha256": "564daa0e9dd68e6eb9f7463712d488f71960be56fd4fbaacdf6f8224167933d9"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.events.json",
+          "sha256": "258c8fdde6087bc47978c8b6d56f05f2c4ac86395b350eea901cc0438559e125"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.execution.json",
+          "sha256": "210ed2426e45ae9c08ae6c44b1a41a5c068d114a4688c09b1a717b5340fe5ffe"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.request.json",
+          "sha256": "62c6e754665ef0538978a50fb9255682d4b834b8bb0156e0379744bd55436120"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.sse",
+          "sha256": "2a536e7df93c3f6c321a47b57d12f508ffb113d5820b1ea35153388698c6270c"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.events.json",
+          "sha256": "1dd3341ac3ba79a4982436f06eaf49600bc9efeb627dfe0e771c5e5830b869c4"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.execution.json",
+          "sha256": "83b3f33ce8907ca88fb4b02b25e5b464e489c924c3b1352e050788dc85c30dbf"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.request.json",
+          "sha256": "36752382f34246a4ed9dfd68bcc5df6d6feaeb796c19d45ed22a3dac435cd140"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.sse",
+          "sha256": "b50ca93d92af6c20bd0b30a7bc541ec42ab4d08ec64a6db08b6283d96b01ac42"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.events.json",
+          "sha256": "4ff0a6cf7d1f7e91c52995f92033414626e2a1115755ae12cc3c0397645d4b1f"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.execution.json",
+          "sha256": "b1355d349f917f408bae9427aad6c9f54859ddabf1742927841827bcb9bb5f35"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.request.json",
+          "sha256": "739923e584a4e4aad0650d1c82ed67aa46a1be5d6aafe33ff78a27c788fcd5d2"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.sse",
+          "sha256": "d6772d380f60c61de27d60dcac4a82e7b9ffb398ad7bc71df33182ca0b5e4975"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.events.json",
+          "sha256": "ed7371846b1b8ee2d194afb8335bcf6421fe2ba5c9dff3542da35ad7d724c2ca"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.execution.json",
+          "sha256": "da2dd47efa941ecf7b946fdfdc9f7e8b7ae22503b99202647aac7556db8a60bd"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.request.json",
+          "sha256": "02089a186573044a956915f092196e0ad3b0fa8ae75530f9296ef5a2dad4e1f2"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.sse",
+          "sha256": "176b5a76fd5b49ba80357339dd51127584415a28916b69e7db779b303ea19d6b"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.events.json",
+          "sha256": "ef7b0b5926fa9669469a199a34b457e759a378b62f5a89d653afb2fee989f368"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.execution.json",
+          "sha256": "b80ff0bd56ed715cc135cf172abc6911be838ff7cb278fe613ae31c8314dd8af"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.request.json",
+          "sha256": "87994b10c299aff49daba1a5c88fa898aa0f8cb4e7cd03bec23215281d4d5dc4"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.sse",
+          "sha256": "26682890ad462d5292775fad5155e9c80a93b6a644624a3cbc724dbc34643b68"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.events.json",
+          "sha256": "0e8fbda5a42e841a5b38a3f29d45beedc21c1853262b22c59dbcaf04932272c5"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.execution.json",
+          "sha256": "a123b3f5afe94a1b4d83db8eb5d59955b15794e9e0a6c9c1d40409213254ddaf"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.live.json",
+          "sha256": "5d46148084ea58457cf06ebd8b88889e2f50f933ecb54298fe23af42a08e15fc"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.request.json",
+          "sha256": "8ae25ab6b7808dce8abc258fa074ae7f8530dc4ca69878be82a7fa2c091eef04"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.sse",
+          "sha256": "9ffc0765251915cf0a9cbe1d829442eea99f1a359d3bf20dbe4cc8d5ca7b3955"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.events.json",
+          "sha256": "af87f3110f1d426e786aad0ad53d9f6f22c3744edc5d5da0acb98af786a60f27"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.execution.json",
+          "sha256": "e5187f3ac3d3e76047784bbfd4ba24aac1749895212d7f230ffd367c1f10c9b5"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.request.json",
+          "sha256": "30f64deaea92ff3e0542609858c9103a3f9c2b0fa487fc47a4f0fed2af9ee3a6"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.sse",
+          "sha256": "18d9d52f47d58abb05f9635279fb522339d6d7de936a0514f5791b462fc6295e"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.events.json",
+          "sha256": "97e11e5bca2d3d664f51c37a4f3097e937b8e763240195c0ba4f5953e2bb53ab"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.execution.json",
+          "sha256": "0b5a4d657a121264284f608c6e2abe69348fec6868b354f38c81a40a733a198e"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.live.json",
+          "sha256": "0a77c5023786dc20fcc1407fd973cec16b6255fe414f3c9acaa5b9f1feeca090"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.request.json",
+          "sha256": "670befc62ebb8ac86b4f463bbfa178190e8825356d13f58f44269b810157de1d"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.sse",
+          "sha256": "6c8cb165372ba29f4e5b8ec23c3d3aea608c44af9616dabc415017502139d956"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.events.json",
+          "sha256": "1947b20032aca14be077a6d2ac26b5ec3920261476a1baa35df179bbbab8d5af"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.execution.json",
+          "sha256": "d37eda5bfec011c6d90ff076a84cb69ea26ccdd37dc4ce6788ca37314bb1bb12"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.request.json",
+          "sha256": "3dc4c0a558df18fc470c81d6b9e7f072ee20ad2efbdd5ac2e14fab2960d2a611"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.sse",
+          "sha256": "72039949b2b399b9b124dfdc1cdba972a491765bab7a255fac0205e3f8babeaf"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.events.json",
+          "sha256": "5f5fd4dbbbead348a11a8ce5ec10f1b70c7944ee019b61923aee9934b9ebbf4c"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.execution.json",
+          "sha256": "1b48cc0fb53c9fdf0af629c502ec0b6ae067d7fd511fda1500c71ca398789e45"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.live.json",
+          "sha256": "2ba86d74899a5767de9660586371a12b6738e2a0b9414ea10503a9784a171d2c"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.request.json",
+          "sha256": "79ea63d5154aa23761572b155272c57d31b1ec3751a590c178be015ef2be08c6"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
+          "sha256": "51faeb8170e8b040a68bb86bc09df576d382b149c209c2859397c75ebc068df5"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.events.json",
+          "sha256": "0b4073330a9fa7019a67c4ff3488b6338f1d7892c731cfefc224830256ab7618"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.execution.json",
+          "sha256": "0c87248adb9a795e59f18e31f208030d172958aab4f4a5d6bbc62483cdc1c981"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.live.json",
+          "sha256": "27ec6dace106f64eaed2900b55cb7b9b7753b00aec0293841c835fcfa1a3d6f2"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.request.json",
+          "sha256": "69256c557df3cf961cd19d64f78effc820622bba7d8dda04d4a0cecebda8057f"
+        },
+        {
+          "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.sse",
+          "sha256": "b210ce7bb9af18a5017e138f0fad3075132a964ea864ce6b3eccfa59a9752c2b"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/evidence/package-installation.json",
+          "sha256": "41eb55189b5940ecee3c9ef020462855766b0c9fc018687911b92b0a2ec0b277"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/evidence/outcome-observations.json",
+          "sha256": "c096020225ed922db4ee372ed2668ed5a55efe45f8300bc4fdeb575dbd4ce460"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
+          "sha256": "837430cf11093b0b0ab2b4d74640fbdda2cfdd92119645ae3cb5356b614a842e"
+        },
+        {
+          "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+          "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3"
+        }
+      ],
+      "claims": [
+        {
+          "scenarioId": "tools.server-execution",
+          "capability": "actualServerToolExecution",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "capability": "canonicalConsumerRestore",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "canonical-persistence",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "next-request",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.react-display",
+          "capability": "reactDisplay",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.angular-display",
+          "capability": "angularDisplay",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.same-name-client-inert",
+          "capability": "sameNameClientNotReexecuted",
+          "status": "missing-upstream",
+          "detail": "Native registration rejects a matching frontend/server tool name before execution; this adapter does not change tool ownership.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "fail"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.live-start",
+          "capability": "liveStartBeforeToolCompletion",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "recovery.native-checkpoint",
+          "capability": "nativeCheckpointRestore",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "activities.native",
+          "capability": "activities",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "delegation.attributed-subagents",
+          "capability": "subagents",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "activities.citations",
+          "capability": "citationsAndAttribution",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "delegation.native-child",
+          "capability": "nativeChildExecution",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "activities.live-start",
+          "capability": "liveActivityBeforeToolCompletion",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "conversation.streaming",
+          "capability": "streamingText",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "conversation.history",
+          "capability": "multiTurnHistory",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "next-request",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "approvals.resume",
+          "capability": "approvalResume",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "state.snapshot-patch",
+          "capability": "sharedState",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "structured-output.schema",
+          "capability": "structuredOutput",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "trusted-ui.components",
+          "capability": "trustedUi",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "media.typed-history",
+          "capability": "typedMedia",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "recovery.thread-isolation",
+          "capability": "threadIsolation",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "recovery.browser-reload",
+          "capability": "browserReload",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "recovery.reconnect",
+          "capability": "streamReconnect",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        },
+        {
+          "scenarioId": "tools.client-roundtrip",
+          "capability": "clientToolRoundtrip",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "next-request",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.failure",
+          "capability": "toolFailure",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "tools.cancel",
+          "capability": "toolCancellation",
+          "status": "passed",
+          "detail": "Passed with the optional generic adapter at the exact pinned versions and required executed stages.",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "producer-execution",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "bridge-wire",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "core-consumer",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-react",
+              "result": "pass"
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
+              "sha256": "9949437704862cea580aed80b1c46c1ac871e43e36440bb2040305f95e2368f3",
+              "stage": "browser-angular",
+              "result": "pass"
+            }
+          ]
+        },
+        {
+          "scenarioId": "conversation.abnormal-eof",
+          "capability": "abnormalEof",
+          "status": "not-tested",
+          "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
+          "evidence": []
+        }
+      ]
     }
   ]
 }
