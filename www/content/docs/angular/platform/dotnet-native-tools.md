@@ -19,16 +19,21 @@ Use this opt-in recipe when one model response needs both browser tools and regi
 
 The [stateless .NET recipe](/docs/angular/platform/dotnet) remains available for separate browser/server model turns and application workflow confirmations. This native composition also supports genuine MAF `ApprovalRequiredAIFunction` requests through Hashbrown's generic interrupt controls. Application workflow confirmation and its checkpoint store remain a separate composition.
 
-## Install the pinned preview from a local feed
+## Install the pinned preview from NuGet.org
 
 Use .NET SDK `10.0.402` and a `Microsoft.NET.Sdk.Web` application targeting `net10.0`, with nullable and implicit usings enabled. Add this single exact package reference; its nuspec supplies the tested dependencies. Commit the generated lockfile and restore with `--locked-mode`:
 
-This milestone produces a release-ready local `.nupkg` and `.snupkg`; version `0.1.0-preview.1` is **not published to NuGet.org**. Obtain the qualified artifacts from your release build and place the `.nupkg` in an owned local feed. Configure that feed explicitly, with `Hashbrown.AspNetCore` mapped only to it and the upstream dependencies mapped to your approved upstream feed. Restore using that configuration:
+Install [`Hashbrown.AspNetCore` `0.1.0-preview.1`](https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1) from NuGet.org with an exact version pin, then create the lockfile. Commit the generated lockfile and use locked restore for subsequent builds:
+
+<hb-code-example header="Install from NuGet.org">
 
 ```sh
-dotnet restore --configfile NuGet.Config --use-lock-file
-dotnet restore --configfile NuGet.Config --locked-mode
+dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json
+dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file
+dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
 ```
+
+</hb-code-example>
 
 Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only, pending mixed browser work cannot cold restore, and uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
 
@@ -247,4 +252,4 @@ Open the workbench below. Send the initial prompt, inspect the pending batch, an
 <hb-workbench-launcher lesson="interrupts">
 </hb-workbench-launcher>
 
-The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed local package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.
+The lesson uses the checked local AG-UI agent around text chat; it does not run the native .NET composition or prove dispatch fencing across workers. Use the installed package, PostgreSQL configuration, and conformance reference above to verify native approvals and mixed calls. A generic client decision payload is not interchangeable with a MAF approval contract.

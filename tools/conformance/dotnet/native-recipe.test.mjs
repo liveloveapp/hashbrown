@@ -393,7 +393,7 @@ test('keeps native routes discoverable and baseline recipe blocks unchanged in c
   assert.equal(project.targets['check-docs'].cache, false);
 });
 
-test('documents package consumption on all four routes without implementation fallback or public availability claims', () => {
+test('documents exact NuGet.org package consumption on all four routes without implementation fallback', () => {
   for (const sdk of ['react', 'angular'])
     for (const name of ['dotnet', 'dotnet-native-tools']) {
       const text = readFileSync(
@@ -405,10 +405,54 @@ test('documents package consumption on all four routes without implementation fa
         'Hashbrown.AspNetCore@[0.1.0-preview.1]',
       ]);
       assert.ok(text.includes('using Hashbrown.AspNetCore;'));
-      assert.ok(text.includes('not published to NuGet.org'));
+      assert.ok(
+        text.includes(
+          'https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1',
+        ),
+      );
+      assert.ok(text.includes('--source https://api.nuget.org/v3/index.json'));
+      assert.ok(text.includes('--version "[0.1.0-preview.1]"'));
+      assert.doesNotMatch(text, /not published to NuGet.org/i);
       assert.doesNotMatch(
         text,
-        /Hashbrown.Conformance.Integration|<ProjectReference|<HintPath|Copy the C# files|This is a source recipe|available on NuGet.org/i,
+        /Hashbrown.Conformance.Integration|<ProjectReference|<HintPath|Copy the C# files|This is a source recipe/i,
+      );
+    }
+});
+
+test('all four public install command blocks expose the standard copy control', () => {
+  for (const sdk of ['react', 'angular'])
+    for (const name of ['dotnet', 'dotnet-native-tools']) {
+      const text = readFileSync(
+        resolve(root, `www/content/docs/${sdk}/platform/${name}.md`),
+        'utf8',
+      );
+
+      const blocks = [
+        ...text.matchAll(
+          /<hb-code-example header="Install from NuGet\.org">\s*```sh\n([\s\S]*?)\n```\s*<\/hb-code-example>/g,
+        ),
+      ];
+
+      assert.equal(
+        blocks.length,
+        1,
+        `${sdk}/${name}: copyable install block required`,
+      );
+      assert.ok(
+        blocks[0][1].includes(
+          'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json',
+        ),
+      );
+      assert.ok(
+        blocks[0][1].includes(
+          'dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file',
+        ),
+      );
+      assert.ok(
+        blocks[0][1].includes(
+          'dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode',
+        ),
       );
     }
 });
@@ -486,17 +530,34 @@ test('artifact compiler commands reject missing and changed metadata before buil
   }
 });
 
-test('rejects docs that claim public NuGet availability during local qualification', async () => {
+test('requires the published exact pin and NuGet.org install and locked restore contract', async () => {
   const { validateRecipePackage } = await import('./verify-recipe.mjs');
   const text = readFileSync(page('react'), 'utf8');
+  const invalid = [
+    text.replace(
+      'https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1',
+      'https://invalid.example/package',
+    ),
+    text.replace(
+      '--version "[0.1.0-preview.1]"',
+      '--version "0.1.0-preview.1"',
+    ),
+    text.replaceAll(
+      'https://api.nuget.org/v3/index.json',
+      'https://invalid.example/v3/index.json',
+    ),
+    text.replace(' --use-lock-file', ''),
+    text.replace(' --locked-mode', ''),
+    text + '\nThis version is not published to NuGet.org.',
+  ];
 
-  assert.throws(
-    () =>
-      validateRecipePackage(
-        text.replace('not published to NuGet.org', 'available on NuGet.org'),
-      ),
-    /Local artifact must remain unpublished/,
-  );
+  validateRecipePackage(text);
+
+  for (const variant of invalid)
+    assert.throws(
+      () => validateRecipePackage(variant),
+      /Exact NuGet.org installation contract required/,
+    );
 });
 
 test('combined CLI reaches mandatory metadata validation without an import deadlock', () => {

@@ -734,7 +734,7 @@ try {
  await writeRestoreSentinel(sentinel,publishedArchive,source,canonical);
  assert.equal(JSON.parse(await fs.readFile(path.join(sentinel,'.nupkg.metadata'),'utf8')).contentHash,canonical);
  assert.equal(JSON.parse(await fs.readFile(path.join(sentinel,'.nupkg.metadata'),'utf8')).source,source);
- assert.equal(await fs.readFile(path.join(sentinel,v.IDENTITY.id.toLowerCase()+'.'+v.IDENTITY.version+'.nupkg.sha512'),'utf8'),canonical);
+ assert.equal(await fs.readFile(path.join(sentinel,v.IDENTITY.id.toLowerCase()+'.'+v.IDENTITY.version+'.nupkg.sha512'),'utf8'),await v.hashFile(publishedArchive,'sha512','base64'));
  assert.deepEqual(await fs.readFile(path.join(sentinel,'public.nupkg')),published);
 
  for(const mismatch of [false,true]) {

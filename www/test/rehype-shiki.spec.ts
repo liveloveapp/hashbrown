@@ -144,7 +144,14 @@ for (const sdk of ['react', 'angular']) {
       }
       expect(blocks.some(([, language]) => language === 'xml')).toBe(true);
       expect(blocks.some(([, language]) => language === 'csharp')).toBe(true);
-      expect(markdown).toContain('not published to NuGet.org');
+      expect(markdown).toContain(
+        'https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1',
+      );
+      expect(markdown).toContain('--version "[0.1.0-preview.1]"');
+      expect(markdown).toContain(
+        '--source https://api.nuget.org/v3/index.json',
+      );
+      expect(markdown).not.toContain('not published to NuGet.org');
     });
   }
 }
