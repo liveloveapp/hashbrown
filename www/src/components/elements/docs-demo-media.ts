@@ -308,12 +308,12 @@ export const DOCS_DEMOS = {
       'Recorded in the real Angular workbench with OpenAI and actual Hashbrown text chat. The endpoint replaces browser instructions; the inspector captures only the fixed public policy from the adapter mapping callback. Prompts do not grant authorization. No browser tools or application writes. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests. No narration.',
     dimensions: { width: 1600, height: 1000 },
   },
-  'canonical-workbench-magic-text-react': {
-    title: 'React workbench: Magic Text.',
+  'canonical-workbench-prose-react': {
+    title: 'React workbench: Prose.',
     caption:
       'Follow streamed Markdown into a formatted explanation, inspect a source reference, then ask for a shorter reply.',
     recording:
-      'Recorded in the real React workbench with OpenAI streaming requests and the actual Hashbrown SDK. A source reference does not prove retrieval or correctness. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+      'Recorded from the existing OpenAI capture through the renamed React prose workbench in read-only replay. The capture retains its original commit and recording time; lesson IDs and endpoint paths use prose. The original capture used the actual Hashbrown SDK and browser readContext tool. No new provider requests or writes. Playback uses recorded timing with bounded pauses. A source reference does not prove retrieval or correctness. No narration.',
     dimensions: { width: 1600, height: 1000 },
   },
   'canonical-workbench-predictions-react': {
@@ -332,12 +332,12 @@ export const DOCS_DEMOS = {
       'Recorded in the real React workbench with TypeSafe whole UI decisions and the actual Hashbrown SDK. The model chooses only a known candidate ID; components and plan props belong to the application. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
     dimensions: { width: 1600, height: 1000 },
   },
-  'canonical-workbench-magic-text-angular': {
-    title: 'Angular workbench: Magic Text.',
+  'canonical-workbench-prose-angular': {
+    title: 'Angular workbench: Prose.',
     caption:
       'Follow streamed Markdown into a formatted explanation, inspect a source reference, then ask for a shorter reply.',
     recording:
-      'Recorded in the real Angular workbench with OpenAI streaming requests and the actual Hashbrown SDK. A source reference does not prove retrieval or correctness. Unchanged provider events are paced at 20 ms for filming; the normal host adds no delay. Footage slowed to half speed for readability. Replay makes no requests or writes. No narration.',
+      'Recorded from the existing OpenAI capture through the renamed Angular prose workbench in read-only replay. The capture retains its original commit and recording time; lesson IDs and endpoint paths use prose. The original capture used the actual Hashbrown SDK and browser readContext tool. No new provider requests or writes. Playback uses recorded timing with bounded pauses. A source reference does not prove retrieval or correctness. No narration.',
     dimensions: { width: 1600, height: 1000 },
   },
   'canonical-workbench-predictions-angular': {

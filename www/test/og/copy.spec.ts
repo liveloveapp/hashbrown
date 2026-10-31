@@ -22,7 +22,7 @@ test('drops the SDK suffix from docs titles', () => {
   const titles = [
     'Structured Output: Hashbrown React Docs',
     'Structured Output: Hashbrown Angular Docs',
-    'Magic Text in React: Streaming Markdown',
+    'Prose in React: Streaming Markdown',
   ];
 
   const cardTitles = titles.map(docsCardTitle);
@@ -30,7 +30,7 @@ test('drops the SDK suffix from docs titles', () => {
   expect(cardTitles).toEqual([
     'Structured Output',
     'Structured Output',
-    'Magic Text in React: Streaming Markdown',
+    'Prose in React: Streaming Markdown',
   ]);
 });
 

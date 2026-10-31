@@ -1,0 +1,50 @@
+/* Port of www/analog/src/app/components/ProseDemo.ts. The squircles become
+   border radii; mat-slider becomes a native range input. */
+.demo {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-shot);
+  box-sizing: border-box;
+  color: inherit;
+}
+
+.preview {
+  height: 180px;
+  overflow: hidden;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-input);
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.prose {
+  width: 100%;
+}
+
+.controls {
+  display: grid;
+  gap: 4px;
+  width: 80%;
+  margin: 0 auto;
+}
+
+.controls label {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--sunshine-yellow);
+}

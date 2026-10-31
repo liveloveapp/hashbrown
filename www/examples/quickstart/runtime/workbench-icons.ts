@@ -167,7 +167,7 @@ export const workbenchLessonIcons: Readonly<
   decisions: 'branch',
   debugging: 'bug',
   'request-transformation': 'transform',
-  'magic-text': 'wand',
+  'prose': 'wand',
   predictions: 'lightbulb',
   'ui-selection': 'square-check',
   'first-plan': 'flag',

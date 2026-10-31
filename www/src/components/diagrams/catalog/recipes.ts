@@ -712,7 +712,7 @@ export const RECIPE_DIAGRAM_DEFINITIONS: Record<string, DiagramDefinition> = {
       },
     ],
   },
-  // Evidence: both magic-text recipe examples; www/examples/quickstart/react/src/MagicTextWorkbench.tsx; www/examples/quickstart/angular/src/app/magic-text-workbench.ts.
+  // Evidence: both prose recipe examples; www/examples/quickstart/react/src/ProseWorkbench.tsx; www/examples/quickstart/angular/src/app/prose-workbench.ts.
   'recipe-markdown-finalization': {
     kind: 'flow',
     title: 'Finish formatting even when generation stops early',

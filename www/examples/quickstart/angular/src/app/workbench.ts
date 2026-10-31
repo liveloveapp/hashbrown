@@ -9,7 +9,7 @@ import { WorkflowWorkbenchConversation } from './workflow-workbench';
 import { PlanCard } from './plan-card';
 import { firstPlanComponents } from './first-plan-app';
 import { workbenchFirstPlanSystem } from '../../../runtime/workbench-onboarding';
-import { MagicTextWorkbenchConversation } from './magic-text-workbench';
+import { ProseWorkbenchConversation } from './prose-workbench';
 import { PredictionsWorkbenchConversation } from './predictions-workbench';
 import { SelectionWorkbenchConversation } from './selection-workbench';
 import { DecisionWorkbenchConversation } from './decision-workbench';
@@ -354,7 +354,7 @@ export class WorkbenchConversation implements AfterViewInit {
     StructuredWorkbenchConversation,
     LocalModelsWorkbenchConversation,
     DecisionWorkbenchConversation,
-    MagicTextWorkbenchConversation,
+    ProseWorkbenchConversation,
     PredictionsWorkbenchConversation,
     SelectionWorkbenchConversation,
   ],
@@ -403,7 +403,7 @@ export class WorkbenchConversation implements AfterViewInit {
         [navigation]="navigation(conversation.id)"
       />
     } @else if (format === 'text') {
-      <app-magic-text-workbench-conversation
+      <app-prose-workbench-conversation
         [hidden]="conversation.id !== activeId()"
         [active]="conversation.id === activeId()"
         [navigation]="navigation(conversation.id)"

@@ -1,9 +1,9 @@
 import { type JsonResolvedValue, markdownComponent } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 import {
-  MagicTextRenderer,
-  type MagicTextRendererProps,
-} from './magic-text-renderer';
+  ProseRenderer,
+  type ProseRendererProps,
+} from './prose-renderer';
 import {
   type ComponentPropSchema,
   exposeComponent,
@@ -17,7 +17,7 @@ interface MarkdownNodeProp {
 }
 
 interface ExposedMarkdownComponentProps
-  extends Omit<MagicTextRendererProps, 'children' | 'isComplete'> {
+  extends Omit<ProseRendererProps, 'children' | 'isComplete'> {
   children?: MarkdownNodeProp;
 }
 
@@ -27,7 +27,7 @@ interface ExposedMarkdownComponentProps
  * @public
  */
 export type ExposeMarkdownConfig = Omit<
-  MagicTextRendererProps,
+  ProseRendererProps,
   'children' | 'isComplete'
 > & {
   /**
@@ -79,13 +79,13 @@ export function exposeMarkdown(
     const isComplete = children?.complete ?? false;
 
     return (
-      <MagicTextRenderer
+      <ProseRenderer
         {...rendererProps}
         caret={rendererProps.caret ?? true}
         isComplete={isComplete}
       >
         {text}
-      </MagicTextRenderer>
+      </ProseRenderer>
     );
   };
 

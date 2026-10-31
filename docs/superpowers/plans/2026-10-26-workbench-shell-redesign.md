@@ -53,7 +53,7 @@
   - `test('groups every lesson exactly once in sidebar order')`: expect `workbenchLessonGroups.map(g => [g.id, g.title, g.lessons])` toEqual
     - `['concepts','Concepts',['generative-ui','tools','structured-output','streaming','schemas','decisions']]`
     - `['production','Production',['debugging','request-transformation']]`
-    - `['recipes','Recipes',['magic-text','predictions','ui-selection']]`
+    - `['recipes','Recipes',['prose','predictions','ui-selection']]`
 
     Also expect the flattened ids, sorted, to equal `workbenchLessons.map(l => l.id)`, sorted.
   - `test('gives every lesson an icon')`: for each lesson, `workbenchLessonIcons[lesson.id]` is defined.
@@ -62,7 +62,7 @@
 - [ ] **Step 3: Implement.**
   - Add the type and groups to `workbench-lessons.ts`.
   - In `workbench-icons.ts`, `WorkbenchIconName` covers: `plus`, `sidebar`, `chevron-down`, `conversation`, `previous-turn`, `previous-event`, `play`, `pause`, `next-event`, `next-turn`, `raw-events`, `layout`, `wrench`, `braces`, `activity`, `file-code`, `branch`, `bug`, `transform`, `wand`, `lightbulb`, `square-check`.
-  - Copy the path data from the `<symbol>` elements in `.superpowers/brainstorm/30258-1793046962/content/layout-v3.html` (`pause` is two `rect`s). Lesson mapping: generative-ui→layout, tools→wrench, structured-output→braces, streaming→activity, schemas→file-code, decisions→branch, debugging→bug, request-transformation→transform, magic-text→wand, predictions→lightbulb, ui-selection→square-check.
+  - Copy the path data from the `<symbol>` elements in `.superpowers/brainstorm/30258-1793046962/content/layout-v3.html` (`pause` is two `rect`s). Lesson mapping: generative-ui→layout, tools→wrench, structured-output→braces, streaming→activity, schemas→file-code, decisions→branch, debugging→bug, request-transformation→transform, prose→wand, predictions→lightbulb, ui-selection→square-check.
   - Build with `document.createElementNS('http://www.w3.org/2000/svg', …)`, never `innerHTML`.
 - [ ] **Step 4: Run** the same command. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(www): add workbench lesson groups and inline icons`
@@ -335,7 +335,7 @@
   - Do not let the document scroll sideways at 390px.
 - [ ] **Step 2: Build and look.**
   - Run `npx nx workbench-build www`, then serve it. See the README; if port 4370 is busy, use the port override from the session log.
-  - Screenshot `react.html` and `angular.html?lesson=magic-text` at 1600×1000, 1100×800 (the pair should stack) and 390×844.
+  - Screenshot `react.html` and `angular.html?lesson=prose` at 1600×1000, 1100×800 (the pair should stack) and 390×844.
   - Check: no horizontal overflow, the rail and the sections toggle, the handle drags.
 - [ ] **Step 3: Commit** `style(www): restyle the workbench shell`
 
@@ -362,7 +362,7 @@
 ### Task 10: Guide and README prose
 
 **Files:**
-- Modify: `www/examples/quickstart/README.md` and these 14 guides: `www/content/docs/{react,angular}/start/workbench.md`, `concept/{components,streaming,functions,debugging}.md`, `recipes/{predictive-actions,magic-text}.md`
+- Modify: `www/examples/quickstart/README.md` and these 14 guides: `www/content/docs/{react,angular}/start/workbench.md`, `concept/{components,streaming,functions,debugging}.md`, `recipes/{predictive-actions,prose}.md`
 
 - [ ] **Step 1: Rewrite the shell descriptions** in the author's plain first-person teaching voice:
   - "far-right panel" / "contextual panel" / "Details, Raw, and Console views" → each inspector tab pairs what was captured with what the SDK or app made of it, and `{ }` shows the captured frame.

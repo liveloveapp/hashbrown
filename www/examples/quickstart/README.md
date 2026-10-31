@@ -52,7 +52,7 @@ Both persistence examples store supported completed text only. They do not persi
 
 ## Assisted interface recipes
 
-`MagicTextDemo.tsx` / `magic-text-demo.ts` render the latest assistant string through Magic Text and open citation details without navigation. The parser finalizes when the stream ends, including a stop or error; that state alone does not establish a successful answer.
+`ProseDemo.tsx` / `prose-demo.ts` render the latest assistant string through Prose and open citation details without navigation. The parser finalizes when the stream ends, including a stop or error; that state alone does not establish a successful answer.
 
 `PredictiveSuggestions.tsx` / `predictive-suggestions.ts` use independent structured completions. `runtime/predictions.ts` checks a fresh context ID, settled runtime and bounded catalog/reasons before offering explicit Accept/Dismiss actions. Those actions update local state without changing the completion input. Refresh clears accepted items.
 
@@ -93,7 +93,7 @@ The workbench now has twenty-eight allowlisted lessons in both framework hosts:
 - `?lesson=decisions`: complete typed next-action choices and confidence.
 - `?lesson=debugging`: deliberate local HTTP 403, same-conversation retry, captured response evidence.
 - `?lesson=request-transformation`: actual mapped provider options, public workspace policy, and sanitized callback traces.
-- `?lesson=magic-text`: streaming Markdown and actual citation inspection.
+- `?lesson=prose`: streaming Markdown and actual citation inspection.
 - `?lesson=predictions`: fresh context snapshots, catalogue proposals, explicit acceptance/dismissal.
 - `?lesson=ui-selection`: whole candidate decisions, app-owned views and manual control.
 - `?lesson=first-plan`: one tool-free UI request and a trusted preview, without an application write.
@@ -166,11 +166,11 @@ The same workbench also hosts three recipe lessons in each framework:
 
 | Lesson                 | Query                  | Actual API and boundary                                                                                    |
 | ---------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Magic Text             | `?lesson=magic-text`   | Text chat and the real SDK Markdown renderer; reference inspection does not change the plan.               |
+| Prose             | `?lesson=prose`   | Text chat and the real SDK Markdown renderer; reference inspection does not change the plan.               |
 | Predictive suggestions | `?lesson=predictions`  | Structured completion for a fresh context snapshot; only explicit acceptance applies a known action.       |
 | UI selection           | `?lesson=ui-selection` | UI decision candidates over TypeSafe; app-owned views and props, confidence threshold and manual fallback. |
 
-Run `WORKBENCH_LESSONS=magic-text,predictions,ui-selection npx nx workbench-demo www`
+Run `WORKBENCH_LESSONS=prose,predictions,ui-selection npx nx workbench-demo www`
 with both providers' existing server credentials and exact model settings.
 The recorder uses separate real Angular and React captures. OpenAI text and
 completion events may be paced only for filming; TypeSafe decisions arrive whole.

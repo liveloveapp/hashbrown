@@ -68,10 +68,10 @@ test('workbench UI selects the standalone shared registration for the bounded fi
   }
 });
 
-test('text lifecycle distinguishes plain onboarding from the Magic Text citation lesson', () => {
+test('text lifecycle distinguishes plain onboarding from the Prose citation lesson', () => {
   for (const name of [
-    'react/src/MagicTextWorkbench.tsx',
-    'angular/src/app/magic-text-workbench.ts',
+    'react/src/ProseWorkbench.tsx',
+    'angular/src/app/prose-workbench.ts',
   ]) {
     const text = source(name);
 

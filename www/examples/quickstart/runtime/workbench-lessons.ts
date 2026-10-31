@@ -13,7 +13,7 @@ export type WorkbenchLessonId =
   | 'first-plan'
   | 'conversation'
   | 'system-instructions'
-  | 'magic-text'
+  | 'prose'
   | 'predictions'
   | 'ui-selection'
   | 'generative-ui'
@@ -126,7 +126,7 @@ export const workbenchLessonGroups: readonly {
     id: 'recipes',
     title: 'Recipes',
     lessons: [
-      'magic-text',
+      'prose',
       'predictions',
       'ui-selection',
       'ui-kits',
@@ -221,12 +221,12 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     endpoint: '/api/workbench/request-transformation',
   },
   {
-    id: 'magic-text',
-    title: 'Magic Text',
+    id: 'prose',
+    title: 'Prose',
     format: 'text',
     protocol: 'chat',
     inspector: 'Markdown',
-    endpoint: '/api/workbench/magic-text',
+    endpoint: '/api/workbench/prose',
   },
   {
     id: 'predictions',

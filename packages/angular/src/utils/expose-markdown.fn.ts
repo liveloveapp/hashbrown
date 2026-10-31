@@ -2,11 +2,11 @@ import { type Provider, reflectComponentType } from '@angular/core';
 import type { PartialMarkdownParserOptions } from '@cacheplane/partial-markdown';
 import { markdownComponent, type SegmenterOptions } from '@hashbrownai/core';
 import {
-  type MagicTextCitationClickEvent,
-  type MagicTextLinkClickEvent,
-} from '../components/magic-text-renderer.component';
+  type ProseCitationClickEvent,
+  type ProseLinkClickEvent,
+} from '../components/prose-renderer.component';
 import {
-  type MagicTextRendererComponentType,
+  type ProseRendererComponentType,
   ɵExposedMarkdownComponent,
   ɵExposedMarkdownCustomRendererComponent,
   type ɵExposeMarkdownBuiltInRuntimeConfig,
@@ -20,24 +20,24 @@ import {
 } from './expose-component.fn';
 
 /** @public */
-export type MagicTextExposeInputs = {
+export type ProseExposeInputs = {
   parserOptions?: PartialMarkdownParserOptions;
   segmenter?: SegmenterOptions;
   caret?: boolean;
   className?: string;
 };
 
-export type { MagicTextRendererComponentType };
+export type { ProseRendererComponentType };
 
 /**
  * Built-in markdown renderer configuration.
  *
  * @public
  */
-export type ExposeMarkdownBuiltInRendererConfig = MagicTextExposeInputs & {
+export type ExposeMarkdownBuiltInRendererConfig = ProseExposeInputs & {
   renderer?: undefined;
-  onLinkClick?: (event: MagicTextLinkClickEvent) => void;
-  onCitationClick?: (event: MagicTextCitationClickEvent) => void;
+  onLinkClick?: (event: ProseLinkClickEvent) => void;
+  onCitationClick?: (event: ProseCitationClickEvent) => void;
 };
 
 /**
@@ -48,7 +48,7 @@ export type ExposeMarkdownBuiltInRendererConfig = MagicTextExposeInputs & {
  * @public
  */
 export type ExposeMarkdownCustomRendererConfig = {
-  renderer: MagicTextRendererComponentType;
+  renderer: ProseRendererComponentType;
   parserOptions?: never;
   segmenter?: never;
   caret?: never;
@@ -157,7 +157,7 @@ export function exposeMarkdown(
 }
 
 function validateCustomRenderer(
-  renderer: MagicTextRendererComponentType,
+  renderer: ProseRendererComponentType,
 ): void {
   const reflected = reflectComponentType(renderer);
   if (!reflected) {

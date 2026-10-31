@@ -18,6 +18,8 @@ export const DOCS_REFERENCE_PAGES: Readonly<Record<string, string>> = {
  */
 export const WORKBENCH_FREE_PAGES: Readonly<Record<string, string>> = {
   ...DOCS_REFERENCE_PAGES,
+  'migrations/prose':
+    'an API and selector rename guide; the prose recipe contains its workbench',
   'migrations/threadplane': 'threadplane has its own video, not a lesson',
   'migrations/v0-5': 'a migration guide; its video shows the current flow',
   'migrations/v0-6': 'a migration guide; its video shows the current flow',

@@ -10,7 +10,7 @@ plan with real, focused recordings and a runnable standalone Quickstart.
 **Architecture:** Add three bounded lessons using existing workbench sessions,
 transport capture and replay. Share plan presentation between the minimal app and
 workbench; reuse text session code for conversation/instructions while retaining
-Magic Text behavior. Capture public effective instruction evidence at the actual
+Prose behavior. Capture public effective instruction evidence at the actual
 OpenAI mapping boundary.
 
 **Tech Stack:** Existing Nx, React, Angular, Hashbrown, Express, Vitest, Playwright
@@ -48,7 +48,7 @@ contract tests under www/test/docs and framework browser scenarios.
 - [x] Add minimal checked client examples, preserving legacy fixture entry modes
       as needed. Compile snippets with framework providers and server setup.
 - [x] Reuse bounded text lifecycle capture for conversation and instructions.
-      Preserve Magic Text renderer/citation behavior. Show actual message history,
+      Preserve Prose renderer/citation behavior. Show actual message history,
       plain text and the first lesson's fixed app context without invented writes.
 - [x] Verify no initial request, streaming, two-turn retention, new-chat isolation,
       stop/replacement, error/recovery, historical inertness and navigation.

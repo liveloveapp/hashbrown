@@ -210,7 +210,7 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     title: 'Streaming',
-    body: 'Strings, arrays, and objects parse as they arrive. Magic Text streams Markdown.',
+    body: 'Strings, arrays, and objects parse as they arrive. Prose streams Markdown.',
     docsPath: ['concept', 'streaming'],
   },
   {
