@@ -1,0 +1,39 @@
+{
+  "threadId": "capture-approval-approve",
+  "runId": "approval-approve-resume",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "approval"
+    },
+    {
+      "id": "d88eaba1-f660-484a-9e1e-776191140c19",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-approval-approve-approval",
+          "type": "function",
+          "function": {
+            "name": "approvalTool",
+            "arguments": "{}"
+          }
+        }
+      ]
+    }
+  ],
+  "tools": [],
+  "state": {},
+  "context": [],
+  "forwardedProps": {},
+  "resume": [
+    {
+      "interruptId": "int-capture-approval-approve-approval",
+      "status": "resolved",
+      "payload": {
+        "approved": true
+      }
+    }
+  ]
+}

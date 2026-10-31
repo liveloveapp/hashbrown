@@ -29,6 +29,11 @@ export default createActionGroup('internal', {
   }>(),
   generationAttemptStarted: emptyProps(),
   generationAttemptRolledBack: emptyProps(),
+  generationAttemptFailed: props<{
+    generationId: string;
+    attemptId: string;
+    toolsByName: Readonly<Record<string, Chat.Internal.Tool>>;
+  }>(),
   toolTurnReserved: props<{
     generationId: string;
     toolTurnId: string;

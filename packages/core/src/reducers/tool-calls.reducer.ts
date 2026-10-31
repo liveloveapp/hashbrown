@@ -1,3 +1,5 @@
+import { readToolOutcome } from '../models/tool-outcome';
+import { mergeToolMetadata } from '../models/tool-metadata';
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
@@ -18,7 +20,6 @@ import {
   reopenCancelledStep,
   seedFrameResultStep,
   stampStepMetadataStart,
-  ɵmergeStepMetadata,
   ɵreadToolStep,
   ɵTOOL_STEP_METADATA_KEY,
 } from '../models/tool-step';
@@ -82,7 +83,7 @@ function mergeMetadata(
 ): Chat.Internal.ToolCall['metadata'] | undefined {
   if (second === undefined) return first;
   const merged = structuredClone(
-    ɵmergeStepMetadata(first, second, source, toolCallId) ?? {},
+    mergeToolMetadata(first, second, source, toolCallId) ?? {},
   ) as Record<string, unknown>;
   return sameMetadata(first, merged) ? first : merged;
 }
@@ -373,9 +374,21 @@ export const reducer = createReducer(
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
       const existing = readOwn(state.entities, action.payload.toolCallId);
       if (!existing) return state;
-      const error = (
-        action.payload as typeof action.payload & { readonly error?: string }
-      ).error;
+      const error =
+        readResultFailure(
+          (
+            action.payload as typeof action.payload & {
+              readonly error?: string;
+            }
+          ).error,
+        ) ??
+        readToolOutcome(action.payload.metadata)?.error?.message ??
+        readToolOutcome(existing.metadata)?.error?.message ??
+        readResultFailure(
+          existing.result?.status === 'rejected'
+            ? existing.result.reason
+            : undefined,
+        );
       const result: PromiseSettledResult<unknown> =
         error === undefined
           ? { status: 'fulfilled', value: action.payload.content }
@@ -445,6 +458,34 @@ export const reducer = createReducer(
       committedLocalProvenance: state.localProvenance,
     };
   }),
+  on(
+    internalActions.generationAttemptFailed,
+    (state, action): ToolCallsState => {
+      const projection = readPreparedProjection(action);
+      if (!projection) return state;
+      const reconciled = reconcilePreparedEntities(
+        state.draft,
+        projection.projection.toolCalls,
+        projection.toolCallSources,
+        state.localProvenance ?? {},
+        { type: EventType.RUN_ERROR, message: 'Server run failed' },
+      );
+      const committed = reconciled.draft;
+      return {
+        ...committed,
+        committed,
+        draft: empty,
+        attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
+        canonicalIds: projection.canonicalIds,
+        committedCanonicalIds: projection.canonicalIds,
+        preparedProjection: true,
+        localProvenance: reconciled.localProvenance,
+        committedLocalProvenance: reconciled.localProvenance,
+      };
+    },
+  ),
   on(internalActions.generationAttemptRolledBack, (state): ToolCallsState =>
     rollback(state),
   ),

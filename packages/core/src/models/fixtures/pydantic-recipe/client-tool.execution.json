@@ -1,0 +1,155 @@
+{
+  "entered": 0,
+  "completed": 0,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "client-tool",
+          "timestamp": "2026-10-31T19:15:25.021688Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T19:15:25.024850Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a19363-5cde-7023-9fb6-2563fb12fdd3",
+      "conversation_id": "capture-client-tool",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "client-user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "getWeather",
+          "args": "{\"city\":\"London\"}",
+          "tool_call_id": "capture-client-tool-client",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:15:25.026591Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a19363-5cde-7023-9fb6-2563fb12fdd3",
+      "conversation_id": "capture-client-tool",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "client-tool",
+            "timestamp": "2026-10-31T19:15:25.021688Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.024850Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5cde-7023-9fb6-2563fb12fdd3",
+        "conversation_id": "capture-client-tool",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "client-user"
+          }
+        },
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-client-tool",
+      "runId": "capture-client-tool-run",
+      "protocolVersion": "1.0",
+      "messages": [
+        {
+          "id": "client-user",
+          "role": "user",
+          "content": "client-tool"
+        }
+      ],
+      "tools": [
+        {
+          "name": "getWeather",
+          "description": "Browser weather",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "city": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "city"
+            ]
+          }
+        }
+      ],
+      "context": [],
+      "state": {},
+      "forwardedProps": {}
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "client-user",
+      "role": "user",
+      "content": "client-tool"
+    },
+    {
+      "id": "3578b72e-f24d-4b51-bc4e-79c4a88feec5",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-client-tool-client",
+          "type": "function",
+          "function": {
+            "name": "getWeather",
+            "arguments": "{\"city\":\"London\"}"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "type": "RUN_STARTED",
+    "timestamp": 1793474125034,
+    "threadId": "capture-client-tool",
+    "runId": "capture-client-continuation-run",
+    "protocolVersion": "1.0"
+  },
+  {
+    "type": "TEXT_MESSAGE_START",
+    "timestamp": 1793474125038,
+    "messageId": "ee642d1e-1b63-443f-8a3f-4901516e70c9",
+    "role": "assistant"
+  },
+  {
+    "type": "TEXT_MESSAGE_CONTENT",
+    "timestamp": 1793474125038,
+    "messageId": "ee642d1e-1b63-443f-8a3f-4901516e70c9",
+    "delta": "Tool result: controlled-client-result:London"
+  },
+  {
+    "type": "TEXT_MESSAGE_END",
+    "timestamp": 1793474125038,
+    "messageId": "ee642d1e-1b63-443f-8a3f-4901516e70c9"
+  },
+  {
+    "type": "RUN_FINISHED",
+    "timestamp": 1793474125040,
+    "threadId": "capture-client-tool",
+    "runId": "capture-client-continuation-run",
+    "outcome": {
+      "type": "success"
+    }
+  }
+]

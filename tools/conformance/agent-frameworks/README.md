@@ -287,3 +287,42 @@ and artifacts. Its first candidate constraint is the same approved exact pins,
 so the candidate is explicitly deduplicated with the baseline. Expanding version
 ranges requires review; weekly checks never rewrite public qualifications.
 File search stays deferred.
+
+## Pydantic AI generic compatibility recipe
+
+The optional `hashbrown-pydantic-ai` adapter augments demonstrated gaps in native
+Pydantic AG-UI output. It reuses frontend tools, deferred results, native approval
+resume and native history sanitization. Consumers supply their own agent and
+replace the adapter import at their existing `dispatch_request` boundary.
+There is no replacement executor, storage service or B4 contract in the adapter.
+
+`AGUIEvent` forwards standard AG-UI step, activity and state events emitted with
+Pydantic's native `ctx.emit`. Only missing typed terminal tool outcomes use the
+small `hashbrown.tool` metadata extension. It distinguishes native retry and
+interruption from failure, and requires real cancellation provenance before
+reporting cancellation. Native baseline evidence stays unchanged and separate.
+
+The installable distribution is built from `packages/pydantic-ai`; this PR's
+qualification covers its wheel, not a registry publication. The isolated
+`python-recipe/` host installs that wheel into the exact pinned Python environment
+and verifies the installed module files against the wheel. Raw HTTP captures live
+in `packages/core/src/models/fixtures/pydantic-recipe/`, where core test inputs also
+protect their cache. Qualification summaries remain data-only.
+
+```sh
+npx nx build pydantic-ai
+npx nx test pydantic-ai
+npx nx lint pydantic-ai
+npx nx build pydantic-ai-recipe-conformance
+npx nx test pydantic-ai-recipe-conformance
+npx nx lint pydantic-ai-recipe-conformance
+npx nx example-e2e pydantic-ai-recipe-conformance
+npx nx compatibility-baseline pydantic-ai-recipe-conformance
+```
+
+The recipe qualifies typed tool outcomes, native approval/resume and live standard
+activities/state independently of richer capabilities. Same-name tool registration
+still follows native rejection. Backend restart, browser reload/reconnect,
+subagent attribution, citations, structured output, trusted UI and media must not
+be inferred from ordinary tool execution or canonical JSON restore. The public
+matrix reports each scenario separately. File search remains deferred.

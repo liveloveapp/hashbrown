@@ -1,0 +1,39 @@
+{
+  "threadId": "capture-approval-deny",
+  "runId": "approval-deny-resume",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "approval"
+    },
+    {
+      "id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-approval-deny-approval",
+          "type": "function",
+          "function": {
+            "name": "approvalTool",
+            "arguments": "{}"
+          }
+        }
+      ]
+    }
+  ],
+  "tools": [],
+  "state": {},
+  "context": [],
+  "forwardedProps": {},
+  "resume": [
+    {
+      "interruptId": "int-capture-approval-deny-approval",
+      "status": "resolved",
+      "payload": {
+        "approved": false
+      }
+    }
+  ]
+}

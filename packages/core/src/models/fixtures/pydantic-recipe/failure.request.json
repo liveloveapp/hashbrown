@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-failure",
+  "runId": "capture-failure-run",
+  "messages": [
+    {
+      "id": "capture-failure-user",
+      "role": "user",
+      "content": "failure"
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "state": {},
+  "forwardedProps": {},
+  "protocolVersion": "1.0"
+}

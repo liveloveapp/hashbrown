@@ -1,0 +1,358 @@
+{
+  "entered": 0,
+  "completed": 0,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "approval",
+          "timestamp": "2026-10-31T19:15:25.078083Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": null,
+      "instructions": null,
+      "kind": "request",
+      "run_id": null,
+      "conversation_id": null,
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "approvalTool",
+          "args": "{}",
+          "tool_call_id": "capture-approval-deny-approval",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 0,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 0,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": null,
+      "model_id": null,
+      "timestamp": "2026-10-31T19:15:25.078132Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": null,
+      "conversation_id": null,
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84"
+        }
+      },
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "approvalTool",
+          "content": "The tool call was denied.",
+          "tool_call_id": "capture-approval-deny-approval",
+          "tool_kind": null,
+          "metadata": null,
+          "timestamp": "2026-10-31T19:15:25.080085Z",
+          "outcome": "denied",
+          "retry": null,
+          "part_kind": "tool-return"
+        }
+      ],
+      "timestamp": "2026-10-31T19:15:25.080640Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+      "conversation_id": "capture-approval-deny",
+      "metadata": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "content": "Tool result: The tool call was denied.",
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "citations": null,
+          "part_kind": "text"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 8,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:15:25.081704Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+      "conversation_id": "capture-approval-deny",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "approval",
+            "timestamp": "2026-10-31T19:15:25.067950Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.069566Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5d0c-7114-8501-26a302e11549",
+        "conversation_id": "capture-approval-deny",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "user"
+          }
+        },
+        "state": "complete"
+      }
+    ],
+    [
+      {
+        "parts": [
+          {
+            "content": "approval",
+            "timestamp": "2026-10-31T19:15:25.078083Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": null,
+        "instructions": null,
+        "kind": "request",
+        "run_id": null,
+        "conversation_id": null,
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "user"
+          }
+        },
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "approvalTool",
+            "args": "{}",
+            "tool_call_id": "capture-approval-deny-approval",
+            "tool_kind": null,
+            "id": null,
+            "provider_name": null,
+            "provider_details": null,
+            "part_kind": "tool-call"
+          }
+        ],
+        "usage": {
+          "input_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_write_1h_tokens": 0,
+          "cache_read_tokens": 0,
+          "output_tokens": 0,
+          "output_reasoning_tokens": 0,
+          "input_audio_tokens": 0,
+          "cache_audio_read_tokens": 0,
+          "output_audio_tokens": 0,
+          "audio_seconds": 0,
+          "details": {},
+          "cost": null
+        },
+        "model_name": null,
+        "model_id": null,
+        "timestamp": "2026-10-31T19:15:25.078132Z",
+        "kind": "response",
+        "provider_name": null,
+        "provider_url": null,
+        "canonical_system": null,
+        "provider_details": null,
+        "provider_response_id": null,
+        "finish_reason": null,
+        "run_id": null,
+        "conversation_id": null,
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84"
+          }
+        },
+        "workspace_ref": null,
+        "history_digest": null,
+        "failed_attempts": null,
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "approvalTool",
+            "content": "The tool call was denied.",
+            "tool_call_id": "capture-approval-deny-approval",
+            "tool_kind": null,
+            "metadata": null,
+            "timestamp": "2026-10-31T19:15:25.080085Z",
+            "outcome": "denied",
+            "retry": null,
+            "part_kind": "tool-return"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.080640Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5d16-7699-9132-f18f14c8b197",
+        "conversation_id": "capture-approval-deny",
+        "metadata": null,
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-approval-deny",
+      "runId": "approval-deny-run",
+      "protocolVersion": "1.0",
+      "messages": [
+        {
+          "id": "user",
+          "role": "user",
+          "content": "approval"
+        }
+      ],
+      "tools": [],
+      "state": {},
+      "context": [],
+      "forwardedProps": {}
+    },
+    {
+      "threadId": "capture-approval-deny",
+      "runId": "approval-deny-resume",
+      "protocolVersion": "1.0",
+      "messages": [
+        {
+          "id": "user",
+          "role": "user",
+          "content": "approval"
+        },
+        {
+          "id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84",
+          "role": "assistant",
+          "toolCalls": [
+            {
+              "id": "capture-approval-deny-approval",
+              "type": "function",
+              "function": {
+                "name": "approvalTool",
+                "arguments": "{}"
+              }
+            }
+          ]
+        }
+      ],
+      "tools": [],
+      "state": {},
+      "context": [],
+      "forwardedProps": {},
+      "resume": [
+        {
+          "interruptId": "int-capture-approval-deny-approval",
+          "status": "resolved",
+          "payload": {
+            "approved": false
+          }
+        }
+      ]
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "approval"
+    },
+    {
+      "id": "c28fff83-ef6d-4da1-96f3-caf4b0d1ed84",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-approval-deny-approval",
+          "type": "function",
+          "function": {
+            "name": "approvalTool",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "0463113d-66a1-496f-91b1-56bc0f8a2df6",
+      "role": "tool",
+      "content": "The tool call was denied.",
+      "toolCallId": "capture-approval-deny-approval",
+      "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"denied\"}}",
+      "metadata": {
+        "hashbrown.tool": {
+          "v": 1,
+          "outcome": "denied"
+        }
+      }
+    },
+    {
+      "id": "feaa83a8-f491-4b57-b8b8-fffc9c02dffc",
+      "role": "assistant",
+      "content": "Tool result: The tool call was denied."
+    }
+  ]
+}

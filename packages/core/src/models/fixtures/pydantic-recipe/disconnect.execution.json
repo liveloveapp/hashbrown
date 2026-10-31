@@ -1,0 +1,52 @@
+{
+  "entered": 1,
+  "completed": 0,
+  "cancelled": 1,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T19:15:24.990647Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:24.993135Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5cbf-7211-9f8a-d51705800c9d",
+        "conversation_id": "capture-disconnect",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-disconnect-user"
+          }
+        },
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-disconnect",
+      "runId": "capture-disconnect-run",
+      "messages": [
+        {
+          "id": "capture-disconnect-user",
+          "role": "user",
+          "content": "server-tool"
+        }
+      ],
+      "tools": [],
+      "context": [],
+      "state": {},
+      "forwardedProps": {},
+      "protocolVersion": "1.0"
+    }
+  ]
+}

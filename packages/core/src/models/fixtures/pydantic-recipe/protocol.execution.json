@@ -1,0 +1,310 @@
+{
+  "entered": 1,
+  "completed": 1,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "protocol",
+          "timestamp": "2026-10-31T19:15:25.089169Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T19:15:25.090681Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+      "conversation_id": "capture-protocol",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "protocolTool",
+          "args": "{}",
+          "tool_call_id": "capture-protocol-protocol",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 1,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:15:25.091706Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+      "conversation_id": "capture-protocol",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "protocolTool",
+          "content": "standard protocol complete",
+          "tool_call_id": "capture-protocol-protocol",
+          "tool_kind": null,
+          "metadata": null,
+          "timestamp": "2026-10-31T19:15:25.098367Z",
+          "outcome": "success",
+          "retry": null,
+          "part_kind": "tool-return"
+        }
+      ],
+      "timestamp": "2026-10-31T19:15:25.099545Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+      "conversation_id": "capture-protocol",
+      "metadata": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "content": "Tool result: standard protocol complete",
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "citations": null,
+          "part_kind": "text"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 5,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:15:25.100632Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+      "conversation_id": "capture-protocol",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "protocol",
+            "timestamp": "2026-10-31T19:15:25.089169Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.090681Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+        "conversation_id": "capture-protocol",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "user"
+          }
+        },
+        "state": "complete"
+      }
+    ],
+    [
+      {
+        "parts": [
+          {
+            "content": "protocol",
+            "timestamp": "2026-10-31T19:15:25.089169Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.090681Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+        "conversation_id": "capture-protocol",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "user"
+          }
+        },
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "protocolTool",
+            "args": "{}",
+            "tool_call_id": "capture-protocol-protocol",
+            "tool_kind": null,
+            "id": null,
+            "provider_name": null,
+            "provider_details": null,
+            "part_kind": "tool-call"
+          }
+        ],
+        "usage": {
+          "input_tokens": 50,
+          "cache_write_tokens": 0,
+          "cache_write_1h_tokens": 0,
+          "cache_read_tokens": 0,
+          "output_tokens": 1,
+          "output_reasoning_tokens": 0,
+          "input_audio_tokens": 0,
+          "cache_audio_read_tokens": 0,
+          "output_audio_tokens": 0,
+          "audio_seconds": 0,
+          "details": {},
+          "cost": null
+        },
+        "model_name": "function::model_stream",
+        "model_id": "function:function::model_stream",
+        "timestamp": "2026-10-31T19:15:25.091706Z",
+        "kind": "response",
+        "provider_name": null,
+        "provider_url": null,
+        "canonical_system": null,
+        "provider_details": null,
+        "provider_response_id": null,
+        "finish_reason": null,
+        "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+        "conversation_id": "capture-protocol",
+        "metadata": null,
+        "workspace_ref": null,
+        "history_digest": null,
+        "failed_attempts": null,
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "protocolTool",
+            "content": "standard protocol complete",
+            "tool_call_id": "capture-protocol-protocol",
+            "tool_kind": null,
+            "metadata": null,
+            "timestamp": "2026-10-31T19:15:25.098367Z",
+            "outcome": "success",
+            "retry": null,
+            "part_kind": "tool-return"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:25.099545Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5d21-701b-b77c-13c32bc59e68",
+        "conversation_id": "capture-protocol",
+        "metadata": null,
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-protocol",
+      "runId": "protocol-run",
+      "protocolVersion": "1.0",
+      "messages": [
+        {
+          "id": "user",
+          "role": "user",
+          "content": "protocol"
+        }
+      ],
+      "tools": [],
+      "state": {},
+      "context": [],
+      "forwardedProps": {}
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "protocol"
+    },
+    {
+      "id": "7b2cb44e-6339-4948-8c5f-54d887ba0c58",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-protocol-protocol",
+          "type": "function",
+          "function": {
+            "name": "protocolTool",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "acdeb7e3-d6bf-4bd0-93ad-e0d8fb44038e",
+      "role": "tool",
+      "content": "standard protocol complete",
+      "toolCallId": "capture-protocol-protocol",
+      "metadata": {
+        "hashbrown.tool": {
+          "v": 1,
+          "outcome": "success"
+        }
+      }
+    },
+    {
+      "id": "30c16691-d501-4456-9273-601d008fd2e8",
+      "role": "assistant",
+      "content": "Tool result: standard protocol complete"
+    }
+  ]
+}

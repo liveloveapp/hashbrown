@@ -1,0 +1,50 @@
+[
+  {
+    "type": "RUN_STARTED",
+    "timestamp": 1793474125022,
+    "threadId": "capture-client-tool",
+    "runId": "capture-client-tool-run",
+    "protocolVersion": "1.0"
+  },
+  {
+    "type": "TEXT_MESSAGE_START",
+    "timestamp": 1793474125026,
+    "messageId": "0d91b252-83df-4b07-9914-f73f0e17ecf4",
+    "role": "assistant"
+  },
+  {
+    "type": "TEXT_MESSAGE_END",
+    "timestamp": 1793474125026,
+    "messageId": "0d91b252-83df-4b07-9914-f73f0e17ecf4"
+  },
+  {
+    "type": "TOOL_CALL_START",
+    "timestamp": 1793474125026,
+    "toolCallId": "capture-client-tool-client",
+    "toolCallName": "getWeather",
+    "parentMessageId": "0d91b252-83df-4b07-9914-f73f0e17ecf4"
+  },
+  {
+    "type": "TOOL_CALL_ARGS",
+    "timestamp": 1793474125026,
+    "toolCallId": "capture-client-tool-client",
+    "delta": "{\"city\":\"London\"}"
+  },
+  {
+    "type": "TOOL_CALL_END",
+    "timestamp": 1793474125027,
+    "toolCallId": "capture-client-tool-client"
+  },
+  {
+    "type": "RUN_FINISHED",
+    "timestamp": 1793474125028,
+    "threadId": "capture-client-tool",
+    "runId": "capture-client-tool-run",
+    "outcome": {
+      "type": "success",
+      "pendingToolCallIds": [
+        "capture-client-tool-client"
+      ]
+    }
+  }
+]

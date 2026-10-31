@@ -1,0 +1,12 @@
+data: {"type":"RUN_STARTED","timestamp":1793474125057,"threadId":"capture-approval-approve","runId":"approval-approve-resume","protocolVersion":"1.0"}
+
+data: {"type":"TOOL_CALL_RESULT","timestamp":1793474125059,"metadata":{"hashbrown.tool":{"v":1,"outcome":"success"}},"messageId":"5eaf1308-2013-43b8-8cbe-3afa57bd0b7b","toolCallId":"capture-approval-approve-approval","content":"approved native action","role":"tool"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793474125060,"messageId":"a12a4125-4e9c-4af5-b07a-0ea21b55cd11","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793474125060,"messageId":"a12a4125-4e9c-4af5-b07a-0ea21b55cd11","delta":"Tool result: approved native action"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793474125060,"messageId":"a12a4125-4e9c-4af5-b07a-0ea21b55cd11"}
+
+data: {"type":"RUN_FINISHED","timestamp":1793474125062,"threadId":"capture-approval-approve","runId":"approval-approve-resume","outcome":{"type":"success"}}
+

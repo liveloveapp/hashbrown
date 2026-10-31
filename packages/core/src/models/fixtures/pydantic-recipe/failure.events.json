@@ -1,0 +1,65 @@
+[
+  {
+    "type": "RUN_STARTED",
+    "timestamp": 1793474124899,
+    "threadId": "capture-failure",
+    "runId": "capture-failure-run",
+    "protocolVersion": "1.0"
+  },
+  {
+    "type": "TEXT_MESSAGE_START",
+    "timestamp": 1793474124903,
+    "messageId": "1cd316a3-f3ae-4a14-8ca7-37b7a8acf471",
+    "role": "assistant"
+  },
+  {
+    "type": "TEXT_MESSAGE_END",
+    "timestamp": 1793474124903,
+    "messageId": "1cd316a3-f3ae-4a14-8ca7-37b7a8acf471"
+  },
+  {
+    "type": "TOOL_CALL_START",
+    "timestamp": 1793474124903,
+    "toolCallId": "capture-failure-server",
+    "toolCallName": "failingTool",
+    "parentMessageId": "1cd316a3-f3ae-4a14-8ca7-37b7a8acf471"
+  },
+  {
+    "type": "TOOL_CALL_ARGS",
+    "timestamp": 1793474124903,
+    "toolCallId": "capture-failure-server",
+    "delta": "{\"city\":\"London\"}"
+  },
+  {
+    "type": "TOOL_CALL_END",
+    "timestamp": 1793474124903,
+    "toolCallId": "capture-failure-server"
+  },
+  {
+    "type": "TOOL_CALL_RESULT",
+    "metadata": {
+      "hashbrown.tool": {
+        "v": 1,
+        "outcome": "failure",
+        "error": {
+          "message": "Tool execution was interrupted by an error."
+        }
+      }
+    },
+    "messageId": "2f5570ea-8aa7-4f19-94b1-2c0b3c1dd3cf",
+    "toolCallId": "capture-failure-server",
+    "content": "Tool execution was interrupted by an error.",
+    "role": "tool"
+  },
+  {
+    "type": "REASONING_ENCRYPTED_VALUE",
+    "subtype": "message",
+    "entityId": "2f5570ea-8aa7-4f19-94b1-2c0b3c1dd3cf",
+    "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"failed\"}}"
+  },
+  {
+    "type": "RUN_ERROR",
+    "timestamp": 1793474124905,
+    "message": "controlled callback failure:London"
+  }
+]

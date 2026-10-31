@@ -1,0 +1,52 @@
+{
+  "entered": 0,
+  "completed": 0,
+  "cancelled": 0,
+  "failed": 1,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "failure",
+            "timestamp": "2026-10-31T19:15:24.899316Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:15:24.901515Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a19363-5c63-7122-aa3c-03dc08309bdf",
+        "conversation_id": "capture-failure",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-failure-user"
+          }
+        },
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-failure",
+      "runId": "capture-failure-run",
+      "messages": [
+        {
+          "id": "capture-failure-user",
+          "role": "user",
+          "content": "failure"
+        }
+      ],
+      "tools": [],
+      "context": [],
+      "state": {},
+      "forwardedProps": {},
+      "protocolVersion": "1.0"
+    }
+  ]
+}

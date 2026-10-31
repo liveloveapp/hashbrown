@@ -7875,3 +7875,397 @@ test('idle startup Stop and first send add no cancellation marker for an absent 
   ]);
   teardown();
 });
+
+test.each(['server-error', 'eof', 'protocol-error'] as const)(
+  'retains completed server tool failures only for accepted %s terminals',
+  async (terminal) => {
+    jest.clearAllMocks();
+    const handler = jest.fn(async () => 'must not execute');
+    const actions: string[] = [];
+    let requestCount = 0;
+    const { send } = makeSelection(async (request) => {
+      requestCount++;
+      if (requestCount > 1) return { events: successfulEvents(request) };
+      return {
+        events: (async function* (): AsyncGenerator<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...getInputIdentity(request) };
+          yield {
+            type: EventType.STATE_SNAPSHOT,
+            snapshot: { speculative: true },
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'failed-assistant',
+            role: 'assistant',
+            metadata: { speculativeAnswer: true },
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'failed-assistant',
+            delta: '{"incomplete":',
+          };
+          yield {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'server-failure',
+            toolCallName: 'server_lookup',
+            parentMessageId: 'failed-assistant',
+          };
+          yield {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: 'server-failure',
+            delta: '{}',
+          };
+          yield { type: EventType.TOOL_CALL_END, toolCallId: 'server-failure' };
+          yield {
+            type: EventType.TOOL_CALL_RESULT,
+            messageId: 'server-failure-result',
+            role: 'tool',
+            toolCallId: 'server-failure',
+            content: 'Native tool output',
+            metadata: {
+              'hashbrown.tool': {
+                v: 1,
+                outcome: 'failure',
+                error: { message: 'Lookup failed' },
+              },
+            },
+          };
+          yield {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'client-pending',
+            toolCallName: 'client_lookup',
+            parentMessageId: 'pending-assistant',
+          };
+          yield {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: 'client-pending',
+            delta: '{}',
+          };
+          yield { type: EventType.TOOL_CALL_END, toolCallId: 'client-pending' };
+          if (terminal === 'server-error') {
+            yield { type: EventType.RUN_ERROR, message: 'Agent run failed' };
+          } else if (terminal === 'protocol-error') {
+            yield { type: EventType.TOOL_CALL_END, toolCallId: 'unknown-call' };
+          }
+        })(),
+      };
+    });
+    const store = createRealEffectStore((_state, action) =>
+      actions.push(action.type),
+    );
+    store.dispatch(
+      devActions.init({
+        system: 'Test',
+        messages: [{ role: 'user', content: 'Run tools' }],
+        canonicalMessages: canonicalUser('Run tools'),
+        state: { speculative: false },
+        responseSchema: s.object('Answer', {
+          answer: s.string('Complete answer'),
+        }),
+        ui: true,
+        debounce: 0,
+        retries: 0,
+        transport: configuredTransport,
+        tools: [
+          {
+            name: 'client_lookup',
+            description: 'Client lookup',
+            schema: s.object('Input', {}),
+            handler,
+          },
+        ],
+      }),
+    );
+    const teardown = store.runEffects();
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    const retained = terminal === 'server-error';
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
+    expect(actions).not.toContain(apiActions.generateMessageSuccess.type);
+    expect(store.read(selectGeneratingError)).toBeDefined();
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({
+      speculative: false,
+    });
+    expect(store.read(selectToolCalls).map((call) => call.id)).toEqual(
+      retained ? ['server-failure'] : [],
+    );
+    const history = store.read(ɵselectCommittedAgUiMessages);
+    expect(history.map((message) => message.role)).toEqual(
+      retained ? ['user', 'assistant', 'tool'] : ['user'],
+    );
+    if (retained) {
+      expect(store.read(selectToolCalls)[0].result).toEqual({
+        status: 'rejected',
+        reason: 'Lookup failed',
+      });
+      expect(history[1]).not.toHaveProperty('content');
+      expect(history[1]).not.toHaveProperty('metadata');
+      expect(history[2]).toEqual(
+        expect.objectContaining({
+          content: 'Native tool output',
+          error: 'Lookup failed',
+        }),
+      );
+      expect(
+        JSON.parse(JSON.stringify(history))[2].metadata['hashbrown.tool']
+          .outcome,
+      ).toBe('failure');
+    }
+    expect(
+      store.read(selectMessages).some((message) => message.role === 'error'),
+    ).toBe(true);
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    store.dispatch(
+      devActions.sendMessage({
+        message: { role: 'user', content: 'Continue' },
+        canonicalMessages: canonicalUser('Continue'),
+      }),
+    );
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(2);
+    const nextInput = (send.mock.calls[1][0] as TransportRequest).input;
+    expect(
+      nextInput.messages.filter((message) => message.role === 'tool'),
+    ).toEqual(retained ? [history[2]] : []);
+    expect(handler).not.toHaveBeenCalled();
+    teardown();
+  },
+);
+
+test.each(['generation', 'attempt'] as const)(
+  'ignores terminal tool retention with stale %s ownership',
+  (stale) => {
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'Test',
+        canonicalMessages: canonicalUser('Owned request'),
+      }),
+    );
+    store.dispatch(
+      internalActions.logicalGenerationStarted({
+        generationId: 'current-generation',
+      }),
+    );
+    store.dispatch(
+      internalActions.generationAttemptClaimed({
+        generationId: 'current-generation',
+        attemptId: 'current-attempt',
+      }),
+    );
+    store.dispatch(internalActions.generationAttemptStarted());
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.RUN_STARTED,
+        threadId: 'thread',
+        runId: 'run',
+      }),
+    );
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TOOL_CALL_START,
+        toolCallId: 'server-call',
+        toolCallName: 'server_tool',
+        parentMessageId: 'assistant',
+      }),
+    );
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TOOL_CALL_END,
+        toolCallId: 'server-call',
+      }),
+    );
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TOOL_CALL_RESULT,
+        messageId: 'result',
+        role: 'tool',
+        toolCallId: 'server-call',
+        content: 'result',
+      }),
+    );
+    const committed = store.read(ɵselectCommittedAgUiMessages);
+
+    store.dispatch(
+      internalActions.generationAttemptFailed({
+        generationId:
+          stale === 'generation' ? 'stale-generation' : 'current-generation',
+        attemptId: stale === 'attempt' ? 'stale-attempt' : 'current-attempt',
+        toolsByName: {},
+      }),
+    );
+
+    expect(store.read(ɵselectCommittedAgUiMessages)).toBe(committed);
+    expect(store.read(ɵselectGenerationAttemptId)).toBe('current-attempt');
+  },
+);
+
+test.each(['existing-call', 'new-call'] as const)(
+  'retains a %s result beside its preexisting owner on terminal failure',
+  async (mode) => {
+    const canonicalMessages: import('@ag-ui/core').Message[] = [
+      {
+        id: 'original-owner',
+        role: 'assistant',
+        content: 'Existing answer',
+        subagentRunId: 'child-run',
+        toolCalls:
+          mode === 'existing-call'
+            ? [
+                {
+                  id: 'existing-server-call',
+                  type: 'function',
+                  function: { name: 'server_tool', arguments: '{}' },
+                },
+              ]
+            : [],
+      },
+      { id: 'next-user', role: 'user', content: 'Continue' },
+    ];
+    makeSelection(async (request) => ({
+      events: (async function* (): AsyncGenerator<AGUIEvent> {
+        yield { type: EventType.RUN_STARTED, ...getInputIdentity(request) };
+        if (mode === 'new-call') {
+          yield {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'existing-server-call',
+            toolCallName: 'server_tool',
+            parentMessageId: 'original-owner',
+            subagentRunId: 'child-run',
+          };
+          yield {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: 'existing-server-call',
+            delta: '{}',
+          };
+          yield {
+            type: EventType.TOOL_CALL_END,
+            toolCallId: 'existing-server-call',
+          };
+        }
+        yield {
+          type: EventType.TOOL_CALL_RESULT,
+          messageId: 'existing-result',
+          role: 'tool',
+          toolCallId: 'existing-server-call',
+          subagentRunId: 'child-run',
+          content: 'Native failure',
+          metadata: {
+            'hashbrown.tool': {
+              v: 1,
+              outcome: 'failure',
+              error: { message: 'Server failed' },
+            },
+          },
+        };
+        yield { type: EventType.RUN_ERROR, message: 'Run failed' };
+      })(),
+    }));
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'Test',
+        canonicalMessages,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    const history = store.read(ɵselectCommittedAgUiMessages);
+    expect(history.map((message) => message.id)).toEqual([
+      'original-owner',
+      'existing-result',
+      'next-user',
+    ]);
+    expect(history[0]).toEqual(
+      expect.objectContaining({
+        content: 'Existing answer',
+        subagentRunId: 'child-run',
+      }),
+    );
+    expect(history[1]).toEqual(
+      expect.objectContaining({
+        toolCallId: 'existing-server-call',
+        subagentRunId: 'child-run',
+        error: 'Server failed',
+      }),
+    );
+    expect(store.read(selectToolCalls)[0].result).toEqual({
+      status: 'rejected',
+      reason: 'Server failed',
+    });
+    teardown();
+  },
+);
+
+test.each(['event', 'settlement'] as const)(
+  'keeps an accepted server error when stop arrives at the %s boundary',
+  async (boundary) => {
+    makeSelection(async (request) => ({
+      events: (async function* (): AsyncGenerator<AGUIEvent> {
+        yield { type: EventType.RUN_STARTED, ...getInputIdentity(request) };
+        yield {
+          type: EventType.TOOL_CALL_START,
+          toolCallId: 'pending-client',
+          toolCallName: 'client_tool',
+          parentMessageId: 'pending-owner',
+        };
+        yield {
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId: 'pending-client',
+          delta: '{}',
+        };
+        yield { type: EventType.TOOL_CALL_END, toolCallId: 'pending-client' };
+        yield { type: EventType.RUN_ERROR, message: 'Accepted server failure' };
+      })(),
+    }));
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'Test',
+        tools: [
+          {
+            name: 'client_tool',
+            description: 'Client tool',
+            schema: s.object('Input', {}),
+            handler: async () => 'unused',
+          },
+        ],
+        canonicalMessages: canonicalUser('Fail'),
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const unsubscribe =
+      boundary === 'settlement'
+        ? store.when(internalActions.generationAttemptFailed, () =>
+            store.dispatch(devActions.stopMessageGeneration(true)),
+          )
+        : store.when(apiActions.generateMessageEvent, (action) => {
+            if (action.payload.type === EventType.RUN_ERROR)
+              store.dispatch(devActions.stopMessageGeneration(true));
+          });
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(store.read(selectUnifiedError)?.message).toBe(
+      'Accepted server failure',
+    );
+    expect(
+      store.read(selectMessages).some((message) => message.role === 'error'),
+    ).toBe(true);
+    unsubscribe();
+    teardown();
+  },
+);

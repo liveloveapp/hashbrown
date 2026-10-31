@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-protocol",
+  "runId": "protocol-run",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "protocol"
+    }
+  ],
+  "tools": [],
+  "state": {},
+  "context": [],
+  "forwardedProps": {}
+}

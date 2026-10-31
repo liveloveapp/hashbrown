@@ -1,0 +1,45 @@
+{
+  "name": "pydantic-ai",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/pydantic-ai/src",
+  "tags": ["python", "optional"],
+  "namedInputs": {
+    "pythonPackage": [
+      "{projectRoot}/src/**/*.py",
+      "{projectRoot}/tests/**/*.py",
+      "{projectRoot}/check.py",
+      "{projectRoot}/pyproject.toml",
+      "{projectRoot}/README.md",
+      "{projectRoot}/project.json",
+      { "runtime": "uv --version" }
+    ],
+    "pinnedQualification": [
+      "pythonPackage",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/pyproject.toml",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/uv.lock",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/.python-version"
+    ]
+  },
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonPackage"],
+      "outputs": ["{projectRoot}/dist"],
+      "cache": true,
+      "options": { "command": "python3 packages/pydantic-ai/check.py build" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "inputs": ["pinnedQualification"],
+      "cache": true,
+      "options": { "command": "python3 packages/pydantic-ai/check.py test" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonPackage"],
+      "cache": true,
+      "options": { "command": "python3 packages/pydantic-ai/check.py lint" }
+    }
+  }
+}

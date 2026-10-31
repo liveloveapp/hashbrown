@@ -1,0 +1,4 @@
+data: {"type":"RUN_STARTED","timestamp":1793474124982,"threadId":"capture-server-same-name","runId":"capture-server-same-name-run","protocolVersion":"1.0"}
+
+data: {"type":"RUN_ERROR","timestamp":1793474124984,"message":"The AG-UI frontend tools defines a tool whose name conflicts with existing tool from the agent: 'getWeather'. Rename the tool or wrap the toolset in a `PrefixedToolset` to avoid name conflicts."}
+

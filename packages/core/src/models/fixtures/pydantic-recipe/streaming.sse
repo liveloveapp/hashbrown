@@ -1,0 +1,12 @@
+data: {"type":"RUN_STARTED","timestamp":1793474124837,"threadId":"capture-streaming","runId":"capture-streaming-run","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793474124866,"messageId":"e0a38039-f79b-4cd2-960e-7b26eb737b92","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793474124866,"messageId":"e0a38039-f79b-4cd2-960e-7b26eb737b92","delta":"Pydantic streaming "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793474124869,"messageId":"e0a38039-f79b-4cd2-960e-7b26eb737b92","delta":"answer."}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793474124870,"messageId":"e0a38039-f79b-4cd2-960e-7b26eb737b92"}
+
+data: {"type":"RUN_FINISHED","timestamp":1793474124872,"threadId":"capture-streaming","runId":"capture-streaming-run","outcome":{"type":"success"}}
+

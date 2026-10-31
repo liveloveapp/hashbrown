@@ -1,0 +1,14 @@
+data: {"type":"RUN_STARTED","timestamp":1793474125068,"threadId":"capture-approval-deny","runId":"approval-deny-run","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793474125070,"messageId":"632d3f64-3220-412f-aa9f-f1d2d1187c6a","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793474125070,"messageId":"632d3f64-3220-412f-aa9f-f1d2d1187c6a"}
+
+data: {"type":"TOOL_CALL_START","timestamp":1793474125070,"toolCallId":"capture-approval-deny-approval","toolCallName":"approvalTool","parentMessageId":"632d3f64-3220-412f-aa9f-f1d2d1187c6a"}
+
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793474125070,"toolCallId":"capture-approval-deny-approval","delta":"{}"}
+
+data: {"type":"TOOL_CALL_END","timestamp":1793474125071,"toolCallId":"capture-approval-deny-approval"}
+
+data: {"type":"RUN_FINISHED","timestamp":1793474125072,"threadId":"capture-approval-deny","runId":"approval-deny-run","outcome":{"type":"interrupt","interrupts":[{"id":"int-capture-approval-deny-approval","reason":"tool_call","message":"Approve approvalTool({})?","toolCallId":"capture-approval-deny-approval","responseSchema":{"properties":{"approved":{"type":"boolean"},"editedArgs":{"type":"object"},"reason":{"type":"string"}},"required":["approved"],"type":"object"}}]}}
+

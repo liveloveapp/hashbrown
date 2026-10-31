@@ -435,6 +435,7 @@ export const reducer = createReducer(
   on(
     internalActions.toolTurnSettled,
     internalActions.generationCancelled,
+    internalActions.generationAttemptFailed,
     (state, action): MessagesState => {
       const preparedProjection = readPreparedProjection(action);
       if (!preparedProjection) {
