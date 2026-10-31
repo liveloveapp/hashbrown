@@ -208,6 +208,36 @@ export function ɵprepareRootAction(
       ɵagUiMessageProjection: projection,
     };
   }
+  if (action.type === internalActions.generationAttemptFailed.type) {
+    const failure = action as ReturnType<
+      typeof internalActions.generationAttemptFailed
+    >;
+    if (
+      state.generationOwnership.generationId !== failure.payload.generationId ||
+      state.generationOwnership.attemptId !== failure.payload.attemptId ||
+      !state.agUiMessages.attemptActive ||
+      state.agUiMessages.protocolError ||
+      state.agentState.protocolError
+    ) {
+      return { type: '@hashbrown/noop' };
+    }
+    const canonicalHistory = retainCompletedServerTools(
+      state.agUiMessages.committed,
+      state.agUiMessages.draft,
+      failure.payload.toolsByName,
+    );
+    const projection = ɵreconcileAgUiMessageProjection(
+      undefined,
+      canonicalHistory,
+      failure.payload.toolsByName,
+      state.config.responseSchema,
+    );
+    return {
+      ...action,
+      ɵcanonicalMessages: canonicalHistory,
+      ɵagUiMessageProjection: projection,
+    };
+  }
   if (action.type === toolTurnSettledType) {
     const settlement = action as ReturnType<
       typeof internalActions.toolTurnSettled
@@ -397,6 +427,103 @@ export function ɵprepareRootAction(
     ɵagUiMessageEventDecision: decision,
     ɵagUiMessageProjection: projection,
   };
+}
+
+/** Keeps completed server tool records without promoting speculative output. */
+function retainCompletedServerTools(
+  committed: readonly Readonly<Message>[],
+  draft: readonly Readonly<Message>[],
+  toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+): readonly Readonly<Message>[] {
+  const results = new Map(
+    draft.flatMap((message) =>
+      message.role === 'tool' ? [[message.toolCallId, message] as const] : [],
+    ),
+  );
+  const committedIds = new Set(committed.map((message) => message.id));
+  const additions: Readonly<Message>[] = [];
+  const replacements = new Map<string, Readonly<Message>>();
+  const insertedResults = new Map<string, Readonly<Message>[]>();
+  for (const message of draft) {
+    if (message.role !== 'assistant') continue;
+    const original = committed.find((entry) => entry.id === message.id);
+    if (original && original.role !== 'assistant') continue;
+    const toolCalls = (message.toolCalls ?? []).filter((call) => {
+      const result = results.get(call.id);
+      if (
+        !result ||
+        (!isProviderToolCall(call) &&
+          Object.hasOwn(toolsByName, call.function.name))
+      )
+        return false;
+      if (!original) return true;
+      if (
+        original.role !== 'assistant' ||
+        original.subagentRunId !== message.subagentRunId
+      )
+        return false;
+      const prior = original.toolCalls?.find((entry) => entry.id === call.id);
+      return (
+        prior === undefined ||
+        (prior.function.name === call.function.name &&
+          prior.function.arguments === call.function.arguments)
+      );
+    });
+    if (toolCalls.length === 0) continue;
+    if (original?.role === 'assistant') {
+      replacements.set(original.id, {
+        ...original,
+        toolCalls: [
+          ...(original.toolCalls ?? []).map(
+            (call) => toolCalls.find((entry) => entry.id === call.id) ?? call,
+          ),
+          ...toolCalls.filter(
+            (call) =>
+              !original.toolCalls?.some((entry) => entry.id === call.id),
+          ),
+        ],
+      });
+    } else {
+      // A failed run never commits partial structured content or trusted UI.
+      additions.push({
+        id: message.id,
+        role: 'assistant',
+        toolCalls,
+        ...(message.subagentRunId
+          ? { subagentRunId: message.subagentRunId }
+          : {}),
+      });
+    }
+    for (const call of toolCalls) {
+      const result = results.get(call.id);
+      if (!result) continue;
+      if (committedIds.has(result.id)) {
+        const prior = committed.find((entry) => entry.id === result.id);
+        if (prior?.role === 'tool' && prior.toolCallId === call.id)
+          replacements.set(result.id, result);
+      } else if (original) {
+        insertedResults.set(original.id, [
+          ...(insertedResults.get(original.id) ?? []),
+          result,
+        ]);
+      } else {
+        additions.push(result);
+      }
+    }
+  }
+  const history = [
+    ...committed.flatMap((message) => [
+      replacements.get(message.id) ?? message,
+      ...(insertedResults.get(message.id) ?? []),
+    ]),
+    ...additions,
+  ];
+  const validated = ɵownValidatedAgUiMessages(history);
+  return Object.freeze(
+    history.map((message, index) =>
+      Object.isFrozen(message) ? message : validated[index],
+    ),
+  );
 }
 
 /** Selects the canonical AG-UI message state. @internal */

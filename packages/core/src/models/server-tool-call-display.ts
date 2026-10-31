@@ -127,7 +127,11 @@ export function getServerToolCallLabel(
           ? `Denied ${call.name}`
           : outcome === 'cancelled'
             ? `Cancelled ${call.name}`
-            : `Used ${call.name}`;
+            : outcome === 'interrupted'
+              ? `Interrupted ${call.name}`
+              : outcome === 'retried'
+                ? `Retry requested for ${call.name}`
+                : `Used ${call.name}`;
   return bounded(generic) as string;
 }
 

@@ -1,0 +1,22 @@
+data: {"type":"RUN_STARTED","timestamp":1793476710314,"threadId":"capture-isolation-b","runId":"isolation-b-run","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793476710316,"messageId":"c5fa29c0-61be-40a4-a0ea-6004eb660916","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793476710316,"messageId":"c5fa29c0-61be-40a4-a0ea-6004eb660916"}
+
+data: {"type":"TOOL_CALL_START","timestamp":1793476710316,"toolCallId":"capture-isolation-b-server","toolCallName":"serverTool","parentMessageId":"c5fa29c0-61be-40a4-a0ea-6004eb660916"}
+
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793476710316,"toolCallId":"capture-isolation-b-server","delta":"{\"city\":\"London\"}"}
+
+data: {"type":"TOOL_CALL_END","timestamp":1793476710317,"toolCallId":"capture-isolation-b-server"}
+
+data: {"type":"TOOL_CALL_RESULT","timestamp":1793476710350,"metadata":{"hashbrown.tool":{"v":1,"outcome":"success"}},"messageId":"12683e50-df8b-4e9c-b983-e2baf3e7db40","toolCallId":"capture-isolation-b-server","content":"server-result:London","role":"tool"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793476710352,"messageId":"e8c1c7a9-cbe7-4c75-b5b9-ee6bfd7689fd","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793476710352,"messageId":"e8c1c7a9-cbe7-4c75-b5b9-ee6bfd7689fd","delta":"Tool result: server-result:London"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793476710352,"messageId":"e8c1c7a9-cbe7-4c75-b5b9-ee6bfd7689fd"}
+
+data: {"type":"RUN_FINISHED","timestamp":1793476710354,"threadId":"capture-isolation-b","runId":"isolation-b-run","outcome":{"type":"success"}}
+

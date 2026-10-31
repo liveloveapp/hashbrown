@@ -3,6 +3,7 @@ import { provideHashbrown } from '@hashbrownai/angular';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';
+import { TerminalToolSmoke } from './app/terminal-tool-smoke';
 import { readLocalTransport } from './local-transport';
 
 function showStartupError(error: unknown): never {
@@ -37,7 +38,13 @@ function readRunUrl(): string {
 const runUrl = readRunUrl();
 const localTransport = readLocalTransport();
 
-bootstrapApplication(App, {
+const component =
+  new URL(globalThis.location.href).searchParams.get('scenario') ===
+  'terminal-tool'
+    ? TerminalToolSmoke
+    : App;
+
+bootstrapApplication(component, {
   providers: [
     provideZonelessChangeDetection(),
     provideHashbrown({

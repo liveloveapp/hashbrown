@@ -1,0 +1,32 @@
+{
+  "threadId": "capture-client-tool",
+  "runId": "capture-client-tool-run",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "client-user",
+      "role": "user",
+      "content": "client-tool"
+    }
+  ],
+  "tools": [
+    {
+      "name": "getWeather",
+      "description": "Browser weather",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city"
+        ]
+      }
+    }
+  ],
+  "context": [],
+  "state": {},
+  "forwardedProps": {}
+}

@@ -29,7 +29,22 @@ const stages = [
   'browser-angular',
   'native-recovery',
 ];
-const prefix = 'tools/conformance/agent-frameworks/python/';
+const nativePrefix = 'tools/conformance/agent-frameworks/python/';
+const recipePrefix = 'tools/conformance/agent-frameworks/python-recipe/';
+
+/** Parse retained SSE bytes without executing producer code. */
+const parseWire = (wire) =>
+  wire
+    .replaceAll('\r\n', '\n')
+    .split('\n\n')
+    .flatMap((frame) => {
+      const data = frame
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).replace(/^ /, ''))
+        .join('\n');
+      return data ? [JSON.parse(data)] : [];
+    });
 
 /** Bind a successful server callback's native history to the retained wire events. */
 function verifyServerCallback(summary, events, bound) {
@@ -126,6 +141,47 @@ export function additionalReferences(record) {
  * @returns A renderer-compatible profile with capabilities derived from claims.
  */
 export function validateAdditionalQualification(record, scenarios, verifyFile) {
+  const reviewedRecipe = record.id === 'pydantic-ai/asgi-compatibility';
+  const prefix = reviewedRecipe ? recipePrefix : nativePrefix;
+  if (reviewedRecipe) {
+    assert.equal(
+      record.mode,
+      'recipe',
+      'Reviewed adapter requires recipe mode',
+    );
+    assert.deepEqual(
+      record.recipe,
+      { id: 'hashbrown-pydantic-ai', version: '0.1.0' },
+      'Reviewed recipe identity mismatch',
+    );
+    assert.deepEqual(
+      Object.keys(record.versions).sort(),
+      ['ag-ui-protocol', 'pydantic-ai-slim', 'starlette', 'uvicorn'],
+      'Reviewed recipe must retain exact upstream version set',
+    );
+    for (const path of [
+      'pyproject.toml',
+      'project.json',
+      'check.py',
+      'src/hashbrown_pydantic_ai/__init__.py',
+      'src/hashbrown_pydantic_ai/adapter.py',
+      'tests/adapter_test.py',
+    ])
+      assert.ok(
+        record.sourceInputs.some(
+          (source) => source.path === `packages/pydantic-ai/${path}`,
+        ),
+        `Missing package source input ${path}`,
+      );
+    assert.ok(
+      record.sourceInputs.some(
+        (source) =>
+          source.path.startsWith(prefix) &&
+          /install\.(mjs|py)$/.test(source.path),
+      ),
+      'Recipe installation assertion source required',
+    );
+  }
   if (record.evidenceCommit !== undefined)
     assert.match(
       record.evidenceCommit,
@@ -300,17 +356,7 @@ export function validateAdditionalQualification(record, scenarios, verifyFile) {
     'Capture events hash mismatch',
   );
   const wire = bound(capture.wire);
-  const events = wire
-    .replaceAll('\r\n', '\n')
-    .split('\n\n')
-    .flatMap((frame) => {
-      const data = frame
-        .split('\n')
-        .filter((line) => line.startsWith('data:'))
-        .map((line) => line.slice(5).replace(/^ /, ''))
-        .join('\n');
-      return data ? [JSON.parse(data)] : [];
-    });
+  const events = parseWire(wire);
   assert.ok(events.length, 'Actual wire events required');
   assert.deepEqual(events, capture.events, 'Wire events linkage mismatch');
   const summary = JSON.parse(bound(capture.executionSummary));
@@ -322,6 +368,48 @@ export function validateAdditionalQualification(record, scenarios, verifyFile) {
   for (const name of ['execution', 'runtime', 'versions'])
     assert.deepEqual(summary[name], record[name], `Execution ${name} mismatch`);
   assert.equal(summary.sourceSha256, sourceSha256, 'Execution source mismatch');
+  if (reviewedRecipe) {
+    assert.ok(
+      summary.packageInstallationRef,
+      'Raw package installation reference required',
+    );
+    const installation = JSON.parse(bound(summary.packageInstallationRef));
+    assert.equal(
+      installation.distribution,
+      record.recipe.id,
+      'Installed distribution mismatch',
+    );
+    assert.equal(
+      installation.version,
+      record.recipe.version,
+      'Installed recipe version mismatch',
+    );
+    assert.equal(
+      installation.installedFromWheel,
+      true,
+      'Built wheel installation required',
+    );
+    assert.equal(
+      installation.importedFromInstalledDistribution,
+      true,
+      'Installed distribution import required',
+    );
+    assert.match(
+      installation.adapterFile,
+      /(?:^|[/\\])site-packages[/\\]hashbrown_pydantic_ai[/\\]__init__\.py$/,
+      'Adapter import must reside in installed distribution',
+    );
+    assert.match(
+      installation.wheel?.sha256,
+      /^[a-f0-9]{64}$/,
+      'Installed wheel fingerprint required',
+    );
+    assert.match(
+      installation.wheel?.path,
+      /\.whl$/,
+      'Installed wheel path required',
+    );
+  }
   assert.deepEqual(summary.wire, capture.wire, 'Execution wire mismatch');
   unique(
     record.claims.map((claim) => claim.capability),
@@ -425,7 +513,11 @@ export function validateAdditionalQualification(record, scenarios, verifyFile) {
         (item) => item.stage === 'core-consumer' && item.result === 'pass',
       )
     )
-      requireSource('packages/core/src/models/pydantic-ai.conformance.spec.ts');
+      requireSource(
+        reviewedRecipe
+          ? 'packages/core/src/models/pydantic-recipe.conformance.spec.ts'
+          : 'packages/core/src/models/pydantic-ai.conformance.spec.ts',
+      );
     if (
       claim.evidence.some(
         (item) =>
@@ -433,10 +525,74 @@ export function validateAdditionalQualification(record, scenarios, verifyFile) {
           item.result === 'pass',
       )
     ) {
-      requireSource('tools/conformance/pydantic-ai/pydantic-ai.spec.ts');
-      requireSource('tools/conformance/pydantic-ai.playwright.config.ts');
+      requireSource(
+        reviewedRecipe
+          ? 'tools/conformance/pydantic-recipe/pydantic-recipe.spec.ts'
+          : 'tools/conformance/pydantic-ai/pydantic-ai.spec.ts',
+      );
+      requireSource(
+        reviewedRecipe
+          ? 'tools/conformance/pydantic-recipe.playwright.config.ts'
+          : 'tools/conformance/pydantic-ai.playwright.config.ts',
+      );
     }
     if (claim.status === 'passed') {
+      if (
+        reviewedRecipe &&
+        ['tools.failure', 'tools.cancel', 'approvals.resume'].includes(
+          claim.scenarioId,
+        )
+      ) {
+        const expected = {
+          'tools.failure': 'failure',
+          'tools.cancel': 'cancelled',
+          'approvals.resume': 'denied',
+        }[claim.scenarioId];
+        assert.ok(
+          summary.outcomeObservationsRef,
+          'Raw typed outcome observations required',
+        );
+        const outcomes = JSON.parse(bound(summary.outcomeObservationsRef));
+        const observation = outcomes.observations?.find(
+          (item) =>
+            item.scenarioId === claim.scenarioId && item.outcome === expected,
+        );
+        assert.ok(
+          observation && Number.isInteger(observation.eventIndex),
+          `Actual ${expected} observation required`,
+        );
+        assert.ok(
+          observation.wire,
+          'Typed outcome raw wire reference required',
+        );
+        const outcomeEvents = parseWire(bound(observation.wire));
+        const event = outcomeEvents[observation.eventIndex];
+        assert.equal(
+          event?.type,
+          'TOOL_CALL_RESULT',
+          'Typed outcome must bind an actual result event',
+        );
+        assert.equal(
+          event.toolCallId,
+          observation.toolCallId,
+          'Typed outcome tool identity mismatch',
+        );
+        const metadata = event.metadata?.['hashbrown.tool'];
+        assert.equal(metadata?.v, 1, 'Typed outcome version mismatch');
+        assert.equal(metadata.outcome, expected, 'Typed outcome mismatch');
+        if (expected === 'failure')
+          assert.ok(
+            typeof metadata.error?.message === 'string' &&
+              metadata.error.message.trim(),
+            'Typed failure detail required',
+          );
+        assert.ok(
+          !Object.keys(event.metadata ?? {}).some((key) =>
+            key.startsWith('b4'),
+          ),
+          'Recipe outcome cannot depend on B4 metadata',
+        );
+      }
       if (
         ['actualServerToolExecution', 'liveStartBeforeToolCompletion'].includes(
           claim.capability,

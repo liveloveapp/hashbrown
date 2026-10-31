@@ -8,14 +8,26 @@ export function selectCiSetup(taskIds: readonly string[]): {
     python: taskIds.some((id) => {
       const [project, target] = id.split(':');
       return (
-        project === 'pydantic-ai-conformance' &&
-        [
-          'install',
-          'test',
-          'consumer-test',
-          'example-e2e',
-          'compatibility-baseline',
-        ].includes(target)
+        (project === 'pydantic-ai' &&
+          ['build', 'test', 'lint'].includes(target)) ||
+        (project === 'pydantic-ai-recipe-conformance' &&
+          [
+            'install',
+            'build',
+            'test',
+            'lint',
+            'consumer-test',
+            'example-e2e',
+            'compatibility-baseline',
+          ].includes(target)) ||
+        (project === 'pydantic-ai-conformance' &&
+          [
+            'install',
+            'test',
+            'consumer-test',
+            'example-e2e',
+            'compatibility-baseline',
+          ].includes(target))
       );
     }),
     dotnet: taskIds.some((id) => id.startsWith('dotnet-conformance:')),

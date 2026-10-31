@@ -1,0 +1,52 @@
+{
+  "threadId": "capture-client-tool",
+  "runId": "capture-client-continuation-run",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "client-user",
+      "role": "user",
+      "content": "client-tool"
+    },
+    {
+      "id": "client-assistant",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-client-tool-client",
+          "type": "function",
+          "function": {
+            "name": "getWeather",
+            "arguments": "{\"city\":\"London\"}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "client-result",
+      "role": "tool",
+      "toolCallId": "capture-client-tool-client",
+      "content": "controlled-client-result:London"
+    }
+  ],
+  "tools": [
+    {
+      "name": "getWeather",
+      "description": "Browser weather",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city"
+        ]
+      }
+    }
+  ],
+  "context": [],
+  "state": {},
+  "forwardedProps": {}
+}

@@ -1,0 +1,45 @@
+{
+  "entered": 0,
+  "completed": 0,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [],
+  "modelRequests": [],
+  "requests": [
+    {
+      "threadId": "capture-server-same-name",
+      "runId": "capture-server-same-name-run",
+      "messages": [
+        {
+          "id": "capture-server-same-name-user",
+          "role": "user",
+          "content": "server-same-name"
+        }
+      ],
+      "tools": [
+        {
+          "name": "getWeather",
+          "description": "Browser weather",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "city": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "city"
+            ]
+          }
+        }
+      ],
+      "context": [],
+      "state": {},
+      "forwardedProps": {},
+      "protocolVersion": "1.0"
+    }
+  ]
+}

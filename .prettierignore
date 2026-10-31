@@ -7,3 +7,7 @@
 .angular
 
 .nx/self-healing
+
+# Producer evidence is retained byte-for-byte and protected by qualification hashes.
+/packages/core/src/models/fixtures/pydantic-recipe/*.json
+/tools/conformance/agent-frameworks/python-recipe/evidence/*.json

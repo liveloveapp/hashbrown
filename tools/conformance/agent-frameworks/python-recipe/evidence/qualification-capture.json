@@ -1,0 +1,290 @@
+{
+  "framework": "pydantic-ai",
+  "profile": "asgi-compatibility",
+  "versions": {
+    "pydantic-ai-slim": "2.64.0",
+    "ag-ui-protocol": "1.0.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0"
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "uv": "0.11.3"
+  },
+  "platform": "darwin/arm64",
+  "protocol": {
+    "requested": "1.0 in retained probes except cancel-default; omitted in ordinary browser requests",
+    "effective": "Native AG-UI envelope; neutral per-tool outcomes independent of run cancellation negotiation"
+  },
+  "transport": "http-sse",
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-recipe-2026-10-31T19:58:25.799Z"
+  },
+  "sourceInputs": [
+    {
+      "path": ".github/workflows/framework-compatibility.yml",
+      "sha256": "fb834d5352b5f26dc29989e5a8cee03f74954db4a5bf0251d26ecf3aa7e35755"
+    },
+    {
+      "path": ".github/workflows/pr-main.yml",
+      "sha256": "f13072ce1ab3cf52b7ae06f304c4a96da2768a0102c08a6de485cf24268b27f0"
+    },
+    {
+      "path": "packages/core/project.json",
+      "sha256": "fdd517e1986f36aa85cc0d6a9f34ed612ce6721e88d732e624f9a1e1bd620a7b"
+    },
+    {
+      "path": "packages/core/src/effects/generate-message.effects.spec.ts",
+      "sha256": "ac2c4b983404687ae652add597afd2802410b65617e000a64f9db39818911545"
+    },
+    {
+      "path": "packages/core/src/models/pydantic-recipe.conformance.spec.ts",
+      "sha256": "52b201a654d18eba5944ab75412a6236fce86bc85ee969abf6d058ff2b6d19e1"
+    },
+    {
+      "path": "packages/core/src/models/tool-outcome.spec.ts",
+      "sha256": "10927257bff245b4df0cf68657d8ca7c2dbb36758c46e0dadd189e1aa73f04b8"
+    },
+    {
+      "path": "packages/pydantic-ai/.gitignore",
+      "sha256": "ea4e560ffac3f984d5724da98bc1c0b9d09d82d05db797129fafbe18e9c46b83"
+    },
+    {
+      "path": "packages/pydantic-ai/README.md",
+      "sha256": "a93e6551ae53863e503567b531175a6b5f03412dd01a37dffd6e39dcc846b3c9"
+    },
+    {
+      "path": "packages/pydantic-ai/check.py",
+      "sha256": "f96bb77510dcd2239f74b5b8540779ce21ce29fb1a99088398350c422dc1260d"
+    },
+    {
+      "path": "packages/pydantic-ai/project.json",
+      "sha256": "3a1b4bb0fee86f2c3e52fb56fe00c12dfaf77051c2f70fcd86326ed3353c1861"
+    },
+    {
+      "path": "packages/pydantic-ai/pyproject.toml",
+      "sha256": "50961a9da4879a8202781b7a4e51858c012e9b5b25055c898bed4aa1e283df6f"
+    },
+    {
+      "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/__init__.py",
+      "sha256": "a40d295a4193f3603a5b493fde2ab0161125ddbe5fc005465e15ebb7baeddfbd"
+    },
+    {
+      "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/adapter.py",
+      "sha256": "943f95ce2b860509733fccb515ecb68fea80208ec6669b48182195d07361e235"
+    },
+    {
+      "path": "packages/pydantic-ai/src/hashbrown_pydantic_ai/py.typed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "packages/pydantic-ai/tests/adapter_test.py",
+      "sha256": "9ecc85866d765abe5fec43ed98b5ee83d8fd84e2b1e1f5bb814cf237cf26d674"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs",
+      "sha256": "76dc97c31f1247d05b44089a19e66a0540b8408127fd440b2293e610bf5b2dcc"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/.python-version",
+      "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
+      "sha256": "9d24d0378737abc2c5f98d50b76c61ca8c7c43413f3217a197f1fa9cea76dae2"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/capture.spec.mjs",
+      "sha256": "f21ff429578d1b90a930e4cc13247a8e3467c88415b95f762b4d74f84cc854f5"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/controller.mjs",
+      "sha256": "412ce9dba3f4a30b483fdb6a177aee33e4d1592caf39f149248cdf871ee39fe5"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/host.py",
+      "sha256": "e647b9d593e5f269844c6fab3a1d0fcd5cd1649b8329ef8059f3ec4ea367f0b4"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/install.mjs",
+      "sha256": "d06297c3ccd2d1de7d0068b280b8d6bc972ac3c5a71cf9d2a7bc2f7b55e59d0c"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/normalize.mjs",
+      "sha256": "29e52a05ecb9e830eb3cf3c78b4b5d14a8b94c789ca29400620adbed78a35f60"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/project.json",
+      "sha256": "3078a99838a76870ddf108d8b334cb7a6707fe61908ffa0e013d254b23bb1e34"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/pyproject.toml",
+      "sha256": "ec4521449d5cadfee5beb50a84ea509efa41ea432f1fb434329fd15830ca7c0e"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/qualify.mjs",
+      "sha256": "c25824bca112b116ab24a16defa86e3efda291c6334b60c9077693e333f7b5f7"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/qualify.spec.mjs",
+      "sha256": "c09374bf6427ac90a71231fc0436e7a2d278d5844271394e3777048192321694"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/recipe.spec.mjs",
+      "sha256": "aeee514a61445f5153b3867f37c27ca6efb7b6fefec514419d4b35ba0ffe3908"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python-recipe/uv.lock",
+      "sha256": "7e4a513b0b39717178783f2c6e07a92dab078e80dc38f4446956e001f6801b4d"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/.python-version",
+      "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/capture.mjs",
+      "sha256": "61383a9f776b2644ea3582e260e891fd75ecce41d787b5c4c1766d73b89cb03e"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/normalize.mjs",
+      "sha256": "58a01898693dd2e9acac399bd4b49cf3f6f87b8bb7466f236950398e8a06e8a5"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/pyproject.toml",
+      "sha256": "7602e50a6a11e354ade9be0de3de09d6977109449f6993fc95522c74be343418"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/uv.lock",
+      "sha256": "c0738cdbad799556c26d95c9a1fecbdf9ec57bb659529e2de7b22f46fea0e416"
+    },
+    {
+      "path": "tools/conformance/harness/app-driver.ts",
+      "sha256": "f68a28a8adeed9018d66529d0696b2d2856ffa7da1c286e38a0740d6fe9005a0"
+    },
+    {
+      "path": "tools/conformance/harness/ci-selection.ts",
+      "sha256": "40f8d4d061386f37c9e43d6b1d10ac5f7d367b9782510d4469450b02a667d0bd"
+    },
+    {
+      "path": "tools/conformance/harness/select-ci-setup.ts",
+      "sha256": "ca4017d699f5be846e88992605d263cd0b59a3cf6948fbd6ed3ff18253baa682"
+    },
+    {
+      "path": "tools/conformance/hosts/angular/src/app/plain-smoke.ts",
+      "sha256": "f8e56d6db48fc998e412eeb0e3d1c0959f64313a3a221afbfb642450d173d308"
+    },
+    {
+      "path": "tools/conformance/hosts/angular/src/app/terminal-tool-smoke.ts",
+      "sha256": "774fefd4d8559c2ce381b1f565f424fb8c854d13caed0ba76fd8e80a2b5a7503"
+    },
+    {
+      "path": "tools/conformance/hosts/angular/src/main.ts",
+      "sha256": "46e343ddf1e37d260f455d628bfc2da11c8794b64aeeb5b2289150bdbcf8dd87"
+    },
+    {
+      "path": "tools/conformance/hosts/react/src/plain-smoke.tsx",
+      "sha256": "692d16069b604235ddbae24842384aa93ef147d2c5d43f2fd852895fd448c224"
+    },
+    {
+      "path": "tools/conformance/pydantic-recipe.playwright.config.ts",
+      "sha256": "b2a874dec965f67d07c70c52e8ed781fdfcdbcd8c70ba4e4a127e2d491ac7b9e"
+    },
+    {
+      "path": "tools/conformance/pydantic-recipe/pydantic-recipe.spec.ts",
+      "sha256": "07a8f98f64749a263ec9eb1d1964f8e6ad372130c9d5987681f014c775d0af8d"
+    },
+    {
+      "path": "tools/conformance/pydantic-recipe/tsconfig.json",
+      "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
+    }
+  ],
+  "sourceSha256": "42e62a1a29fb7947db2d8376dbfc3bd3844de64a899ec2a8b22c2036b3d8da32",
+  "wire": {
+    "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
+    "sha256": "9b6de024f0635a37326602796e4bfc81e04f11957a472b6a54cf5b0a3be1451f"
+  },
+  "executionSummary": {
+    "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
+    "sha256": "962963ffa44c8ff0925f50489684078809d87767315211e96fb250aba7257e2e"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "timestamp": 1793476710056,
+      "threadId": "capture-server-tool",
+      "runId": "capture-server-tool-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "TEXT_MESSAGE_START",
+      "timestamp": 1793476710058,
+      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6",
+      "role": "assistant"
+    },
+    {
+      "type": "TEXT_MESSAGE_END",
+      "timestamp": 1793476710058,
+      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "timestamp": 1793476710059,
+      "toolCallId": "capture-server-tool-server",
+      "toolCallName": "serverTool",
+      "parentMessageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "timestamp": 1793476710059,
+      "toolCallId": "capture-server-tool-server",
+      "delta": "{\"city\":\"London\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "timestamp": 1793476710059,
+      "toolCallId": "capture-server-tool-server"
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "timestamp": 1793476710063,
+      "metadata": {
+        "hashbrown.tool": {
+          "v": 1,
+          "outcome": "success"
+        }
+      },
+      "messageId": "25be9133-0011-4df4-8b58-531f1fcc75e6",
+      "toolCallId": "capture-server-tool-server",
+      "content": "server-result:London",
+      "role": "tool"
+    },
+    {
+      "type": "TEXT_MESSAGE_START",
+      "timestamp": 1793476710064,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
+      "role": "assistant"
+    },
+    {
+      "type": "TEXT_MESSAGE_CONTENT",
+      "timestamp": 1793476710064,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
+      "delta": "Tool result: server-result:London"
+    },
+    {
+      "type": "TEXT_MESSAGE_END",
+      "timestamp": 1793476710065,
+      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3"
+    },
+    {
+      "type": "RUN_FINISHED",
+      "timestamp": 1793476710066,
+      "threadId": "capture-server-tool",
+      "runId": "capture-server-tool-run",
+      "outcome": {
+        "type": "success"
+      }
+    }
+  ],
+  "eventsSha256": "0437c1c1c8cdcf15837644c3885bdd43209377be3bec4344ef0090d205c23318"
+}

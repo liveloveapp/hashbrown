@@ -164,12 +164,13 @@ export type Attribution = {
 };
 
 /**
- * How a settled server tool call ended.
+ * How a settled server tool call ended. Interruption records an incomplete
+ * execution; retry records feedback for another attempt. Neither implies success.
  *
  * @public
  */
 export type ServerToolCallOutcome =
-  'success' | 'failure' | 'denied' | 'cancelled';
+  'success' | 'failure' | 'denied' | 'cancelled' | 'interrupted' | 'retried';
 
 /**
  * A tool call the agent server executes itself, surfaced for display only.

@@ -1,0 +1,105 @@
+{
+  "name": "pydantic-ai-recipe-conformance",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/agent-frameworks/python-recipe",
+  "tags": ["private"],
+  "implicitDependencies": [
+    "core",
+    "angular",
+    "react",
+    "runtime-smoke-angular",
+    "runtime-smoke-react",
+    "conformance",
+    "pydantic-ai"
+  ],
+  "namedInputs": {
+    "pythonFixture": [
+      "default",
+      "{workspaceRoot}/packages/pydantic-ai/**/*",
+      "{workspaceRoot}/packages/core/src/models/fixtures/pydantic-recipe/**/*",
+      "{workspaceRoot}/packages/core/src/models/pydantic-recipe.conformance.spec.ts",
+      "{workspaceRoot}/tools/conformance/pydantic-recipe/**/*",
+      "{workspaceRoot}/tools/conformance/pydantic-recipe.playwright.config.ts",
+      "{workspaceRoot}/tools/conformance/harness/**/*",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/{capture,normalize}.mjs",
+      "{workspaceRoot}/.github/workflows/{pr-main,framework-compatibility}.yml",
+      {
+        "runtime": "node --version"
+      },
+      "{workspaceRoot}/tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs"
+    ]
+  },
+  "targets": {
+    "install": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/python-recipe/install.mjs"
+      },
+      "dependsOn": [
+        {
+          "projects": ["pydantic-ai"],
+          "target": "build"
+        }
+      ]
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "python3 -c \"import ast,pathlib; [ast.parse(p.read_text(), filename=str(p)) for p in pathlib.Path('tools/conformance/agent-frameworks/python-recipe').glob('*.py')]\" && tsc --noEmit -p tools/conformance/pydantic-recipe/tsconfig.json"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "python3 -c \"import ast,pathlib; [ast.parse(p.read_text(), filename=str(p)) for p in pathlib.Path('tools/conformance/agent-frameworks/python-recipe').glob('*.py')]\" && eslint tools/conformance/agent-frameworks/python-recipe/*.mjs"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "node --test tools/conformance/agent-frameworks/python-recipe/*.spec.mjs"
+      },
+      "dependsOn": ["install", "consumer-test"]
+    },
+    "consumer-test": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "npx nx test core --testFile=pydantic-recipe.conformance.spec.ts --runInBand --passWithNoTests=false --skip-nx-cache"
+      }
+    },
+    "example-e2e": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "playwright test --config tools/conformance/pydantic-recipe.playwright.config.ts"
+      },
+      "dependsOn": [
+        "install",
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ]
+    },
+    "compatibility-baseline": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs"
+      }
+    }
+  }
+}

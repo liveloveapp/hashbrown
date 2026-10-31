@@ -1,0 +1,38 @@
+[
+  {
+    "type": "RUN_STARTED",
+    "timestamp": 1793476710158,
+    "threadId": "capture-disconnect",
+    "runId": "capture-disconnect-run",
+    "protocolVersion": "1.0"
+  },
+  {
+    "type": "TEXT_MESSAGE_START",
+    "timestamp": 1793476710161,
+    "messageId": "1d95d9f0-4384-43d5-bb00-7635b021790c",
+    "role": "assistant"
+  },
+  {
+    "type": "TEXT_MESSAGE_END",
+    "timestamp": 1793476710161,
+    "messageId": "1d95d9f0-4384-43d5-bb00-7635b021790c"
+  },
+  {
+    "type": "TOOL_CALL_START",
+    "timestamp": 1793476710161,
+    "toolCallId": "capture-disconnect-server",
+    "toolCallName": "serverTool",
+    "parentMessageId": "1d95d9f0-4384-43d5-bb00-7635b021790c"
+  },
+  {
+    "type": "TOOL_CALL_ARGS",
+    "timestamp": 1793476710161,
+    "toolCallId": "capture-disconnect-server",
+    "delta": "{\"city\":\"London\"}"
+  },
+  {
+    "type": "TOOL_CALL_END",
+    "timestamp": 1793476710162,
+    "toolCallId": "capture-disconnect-server"
+  }
+]

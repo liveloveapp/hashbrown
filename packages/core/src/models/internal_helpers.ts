@@ -1,3 +1,4 @@
+import { readToolOutcome } from './tool-outcome';
 import * as Chat from './public_api';
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
@@ -252,14 +253,15 @@ function toServerToolCalls(
         toolCall.result?.status === 'rejected'
           ? toolCall.result.reason
           : undefined;
-      const steplessError =
-        step === undefined ? readResultFailure(rejectedReason) : undefined;
+      const resultFailure = readResultFailure(rejectedReason);
+      const neutral = readToolOutcome(toolCall.metadata);
       const outcome: Chat.ServerToolCallOutcome | undefined =
-        steplessError !== undefined
+        resultFailure !== undefined || neutral?.outcome === 'failure'
           ? 'failure'
-          : step?.status === undefined || step.status === 'running'
-            ? undefined
-            : STEP_OUTCOMES[step.status];
+          : (neutral?.outcome ??
+            (step?.status === undefined || step.status === 'running'
+              ? undefined
+              : STEP_OUTCOMES[step.status]));
       const settled = outcome !== undefined;
       const status =
         settled || toolCall.status === 'done'
@@ -268,11 +270,17 @@ function toServerToolCalls(
             ? 'executing'
             : 'inProgress';
       const error =
-        steplessError !== undefined ? { message: steplessError } : step?.error;
+        neutral !== undefined
+          ? (neutral.error ??
+            (resultFailure ? { message: resultFailure } : undefined))
+          : (step?.error ??
+            (resultFailure ? { message: resultFailure } : undefined));
       const startedAt = step?.startedAt;
       const result: PromiseSettledResult<unknown> | undefined =
-        outcome === 'failure' && step?.error !== undefined
-          ? { status: 'rejected', reason: step.error }
+        outcome === 'failure' &&
+        error !== undefined &&
+        (neutral?.outcome === 'failure' || step?.error !== undefined)
+          ? { status: 'rejected', reason: error }
           : toolCall.status === 'done'
             ? toolCall.result
             : undefined;

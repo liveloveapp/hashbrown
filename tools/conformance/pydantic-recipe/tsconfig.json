@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.playwright.json",
+  "include": ["*.ts", "../pydantic-recipe.playwright.config.ts"],
+  "exclude": []
+}

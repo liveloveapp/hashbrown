@@ -100,3 +100,53 @@ jobs:
           path: test-results/pydantic-compatibility
           retention-days: 30
           if-no-files-found: warn
+
+  pydantic-recipe:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NX_DAEMON: 'false'
+      NX_ISOLATE_PLUGINS: 'false'
+      NX_NO_CLOUD: 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Install locked workspace dependencies
+        run: npm ci
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.11.3'
+          enable-cache: false
+      - name: Install pinned Python
+        run: uv python install "$(cat tools/conformance/agent-frameworks/python-recipe/.python-version)"
+      - name: Build wheel and install isolated recipe dependencies
+        run: npx nx install pydantic-ai-recipe-conformance
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Attempt the approved installed Pydantic AI recipe
+        run: npx nx compatibility-baseline pydantic-ai-recipe-conformance --skip-nx-cache
+      - name: Summarize independent Python attempt health
+        if: always()
+        shell: bash
+        run: |
+          fallback=0
+          if [ ! -f test-results/pydantic-recipe-compatibility/health.json ] || [ ! -f test-results/pydantic-recipe-compatibility/health.md ]; then
+            node tools/conformance/agent-frameworks/program/pydantic-recipe-weekly.mjs --not-run || fallback=$?
+          fi
+          cat test-results/pydantic-recipe-compatibility/health.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$fallback"
+      - name: Retain Python recipe attempt health
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pydantic-recipe-compatibility-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/pydantic-recipe-compatibility
+          retention-days: 30
+          if-no-files-found: warn

@@ -1,0 +1,11 @@
+{
+  "distribution": "hashbrown-pydantic-ai",
+  "version": "0.1.0",
+  "installedFromWheel": true,
+  "importedFromInstalledDistribution": true,
+  "adapterFile": "site-packages/hashbrown_pydantic_ai/__init__.py",
+  "wheel": {
+    "path": "packages/pydantic-ai/dist/hashbrown_pydantic_ai-0.1.0-py3-none-any.whl",
+    "sha256": "a38808ee473400012c799528f6e1a850e2771fba40635917da1b1a99462ae472"
+  }
+}

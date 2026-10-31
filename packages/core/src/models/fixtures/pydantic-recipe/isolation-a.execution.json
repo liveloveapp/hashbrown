@@ -1,0 +1,310 @@
+{
+  "entered": 1,
+  "completed": 1,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "server-tool",
+          "timestamp": "2026-10-31T19:58:30.268429Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T19:58:30.269685Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+      "conversation_id": "capture-isolation-a",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "isolation-a-user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "serverTool",
+          "args": "{\"city\":\"London\"}",
+          "tool_call_id": "capture-isolation-a-server",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:58:30.270868Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+      "conversation_id": "capture-isolation-a",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "serverTool",
+          "content": "server-result:London",
+          "tool_call_id": "capture-isolation-a-server",
+          "tool_kind": null,
+          "metadata": null,
+          "timestamp": "2026-10-31T19:58:30.340386Z",
+          "outcome": "success",
+          "retry": null,
+          "part_kind": "tool-return"
+        }
+      ],
+      "timestamp": "2026-10-31T19:58:30.340900Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+      "conversation_id": "capture-isolation-a",
+      "metadata": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "content": "Tool result: server-result:London",
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "citations": null,
+          "part_kind": "text"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:58:30.341980Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+      "conversation_id": "capture-isolation-a",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T19:58:30.268429Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.269685Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+        "conversation_id": "capture-isolation-a",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "isolation-a-user"
+          }
+        },
+        "state": "complete"
+      }
+    ],
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T19:58:30.268429Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.269685Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+        "conversation_id": "capture-isolation-a",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "isolation-a-user"
+          }
+        },
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "serverTool",
+            "args": "{\"city\":\"London\"}",
+            "tool_call_id": "capture-isolation-a-server",
+            "tool_kind": null,
+            "id": null,
+            "provider_name": null,
+            "provider_details": null,
+            "part_kind": "tool-call"
+          }
+        ],
+        "usage": {
+          "input_tokens": 50,
+          "cache_write_tokens": 0,
+          "cache_write_1h_tokens": 0,
+          "cache_read_tokens": 0,
+          "output_tokens": 4,
+          "output_reasoning_tokens": 0,
+          "input_audio_tokens": 0,
+          "cache_audio_read_tokens": 0,
+          "output_audio_tokens": 0,
+          "audio_seconds": 0,
+          "details": {},
+          "cost": null
+        },
+        "model_name": "function::model_stream",
+        "model_id": "function:function::model_stream",
+        "timestamp": "2026-10-31T19:58:30.270868Z",
+        "kind": "response",
+        "provider_name": null,
+        "provider_url": null,
+        "canonical_system": null,
+        "provider_details": null,
+        "provider_response_id": null,
+        "finish_reason": null,
+        "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+        "conversation_id": "capture-isolation-a",
+        "metadata": null,
+        "workspace_ref": null,
+        "history_digest": null,
+        "failed_attempts": null,
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "serverTool",
+            "content": "server-result:London",
+            "tool_call_id": "capture-isolation-a-server",
+            "tool_kind": null,
+            "metadata": null,
+            "timestamp": "2026-10-31T19:58:30.340386Z",
+            "outcome": "success",
+            "retry": null,
+            "part_kind": "tool-return"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.340900Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cf7c-7114-b198-1626f0efedaf",
+        "conversation_id": "capture-isolation-a",
+        "metadata": null,
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-isolation-a",
+      "runId": "isolation-a-run",
+      "protocolVersion": "1.0",
+      "messages": [
+        {
+          "id": "isolation-a-user",
+          "role": "user",
+          "content": "server-tool"
+        }
+      ],
+      "tools": [],
+      "state": {},
+      "context": [],
+      "forwardedProps": {}
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "isolation-a-user",
+      "role": "user",
+      "content": "server-tool"
+    },
+    {
+      "id": "83894ced-340d-4cba-a8e6-bc584a6e463d",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-isolation-a-server",
+          "type": "function",
+          "function": {
+            "name": "serverTool",
+            "arguments": "{\"city\":\"London\"}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3d607e42-24b2-44fc-9740-7ef6d669c08f",
+      "role": "tool",
+      "content": "server-result:London",
+      "toolCallId": "capture-isolation-a-server",
+      "metadata": {
+        "hashbrown.tool": {
+          "v": 1,
+          "outcome": "success"
+        }
+      }
+    },
+    {
+      "id": "83bec499-aa10-4fcf-818a-df2a296cf23d",
+      "role": "assistant",
+      "content": "Tool result: server-result:London"
+    }
+  ]
+}

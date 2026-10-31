@@ -1,0 +1,128 @@
+{
+  "entered": 0,
+  "completed": 0,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": true,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "streaming",
+          "timestamp": "2026-10-31T19:58:30.011644Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T19:58:30.021459Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1938a-ce82-71f2-9560-e8ae2437dd5b",
+      "conversation_id": "capture-streaming",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "capture-streaming-user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "content": "Pydantic streaming answer.",
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "citations": null,
+          "part_kind": "text"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:58:30.042989Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1938a-ce82-71f2-9560-e8ae2437dd5b",
+      "conversation_id": "capture-streaming",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "streaming",
+            "timestamp": "2026-10-31T19:58:30.011644Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.021459Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-ce82-71f2-9560-e8ae2437dd5b",
+        "conversation_id": "capture-streaming",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-streaming-user"
+          }
+        },
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-streaming",
+      "runId": "capture-streaming-run",
+      "messages": [
+        {
+          "id": "capture-streaming-user",
+          "role": "user",
+          "content": "streaming"
+        }
+      ],
+      "tools": [],
+      "context": [],
+      "state": {},
+      "forwardedProps": {},
+      "protocolVersion": "1.0"
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "capture-streaming-user",
+      "role": "user",
+      "content": "streaming"
+    },
+    {
+      "id": "fa2f7c62-c175-4083-86aa-24c0f948c941",
+      "role": "assistant",
+      "content": "Pydantic streaming answer."
+    }
+  ]
+}

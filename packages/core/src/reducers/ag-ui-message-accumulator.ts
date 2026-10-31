@@ -1,3 +1,4 @@
+import { mergeToolMetadata } from '../models/tool-metadata';
 import {
   type AGUIEvent,
   EventType,
@@ -21,7 +22,6 @@ import {
   isProviderToolCall,
   reopenCancelledStep,
   stampStepMetadataStart,
-  ɵmergeStepMetadata,
 } from '../models/tool-step';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
@@ -616,7 +616,7 @@ function startToolCall(
     }
 
     const metadata = stampStepMetadataStart(
-      ɵmergeStepMetadata(
+      mergeToolMetadata(
         reopened,
         cloneMetadata(event.metadata),
         'call',
@@ -643,7 +643,7 @@ function startToolCall(
   }
 
   const metadata = stampStepMetadataStart(
-    ɵmergeStepMetadata(
+    mergeToolMetadata(
       undefined,
       cloneMetadata(event.metadata),
       'call',
@@ -708,7 +708,7 @@ function appendToolArguments(
   }
 
   const argumentsString = toolCall.arguments + event.delta;
-  const metadata = ɵmergeStepMetadata(
+  const metadata = mergeToolMetadata(
     toolCall.metadata,
     incomingMetadata,
     'call',

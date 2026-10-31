@@ -1,0 +1,8 @@
+{
+  "name": "pydantic-ai-recipe-evidence",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/agent-frameworks/python-recipe/evidence",
+  "tags": ["private"],
+  "targets": {}
+}
