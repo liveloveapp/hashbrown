@@ -43,6 +43,46 @@ test('package provides library, XML, reference, symbols and ASP.NET framework me
   verifyPackage(artifacts);
 });
 
+test('packaged README gives release-ready exact NuGet.org installation without stale publication claims', () => {
+  const archive = resolve(
+    root,
+    '../../dist/packages/dotnet/Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
+  );
+
+  const readme = execFileSync('unzip', ['-p', archive, 'README.md'], {
+    encoding: 'utf8',
+  });
+
+  assert.doesNotMatch(readme, /not published to NuGet\.org/i);
+  assert.doesNotMatch(
+    readme,
+    /\b(?:is|has been)\s+(?:published|available)\s+(?:to|on|from)\s+NuGet\.org/i,
+  );
+  assert.ok(readme.includes('Version `0.1.0-preview.1` is a prerelease.'));
+  assert.ok(
+    readme.includes(
+      'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json',
+    ),
+  );
+  assert.ok(
+    readme.includes(
+      '<PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />',
+    ),
+  );
+  assert.ok(
+    readme.includes(
+      'dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file',
+    ),
+  );
+  assert.ok(
+    readme.includes(
+      'dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode',
+    ),
+  );
+  assert.ok(readme.includes('unpublished CI candidate'));
+  assert.equal(readme, readFileSync(resolve(root, 'README.md'), 'utf8'));
+});
+
 test('API verifier rejects contract mutations', async () => {
   assert.ok(
     existsSync(resolve(root, 'tools/verify-package.mjs')),

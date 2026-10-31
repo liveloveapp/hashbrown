@@ -3,18 +3,33 @@
 One maintained ASP.NET Core library for Hashbrown generative UI, targeting .NET 10
 (SDK 10.0.402), with namespace `Hashbrown.AspNetCore`.
 
-Version `0.1.0-preview.1` produces a release-ready local `.nupkg` and `.snupkg`.
-It is **not published to NuGet.org**. Place the qualified `.nupkg` in an owned local
-feed, map `Hashbrown.AspNetCore` exclusively to that feed, and map dependencies to
-an approved upstream feed. Use one exact reference:
+Version `0.1.0-preview.1` is a prerelease. For a published release, install from
+NuGet.org using an exact version pin:
+
+```sh
+dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json
+```
+
+Use one exact reference:
 
 ```xml
 <PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />
 ```
 
-Restore with an explicit `NuGet.Config`, commit the generated lockfile, then use
-`dotnet restore --configfile NuGet.Config --locked-mode`. Dependencies are carried
-by the package nuspec. Application code uses `using Hashbrown.AspNetCore;`.
+Create and commit the generated lockfile, then use locked restore:
+
+```sh
+dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file
+dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
+```
+
+When testing an unpublished CI candidate, place its qualified `.nupkg` in an owned
+local feed, map `Hashbrown.AspNetCore` exclusively to that feed, map dependencies
+to an approved upstream feed, and restore using an explicit `NuGet.Config`. This
+local candidate workflow does not establish NuGet.org publication.
+
+Dependencies are carried by the package nuspec. Application code uses
+`using Hashbrown.AspNetCore;`.
 The composition APIs configure providers, endpoints and stores; the public low-level
 store SPI supports application-owned storage integrations.
 
