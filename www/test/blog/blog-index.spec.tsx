@@ -27,7 +27,7 @@ test('the blog index renders every post, newest first', () => {
   const html = renderToStaticMarkup(<BlogIndexPage />);
 
   expect(postHrefs(html)).toEqual(posts.map((p) => `/blog/${p.slug}`));
-  expect(postHrefs(html)[0]).toBe('/blog/2026-10-27-decision-models-with-hashbrown');
+  expect(postHrefs(html)[0]).toBe('/blog/2026-11-01-web-llms');
 });
 
 test('the blog index is titled by one h1', () => {
@@ -35,9 +35,9 @@ test('the blog index is titled by one h1', () => {
 
   const html = renderToStaticMarkup(<BlogIndex posts={posts} />);
 
-  expect([...html.matchAll(/<h1[^>]*>([^<]*)<\/h1>/g)].map((m) => m[1])).toEqual([
-    'Blog',
-  ]);
+  expect(
+    [...html.matchAll(/<h1[^>]*>([^<]*)<\/h1>/g)].map((m) => m[1]),
+  ).toEqual(['Blog']);
 });
 
 test('the blog index renders the filter buttons with all blogs selected', () => {
