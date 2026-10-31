@@ -23,6 +23,22 @@ console.log('passed');`,
   );
 }
 
+test('accepts the pinned SDK and later patches in its feature band only', () => {
+  const body = `
+for (const version of ['10.0.402', '10.0.403', '10.0.499'])
+  assert.equal(v.acceptsSdk(version, '10.0.402'), true, version);
+for (const version of ['10.0.401', '10.0.500', '10.1.402', '11.0.402', '10.0.403-preview.1', '10.0.4030', ''])
+  assert.equal(v.acceptsSdk(version, '10.0.402'), false, version);
+assert.deepEqual(JSON.parse(v.sdkPolicy('10.0.402')), {
+  sdk: { version: '10.0.402', rollForward: 'latestPatch', allowPrerelease: false },
+});
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
 test('strips source fallback credential and MSBuild environment injection', () => {
   const body = `
 const good = { PATH:'/bin', HOME:'/tmp', DOTNET_ROOT:'/sdk', OPENAI_API_KEY:'secret', RestoreSources:'/evil', MSBuildExtensionsPath:'/evil', NUGET_PACKAGES:'/forbidden', NODE_OPTIONS:'injected' };

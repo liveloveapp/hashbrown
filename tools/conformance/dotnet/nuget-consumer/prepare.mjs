@@ -27,6 +27,7 @@ import {
   hashFile,
   validateRestoredConsumer,
   verifyConsumer,
+  acceptsSdk,
 } from './verify.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -300,7 +301,7 @@ export async function prepareConsumer(pointerPath) {
         path.join(root, 'logs/sdk.log'),
       )
     ).trim();
-    assert.equal(sdkVersion, IDENTITY.sdk, 'Unexpected SDK');
+    assert.ok(acceptsSdk(sdkVersion, IDENTITY.sdk), 'Unexpected SDK');
     const sdkInfo = await run(
       'dotnet',
       ['--list-sdks'],
@@ -310,7 +311,7 @@ export async function prepareConsumer(pointerPath) {
     );
     const sdkDirectory = sdkInfo
       .split('\n')
-      .find((line) => line.startsWith(IDENTITY.sdk + ' '))
+      .find((line) => line.startsWith(sdkVersion + ' '))
       ?.match(/\[(.+)\]/)?.[1];
     assert.ok(sdkDirectory, 'SDK install path missing');
     const sdkRoot = await fs.realpath(path.dirname(sdkDirectory));
