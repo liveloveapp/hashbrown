@@ -2,7 +2,10 @@ import { expectConceptFirstWorkbench } from '../docs/concept-first-workbench';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
+import {
+  DOCS_DEMOS,
+  type DocsDemoMedia,
+} from '../../src/components/elements/docs-demo-media';
 import { DocsDemoVideo } from '../../src/components/elements/DocsDemoVideo';
 import { expect, test } from 'vitest';
 import { docsComponents } from '../../src/components/docs-components';
@@ -65,6 +68,20 @@ test.each(recordings)(
     expect(html).not.toMatch(/<p>\s*<figure/);
   },
 );
+
+test('every docs demo declares its recording disclosure and captured dimensions', () => {
+  const demos: Readonly<Record<string, DocsDemoMedia>> = DOCS_DEMOS;
+
+  const incomplete = Object.entries(demos)
+    .filter(
+      ([, media]) =>
+        media.recording.trim() === '' ||
+        !(media.dimensions.width > 0 && media.dimensions.height > 0),
+    )
+    .map(([id]) => id);
+
+  expect(incomplete).toEqual([]);
+});
 
 test.each(Object.keys(DOCS_DEMOS))(
   'ships complete local media for the %s demo',
