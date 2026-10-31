@@ -127,8 +127,8 @@ Historical milestone-one qualification recorded 408 physical deterministic brows
 results and 48 live results across eight groups, with 75 actual model calls and 99
 reserved calls. Those results do not qualify milestone-two native approvals. The
 Task7 source matrix has 664 actual result identities reported in its current
-handoff; stronger published qualification remains pending until its own physical
-bundle run and review finish. Current milestone-two live qualification is pending.
+handoff. Published package qualification uses separate signature, payload and
+physical bundle acceptance evidence. Current milestone-two live qualification is pending.
 Documentation compilation alone establishes no provider, browser or published-SDK
 qualification; preserve each gate's raw evidence and do not substitute intended
 counts for passing results.
@@ -420,14 +420,23 @@ original source-browser configurations. Package mode cannot resolve `dist`.
 Outcome, qualification, and per-launch provenance reports are retained in the
 candidate root's `browser-reports`, or `HASHBROWN_PACKAGE_EVIDENCE_DIRECTORY`.
 
-## Local package documentation qualification
+## Package installation and documentation qualification
 
-`Hashbrown.AspNetCore` version `0.1.0-preview.1` targets .NET 10 (SDK 10.0.402)
-and uses namespace `Hashbrown.AspNetCore`. This milestone produces release-ready
-local `.nupkg` and `.snupkg` artifacts; it is **not published to NuGet.org**.
-Use an owned local feed with exclusive candidate package source mapping and one
-exact `PackageReference` (`Version="[0.1.0-preview.1]"`); rely on the nuspec for
-dependencies. Commit the application lockfile and restore with `--locked-mode`.
+[`Hashbrown.AspNetCore` version `0.1.0-preview.1`](https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1)
+is available from NuGet.org, targets .NET 10 (SDK 10.0.402), and uses namespace
+`Hashbrown.AspNetCore`. Use one exact `PackageReference`
+(`Version="[0.1.0-preview.1]"`); rely on the nuspec for dependencies. Create and
+commit the application lockfile, then use locked restore:
+
+```sh
+dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json
+dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file
+dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
+```
+
+Repository package acceptance still uses an owned local feed with exclusive
+candidate source mapping. Its documentation check requires an anchored prepared
+candidate:
 
 ```sh
 npx nx check-docs dotnet-conformance --metadata=/absolute/path/candidate.json

@@ -147,7 +147,7 @@ export async function writeRestoreSentinel(
       sentinel,
       `${IDENTITY.id.toLowerCase()}.${IDENTITY.version}.nupkg.sha512`,
     ),
-    contentHash,
+    await hashFile(candidate, 'sha512', 'base64'),
   );
 }
 

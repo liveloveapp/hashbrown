@@ -26,9 +26,20 @@ export function validateRecipePackage(text) {
     ),
   ].map((match) => [match[1], match[2]]);
   assert.ok(
-    text.includes('not published to NuGet.org') &&
-      !/available on NuGet.org/i.test(text),
-    'Local artifact must remain unpublished',
+    text.includes(
+      'https://www.nuget.org/packages/Hashbrown.AspNetCore/0.1.0-preview.1',
+    ) &&
+      text.includes(
+        'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json',
+      ) &&
+      text.includes(
+        'dotnet restore --source https://api.nuget.org/v3/index.json --use-lock-file',
+      ) &&
+      text.includes(
+        'dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode',
+      ) &&
+      !/not published to NuGet.org/i.test(text),
+    'Exact NuGet.org installation contract required',
   );
   assert.deepEqual(
     references,
