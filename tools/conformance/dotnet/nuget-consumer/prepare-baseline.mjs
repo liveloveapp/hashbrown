@@ -9,6 +9,8 @@ import {
   hashFile,
   listFiles,
   validateAncestors,
+  acceptsSdk,
+  sdkPolicy,
 } from './verify.mjs';
 import { run } from './prepare.mjs';
 
@@ -94,6 +96,12 @@ export async function prepareBaseline(metadata, archivedDirectory) {
   await fs.rm(path.join(root, 'extracted'), { recursive: true });
   await fs.rm(path.join(root, 'original.tar'));
   const source = path.join(root, 'source');
+  // The historical global.json disables roll-forward. Build under the current
+  // pin's latestPatch policy, then restore its verified original bytes.
+  const pinned = path.join(source, 'global.json');
+  const original = await fs.readFile(pinned);
+  const policy = sdkPolicy(manifest.sdk);
+  await fs.writeFile(pinned, policy);
   const sdk = (
     await run(
       'dotnet',
@@ -103,7 +111,7 @@ export async function prepareBaseline(metadata, archivedDirectory) {
       path.join(root, 'logs/sdk.log'),
     )
   ).trim();
-  assert.equal(sdk, manifest.sdk, 'Historical SDK pin differs');
+  assert.ok(acceptsSdk(sdk, manifest.sdk), 'Historical SDK pin differs');
   for (const dependency of metadata.closure) {
     const name = `${dependency.id.toLowerCase()}.${dependency.version.toLowerCase()}.nupkg`;
     const file = 'dependency-feed/' + name;
@@ -140,6 +148,12 @@ export async function prepareBaseline(metadata, archivedDirectory) {
       path.join(root, 'logs/build.log'),
     );
   }
+  assert.equal(
+    await fs.readFile(pinned, 'utf8'),
+    policy,
+    'Historical source changed while building',
+  );
+  await fs.writeFile(pinned, original);
   for (const [file, hash] of Object.entries(manifest.files))
     assert.equal(
       await hashFile(path.join(source, file)),
@@ -150,10 +164,10 @@ export async function prepareBaseline(metadata, archivedDirectory) {
   for (const file of [
     'Hashbrown.Conformance.csproj',
     'packages.lock.json',
-    'global.json',
     'nuget.config',
   ])
     await fs.copyFile(path.join(source, file), path.join(observer, file));
+  await fs.writeFile(path.join(observer, 'global.json'), policy);
   await fs.copyFile(
     path.join(here, 'observe-database.cs.txt'),
     path.join(observer, 'Program.cs'),
