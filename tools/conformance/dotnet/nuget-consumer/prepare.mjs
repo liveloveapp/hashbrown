@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { publishedArguments } from './run.mjs';
 import { prepareRoles } from './roles.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -15,6 +16,7 @@ import {
   createConfig,
   validateConfig,
   validateArchive,
+  validatePublishedPayloads,
   readArchive,
   validateImplementation,
   validateAssets,
@@ -104,12 +106,58 @@ export async function stageDependencies(
   }
 }
 
+/** Writes a usable forbidden-cache sentinel with the SDK canonical content hash. */
+export async function writeRestoreSentinel(
+  sentinel,
+  candidate,
+  source,
+  contentHash,
+) {
+  assert.match(
+    contentHash,
+    /^[A-Za-z0-9+/]{86}==$/,
+    'Canonical sentinel hash required',
+  );
+  await fs.mkdir(sentinel, { recursive: true });
+  await fs.copyFile(
+    candidate,
+    path.join(sentinel, path.basename(candidate).toLowerCase()),
+  );
+  for (const [entry, bytes] of Object.entries(
+    readArchive(await fs.readFile(candidate)),
+  )) {
+    if (entry.endsWith('/')) continue;
+    const destination = path.join(
+      sentinel,
+      entry.endsWith('.nuspec') ? entry.toLowerCase() : entry,
+    );
+    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await fs.writeFile(destination, bytes);
+  }
+  await fs.writeFile(
+    path.join(sentinel, '.nupkg.metadata'),
+    JSON.stringify({
+      version: 2,
+      contentHash,
+      source,
+    }),
+  );
+  await fs.writeFile(
+    path.join(
+      sentinel,
+      `${IDENTITY.id.toLowerCase()}.${IDENTITY.version}.nupkg.sha512`,
+    ),
+    contentHash,
+  );
+}
+
 /** Proves an actual restore cannot discover a fake matching package in an inherited global cache. */
 export async function proveRestoreFailure(
   root,
   environment,
   candidate,
   config,
+  candidateHash,
 ) {
   const negative = path.join(root, 'restore-negative');
   await fs.mkdir(negative);
@@ -134,36 +182,11 @@ export async function proveRestoreFailure(
     IDENTITY.id.toLowerCase(),
     IDENTITY.version,
   );
-  await fs.mkdir(sentinel, { recursive: true });
-  await fs.copyFile(
+  await writeRestoreSentinel(
+    sentinel,
     candidate,
-    path.join(sentinel, path.basename(candidate).toLowerCase()),
-  );
-  for (const [entry, bytes] of Object.entries(
-    readArchive(await fs.readFile(candidate)),
-  )) {
-    if (entry.endsWith('/')) continue;
-    const destination = path.join(
-      sentinel,
-      entry.endsWith('.nuspec') ? entry.toLowerCase() : entry,
-    );
-    await fs.mkdir(path.dirname(destination), { recursive: true });
-    await fs.writeFile(destination, bytes);
-  }
-  await fs.writeFile(
-    path.join(sentinel, '.nupkg.metadata'),
-    JSON.stringify({
-      version: 2,
-      contentHash: await hashFile(candidate, 'sha512', 'base64'),
-      source: path.join(negative, 'candidate-feed'),
-    }),
-  );
-  await fs.writeFile(
-    path.join(
-      sentinel,
-      `${IDENTITY.id.toLowerCase()}.${IDENTITY.version}.nupkg.sha512`,
-    ),
-    await hashFile(candidate, 'sha512', 'base64'),
+    path.join(negative, 'candidate-feed'),
+    candidateHash,
   );
   const removedCandidate = path.join(
     negative,
@@ -252,8 +275,113 @@ export async function proveRestoreFailure(
   };
 }
 
-/** Packs once from the current source, restores an external exact PackageReference, and anchors its proof. */
-export async function prepareConsumer(pointerPath) {
+/** Stages public bytes after SDK trust, NuGet.org identity, payload, and canonical-hash checks. */
+export async function stagePublishedCandidate(
+  root,
+  imported,
+  identity,
+  revision,
+  hashDirectory,
+  environment,
+  execute = run,
+) {
+  publishedArguments(imported);
+  const publicBytes = await fs.readFile(imported.publishedArchive);
+  const qualifiedBytes = await fs.readFile(imported.qualifiedArchive);
+  validatePublishedPayloads(
+    readArchive(publicBytes),
+    readArchive(qualifiedBytes),
+    identity,
+    revision,
+  );
+  const archivePath = path.join(
+    root,
+    'candidate-feed',
+    `${identity.id}.${identity.version}.nupkg`,
+  );
+  await fs.writeFile(archivePath, publicBytes, { flag: 'wx' });
+  const qualifiedArchive = 'qualified.nupkg';
+  await fs.writeFile(path.join(root, qualifiedArchive), qualifiedBytes, {
+    flag: 'wx',
+  });
+  await execute(
+    'dotnet',
+    ['nuget', 'verify', '--all', archivePath],
+    root,
+    environment,
+    path.join(root, 'logs/published-signature.log'),
+  );
+  const hashes = JSON.parse(
+    (
+      await execute(
+        'dotnet',
+        [
+          path.join(hashDirectory, 'bin/Release/net10.0/PackageHash.dll'),
+          '--published-archive',
+          archivePath,
+          path.join(root, qualifiedArchive),
+        ],
+        root,
+        environment,
+        path.join(root, 'logs/published-hashes.log'),
+      )
+    )
+      .trim()
+      .split('\n')
+      .at(-1),
+  );
+  assert.equal(
+    hashes[archivePath].repositorySignatureUrl,
+    'https://api.nuget.org/v3/index.json',
+    'Published repository signature differs',
+  );
+  assert.equal(
+    hashes[archivePath].contentHash,
+    hashes[path.join(root, qualifiedArchive)].contentHash,
+    'Published canonical hash differs',
+  );
+  assert.equal(
+    hashes[path.join(root, qualifiedArchive)].contentHash,
+    await hashFile(path.join(root, qualifiedArchive), 'sha512', 'base64'),
+    'Unsigned canonical hash differs',
+  );
+  const symbols = await fs.readFile(
+    imported.qualifiedArchive.replace(/\.nupkg$/, '.snupkg'),
+  );
+  const symbolEntries = readArchive(symbols);
+  const nuspec = symbolEntries[identity.id + '.nuspec']?.toString();
+  assert.ok(
+    symbolEntries[`lib/net10.0/${identity.id}.pdb`]?.length,
+    'Qualified portable symbols missing',
+  );
+  assert.ok(
+    nuspec?.includes(`<id>${identity.id}</id>`) &&
+      nuspec.includes(`<version>${identity.version}</version>`) &&
+      nuspec.includes(`commit="${revision}"`),
+    'Qualified symbols identity/revision differs',
+  );
+  await fs.writeFile(
+    path.join(
+      root,
+      'candidate-feed',
+      `${identity.id}.${identity.version}.snupkg`,
+    ),
+    symbols,
+    { flag: 'wx' },
+  );
+  return {
+    qualifiedArchive,
+    signatureVerification: 'passed',
+    signatureLog: 'logs/published-signature.log',
+    repositorySignatureUrl: 'https://api.nuget.org/v3/index.json',
+    payloadEquality: 'passed',
+    canonicalHash: hashes[archivePath].contentHash,
+  };
+}
+
+/** Prepares one source-packed or verified public candidate and anchors its external PackageReference proof. */
+export async function prepareConsumer(pointerPath, imported = {}) {
+  publishedArguments(imported);
   assert.ok(
     path.isAbsolute(pointerPath),
     '--metadata must be an absolute pointer path',
@@ -439,54 +567,66 @@ export async function prepareConsumer(pointerPath) {
       closure,
       seedHashes,
     );
-    await fs.copyFile(
-      path.join(repository, 'packages/dotnet/packages.lock.json'),
-      path.join(root, 'source.lock.json'),
-    );
-    const properties = [
-      `-p:BaseIntermediateOutputPath=${root}/pack-obj/`,
-      `-p:MSBuildProjectExtensionsPath=${root}/pack-obj/`,
-      `-p:BaseOutputPath=${root}/pack-bin/`,
-      `-p:NuGetLockFilePath=${root}/source.lock.json`,
-      '-p:NuGetAudit=false',
-      '-p:ImportDirectoryBuildProps=false',
-      '-p:ImportDirectoryBuildTargets=false',
-    ];
-    const sourceProject = path.join(
-      repository,
-      'packages/dotnet/Hashbrown.AspNetCore.csproj',
-    );
-    await run(
-      'dotnet',
-      [
-        'restore',
-        sourceProject,
-        '--locked-mode',
-        '--configfile',
-        path.join(root, 'NuGet.Config'),
-        ...properties,
-      ],
-      root,
-      environment,
-      path.join(root, 'logs/source-restore.log'),
-    );
-    await run(
-      'dotnet',
-      [
-        'pack',
-        sourceProject,
-        '--no-restore',
-        '-c',
-        'Release',
-        ...properties,
-        `-p:PackageOutputPath=${root}/candidate-feed`,
-        `-p:RepositoryCommit=${revision}`,
-        `-p:SourceRevisionId=${revision}`,
-      ],
-      root,
-      environment,
-      path.join(root, 'logs/pack.log'),
-    );
+    let published;
+    if (imported.publishedArchive) {
+      published = await stagePublishedCandidate(
+        root,
+        imported,
+        IDENTITY,
+        revision,
+        hashDirectory,
+        environment,
+      );
+    } else {
+      await fs.copyFile(
+        path.join(repository, 'packages/dotnet/packages.lock.json'),
+        path.join(root, 'source.lock.json'),
+      );
+      const properties = [
+        `-p:BaseIntermediateOutputPath=${root}/pack-obj/`,
+        `-p:MSBuildProjectExtensionsPath=${root}/pack-obj/`,
+        `-p:BaseOutputPath=${root}/pack-bin/`,
+        `-p:NuGetLockFilePath=${root}/source.lock.json`,
+        '-p:NuGetAudit=false',
+        '-p:ImportDirectoryBuildProps=false',
+        '-p:ImportDirectoryBuildTargets=false',
+      ];
+      const sourceProject = path.join(
+        repository,
+        'packages/dotnet/Hashbrown.AspNetCore.csproj',
+      );
+      await run(
+        'dotnet',
+        [
+          'restore',
+          sourceProject,
+          '--locked-mode',
+          '--configfile',
+          path.join(root, 'NuGet.Config'),
+          ...properties,
+        ],
+        root,
+        environment,
+        path.join(root, 'logs/source-restore.log'),
+      );
+      await run(
+        'dotnet',
+        [
+          'pack',
+          sourceProject,
+          '--no-restore',
+          '-c',
+          'Release',
+          ...properties,
+          `-p:PackageOutputPath=${root}/candidate-feed`,
+          `-p:RepositoryCommit=${revision}`,
+          `-p:SourceRevisionId=${revision}`,
+        ],
+        root,
+        environment,
+        path.join(root, 'logs/pack.log'),
+      );
+    }
     const archive = `candidate-feed/${IDENTITY.id}.${IDENTITY.version}.nupkg`;
     const archivePath = path.join(root, archive);
     validateArchive(await fs.readFile(archivePath), IDENTITY, revision);
@@ -499,11 +639,14 @@ export async function prepareConsumer(pointerPath) {
       path.join(root, 'app/Program.cs'),
     );
     // This destructive missing-feed experiment owns a separate root/cache. The valid consumer is restored afterward for the first time.
+    const rawSha512 = await hashFile(archivePath, 'sha512', 'base64');
+    const sha512 = published?.canonicalHash ?? rawSha512;
     const restoreNegative = await proveRestoreFailure(
       root,
       environment,
       archivePath,
       config,
+      sha512,
     );
     await run(
       'dotnet',
@@ -519,7 +662,6 @@ export async function prepareConsumer(pointerPath) {
       environment,
       path.join(root, 'logs/consumer-restore.log'),
     );
-    const sha512 = await hashFile(archivePath, 'sha512', 'base64');
     validateAssets(
       JSON.parse(
         await fs.readFile(path.join(root, 'app/obj/project.assets.json')),
@@ -750,6 +892,7 @@ export async function prepareConsumer(pointerPath) {
       archive,
       sha256: await hashFile(archivePath),
       sha512,
+      ...(published ? { rawSha512, published } : {}),
       closure,
       seeds: seedPaths.map((file, index) => ({
         ...closure[index],
@@ -819,7 +962,27 @@ if (
           .find((arg) => arg.startsWith('--metadata='))
           ?.slice('--metadata='.length);
   try {
-    console.log(JSON.stringify(await prepareConsumer(pointerPath)));
+    assert.equal(
+      process.argv.includes('--published-archive'),
+      process.argv.includes('--qualified-archive'),
+      'Both archive arguments required',
+    );
+    console.log(
+      JSON.stringify(
+        await prepareConsumer(
+          pointerPath,
+          process.argv.includes('--published-archive') ||
+            process.argv.includes('--qualified-archive')
+            ? {
+                publishedArchive:
+                  process.argv[process.argv.indexOf('--published-archive') + 1],
+                qualifiedArchive:
+                  process.argv[process.argv.indexOf('--qualified-archive') + 1],
+              }
+            : {},
+        ),
+      ),
+    );
   } catch (error) {
     console.error(error.stack);
     process.exitCode = 1;

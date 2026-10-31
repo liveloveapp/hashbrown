@@ -415,6 +415,49 @@ export function readArchive(buffer) {
   return entries;
 }
 
+/** Requires a repository signature and byte-identical complete unsigned package payloads. */
+export function validatePublishedPayloads(
+  published,
+  qualified,
+  identity,
+  revision,
+) {
+  assert.ok(
+    published['.signature.p7s']?.length,
+    'Published archive signature missing',
+  );
+  assert.ok(!qualified['.signature.p7s'], 'Qualified archive must be unsigned');
+  const names = Object.keys(published)
+    .filter((name) => name !== '.signature.p7s')
+    .sort();
+  assert.deepEqual(
+    names,
+    Object.keys(qualified).sort(),
+    'Published payload entry set differs',
+  );
+  for (const name of names)
+    assert.ok(
+      published[name].equals(qualified[name]),
+      `Published payload differs: ${name}`,
+    );
+  for (const entries of [published, qualified]) {
+    const nuspec = entries[identity.id + '.nuspec']?.toString();
+    assert.ok(
+      nuspec?.includes(`<id>${identity.id}</id>`) &&
+        nuspec.includes(`<version>${identity.version}</version>`),
+      'Archive candidate ID/version differs',
+    );
+    assert.ok(
+      nuspec.includes(`commit="${revision}"`),
+      'Archive repository revision differs',
+    );
+    assert.ok(
+      entries[`lib/net10.0/${identity.id}.dll`]?.length,
+      'Archive candidate DLL missing',
+    );
+  }
+}
+
 /** Cross-checks physical archive identity/revision and returns its actual implementation DLL. */
 export function validateArchive(buffer, identity, revision) {
   const entries = readArchive(buffer);
@@ -481,9 +524,25 @@ export async function verifyConsumer(pointer, effect) {
   );
   assert.equal(
     createHash('sha512').update(archive).digest('base64'),
-    metadata.sha512,
+    metadata.rawSha512 ?? metadata.sha512,
     'Archive SHA512 differs',
   );
+  if (metadata.published) {
+    const qualified = await fs.readFile(
+      await safeFile(metadata.root, metadata.published.qualifiedArchive),
+    );
+    assert.equal(
+      createHash('sha512').update(qualified).digest('base64'),
+      metadata.sha512,
+      'Qualified canonical hash differs',
+    );
+    validatePublishedPayloads(
+      readArchive(archive),
+      readArchive(qualified),
+      metadata.identity,
+      metadata.revision,
+    );
+  }
   const dll = validateArchive(archive, metadata.identity, metadata.revision);
   const digest = createHash('sha256').update(dll).digest('hex');
   assert.equal(
