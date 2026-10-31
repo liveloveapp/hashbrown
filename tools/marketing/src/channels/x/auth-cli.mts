@@ -14,7 +14,7 @@ import { exchangeXCode } from './auth.ts';
 
 const PORT = 8723;
 const REDIRECT_URI = `http://localhost:${PORT}/callback`;
-const SCOPES = 'tweet.read tweet.write users.read offline.access';
+const SCOPES = 'tweet.read tweet.write users.read offline.access media.write';
 const AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 const TIMEOUT_MS = 5 * 60 * 1000;
 

@@ -1,12 +1,32 @@
 import { z } from 'zod';
+import { validateImage } from '../channels/image.ts';
 
 const TIME_ZONE = 'America/New_York';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const link = z.object({ url: z.url(), previewTitle: z.string().optional() });
 
+const postImage = z
+  .strictObject({
+    url: z.string(),
+    altText: z.string(),
+    sha256: z.string(),
+  })
+  .superRefine((value, context) => {
+    try {
+      validateImage(value);
+    } catch {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Image requires a static hashbrown.dev/marketing/ PNG/JPEG URL, alt text and reviewed SHA-256.',
+      });
+    }
+  });
+
 const xDraft = z.strictObject({
   channel: z.literal('x'),
+  image: postImage,
   text: z.string().min(1),
   // The X adapter posts `text` only, so a link here would be silently lost.
   link: z
@@ -25,6 +45,7 @@ const devtoTag = z
 
 const linkedinDraft = z.strictObject({
   channel: z.literal('linkedin'),
+  image: postImage,
   text: z.string().min(1),
   link: link.optional(),
   firstComment: z.string().min(1).optional(),

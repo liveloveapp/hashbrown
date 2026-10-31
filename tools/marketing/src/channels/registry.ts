@@ -11,6 +11,7 @@ import type {
   SocialChannel,
 } from './types.ts';
 import { validateDraft } from './validation.ts';
+import { validateImage } from './image.ts';
 import { XAuth } from './x/auth.ts';
 import { postX } from './x/post.ts';
 
@@ -71,6 +72,7 @@ export function createAdapters(
       id,
       async post(draft) {
         validateDraft(draft, { adapterId: id });
+        if (id === 'x' || id === 'linkedin') validateImage(draft.image);
         return dryRun ? dryRunResult(draft) : publish(draft);
       },
     };

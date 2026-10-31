@@ -69,6 +69,14 @@ It is idempotent. Nx loads the repo-root `.env` into every target, so check that
 
 Keep the local values in `~/.config/hashbrown/marketing.env` (outside the repo, `chmod 600`), as `NAME='value'` lines: `DATABASE_URL` (the production growth URL, the same store the cron reads), `MARKETING_CREDENTIALS_KEY`, and the four X and LinkedIn client names. The `/hashbrown-week` skill sources this file for every CLI call. The week CLI refuses to run when `TEST_DATABASE_URL` or `B4_DATABASE_URL` is set.
 
+## Images for every social post
+
+X and LinkedIn drafts require `image: {url, altText, sha256}`. Import, edit, approval and dispatch reject missing/invalid image metadata. Assets must be static PNG/JPEG files under `https://hashbrown.dev/marketing/`, bounded to 5 MiB. Publish the assets before approving the posts, inspect the previews, and record their exact SHA-256 digests. Live posting checks the downloaded bytes against the approved digest and refuses redirects, unexpected formats and changed images. Image failure prevents post creation.
+
+Dry run validates image metadata without downloading files, uploading to social networks or posting. Verify public asset availability and digests separately before approval. X attaches the image and alt text to the first post of a thread. LinkedIn uploads the image before creating the post, and still places the link in the first comment. Neither channel silently falls back to text.
+
+X needs `media.write` in addition to the existing posting scopes. Re-run `marketing:x-auth` after upgrading the image-capable CLI; old tokens cannot acquire new scopes through refresh. LinkedIn uses existing `w_member_social` write access and does not require an image-status GET or a broader read permission.
+
 ## 4. Authorize the channels
 
 Run each from the repo root with the local env file sourced:

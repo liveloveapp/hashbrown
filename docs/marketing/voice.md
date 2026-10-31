@@ -21,6 +21,10 @@ He says what he did or found, names the specific thing, and gives a plain verdic
 - LinkedIn shape: one reflective opener, three to six single-line sentences, an honest admission where there is one, a short invite or question at the end. Link in the first comment.
 - Typos: occasional and natural, roughly one small slip in a few posts a week (a doubled word, a dropped letter, lowercase start). Never in names, package names, code, versions or URLs. The drafter adds them; the review shows them so Brian can keep or fix them.
 
+## Images
+
+Every X and LinkedIn post includes one screenshot or thumbnail and accurate alt text. Use the real workbench or code when the post explains behavior. Use a branded explanatory diagram when a screenshot would obscure the point. Show the image in weekly review. Keep provenance clear: an illustrative diagram is not a measured model result.
+
 ## The voice check
 
 A deterministic check runs on every draft, in `draft-week` and after every edit in review. It covers banned words and phrases, em dashes, hashtags, emoji count, channel length limits, link rules per channel, and "sources present". It reports problems and does not rewrite.

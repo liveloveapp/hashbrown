@@ -13,6 +13,12 @@ import {
   type WeekRunnerDependencies,
 } from './week.mts';
 
+const image = {
+  url: 'https://hashbrown.dev/marketing/test.png',
+  altText: 'A reviewed example.',
+  sha256: 'a'.repeat(64),
+};
+
 const now = new Date('2026-11-04T15:00:00.000Z'); // Wednesday
 const weekId = '00000000-0000-4000-8000-000000000001';
 const postId = '00000000-0000-4000-8000-0000000000a1';
@@ -24,7 +30,7 @@ function post(overrides: Partial<QueuedPost> = {}): QueuedPost {
     channel: 'x',
     kind: 'take',
     scheduledAt: new Date('2026-11-09T15:00:00.000Z'),
-    draft: { channel: 'x', text: 'A plain post.' },
+    draft: { channel: 'x', image, text: 'A plain post.' },
     sources: [{ url: 'https://hashbrown.dev', note: 'docs' }],
     dependsOn: null,
     status: 'draft',
@@ -91,7 +97,7 @@ const weekFile = {
       channel: 'x',
       kind: 'take',
       scheduledAt: '2026-11-09T10:00:00-05:00',
-      draft: { channel: 'x', text: 'Signals are fine — mostly.' },
+      draft: { channel: 'x', image, text: 'Signals are fine — mostly.' },
       sources: [{ url: 'https://hashbrown.dev', note: 'docs' }],
     },
   ],
@@ -143,7 +149,7 @@ test('show lists posts with voice issues, reading blog bodies', async () => {
     readWeek: vi.fn(async () => ({
       week,
       posts: [
-        post({ draft: { channel: 'x', text: 'Pause — then go.' } }),
+        post({ draft: { channel: 'x', image, text: 'Pause — then go.' } }),
         blog,
       ],
     })),
@@ -163,7 +169,9 @@ test('show lists posts with voice issues, reading blog bodies', async () => {
 });
 
 test('edit prints voice issues for an em dash', async () => {
-  const edited = post({ draft: { channel: 'x', text: 'Ship it — now.' } });
+  const edited = post({
+    draft: { channel: 'x', image, text: 'Ship it — now.' },
+  });
   const ops = operations({
     readPost: vi
       .fn()
@@ -172,11 +180,11 @@ test('edit prints voice issues for an em dash', async () => {
   });
   const h = harness(ops);
   h.files['patch.json'] = JSON.stringify({
-    draft: { channel: 'x', text: 'Ship it — now.' },
+    draft: { channel: 'x', image, text: 'Ship it — now.' },
   });
   expect(await h.run('edit', '--post', postId, '--file', 'patch.json')).toBe(0);
   expect(ops.updatePostDraft).toHaveBeenCalledWith(postId, {
-    draft: { channel: 'x', text: 'Ship it — now.' },
+    draft: { channel: 'x', image, text: 'Ship it — now.' },
   });
   const result = JSON.parse(h.out[0]);
   expect(result.post.id).toBe(postId);
@@ -188,7 +196,7 @@ test('edit prints voice issues for an em dash', async () => {
 test('edit rejects a draft for another channel', async () => {
   const h = harness();
   h.files['patch.json'] = JSON.stringify({
-    draft: { channel: 'linkedin', text: 'Hello' },
+    draft: { channel: 'linkedin', image, text: 'Hello' },
   });
   expect(await h.run('edit', '--post', postId, '--file', 'patch.json')).toBe(1);
   expect(JSON.parse(h.err[0]).error).toContain('channel');
@@ -400,3 +408,26 @@ test('mainWeek closes the database and reports setup failures', async () => {
   expect(failed).toBe(1);
   expect(JSON.parse(errors[0]).error).toContain('DATABASE_URL');
 });
+
+test.each(['single', 'week'] as const)(
+  'approval refuses image-free stored rows before changing state: %s',
+  async (mode) => {
+    const legacy = post({
+      draft: { channel: 'x', text: 'Legacy text-only post.' },
+    });
+    const ops = operations({
+      readPost: vi.fn(async () => legacy),
+      readWeek: vi.fn(async () => ({ week, posts: [legacy] })),
+    });
+    const h = harness(ops);
+
+    const result = await h.run(
+      'approve',
+      ...(mode === 'single' ? ['--post', postId] : ['--week', '2026-11-09']),
+    );
+
+    expect(result).toBe(1);
+    expect(ops.approvePosts).not.toHaveBeenCalled();
+    expect(h.err.join('')).toContain('image');
+  },
+);

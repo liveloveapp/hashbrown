@@ -13,6 +13,12 @@ import {
 import { PostStateError } from './queue/repository.ts';
 import type { QueuedPost } from './queue/types.ts';
 
+const image = {
+  url: 'https://hashbrown.dev/marketing/test.png',
+  altText: 'A reviewed example.',
+  sha256: 'a'.repeat(64),
+};
+
 const repository = vi.hoisted(() => ({
   leaseDuePosts: vi.fn(),
   markPublishing: vi.fn(),
@@ -38,7 +44,7 @@ function post(overrides: Partial<QueuedPost> = {}): QueuedPost {
     channel: 'x',
     kind: 'take',
     scheduledAt: NOW,
-    draft: { channel: 'x', text: 'hello' },
+    draft: { channel: 'x', image, text: 'hello' },
     sources: [],
     dependsOn: null,
     status: 'approved',
@@ -234,7 +240,11 @@ describe('dispatchMarketing', () => {
       NOW,
       DISPATCH_BATCH_SIZE,
     );
-    expect(adapterPost).toHaveBeenCalledWith({ channel: 'x', text: 'hello' });
+    expect(adapterPost).toHaveBeenCalledWith({
+      channel: 'x',
+      image,
+      text: 'hello',
+    });
     expect(repository.markPublished).toHaveBeenCalledWith(deps.executor, 'p1', {
       externalId: 'ext-1',
       externalUrl: 'https://x.com/i/status/1',
@@ -253,7 +263,7 @@ describe('dispatchMarketing', () => {
     repository.leaseDuePosts.mockResolvedValue([
       post({
         channel: 'linkedin',
-        draft: { channel: 'linkedin', text: 'hi', firstComment: 'link' },
+        draft: { channel: 'linkedin', image, text: 'hi', firstComment: 'link' },
       }),
     ]);
     const { deps } = setup({
@@ -688,7 +698,7 @@ describe('dry run', () => {
     );
 
     const results = await Promise.all([
-      deps.adapters.x.post({ channel: 'x', text: 'hello' }),
+      deps.adapters.x.post({ channel: 'x', image, text: 'hello' }),
       deps.adapters.devto.post({
         channel: 'devto',
         text: 'dry run: https://hashbrown.dev/blog/a',
