@@ -4,6 +4,7 @@
   "projectType": "application",
   "sourceRoot": "www/src",
   "tags": [],
+  "implicitDependencies": ["framework-conformance-program"],
   "targets": {
     "build": {
       "executor": "nx:run-commands",
@@ -18,7 +19,11 @@
           "target": "build"
         },
         "collect-docs",
-        "generate-llms"
+        "generate-llms",
+        {
+          "projects": ["framework-conformance-program"],
+          "target": "build"
+        }
       ],
       "cache": true,
       "inputs": [
@@ -72,7 +77,15 @@
       "options": {
         "command": "vitest run --config www/vitest.config.mts"
       },
-      "dependsOn": ["collect-docs", "generate-llms", "check-docs-examples"],
+      "dependsOn": [
+        "collect-docs",
+        "generate-llms",
+        "check-docs-examples",
+        {
+          "projects": ["framework-conformance-program"],
+          "target": "build"
+        }
+      ],
       "cache": true,
       "inputs": ["default", "^production", "ciTooling"]
     },

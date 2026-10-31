@@ -1,0 +1,81 @@
+{
+  "name": "framework-conformance-program",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/agent-frameworks/program",
+  "tags": ["private"],
+  "implicitDependencies": ["conformance"],
+  "namedInputs": {
+    "programEvidence": [
+      "default",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/**/*",
+      "{workspaceRoot}/tools/conformance/harness/**/*",
+      "{workspaceRoot}/tools/conformance/specs/**/*",
+      "{workspaceRoot}/tools/conformance/*.ts",
+      "{workspaceRoot}/tools/conformance/project.json",
+      "{workspaceRoot}/tools/conformance/hosts/**/*",
+      "{workspaceRoot}/packages/{core,angular,react,testing}/**/*",
+      "{workspaceRoot}/www/content/docs/{react,angular}/platform/compatibility.md",
+      "{workspaceRoot}/.github/workflows/{pr-main,framework-compatibility}.yml",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/tsconfig.base.json",
+      {
+        "runtime": "node --version"
+      }
+    ]
+  },
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/report.mjs --check"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "node --test tools/conformance/agent-frameworks/program/*.spec.mjs"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "eslint tools/conformance/agent-frameworks/program/*.mjs"
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/report.mjs --write"
+      }
+    },
+    "report": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/report.mjs --check"
+      }
+    },
+    "compatibility-baseline": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": ["programEvidence"],
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/weekly.mjs"
+      }
+    }
+  }
+}
