@@ -78,7 +78,7 @@ No primary guide pair remains on standalone scripted footage. Next is a consiste
 
 ## Retired legacy assets
 
-The pre-canonical WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, parser, structured, recipe, decisions, local-model, request-transformation and standalone Threadplane recordings, and the `canonical-workbench-{react,angular}` overview copies of the generative UI lesson, were deleted on 2026-10-30. No guide referenced them. Their recorders under `www/src/tools/record-docs-*.ts` remain wired to nx targets and would write those ids again if run; do not publish their output without adding it to a guide and to the media registry.
+The pre-canonical WelcomeCard, conversation, persistence, workflow, UI Kit, light-chatbot, parser, structured, recipe, decisions, local-model, request-transformation and standalone Threadplane recordings, and the `canonical-workbench-{react,angular}` overview copies of the generative UI lesson, were deleted on 2026-10-30. No guide referenced them. Their recorders (`www/src/tools/record-docs-*.ts` for quickstart, workflows, structured, production, recipes, local models, request transformation, standalone Threadplane, agent decisions, light chatbot and parser), the matching `docs-*-demo` nx targets, and their recorder-only fixtures and specs were removed the same day. Two `record-docs-*` recorders remain because they write current canonical media: `record-docs-threadplane-live.ts` (`docs-threadplane-live-demo`, `canonical-workbench-threadplane-*`) and `record-docs-production-reference.ts` (`npx nx demo production-reference`, `canonical-workbench-production-recovery-*`).
 
 ## Accessibility and consistency checks
 
@@ -94,7 +94,7 @@ Set server-only `OPENAI_API_KEY` and `OPENAI_MODEL` for chat recordings. TypeSaf
 
 ```sh
 WORKBENCH_LESSONS=ui-kits,ui-chatbot npx nx workbench-demo www
-DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-demo www
+DOCS_SKIP_RECORDING=1 npx nx docs-threadplane-live-demo www
 npx nx docs-threadplane-live-demo www
 npx nx workbench-e2e www
 npx nx build www
