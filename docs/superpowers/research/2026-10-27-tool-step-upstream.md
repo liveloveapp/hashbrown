@@ -1,5 +1,10 @@
 # Tool-step UX: landed work and upstream AG-UI
 
+> Historical review, October 27. UX helpers (#805), subagents (#812), and
+> OpenAI/Azure code execution (#824) have since merged. See the
+> [current closeout](../research/2026-10-29-tool-display-closeout.md) for delivered
+> and outstanding work. Upstream issue statuses below were checked on October 27.
+
 Reviewed 2026-10-27 against Hashbrown main `e5af35fe`, installed
 `@ag-ui/core@1.0.3`, and the linked upstream repository/docs.
 

@@ -2,6 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
+import { chooseInspectorMode } from './workbench-inspector-helpers';
 
 const sdk = vi.hoisted(() => ({
   completion: vi.fn(),
@@ -224,6 +225,7 @@ test('Magic Text retains captured SDK Markdown and citation selection is inert i
     ),
   );
   await act(() => button(host, 'Source').click());
+  await act(() => chooseInspectorMode(host, 'bottom'));
   expect(host.textContent).toContain('hashbrown.dev');
   await act(() => button(host, 'Previous event').click());
   const before = host.textContent;

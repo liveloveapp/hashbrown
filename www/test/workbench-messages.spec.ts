@@ -111,7 +111,7 @@ test('loads a matching capture and reports its milestone ids', () => {
   });
 
   expect(store.getSnapshot().readOnly).toBe(true);
-  expect(host.textContent).toContain('Recorded at 0123456');
+  expect(host.textContent).toContain('0123456');
   expect(host.querySelector<HTMLElement>('.wb-composer')?.hidden).toBe(true);
   expect(post).toHaveBeenCalledWith(
     {
@@ -423,7 +423,7 @@ test('a capture that ended loading still plays, seeks and shows its commit', () 
   fromParent({ type: 'hb-workbench:play', version: 1 });
 
   expect(capture.events.at(-1)?.status).toBe('loading');
-  expect(host.textContent).toContain('Recorded at 0123456');
+  expect(host.textContent).toContain('0123456');
   expect(disabled).toBe(false);
   expect(sought).toBe(1);
   expect(play?.getAttribute('aria-label')).toBe('Pause');

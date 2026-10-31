@@ -1,6 +1,10 @@
 # The `b4.step` tool-step contract (hashbrown × B4.run)
 
-Status: design, awaiting approval (2026-10-21)
+> Current delivery inventory: [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> Baselines and remaining-work statements below are historical. The shared
+> contract's Rules remain binding. File search remains deferred.
+
+Status: approved historical design (2026-10-21); delivery inventory updated 2026-10-30.
 
 ## Intent
 

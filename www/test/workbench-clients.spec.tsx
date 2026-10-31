@@ -2,6 +2,10 @@
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
+  chooseInspectorMode,
+  inspectorPanelText,
+} from './workbench-inspector-helpers';
+import {
   canAcceptSummary,
   messageOrigins,
   mountWorkbench,
@@ -210,63 +214,42 @@ test('pairs captured and interpreted content under one selection strip', () => {
   });
   store.settle('complete', 'stop');
   const frame = store.getSnapshot().frame;
-  const selection = host.querySelector('.wb-selection');
   const tabs = [...host.querySelectorAll('[role=tab]')].map(
     (tab) => tab.textContent,
   );
-  const raw = host.querySelector<HTMLButtonElement>('button.wb-raw');
-  const capturedSub = () =>
-    host.querySelector('[data-captured] .wb-section-sub')?.textContent;
-  const before = capturedSub();
-  const capturedPre = host.querySelector('.wb-inspection pre')?.textContent;
+  const caption = host.querySelector('.wb-caption')?.textContent;
+  const bodyBefore = host.querySelector('.wb-inspection pre')?.textContent;
+  const titleBefore = host.querySelector('[data-captured] h3')?.textContent;
 
-  const capturedTitle = () =>
-    host.querySelector('[data-captured] h3')?.textContent;
-  const titleBefore = capturedTitle();
-  raw?.click();
-  const rawSub = capturedSub();
-  const rawPressed = raw?.getAttribute('aria-pressed');
-  const rawTitle = capturedTitle();
-  const rawHeadings = host.querySelectorAll('[data-captured] h3').length;
-  raw?.click();
+  chooseInspectorMode(host, 'raw');
+  const rawBody = host.querySelector('.wb-inspection pre')?.textContent;
+  const rawTitle = host.querySelector('[data-captured] h3')?.textContent;
+  chooseInspectorMode(host, 'bottom');
 
   expect(host.querySelector('.wb-detail')).toBeNull();
   expect(host.querySelector('aside')).toBeNull();
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+  expect(host.querySelectorAll('[data-captured] h3')).toHaveLength(1);
+  expect(host.querySelectorAll('.wb-inspection pre')).toHaveLength(1);
+  expect(host.querySelector('.wb-inspection')?.textContent).toContain(
     'Trusted plan',
   );
-  expect(selection?.textContent).toContain('Turn 1');
-  expect(selection?.textContent).toMatch(/event \d+\/\d+/);
+  expect(caption).toMatch(
+    /^SDK parsed output · turn 1 · event \d+\/\d+ · live$/,
+  );
   expect(tabs).not.toContain('Details');
   expect(tabs).not.toContain('Raw');
   expect(tabs).not.toContain('Console');
-  expect(
-    host.querySelector('.wb-selection .wb-chip:not(.wb-chip-active)')
-      ?.textContent,
-  ).toBe(host.querySelector('[data-source]')?.textContent);
-  expect(host.querySelector('[data-detail] .wb-section-sub')?.textContent).toBe(
-    'Captured from SDK parsed output.',
-  );
-  expect(host.querySelectorAll('[data-detail] pre')).toHaveLength(1);
-  expect(host.querySelectorAll('[data-detail] p')).toHaveLength(0);
-  expect(before).toBe('captured');
-  expect(rawPressed).toBe('true');
-  expect(rawSub).toBe('captured frame');
-  expect(rawTitle).toBe(`${frame?.kind} · ${frame?.source}`);
-  expect(rawHeadings).toBe(1);
-  expect(capturedTitle()).toBe(titleBefore);
-  expect(raw?.getAttribute('aria-pressed')).toBe('false');
-  expect(host.querySelector('button.wb-raw')).toBe(raw);
-  expect(host.querySelector('.wb-inspection')?.textContent).not.toContain(
-    `${frame?.kind} · ${frame?.source}`,
-  );
-  expect(host.querySelector('.wb-inspection pre')?.textContent).toBe(
-    capturedPre,
+  expect(bodyBefore).toBeDefined();
+  expect(titleBefore).toBe('Model output');
+  expect(rawTitle).toBe(titleBefore);
+  expect(rawBody).toContain(String(frame?.kind));
+  expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
+    'Model output',
   );
   shell.dispose();
 });
 
-test('labels the captured section as streaming while the turn is loading', () => {
+test('captions the panel with the loading turn and its event position', () => {
   const host = document.createElement('div');
   const store = createWorkbenchStore();
   const shell = mountWorkbench(host, store, {
@@ -278,9 +261,9 @@ test('labels the captured section as streaming while the turn is loading', () =>
 
   store.send('Create a plan');
 
-  expect(
-    host.querySelector('[data-captured] .wb-section-sub')?.textContent,
-  ).toBe('streaming');
+  expect(host.querySelector('.wb-caption')?.textContent).toMatch(
+    /· turn 1 · event 1\/1 · streaming · live$/,
+  );
   shell.dispose();
 });
 
@@ -456,7 +439,9 @@ test('keeps every inspector panel visible and exposes raw timeline frames on dem
   );
 
   expect(host.querySelector<HTMLElement>('.wb-inspector')?.hidden).toBe(false);
-  expect(host.querySelector<HTMLElement>('[data-detail]')?.hidden).toBe(false);
+  expect(host.querySelector<HTMLElement>('[data-captured]')?.hidden).toBe(
+    false,
+  );
   expect(timeline?.querySelectorAll('button')).toHaveLength(3);
   toggle?.click();
 
@@ -542,7 +527,7 @@ test('does not label an earlier turn tool result as the current request context'
     )
     ?.click();
   [...host.querySelectorAll<HTMLButtonElement>('[data-detail] [role=tab]')]
-    .find((tab) => tab.textContent === 'Raw request')
+    .find((tab) => tab.textContent === 'Request')
     ?.click();
 
   const context = host.querySelector('[data-detail]');
@@ -576,7 +561,8 @@ test('shows the shared plan contract separately from the parsed preview in the S
   const captured = inspection?.querySelector('.wb-inspection');
   expect(captured?.textContent).toContain('"type": "object"');
   expect(captured?.textContent).toContain('"steps"');
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
+  chooseInspectorMode(host, 'bottom');
+  expect(host.querySelector('[data-captured]')?.textContent).toContain(
     'Preview validation',
   );
   shell.dispose();
@@ -762,7 +748,7 @@ test('transformation inspector isolates added instructions and keeps the actual 
   const inspection = host.querySelector('.wb-inspector .wb-inspection') ?? host;
   expect(inspection.textContent).toContain('Public workspace policy');
   expect(inspection.textContent).not.toContain('Original instructions');
-  host.querySelector<HTMLButtonElement>('button.wb-raw')?.click();
+  chooseInspectorMode(host, 'raw');
   expect(host.querySelector('.wb-inspection')?.textContent).toContain(
     'Original instructions',
   );
@@ -833,12 +819,9 @@ test('shows Markdown and selected source details through the recipe inspector in
   expect(
     host.querySelector('.wb-inspector .wb-inspection')?.textContent,
   ).toContain('## Our plan');
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
-    'Selected reference',
-  );
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
-    'https://hashbrown.dev',
-  );
+  chooseInspectorMode(host, 'bottom');
+  expect(inspectorPanelText(host)).toContain('Selected reference');
+  expect(inspectorPanelText(host)).toContain('https://hashbrown.dev');
   shell.dispose();
 });
 
@@ -865,7 +848,13 @@ test('plain text onboarding UI inspector describes text rendering without expose
     expect(inspector?.textContent).toContain('Plain text renderer');
     expect(inspector?.textContent).toContain('"generatedProps": false');
     expect(inspector?.textContent).toContain('"exposedComponents": []');
-    expect(host.textContent).toContain('Text rendering and request outcome');
+    chooseInspectorMode(host, 'bottom');
+    expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
+      'Plain text renderer',
+    );
+    expect(inspector?.textContent).toContain(
+      'rendered directly without a UI schema',
+    );
     expect(inspector?.textContent).not.toMatch(/SummaryCard|steps|string\[\]/);
     shell.dispose();
   }

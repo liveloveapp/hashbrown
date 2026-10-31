@@ -26,7 +26,7 @@ test.each(['ui-kits', 'ui-chatbot'] as const)(
     expect(tabs).toContain('Kit');
     expect(tabs).toContain('Schema');
     expect(host.textContent).toContain(
-      'SDK component observations and application-owned state.',
+      'SDK component observations and application-owned state · turn',
     );
     expect(host.querySelector('textarea')?.value).toBe(
       getWorkbenchUiPrompts(lesson)[0],

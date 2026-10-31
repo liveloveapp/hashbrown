@@ -3,6 +3,10 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import {
+  readApplicationState,
+  readInspectorJson,
+} from './verify-inspector-modes';
 import type { WorkbenchPlan } from '../../examples/quickstart/runtime/workbench';
 import type { WorkbenchUiLesson } from '../../examples/quickstart/runtime/workbench-ui-kits';
 import {
@@ -70,12 +74,12 @@ export async function verifyUiWorkbench(options: {
     const button = (name: string) =>
       root.getByRole('button', { name, exact: true });
     const tab = async (name: string) => {
-      await root.getByRole('tab', { name, exact: true }).click();
+      await root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name, exact: true })
+        .click();
     };
-    const inspection = async () =>
-      JSON.parse(
-        await root.locator('.wb-inspector .wb-inspection pre').innerText(),
-      );
+    const inspection = async () => readInspectorJson(root, 'top');
     const ui = async () => {
       await tab('UI');
       return (await inspection()) as {
@@ -86,7 +90,7 @@ export async function verifyUiWorkbench(options: {
     };
     const state = async () => {
       await tab('State');
-      return (await inspection()) as {
+      return JSON.parse(await readApplicationState(root)) as {
         revision: number;
         plan: WorkbenchPlan | null;
       };

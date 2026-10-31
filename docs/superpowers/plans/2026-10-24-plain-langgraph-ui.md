@@ -1,5 +1,9 @@
 # Plain LangGraph UI implementation plan
 
+> Delivery status: see the [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> This execution record is historical; later fixes and release evidence are
+> tracked there. File search remains deferred.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Follow test-first development and independent spec then quality review. Use top-level test(...) with arrange/act/assert and TSDoc for new reusable/public functionality.
 
 **Goal:** Deliver plain LangGraph tool-step producers, checkpoint persistence and restore recipes that Hashbrown consumes, keeping file search deferred.

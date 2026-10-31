@@ -1,5 +1,13 @@
 .panel {
+  /* The embedded workbench's neutral LLA surfaces, with Hashbrown selection. */
+  --source-panel: #fff;
+  --source-line: var(--color-rule);
+  --source-ink: var(--color-ink);
+  --source-muted: var(--color-muted);
+  --source-hover: var(--color-surface);
+  container: workbench / inline-size;
   margin: var(--space-4) 0 var(--space-8);
+  color: var(--source-ink);
 }
 
 /*
@@ -31,26 +39,30 @@
 .tabs {
   display: flex;
   gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-input);
+  background: var(--source-hover);
 }
 
 .tab {
   padding: var(--space-1) var(--space-3);
   border: 0;
-  border-radius: var(--radius-card);
+  min-height: 36px;
+  border-radius: 6px;
   background: none;
-  color: var(--color-muted);
+  color: var(--source-muted);
   font: 600 14px/1.5 var(--font-sans);
   cursor: pointer;
 }
 
 .tab:hover {
-  color: var(--color-ink);
+  background: var(--source-hover);
+  color: var(--source-ink);
 }
 
 .tab[aria-selected='true'] {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  box-shadow: 0 0 0 1px var(--color-rule);
+  background: var(--color-highlight);
+  color: var(--color-accent);
 }
 
 .tab:focus-visible,
@@ -60,6 +72,9 @@
 }
 
 .open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
   font-size: 14px;
 }
 
@@ -74,46 +89,53 @@
   border: 0;
   object-fit: contain;
   border-radius: var(--radius-card);
-  background: var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-rule);
+  background: var(--source-panel);
+  box-shadow: 0 0 0 1px var(--source-line);
 }
 
 .note,
 .loopback {
   margin-top: var(--space-3);
-  color: var(--color-muted);
+  color: var(--source-muted);
   font-size: 13px;
 }
 
 .loopback {
   padding: var(--space-4);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
+  border: 1px solid var(--source-line);
+  border-radius: 14px;
+  background: var(--source-panel);
   font-size: 14px;
 }
 
 .file {
-  margin: 0 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
 }
 
 .file figcaption {
-  margin-bottom: var(--space-2);
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  min-height: 48px;
+  border-bottom: 1px solid var(--source-line);
+  background: var(--source-panel);
   font: 13px/1.5 var(--font-code);
-  color: var(--color-muted);
+  color: var(--source-muted);
 }
 
 .source {
   display: grid;
   /* A long line scrolls inside the code area instead of widening the panel. */
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
+  grid-template-columns: 220px minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--source-panel);
 }
 
 .panel .files,
 .panel .links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+  display: block;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -132,46 +154,65 @@
 }
 
 .panel .links {
+  display: flex;
   flex-direction: column;
   margin-top: var(--space-2);
   font: 13px/1.5 var(--font-code);
 }
 
-.files .tab {
-  font: 13px/1.5 var(--font-code);
-}
-
-.files .tab[aria-pressed='true'] {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  box-shadow: 0 0 0 1px var(--color-rule);
-}
-
 .file figcaption {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
-.file figcaption a {
-  font: 14px/1.5 var(--font-sans);
+.file figcaption > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file figcaption .github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  min-height: 36px;
+  border-radius: var(--radius-input);
+  color: var(--source-muted);
+}
+
+.file figcaption .github:hover {
+  background: var(--source-hover);
+  color: var(--color-ink);
 }
 
 /* A bounded scroll area: long files scroll here, not the page. */
 .code {
   position: relative;
-  max-height: min(480px, 60vh);
+  height: min(480px, 60vh);
+  min-height: 240px;
   overflow: auto;
-  border-radius: var(--radius-card);
-  background: var(--color-code-bg);
+  background: var(--source-panel);
 }
 
-.code pre {
+.panel .code pre {
   width: max-content;
   min-width: 100%;
   margin: 0;
   padding: var(--space-3) 0;
+  border: 0;
+  border-radius: 0;
+  font: 12.5px/1.7 var(--font-code);
+  box-shadow: none;
+}
+
+.code code {
+  font: inherit;
 }
 
 .code :global(.line) {
@@ -181,9 +222,197 @@
   border-left: 4px solid transparent;
 }
 
+.code :global(.line)::before {
+  content: attr(data-line);
+  display: inline-block;
+  width: 4ch;
+  margin-right: var(--space-4);
+  color: var(--source-muted);
+  text-align: right;
+  user-select: none;
+}
+
 .code [data-highlighted] {
   border-left-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  background: color-mix(in srgb, var(--sunshine-yellow) 20%, transparent);
+}
+
+.explorer {
+  min-width: 0;
+  border-right: 1px solid var(--source-line);
+  background: var(--color-bg);
+}
+
+.fileNavigation {
+  max-height: min(560px, 70vh);
+  padding: 0 var(--space-3) var(--space-3) 0;
+  overflow: auto;
+}
+
+.explorerHeading {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  color: var(--color-ink);
+  font: 600 13px/18px var(--font-sans);
+}
+
+.directory > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-input);
+  color: var(--color-ink);
+  font: 600 13px/18px var(--font-sans);
+  list-style: none;
+  cursor: pointer;
+}
+
+.directory > summary::-webkit-details-marker {
+  display: none;
+}
+
+.folderChevron,
+.pickerChevron {
+  display: flex;
+  flex: none;
+}
+
+.directory:not([open]) > summary .folderChevron {
+  transform: rotate(-90deg);
+}
+
+.pickerChevron[data-expanded='true'] {
+  transform: rotate(180deg);
+}
+
+.directory[open] > summary {
+  margin-bottom: var(--space-2);
+}
+
+.panel .directory .files {
+  margin-left: var(--space-3);
+}
+
+.panel .files > li + li {
+  margin-top: 2px;
+}
+
+.fileButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-sm);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-input);
+  background: none;
+  color: var(--source-muted);
+  font: 400 14px/20px var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fileButton:hover,
+.directory > summary:hover {
+  background: var(--source-hover);
+}
+
+.fileButton[aria-current='true'] {
+  background: var(--color-highlight);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.filename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceIcon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.filePicker {
+  display: none;
+}
+
+.fileButton:focus-visible,
+.filePicker:focus-visible,
+.directory > summary:focus-visible,
+.github:focus-visible,
+.code:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+@container workbench (max-width: 640px) {
+  .tab,
+  .open,
+  .file figcaption .github {
+    min-height: 44px;
+  }
+
+  .file figcaption .github {
+    width: 44px;
+  }
+
+  .source {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .explorer {
+    border-right: 0;
+    border-bottom: 1px solid var(--source-line);
+  }
+
+  .filePicker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-3);
+    border: 0;
+    background: var(--source-panel);
+    color: var(--source-ink);
+    font: 400 14px/20px var(--font-sans);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pickerLabel {
+    color: var(--source-muted);
+    font: 600 13px/18px var(--font-sans);
+  }
+
+  .explorer[data-expanded='false'] .fileNavigation {
+    display: none;
+  }
+
+  .fileNavigation {
+    max-height: 280px;
+    border-top: 1px solid var(--source-line);
+    padding: 0 var(--space-2) var(--space-3);
+  }
+
+  .fileButton,
+  .directory > summary {
+    min-height: 44px;
+  }
+
+  .file figcaption {
+    padding: 0 0 0 var(--space-3);
+  }
 }
 
 .hidden {

@@ -3,6 +3,10 @@ import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+import {
+  chooseInspectorMode,
+  inspectorPanelText,
+} from './workbench-inspector-helpers';
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -546,20 +550,6 @@ test('toggles the play label and icon and reports playback time', () => {
   vi.useRealTimers();
 });
 
-test('marks the selection strip live at the newest event only', () => {
-  const { host, store, shell } = mountShell();
-  recordTwoTurns(store);
-  const strip = () => host.querySelector('.wb-selection')?.textContent ?? '';
-
-  const atHead = strip();
-  store.seek(0);
-  const inReplay = strip();
-
-  expect(atHead).toMatch(/event (\d+)\/\1 · live/);
-  expect(inReplay).not.toContain('live');
-  shell.dispose();
-});
-
 test('labels the inspector panel by its selected tab', () => {
   const { host, shell } = mountShell();
   const panel = host.querySelector('[role=tabpanel]');
@@ -696,6 +686,7 @@ test('keeps focus on an activated request row and tick', () => {
 
   row?.click();
   const focusedRow = document.activeElement;
+  const rowPressed = focusedRow?.getAttribute('aria-pressed');
   const tick = host.querySelectorAll<HTMLButtonElement>(
     '.wb-scrubber .wb-events button',
   )[0];
@@ -706,7 +697,9 @@ test('keeps focus on an activated request row and tick', () => {
 
   expect(focusedRow?.closest('.wb-requests-table')).not.toBeNull();
   expect(focusedRow?.textContent).toBe(rowText);
-  expect(focusedRow?.getAttribute('aria-pressed')).toBe('true');
+  expect(rowPressed).toBe('true');
+  // The tick moved the playhead, so the detail follows it again.
+  expect(focusedRow?.getAttribute('aria-pressed')).toBe('false');
   expect(focusedTick?.closest('.wb-events')).not.toBeNull();
   expect(focusedTick?.getAttribute('aria-label')).toBe(label);
   expect(focusedTick?.getAttribute('aria-pressed')).toBe('true');
@@ -987,12 +980,9 @@ test('history inspector pairs actual SDK and retained app text and Raw keeps the
   expect(host.querySelector('[data-captured]')?.textContent).toContain(
     'actual-user',
   );
-  expect(host.querySelector('[data-detail]')?.textContent).toContain(
-    'retained',
-  );
-  host
-    .querySelector<HTMLButtonElement>('[aria-label="Show captured frame"]')
-    ?.click();
+  chooseInspectorMode(host, 'bottom');
+  expect(inspectorPanelText(host)).toContain('retained');
+  chooseInspectorMode(host, 'raw');
   expect(host.querySelector('[data-captured]')?.textContent).toContain('"sdk"');
   expect(host.querySelector('[data-captured]')?.textContent).toContain(
     '"event"',

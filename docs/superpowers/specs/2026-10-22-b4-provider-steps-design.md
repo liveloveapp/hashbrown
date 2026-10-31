@@ -1,5 +1,9 @@
 # Provider tool steps: slice 3 audit and Anthropic delivery
 
+> Current delivery inventory: [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> Baselines and remaining-work statements below are historical. The shared
+> contract's Rules remain binding. File search remains deferred.
+
 Status: Anthropic-first delivery approved by the user on 2026-10-22; independent spec review approved. The user deferred file search from slice 3 on 2026-10-22. Later-provider details remain deferred.
 
 ## Baseline and binding requirements

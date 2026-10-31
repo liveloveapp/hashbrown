@@ -1,5 +1,9 @@
 # Native AG-UI subagent implementation plan
 
+> Delivery status: see the [October 29 closeout](../research/2026-10-29-tool-display-closeout.md).
+> This execution record is historical; later fixes and release evidence are
+> tracked there. File search remains deferred.
+
 > **For agentic workers:** Use superpowers:subagent-driven-development serially, with failing tests first and independent specification then quality review. Parent owns staging/commits. Tests are top-level test(...) with arrange/act/assert.
 
 **Goal:** Display native subagent lifecycle and truthful output provenance in Hashbrown, including concurrent streams and interrupt continuation.
