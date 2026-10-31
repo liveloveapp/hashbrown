@@ -3,14 +3,115 @@ import { resolve } from 'node:path';
 
 const verifier = resolve(__dirname, '../nuget-consumer/verify.mjs');
 
-/** Runs isolation assertions in the verifier's native ESM runtime. */
-function probe(body: string, timeout = 20_000): string {
-  return execFileSync(
-    process.execPath,
-    [
-      '--input-type=module',
-      '-e',
-      `
+const consumerMutations = [
+  'archive',
+  'missing-candidate',
+  'lock',
+  'dll',
+  'source',
+  'metadata',
+  'config',
+  'assets',
+  'deps',
+  'import',
+  'project-reference',
+  'symlink',
+  'pointer',
+  'missing-roles',
+  'changed-source-after-qualification',
+] as const;
+const consumerPhases = [
+  'prepare',
+  'signature-rejection',
+  'source-copy',
+  'root-copy',
+  'rebase',
+  'mutation',
+  'cleanup',
+] as const;
+
+/** Closed, bounded progress facts emitted only by the expensive consumer fixture. */
+type ConsumerPhase = {
+  phase: (typeof consumerPhases)[number];
+  event: 'start' | 'end';
+  ms: number;
+  completed: number;
+  mutation?: (typeof consumerMutations)[number];
+};
+
+/** Rejects untagged, malformed, oversized or open-ended child diagnostic records. */
+function consumerPhaseRecords(stderr: unknown): ConsumerPhase[] {
+  if (typeof stderr !== 'string' || Buffer.byteLength(stderr) > 16_384)
+    return [];
+  const records: ConsumerPhase[] = [];
+  for (const line of stderr.split('\n')) {
+    if (!line.startsWith('HB_CONSUMER_PHASE ') || Buffer.byteLength(line) > 512)
+      continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line.slice('HB_CONSUMER_PHASE '.length));
+    } catch {
+      continue;
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      continue;
+    const value = parsed as Record<string, unknown>;
+    const keys = [
+      'completed',
+      'event',
+      'ms',
+      'phase',
+      ...(value.phase === 'mutation' ? ['mutation'] : []),
+    ].sort();
+    if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(keys))
+      continue;
+    if (
+      !consumerPhases.some((phase) => phase === value.phase) ||
+      !['start', 'end'].includes(value.event as string)
+    )
+      continue;
+    if (
+      typeof value.ms !== 'number' ||
+      !Number.isSafeInteger(value.ms) ||
+      value.ms < 0 ||
+      value.ms > 600_000
+    )
+      continue;
+    if (
+      typeof value.completed !== 'number' ||
+      !Number.isSafeInteger(value.completed) ||
+      value.completed < 0 ||
+      value.completed > consumerMutations.length
+    )
+      continue;
+    if (
+      value.phase === 'mutation' &&
+      !consumerMutations.some((mutation) => mutation === value.mutation)
+    )
+      continue;
+    records.push({
+      phase: value.phase as ConsumerPhase['phase'],
+      event: value.event as ConsumerPhase['event'],
+      ms: value.ms,
+      completed: value.completed,
+      ...(value.phase === 'mutation'
+        ? { mutation: value.mutation as ConsumerPhase['mutation'] }
+        : {}),
+    });
+  }
+  return records.slice(-48);
+}
+
+/** Runs isolation assertions; only explicit diagnostic callers replace raw child errors. */
+function probe(body: string, timeout = 20_000, diagnostics = false): string {
+  const started = Date.now();
+  try {
+    return execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -18,10 +119,194 @@ import path from 'node:path';
 import * as v from ${JSON.stringify(`file://${verifier}`)};
 ${body}
 console.log('passed');`,
-    ],
-    { encoding: 'utf8', timeout },
-  );
+      ],
+      {
+        encoding: 'utf8',
+        timeout,
+        ...(diagnostics ? { stdio: 'pipe' as const } : {}),
+      },
+    );
+  } catch (error) {
+    if (!diagnostics) throw error;
+    const failure =
+      error && typeof error === 'object'
+        ? (error as Record<string, unknown>)
+        : {};
+    const phases = consumerPhaseRecords(failure.stderr);
+    const pending = new Map<string, ConsumerPhase>();
+    for (const phase of phases) {
+      const key = phase.phase + ':' + (phase.mutation ?? '');
+      if (phase.event === 'start') pending.set(key, phase);
+      else pending.delete(key);
+    }
+    const facts = {
+      code: ['ETIMEDOUT', 'ENOBUFS', 'ENOENT'].includes(failure.code as string)
+        ? failure.code
+        : 'FAILED',
+      status:
+        typeof failure.status === 'number' &&
+        Number.isSafeInteger(failure.status) &&
+        failure.status >= 0 &&
+        failure.status <= 255
+          ? failure.status
+          : null,
+      signal:
+        failure.signal === null
+          ? null
+          : ['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV', 'SIGINT'].includes(
+                failure.signal as string,
+              )
+            ? failure.signal
+            : 'UNKNOWN',
+      elapsedMs: Math.min(620_000, Math.max(0, Date.now() - started)),
+      completedMutations: phases.at(-1)?.completed ?? 0,
+      activePhase: [...pending.values()].at(-1) ?? null,
+      phases,
+    };
+    throw new Error('Consumer probe failed: ' + JSON.stringify(facts));
+  }
 }
+
+/** Captures only the opt-in probe's public failure facts for diagnostic regression assertions. */
+function probeFailure(body: string, timeout = 2_000): Record<string, unknown> {
+  const diagnosticProbe = probe as (
+    source: string,
+    milliseconds: number,
+    diagnostics: boolean,
+  ) => string;
+  let failure: unknown;
+
+  try {
+    diagnosticProbe(body, timeout, true);
+  } catch (error) {
+    failure = error;
+  }
+
+  expect(typeof failure).toBe('object');
+  expect(typeof (failure as Error).message).toBe('string');
+  expect(Object.getOwnPropertyNames(failure).sort()).toEqual([
+    'message',
+    'stack',
+  ]);
+  const message = (failure as Error).message;
+  expect(message).toMatch(/^Consumer probe failed: /);
+  for (const canary of [
+    'BODY_CANARY',
+    'STDOUT_CANARY',
+    'STDERR_CANARY',
+    'ENV_CANARY',
+    '/secret/path',
+  ])
+    expect(message).not.toContain(canary);
+  return JSON.parse(message.slice('Consumer probe failed: '.length));
+}
+
+test('diagnostic probe preserves closed phase facts after a real child exit without raw output or body', () => {
+  const phase = {
+    phase: 'mutation',
+    event: 'start',
+    mutation: 'pointer',
+    ms: 19,
+    completed: 12,
+  };
+  const body = `
+process.stdout.write('STDOUT_CANARY BODY_CANARY /secret/path');
+process.stderr.write('STDERR_CANARY ENV_CANARY\\n');
+await new Promise(done=>process.stderr.write('HB_CONSUMER_PHASE '+${JSON.stringify(JSON.stringify(phase))}+'\\n',done));
+process.exit(7);
+`;
+
+  const facts = probeFailure(body);
+
+  expect(facts.code).toBe('FAILED');
+  expect(facts.status).toBe(7);
+  expect(facts.phases).toEqual([phase]);
+  expect(facts.activePhase).toEqual(phase);
+  expect(facts.completedMutations).toBe(12);
+  expect(Number.isInteger(facts.elapsedMs)).toBe(true);
+  expect(facts.elapsedMs).toBeGreaterThanOrEqual(0);
+  expect(facts.elapsedMs).toBeLessThanOrEqual(620_000);
+});
+
+test('diagnostic probe retains safe progress after an actual timeout without forwarding child stderr', () => {
+  const phase = { phase: 'prepare', event: 'start', ms: 0, completed: 0 };
+  const body = `
+process.stdout.write('STDOUT_CANARY BODY_CANARY');
+process.stderr.write('STDERR_CANARY ENV_CANARY /secret/path\\nHB_CONSUMER_PHASE '+${JSON.stringify(JSON.stringify(phase))}+'\\n');
+setInterval(()=>{},1000);
+await new Promise(()=>{});
+`;
+
+  const facts = probeFailure(body, 1_500);
+
+  expect(facts.code).toBe('ETIMEDOUT');
+  expect(facts.status).toBeNull();
+  expect(['SIGTERM', 'SIGKILL']).toContain(facts.signal);
+  expect(facts.phases).toEqual([phase]);
+  expect(facts.activePhase).toEqual(phase);
+  expect(facts.completedMutations).toBe(0);
+});
+
+test('diagnostic probe rejects malformed unknown secret-bearing and nonfinite phase fields', () => {
+  const valid = { phase: 'prepare', event: 'end', ms: 8, completed: 0 };
+  const invalid = [
+    { ...valid, phase: '/secret/path' },
+    { ...valid, event: 'ENV_CANARY' },
+    { ...valid, environment: 'ENV_CANARY' },
+    { ...valid, path: '/secret/path' },
+    { ...valid, mutation: 'archive' },
+    { ...valid, phase: 'mutation', mutation: '/secret/path' },
+    { ...valid, phase: 'mutation' },
+    { ...valid, ms: -1 },
+    { ...valid, ms: 600_001 },
+    { ...valid, ms: 1.5 },
+    { ...valid, ms: Number.NaN },
+    { ...valid, ms: Number.POSITIVE_INFINITY },
+    { ...valid, completed: -1 },
+    { ...valid, completed: 16 },
+    { ...valid, completed: 0.5 },
+    { ...valid, completed: Number.NaN },
+    [],
+    null,
+    'STDERR_CANARY',
+  ];
+  const lines = [
+    'STDERR_CANARY ENV_CANARY /secret/path',
+    ...invalid.map((value) => 'HB_CONSUMER_PHASE ' + JSON.stringify(value)),
+    'HB_CONSUMER_PHASE {bad BODY_CANARY}',
+    'HB_CONSUMER_PHASE {"phase":"prepare","event":"end","ms":NaN,"completed":0}',
+    'HB_CONSUMER_PHASE ' + JSON.stringify(valid) + ' '.repeat(513),
+    'HB_CONSUMER_PHASE ' + JSON.stringify(valid),
+  ];
+
+  const facts = probeFailure(
+    `await new Promise(done=>process.stderr.write(${JSON.stringify(lines.join('\n') + '\n')},done));process.exit(3);`,
+  );
+
+  expect(facts.status).toBe(3);
+  expect(facts.phases).toEqual([valid]);
+});
+
+test('diagnostic probe caps phase record count and rejects oversized diagnostic input', () => {
+  const records = Array.from(
+    { length: 80 },
+    (_, ms) =>
+      'HB_CONSUMER_PHASE ' +
+      JSON.stringify({ phase: 'prepare', event: 'start', ms, completed: 0 }),
+  );
+
+  const bounded = probeFailure(
+    `await new Promise(done=>process.stderr.write(${JSON.stringify(records.join('\n') + '\n')},done));process.exit(4);`,
+  );
+  const oversized = probeFailure(
+    `await new Promise(done=>process.stderr.write('HB_CONSUMER_PHASE '+JSON.stringify({phase:'prepare',event:'start',ms:0,completed:0})+'\\n'+'STDERR_CANARY'.repeat(2_000),done));process.exit(5);`,
+  );
+
+  expect(bounded.phases).toHaveLength(48);
+  expect((bounded.phases as { ms: number }[]).at(-1)?.ms).toBe(79);
+  expect(oversized.phases).toEqual([]);
+  expect(oversized.status).toBe(5);
+});
 
 test('accepts the pinned SDK and later patches in its feature band only', () => {
   const body = `
@@ -175,19 +460,30 @@ import {prepareConsumer} from ${JSON.stringify(`file://${prepare}`)};
 import {qualifyConsumer} from ${JSON.stringify(`file://${qualify}`)};
 const parent=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'nuget-real-mutations-')));
 let prepared;
+const fixtureStarted=Date.now();let completed=0;
+const phase=(name,event,mutation)=>process.stderr.write('HB_CONSUMER_PHASE '+JSON.stringify({phase:name,event,ms:Date.now()-fixtureStarted,completed,...(mutation?{mutation}:{})})+'\\n');
 try {
+ phase('prepare','start');
  prepared=await prepareConsumer(path.join(parent,'candidate.json'));
+ phase('prepare','end');
  const trusted=JSON.parse(await fs.readFile(prepared.metadata,'utf8'));
  assert.ok((await fs.readdir(trusted.restoreNegative.sentinel)).includes('hashbrown.aspnetcore.nuspec'),'Sentinel nuspec must use the canonical global-cache filename');
  const archive=await fs.readFile(path.join(trusted.root,trusted.archive));
+ phase('signature-rejection','start');
  const {execFileSync}=await import('node:child_process');
  assert.throws(()=>execFileSync('dotnet',[path.join(trusted.root,'package-hash/bin/Release/net10.0/PackageHash.dll'),'--published-archive',path.join(trusted.root,trusted.archive)],{encoding:'utf8',stdio:'pipe'}),/repository signature/i);
 
+ phase('signature-rejection','end');
  for(const identity of [{...trusted.identity,id:'Wrong.Id'},{...trusted.identity,version:'0.1.0-preview.999'}])assert.throws(()=>v.validateArchive(archive,identity,trusted.revision),/candidate ID|version/i);
+ phase('source-copy','start');
  const repository=path.join(parent,'repository');await fs.mkdir(repository);
  for(const file of Object.keys(trusted.sources)) {await fs.mkdir(path.dirname(path.join(repository,file)),{recursive:true});await fs.copyFile(path.join(trusted.repository,file),path.join(repository,file));}
+ phase('source-copy','end');
+ phase('root-copy','start');
   const copy=path.join(parent,'copy');
   await fs.cp(trusted.root,copy,{recursive:true,mode:fs.constants.COPYFILE_FICLONE});
+ phase('root-copy','end');
+ phase('rebase','start');
   let metadata=JSON.parse(JSON.stringify(trusted).replaceAll(trusted.root,copy));metadata.repository=repository;
   for(const file of Object.keys(metadata.files)) {
    if(/[.](json|config|csproj|props|targets|xml|metadata)$/i.test(file)) {
@@ -209,8 +505,10 @@ try {
    try {const stat=await fs.lstat(file);return {file,bytes:await fs.readFile(file),mode:stat.mode & 0o777};}
    catch(error){if(error.code==='ENOENT')return {file};throw error;}
   }));
+ phase('rebase','end');
  // Reuse only disposable setup; every case requalifies the complete restored byte closure.
- for(const mutation of ['archive','missing-candidate','lock','dll','source','metadata','config','assets','deps','import','project-reference','symlink','pointer','missing-roles','changed-source-after-qualification']) {
+ for(const mutation of ${JSON.stringify(consumerMutations)}) {
+  phase('mutation','start',mutation);
   const metadata=JSON.parse(baselineMetadata);
   let launches=0;
   const launch=async()=>{launches++;return JSON.stringify(metadata.loaded);};
@@ -247,13 +545,14 @@ try {
     if(snapshot.bytes!==undefined)await fs.writeFile(snapshot.file,snapshot.bytes,{mode:snapshot.mode});
    }
   }
+  completed++;phase('mutation','end',mutation);
  }
-} finally {if(prepared)await fs.rm(prepared.root,{recursive:true,force:true});await fs.rm(parent,{recursive:true,force:true});}`;
+} finally {phase('cleanup','start');if(prepared)await fs.rm(prepared.root,{recursive:true,force:true});await fs.rm(parent,{recursive:true,force:true});phase('cleanup','end');}`;
 
-  const result = probe(body, 180_000);
+  const result = probe(body, 600_000, true);
 
   expect(result.trim()).toBe('passed');
-}, 200_000);
+}, 620_000);
 
 test('rejects a wrong implementation DLL before the first smoke effect', () => {
   const body = `
