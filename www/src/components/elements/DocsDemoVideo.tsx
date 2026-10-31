@@ -21,8 +21,7 @@ export function DocsDemoVideo({
   }
   const captionId = useId();
   const media = DOCS_DEMOS[demo];
-  const { width, height } =
-    'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
+  const { width, height } = media.dimensions;
   const base = `/video/docs/${demo}`;
 
   return (
@@ -52,9 +51,7 @@ export function DocsDemoVideo({
       <figcaption>
         <p id={captionId}>{media.caption}</p>
         <p className={styles.note}>
-          {'recording' in media
-            ? media.recording
-            : 'Recorded in the ATC example with scripted model responses and fixture traffic. No narration.'}{' '}
+          {media.recording}{' '}
           <a
             href={`${base}-transcript.txt`}
             aria-label={`Read the text walkthrough: ${media.title}`}

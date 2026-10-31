@@ -122,12 +122,14 @@ export function workbenchLiveAvailability(
 export const WORKBENCH_LESSONS_WITHOUT_CAPTURE: readonly WorkbenchLessonId[] =
   [];
 
-/** Lessons whose capture starts after a page reload the video includes. */
-export const PARTIAL_CAPTURE_LESSONS: readonly WorkbenchLessonId[] = [
-  'server-threads',
-  'save-text-conversations',
-  'production-recovery',
-];
+/**
+ * Lessons whose capture starts after a page reload the video includes: those
+ * the runtime lesson data flags `capture: 'after-reload'`, in lesson order.
+ */
+export const PARTIAL_CAPTURE_LESSONS: readonly WorkbenchLessonId[] =
+  workbenchLessons
+    .filter((lesson) => lesson.capture === 'after-reload')
+    .map((lesson) => lesson.id);
 
 /**
  * The hosted workbench origin the docs embed and link to, normalized so a
