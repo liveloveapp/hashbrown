@@ -37,6 +37,13 @@ export interface WorkbenchLesson {
    * served everywhere, but their API answers only on a loopback host.
    */
   readonly host?: 'production-reference' | 'loopback';
+  /**
+   * `after-reload` when the lesson's recording reloads the page mid-run: the
+   * published video shows the whole run, but the capture (and so the replay)
+   * holds only the events after that reload. Recorders call
+   * {@link assertWorkbenchCaptureAfterReload} before reloading.
+   */
+  readonly capture?: 'after-reload';
   readonly id: WorkbenchLessonId;
   readonly title: string;
   readonly format:
@@ -295,6 +302,7 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
       id === 'server-threads' ? ('Server' as const) : ('Access' as const),
     endpoint: `/api/workbench/server/${id}/chat`,
     host: 'loopback' as const,
+    ...(id === 'server-threads' ? { capture: 'after-reload' as const } : {}),
   })),
   ...(['message-history', 'save-text-conversations'] as const).map((id) => ({
     id,
@@ -305,6 +313,9 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
       id === 'message-history' ? ('History' as const) : ('Saved text' as const),
     protocol: 'chat' as const,
     endpoint: `/api/workbench/${id}`,
+    ...(id === 'save-text-conversations'
+      ? { capture: 'after-reload' as const }
+      : {}),
   })),
   ...(['agent-decisions', 'json-parser', 'natural-forms'] as const).map(
     (id) => ({
@@ -333,6 +344,7 @@ export const workbenchLessons: readonly WorkbenchLesson[] = [
     inspector: 'State',
     endpoint: '/api/production/run',
     host: 'production-reference',
+    capture: 'after-reload',
   },
 ];
 /**
@@ -375,6 +387,24 @@ export function isWorkbenchLoopbackLesson(
 /** The loopback lessons' ids, in lesson order (see {@link isWorkbenchLoopbackLesson}). */
 export const workbenchLoopbackLessonIds: readonly WorkbenchLoopbackLessonId[] =
   workbenchLessons.map((lesson) => lesson.id).filter(isWorkbenchLoopbackLesson);
+
+/**
+ * Throws unless a lesson is flagged `capture: 'after-reload'`. Recorders call
+ * it right before reloading the page mid-run, so a new reload cannot ship a
+ * replay that silently misses the run's start.
+ *
+ * @param id - The lesson being recorded.
+ * @throws When the lesson is not flagged `capture: 'after-reload'`.
+ */
+export function assertWorkbenchCaptureAfterReload(id: string): void {
+  const flagged = workbenchLessons.some(
+    (lesson) => lesson.id === id && lesson.capture === 'after-reload',
+  );
+  if (!flagged)
+    throw new Error(
+      `Lesson ${id} reloads mid-recording; flag it capture: 'after-reload'`,
+    );
+}
 
 /** Resolves a validated lesson query, defaulting safely to Generative UI. */
 export function getWorkbenchLesson(search: string): WorkbenchLesson {

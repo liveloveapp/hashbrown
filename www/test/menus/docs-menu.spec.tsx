@@ -234,3 +234,18 @@ test.each(SDKS)(
     });
   },
 );
+
+for (const sdk of SDKS) {
+  test(`makes framework compatibility discoverable for ${sdk}`, () => {
+    const sections = docsMenuSections(sdk);
+
+    const providers = sections.find(
+      (section) => section.title === 'Model providers',
+    );
+
+    expect(providers?.links).toContainEqual({
+      text: 'Framework compatibility',
+      href: `/docs/${sdk}/platform/compatibility`,
+    });
+  });
+}

@@ -38,7 +38,7 @@ test('rejects slugs that try to escape the docs directory', () => {
 test('lists blog posts newest first', () => {
   const posts = listBlogPosts();
 
-  expect(posts[0].slug).toBe('2026-10-27-decision-models-with-hashbrown');
+  expect(posts[0].slug).toBe('2026-11-01-web-llms');
   expect(posts.map((p) => p.slug)).toEqual(
     [...posts.map((p) => p.slug)].sort().reverse(),
   );

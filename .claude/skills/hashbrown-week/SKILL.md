@@ -18,6 +18,8 @@ Brian runs this once a week, normally Sunday or Monday. You research the coming 
 7. **Links**: at most one URL per X post, written in `text` (the X adapter posts `text` only; the schema rejects a `link` field on X). Most X posts carry no link at all; use a URL on X only for the blog promo or when the link is the point. LinkedIn `text` has no URL and no `link` field; the link goes in `firstComment`.
 8. Voice: read `docs/marketing/voice.md` every run and follow it. Do not restate or reinterpret it here.
 
+9. **Every X and LinkedIn post needs one reviewed image.** Store `image: {url, altText, sha256}` in its draft. Use a static PNG/JPEG under `https://hashbrown.dev/marketing/`, at most 5 MiB, and the SHA-256 of the exact reviewed file. Provide accurate alt text (1–1,000 characters). Use real screenshots for product behavior and clearly illustrative diagrams for explanations. Never fabricate model results. Include the image preview, alt text, dimensions and provenance in the review. Do not reuse the article card for every technical follow-up. A missing or failed image must never turn into a text-only post.
+
 ## Running the week CLI
 
 The CLI talks to the production growth database. Run it from the repo root. It needs `DATABASE_URL` (growth Neon) and `MARKETING_CREDENTIALS_KEY` in the environment, kept by Brian in a private env file (see `docs/marketing/runbook.md`, "Local environment"). Shell state does not persist between your commands, so every call sources the file:
@@ -108,8 +110,8 @@ Blog post:
 
 Week JSON (scratchpad, e.g. `<scratchpad>/week-W.json`), following the example at the end. Rules the schema enforces: `weekStart` is W; `key`s are unique (use `mon-x`, `tue-li`, `blog`, `devto`, `wed-x-promo`...); `channel` is `x | linkedin | blog | devto`; `kind` is `release | qa | topical | guide | take | blog_promo | blog` (`blog` for the blog and dev.to rows); every `scheduledAt` falls between W and W+6 in America/New_York; `draft.channel` equals `channel`; drafts are strict objects:
 
-- X: `{channel: "x", text}` (no `link`; at most one URL in `text`, and most X posts have none: only the blog promo, or a post where the link is the point)
-- LinkedIn: `{channel: "linkedin", text, firstComment?}`
+- X: `{channel: "x", text, image: {url, altText, sha256}}` (no `link`; at most one URL in `text`, and most X posts have none: only the blog promo, or a post where the link is the point)
+- LinkedIn: `{channel: "linkedin", text, image: {url, altText, sha256}, firstComment?}`
 - Blog: `{channel: "blog", slug, title}`
 - dev.to: `{channel: "devto", blogSlug, article: {title, tags, description}}`; `tags` up to 4, each lowercase letters and digits only and at most 30 characters
 
@@ -123,7 +125,7 @@ Every post, including the blog and dev.to rows, has `sources: [{url, note}]` (th
 
 ## Step 6: Present and edit
 
-Present the week day by day, Monday to Sunday. For each post: day and time in America/New_York, channel, kind, post id, the full text exactly as stored (LinkedIn `firstComment` too), its sources, and any voice issues or deliberate typos. Then show the blog post in full. Convert stored UTC times with:
+Present the week day by day, Monday to Sunday. For each post: day and time in America/New_York, channel, kind, post id, the full text exactly as stored (LinkedIn `firstComment` too), its sources, and any voice issues or deliberate typos. Show each social post’s image and alt text alongside its copy. Then show the blog post in full. Convert stored UTC times with:
 
 ```sh
 week show --week W | node -e 'const s=JSON.parse(require("fs").readFileSync(0,"utf8"));for(const p of s.posts)console.log(new Date(p.scheduledAt).toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),p.channel,p.kind,p.status,p.id)'
@@ -196,7 +198,12 @@ Shape only (validated with `week check`); never reuse its text.
       "scheduledAt": "2026-11-02T10:00:00-05:00",
       "draft": {
         "channel": "x",
-        "text": "Hashbrown v0.8 added decisions.\nYou ask a closed question and get a typed answer back with a confidence for each option.\nPretty handy for routing."
+        "text": "Hashbrown v0.8 added decisions.\nYou ask a closed question and get a typed answer back with a confidence for each option.\nPretty handy for routing.",
+        "image": {
+          "url": "https://hashbrown.dev/marketing/example.png",
+          "altText": "Replace this example with an accurate description of the reviewed screenshot.",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
       },
       "sources": [
         {
@@ -213,7 +220,12 @@ Shape only (validated with `week check`); never reuse its text.
       "draft": {
         "channel": "linkedin",
         "text": "When should you use a decision instead of a generative model?\nI think the answer is any time the set of answers is closed.\nRouting a question is the obvious one.\nYou get a typed answer and a probability you can act on.\nWhat would you route first?",
-        "firstComment": "The v0.8 post: https://hashbrown.dev/blog/2026-10-22-hashbrown-v-0-8-0"
+        "firstComment": "The v0.8 post: https://hashbrown.dev/blog/2026-10-22-hashbrown-v-0-8-0",
+        "image": {
+          "url": "https://hashbrown.dev/marketing/example.png",
+          "altText": "Replace this example with an accurate description of the reviewed screenshot.",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
       },
       "sources": [
         {
@@ -269,7 +281,12 @@ Shape only (validated with `week check`); never reuse its text.
       "dependsOnKey": "blog",
       "draft": {
         "channel": "x",
-        "text": "New post on the hashbrown blog.\nOne concrete detail from the post goes here.\nhttps://hashbrown.dev/blog/2026-11-04-example-slug"
+        "text": "New post on the hashbrown blog.\nOne concrete detail from the post goes here.\nhttps://hashbrown.dev/blog/2026-11-04-example-slug",
+        "image": {
+          "url": "https://hashbrown.dev/marketing/example.png",
+          "altText": "Replace this example with an accurate description of the reviewed screenshot.",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
       },
       "sources": [
         {

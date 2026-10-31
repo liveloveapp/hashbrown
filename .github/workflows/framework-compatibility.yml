@@ -1,0 +1,52 @@
+name: Weekly framework compatibility
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      NX_DAEMON: 'false'
+      NX_ISOLATE_PLUGINS: 'false'
+      NX_NO_CLOUD: 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Install locked workspace dependencies
+        run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Attempt the approved seven-profile Node baseline
+        run: npx nx compatibility-baseline framework-conformance-program --skip-nx-cache
+      - name: Summarize independent attempt health
+        if: always()
+        shell: bash
+        run: |
+          fallback=0
+          if [ ! -f test-results/framework-compatibility/health.json ] || [ ! -f test-results/framework-compatibility/health.md ]; then
+            node tools/conformance/agent-frameworks/program/weekly.mjs --not-run || fallback=$?
+          fi
+          cat test-results/framework-compatibility/health.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$fallback"
+      - name: Retain baseline attempt diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: framework-compatibility-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/framework-compatibility
+          retention-days: 30
+          if-no-files-found: warn

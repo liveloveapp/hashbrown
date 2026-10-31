@@ -3,8 +3,10 @@ import type { Draft, PostResult } from '../types.ts';
 import { linkedInPost } from './api.ts';
 import type { LinkedInAuth } from './auth.ts';
 import { escapeLittleText } from './little.ts';
+import { uploadLinkedInImage } from './image.ts';
 
 interface PostRequestBody {
+  content?: { media: { id: string; altText: string } };
   author: string;
   commentary: string;
   visibility: 'PUBLIC';
@@ -58,7 +60,13 @@ export async function postLinkedIn(
   if (draft.text === undefined) {
     throw new Error('A LinkedIn draft needs text; validate it first.');
   }
+  const imageUrn = draft.image
+    ? await uploadLinkedInImage(auth, draft.image)
+    : undefined;
   const postUrn = await createPost(auth, {
+    ...(imageUrn && draft.image
+      ? { content: { media: { id: imageUrn, altText: draft.image.altText } } }
+      : {}),
     author: auth.authorUrn,
     commentary: escapeLittleText(draft.text),
     visibility: 'PUBLIC',

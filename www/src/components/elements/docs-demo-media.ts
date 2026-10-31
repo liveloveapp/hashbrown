@@ -1,3 +1,18 @@
+/**
+ * Player metadata for one recorded documentation demo. Every field is
+ * required, so an entry without a disclosure or captured size fails typecheck.
+ */
+export interface DocsDemoMedia {
+  /** Accessible name of the video. */
+  readonly title: string;
+  /** Visible caption describing what the recording shows. */
+  readonly caption: string;
+  /** How the footage was recorded, shown beneath the player. */
+  readonly recording: string;
+  /** Captured pixel size, which sets the player's aspect ratio. */
+  readonly dimensions: { readonly width: number; readonly height: number };
+}
+
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
   'canonical-workbench-production-recovery-react': {
@@ -487,15 +502,7 @@ export const DOCS_DEMOS = {
       'Actual separately installed Angular ChatComponent and Threadplane AG-UI frontend with the real Hashbrown OpenAI server adapter. Real provider output, optional canonical inspector and timeline, actual-speed footage with reading pauses. No narration. Text does not apply application state; replay makes no requests or writes.',
     dimensions: { width: 1600, height: 1000 },
   },
-} as const satisfies Record<
-  string,
-  {
-    title: string;
-    caption: string;
-    recording?: string;
-    dimensions?: { width: number; height: number };
-  }
->;
+} as const satisfies Record<string, DocsDemoMedia>;
 
 /** The stable identifier of a recorded documentation demo. */
 export type DocsDemoId = keyof typeof DOCS_DEMOS;

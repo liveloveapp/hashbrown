@@ -42,7 +42,9 @@ import { workbenchDecisionSchema } from '../../examples/quickstart/runtime/workb
 import { verifyDecisionWorkbench } from './verify-decision-workbench';
 import { verifyRecipeWorkbench } from './verify-recipe-workbench';
 import { verifyEmbedWorkbench } from './verify-embed-workbench';
+import { verifyWorkbenchAlignment } from './verify-workbench-alignment';
 import {
+  checkWorkbenchTabs,
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
@@ -1222,6 +1224,24 @@ try {
       expect(revisedSteps[0]).toBe(firstSteps[0]);
       expect(revisedSteps[1].length).toBeLessThan(firstSteps[1].length);
       mark('secondComplete');
+      // After two complete turns the full workbench at 1440px keeps the
+      // spacing grid and alignments on every inspector tab.
+      if (!live && framework === 'react' && lesson.id === 'generative-ui') {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        report.push({
+          framework,
+          lesson: lesson.id,
+          check: 'spacing-grid',
+          frame: 'full-page-1440x900',
+          tabs: await checkWorkbenchTabs(page),
+          passed: true,
+        });
+        await page.setViewportSize({ width: 1600, height: 1000 });
+        await page
+          .getByRole('tablist', { name: 'Inspector views', exact: true })
+          .getByRole('tab', { name: 'State', exact: true })
+          .click();
+      }
       if (lesson.id === 'request-transformation') {
         await page
           .getByRole('tablist', { name: 'Inspector views', exact: true })
@@ -1550,6 +1570,16 @@ try {
   if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
     report.push(
       ...(await verifyEmbedWorkbench({
+        browser,
+        origin: `http://127.0.0.1:${address.port}`,
+      })),
+    );
+    saveCheckpoint();
+  }
+  // The generative UI replay keeps its spacing grid at embed and full width.
+  if (!live && lessons.some((lesson) => lesson.id === 'generative-ui')) {
+    report.push(
+      ...(await verifyWorkbenchAlignment({
         browser,
         origin: `http://127.0.0.1:${address.port}`,
       })),
