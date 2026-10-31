@@ -1,0 +1,1835 @@
+{
+  "schemaVersion": 1,
+  "legacySha256": "05ceb86fc980f7d02d92ffd59fed6314cac9cb8ff753145a3b085dd32e1efe18",
+  "legacyFileSha256": "27a45f89265b763f08ccc3c0b5b55cc98e64abbbea15494e1adeeed155d45c43",
+  "legacyDigestEncoding": "sha256 of UTF-8 JSON.stringify(parsed capabilities.json), preserving parsed key insertion order",
+  "producerSourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+  "producerSources": [
+    {
+      "path": "tools/conformance/agent-frameworks/generate.mjs",
+      "sha256": "e960ff9a21b52e95606f2d754df588f8766ee9473255dd62ff08aa689312d9df"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/harness/capture.spec.mjs",
+      "sha256": "3d5c8521ff9b3ad96b49b84fb2ad78186ad967857460a37d3a9f5b841878fb00"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/harness/evidence.mjs",
+      "sha256": "62756cac66b268dca6781ac99f3987075628cfeed8a3a0b62e8581bf46b9bee8"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/harness/evidence.spec.mjs",
+      "sha256": "79371667b66f1311a7ff7a67e65955ba4caf8f1b449ae5ba47eb38e3ee837291"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/capture.mjs",
+      "sha256": "245a9cf3e6d2983b76206f247f013714524e5181ab60754c0ee9039b4edf9459"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/langgraph.mjs",
+      "sha256": "51b3e53b56f5bb8aececeebadb7313a815ec3b3dd457898d12a62bd0f05008e3"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+      "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/mastra-delegation.mjs",
+      "sha256": "6f379d755b4ce071002f09650acb549b171dad4301bb29fad61aff5613222dcc"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+      "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/mastra.mjs",
+      "sha256": "f6ba9a1d66fa0321abfdb68f254aac4fb687c768260c15bb10028fc82aad512e"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+      "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/package-lock.json",
+      "sha256": "1f3269c22f24ef7042d3431bc74fe112f9c71e2545127a0b06462436159f7c5b"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/scenario.mjs",
+      "sha256": "c57b00285eea4cf618d9adcd25531ea77ed50a787fc1ca34e20073641cf6f51d"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/node/scenario.spec.mjs",
+      "sha256": "7181a8b08c363259e80bb2f4773b2e395280f1252ddb2c44e0511b09ebb55f88"
+    }
+  ],
+  "runHealth": {
+    "status": "not-run",
+    "reason": "Historical qualifications are not the result of a new execution attempt."
+  },
+  "records": [
+    {
+      "id": "langgraph/local-sdk-seam",
+      "framework": "langgraph",
+      "profile": "local-sdk-seam",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server",
+      "versions": {
+        "@ag-ui/langgraph": "0.0.45",
+        "@langchain/langgraph": "1.5.3",
+        "@langchain/core": "1.3.2",
+        "langchain": "1.6.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/langgraph-server-tool.json",
+        "sha256": "97261a9bfeb04478e0e7b65a25823dbd971388000186700421091d8a3862de69",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "success",
+          "startBeforeToolCompletion": true,
+          "activityBeforeToolCompletion": false,
+          "nativeCheckpointRestore": "not-tested",
+          "nativeSubgraphObserved": false
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+          "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "id": "mastra/buffered",
+      "framework": "mastra",
+      "profile": "buffered",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "real local Mastra Agent.stream",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/mastra-buffered-server-tool.json",
+        "sha256": "cb85ca603a11e20254e4690514aa38f8d346b584fefd034a2614b33fd8faf104",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "real local Mastra Agent.stream",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "success",
+          "startBeforeToolCompletion": false,
+          "activityBeforeToolCompletion": false,
+          "nativeCheckpointRestore": "not-tested"
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+          "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "unsupported",
+          "evidence": []
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "id": "mastra/live",
+      "framework": "mastra",
+      "profile": "live",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "real local Mastra Agent.stream",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/mastra-live-server-tool.json",
+        "sha256": "7832885c8640d32fac1c404d4aa711525b9a233484a7a173d69d467561323c3f",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "real local Mastra Agent.stream",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "success",
+          "startBeforeToolCompletion": true,
+          "activityBeforeToolCompletion": false,
+          "nativeCheckpointRestore": "not-tested"
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+          "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "id": "langgraph/native-subgraph",
+      "framework": "langgraph",
+      "profile": "native-subgraph",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server",
+      "versions": {
+        "@ag-ui/langgraph": "0.0.45",
+        "@langchain/langgraph": "1.5.3",
+        "@langchain/core": "1.3.2",
+        "langchain": "1.6.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/langgraph-native-subgraph.json",
+        "sha256": "0430e7701803667e5d55ab92763d6f4c53fc6c78999eac01379fce162dc83786",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "in-process LangGraph SDK Client seam backed by real graph.streamEvents; no API server",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "success",
+          "startBeforeToolCompletion": true,
+          "activityBeforeToolCompletion": false,
+          "nativeCheckpointRestore": "not-tested",
+          "nativeSubgraphObserved": true
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+          "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "missing-upstream",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "nativeChildExecution",
+          "scenarioId": "delegation.native-child",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/langgraph.spec.mjs",
+              "sha256": "021be888f2ac27d1cf128c250be6be0073d1b84868409b47df0203c1cb8052e1",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mastra/native-delegation",
+      "framework": "mastra",
+      "profile": "native-delegation",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "real local Mastra Agent.stream with native agents configuration",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/mastra-native-delegation.json",
+        "sha256": "0f30b3bd2b3c9cc511402fef493501a18ed6931de30e78f3b25b0500c6f14a22",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "real local Mastra Agent.stream with native agents configuration",
+          "childModelExecutions": 1,
+          "parentModelExecutions": 2,
+          "nativeSubagentAttribution": "missing-upstream",
+          "nativeCheckpointRestore": "not-tested"
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+          "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "missing-upstream",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "nativeChildExecution",
+          "scenarioId": "delegation.native-child",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra-delegation.spec.mjs",
+              "sha256": "f813a4ae3a91b8242a34b0d4e42822ec93c4b640659c81d3b9016c5022a08d4d",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mastra/background",
+      "framework": "mastra",
+      "profile": "background",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "real local Mastra Agent.stream",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3",
+        "@mastra/memory": "1.39.1"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/mastra-background-activity.json",
+        "sha256": "2af0fb86f828d70d64405701abc0ef7643df2cba223e5abec37ea59870ceba41",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "real local Mastra Agent.stream",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "success",
+          "startBeforeToolCompletion": false,
+          "activityBeforeToolCompletion": true,
+          "nativeCheckpointRestore": "not-tested"
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+          "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "unsupported",
+          "evidence": []
+        },
+        {
+          "capability": "liveActivityBeforeToolCompletion",
+          "scenarioId": "activities.live-start",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "id": "mastra/background-failure",
+      "framework": "mastra",
+      "profile": "background-failure",
+      "mode": "native",
+      "qualifiedAt": "2026-10-30",
+      "sourceCommit": "826953718d22af984606c51645cb18e6acd3655b",
+      "sourcePullRequest": 844,
+      "ciRun": "41100895094",
+      "ciUrl": "https://github.com/liveloveapp/hashbrown/actions/runs/41100895094",
+      "runtime": "not-recorded",
+      "platform": "not-recorded",
+      "protocol": "not-recorded",
+      "transport": "real local Mastra Agent.stream",
+      "versions": {
+        "@ag-ui/mastra": "2.0.1",
+        "@mastra/core": "1.80.0",
+        "@mastra/client-js": "1.57.0",
+        "@ag-ui/core": "1.0.3",
+        "@mastra/memory": "1.39.1"
+      },
+      "capture": {
+        "path": "packages/core/src/models/fixtures/agent-frameworks/mastra-background-failure.json",
+        "sha256": "34e39e32a8ac48f5441efbc1fa87718c258b54f9ed798708f1b367f1c45c0c03",
+        "sourceSha256": "6292e99e18320dee8d5ec1a55453327007f0c3c8c4e6d2b6edfd744af9da23fd",
+        "metadata": {
+          "realFrameworkExecution": true,
+          "transport": "real local Mastra Agent.stream",
+          "toolExecutions": 1,
+          "toolCompleted": true,
+          "toolAbortObserved": false,
+          "outcome": "failure",
+          "startBeforeToolCompletion": false,
+          "activityBeforeToolCompletion": true,
+          "nativeCheckpointRestore": "not-tested"
+        }
+      },
+      "sources": [
+        {
+          "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+          "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff"
+        },
+        {
+          "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+          "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a"
+        },
+        {
+          "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+          "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc"
+        },
+        {
+          "path": "tools/conformance/conformance.playwright.config.ts",
+          "sha256": "35eca201329b1872c29a08526ae87cfa099357827514aec6880987645c0e1eea"
+        }
+      ],
+      "claims": [
+        {
+          "capability": "actualServerToolExecution",
+          "scenarioId": "tools.server-execution",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "canonicalConsumerRestore",
+          "scenarioId": "recovery.canonical-consumer-restore",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "canonical-persistence",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "next-request",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "reactDisplay",
+          "scenarioId": "tools.react-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "angularDisplay",
+          "scenarioId": "tools.angular-display",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "sameNameClientNotReexecuted",
+          "scenarioId": "tools.same-name-client-inert",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "liveStartBeforeToolCompletion",
+          "scenarioId": "tools.live-start",
+          "status": "unsupported",
+          "evidence": []
+        },
+        {
+          "capability": "liveActivityBeforeToolCompletion",
+          "scenarioId": "activities.live-start",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "activities",
+          "scenarioId": "activities.native",
+          "status": "passed",
+          "evidence": [
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "producer-execution",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/agent-frameworks/node/mastra.spec.mjs",
+              "sha256": "2f546a0e1bc30f371d9dac40e32b44ce5bed8ed68dec93b62d5c9188d8bbe1ff",
+              "stage": "bridge-wire",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "packages/core/src/models/agent-framework-display.conformance.spec.ts",
+              "sha256": "aed95616a15eb04aa8925da273ce7759fd744fd06616eeebf9f1502351598e5a",
+              "stage": "core-consumer",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-react",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            },
+            {
+              "path": "tools/conformance/specs/agent-framework-display.spec.ts",
+              "sha256": "ad28bcb8b008b07c29c7d1ad48e1bd23337a89d8876fbb6c64be85b933efcefc",
+              "stage": "browser-angular",
+              "result": "pass",
+              "basis": "Retained #844 qualification; source assertions bound to capture and exact pins."
+            }
+          ]
+        },
+        {
+          "capability": "nativeCheckpointRestore",
+          "scenarioId": "recovery.native-checkpoint",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "subagents",
+          "scenarioId": "delegation.attributed-subagents",
+          "status": "not-tested",
+          "evidence": []
+        },
+        {
+          "capability": "citationsAndAttribution",
+          "scenarioId": "activities.citations",
+          "status": "not-tested",
+          "evidence": []
+        }
+      ]
+    }
+  ]
+}

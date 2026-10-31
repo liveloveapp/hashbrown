@@ -10,6 +10,75 @@ Frameworks require real bridge execution, the prepared root store and both brows
 consumers before a capability is marked passed. A green capture harness does not
 establish framework compatibility.
 
+## Compatibility program and public reports
+
+The private `framework-conformance-program` Nx project owns the reviewed inventory,
+validation, generated docs and independent baseline attempt reports. It introduces
+no public runtime API. The [React compatibility page](https://hashbrown.dev/docs/react/platform/compatibility)
+and [Angular compatibility page](https://hashbrown.dev/docs/angular/platform/compatibility)
+share the canonical evidence matrix; both are reachable from Model providers.
+
+```sh
+npx nx build framework-conformance-program                  # validate inventory + generated pages
+npx nx test framework-conformance-program                   # inventory, projection and orchestration tests
+npx nx lint framework-conformance-program                   # program JavaScript
+npx nx run framework-conformance-program:generate           # explicitly write both compatibility pages
+npx nx report framework-conformance-program                 # check the checked-in projection without writing
+npx nx compatibility-baseline framework-conformance-program --skip-nx-cache # actual approved baseline attempt
+```
+
+Build, test, lint, generate and report use the checked-in evidence without
+installing or executing a new framework. The last command runs actual producer,
+prepared-core and React/Angular browser checks, with attempt output under
+`test-results/framework-compatibility/`. Keep capture regeneration and promotion
+of reviewed qualifications explicit; an attempt does not promote itself.
+
+[program/catalog.json](program/catalog.json) defines the wider capability and
+scenario catalog, including conversation/streaming, tools, approvals, shared state,
+structured output, trusted UI, media, activities, delegation and recovery.
+[program/qualification.json](program/qualification.json) retains the exact
+versions, transport/configuration, source commit, qualification date, source and
+capture SHA-256 hashes, and per-scenario evidence stages imported from reviewed
+historical proof. Its durable captures and assertion sources link to the immutable
+qualification commit; a framework name or a green generic harness is insufficient.
+Reproducibility requires the matching pins, sources, configuration and evidence
+stages. Unrecorded runtime/platform/protocol values remain `not-recorded`.
+
+Read each state within its named profile and scenario:
+
+- `passed`: the required evidence stages passed for that exact configuration.
+- `native`: a profile kind using framework/bridge behavior without enrichment;
+  it is not a blanket pass or a claim that every capability is native.
+- `recipe-required`: retained output lacks required native enrichment. No recipe
+  was tested by implication; an executed recipe needs its own versioned profile
+  and evidence.
+- `missing-upstream`: retained execution demonstrates a producer or bridge gap.
+- `unsupported`: an authoritatively absent capability; a failed probe alone does
+  not establish this state.
+- `not-tested`: sufficient execution evidence is absent, including planned
+  profiles and scenarios.
+- `deferred`: intentionally outside this delivery; file search remains deferred.
+
+Last qualified compatibility is separate from current attempt health. Generated
+pages contain a static as-of snapshot of the reviewed records, not a live UI
+status service. A baseline attempt records its own success, failure or `not-run`
+health and diagnostics; infrastructure failures do not erase historical proof.
+The [weekly baseline workflow](../../../.github/workflows/framework-compatibility.yml)
+is configured for main after the workflow is enabled, with manual dispatch and a
+weekly schedule. It covers only the seven approved exact Node baseline profiles.
+It retains attempt artifacts and a job summary without rewriting qualification
+records. The workflow configuration and historical records do not establish that
+a new weekly run exists or passed.
+
+Candidate execution has not run. Dependency and runtime ranges require explicit
+approval before candidate installation or execution; catalog inclusion grants no
+such approval. Pydantic AI is the first planned new SDK and has not yet been
+installed or tested in this program. Python LangGraph, API-server transport,
+Strands and the other catalog profiles retain their recorded `not-tested` scope.
+The Microsoft Agent Framework .NET display inventory is currently a source audit,
+not an additional execution claim; preserve the maintained host and its separate
+native-history/recovery evidence below.
+
 ## Evidence boundaries
 
 - Raw captures preserve every producer event and its order. Their hashes establish

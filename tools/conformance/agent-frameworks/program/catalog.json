@@ -1,0 +1,663 @@
+{
+  "schemaVersion": 1,
+  "scope": "Versioned framework profile evidence; planned family coverage is not a compatibility claim.",
+  "families": [
+    {
+      "id": "conversation",
+      "label": "Conversation and streaming"
+    },
+    {
+      "id": "tools",
+      "label": "Server and client tools"
+    },
+    {
+      "id": "approvals",
+      "label": "Approval and control"
+    },
+    {
+      "id": "state",
+      "label": "Shared state"
+    },
+    {
+      "id": "structured-output",
+      "label": "Structured output"
+    },
+    {
+      "id": "trusted-ui",
+      "label": "Trusted generative UI"
+    },
+    {
+      "id": "media",
+      "label": "Media and attachments"
+    },
+    {
+      "id": "activities",
+      "label": "Activities and rich steps"
+    },
+    {
+      "id": "delegation",
+      "label": "Subagents and delegation"
+    },
+    {
+      "id": "recovery",
+      "label": "Recovery and isolation"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "tools.server-execution",
+      "family": "tools",
+      "capability": "actualServerToolExecution",
+      "requiredStages": ["producer-execution", "bridge-wire"],
+      "expectation": "Actual server tool callbacks execute and emit retained wire events."
+    },
+    {
+      "id": "recovery.canonical-consumer-restore",
+      "family": "recovery",
+      "capability": "canonicalConsumerRestore",
+      "requiredStages": [
+        "core-consumer",
+        "canonical-persistence",
+        "next-request"
+      ],
+      "expectation": "Prepared root-store projection survives commit, JSON restore and the next outgoing request. This does not prove backend restart."
+    },
+    {
+      "id": "tools.react-display",
+      "family": "tools",
+      "capability": "reactDisplay",
+      "requiredStages": ["bridge-wire", "core-consumer", "browser-react"],
+      "expectation": "React renders retained server calls through the production browser host."
+    },
+    {
+      "id": "tools.angular-display",
+      "family": "tools",
+      "capability": "angularDisplay",
+      "requiredStages": ["bridge-wire", "core-consumer", "browser-angular"],
+      "expectation": "Angular renders retained server calls through the production browser host."
+    },
+    {
+      "id": "tools.same-name-client-inert",
+      "family": "tools",
+      "capability": "sameNameClientNotReexecuted",
+      "requiredStages": [
+        "producer-execution",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Explicitly classified server calls do not execute a matching client handler; independent client control runs once."
+    },
+    {
+      "id": "tools.live-start",
+      "family": "tools",
+      "capability": "liveStartBeforeToolCompletion",
+      "requiredStages": ["producer-execution", "bridge-wire"],
+      "expectation": "A causal execution gate establishes START before tool completion."
+    },
+    {
+      "id": "recovery.native-checkpoint",
+      "family": "recovery",
+      "capability": "nativeCheckpointRestore",
+      "requiredStages": [
+        "producer-execution",
+        "native-recovery",
+        "bridge-wire",
+        "core-consumer"
+      ],
+      "expectation": "A second actual backend process restores durable server state; consumer JSON restore is insufficient."
+    },
+    {
+      "id": "activities.native",
+      "family": "activities",
+      "capability": "activities",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Native activity snapshots and deltas preserve status and content."
+    },
+    {
+      "id": "delegation.attributed-subagents",
+      "family": "delegation",
+      "capability": "subagents",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Real child execution also supplies standard lifecycle and explicit ownership provenance."
+    },
+    {
+      "id": "activities.citations",
+      "family": "activities",
+      "capability": "citationsAndAttribution",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Source, citation and attribution data survive projection."
+    },
+    {
+      "id": "delegation.native-child",
+      "family": "delegation",
+      "capability": "nativeChildExecution",
+      "requiredStages": ["producer-execution", "bridge-wire"],
+      "expectation": "Native child executes; this alone does not establish attributed subagent lifecycle."
+    },
+    {
+      "id": "activities.live-start",
+      "family": "activities",
+      "capability": "liveActivityBeforeToolCompletion",
+      "requiredStages": ["producer-execution", "bridge-wire"],
+      "expectation": "Activity arrives at the causal gate before real tool completion."
+    },
+    {
+      "id": "conversation.streaming",
+      "family": "conversation",
+      "capability": "streamingText",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Text deltas arrive before completion with independent message identity."
+    },
+    {
+      "id": "conversation.history",
+      "family": "conversation",
+      "capability": "multiTurnHistory",
+      "requiredStages": ["producer-execution", "bridge-wire", "next-request"],
+      "expectation": "Multi-turn input preserves native message history."
+    },
+    {
+      "id": "approvals.resume",
+      "family": "approvals",
+      "capability": "approvalResume",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Allow, deny, cancel and resume preserve ownership without duplicate side effects."
+    },
+    {
+      "id": "state.snapshot-patch",
+      "family": "state",
+      "capability": "sharedState",
+      "requiredStages": ["producer-execution", "bridge-wire", "core-consumer"],
+      "expectation": "Snapshots and ordered patches remain isolated between threads."
+    },
+    {
+      "id": "structured-output.schema",
+      "family": "structured-output",
+      "capability": "structuredOutput",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Complete and partial schema-constrained data are validated independently from backend object production."
+    },
+    {
+      "id": "trusted-ui.components",
+      "family": "trusted-ui",
+      "capability": "trustedUi",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Only trusted components with validated props render, including restore and cancellation."
+    },
+    {
+      "id": "media.typed-history",
+      "family": "media",
+      "capability": "typedMedia",
+      "requiredStages": ["producer-execution", "bridge-wire", "core-consumer"],
+      "expectation": "Typed media input/history survives bridge transport with asset cleanup; no perception or file-search claim."
+    },
+    {
+      "id": "recovery.thread-isolation",
+      "family": "recovery",
+      "capability": "threadIsolation",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Two concurrent threads do not mix outputs or dispatch across owners."
+    },
+    {
+      "id": "recovery.browser-reload",
+      "family": "recovery",
+      "capability": "browserReload",
+      "requiredStages": [
+        "core-consumer",
+        "canonical-persistence",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Reload the actual browser host, restore committed display and preserve application handler counts; this does not prove native backend restart."
+    },
+    {
+      "id": "recovery.reconnect",
+      "family": "recovery",
+      "capability": "streamReconnect",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Disconnect and reconnect an actual streaming subscriber, retaining ownership without duplicate tool dispatch or mixed run identity."
+    },
+    {
+      "id": "tools.client-roundtrip",
+      "family": "tools",
+      "capability": "clientToolRoundtrip",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "next-request",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "An independent ordinary client tool executes once and its actual result reaches the next native framework turn."
+    },
+    {
+      "id": "tools.failure",
+      "family": "tools",
+      "capability": "toolFailure",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "A real tool callback fails; explicit error classification survives bridge and consumer projection without parsing human-readable result text."
+    },
+    {
+      "id": "tools.cancel",
+      "family": "tools",
+      "capability": "toolCancellation",
+      "requiredStages": [
+        "producer-execution",
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Cancel actual gated tool execution and assert explicit terminal outcome and absence of late side effects; stream closure alone is insufficient."
+    },
+    {
+      "id": "conversation.abnormal-eof",
+      "family": "conversation",
+      "capability": "abnormalEof",
+      "requiredStages": [
+        "bridge-wire",
+        "core-consumer",
+        "browser-react",
+        "browser-angular"
+      ],
+      "expectation": "Consumer fault injection closes a stream without a terminal event and verifies bounded settlement; this does not claim a producer emits malformed output."
+    }
+  ],
+  "plannedProfiles": [
+    {
+      "id": "pydantic-ai/planned",
+      "framework": "pydantic-ai",
+      "label": "Pydantic AI",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "First additional framework; no dependencies approved or execution performed.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "google-adk/planned",
+      "framework": "google-adk",
+      "label": "Google ADK",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Planned candidate.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "strands/planned",
+      "framework": "strands",
+      "label": "Strands",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Planned candidate; legacy deferred entry is preserved in capabilities.json.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "crewai/planned",
+      "framework": "crewai",
+      "label": "CrewAI",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Discovery only.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "ag2/planned",
+      "framework": "ag2",
+      "label": "AG2",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Discovery only.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "agno/planned",
+      "framework": "agno",
+      "label": "Agno",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Discovery only.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "llamaindex/planned",
+      "framework": "llamaindex",
+      "label": "LlamaIndex",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Discovery only.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "vercel-ai-sdk/planned",
+      "framework": "vercel-ai-sdk",
+      "label": "Vercel AI SDK",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "planned",
+      "detail": "Bridge/transport investigation required.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    },
+    {
+      "id": "microsoft-agent-framework-dotnet/planned",
+      "framework": "microsoft-agent-framework-dotnet",
+      "label": "Microsoft Agent Framework (.NET)",
+      "profile": "planned",
+      "status": "not-tested",
+      "kind": "source-audit",
+      "detail": "Source audit only; maintained native suites are separate evidence, display qualification not tested.",
+      "scenarioIds": [
+        "tools.server-execution",
+        "recovery.canonical-consumer-restore",
+        "tools.react-display",
+        "tools.angular-display",
+        "tools.same-name-client-inert",
+        "tools.live-start",
+        "recovery.native-checkpoint",
+        "activities.native",
+        "delegation.attributed-subagents",
+        "activities.citations",
+        "delegation.native-child",
+        "activities.live-start",
+        "conversation.streaming",
+        "conversation.history",
+        "approvals.resume",
+        "state.snapshot-patch",
+        "structured-output.schema",
+        "trusted-ui.components",
+        "media.typed-history",
+        "recovery.thread-isolation",
+        "recovery.browser-reload",
+        "recovery.reconnect",
+        "tools.client-roundtrip",
+        "tools.failure",
+        "tools.cancel",
+        "conversation.abnormal-eof"
+      ]
+    }
+  ],
+  "deferred": ["file-search"]
+}
