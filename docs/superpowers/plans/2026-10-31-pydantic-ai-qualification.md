@@ -29,7 +29,7 @@
 - [x] Implement deterministic FunctionModel responses, actual registered tool callbacks, per-thread controls, HTTP run/control endpoints and bounded cleanup. Public AG-UI adapter generates wire events.
 - [x] Probe real callback failure and cancellation with explicit server cancellation and subscriber disconnect separately. Assert observed wire classification; preserve demonstrated gaps without parsing prose.
 - [x] Keep tests top-level with explicit try/finally cleanup; use stdlib Python testing/assertions and Node test APIs without new test dependencies.
-- [ ] Run host build/test/lint equivalents via Nx and commit.
+- [x] Run host build/test/lint equivalents via Nx and commit.
 
 ### Task 2: Prepared-store and real browser qualification
 
@@ -40,7 +40,7 @@
 - [x] Drive events through createStore({reducers,prepareAction:ɵprepareRootAction}) and public projection; verify protocol errors and no duplicate authority.
 - [x] Write failing live browser tests for both consumers: streaming before release, server execution once, independent client handler once with its result reaching Python, history and cancellation/failed outcome observations.
 - [x] Implement only necessary harness support; fix core only for demonstrated contract-compliant consumer bugs with dedicated regression tests.
-- [ ] Run affected core/conformance/consumer package build/test/lint and both browser projects. Commit evidence and tests.
+- [x] Run affected core/conformance/consumer package build/test/lint and both browser projects. Commit evidence and tests.
 
 ### Task 3: Extend versioned inventory without rewriting legacy qualification
 
@@ -48,9 +48,9 @@
 
 - [x] Test rejection of missing stages, altered wire bytes, source/runtime/lock mismatch, fabricated passed outcomes and native recovery claims.
 - [x] Introduce additive non-legacy profile validation; retain original seven-profile digest and provenance rules unchanged.
-- [ ] Publish only executed scenarios with all required stages. For demonstrated missing producer information, retain raw evidence and explicit gap; unexecuted scenarios stay not-tested. Pydantic planned broader coverage remains visible.
-- [ ] Bind exact framework/bridge/server/runtime versions, protocol negotiation, source hashes and qualification date/source execution identity. Distinguish local retained evidence from eventual CI acceptance; do not invent CI provenance.
-- [ ] Regenerate React/Angular compatibility pages via data-only generator; test determinism/stale output and source links. Commit.
+- [x] Publish only executed scenarios with all required stages. For demonstrated missing producer information, retain raw evidence and explicit gap; unexecuted scenarios stay not-tested. Pydantic planned broader coverage remains visible.
+- [x] Bind exact framework/bridge/server/runtime versions, protocol negotiation, source hashes and qualification date/source execution identity. Distinguish local retained evidence from eventual CI acceptance; do not invent CI provenance.
+- [x] Regenerate React/Angular compatibility pages via data-only generator; test determinism/stale output and source links. Commit.
 
 ### Task 4: Affected gates and isolated weekly health
 
@@ -64,8 +64,8 @@
 
 ### Task 5: Independent review, PR and green merge
 
-- [ ] Independently review implementation against spec and quality/security concerns; resolve actionable issues.
-- [ ] Verify clean intended diff, no dependency leakage, no credentials, deferred file search and source evidence integrity.
+- [x] Independently review implementation against spec and quality/security concerns; resolve actionable issues.
+- [x] Verify clean intended diff, no dependency leakage, no credentials, deferred file search and source evidence integrity.
 - [ ] Open PR with problem/behavior, exact qualification boundaries and verification; attach it to this chat.
 - [ ] Address CI/review failures. Keep main merges moving; update this branch when required and merge normally only on current green checks. User already authorizes green merge.
 - [ ] Confirm actual merge and report remaining qualification gaps and warnings.
@@ -97,3 +97,11 @@ Task-graph/cache tests must also cover shared catalog and harness edits, capture
 - Actual same-name native/frontend registration rejects upstream before model execution. Native tool outcomes remain opaque to generic Hashbrown consumers; passing regression probes do not turn these capabilities green.
 - Host review added a real paused-ASGI-terminal lifecycle regression, bounded EOF handling and fresh verification of all retained requests/native history/captures.
 - Evidence review added callback/native-history/wire predicates, causal START observations, contradiction rejection, exact consumer assertion-source binding and uncached nested prepared-store execution.
+
+### Source-bound qualification
+
+The actual pinned baseline passed all three stages at source commit `251b01b122846a86789c52cfd46b37c6d4f6b8a2` on 2026-10-31. Its local execution identity, exact pins, raw requests/wire/native history, causal observations and sanitized successful command results are retained in `python/evidence/qualification-*.json`. Artifact links use a separate `evidenceCommit` because metadata was committed after execution. Independent review verified every source and artifact digest.
+
+The public record contains eight passed capabilities, three demonstrated gaps and fifteen not-tested capabilities. The candidate is explicitly deduplicated with the same exact approved pins; no newer dependency set or CI acceptance is inferred.
+
+Local acceptance includes 2,478 core tests, 130 conformance tests, 290 Angular tests, 222 React tests, seven dedicated prepared-store tests, fourteen Python controller/capture tests plus stdlib assertions, and fourteen real browser cases. Website tests passed 2,432 cases. Final public generation/build/lint checks and website browser verification run again after publication edits; hosted PR checks and merge are pending.

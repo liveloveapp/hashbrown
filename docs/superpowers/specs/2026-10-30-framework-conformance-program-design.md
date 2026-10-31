@@ -118,18 +118,18 @@ explicit and tested. Never edit a producer trace to manufacture a missing field.
 
 ## Capability families and representative scenarios
 
-| Family | Representative observable behavior |
-| --- | --- |
-| Conversation and streaming | Text deltas before completion; multi-turn history; independent message identity; a silent but valid run; bounded handling of abnormal EOF. |
-| Server and client tools | Partial arguments; gated execution; parallel/dependent calls; results and useful failures; explicit provider identity; same-name server calls remain inert while an independent client tool executes once. |
-| Approval and control | Allow, deny, cancel and resume; pending arguments versus execution start; no duplicate side effect after resume; stale/duplicate decisions do not acquire a new owner. |
-| Shared state | Snapshot and ordered patch updates; app-to-agent input where supported; no cross-thread leakage; invalid-patch behavior tested at its owning boundary. |
-| Structured output | Complete and partial schema-constrained data; validation failure; multi-turn continuation. Backend structured output and consumer parsing receive separate evidence. |
-| Generative UI | Trusted components and validated props; progressive/nested rendering where supported; cancellation and restore; unknown components and invalid props never gain execution authority. |
-| Media and attachments | Supported typed input/history parts; preservation through the bridge; cancellation during asset acquisition and resource cleanup. Handling an image or audio part does not prove model perception quality or enable file search. |
-| Activities and rich steps | Native activity snapshots/deltas; non-tool progress stays an activity; labels, custom icons and actual status transitions; source/citation/attribution preservation. |
-| Subagents and delegation | Real child execution; standard lifecycle/provenance where supplied; parent/child settlement independence; parallel children and cancellation ownership. |
-| Recovery and isolation | Browser reload, reconnect, approval resume and durable server restart as separate capabilities; next-turn native history; two concurrent threads with no mixed outputs or cross-dispatch. |
+| Family                     | Representative observable behavior                                                                                                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conversation and streaming | Text deltas before completion; multi-turn history; independent message identity; a silent but valid run; bounded handling of abnormal EOF.                                                                                       |
+| Server and client tools    | Partial arguments; gated execution; parallel/dependent calls; results and useful failures; explicit provider identity; same-name server calls remain inert while an independent client tool executes once.                       |
+| Approval and control       | Allow, deny, cancel and resume; pending arguments versus execution start; no duplicate side effect after resume; stale/duplicate decisions do not acquire a new owner.                                                           |
+| Shared state               | Snapshot and ordered patch updates; app-to-agent input where supported; no cross-thread leakage; invalid-patch behavior tested at its owning boundary.                                                                           |
+| Structured output          | Complete and partial schema-constrained data; validation failure; multi-turn continuation. Backend structured output and consumer parsing receive separate evidence.                                                             |
+| Generative UI              | Trusted components and validated props; progressive/nested rendering where supported; cancellation and restore; unknown components and invalid props never gain execution authority.                                             |
+| Media and attachments      | Supported typed input/history parts; preservation through the bridge; cancellation during asset acquisition and resource cleanup. Handling an image or audio part does not prove model perception quality or enable file search. |
+| Activities and rich steps  | Native activity snapshots/deltas; non-tool progress stays an activity; labels, custom icons and actual status transitions; source/citation/attribution preservation.                                                             |
+| Subagents and delegation   | Real child execution; standard lifecycle/provenance where supplied; parent/child settlement independence; parallel children and cancellation ownership.                                                                          |
+| Recovery and isolation     | Browser reload, reconnect, approval resume and durable server restart as separate capabilities; next-turn native history; two concurrent threads with no mixed outputs or cross-dispatch.                                        |
 
 The catalog covers the full integration. That does not make every capability
 mandatory for every framework. Basic AG-UI must work without `b4.step` or
@@ -156,14 +156,14 @@ runtime/platform, scenario revision and recipe identity when present.
 
 Record these capability states independently from CI health:
 
-| State | Required meaning |
-| --- | --- |
-| `passed` | Required scenario stages passed for the named versioned configuration. |
-| `recipe-required` | The native profile needs enrichment to satisfy the capability. This state alone makes no claim that a recipe exists or passed. |
+| State              | Required meaning                                                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `passed`           | Required scenario stages passed for the named versioned configuration.                                                                                |
+| `recipe-required`  | The native profile needs enrichment to satisfy the capability. This state alone makes no claim that a recipe exists or passed.                        |
 | `missing-upstream` | Real execution demonstrated missing producer/bridge information. Link the demonstrated gap; source inspection alone cannot create execution evidence. |
-| `unsupported` | The integration explicitly lacks the capability, with an authoritative reason and evidence type. A failed probe alone is not enough. |
-| `not-tested` | No sufficient execution evidence. This is also the initial state for planned coverage. |
-| `deferred` | Intentionally excluded from current delivery, including file search. |
+| `unsupported`      | The integration explicitly lacks the capability, with an authoritative reason and evidence type. A failed probe alone is not enough.                  |
+| `not-tested`       | No sufficient execution evidence. This is also the initial state for planned coverage.                                                                |
+| `deferred`         | Intentionally excluded from current delivery, including file search.                                                                                  |
 
 An executed recipe has its own profile, with recipe identity and version, whose
 capability can become `passed` after all required stages succeed. The public
@@ -361,5 +361,4 @@ The implementation plans must identify the exact Nx targets for each slice.
   league table.
 
 The approved foundation implementation and verification are tracked in the
-[foundation plan](../plans/2026-10-30-conformance-foundation.md). Pydantic execution
-and Python dependency installation remain a separate, unstarted slice.
+[foundation plan](../plans/2026-10-30-conformance-foundation.md). The separately approved [Pydantic baseline plan](../plans/2026-10-31-pydantic-ai-qualification.md) adds real HTTP producer, prepared-store and both browser qualifications for selected scenarios, with native gaps retained. Broader Python capabilities and native recovery remain separate, unstarted slices. File search remains deferred.
