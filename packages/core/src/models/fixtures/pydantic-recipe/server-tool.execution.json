@@ -1,0 +1,310 @@
+{
+  "entered": 1,
+  "completed": 1,
+  "cancelled": 0,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": false,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "server-tool",
+          "timestamp": "2026-10-31T19:58:30.056018Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T19:58:30.057565Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+      "conversation_id": "capture-server-tool",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "capture-server-tool-user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "serverTool",
+          "args": "{\"city\":\"London\"}",
+          "tool_call_id": "capture-server-tool-server",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:58:30.058771Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+      "conversation_id": "capture-server-tool",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "serverTool",
+          "content": "server-result:London",
+          "tool_call_id": "capture-server-tool-server",
+          "tool_kind": null,
+          "metadata": null,
+          "timestamp": "2026-10-31T19:58:30.063342Z",
+          "outcome": "success",
+          "retry": null,
+          "part_kind": "tool-return"
+        }
+      ],
+      "timestamp": "2026-10-31T19:58:30.063842Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+      "conversation_id": "capture-server-tool",
+      "metadata": null,
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "content": "Tool result: server-result:London",
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "citations": null,
+          "part_kind": "text"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T19:58:30.064707Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+      "conversation_id": "capture-server-tool",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T19:58:30.056018Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.057565Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+        "conversation_id": "capture-server-tool",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-server-tool-user"
+          }
+        },
+        "state": "complete"
+      }
+    ],
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T19:58:30.056018Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.057565Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+        "conversation_id": "capture-server-tool",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-server-tool-user"
+          }
+        },
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "serverTool",
+            "args": "{\"city\":\"London\"}",
+            "tool_call_id": "capture-server-tool-server",
+            "tool_kind": null,
+            "id": null,
+            "provider_name": null,
+            "provider_details": null,
+            "part_kind": "tool-call"
+          }
+        ],
+        "usage": {
+          "input_tokens": 50,
+          "cache_write_tokens": 0,
+          "cache_write_1h_tokens": 0,
+          "cache_read_tokens": 0,
+          "output_tokens": 4,
+          "output_reasoning_tokens": 0,
+          "input_audio_tokens": 0,
+          "cache_audio_read_tokens": 0,
+          "output_audio_tokens": 0,
+          "audio_seconds": 0,
+          "details": {},
+          "cost": null
+        },
+        "model_name": "function::model_stream",
+        "model_id": "function:function::model_stream",
+        "timestamp": "2026-10-31T19:58:30.058771Z",
+        "kind": "response",
+        "provider_name": null,
+        "provider_url": null,
+        "canonical_system": null,
+        "provider_details": null,
+        "provider_response_id": null,
+        "finish_reason": null,
+        "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+        "conversation_id": "capture-server-tool",
+        "metadata": null,
+        "workspace_ref": null,
+        "history_digest": null,
+        "failed_attempts": null,
+        "state": "complete"
+      },
+      {
+        "parts": [
+          {
+            "tool_name": "serverTool",
+            "content": "server-result:London",
+            "tool_call_id": "capture-server-tool-server",
+            "tool_kind": null,
+            "metadata": null,
+            "timestamp": "2026-10-31T19:58:30.063342Z",
+            "outcome": "success",
+            "retry": null,
+            "part_kind": "tool-return"
+          }
+        ],
+        "timestamp": "2026-10-31T19:58:30.063842Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1938a-cea8-735e-a059-17f0fab9a76e",
+        "conversation_id": "capture-server-tool",
+        "metadata": null,
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-server-tool",
+      "runId": "capture-server-tool-run",
+      "messages": [
+        {
+          "id": "capture-server-tool-user",
+          "role": "user",
+          "content": "server-tool"
+        }
+      ],
+      "tools": [],
+      "context": [],
+      "state": {},
+      "forwardedProps": {},
+      "protocolVersion": "1.0"
+    }
+  ],
+  "wireHistory": [
+    {
+      "id": "capture-server-tool-user",
+      "role": "user",
+      "content": "server-tool"
+    },
+    {
+      "id": "e02f4872-9f84-42e9-bde0-916a4e2ad786",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "capture-server-tool-server",
+          "type": "function",
+          "function": {
+            "name": "serverTool",
+            "arguments": "{\"city\":\"London\"}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "0b4cb118-3edd-47ec-ba6f-c930a42bcb72",
+      "role": "tool",
+      "content": "server-result:London",
+      "toolCallId": "capture-server-tool-server",
+      "metadata": {
+        "hashbrown.tool": {
+          "v": 1,
+          "outcome": "success"
+        }
+      }
+    },
+    {
+      "id": "4aecda80-771c-429a-b2b5-c9332b67edc6",
+      "role": "assistant",
+      "content": "Tool result: server-result:London"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-disconnect",
+  "runId": "capture-disconnect-run",
+  "messages": [
+    {
+      "id": "capture-disconnect-user",
+      "role": "user",
+      "content": "server-tool"
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "state": {},
+  "forwardedProps": {},
+  "protocolVersion": "1.0"
+}

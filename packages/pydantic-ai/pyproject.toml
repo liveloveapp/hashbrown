@@ -1,0 +1,15 @@
+[project]
+name = "hashbrown-pydantic-ai"
+version = "0.1.0"
+description = "Thin AG-UI outcome compatibility for Pydantic AI and Hashbrown"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic-ai-slim[ag-ui]>=2.64,<3",
+  "ag-ui-protocol>=1,<2",
+  "starlette>=0.46.2,<2",
+]
+
+[build-system]
+requires = ["uv_build==0.11.3"]
+build-backend = "uv_build"

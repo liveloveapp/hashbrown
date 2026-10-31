@@ -1,3 +1,5 @@
+import { readToolOutcome } from '../models/tool-outcome';
+import { mergeToolMetadata } from '../models/tool-metadata';
 import { readHistoryDiagnostic } from '../models/history-diagnostics';
 import { ɵisCancelledTurnMarker } from '../models/cancelled-turn';
 import {
@@ -10,11 +12,7 @@ import {
 } from '@ag-ui/core';
 import { MessageSchema, UserMessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
-import {
-  completeRunningStep,
-  isProviderToolCall,
-  ɵmergeStepMetadata,
-} from '../models/tool-step';
+import { completeRunningStep, isProviderToolCall } from '../models/tool-step';
 import { s } from '../schema';
 import { type JsonValue, resolveWithSchema } from '../utils';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
@@ -989,9 +987,12 @@ function projectToolCall(
     ...(result
       ? {
           result:
-            result.error === undefined
+            readResultError(result) === undefined
               ? { status: 'fulfilled' as const, value: result.content }
-              : { status: 'rejected' as const, reason: result.error },
+              : {
+                  status: 'rejected' as const,
+                  reason: readResultError(result),
+                },
         }
       : {}),
   };
@@ -1007,7 +1008,7 @@ function mergeMetadata(
   }
 
   return structuredClone({
-    ...ɵmergeStepMetadata(first, second ?? {}, 'message', toolCallId),
+    ...mergeToolMetadata(first, second ?? {}, 'message', toolCallId),
   });
 }
 
@@ -1041,7 +1042,9 @@ function serializeResult(value: unknown): string {
 function readResultError(
   result: Extract<Message, { role: 'tool' }>,
 ): string | undefined {
-  return typeof result.error === 'string' ? result.error : undefined;
+  return typeof result.error === 'string' && result.error.length > 0
+    ? result.error
+    : readToolOutcome(result.metadata)?.error?.message;
 }
 
 /** The text parsed as plain JSON, or undefined when it is not valid JSON. */

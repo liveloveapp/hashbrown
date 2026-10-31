@@ -667,7 +667,10 @@ export const generateMessage = createEffect((store) => {
               let preparedEvent: AGUIEvent | undefined;
               try {
                 preparedEvent = ɵprepareAgUiMessageEvent(event);
-                if (event.type === EventType.RUN_FINISHED) {
+                if (
+                  event.type === EventType.RUN_FINISHED ||
+                  event.type === EventType.RUN_ERROR
+                ) {
                   const attempt = generation.activeAttempt;
                   if (attempt) {
                     attempt.terminalAccepted = true;
@@ -677,13 +680,36 @@ export const generateMessage = createEffect((store) => {
 
                 await store.dispatchAndWait(
                   apiActions.generateMessageEvent(preparedEvent),
-                  event.type === EventType.RUN_FINISHED
+                  event.type === EventType.RUN_FINISHED ||
+                    event.type === EventType.RUN_ERROR
                     ? (followUps) => {
                         if (!ownsAttempt(generation, context)) {
                           return;
                         }
 
                         assertSynchronizationProtocolIsValid();
+                        if (event.type === EventType.RUN_ERROR) {
+                          const attempt = generation.activeAttempt;
+                          if (!attempt) return;
+                          followUps.dispatch(
+                            internalActions.generationAttemptFailed({
+                              generationId: generation.generationId,
+                              attemptId: attempt.attemptId,
+                              toolsByName: attempt.toolsByName,
+                            }),
+                          );
+                          followUps.onCommit(() => {
+                            generation.finalAccepted = true;
+                          });
+                          releaseAttempt(
+                            generation,
+                            context,
+                            false,
+                            followUps.dispatch,
+                            followUps.onCommit,
+                          );
+                          return;
+                        }
                         finishAttempt(
                           generation,
                           context,
@@ -693,7 +719,10 @@ export const generateMessage = createEffect((store) => {
                       }
                     : undefined,
                 );
-                if (event.type === EventType.RUN_FINISHED) {
+                if (
+                  event.type === EventType.RUN_FINISHED ||
+                  event.type === EventType.RUN_ERROR
+                ) {
                   return;
                 }
                 if (event.type === EventType.ACTIVITY_DELTA) {

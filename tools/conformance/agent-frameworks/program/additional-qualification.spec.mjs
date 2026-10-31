@@ -7,8 +7,11 @@ import test from 'node:test';
 import { loadInventory, validateInventory } from './inventory.mjs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
-const prefix = 'tools/conformance/agent-frameworks/python/';
 const fixture = (options = {}) => {
+  const prefix = options.recipe
+    ? 'tools/conformance/agent-frameworks/python-recipe/'
+    : 'tools/conformance/agent-frameworks/python/';
+  const profile = options.recipe ? 'asgi-compatibility' : 'native-http';
   const evidence = {};
   const retain = (path, value) => {
     const content = typeof value === 'string' ? value : JSON.stringify(value);
@@ -26,7 +29,10 @@ const fixture = (options = {}) => {
     retain(prefix + '.python-version', '3.12.12\n'),
     retain(
       prefix + 'uv.lock',
-      'version = 1\n[[package]]\nname = "pydantic-ai-slim"\nversion = "2.64.0"\n',
+      'version = 1\n[[package]]\nname = "pydantic-ai-slim"\nversion = "2.64.0"\n' +
+        (options.recipe
+          ? '\n[[package]]\nname = "ag-ui-protocol"\nversion = "1.0.0"\n[[package]]\nname = "starlette"\nversion = "1.10.0"\n[[package]]\nname = "uvicorn"\nversion = "0.54.0"\n'
+          : ''),
     ),
   ];
   sourceInputs.push(
@@ -34,9 +40,28 @@ const fixture = (options = {}) => {
       retain(path, '// actual consumer assertion source'),
     ),
   );
+  if (options.packageInputs)
+    sourceInputs.push(
+      ...[
+        'pyproject.toml',
+        'project.json',
+        'check.py',
+        'src/hashbrown_pydantic_ai/__init__.py',
+        'src/hashbrown_pydantic_ai/adapter.py',
+        'tests/adapter_test.py',
+      ].map((path) =>
+        retain(`packages/pydantic-ai/${path}`, '# package assertion'),
+      ),
+      retain(prefix + 'install.mjs', '// wheel install assertion'),
+    );
   const sourceSha256 = hash(JSON.stringify(sourceInputs));
   const execution = { kind: 'local', id: 'qualification-2026-10-31' };
-  const versions = { 'pydantic-ai-slim': '2.64.0' };
+  const versions = {
+    'pydantic-ai-slim': '2.64.0',
+    ...(options.recipe
+      ? { 'ag-ui-protocol': '1.0.0', starlette: '1.10.0', uvicorn: '0.54.0' }
+      : {}),
+  };
   const runtime = { python: '3.12.12', uv: '0.9.0' };
   const protocol = { requested: 'ag-ui', effective: 'ag-ui' };
   const events = options.events ?? [
@@ -95,7 +120,34 @@ const fixture = (options = {}) => {
         options.liveObservations,
       )
     : undefined;
+  const packageInstallationRef = options.packageInputs
+    ? retain(
+        prefix + 'evidence/installation.json',
+        options.installation ?? {
+          distribution: 'hashbrown-pydantic-ai',
+          version: '0.1.0',
+          installedFromWheel: true,
+          importedFromInstalledDistribution: true,
+          adapterFile:
+            '/isolated/.venv/lib/python3.12/site-packages/hashbrown_pydantic_ai/__init__.py',
+          wheel: {
+            path: 'dist/hashbrown_pydantic_ai-0.1.0-py3-none-any.whl',
+            sha256: 'a'.repeat(64),
+          },
+        },
+      )
+    : undefined;
+  const outcomeObservationsRef = options.outcomes
+    ? retain(prefix + 'evidence/outcomes.json', {
+        observations: options.outcomes.map((observation) => ({
+          ...observation,
+          wire,
+        })),
+      })
+    : undefined;
   const executionSummary = retain(prefix + 'evidence/execution.json', {
+    ...(packageInstallationRef ? { packageInstallationRef } : {}),
+    ...(outcomeObservationsRef ? { outcomeObservationsRef } : {}),
     execution,
     sourceSha256,
     runtime,
@@ -107,7 +159,7 @@ const fixture = (options = {}) => {
   });
   const capture = retain(prefix + 'evidence/capture.json', {
     framework: 'pydantic-ai',
-    profile: 'native-http',
+    profile,
     versions,
     runtime,
     platform: 'darwin-arm64',
@@ -122,7 +174,7 @@ const fixture = (options = {}) => {
     eventsSha256: hash(JSON.stringify(events)),
   });
   const stage = retain(prefix + 'evidence/stages.json', {
-    profileId: 'pydantic-ai/native-http',
+    profileId: `pydantic-ai/${profile}`,
     execution,
     sourceSha256,
     captureSha256: capture.sha256,
@@ -136,10 +188,13 @@ const fixture = (options = {}) => {
     ],
   });
   const record = {
-    id: 'pydantic-ai/native-http',
+    id: `pydantic-ai/${profile}`,
     framework: 'pydantic-ai',
-    profile: 'native-http',
-    mode: 'native',
+    profile,
+    mode: options.recipe ? 'recipe' : 'native',
+    ...(options.recipe
+      ? { recipe: { id: 'hashbrown-pydantic-ai', version: '0.1.0' } }
+      : {}),
     qualifiedAt: '2026-10-31',
     sourceCommit: 'a'.repeat(40),
     versions,
@@ -156,6 +211,8 @@ const fixture = (options = {}) => {
       stage,
       ...sourceInputs,
       callbackObservationsRef,
+      ...(packageInstallationRef ? [packageInstallationRef] : []),
+      ...(outcomeObservationsRef ? [outcomeObservationsRef] : []),
       ...(liveObservationsRef ? [liveObservationsRef] : []),
     ],
     claims: [
@@ -550,3 +607,138 @@ test('requires consumer assertion sources for passed probe stages on a producer 
 
   assert.throws(act, /consumer assertion source/);
 });
+
+test('rejects recipe claims without bound package installation and assertion inputs', () => {
+  const input = fixture({ recipe: true });
+
+  const act = () => validateInventory(input);
+
+  assert.throws(act, /package|installation/i);
+});
+
+test('accepts only the reviewed recipe with package sources and installed-wheel provenance', () => {
+  const input = fixture({ recipe: true, packageInputs: true });
+
+  const result = validateInventory(input);
+
+  assert.equal(result.profiles[0].id, 'pydantic-ai/asgi-compatibility');
+  assert.equal(result.profiles[0].qualification.recipe.version, '0.1.0');
+});
+
+for (const installation of [
+  {
+    distribution: 'hashbrown-pydantic-ai',
+    version: '0.1.0',
+    installedFromWheel: false,
+  },
+  {
+    distribution: 'hashbrown-pydantic-ai',
+    version: '0.1.0',
+    installedFromWheel: true,
+    importedFromInstalledDistribution: true,
+    adapterFile: '/checkout/src/hashbrown_pydantic_ai/__init__.py',
+  },
+])
+  test('rejects recipe installation without actual isolated wheel import', () => {
+    const input = fixture({ recipe: true, packageInputs: true, installation });
+
+    const act = () => validateInventory(input);
+
+    assert.throws(act, /wheel|distribution/i);
+  });
+
+for (const [scenarioId, outcome] of [
+  ['tools.failure', 'failure'],
+  ['tools.cancel', 'cancelled'],
+  ['approvals.resume', 'denied'],
+]) {
+  for (const valid of [true, false])
+    test(`${valid ? 'accepts' : 'rejects'} ${outcome} recipe claim ${valid ? 'with' : 'without'} actual typed metadata`, () => {
+      const input = fixture({
+        recipe: true,
+        packageInputs: true,
+        events: [
+          {
+            type: 'TOOL_CALL_RESULT',
+            toolCallId: 'call',
+            metadata: valid
+              ? {
+                  'hashbrown.tool': {
+                    v: 1,
+                    outcome,
+                    ...(outcome === 'failure'
+                      ? { error: { message: 'Actual callback failed' } }
+                      : {}),
+                  },
+                }
+              : {},
+          },
+        ],
+        outcomes: [{ scenarioId, toolCallId: 'call', outcome, eventIndex: 0 }],
+      });
+      const record = input.additionalQualifications[0];
+      input.catalog.scenarios[0] = {
+        ...input.catalog.scenarios[0],
+        id: scenarioId,
+        capability: outcome,
+      };
+      record.claims[0] = {
+        ...record.claims[0],
+        scenarioId,
+        capability: outcome,
+      };
+      const stage = record.sources.find((source) =>
+        source.path.endsWith('stages.json'),
+      );
+      rewrite(input, stage, (value) =>
+        value.observations.forEach(
+          (observation) => (observation.scenarioId = scenarioId),
+        ),
+      );
+      record.claims[0].evidence.forEach((item) => (item.sha256 = stage.sha256));
+
+      const act = () => validateInventory(input);
+
+      if (valid)
+        assert.equal(act().profiles[0].capabilities[outcome], 'passed');
+      else assert.throws(act, /Typed outcome/);
+    });
+}
+
+for (const [name, change] of [
+  [
+    'stale package source bytes',
+    (input, record) => {
+      const source = record.sourceInputs.find((item) =>
+        item.path.endsWith('/adapter.py'),
+      );
+      input.evidence[source.path].content += '\n# unqualified modification';
+    },
+  ],
+  [
+    'package version conflated with upstream pins',
+    (input, record) => {
+      record.versions['hashbrown-pydantic-ai'] = '0.1.0';
+    },
+  ],
+  [
+    'wrong recipe version',
+    (input, record) => {
+      record.recipe.version = '0.2.0';
+    },
+  ],
+  [
+    'native mode',
+    (input, record) => {
+      record.mode = 'native';
+    },
+  ],
+])
+  test(`rejects reviewed recipe with ${name}`, () => {
+    const input = fixture({ recipe: true, packageInputs: true });
+    change(input, input.additionalQualifications[0]);
+
+    const act = () => validateInventory(input);
+
+    assert.throws(act);
+  });

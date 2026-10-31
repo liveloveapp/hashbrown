@@ -70,8 +70,12 @@ jobs:
         run: uv python install "$(cat tools/conformance/agent-frameworks/python/.python-version)"
 
       - name: Install frozen isolated Pydantic dependencies
-        if: steps.setup.outputs.python == 'true'
+        if: steps.setup.outputs.python_native == 'true'
         run: npx nx install pydantic-ai-conformance
+
+      - name: Build and install isolated Python recipe wheel
+        if: steps.setup.outputs.python_recipe == 'true'
+        run: npx nx install pydantic-ai-recipe-conformance
 
       - name: Setup .NET for affected integration
         if: steps.setup.outputs.dotnet == 'true'
@@ -159,6 +163,7 @@ jobs:
             playwright-report/examples
             test-results/conformance
             test-results/pydantic-ai
+            test-results/pydantic-recipe-compatibility
             playwright-report/conformance
             test-results/atc
             dist/docs-workbench/verification

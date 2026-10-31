@@ -1,0 +1,13 @@
+[project]
+name = "hashbrown-pydantic-ai-recipe-conformance"
+version = "0.0.0"
+requires-python = "==3.12.12"
+dependencies = [
+  "pydantic-ai-slim[ag-ui]==2.64.0",
+  "ag-ui-protocol==1.0.0",
+  "starlette==1.10.0",
+  "uvicorn==0.54.0",
+]
+
+[tool.uv]
+package = false

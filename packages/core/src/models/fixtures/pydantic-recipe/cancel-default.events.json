@@ -1,0 +1,63 @@
+[
+  {
+    "type": "RUN_STARTED",
+    "timestamp": 1793476710080,
+    "threadId": "capture-cancel-default",
+    "runId": "capture-cancel-default-run",
+    "protocolVersion": "1.0"
+  },
+  {
+    "type": "TEXT_MESSAGE_START",
+    "timestamp": 1793476710083,
+    "messageId": "aa71fd9c-62da-41ca-8a54-ca118d004fd4",
+    "role": "assistant"
+  },
+  {
+    "type": "TEXT_MESSAGE_END",
+    "timestamp": 1793476710083,
+    "messageId": "aa71fd9c-62da-41ca-8a54-ca118d004fd4"
+  },
+  {
+    "type": "TOOL_CALL_START",
+    "timestamp": 1793476710083,
+    "toolCallId": "capture-cancel-default-server",
+    "toolCallName": "serverTool",
+    "parentMessageId": "aa71fd9c-62da-41ca-8a54-ca118d004fd4"
+  },
+  {
+    "type": "TOOL_CALL_ARGS",
+    "timestamp": 1793476710083,
+    "toolCallId": "capture-cancel-default-server",
+    "delta": "{\"city\":\"London\"}"
+  },
+  {
+    "type": "TOOL_CALL_END",
+    "timestamp": 1793476710083,
+    "toolCallId": "capture-cancel-default-server"
+  },
+  {
+    "type": "TOOL_CALL_RESULT",
+    "metadata": {
+      "hashbrown.tool": {
+        "v": 1,
+        "outcome": "cancelled"
+      }
+    },
+    "messageId": "5a60b616-c918-4826-889f-beb9134e2217",
+    "toolCallId": "capture-cancel-default-server",
+    "content": "The tool call was interrupted before a result was produced.",
+    "role": "tool"
+  },
+  {
+    "type": "REASONING_ENCRYPTED_VALUE",
+    "subtype": "message",
+    "entityId": "5a60b616-c918-4826-889f-beb9134e2217",
+    "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"
+  },
+  {
+    "type": "RUN_FINISHED",
+    "timestamp": 1793476710110,
+    "threadId": "capture-cancel-default",
+    "runId": "capture-cancel-default-run"
+  }
+]

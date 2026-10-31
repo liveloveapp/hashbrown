@@ -1,3 +1,5 @@
+import { readToolOutcome } from '../models/tool-outcome';
+import { mergeToolMetadata } from '../models/tool-metadata';
 import {
   ɵacknowledgeSubagentResume,
   ɵassociateSubagentInterrupts,
@@ -50,7 +52,6 @@ import {
   stampStepMetadataStart,
   stampStepStart,
   withProviderIdentity,
-  ɵmergeStepMetadata,
   ɵmergeToolStep,
   ɵreadToolStep,
   ɵTOOL_STEP_EVENT_NAME,
@@ -340,6 +341,7 @@ export const reducer = createReducer(
   on(
     internalActions.toolTurnSettled,
     internalActions.generationCancelled,
+    internalActions.generationAttemptFailed,
     (state, action): AgUiMessagesState => {
       const canonicalMessages = readPreparedCanonicalMessages(action);
       if (!canonicalMessages) {
@@ -1299,11 +1301,15 @@ function upsertToolResult(
       ? readResultFailure(previousStep.error)
       : undefined);
   const resultError =
-    readResultFailure(input.error) ?? previousFailure ?? input.error;
+    readResultFailure(input.error) ??
+    readToolOutcome(input.metadata)?.error?.message ??
+    previousFailure ??
+    input.error;
   // A correction owns fresh native content and provenance, while the earlier
   // result's failed step remains authoritative under the shared merge rules.
   const previousMetadata =
-    previousFailure === undefined
+    previousFailure === undefined ||
+    readToolOutcome(previous?.metadata) !== undefined
       ? previous?.metadata
       : completeRunningStep(
           seedFrameResultStep(previous?.metadata, { error: previousFailure }),
@@ -1453,7 +1459,7 @@ function mergeEventFields<T extends Record<string, unknown>>(
       ? {}
       : {
           metadata: Object.freeze({
-            ...ɵmergeStepMetadata(
+            ...mergeToolMetadata(
               message['metadata'] as Record<string, unknown> | undefined,
               ɵownAgUiJsonValue(metadata) as Record<string, unknown>,
               message['role'] === 'tool' ? 'message' : 'call',
@@ -1527,7 +1533,7 @@ function withHeldStep<T extends Record<string, unknown>>(
   return {
     ...tool,
     metadata: Object.freeze({
-      ...ɵmergeStepMetadata(
+      ...mergeToolMetadata(
         tool['metadata'] as Record<string, unknown> | undefined,
         { [ɵTOOL_STEP_METADATA_KEY]: heldStep },
         'call',
@@ -1576,7 +1582,7 @@ function foldCustomToolStep(
   if (!found) return messages;
   const base = withFrameResultStep(messages, found.tool, value);
   const held = ɵreadToolStep(base.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
-  const merged = ɵmergeStepMetadata(
+  const merged = mergeToolMetadata(
     base.metadata as Record<string, unknown> | undefined,
     { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
     'call',

@@ -73,3 +73,25 @@ test('Pydantic syntax and data-only report checks do not provision Python', () =
 
   expect(result.python).toBe(false);
 });
+
+test('Python adapter packaging and all recipe targets provision Python', () => {
+  const tasks = [
+    ...['build', 'test', 'lint'].map((target) => `pydantic-ai:${target}`),
+    ...[
+      'install',
+      'build',
+      'test',
+      'lint',
+      'consumer-test',
+      'example-e2e',
+      'compatibility-baseline',
+    ].map((target) => `pydantic-ai-recipe-conformance:${target}`),
+  ];
+
+  const results = tasks.map((task) => selectCiSetup([task]));
+
+  expect(results.every((result) => result.python)).toBe(true);
+  expect(
+    selectCiSetup(['pydantic-ai-recipe-conformance:example-e2e']).browser,
+  ).toBe(true);
+});

@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-approval-deny",
+  "runId": "approval-deny-run",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "user",
+      "role": "user",
+      "content": "approval"
+    }
+  ],
+  "tools": [],
+  "state": {},
+  "context": [],
+  "forwardedProps": {}
+}

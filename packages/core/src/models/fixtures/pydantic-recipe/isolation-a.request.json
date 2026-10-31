@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-isolation-a",
+  "runId": "isolation-a-run",
+  "protocolVersion": "1.0",
+  "messages": [
+    {
+      "id": "isolation-a-user",
+      "role": "user",
+      "content": "server-tool"
+    }
+  ],
+  "tools": [],
+  "state": {},
+  "context": [],
+  "forwardedProps": {}
+}
