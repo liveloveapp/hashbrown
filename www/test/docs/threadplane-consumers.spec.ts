@@ -192,9 +192,10 @@ test('Nx exposes separate preparation and recording targets and lints checked co
   expect(
     project.targets['docs-threadplane-prepare']?.options.command,
   ).toContain('prepare-docs-threadplane.ts');
-  expect(project.targets['docs-threadplane-demo']?.options.command).toContain(
-    'record-docs-threadplane.ts',
-  );
+  expect(
+    project.targets['docs-threadplane-live-demo']?.options.command,
+  ).toContain('record-docs-threadplane-live.ts');
+  expect(project.targets['docs-threadplane-demo']).toBeUndefined();
   expect(project.targets.lint.options.command).toContain(
     'www/examples/threadplane-consumers',
   );

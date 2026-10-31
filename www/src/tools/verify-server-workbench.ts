@@ -1,3 +1,4 @@
+import { assertWorkbenchCaptureAfterReload } from '../../examples/quickstart/runtime/workbench-lessons';
 import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
@@ -135,6 +136,7 @@ export async function verifyServerWorkbench(options: {
       );
       await hold();
       mark('saved');
+      assertWorkbenchCaptureAfterReload(lesson);
       await page.reload();
       await expect(button('Load server thread')).toBeEnabled();
       await expect(send).toBeDisabled();

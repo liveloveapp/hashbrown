@@ -48,7 +48,7 @@ export function createToolsFixtureCapture(): WorkbenchCapture {
 const DOCS_FRAME = { width: 740, height: 555 };
 
 /** Reserves, then releases, a localhost port no server is listening on. */
-async function unusedPort(): Promise<number> {
+export async function unusedPort(): Promise<number> {
   const probe = createServer();
   await new Promise<void>((done) => probe.listen(0, 'localhost', done));
   const address = probe.address();
@@ -58,14 +58,26 @@ async function unusedPort(): Promise<number> {
   return address.port;
 }
 
-/** The parent docs page: frames the workbench and loads a capture on ready. */
-function harnessHtml(src: string, target: string, capture: WorkbenchCapture) {
+/**
+ * The parent docs page: frames the workbench and loads a capture on ready.
+ *
+ * @param src - The workbench URL to frame.
+ * @param target - The workbench origin messages are posted to.
+ * @param capture - The capture to load once the workbench is ready.
+ * @param frame - The iframe size; a docs column's panel by default.
+ */
+export function harnessHtml(
+  src: string,
+  target: string,
+  capture: WorkbenchCapture,
+  frame: { readonly width: number; readonly height: number } = DOCS_FRAME,
+) {
   const config = JSON.stringify({ src, target, capture }).replace(
     /</g,
     '\\u003c',
   );
   return `<!doctype html><html><head><meta charset="utf-8"><title>Embed harness</title></head>
-<body style="margin:0"><iframe id="wb" style="width:${DOCS_FRAME.width}px;height:${DOCS_FRAME.height}px;border:0"></iframe>
+<body style="margin:0"><iframe id="wb" style="width:${frame.width}px;height:${frame.height}px;border:0;display:block"></iframe>
 <script>
 const config = ${config};
 const frame = document.getElementById('wb');

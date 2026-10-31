@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { assertWorkbenchCaptureAfterReload } from '../../examples/quickstart/runtime/workbench-lessons';
 import {
   saveWorkbenchCapture,
   stageWorkbenchCaptures,
@@ -160,6 +161,7 @@ try {
       pid = await start();
       await mark('restarted');
       const runRequestsBeforeRestore = runRequests;
+      assertWorkbenchCaptureAfterReload('production-recovery');
       await page.reload();
       await expect(
         page.getByRole('textbox', { name: 'Thread ID', exact: true }),
