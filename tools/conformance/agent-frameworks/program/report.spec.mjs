@@ -419,3 +419,14 @@ test('links retained evidence at its immutable commit while preserving the execu
     assert.ok(!section.includes(`/blob/${q.sourceCommit}/${reference.path}`));
   }
 });
+
+test('renders escaped capability gap explanations beside their recorded state', async () => {
+  const profile = structuredClone((await loadInventory()).profiles[0]);
+  profile.qualification.claims[0].detail =
+    'Native gap: <script>unsafe</script> | [recipe]';
+
+  const section = qualifiedProfile(freeze(profile));
+
+  assert.ok(section.includes(escape(profile.qualification.claims[0].detail)));
+  assert.ok(!section.includes('<script>unsafe</script>'));
+});

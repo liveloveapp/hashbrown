@@ -13,7 +13,7 @@
   },
   "platform": "darwin/arm64",
   "protocol": {
-    "requested": "1.0 in retained wire probes; omitted in ordinary browser requests",
+    "requested": "1.0 in retained probes except cancel-default; omitted in ordinary browser requests",
     "effective": "1.0 event envelope; terminal outcomes negotiated per request"
   },
   "transport": "http-sse",

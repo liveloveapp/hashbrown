@@ -142,7 +142,7 @@ export function qualifiedProfile(profile) {
       ['Capability / scenario', 'Last qualified state and evidence'],
       q.claims.map((claim) => [
         `${escape(labels[claim.capability] ?? claim.capability)}<br />${code(claim.scenarioId)}`,
-        `${escape(claim.status)}${claim.evidence.length ? '<br />' + claim.evidence.map((item) => `E${stages.indexOf(item.stage) + 1}: ${escape(item.result)}/${reference(item)}`).join(', ') : ''}`,
+        `${escape(claim.status)}${claim.evidence.length ? '<br />' + claim.evidence.map((item) => `E${stages.indexOf(item.stage) + 1}: ${escape(item.result)}/${reference(item)}`).join(', ') : ''}${claim.detail ? '<br />' + escape(claim.detail) : ''}`,
       ]),
     ),
     '',

@@ -5,7 +5,7 @@
     "id": "pydantic-baseline-2026-10-31T14:36:40.346Z"
   },
   "sourceSha256": "e36f8f0d11da9b141d8bb8d3ff579721b0676ed1bc18f2ca00d38fe9a4eab105",
-  "captureSha256": "546e72e3cf23e87f13000e9420f8d2cc4b04b9ea8cf3602c439359efbf4c21c1",
+  "captureSha256": "96dd50c1de42be5cb73fcfb70c9785d5b96ad71f77626dde21a5e40eb5567e38",
   "sourceCommit": "251b01b122846a86789c52cfd46b37c6d4f6b8a2",
   "startedAt": "2026-10-31T14:36:40.346Z",
   "completedAt": "2026-10-31T14:37:48.043Z",
