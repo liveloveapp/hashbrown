@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 // The preflight lives with the growth scripts that own the database rules.
 import { validateGrowthDatabaseEnvironment } from '../../growth/scripts/growth-database-preflight.mts';
+import { blogScheduleIssue } from '../src/blog/schedule.ts';
 import { createCredentialStore } from '../src/credentials/store.ts';
 import { createDatabaseExecutor, type SqlExecutor } from '../src/growth.ts';
 import {
@@ -201,6 +202,7 @@ async function voiceIssuesOf(
     kind: PostKind;
     draft: QueueDraft;
     sources: Source[];
+    scheduledAt: Date | string;
   },
 ): Promise<VoiceIssue[]> {
   let body: string | undefined;
@@ -210,7 +212,15 @@ async function voiceIssuesOf(
       body = await dependencies.operations.readBlogBody(slug);
     }
   }
-  return checkVoice({ ...post, ...(body === undefined ? {} : { body }) });
+  const issues = checkVoice({
+    ...post,
+    ...(body === undefined ? {} : { body }),
+  });
+  const schedule =
+    body === undefined
+      ? undefined
+      : blogScheduleIssue(body, new Date(post.scheduledAt));
+  return schedule ? [...issues, schedule] : issues;
 }
 
 const patchSchema = z.strictObject({
@@ -247,6 +257,7 @@ async function voiceIssuesByKey(
       kind: post.kind,
       draft: post.draft as QueueDraft,
       sources: post.sources,
+      scheduledAt: post.scheduledAt,
     });
   }
   return result;

@@ -193,19 +193,21 @@ path if cheap).
   `www/content/blog/YYYY-MM-DD-slug.md`, dated with its publish day.
 - During review approval, the skill opens a PR with the post. Brian can review
   it on GitHub like any other.
-- `main` is protected ("Protect Main" ruleset: the "PR Gate" check must pass
-  and the branch must be up to date). The token is not an admin token and never
-  bypasses that. About two hours before `scheduled_at`, `dispatch` updates the
-  PR branch from `main` through the GitHub API, so PR Gate reruns. At
-  `scheduled_at` it merges if the PR is mergeable. If it is not (checks red,
-  conflicts), it does not merge; it marks the post `failed` with the reason.
-  Token: `MARKETING_GITHUB_TOKEN`, scoped to the hashbrown repo.
-- After merge, `dispatch` waits for the canonical URL to return 200 on a
-  later tick, then marks the blog post `published`, which unblocks the dev.to
-  post. If the URL is not live within 24 hours (for example an unrelated CI
-  failure on `main` blocks the deploy), the blog post and everything depending
-  on it go to `held` and show up in the next review and as an operator alert;
-  nothing publishes late on its own. The dev.to post uses the dev.to adapter
+- **Amended 2026-10-31: Brian merges, the site gates.** The marketing service
+  no longer merges the PR and holds no GitHub token. The post's frontmatter
+  carries `published: true` and `publishAt` (the blog row's `scheduled_at`);
+  the site leaves out any post that is not published or whose `publishAt` is
+  in the future, so Brian can merge the PR any time before the slot. The blog
+  pages are static, so the scheduled `Blog Publish` workflow
+  (`.github/workflows/blog-publish.yml`) redeploys www when a post comes due
+  and still answers 404.
+- From `scheduled_at`, `dispatch` waits for the canonical URL to return 200,
+  then marks the blog post `published`, which unblocks the dev.to post. If the
+  URL is not live within 2 hours (the PR is not merged, or its `publishAt` is
+  later than the slot, or the deploy failed), the blog post and everything
+  depending on it go to `held` and show up in the next review and as an
+  operator alert; nothing publishes late on its own. dev.to reads the merged
+  markdown from `main` on raw.githubusercontent.com (the repo is public). The dev.to post uses the dev.to adapter
   with `canonical_url` set to the hashbrown.dev URL. The threadplane adapter
   sends the body unchanged, so the markdown conversion is new work: make
   relative links and image paths absolute, and turn any site-only syntax into
@@ -302,7 +304,7 @@ planning can lean on what worked.
 `DATABASE_URL` (growth Neon), `B4_DATABASE_URL` (b4 state), `MARKETING_SERVICE_SECRET`,
 `CRON_SECRET` (existing), `ANTHROPIC_API_KEY`, `X_CLIENT_ID`, `X_CLIENT_SECRET`,
 `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_AUTHOR_URN`,
-`DEVTO_API_KEY`, `MARKETING_GITHUB_TOKEN`, `MARKETING_CREDENTIALS_KEY` (encrypts
+`DEVTO_API_KEY`, `MARKETING_CREDENTIALS_KEY` (encrypts
 stored tokens). X and LinkedIn access and refresh tokens live in
 `marketing_channel_credentials`, written by the auth CLIs.
 

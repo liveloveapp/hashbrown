@@ -32,6 +32,10 @@ export interface BlogPost {
   team: string[];
   /** YouTube URL for posts that embed a video (talks). */
   youtube: string | undefined;
+  /** Frontmatter `published`; only `true` makes a post public. */
+  published: boolean;
+  /** When the post goes public: frontmatter `publishAt`, else 00:00 UTC on its file-name date. */
+  publishAt: Date;
   body: string;
 }
 
@@ -48,6 +52,9 @@ interface PostAttributes {
   ogImageAlt?: string;
   team?: string[];
   youtube?: string;
+  published?: boolean;
+  /** YAML parses an unquoted timestamp as a Date; a quoted one stays a string. */
+  publishAt?: Date | string;
 }
 
 const docsRoot = (sdk: Sdk) => join(repoRoot(), 'www/content/docs', sdk);
@@ -97,6 +104,29 @@ export function readDoc(
   };
 }
 
+/** A timestamp with an explicit offset, so a post's go-live time is never read in the build's zone. */
+const OFFSET_TIMESTAMP = /(?:Z|[+-]\d{2}:\d{2})$/;
+
+function toPublishAt(
+  file: string,
+  slug: string,
+  value: Date | string | undefined,
+): Date {
+  if (value === undefined) return new Date(`${slug.slice(0, 10)}T00:00:00Z`);
+  const at =
+    value instanceof Date
+      ? value
+      : OFFSET_TIMESTAMP.test(value)
+        ? new Date(value)
+        : new Date(NaN);
+  if (Number.isNaN(at.getTime())) {
+    throw new Error(
+      `${file}: publishAt must be a timestamp with an offset, e.g. 2026-11-04T10:00:00-05:00`,
+    );
+  }
+  return at;
+}
+
 function toPost(file: string): BlogPost {
   const { attributes, body } = fm<PostAttributes>(readFileSync(file, 'utf-8'));
   const slug = basename(file, '.md');
@@ -110,12 +140,32 @@ function toPost(file: string): BlogPost {
     ogImageAlt: attributes.ogImageAlt,
     team: attributes.team ?? [],
     youtube: attributes.youtube,
+    published: attributes.published === true,
+    publishAt: toPublishAt(file, slug, attributes.publishAt),
     body,
   };
 }
 
-/** List blog posts, newest first (post file names start with an ISO date). */
-export function listBlogPosts(): BlogPost[] {
+/**
+ * Whether a post is public at `now`: `published: true` and its `publishAt` has
+ * passed. Drafts and scheduled posts are left out everywhere, so a post can be
+ * merged ahead of its date and appear when the blog pages next revalidate.
+ *
+ * @param post - The post to check.
+ * @param now - The moment to check against.
+ */
+export function isPublished(
+  post: Pick<BlogPost, 'published' | 'publishAt'>,
+  now: Date,
+): boolean {
+  return post.published && post.publishAt.getTime() <= now.getTime();
+}
+
+/**
+ * Every post file, published or not, newest first. Only for checks over the
+ * content itself; pages use `listBlogPosts`.
+ */
+export function listAllBlogPosts(): BlogPost[] {
   return readdirSync(blogRoot())
     .filter((name) => name.endsWith('.md'))
     .map((name) => toPost(join(blogRoot(), name)))
@@ -123,10 +173,24 @@ export function listBlogPosts(): BlogPost[] {
 }
 
 /**
- * Read one blog post by its URL slug.
+ * List the published blog posts, newest first (post file names start with an
+ * ISO date).
+ *
+ * @param now - The moment to check `isPublished` against; defaults to now.
+ */
+export function listBlogPosts(now: Date = new Date()): BlogPost[] {
+  return listAllBlogPosts().filter((post) => isPublished(post, now));
+}
+
+/**
+ * Read one published blog post by its URL slug.
  *
  * @param slug - The post's file name without `.md`.
+ * @param now - The moment to check `isPublished` against; defaults to now.
  */
-export function readBlogPost(slug: string): BlogPost | undefined {
-  return listBlogPosts().find((post) => post.slug === slug);
+export function readBlogPost(
+  slug: string,
+  now: Date = new Date(),
+): BlogPost | undefined {
+  return listBlogPosts(now).find((post) => post.slug === slug);
 }

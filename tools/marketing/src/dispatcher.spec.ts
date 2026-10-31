@@ -85,9 +85,6 @@ const result: PostResult = {
 function setup(
   options: {
     now?: Date;
-    pull?: Partial<
-      Awaited<ReturnType<DispatchDependencies['github']['pullState']>>
-    >;
     live?: boolean;
     dryRun?: boolean;
     post?: ChannelAdapter['post'];
@@ -100,18 +97,9 @@ function setup(
     id,
     post,
   });
-  const github = {
-    updateBranch: vi.fn(async () => undefined),
-    pullState: vi.fn(async () => ({
-      state: 'open' as const,
-      merged: false,
-      mergeable: true,
-      mergeableState: 'clean',
-      ...options.pull,
-    })),
-    merge: vi.fn(async () => undefined),
-    readFile: vi.fn(async () => '---\ntitle: T\n---\n\nBody [link](/docs)\n'),
-  };
+  const readBlogMarkdown = vi.fn(
+    async () => '---\ntitle: T\n---\n\nBody [link](/docs)\n',
+  );
   const execute = vi.fn(async () => ({
     rows: (options.dependents ?? []).map((id) => ({ id })),
   }));
@@ -123,12 +111,12 @@ function setup(
       devto: adapter('devto'),
     },
     credentials: createMemoryCredentialStore(options.credentials),
-    github,
+    readBlogMarkdown,
     isLive: vi.fn(async () => options.live ?? false),
     now: () => options.now ?? NOW,
     dryRun: options.dryRun ?? false,
   };
-  return { deps, post, github };
+  return { deps, post, readBlogMarkdown };
 }
 
 beforeEach(() => {
@@ -220,11 +208,11 @@ describe('dispatchMarketing', () => {
     repository.leaseDuePosts.mockResolvedValue([
       blog({}, { scheduledAt: new Date(NOW.getTime() - 7 * HOUR) }),
     ]);
-    const { deps, github } = setup({ pull: { merged: true }, live: true });
+    const { deps } = setup({ live: true });
 
     const outcome = await dispatchMarketing(deps);
 
-    expect(github.pullState).toHaveBeenCalled();
+    expect(deps.isLive).toHaveBeenCalled();
     expect(repository.holdWithDependents).not.toHaveBeenCalled();
     expect(outcome.published).toBe(1);
   });
@@ -352,12 +340,12 @@ describe('dispatchMarketing', () => {
     });
   });
 
-  test('a blog post that is not live after 24 hours holds its dependents and raises blog_not_live', async () => {
+  test('a blog post that is not live 2 hours after its slot holds its dependents and raises blog_not_live', async () => {
     repository.leaseDuePosts.mockResolvedValue([
-      blog({ mergedAt: new Date(NOW.getTime() - 25 * HOUR).toISOString() }),
+      blog({}, { scheduledAt: new Date(NOW.getTime() - 3 * HOUR) }),
     ]);
     repository.holdWithDependents.mockResolvedValue(['p1', 'p2']);
-    const { deps } = setup({ pull: { merged: true }, live: false });
+    const { deps } = setup({ live: false });
 
     const outcome = await dispatchMarketing(deps);
 
@@ -373,58 +361,21 @@ describe('dispatchMarketing', () => {
     });
   });
 
-  test('a blog PR that is not mergeable at publish time fails the post and holds its dependents', async () => {
-    repository.leaseDuePosts.mockResolvedValue([
-      blog({ branchUpdatedAt: 'x' }),
-    ]);
-    repository.holdWithDependents.mockResolvedValue(['d1', 'd2']);
-    const { deps, github } = setup({
-      now: new Date(NOW.getTime() + 3 * HOUR),
-      pull: { mergeable: false, mergeableState: 'dirty' },
-      dependents: ['d1'],
-    });
-
-    const outcome = await dispatchMarketing(deps);
-
-    expect(github.merge).not.toHaveBeenCalled();
-    expect(repository.markFailed).toHaveBeenCalledWith(
-      deps.executor,
-      'p1',
-      expect.stringContaining('cannot merge'),
-    );
-    expect(repository.holdWithDependents).not.toHaveBeenCalledWith(
-      deps.executor,
-      'p1',
-      expect.anything(),
-    );
-    expect(outcome).toMatchObject({
-      failed: 1,
-      held: 2,
-      operatorAlerts: ['post_failed'],
-    });
-  });
-
-  test('blog progress is written to the draft and the lease simply expires', async () => {
+  test('a blog post that is not live yet within its grace waits and the lease expires', async () => {
     repository.leaseDuePosts.mockResolvedValue([blog()]);
-    const early = new Date(NOW.getTime() - 2 * HOUR);
-    const { deps } = setup({ now: early });
+    const { deps } = setup({ live: false });
 
     const outcome = await dispatchMarketing(deps);
 
-    expect(repository.updateBlogDraft).toHaveBeenCalledWith(
-      deps.executor,
-      'p1',
-      {
-        branchUpdatedAt: early.toISOString(),
-      },
-    );
+    expect(repository.markPublished).not.toHaveBeenCalled();
+    expect(repository.holdWithDependents).not.toHaveBeenCalled();
     expect(repository.markPublishing).not.toHaveBeenCalled();
-    expect(outcome).toMatchObject({ leased: 1, published: 0 });
+    expect(outcome).toMatchObject({ leased: 1, published: 0, held: 0 });
   });
 
-  test('a live merged blog is published with its url', async () => {
+  test('a live blog is published with its url', async () => {
     repository.leaseDuePosts.mockResolvedValue([blog()]);
-    const { deps } = setup({ pull: { merged: true }, live: true });
+    const { deps } = setup({ live: true });
 
     const outcome = await dispatchMarketing(deps);
 
@@ -436,10 +387,10 @@ describe('dispatchMarketing', () => {
     expect(outcome.published).toBe(1);
   });
 
-  test('a GitHub error retries the blog post', async () => {
+  test('a live-check error retries the blog post', async () => {
     repository.leaseDuePosts.mockResolvedValue([blog()]);
-    const { deps, github } = setup();
-    github.pullState.mockRejectedValue(new Error('rate limited'));
+    const { deps } = setup();
+    vi.mocked(deps.isLive).mockRejectedValue(new Error('rate limited'));
 
     const outcome = await dispatchMarketing(deps);
 
@@ -463,14 +414,11 @@ describe('dispatchMarketing', () => {
         },
       }),
     ]);
-    const { deps, post: adapterPost, github } = setup();
+    const { deps, post: adapterPost, readBlogMarkdown } = setup();
 
     await dispatchMarketing(deps);
 
-    expect(github.readFile).toHaveBeenCalledWith(
-      'www/content/blog/my-post.md',
-      'main',
-    );
+    expect(readBlogMarkdown).toHaveBeenCalledWith('my-post');
     const [draft] = adapterPost.mock.calls[0] as [
       import('./channels/types.ts').Draft,
     ];
@@ -582,20 +530,17 @@ describe('createDispatchDependencies', () => {
   const ENV = {
     DATABASE_URL: 'postgres://user:pass@localhost:1/none',
     MARKETING_CREDENTIALS_KEY: Buffer.alloc(32).toString('base64'),
-    MARKETING_GITHUB_TOKEN: 'token',
   };
 
   test('names every missing variable', () => {
     expect(() => createDispatchDependencies({})).toThrow(
-      /DATABASE_URL.*MARKETING_CREDENTIALS_KEY.*MARKETING_GITHUB_TOKEN/,
+      /DATABASE_URL.*MARKETING_CREDENTIALS_KEY/,
     );
   });
 
   test.each(['1', 'true'])('MARKETING_DRY_RUN=%j is a dry run', (value) => {
-    // No GitHub token: a dry run does not need one.
     const deps = createDispatchDependencies({
       ...ENV,
-      MARKETING_GITHUB_TOKEN: undefined,
       MARKETING_DRY_RUN: value,
     });
 
@@ -625,9 +570,9 @@ describe('createDispatchDependencies', () => {
 });
 
 describe('dry run', () => {
-  test('a due blog post is published with dry-run values and no GitHub or live call', async () => {
+  test('a due blog post is published with dry-run values and no live call', async () => {
     repository.leaseDuePosts.mockResolvedValue([blog()]);
-    const { deps, github } = setup({ dryRun: true });
+    const { deps } = setup({ dryRun: true });
 
     const outcome = await dispatchMarketing(deps);
 
@@ -637,15 +582,12 @@ describe('dry run', () => {
       publishedAt: NOW,
     });
     expect(outcome.published).toBe(1);
-    expect(github.pullState).not.toHaveBeenCalled();
-    expect(github.updateBranch).not.toHaveBeenCalled();
-    expect(github.merge).not.toHaveBeenCalled();
     expect(deps.isLive).not.toHaveBeenCalled();
   });
 
   test('a blog post before its schedule is left untouched', async () => {
     repository.leaseDuePosts.mockResolvedValue([blog()]);
-    const { deps, github } = setup({
+    const { deps } = setup({
       dryRun: true,
       now: new Date(NOW.getTime() - 2 * HOUR),
     });
@@ -653,12 +595,11 @@ describe('dry run', () => {
     const outcome = await dispatchMarketing(deps);
 
     expect(repository.markPublished).not.toHaveBeenCalled();
-    expect(repository.updateBlogDraft).not.toHaveBeenCalled();
-    expect(github.pullState).not.toHaveBeenCalled();
+    expect(deps.isLive).not.toHaveBeenCalled();
     expect(outcome).toMatchObject({ leased: 1, published: 0 });
   });
 
-  test('devto posts a placeholder body with the canonical url and never reads GitHub', async () => {
+  test('devto posts a placeholder body with the canonical url and never reads the post', async () => {
     repository.leaseDuePosts.mockResolvedValue([
       post({
         channel: 'devto',
@@ -669,11 +610,15 @@ describe('dry run', () => {
         },
       }),
     ]);
-    const { deps, post: adapterPost, github } = setup({ dryRun: true });
+    const {
+      deps,
+      post: adapterPost,
+      readBlogMarkdown,
+    } = setup({ dryRun: true });
 
     await dispatchMarketing(deps);
 
-    expect(github.readFile).not.toHaveBeenCalled();
+    expect(readBlogMarkdown).not.toHaveBeenCalled();
     expect(adapterPost).toHaveBeenCalledWith({
       channel: 'devto',
       text: 'dry run: https://hashbrown.dev/blog/my-post',
@@ -686,7 +631,7 @@ describe('dry run', () => {
     });
   });
 
-  test('createDispatchDependencies in dry run makes no fetch calls and disables GitHub', async () => {
+  test('createDispatchDependencies in dry run makes no fetch calls', async () => {
     const fetchSpy = vi.fn();
     const deps = createDispatchDependencies(
       {
@@ -708,18 +653,6 @@ describe('dry run', () => {
 
     expect(results).toHaveLength(2);
     expect(deps.dryRun).toBe(true);
-    await expect(deps.github.pullState(1)).rejects.toThrow(
-      'GitHub is disabled in dry run',
-    );
-    await expect(deps.github.merge(1)).rejects.toThrow(
-      'GitHub is disabled in dry run',
-    );
-    await expect(deps.github.updateBranch(1)).rejects.toThrow(
-      'GitHub is disabled in dry run',
-    );
-    await expect(deps.github.readFile('a', 'main')).rejects.toThrow(
-      'GitHub is disabled in dry run',
-    );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

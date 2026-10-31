@@ -8,6 +8,7 @@ tags:
 team:
   - brian
 youtube: https://www.youtube.com/watch?v=gAeLTcxF-0o
+published: true
 ---
 
 We had 30 minutes to plan and 4 hours to build a playable, turn‑based Spotify playlist game, using MCP, with the [help of Postman](https://learning.postman.com/docs/postman-ai-developer-tools/mcp-requests/overview/), live on camera for the web dev challenge.

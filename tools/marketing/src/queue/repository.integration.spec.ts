@@ -401,7 +401,6 @@ test('updateBlogDraft merges into the draft without changing status', async () =
 
   await updateBlogDraft(executor, id, {
     prNumber: 42,
-    branchUpdatedAt: '1971-02-03T10:00:00.000Z',
   });
   const row = await statusOf(id);
 
@@ -412,7 +411,6 @@ test('updateBlogDraft merges into the draft without changing status', async () =
       slug: 'a-post',
       title: 'A post',
       prNumber: 42,
-      branchUpdatedAt: '1971-02-03T10:00:00.000Z',
     },
   });
 });

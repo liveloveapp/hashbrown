@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest';
 import {
+  isPublished,
+  listAllBlogPosts,
   listBlogPosts,
   listDocs,
   readBlogPost,
@@ -74,4 +76,53 @@ test('uses the file name as the post slug, like the Analog site', () => {
 
   expect(slugs).toContain('2025-06-25-hashbrown-launch');
   expect(slugs).not.toContain('2025-06-25-Hashbrown-launch');
+});
+
+test('every post file is marked published, so none is hidden by accident', () => {
+  const drafts = listAllBlogPosts()
+    .filter((post) => !post.published)
+    .map((post) => post.slug);
+
+  expect(drafts).toEqual([]);
+});
+
+test('a post is public only when published and its publishAt has passed', () => {
+  const publishAt = new Date('2026-11-04T15:00:00Z');
+
+  expect(
+    isPublished(
+      { published: true, publishAt },
+      new Date('2026-11-04T15:00:00Z'),
+    ),
+  ).toBe(true);
+  expect(
+    isPublished(
+      { published: true, publishAt },
+      new Date('2026-11-04T14:59:59Z'),
+    ),
+  ).toBe(false);
+  expect(
+    isPublished(
+      { published: false, publishAt },
+      new Date('2026-11-05T00:00:00Z'),
+    ),
+  ).toBe(false);
+});
+
+test('without publishAt a post goes public at 00:00 UTC on its file-name date', () => {
+  const post = listAllBlogPosts().find(
+    (p) => p.slug === '2026-09-23-hashbrown-v-0-6-0',
+  );
+
+  expect(post?.publishAt.toISOString()).toBe('2026-09-23T00:00:00.000Z');
+});
+
+test('leaves scheduled posts out of the list and the slug lookup', () => {
+  const before = new Date('2026-09-22T23:59:59Z');
+
+  expect(listBlogPosts(before).map((p) => p.slug)).not.toContain(
+    '2026-09-23-hashbrown-v-0-6-0',
+  );
+  expect(readBlogPost('2026-09-23-hashbrown-v-0-6-0', before)).toBeUndefined();
+  expect(readBlogPost('2026-09-23-hashbrown-v-0-6-0')).toBeDefined();
 });

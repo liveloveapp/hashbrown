@@ -5,7 +5,7 @@ import {
   serializeJsonLd,
 } from '../../src/lib/structured-data';
 
-const post: Omit<BlogPost, 'body'> = {
+const post: Omit<BlogPost, 'body' | 'published' | 'publishAt'> = {
   slug: '2026-10-22-hashbrown-v-0-8-0',
   title: 'Hashbrown v0.8 adds decisions',
   description: 'Decisions land in core.',

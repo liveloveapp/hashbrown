@@ -7,6 +7,7 @@ tags:
 team:
   - brian
 youtube: https://www.youtube.com/watch?v=Vd2WLQ8vqfU
+published: true
 ---
 
 We recently recorded an episode with our friends on Angular Air.

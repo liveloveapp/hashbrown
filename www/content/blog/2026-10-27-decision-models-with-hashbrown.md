@@ -9,6 +9,7 @@ tags:
   - sample
 team:
   - brian
+published: true
 ---
 
 I'm excited about decision models.

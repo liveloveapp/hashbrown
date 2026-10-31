@@ -77,20 +77,12 @@ test('an approved week publishes its X post, blog and dependent dev.to post in o
   } as never);
   await approvePosts(executor, weekId);
 
-  let merged = false;
-  const github = {
-    updateBranch: vi.fn(async () => undefined),
-    pullState: vi.fn(async () => ({
-      state: merged ? ('closed' as const) : ('open' as const),
-      merged,
-      mergeable: true,
-      mergeableState: 'clean',
-    })),
-    merge: vi.fn(async () => {
-      merged = true;
-    }),
-    readFile: vi.fn(async () => '---\ntitle: Tick\n---\n\nBody text.\n'),
-  };
+  // Brian merged the PR ahead of time; the site shows it after the Blog
+  // Publish redeploy, a little after its slot.
+  let live = false;
+  const readBlogMarkdown = vi.fn(
+    async () => '---\ntitle: Tick\n---\n\nBody text.\n',
+  );
   const credentials = createMemoryCredentialStore();
   const adapters = createAdapters({ credentials, env: {}, dryRun: true });
   const posted: string[] = [];
@@ -108,8 +100,8 @@ test('an approved week publishes its X post, blog and dependent dev.to post in o
       executor,
       adapters,
       credentials,
-      github,
-      isLive: async () => true,
+      readBlogMarkdown,
+      isLive: async () => live,
       now: () => now,
       dryRun: false,
     };
@@ -118,6 +110,7 @@ test('an approved week publishes its X post, blog and dependent dev.to post in o
 
   await tick(new Date(SCHEDULED_AT.getTime() - 2 * HOUR));
   await tick(SCHEDULED_AT);
+  live = true;
   await tick(new Date(SCHEDULED_AT.getTime() + 15 * MINUTE));
   // The dev.to post waits for the blog to be published, so it goes next tick.
   await tick(new Date(SCHEDULED_AT.getTime() + 30 * MINUTE));
@@ -131,7 +124,7 @@ test('an approved week publishes its X post, blog and dependent dev.to post in o
     'published',
     'published',
   ]);
-  expect(github.merge).toHaveBeenCalledTimes(1);
+  expect(readBlogMarkdown).toHaveBeenCalledWith('tick-post');
   expect(byChannel['blog']?.externalUrl).toBe(
     'https://hashbrown.dev/blog/tick-post',
   );

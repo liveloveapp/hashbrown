@@ -17,7 +17,8 @@ export interface VoiceIssue {
     | 'banned_phrase'
     | 'length'
     | 'link'
-    | 'no_sources';
+    | 'no_sources'
+    | 'blog_schedule';
   message: string;
 }
 
