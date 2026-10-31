@@ -203,6 +203,22 @@ export async function measureWorkbenchAlignment(
       inspectorEdges,
     );
 
+    // The inspector body (code block or tree) fills the inspection box down
+    // to its bottom padding, with no empty band above the caption.
+    if (visible(inspection)) {
+      const body = [...inspection.children].filter(visible).at(-1);
+      if (body) {
+        const box = rect(inspection);
+        expectNear('inspector body bottom vs inspection bottom - padding', [
+          rect(body).bottom + inspection.scrollTop,
+          box.top +
+            px(inspection, 'border-top-width') +
+            inspection.scrollHeight -
+            px(inspection, 'padding-bottom'),
+        ]);
+      }
+    }
+
     // 3. Section title and mode toggle share a centre line; caption on the grid.
     const title = sectionHead?.querySelector('h3');
     const toggle = sectionHead?.querySelector('.wb-segmented');
@@ -290,6 +306,24 @@ export async function measureWorkbenchAlignment(
       if (visible(picker)) edges.push(rect(picker).left);
       const detailTabs = requests.querySelector('.wb-requests-tabs');
       if (visible(detailTabs)) edges.push(rect(detailTabs).left);
+      // Every detail tab fits the row: the last one ends inside its visible box.
+      if (visible(detailTabs)) {
+        const lastTab = [...detailTabs.children].filter(visible).at(-1);
+        const inner =
+          rect(detailTabs).right -
+          px(detailTabs, 'border-right-width') -
+          px(detailTabs, 'padding-right');
+        if (lastTab) {
+          measurements['last detail tab right vs row inner right'] = [
+            round(rect(lastTab).right),
+            round(inner),
+          ];
+          if (rect(lastTab).right > inner + 0.5)
+            failures.push(
+              `detail tabs clipped: last tab ends at ${round(rect(lastTab).right)}, row at ${round(inner)}`,
+            );
+        }
+      }
       const facts = requests.querySelector('.wb-requests-facts');
       if (visible(facts)) edges.push(rect(facts).left);
       if (visible(detail)) edges.unshift(innerLeft(detail) + 16);

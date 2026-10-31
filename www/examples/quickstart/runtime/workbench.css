@@ -82,7 +82,8 @@ body {
   background: var(--wb-panel);
   border: 1px solid var(--wb-line);
   border-radius: 10px;
-  padding: 0 calc(var(--wb-space-3) - 1px);
+  /* 1px border + 3px + 20px line: one line stays 32px, two lines grow to 48px. */
+  padding: calc(var(--wb-space-1) - 1px) calc(var(--wb-space-3) - 1px);
   cursor: pointer;
   transition:
     border-color 150ms ease,
@@ -1116,6 +1117,7 @@ body {
   background: var(--wb-live);
 }
 .wb-requests-detail {
+  container: wb-requests-detail / inline-size;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -1137,7 +1139,7 @@ body {
   min-width: 0;
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--wb-space-1);
+  gap: 0;
   margin: 0;
   padding: calc(var(--wb-space-1) - 1px);
   overflow-x: auto;
@@ -1159,6 +1161,13 @@ body {
   color: var(--wb-muted);
   font-size: 12px;
   white-space: nowrap;
+}
+/* A detail pane under 480px (a ~400px inspector) tightens the tab labels so
+   all six fit; the row still scrolls sideways if a pane is narrower still. */
+@container wb-requests-detail (max-width: 479px) {
+  .wb .wb-requests-tabs button {
+    padding: 0 var(--wb-space-1);
+  }
 }
 .wb .wb-requests-tabs button:hover {
   color: var(--wb-ink);
@@ -1826,12 +1835,13 @@ app-workflow-workbench-conversation[hidden] {
   .wb-chat {
     min-height: 440px;
   }
-  .wb .wb-inspection > pre {
+  /* Stacked panels have no fixed height, so long blocks are capped; an
+     embed keeps its panels side by side, where the body fills the panel. */
+  .wb:not(.wb-embed) .wb-inspection > pre {
     max-height: 320px;
     overflow: auto;
   }
-  .wb-requests-table-wrap,
-  .wb-requests-panel {
+  .wb:not(.wb-embed) :is(.wb-requests-table-wrap, .wb-requests-panel) {
     max-height: 420px;
   }
   .wb-player {
