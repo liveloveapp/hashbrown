@@ -3,7 +3,7 @@
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypeVar
 
 from ag_ui.core import AssistantMessage, BaseEvent, Message, ToolCallResultEvent, ToolMessage
 from pydantic_ai import CustomEvent, RunCancelled
@@ -35,6 +35,9 @@ class AGUIEvent(CustomEvent, name='hashbrown.ag_ui'):
         """Return the original standard event for native AG-UI passthrough."""
         return self.event
 
+
+_AgentDepsT = TypeVar('_AgentDepsT', contravariant=True)
+_OutputDataT = TypeVar('_OutputDataT', covariant=True)
 
 def _outcome(part: ToolReturnPart | NativeToolReturnPart, cancelled: bool = False) -> dict[str, Any]:
     """Translate an actual native return; never infer classification from its prose."""
@@ -72,7 +75,7 @@ async def _enrich_result(events: AsyncIterator[BaseEvent], part: ToolReturnPart 
 
 
 @dataclass
-class AGUIEventStream(NativeAGUIEventStream):
+class AGUIEventStream(NativeAGUIEventStream[_AgentDepsT, _OutputDataT]):
     """Native event stream with optional ``metadata['hashbrown.tool']`` on results.
 
     Only a RunCancelled raised by this stream establishes cancellation provenance.
@@ -120,14 +123,14 @@ class AGUIEventStream(NativeAGUIEventStream):
             yield value
 
 
-class AGUIAdapter(NativeAGUIAdapter):
+class AGUIAdapter(NativeAGUIAdapter[_AgentDepsT, _OutputDataT]):
     """Drop-in native AG-UI adapter adding neutral terminal result metadata.
 
     All agent configuration, frontend tools, request loading and sanitization remain
     inherited. Client-controlled metadata is never promoted to backend tool state.
     """
 
-    def build_event_stream(self) -> AGUIEventStream:
+    def build_event_stream(self) -> AGUIEventStream[_AgentDepsT, _OutputDataT]:
         """Build the compatibility stream with all native public stream options."""
         return AGUIEventStream(
             self.run_input,

@@ -11,6 +11,7 @@ response = await AGUIAdapter.dispatch_request(request, agent=agent)
 
 The adapter inherits Pydantic AI's frontend tools, deferred execution, approval
 resume, request sanitization and configuration. It adds no executors or storage.
+It preserves native dependency/output type parameters and ships type hints.
 It preserves native results and continuity events while adding this optional
 terminal record to tool result events and dumped tool messages:
 

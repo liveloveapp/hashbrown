@@ -376,6 +376,25 @@ def test_installed_distribution_is_used():
     assert AGUIAdapter.__module__ == 'hashbrown_pydantic_ai.adapter'
 
 
+def test_native_generic_annotations_remain_compatible():
+    from typing import get_origin
+
+    adapter = AGUIAdapter[None, str]
+    stream = AGUIEventStream[None, str]
+
+    assert get_origin(adapter) is AGUIAdapter
+    assert get_origin(stream) is AGUIEventStream
+
+
+def test_installed_wheel_exposes_its_type_hints():
+    from importlib.resources import files
+    import hashbrown_pydantic_ai
+
+    marker = files(hashbrown_pydantic_ai).joinpath('py.typed')
+
+    assert marker.is_file()
+
+
 if __name__ == '__main__':
     tests = [(name, value) for name, value in list(globals().items()) if name.startswith('test_') and callable(value)]
     for name, test in tests:

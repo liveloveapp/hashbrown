@@ -7,12 +7,15 @@
   "namedInputs": {
     "pythonPackage": [
       "{projectRoot}/src/**/*.py",
+      "{projectRoot}/src/**/py.typed",
       "{projectRoot}/tests/**/*.py",
       "{projectRoot}/check.py",
       "{projectRoot}/pyproject.toml",
       "{projectRoot}/README.md",
       "{projectRoot}/project.json",
-      { "runtime": "uv --version" }
+      {
+        "runtime": "uv --version"
+      }
     ],
     "pinnedQualification": [
       "pythonPackage",
@@ -27,19 +30,25 @@
       "inputs": ["pythonPackage"],
       "outputs": ["{projectRoot}/dist"],
       "cache": true,
-      "options": { "command": "python3 packages/pydantic-ai/check.py build" }
+      "options": {
+        "command": "python3 packages/pydantic-ai/check.py build"
+      }
     },
     "test": {
       "executor": "nx:run-commands",
       "inputs": ["pinnedQualification"],
       "cache": true,
-      "options": { "command": "python3 packages/pydantic-ai/check.py test" }
+      "options": {
+        "command": "python3 packages/pydantic-ai/check.py test"
+      }
     },
     "lint": {
       "executor": "nx:run-commands",
       "inputs": ["pythonPackage"],
       "cache": true,
-      "options": { "command": "python3 packages/pydantic-ai/check.py lint" }
+      "options": {
+        "command": "python3 packages/pydantic-ai/check.py lint"
+      }
     }
   }
 }
