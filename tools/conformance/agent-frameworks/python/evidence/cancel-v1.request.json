@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-cancel-v1",
+  "runId": "capture-cancel-v1-run",
+  "messages": [
+    {
+      "id": "capture-cancel-v1-user",
+      "role": "user",
+      "content": "server-tool"
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "state": {},
+  "forwardedProps": {},
+  "protocolVersion": "1.0"
+}

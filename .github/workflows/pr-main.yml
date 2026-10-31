@@ -55,6 +55,21 @@ jobs:
           npx tsx tools/conformance/harness/select-ci-setup.ts "$RUNNER_TEMP/ci-tasks.json" >> "$GITHUB_OUTPUT"
           echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
+      - name: Setup uv for affected Pydantic qualification
+        if: steps.setup.outputs.python == 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.11.3'
+          enable-cache: false
+
+      - name: Install pinned Python for affected Pydantic qualification
+        if: steps.setup.outputs.python == 'true'
+        run: uv python install "$(cat tools/conformance/agent-frameworks/python/.python-version)"
+
+      - name: Install frozen isolated Pydantic dependencies
+        if: steps.setup.outputs.python == 'true'
+        run: npx nx install pydantic-ai-conformance
+
       - name: Setup .NET for affected integration
         if: steps.setup.outputs.dotnet == 'true'
         uses: actions/setup-dotnet@v6
@@ -140,6 +155,7 @@ jobs:
             test-results/examples
             playwright-report/examples
             test-results/conformance
+            test-results/pydantic-ai
             playwright-report/conformance
             test-results/atc
             dist/docs-workbench/verification

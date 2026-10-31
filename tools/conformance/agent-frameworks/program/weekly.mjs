@@ -102,7 +102,7 @@ export async function runBaseline({
     return writeNotRunHealth({ output });
   }
   const profiles = inventory.profiles
-    .filter((profile) => profile.qualification)
+    .filter((profile) => profile.status === 'legacy-qualified')
     .map(({ id, versions }) => ({ id, versions }));
   const stages = [];
   for (const command of commands) {

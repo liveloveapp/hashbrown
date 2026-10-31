@@ -10,6 +10,11 @@ import {
   producerSourcePaths,
 } from './inventory-evidence.mjs';
 
+import {
+  additionalReferences,
+  validateAdditionalQualification,
+} from './additional-qualification.mjs';
+
 const directory = dirname(fileURLToPath(import.meta.url));
 const validatedInventories = new WeakMap();
 const statuses = [
@@ -46,6 +51,7 @@ export function validateInventory({
   qualification,
   legacy,
   evidence,
+  additionalQualifications = [],
 }) {
   assert.equal(catalog.schemaVersion, 1, 'Unsupported catalog schema');
   assert.equal(
@@ -67,9 +73,11 @@ export function validateInventory({
     'scenario IDs',
   );
   unique(
-    [...qualification.records, ...catalog.plannedProfiles].map(
-      (profile) => profile.id,
-    ),
+    [
+      ...qualification.records,
+      ...additionalQualifications,
+      ...catalog.plannedProfiles,
+    ].map((profile) => profile.id),
     'profile IDs',
   );
   unique(legacy.profiles.map(key), 'legacy profiles');
@@ -199,6 +207,9 @@ export function validateInventory({
       catalog,
       profiles: [
         ...profiles,
+        ...additionalQualifications.map((record) =>
+          validateAdditionalQualification(record, scenarios, verifyFile),
+        ),
         ...catalog.plannedProfiles.map((profile) => ({
           ...profile,
           capabilities: {},
@@ -243,6 +254,26 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
     readFile(resolve(folder, 'qualification.json'), 'utf8'),
     readFile(resolve(folder, '../capabilities.json'), 'utf8'),
   ]);
+  const additionalText = await readFile(
+    resolve(folder, 'pydantic-qualification.json'),
+    'utf8',
+  ).catch((error) => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+  const additional = additionalText
+    ? JSON.parse(additionalText)
+    : { schemaVersion: 1, records: [] };
+  assert.equal(
+    additional.schemaVersion,
+    1,
+    'Unsupported additional qualification schema',
+  );
+  assert.ok(
+    Array.isArray(additional.records),
+    'Additional qualification records required',
+  );
+  const additionalQualifications = additional.records;
   const catalog = JSON.parse(catalogText);
   const qualification = JSON.parse(qualificationText);
   const legacy = JSON.parse(legacyText);
@@ -261,6 +292,7 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
     );
   }
   const references = [
+    ...additionalQualifications.flatMap(additionalReferences),
     ...(qualification.producerSources ?? []),
     ...qualification.records.flatMap((record) => [
       record.capture,
@@ -268,6 +300,16 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
       ...record.claims.flatMap((claim) => claim.evidence),
     ]),
   ];
+  // Captures are inert JSON; discover retained raw wire and execution references only.
+  for (const record of additionalQualifications) {
+    const path = record.capture.path;
+    assert.ok(
+      !isAbsolute(path) && !path.split('/').includes('..'),
+      'Evidence path escapes root',
+    );
+    const capture = JSON.parse(await readFile(resolve(root, path), 'utf8'));
+    references.push(capture.wire, capture.executionSummary);
+  }
   const evidence = Object.fromEntries(
     await Promise.all(
       [...new Set(references.map((reference) => reference.path))].map(
@@ -284,5 +326,11 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
       ),
     ),
   );
-  return validateInventory({ catalog, qualification, legacy, evidence });
+  return validateInventory({
+    catalog,
+    qualification,
+    legacy,
+    evidence,
+    additionalQualifications,
+  });
 }

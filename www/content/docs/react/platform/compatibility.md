@@ -11,13 +11,15 @@ meta:
 
 Choose a specific framework, bridge and configuration. These are partial, versioned qualifications at the AG-UI boundary. A passing capability applies only to its named scenario and evidence stages.
 
-Last qualified records import historical [#844](https://github.com/liveloveapp/hashbrown/pull/844) proof; the dates below describe that retained qualification, not a new execution. React and Angular share this evidence inventory; their display capabilities are recorded separately. Canonical consumer restore does not establish browser reload, reconnect or durable backend restart.
+The seven legacy Node profiles import historical [#844](https://github.com/liveloveapp/hashbrown/pull/844) proof; their dates describe that retained qualification, not a new execution. Additional profiles record their own execution identity and source commit; local retained evidence does not establish CI acceptance. React and Angular share this evidence inventory; their display capabilities are recorded separately. Canonical consumer restore does not establish browser reload, reconnect or durable backend restart.
 
 ## Recorded run health
 
 Static as-of snapshot of the reviewed qualification record, not a real-time status. Status: <code>not-run</code>. Historical qualifications are not the result of a new execution attempt.
 
-The [weekly baseline workflow](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml) is configured to run on main after the workflow is enabled, covering the seven approved pinned Node profiles. Candidate execution has not run and requires approved dependency/runtime constraints. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
+The [weekly baseline workflow](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml) is configured to run on main after the workflow is enabled, covering the seven approved pinned Node profiles. Candidate execution for broader Node dependency/runtime constraints has not run and requires approval. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
+
+A separate pinned Python baseline is configured for the isolated Pydantic AI host, prepared-store consumer, and live React and Angular browser gates. Its identical pinned candidate is deduplicated rather than executed as a second version combination. Broader Python dependency or runtime candidates require reviewed approval. These configured jobs do not establish a fresh execution or change last qualified claims.
 
 ## Reading the states
 

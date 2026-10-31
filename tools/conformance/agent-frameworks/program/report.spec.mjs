@@ -7,7 +7,7 @@ import { loadInventory, validateInventory } from './inventory.mjs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { escape, code } from './report-markdown.mjs';
+import { escape, code, qualifiedProfile } from './report-markdown.mjs';
 
 import { renderCompatibility, generateCompatibility } from './report.mjs';
 const freeze = (value) => {
@@ -240,7 +240,7 @@ test('lists each immutable source once per profile while tracing every claim sta
   )) {
     const section = page.split(`### ${profile.id}\n`)[1].split('\n### ')[0];
     for (const source of profile.qualification.sources) {
-      const url = `/blob/${profile.qualification.sourceCommit}/${source.path}`;
+      const url = `/blob/${profile.qualification.evidenceCommit ?? profile.qualification.sourceCommit}/${source.path}`;
       assert.equal(
         section.split(url).length - 1,
         1,
@@ -335,4 +335,87 @@ test('describes the configured weekly baseline without claiming a fresh executio
   assert.match(page, /seven approved pinned Node profiles/);
   assert.match(page, /does not claim a new weekly run exists or passed/);
   assert.doesNotMatch(page, /planned weekly report location/);
+});
+
+test('renders local additive provenance without inventing CI acceptance', async () => {
+  const profile = structuredClone((await loadInventory()).profiles[0]);
+  profile.id = 'pydantic-ai/native-http';
+  profile.framework = 'pydantic-ai';
+  profile.profile = 'native-http';
+  profile.status = 'qualified';
+  const q = profile.qualification;
+  q.execution = { kind: 'local', id: 'pydantic-local-2026-10-31' };
+  q.runtime = { python: '3.12.12', uv: '0.9.0' };
+  q.protocol = { requested: '1.0', effective: '1.0' };
+  q.recordPath =
+    'tools/conformance/agent-frameworks/program/pydantic-qualification.json';
+  delete q.ciRun;
+  delete q.ciUrl;
+
+  const section = qualifiedProfile(freeze(profile));
+
+  assert.match(section, /Python.*3\.12\.12.*uv.*0\.9\.0/);
+  assert.match(section, /Requested.*1\.0.*effective.*1\.0/);
+  assert.match(section, /Execution kind.*local/);
+  assert.match(section, /Execution ID.*pydantic-local-2026-10-31/);
+  assert.match(section, /local retained execution.*CI acceptance/i);
+  assert.ok(
+    section.includes(
+      '/blob/main/tools/conformance/agent-frameworks/program/pydantic-qualification.json',
+    ),
+  );
+  assert.doesNotMatch(
+    section,
+    /\[object Object\]|undefined|actions\/runs|Qualification CI/,
+  );
+});
+
+test('renders optional additive CI provenance and preserves the legacy record link default', async () => {
+  const original = structuredClone((await loadInventory()).profiles[0]);
+  const additional = structuredClone(original);
+  additional.status = 'qualified';
+  additional.qualification.execution = {
+    kind: 'ci',
+    id: additional.qualification.ciRun,
+  };
+  additional.qualification.recordPath =
+    'tools/conformance/agent-frameworks/program/pydantic-qualification.json';
+
+  const legacySection = qualifiedProfile(original);
+  const additionalSection = qualifiedProfile(additional);
+
+  assert.ok(
+    legacySection.includes(
+      '/blob/main/tools/conformance/agent-frameworks/program/qualification.json',
+    ),
+  );
+  assert.ok(additionalSection.includes(additional.qualification.ciUrl));
+  assert.match(additionalSection, /Execution kind.*ci/);
+  assert.doesNotMatch(additionalSection, /local retained execution/i);
+});
+
+test('describes separate pinned Python weekly execution and deduplicates its identical candidate', async () => {
+  const inventory = await loadInventory();
+
+  const page = renderCompatibility(inventory, 'react');
+
+  assert.match(page, /seven legacy Node profiles.*historical.*#844/);
+  assert.match(page, /separate pinned Python baseline/i);
+  assert.match(page, /identical pinned candidate.*deduplicated/i);
+  assert.match(page, /does not claim a new weekly run exists or passed/);
+});
+
+test('links retained evidence at its immutable commit while preserving the execution source commit', async () => {
+  const profile = structuredClone((await loadInventory()).profiles[0]);
+  const q = profile.qualification;
+  q.evidenceCommit = 'b'.repeat(40);
+
+  const section = qualifiedProfile(profile);
+
+  assert.ok(section.includes(`| Source commit | [${q.sourceCommit}]`));
+  assert.ok(section.includes(`| Evidence commit | [${q.evidenceCommit}]`));
+  for (const reference of [q.capture, ...q.sources]) {
+    assert.ok(section.includes(`/blob/${q.evidenceCommit}/${reference.path}`));
+    assert.ok(!section.includes(`/blob/${q.sourceCommit}/${reference.path}`));
+  }
 });

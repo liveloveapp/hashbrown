@@ -73,7 +73,9 @@
         "{workspaceRoot}/tsconfig.base.json",
         {
           "runtime": "node --version"
-        }
+        },
+        "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.sse",
+        "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.request.json"
       ]
     },
     "e2e": {

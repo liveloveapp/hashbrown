@@ -386,7 +386,7 @@ test('rejects omitted or duplicated producer fingerprint inputs', async () => {
   assert.throws(validateDuplicate);
 });
 
-test('catalog keeps reload, reconnect and native restart as separate unqualified scenarios', async () => {
+test('catalog keeps recovery levels separate and preserves legacy unqualified scenarios', async () => {
   const inventory = await loadInventory();
   const expected = [
     'recovery.browser-reload',
@@ -399,9 +399,9 @@ test('catalog keeps reload, reconnect and native restart as separate unqualified
   const pydantic = inventory.catalog.plannedProfiles[0];
 
   const scenarios = inventory.catalog.scenarios.map((scenario) => scenario.id);
-  const qualified = inventory.profiles.flatMap(
-    (profile) => profile.qualification?.claims ?? [],
-  );
+  const qualified = inventory.profiles
+    .filter((profile) => profile.status === 'legacy-qualified')
+    .flatMap((profile) => profile.qualification?.claims ?? []);
 
   for (const id of expected) {
     assert.ok(scenarios.includes(id), `Missing separate scenario ${id}`);

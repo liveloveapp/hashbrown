@@ -41,9 +41,26 @@ const labels = {
 const source = (reference, commit) =>
   `${link(reference.path.split('/').at(-1), reference.path, commit)} (SHA-256 ${code(reference.sha256.slice(0, 12))})`;
 
-/** Render one historically qualified native profile and its retained evidence. */
+/**
+ * Render a versioned qualified profile with its recorded execution and evidence.
+ * Legacy CI provenance and additive local execution remain explicitly distinct.
+ * @param profile - A profile from the validated inventory.
+ * @returns Deterministic Markdown with immutable evidence source links.
+ */
 export function qualifiedProfile(profile) {
   const q = profile.qualification;
+  const evidenceCommit = q.evidenceCommit ?? q.sourceCommit;
+  const recordPath =
+    q.recordPath ??
+    'tools/conformance/agent-frameworks/program/qualification.json';
+  const runtime =
+    q.runtime && typeof q.runtime === 'object'
+      ? `Python ${code(q.runtime.python)}; uv ${code(q.runtime.uv)}`
+      : escape(q.runtime ?? 'not-recorded');
+  const protocol =
+    q.protocol && typeof q.protocol === 'object'
+      ? `Requested ${code(q.protocol.requested)}; effective ${code(q.protocol.effective)}`
+      : escape(q.protocol ?? 'not-recorded');
   const anchor = profile.id.replace(/[^a-zA-Z0-9-]/g, '-');
   const reference = (item) => {
     const index = q.sources.findIndex((source) => source.path === item.path);
@@ -57,7 +74,13 @@ export function qualifiedProfile(profile) {
   return [
     `### ${escape(profile.id)}`,
     '',
-    'Last qualified configuration; native profile, partial evidence only.',
+    `Last qualified configuration; ${escape(q.mode)} profile, partial evidence only.`,
+    ...(q.execution?.kind === 'local'
+      ? [
+          '',
+          'Local retained execution; no CI acceptance is recorded for this qualification.',
+        ]
+      : []),
     '',
     table(
       ['Configuration', 'Recorded value'],
@@ -72,12 +95,28 @@ export function qualifiedProfile(profile) {
           'Source commit',
           `[${q.sourceCommit}](${repository}/commit/${q.sourceCommit})`,
         ],
-        ['Qualification CI', `[Run ${escape(q.ciRun)}](${q.ciUrl})`],
-        ['Runtime', escape(q.runtime ?? 'not-recorded')],
+        ...(q.evidenceCommit
+          ? [
+              [
+                'Evidence commit',
+                `[${q.evidenceCommit}](${repository}/commit/${q.evidenceCommit})`,
+              ],
+            ]
+          : []),
+        ...(q.execution
+          ? [
+              ['Execution kind', code(q.execution.kind)],
+              ['Execution ID', code(q.execution.id)],
+            ]
+          : []),
+        ...(q.ciRun
+          ? [['Qualification CI', `[Run ${escape(q.ciRun)}](${q.ciUrl})`]]
+          : []),
+        ['Runtime', runtime],
         ['Platform', escape(q.platform ?? 'not-recorded')],
-        ['Protocol', escape(q.protocol ?? 'not-recorded')],
+        ['Protocol', protocol],
         ['Transport', escape(q.transport ?? 'not-recorded')],
-        ['Capture', source(q.capture, q.sourceCommit)],
+        ['Capture', source(q.capture, evidenceCommit)],
         [
           'Producer source fingerprint',
           code(q.capture.sourceSha256.slice(0, 12)),
@@ -107,13 +146,13 @@ export function qualifiedProfile(profile) {
       ]),
     ),
     '',
-    `Full digests and per-stage basis: [reviewed qualification record](${repository}/blob/main/tools/conformance/agent-frameworks/program/qualification.json), profile ${code(profile.id)}. Digests below show the first 12 SHA-256 characters.`,
+    `Full digests and per-stage basis: ${link('reviewed qualification record', recordPath, 'main')}, profile ${code(profile.id)}. Digests below show the first 12 SHA-256 characters.`,
     '',
     'Qualification sources:',
     '',
     ...q.sources.map(
       (item, index) =>
-        `- <a id="${anchor}-source-${index + 1}"></a>S${index + 1}: ${source(item, q.sourceCommit)}`,
+        `- <a id="${anchor}-source-${index + 1}"></a>S${index + 1}: ${source(item, evidenceCommit)}`,
     ),
     '',
   ].join('\n');

@@ -237,3 +237,53 @@ The maintained smoke hosts are also copied by the .NET acceptance consumer, whic
 pins published SDK 0.8.3. Their optional subagent diagnostic tolerates that older
 API. These current-SDK conformance cases require its capability marker to be true,
 so an empty compatibility fallback cannot qualify the subagent observations.
+
+## Pydantic AI HTTP baseline
+
+The isolated Python host lives in `python/`. Its exact Python version and complete
+`uv.lock` protect a deterministic `FunctionModel` agent running the public
+`AGUIAdapter` over a real loopback ASGI/SSE endpoint. Model responses are scripted;
+registered Python callbacks, native history, frontend-tool deferral and browser
+handlers execute normally. Hashbrown runtime packages gain no Python dependency.
+
+Run the pinned profile with:
+
+```sh
+npx nx build pydantic-ai-conformance
+npx nx test pydantic-ai-conformance
+npx nx lint pydantic-ai-conformance
+npx nx consumer-test pydantic-ai-conformance
+npx nx example-e2e pydantic-ai-conformance
+npx nx compatibility-baseline pydantic-ai-conformance
+```
+
+Install the pinned Python runtime and uv toolchain before running execution targets;
+`install` performs `uv sync --frozen`. Raw captures and callback/native-history
+observations are retained under `python/evidence/`. Regeneration is explicit:
+`node tools/conformance/agent-frameworks/python/capture.mjs --write`; ordinary tests
+compare fresh execution without rewriting evidence. A nested data-only evidence
+project keeps qualification-summary edits from installing Python. Raw capture
+changes still select the real producer checks.
+
+This profile covers streaming, causal tool-start timing, ordinary server tools,
+independent browser-tool round trips and history in both maintained UI hosts.
+Canonical consumer JSON restore is separate evidence from durable Python server
+restart. Approval/resume, state, structured output, trusted UI, media, rich steps,
+subagent provenance and native recovery remain unqualified.
+
+Native limits remain visible. The adapter rejects a frontend tool whose name
+collides with a registered server tool before model execution. Tool failure and
+interruption outcomes travel in namespaced opaque reasoning attachments;
+Hashbrown preserves the wire result without interpreting vendor-specific opaque
+values as a tool outcome. A failed run still reports its run error. Explicit
+first-party cancellation and subscriber disconnect are different probes: only
+the former emits a terminal event, and a `cancelled` run outcome is negotiated
+only for requests declaring protocol 1.0. The browser's ordinary request is tested
+without silently adding that declaration. A closed stream does not prove a
+cancelled tool classification.
+
+The weekly workflow runs Pydantic in its own job with sanitized attempt reports
+and artifacts. Its first candidate constraint is the same approved exact pins,
+so the candidate is explicitly deduplicated with the baseline. Expanding version
+ranges requires review; weekly checks never rewrite public qualifications.
+File search stays deferred.

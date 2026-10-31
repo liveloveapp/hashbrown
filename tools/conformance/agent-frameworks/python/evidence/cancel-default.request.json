@@ -1,0 +1,15 @@
+{
+  "threadId": "capture-cancel-default",
+  "runId": "capture-cancel-default-run",
+  "messages": [
+    {
+      "id": "capture-cancel-default-user",
+      "role": "user",
+      "content": "server-tool"
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "state": {},
+  "forwardedProps": {}
+}
