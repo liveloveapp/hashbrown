@@ -415,30 +415,28 @@ export function validateAdditionalQualification(record, scenarios, verifyFile) {
         ),
         'Executed probe evidence required',
       );
-    if (claim.status === 'passed') {
-      const requireSource = (path) =>
-        assert.ok(
-          record.sourceInputs.some((source) => source.path === path),
-          `Missing consumer assertion source ${path}`,
-        );
-      if (
-        claim.evidence.some(
-          (item) => item.stage === 'core-consumer' && item.result === 'pass',
-        )
+    const requireSource = (path) =>
+      assert.ok(
+        record.sourceInputs.some((source) => source.path === path),
+        `Missing consumer assertion source ${path}`,
+      );
+    if (
+      claim.evidence.some(
+        (item) => item.stage === 'core-consumer' && item.result === 'pass',
       )
-        requireSource(
-          'packages/core/src/models/pydantic-ai.conformance.spec.ts',
-        );
-      if (
-        claim.evidence.some(
-          (item) =>
-            ['browser-react', 'browser-angular'].includes(item.stage) &&
-            item.result === 'pass',
-        )
-      ) {
-        requireSource('tools/conformance/pydantic-ai/pydantic-ai.spec.ts');
-        requireSource('tools/conformance/pydantic-ai.playwright.config.ts');
-      }
+    )
+      requireSource('packages/core/src/models/pydantic-ai.conformance.spec.ts');
+    if (
+      claim.evidence.some(
+        (item) =>
+          ['browser-react', 'browser-angular'].includes(item.stage) &&
+          item.result === 'pass',
+      )
+    ) {
+      requireSource('tools/conformance/pydantic-ai/pydantic-ai.spec.ts');
+      requireSource('tools/conformance/pydantic-ai.playwright.config.ts');
+    }
+    if (claim.status === 'passed') {
       if (
         ['actualServerToolExecution', 'liveStartBeforeToolCompletion'].includes(
           claim.capability,

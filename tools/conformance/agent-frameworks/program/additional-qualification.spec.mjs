@@ -541,7 +541,9 @@ test('allows separately committed retained evidence without changing execution c
 });
 
 test('requires consumer assertion sources for passed probe stages on a producer gap', () => {
-  const input = fixture({ stageNames: ['producer-execution', 'bridge-wire', 'core-consumer'] });
+  const input = fixture({
+    stageNames: ['producer-execution', 'bridge-wire', 'core-consumer'],
+  });
   input.additionalQualifications[0].claims[0].status = 'missing-upstream';
 
   const act = () => validateInventory(input);
