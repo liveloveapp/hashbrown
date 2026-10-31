@@ -1,6 +1,6 @@
 # Full Hashbrown integration conformance program
 
-**Status:** proposed design, awaiting user review. Decisions below were selected
+**Status:** approved by the user on 2026-10-30. Decisions below were selected
 in conversation on 2026-10-30; this document does not claim implementation or
 new framework compatibility.
 
