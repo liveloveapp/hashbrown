@@ -13,7 +13,17 @@ export interface DraftArticle {
   description?: string;
 }
 
-/** A post ready to publish. Phase 1 posts are text only. */
+/** One reviewed, immutable image attached to a social post. */
+export interface DraftImage {
+  /** Public PNG/JPEG under hashbrown.dev/marketing/. */
+  url: string;
+  /** Accurate screen-reader description, at most 1,000 characters. */
+  altText: string;
+  /** SHA-256 of the exact reviewed bytes. */
+  sha256: string;
+}
+
+/** A post ready to publish. Queued X/LinkedIn posts require an image. */
 export interface Draft {
   channel: SocialChannel;
   text?: string;
@@ -23,6 +33,8 @@ export interface Draft {
   article?: DraftArticle;
   /** LinkedIn only: posted as the author's first comment right after the post. */
   firstComment?: string;
+  /** Required by the social queue; omitted only by legacy direct helpers. */
+  image?: DraftImage;
 }
 
 /** Where a published post lives. */

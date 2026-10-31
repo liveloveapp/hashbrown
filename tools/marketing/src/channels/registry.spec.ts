@@ -4,9 +4,15 @@ import { createMemoryCredentialStore } from '../credentials/memory-store.ts';
 import { createAdapters } from './registry.ts';
 import type { Draft, SocialChannel } from './types.ts';
 
+const image = {
+  url: 'https://hashbrown.dev/marketing/test.png',
+  altText: 'A reviewed example.',
+  sha256: 'a'.repeat(64),
+};
+
 const drafts: Record<SocialChannel, Draft> = {
-  x: { channel: 'x', text: 'hello' },
-  linkedin: { channel: 'linkedin', text: 'hello' },
+  x: { channel: 'x', image, text: 'hello' },
+  linkedin: { channel: 'linkedin', image, text: 'hello' },
   devto: {
     channel: 'devto',
     text: 'body',
@@ -42,7 +48,7 @@ test('a dry run still rejects an invalid draft', async () => {
   });
 
   await expect(
-    adapters.x.post({ channel: 'x', text: 'a'.repeat(281) }),
+    adapters.x.post({ channel: 'x', image, text: 'a'.repeat(281) }),
   ).rejects.toThrow(/280/);
 });
 

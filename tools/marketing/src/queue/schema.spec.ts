@@ -2,6 +2,12 @@ import { expect, test } from 'vitest';
 
 import { WeekImport } from './schema.ts';
 
+const image = {
+  url: 'https://hashbrown.dev/marketing/test.png',
+  altText: 'A reviewed example.',
+  sha256: 'a'.repeat(64),
+};
+
 // Monday 2026-11-02; the clocks went back on Sunday 2026-11-01.
 const WEEK_START = '2026-11-02';
 
@@ -15,7 +21,7 @@ function week(overrides: Record<string, unknown> = {}, scheduledAt?: string) {
         channel: 'x',
         kind: 'release',
         scheduledAt: scheduledAt ?? '2026-11-03T09:00:00-05:00',
-        draft: { channel: 'x', text: 'Hashbrown ships.' },
+        draft: { channel: 'x', image, text: 'Hashbrown ships.' },
         sources: [{ url: 'https://hashbrown.dev/blog', note: 'Release notes' }],
       },
     ],
@@ -72,7 +78,9 @@ test('rejects an unknown dependsOnKey', () => {
 test('rejects a draft whose channel differs from the post channel', () => {
   const [post] = week().posts;
   const result = WeekImport.safeParse(
-    week({ posts: [{ ...post, draft: { channel: 'linkedin', text: 'Hi' } }] }),
+    week({
+      posts: [{ ...post, draft: { channel: 'linkedin', image, text: 'Hi' } }],
+    }),
   );
 
   expect(result.success).toBe(false);
@@ -92,7 +100,10 @@ test('rejects firstComment on an x draft', () => {
   const result = WeekImport.safeParse(
     week({
       posts: [
-        { ...post, draft: { channel: 'x', text: 'Hi', firstComment: 'Hey' } },
+        {
+          ...post,
+          draft: { channel: 'x', image, text: 'Hi', firstComment: 'Hey' },
+        },
       ],
     }),
   );
@@ -108,7 +119,12 @@ test('accepts firstComment on a linkedin draft', () => {
         {
           ...post,
           channel: 'linkedin',
-          draft: { channel: 'linkedin', text: 'Hi', firstComment: 'Link' },
+          draft: {
+            channel: 'linkedin',
+            image,
+            text: 'Hi',
+            firstComment: 'Link',
+          },
         },
       ],
     }),
@@ -164,6 +180,7 @@ test('rejects a link on an x draft, pointing at text', () => {
           ...post,
           draft: {
             channel: 'x',
+            image,
             text: 'Hi',
             link: { url: 'https://hashbrown.dev' },
           },
