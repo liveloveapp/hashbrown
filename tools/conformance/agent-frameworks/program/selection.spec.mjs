@@ -120,3 +120,13 @@ test('unrelated documentation does not install framework hosts', () => {
 
   assert.ok(!tasks.includes('conformance:agent-framework-install'));
 });
+
+test('website production build isolates its environment from grouped Nx test execution', () => {
+  const website = JSON.parse(readFileSync('www/project.json', 'utf8'));
+
+  const buildEnvironment = website.targets.build.options.env;
+  const testEnvironment = website.targets.test.options.env;
+
+  assert.equal(buildEnvironment?.NODE_ENV, 'production');
+  assert.notEqual(testEnvironment?.NODE_ENV, 'production');
+});

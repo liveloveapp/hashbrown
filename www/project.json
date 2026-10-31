@@ -11,7 +11,10 @@
       "outputs": ["{projectRoot}/.next"],
       "options": {
         "command": "next build",
-        "cwd": "www"
+        "cwd": "www",
+        "env": {
+          "NODE_ENV": "production"
+        }
       },
       "dependsOn": [
         {
