@@ -792,8 +792,8 @@ test('shows Markdown and selected source details through the recipe inspector in
     framework: 'Angular',
     managedChat: true,
     lesson: {
-      id: 'magic-text',
-      title: 'Magic Text',
+      id: 'prose',
+      title: 'Prose',
       format: 'text',
       inspector: 'Markdown',
     },

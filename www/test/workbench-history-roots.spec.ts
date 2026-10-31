@@ -25,7 +25,7 @@ function reactDispatch(format: string, id?: string) {
     'AuthoringWorkbenchConversation',
     'HistoryWorkbenchConversation',
     'WorkflowWorkbenchConversation',
-    'MagicTextWorkbenchConversation',
+    'ProseWorkbenchConversation',
     'PredictionsWorkbenchConversation',
     'SelectionWorkbenchConversation',
     'DecisionWorkbenchConversation',
@@ -69,7 +69,7 @@ function reactDispatch(format: string, id?: string) {
 test('React root dispatch preserves all prior lessons and binds the three authoring lessons', () => {
   const expected: Record<string, string> = {
     workflow: 'WorkflowWorkbenchConversation',
-    text: 'MagicTextWorkbenchConversation',
+    text: 'ProseWorkbenchConversation',
     predictions: 'PredictionsWorkbenchConversation',
     selection: 'SelectionWorkbenchConversation',
     decision: 'DecisionWorkbenchConversation',

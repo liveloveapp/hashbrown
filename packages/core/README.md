@@ -22,7 +22,7 @@
 - **Generative UI.** The model composes your components. Bundle them into UI kits.
 - **Client-side tools.** The model calls functions in your app. Connect MCP servers too.
 - **Structured output.** Skillet schemas turn model output into typed JSON.
-- **Streaming.** Strings, arrays, and objects parse as they arrive. Magic Text streams Markdown.
+- **Streaming.** Strings, arrays, and objects parse as they arrive. Prose streams Markdown.
 - **Any model.** OpenAI, Anthropic, Gemini, Bedrock, Azure, Ollama, or a model in the browser.
 - **Code execution.** Run model-written JavaScript in a sandbox.
 

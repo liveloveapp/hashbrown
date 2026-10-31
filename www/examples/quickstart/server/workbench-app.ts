@@ -134,7 +134,7 @@ export function pinWorkbenchInput(
     agent ||
     history ||
     workflow ||
-    lesson === 'magic-text' ||
+    lesson === 'prose' ||
     lesson === 'conversation' ||
     lesson === 'system-instructions';
   return {
@@ -161,7 +161,7 @@ export function pinWorkbenchInput(
                         ? workbenchConversationSystem
                         : lesson === 'system-instructions'
                           ? workbenchInstructionsSystem
-                          : lesson === 'magic-text'
+                          : lesson === 'prose'
                             ? workbenchTextSystem
                             : lesson === 'predictions'
                               ? workbenchPredictionsSystem

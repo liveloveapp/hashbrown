@@ -19,8 +19,8 @@ The existing 20-character-per-second caption limit allowed several captions to c
 | Caption                                      | Original rate         | Change                                                    |
 | -------------------------------------------- | --------------------- | --------------------------------------------------------- |
 | Decisions, React: next choice                | 18.44 chars/s         | “Next choice: review.”                                    |
-| Magic Text, Angular / React: citation        | 19.48 / 19.84 chars/s | “Open citation. A reference is not verification.”         |
-| Magic Text, Angular / React: replay          | 17.21 / 17.53 chars/s | “Replay shows Markdown and state. No requests or writes.” |
+| Prose, Angular / React: citation        | 19.48 / 19.84 chars/s | “Open citation. A reference is not verification.”         |
+| Prose, Angular / React: replay          | 17.21 / 17.53 chars/s | “Replay shows Markdown and state. No requests or writes.” |
 | System instructions, Angular / React: replay | 19.21 / 19.13 chars/s | “Replay shows captured policy. No new requests.”          |
 
 The active accessibility regression also exposed a dense cue in each earlier Threadplane recording (18.21 / 18.21 chars/s). It now says “First turn retained in local history.” Decisions uses the same shorter wording in both SDKs even though Angular’s original cue was within budget. The generators, published VTT files and plain-text transcripts were updated together. Caption timestamps, recorded events, posters, result images and encoded videos were preserved. No output was fabricated and no capture provenance was restamped.
@@ -40,7 +40,7 @@ The shared publication validator and active-media accessibility test now enforce
 - Local models is labelled native Chrome inference, with explicit preparation and acceptance. It runs at actual speed, unlike the half-speed hosted recordings. The transcripts distinguish the existing dedicated test profile from general device availability, and separate labelled API fixtures from inference footage.
 - JavaScript runtime contains real QuickJS results, host-call wrappers and errors. It makes zero model requests in either SDK. The estimate changes while the plan stays unchanged; the transcript preserves the deadline, host effects and memory-limit caveats.
 - JSON parser separates source completion, parser completion and original-document validation. Natural language forms adds editable reviewed fields and explicit Apply. Both SDK recordings retain the real model’s rewritten first step and the user’s correction before the second apply. The final accepted revision is two; the recordings do not pretend that generation itself applied either plan.
-- Magic Text retains the reference-versus-verification distinction. Predictions separates dismissing a completed proposal from accepting a fresh one. UI kits shows two explicit acceptances and two trusted components; UI chatbot shows a read-only PlanReading after acceptance. Request transformation shows the actual adapter callback trace and preserved mapped fields. Debugging visibly labels its initial 403 as a local demo switch, then retries in the same SDK conversation.
+- Prose retains the reference-versus-verification distinction. Predictions separates dismissing a completed proposal from accepting a fresh one. UI kits shows two explicit acceptances and two trusted components; UI chatbot shows a read-only PlanReading after acceptance. Request transformation shows the actual adapter callback trace and preserved mapped fields. Debugging visibly labels its initial 403 as a local demo switch, then retries in the same SDK conversation.
 
 Angular and React have the same lesson-level actions, request/tool counts and state outcomes. Their real prose, token timing and confidence differ. Transcript text is identical after the SDK heading except for the actual Agent decisions confidence scores; no attempt was made to manufacture identical model responses.
 
@@ -63,7 +63,7 @@ Times below are encoded-video seconds, not `elapsedMs` from capture events. Host
 | javascript-runtime      | 40.467s; 9.170, 30.496             | 40.300s; 8.926, 30.296           | 0 / 0                    |
 | json-parser             | 54.600s; 11.612, 27.970            | 56.400s; 12.374, 28.734          | 2 / 0                    |
 | local-models            | 30.367s; 2.578, 25.855             | 35.033s; 4.490, 30.268           | 2 / 0                    |
-| magic-text              | 27.667s; 8.668, 20.132             | 26.200s; 8.384, 18.798           | 4 / 2                    |
+| prose              | 27.667s; 8.668, 20.132             | 26.200s; 8.384, 18.798           | 4 / 2                    |
 | message-history         | 57.767s; 8.190, 32.256             | 55.400s; 7.970, 31.114           | 2 / 0                    |
 | natural-forms           | 83.400s; 13.568, 57.738            | 82.300s; 13.406, 56.502          | 4 / 2                    |
 | predictions             | 27.000s; 6.098, 20.528             | 25.800s; 7.110, 20.988           | 3 / 0                    |

@@ -193,7 +193,7 @@ async function* fixture(
     return;
   }
   const predictions = lessonId === 'predictions';
-  const text = lessonId === 'magic-text';
+  const text = lessonId === 'prose';
   const verdict = predictions || text ? recipeOutcome : outcome;
   if (
     !predictions &&
@@ -906,12 +906,12 @@ try {
         saveCheckpoint();
         continue;
       }
-      if (['magic-text', 'predictions', 'ui-selection'].includes(lesson.id)) {
+      if (['prose', 'predictions', 'ui-selection'].includes(lesson.id)) {
         report.push(
           await verifyRecipeWorkbench({
             browser,
             framework,
-            lesson: lesson.id as 'magic-text' | 'predictions' | 'ui-selection',
+            lesson: lesson.id as 'prose' | 'predictions' | 'ui-selection',
             origin: `http://127.0.0.1:${address.port}`,
             work,
             live,

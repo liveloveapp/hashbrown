@@ -31,7 +31,7 @@ test('uses measured phase times for whole decisions and keeps every cue inside e
 });
 
 test('rejects missing phase evidence instead of publishing incomplete recipe captions', () => {
-  const report = { lesson: 'magic-text', phases: { firstComplete: 2 } };
+  const report = { lesson: 'prose', phases: { firstComplete: 2 } };
 
   expect(() => workbenchRecipeRecordingCues(report, 20)).toThrow('followup');
 });

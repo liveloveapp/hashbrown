@@ -15,7 +15,7 @@ import {
 } from './verify-inspector-modes';
 import { writeFileSync } from 'node:fs';
 
-type RecipeLesson = 'magic-text' | 'predictions' | 'ui-selection';
+type RecipeLesson = 'prose' | 'predictions' | 'ui-selection';
 type RecipeOutcome =
   | 'success'
   | 'empty'
@@ -157,7 +157,7 @@ export async function verifyRecipeWorkbench(options: {
     expect(requestCount()).toBe(0);
     expect(httpRequests).toBe(0);
     await revision(0);
-    await tab(lesson === 'magic-text' ? 'Markdown' : 'JSON');
+    await tab(lesson === 'prose' ? 'Markdown' : 'JSON');
     await hold();
     mark('firstRequest');
     if (
@@ -181,7 +181,7 @@ export async function verifyRecipeWorkbench(options: {
       name: 'UI selection result',
       exact: true,
     });
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       await expect(text.first()).toContainText(/plan/i, { timeout: 60_000 });
       if (!live) await expect(chatStatus).toContainText('loading');
     } else if (lesson === 'predictions' && !live) {
@@ -225,7 +225,7 @@ export async function verifyRecipeWorkbench(options: {
     let firstManualChoice = false;
     let secondChoiceConfidence = 0;
     let lowConfidenceSecondChoice = false;
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       await expect(text.first().locator('h1,h2,h3')).toHaveCount(1);
       await expect(text.first().locator('strong,em')).not.toHaveCount(0);
       await expect(text.first().locator('li')).toHaveCount(2);
@@ -344,7 +344,7 @@ export async function verifyRecipeWorkbench(options: {
       await expectInspectionText(inspection, '"selectedView": "summary"');
     }
     await hold();
-    await tab(lesson === 'magic-text' ? 'Markdown' : 'JSON');
+    await tab(lesson === 'prose' ? 'Markdown' : 'JSON');
     await root.getByRole('button', { name: 'Follow-up', exact: true }).click();
     mark('followup');
     if (
@@ -356,7 +356,7 @@ export async function verifyRecipeWorkbench(options: {
     await send.click();
     await complete();
     if (lesson === 'ui-selection' && !live) options.decisionOutcome('success');
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       await expect(text).toHaveCount(2);
       expect((await text.last().innerText()).length).toBeLessThan(firstLength);
       await expect(
@@ -424,9 +424,9 @@ export async function verifyRecipeWorkbench(options: {
     const captured = options.requests.slice(requestStart);
     const decisions = options.decisionRequests.slice(decisionStart);
     expect(requestCount()).toBe(
-      lesson === 'magic-text' ? 4 : lesson === 'predictions' ? 3 : 2,
+      lesson === 'prose' ? 4 : lesson === 'predictions' ? 3 : 2,
     );
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       expect(new Set(captured.map((request) => request.threadId)).size).toBe(1);
       expect(
         captured.at(-1)?.messages.filter((message) => message.role === 'user'),
@@ -493,7 +493,7 @@ export async function verifyRecipeWorkbench(options: {
     await root
       .getByRole('button', {
         name:
-          lesson === 'magic-text'
+          lesson === 'prose'
             ? /^Parsed text[.]/
             : lesson === 'predictions'
               ? /^Suggestions ready[.]/
@@ -501,7 +501,7 @@ export async function verifyRecipeWorkbench(options: {
       })
       .first()
       .press('Enter');
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       await expect(text.first()).toBeVisible();
       const seek = root.getByRole('slider', { name: 'Seek captured event' });
       // Inspect a complete captured reference, then seek an actual partial SDK render.
@@ -596,20 +596,20 @@ export async function verifyRecipeWorkbench(options: {
       .getByRole('button', { name: 'Return to live', exact: true })
       .click();
     await revision(
-      lesson === 'magic-text' ? 0 : lesson === 'ui-selection' ? 2 : 1,
+      lesson === 'prose' ? 0 : lesson === 'ui-selection' ? 2 : 1,
     );
     expect(requestCount()).toBe(beforeReplay);
     expect(httpRequests).toBe(beforeReplayHTTP);
     const replayRequests = httpRequests - beforeReplayHTTP;
     mark('returnedLive');
     await tab(
-      lesson === 'magic-text'
+      lesson === 'prose'
         ? 'Markdown'
         : lesson === 'ui-selection'
           ? 'UI'
           : 'JSON',
     );
-    if (lesson === 'magic-text') {
+    if (lesson === 'prose') {
       const beforeCitation = requestCount();
       await text.last().locator('a[role="doc-noteref"]').first().click();
       await showInspectorMode(root, 'bottom');
@@ -707,7 +707,7 @@ export async function verifyRecipeWorkbench(options: {
           await expect(root.locator('[data-live] button:enabled')).toHaveCount(
             0,
           );
-          if (lesson === 'magic-text') {
+          if (lesson === 'prose') {
             await tab('Markdown');
             await expect(text.last()).toBeVisible();
             await showInspectorMode(root, 'bottom');
@@ -761,7 +761,7 @@ export async function verifyRecipeWorkbench(options: {
         .click();
       await expect(send).toBeEnabled();
       await expect(
-        lesson === 'magic-text'
+        lesson === 'prose'
           ? text
           : lesson === 'predictions'
             ? predictions

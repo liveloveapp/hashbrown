@@ -1,4 +1,4 @@
-/* Streaming prose (Hashbrown Magic Text) and its caret. */
+/* Streaming prose (Hashbrown Prose) and its caret. */
 .atc-prose {
   font-size: 15px;
   line-height: 1.55;
@@ -24,7 +24,7 @@
 .atc-prose a {
   color: var(--atc-ink);
 }
-.atc-chat .atc-prose .hb-magic-text-caret {
+.atc-chat .atc-prose .hb-prose-caret {
   width: 0.5em;
   height: 0.5em;
   background-color: var(--atc-ink);
@@ -33,11 +33,11 @@
 }
 
 /*
- * Streaming text: each new word fades in over 180 ms (Hashbrown's Magic Text
+ * Streaming text: each new word fades in over 180 ms (Hashbrown's Prose
  * adds segments with stable keys, so earlier words never re-animate). Opacity
  * only, so nothing shifts; static under reduced motion (motion.css).
  */
-.atc-prose.hb-magic-text-root .hb-magic-text-segment {
+.atc-prose.hb-prose-root .hb-prose-segment {
   animation: atc-segment-in 180ms var(--atc-ease) both;
 }
 @keyframes atc-segment-in {

@@ -79,11 +79,11 @@ export function workbenchRecipeInspection(
   const recipe = frame?.recipe;
   if (format === 'text')
     return {
-      heading: tab === 'UI' ? 'Magic Text renderer' : 'Streamed Markdown',
+      heading: tab === 'UI' ? 'Prose renderer' : 'Streamed Markdown',
       value:
         tab === 'UI'
           ? {
-              renderer: 'Magic Text',
+              renderer: 'Prose',
               input: 'Assistant Markdown string',
               generatesComponentProps: false,
               source: 'The supplied documentation reference',

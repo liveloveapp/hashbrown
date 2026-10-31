@@ -28,7 +28,7 @@ Each lesson below has a separate recording per framework. The media ID is `canon
 | Save text conversations | `save-text-conversations` | `recipes/browser-history`                          |
 | Server-owned threads    | `server-threads`          | `recipes/threads`                                  |
 | Public endpoints        | `public-endpoint`         | `recipes/public-endpoint`                          |
-| Magic Text              | `magic-text`              | `recipes/magic-text`                               |
+| Prose              | `prose`              | `recipes/prose`                               |
 | Predictive suggestions  | `predictions`             | `recipes/predictive-actions`                       |
 | UI selection            | `ui-selection`            | `recipes/ui-selection`                             |
 | Decisions in agents     | `agent-decisions`         | `recipes/decisions-in-agents`                      |
@@ -127,3 +127,5 @@ The two production-reference recordings now include matching `-capture.json` com
 Authored Angular and React guides now open with a relevant recorded teaser. The prose introduces the concept and an ordinary application implementation before the separate workbench walkthrough and its inline Replay/Live panel where supported. Architecture flows explain data and ownership boundaries where useful. Provider teasers retain their actual source disclosure; a client recording is not evidence that another provider or a historical SDK version was run.
 
 `npx nx check-docs-examples www` extracts the introductory application examples from Markdown and compiles them against the public APIs, including strict Angular templates. It runs as a dependency of the docs tests. Its manifest covers the new concept and recipe modules; installed Threadplane consumers, the existing standalone local-model applications, historical migrations, and full Quickstart setups retain their separate checks. Workbench excerpts remain checked against the canonical source.
+
+The prose lesson media was refreshed from its existing OpenAI captures through the renamed workbench in read-only replay. Capture timestamps and commit provenance remain original; lesson IDs and endpoint paths were migrated to `prose`. Captions and transcripts identify replay explicitly.

@@ -14,17 +14,17 @@ import {
 } from '@hashbrownai/core';
 import type { PartialMarkdownParserOptions } from '@cacheplane/partial-markdown';
 import {
-  MagicText,
-  type MagicTextCitationClickEvent,
-  type MagicTextLinkClickEvent,
-} from '../components/magic-text-renderer.component';
+  Prose,
+  type ProseCitationClickEvent,
+  type ProseLinkClickEvent,
+} from '../components/prose-renderer.component';
 
 /**
  * Minimal contract for custom markdown renderer components used by `exposeMarkdown`.
  *
  * @public
  */
-export type MagicTextRendererComponentType = Type<{
+export type ProseRendererComponentType = Type<{
   text: unknown;
   isComplete: unknown;
 }>;
@@ -41,12 +41,12 @@ export type ɵExposeMarkdownBuiltInRuntimeConfig = {
   segmenter?: SegmenterOptions;
   caret: boolean;
   className?: string;
-  onLinkClick?: (event: MagicTextLinkClickEvent) => void;
-  onCitationClick?: (event: MagicTextCitationClickEvent) => void;
+  onLinkClick?: (event: ProseLinkClickEvent) => void;
+  onCitationClick?: (event: ProseCitationClickEvent) => void;
 };
 
 export type ɵExposeMarkdownCustomRuntimeConfig = {
-  renderer: MagicTextRendererComponentType;
+  renderer: ProseRendererComponentType;
 };
 
 export type ɵExposeMarkdownRuntimeConfig =
@@ -58,10 +58,10 @@ export const ɵHB_EXPOSE_MARKDOWN_CONFIG =
 @Component({
   selector: 'hb-exposed-markdown',
   standalone: true,
-  imports: [MagicText],
+  imports: [Prose],
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
-    <hb-magic-text
+    <hb-prose
       [text]="text()"
       [isComplete]="isComplete()"
       [parserOptions]="parserOptions()"
@@ -95,11 +95,11 @@ export class ɵExposedMarkdownComponent {
   caret = computed(() => this.config.caret);
   className = computed(() => this.config.className);
 
-  handleLinkClick(event: MagicTextLinkClickEvent): void {
+  handleLinkClick(event: ProseLinkClickEvent): void {
     this.config.onLinkClick?.(event);
   }
 
-  handleCitationClick(event: MagicTextCitationClickEvent): void {
+  handleCitationClick(event: ProseCitationClickEvent): void {
     this.config.onCitationClick?.(event);
   }
 }

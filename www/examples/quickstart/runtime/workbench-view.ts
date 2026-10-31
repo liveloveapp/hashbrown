@@ -758,7 +758,7 @@ export function mountWorkbench(
         : ['text', 'workflow', 'history'].includes(
               commands.lesson?.format ?? '',
             )
-          ? commands.lesson?.id === 'magic-text'
+          ? commands.lesson?.id === 'prose'
             ? 'Markdown'
             : 'Text'
           : 'JSON',
