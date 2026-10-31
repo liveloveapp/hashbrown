@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import { parseMarkdown } from '../../src/lib/markdown';
 import { CONCEPT_DIAGRAMS } from '../../src/components/elements/ConceptDiagram';
 import { DOCS_DIAGRAMS } from '../../src/components/diagrams/diagram-catalog';
+import * as pagePolicy from '../../src/components/workbench/workbench-page-lessons';
 
 const root = resolve(import.meta.dirname, '../../content/docs');
 const files = (directory: string): string[] =>
@@ -19,9 +20,17 @@ const pages = files(root).map((path) => ({
   source: readFileSync(path, 'utf8'),
 }));
 
+const isReference = (path: string) =>
+  Object.hasOwn(
+    pagePolicy.DOCS_REFERENCE_PAGES,
+    path.split('/').slice(1).join('/').replace(/\.md$/, ''),
+  );
+
 const hasPanel = (source: string) => /<hb-workbench lesson="/.test(source);
 
-test.each(pages.filter(({ source }) => !hasPanel(source)))(
+test.each(
+  pages.filter(({ path, source }) => !isReference(path) && !hasPanel(source)),
+)(
   '$path opens with the recorded teaser before its teaching material',
   ({ source }) => {
     const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
@@ -30,7 +39,9 @@ test.each(pages.filter(({ source }) => !hasPanel(source)))(
   },
 );
 
-test.each(pages.filter(({ source }) => hasPanel(source)))(
+test.each(
+  pages.filter(({ path, source }) => !isReference(path) && hasPanel(source)),
+)(
   '$path opens with teaching material and leaves the demo to its panel',
   ({ source }) => {
     const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
@@ -132,3 +143,38 @@ test.each(['angular', 'react'])(
     }
   },
 );
+
+test('classifies only the compatibility matrix as reference content with an explicit reason', () => {
+  const expected = {
+    'platform/compatibility':
+      'versioned evidence reference; no recorded demo or workbench lesson represents the matrix',
+  };
+
+  const policy = pagePolicy;
+
+  expect(policy).toHaveProperty('DOCS_REFERENCE_PAGES', expected);
+});
+
+for (const sdk of ['react', 'angular']) {
+  test(`${sdk} compatibility reference opens with evidence scope without an unrelated demo or lesson`, () => {
+    const path = `${sdk}/platform/compatibility.md`;
+    const source = pages.find((page) => page.path === path)?.source ?? '';
+
+    const afterTitle = source.split(/^# .+$/m)[1]?.trimStart() ?? '';
+
+    expect(isReference(path)).toBe(true);
+    expect(pagePolicy.DOCS_REFERENCE_PAGES['platform/compatibility']).toContain(
+      'versioned evidence reference',
+    );
+    expect(afterTitle).toMatch(
+      /^Choose a specific framework, bridge and configuration\./,
+    );
+    expect(source).toContain('## Last qualified profiles');
+    expect(source).toContain(
+      '| Capability / scenario | Last qualified state and evidence |',
+    );
+    expect(source).not.toMatch(
+      /<(?:hb-docs-demo|www-atc-demo-video|hb-workbench|hb-workbench-launcher)\b/,
+    );
+  });
+}

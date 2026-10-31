@@ -130,6 +130,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: '.NET with OpenAI and Azure', path: 'platform/dotnet' },
       { text: 'Native .NET mixed tools', path: 'platform/dotnet-native-tools' },
       { text: 'LangGraph without B4', path: 'platform/langgraph' },
+      { text: 'Framework compatibility', path: 'platform/compatibility' },
       { text: 'Amazon Bedrock', path: 'platform/bedrock' },
       { text: 'Ollama', path: 'platform/ollama' },
       { text: 'TypeSafe', path: 'platform/typesafe' },

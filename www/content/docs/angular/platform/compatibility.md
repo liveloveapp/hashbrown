@@ -17,7 +17,7 @@ Last qualified records import historical [#844](https://github.com/liveloveapp/h
 
 Static as-of snapshot of the reviewed qualification record, not a real-time status. Status: <code>not-run</code>. Historical qualifications are not the result of a new execution attempt.
 
-The planned weekly report location is [framework-compatibility.yml](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml). Only approved pinned baselines are eligible. Candidate execution has not run and requires approved dependency/runtime constraints. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
+The [weekly baseline workflow](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml) is configured to run on main after the workflow is enabled, covering the seven approved pinned Node profiles. Candidate execution has not run and requires approved dependency/runtime constraints. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
 
 ## Reading the states
 

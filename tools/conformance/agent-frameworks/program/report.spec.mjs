@@ -324,3 +324,15 @@ test('CLI returns nonzero for invalid arguments and missing or stale pages, and 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('describes the configured weekly baseline without claiming a fresh execution', async () => {
+  const inventory = await loadInventory();
+
+  const page = renderCompatibility(inventory, 'react');
+
+  assert.match(page, /weekly baseline workflow/);
+  assert.match(page, /configured to run on main after the workflow is enabled/);
+  assert.match(page, /seven approved pinned Node profiles/);
+  assert.match(page, /does not claim a new weekly run exists or passed/);
+  assert.doesNotMatch(page, /planned weekly report location/);
+});

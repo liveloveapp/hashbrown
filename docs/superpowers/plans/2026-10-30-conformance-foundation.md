@@ -72,16 +72,25 @@ export async function loadInventory(root) {
   Add an actual Nx process regression for deadline cleanup: Nx and Playwright detach child groups, so killing only the outer runner is insufficient. Give owned processes bounded graceful shutdown, then terminate and verify captured owned descendants/groups before recording timeout or continuing. Never signal unrelated processes. Keep this in a focused `process.mjs` helper if needed.
 - [x] Implement orchestration around existing `npx nx agent-framework-test conformance`, targeted root-store core tests and `npx nx agent-framework-e2e conformance`. CLI writes artifacts even on failure. Reuse existing baseline install/browser setup. Workflow permissions are contents:read; once-weekly and manual on main; bounded timeout, no provider credentials, no publication or dependency upgrades. Upload health evidence with `always()`.
   The core command is `npx nx test core --testFile=agent-framework-display.conformance.spec.ts --runInBand`. Producer/core/browser command deadlines are 15/10/15 minutes respectively; the workflow is capped at 50 minutes. A timeout is a failed/infra attempt with retained results, not a skipped pass.
-- [ ] Run actual selected baseline with the runner or equivalent commands and inspect its JSON/Markdown. Weekly candidate versions are not silently selected; no range was approved. Existing nightly remains byte-identical.
+- [x] Run actual selected baseline with the runner or equivalent commands and inspect its JSON/Markdown. Weekly candidate versions are not silently selected; no range was approved. Existing nightly remains byte-identical.
 - [x] Commit selection/weekly checks after spec and quality review.
 
 ## Task 4: Docs integration and final verification
 
-- [ ] Write a failing website test that the compatibility page is reachable in both SDK menus and generated records remain the only source of its capability claims. Use existing test conventions; no runtime MDX component is needed.
-- [ ] Add both menu links; document generation/check, state meanings, weekly baseline limitations and contribution process in the conformance README. Mark this plan's actual completed steps with evidence, keeping later slices unimplemented.
+- [x] Write a failing website test that the compatibility page is reachable in both SDK menus and generated records remain the only source of its capability claims. Use existing test conventions; no runtime MDX component is needed.
+- [x] Add both menu links; document generation/check, state meanings, weekly baseline limitations and contribution process in the conformance README. Mark this plan's actual completed steps with evidence, keeping later slices unimplemented.
 - [ ] Run `npx nx test framework-conformance-program`, `npx nx build framework-conformance-program`, `npx nx lint framework-conformance-program`; `npx nx build conformance`, `npx nx test conformance`, `npx nx lint conformance`; `npx nx agent-framework-e2e conformance`; targeted existing core conformance test; `npx nx test www`, `npx nx lint www`, `npx nx build www`. Run website route/layout e2e for the new public routes, and fix actual issues test-first. Report existing warnings and any failed invocations accurately.
 - [ ] Confirm no package manifests/locks or runtime packages changed, no legacy corpus/capability states were rewritten and no secrets appear in new artifacts. Independent final spec and quality review; fix blockers and rerun affected checks.
 - [ ] Open a PR ending its description with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`; attach it to the task. Follow hosted checks/review, address actual failures, update after main advances as necessary without freezing other merges, and merge normally with exact-head guard only when green. Confirm actual MERGED state.
 
 The user explicitly authorized plan → implementation → PR → merge in this live
 session. No additional execution-choice or merge confirmation is required.
+
+## Execution evidence
+
+- Task 1: 30 inventory tests, independent spec/quality reviews.
+- Task 2: 44 inventory/report tests including CLI failures, independent reviews.
+- Task 3: 67 tests including real Nx selection and detached-process cleanup; build/lint passed.
+- Real uncached baseline at `be014d0b`: all three producer/capture, prepared-core/next-request and React/Angular browser stages passed for seven pinned profiles. Latest-version candidate remains not-run.
+- Integration program gates after Task 4: 68 tests/build/lint passed. Conformance build/lint and 128 tests across 20 suites passed.
+- Initial full website invocation: 2,460 passed, four new-page policy/audit failures; the explicit reference-page registration fix passed all 297 focused checks; final full website verification follows the main refresh.
