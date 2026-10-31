@@ -340,7 +340,9 @@ test('migration preserves native child and unqualified recipe gap independently'
   assert.equal(nativeChild.capabilities.subagents, 'missing-upstream');
   assert.equal(progressGap.status, 'recipe-required');
   assert.ok(
-    inventory.profiles.every((profile) => !profile.qualification?.recipe),
+    inventory.profiles
+      .filter((profile) => profile.id.startsWith('langgraph/'))
+      .every((profile) => !profile.qualification?.recipe),
   );
 });
 

@@ -52,8 +52,50 @@ export function isSourcePath(path) {
   );
 }
 
+/** Require clean executable inputs even when they are outside the bounded historical fingerprint list. */
+export function assertCommittedExecution(changed, untracked) {
+  const affectsExecution = (path) => {
+    if (
+      path.startsWith(`${artifacts}/`) &&
+      /(?:\.sse|\.(?:events|execution|request|live)\.json)$/.test(path)
+    )
+      return false;
+    return (
+      isSourcePath(path) ||
+      [
+        'packages/core/',
+        'packages/angular/',
+        'packages/react/',
+        'tools/conformance/hosts/',
+        'tools/conformance/harness/',
+        'tools/conformance/agent-frameworks/python/',
+      ].some((prefix) => path.startsWith(prefix)) ||
+      (path.startsWith(`${program}/`) &&
+        /(?:\.mjs|\/catalog\.json)$/.test(path)) ||
+      [
+        'package.json',
+        'package-lock.json',
+        'nx.json',
+        'tsconfig.base.json',
+        'jest.preset.js',
+        'eslint.config.mjs',
+        '.nvmrc',
+      ].includes(path)
+    );
+  };
+  assert.deepEqual(
+    [...changed, ...untracked].filter(affectsExecution),
+    [],
+    'Uncommitted executable inputs cannot be attributed to sourceCommit',
+  );
+}
+
 /** Reject omitted or dirty executable inputs before writing a qualification record. */
 async function sourceInputs() {
+  assertCommittedExecution(
+    git('diff', '--name-only', 'HEAD').split('\n'),
+    git('ls-files', '--others', '--exclude-standard').split('\n'),
+  );
   const untracked = git('ls-files', '--others', '--exclude-standard')
     .split('\n')
     .filter(isSourcePath);
