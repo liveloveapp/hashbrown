@@ -1,0 +1,16 @@
+{
+  "threadId": "capture-server-tool",
+  "runId": "capture-server-tool-run",
+  "messages": [
+    {
+      "id": "capture-server-tool-user",
+      "role": "user",
+      "content": "server-tool"
+    }
+  ],
+  "tools": [],
+  "context": [],
+  "state": {},
+  "forwardedProps": {},
+  "protocolVersion": "1.0"
+}

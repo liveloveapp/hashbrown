@@ -84,7 +84,7 @@ test('passing attempt contains exact seven native pins and current runtime, inde
     assert.deepEqual(
       health.profiles,
       inventory.profiles
-        .filter((profile) => profile.qualification)
+        .filter((profile) => profile.status === 'legacy-qualified')
         .map(({ id, versions }) => ({ id, versions })),
     );
     assert.equal(

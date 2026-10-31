@@ -1,0 +1,127 @@
+{
+  "entered": 1,
+  "completed": 0,
+  "cancelled": 1,
+  "failed": 0,
+  "settled": true,
+  "explicitCancel": true,
+  "streamEntered": false,
+  "history": [
+    {
+      "parts": [
+        {
+          "content": "server-tool",
+          "timestamp": "2026-10-31T14:31:04.658902Z",
+          "part_kind": "user-prompt"
+        }
+      ],
+      "timestamp": "2026-10-31T14:31:04.661501Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1925f-0ad3-77e1-ab1b-4d686e04168c",
+      "conversation_id": "capture-cancel-default",
+      "metadata": {
+        "__pydantic_ai__": {
+          "ui_message_id": "capture-cancel-default-user"
+        }
+      },
+      "state": "complete"
+    },
+    {
+      "parts": [
+        {
+          "tool_name": "serverTool",
+          "args": "{\"city\":\"London\"}",
+          "tool_call_id": "capture-cancel-default-server",
+          "tool_kind": null,
+          "id": null,
+          "provider_name": null,
+          "provider_details": null,
+          "part_kind": "tool-call"
+        }
+      ],
+      "usage": {
+        "input_tokens": 50,
+        "cache_write_tokens": 0,
+        "cache_write_1h_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 4,
+        "output_reasoning_tokens": 0,
+        "input_audio_tokens": 0,
+        "cache_audio_read_tokens": 0,
+        "output_audio_tokens": 0,
+        "audio_seconds": 0,
+        "details": {},
+        "cost": null
+      },
+      "model_name": "function::model_stream",
+      "model_id": "function:function::model_stream",
+      "timestamp": "2026-10-31T14:31:04.663060Z",
+      "kind": "response",
+      "provider_name": null,
+      "provider_url": null,
+      "canonical_system": null,
+      "provider_details": null,
+      "provider_response_id": null,
+      "finish_reason": null,
+      "run_id": "01a1925f-0ad3-77e1-ab1b-4d686e04168c",
+      "conversation_id": "capture-cancel-default",
+      "metadata": null,
+      "workspace_ref": null,
+      "history_digest": null,
+      "failed_attempts": null,
+      "state": "complete"
+    },
+    {
+      "parts": [],
+      "timestamp": "2026-10-31T14:31:04.687702Z",
+      "instructions": null,
+      "kind": "request",
+      "run_id": "01a1925f-0ad3-77e1-ab1b-4d686e04168c",
+      "conversation_id": "capture-cancel-default",
+      "metadata": null,
+      "state": "interrupted"
+    }
+  ],
+  "modelRequests": [
+    [
+      {
+        "parts": [
+          {
+            "content": "server-tool",
+            "timestamp": "2026-10-31T14:31:04.658902Z",
+            "part_kind": "user-prompt"
+          }
+        ],
+        "timestamp": "2026-10-31T14:31:04.661501Z",
+        "instructions": null,
+        "kind": "request",
+        "run_id": "01a1925f-0ad3-77e1-ab1b-4d686e04168c",
+        "conversation_id": "capture-cancel-default",
+        "metadata": {
+          "__pydantic_ai__": {
+            "ui_message_id": "capture-cancel-default-user"
+          }
+        },
+        "state": "complete"
+      }
+    ]
+  ],
+  "requests": [
+    {
+      "threadId": "capture-cancel-default",
+      "runId": "capture-cancel-default-run",
+      "messages": [
+        {
+          "id": "capture-cancel-default-user",
+          "role": "user",
+          "content": "server-tool"
+        }
+      ],
+      "tools": [],
+      "context": [],
+      "state": {},
+      "forwardedProps": {}
+    }
+  ]
+}

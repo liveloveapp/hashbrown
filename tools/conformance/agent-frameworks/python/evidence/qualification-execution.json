@@ -1,0 +1,246 @@
+{
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-baseline-2026-10-31T14:36:40.346Z"
+  },
+  "sourceSha256": "e36f8f0d11da9b141d8bb8d3ff579721b0676ed1bc18f2ca00d38fe9a4eab105",
+  "runtime": {
+    "python": "3.12.12",
+    "uv": "0.11.3"
+  },
+  "versions": {
+    "pydantic-ai-slim": "2.64.0",
+    "ag-ui-protocol": "1.0.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0"
+  },
+  "realFrameworkExecution": true,
+  "wire": {
+    "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.sse",
+    "sha256": "9d4232d5c4c2a2f3fb8b97dbfd92aa2ce04daa5da99f93fc997b82b63d6649a3"
+  },
+  "callbackObservationsRef": {
+    "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.execution.json",
+    "sha256": "faf9597308c722a204c77c39148a43597dad52d39773dceb60479d8b23562460"
+  },
+  "liveObservationsRef": {
+    "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.live.json",
+    "sha256": "2ba86d74899a5767de9660586371a12b6738e2a0b9414ea10503a9784a171d2c"
+  },
+  "baselineHealth": {
+    "schemaVersion": 1,
+    "startedAt": "2026-10-31T14:36:40.346Z",
+    "completedAt": "2026-10-31T14:37:48.043Z",
+    "baseline": {
+      "commit": "251b01b122846a86789c52cfd46b37c6d4f6b8a2",
+      "pins": {
+        "python": "3.12.12",
+        "uv": "0.11.3",
+        "pydantic-ai-slim": "2.64.0",
+        "ag-ui-protocol": "1.0.0",
+        "starlette": "1.10.0",
+        "uvicorn": "0.54.0"
+      },
+      "hashes": {
+        ".python-version": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a",
+        "capture.mjs": "61383a9f776b2644ea3582e260e891fd75ecce41d787b5c4c1766d73b89cb03e",
+        "capture.spec.mjs": "869501708f118d7ee35c410c596cf12823e07af3d9df92074753471fc79af5dc",
+        "controller.d.mts": "0dbd80b208f01cf6591e2a048b643550c835f5d6e2ef5c5fcfe924c0e2937ca2",
+        "controller.mjs": "1e7a08c47cd9df37122789031acfb7b74dff912ac5342d47d34cc133850d4811",
+        "controller.spec.mjs": "1d2f5f9b5d267c671b24bc10f6cd32077a0ad2f2b45a70745886adc5602b68e8",
+        "host.py": "875438e580ab052bcbb1920ea2d050151da219bc284d1da9a1d160aa25630386",
+        "host_test.py": "7b20ed86fd8bad14a6541d84d484713402cef00d6f53a29459bc5ff2cd0abf61",
+        "normalize.mjs": "58a01898693dd2e9acac399bd4b49cf3f6f87b8bb7466f236950398e8a06e8a5",
+        "project.json": "4c5b67c7e1129ef4cca78ff2087332e1541ffcb033c12aa3726521d9f701ba69",
+        "pyproject.toml": "7602e50a6a11e354ade9be0de3de09d6977109449f6993fc95522c74be343418",
+        "uv.lock": "c0738cdbad799556c26d95c9a1fecbdf9ec57bb659529e2de7b22f46fea0e416"
+      }
+    },
+    "stages": [
+      {
+        "id": "producer-and-capture",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "canonical-consumer-and-next-request",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "react-and-angular-browser",
+        "status": "passed",
+        "exitCode": 0
+      }
+    ],
+    "status": "passed",
+    "qualification": "unchanged",
+    "candidate": {
+      "status": "deduplicated",
+      "reason": "The approved candidate exact pins equal the baseline; no second execution or upgrade is claimed.",
+      "pins": {
+        "python": "3.12.12",
+        "uv": "0.11.3",
+        "pydantic-ai-slim": "2.64.0",
+        "ag-ui-protocol": "1.0.0",
+        "starlette": "1.10.0",
+        "uvicorn": "0.54.0"
+      }
+    }
+  },
+  "probeSources": [
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-default.events.json",
+      "sha256": "4282fb38898b6842ed5b1d488d550802f5c8b3e1e3c55352a1d6bf5fee29db24"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-default.execution.json",
+      "sha256": "2030be3d11fba6e36d83bc37ae4953af4edf53aa7cc7ad996ea944b7e5d55ad4"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-default.request.json",
+      "sha256": "766234d17df826399600b212401e2c7b9411606c0c9ab616ed7238720786233f"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-default.sse",
+      "sha256": "f0538fd1caeb4eb1d55141aa1906e9cc45b4af644a6fbf6bab8755255b55ce92"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-v1.events.json",
+      "sha256": "36179eba7b338c0de5c2ef08b5bb737cf887b5880bfd852ebe9707c479efd168"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-v1.execution.json",
+      "sha256": "5d9d9dde3a863b1e308ed2393202bbea0231ac57ded6dce8a25769eda0234ffb"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-v1.request.json",
+      "sha256": "62c6e754665ef0538978a50fb9255682d4b834b8bb0156e0379744bd55436120"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/cancel-v1.sse",
+      "sha256": "c0132548eb019e2e51a56c3213468ca783792320a2f84abed8e6dc895eeff7cf"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-continuation.events.json",
+      "sha256": "078cb45100d8df945245c6d77027802a1c956b66441e685ff3a9a806208b66af"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-continuation.execution.json",
+      "sha256": "d2eaff9d8167b04f625054b88e7111f8addf6df354556689a4d32d67acff55f2"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-continuation.request.json",
+      "sha256": "ee5d3b766ec9b9c7594942f2bd1054cef19c906fd84f70aaa557ab52315465a9"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-continuation.sse",
+      "sha256": "b305ccce72fe20e0f0dce8d8bda3a78de8a79b302fce44dbf467c85408b4a864"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-tool.events.json",
+      "sha256": "d7a2dd228584a8573bef3f7fa23ae3b0b6688d7b0cdd067f41bcbc233a464013"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-tool.execution.json",
+      "sha256": "0e9e619f50dcb4b924f7a722e19a838d96c355e8dfabc4ee0b2b23f64420a990"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-tool.request.json",
+      "sha256": "0a35c701aa76a696f4e82dd8617c8395fc0c039492dd3d4eeeb2b9fdd389faf5"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/client-tool.sse",
+      "sha256": "7344f48c243888b96fa62ec640ee90b5afb4dcc08ea36a724aad54072eb04b4e"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/disconnect.events.json",
+      "sha256": "89c6ad86e2048ed854106977aa871e107879a38a34b9dd2c18c59550ffeb07dd"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/disconnect.execution.json",
+      "sha256": "f7b9d876df847f7fdfca4c41434e717889ec7891a7bc48103215cbf868157a53"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/disconnect.request.json",
+      "sha256": "02089a186573044a956915f092196e0ad3b0fa8ae75530f9296ef5a2dad4e1f2"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/disconnect.sse",
+      "sha256": "8a3ce6f36761e24ff2a13059859872a25387b4f3100a7bebe2754b16110323bc"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/failure.events.json",
+      "sha256": "b07ccc4b432770c2a91c819a7edff44078b132f6ed62fb48f7c5244e43d4f572"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/failure.execution.json",
+      "sha256": "5508c53655dffb0396c347478141d657c04ea149088b97ce609a74a9e9dccf6f"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/failure.request.json",
+      "sha256": "87994b10c299aff49daba1a5c88fa898aa0f8cb4e7cd03bec23215281d4d5dc4"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/failure.sse",
+      "sha256": "345f492ae09f8ce7e952fc367804707ca33a1b37a630eed152761a59f555cf47"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-same-name.events.json",
+      "sha256": "ebd650c7494f4ad307f01f015d4760d8516fbfdfbc2f9ca2d0dfc0e866cca331"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-same-name.execution.json",
+      "sha256": "9a8faafb51199e41192ca00efd050b0c1d22c6300f676b110f126e6f3acb3e57"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-same-name.request.json",
+      "sha256": "7e53aff7c8b568c298055622d78fa2a91b48c472f2f1fa0ed94cf1cf712d8480"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-same-name.sse",
+      "sha256": "6ed1dfd581116116f42d317c7b7c8c564ae4c943a58217a6ce1c2bfc96fce5a0"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.events.json",
+      "sha256": "579e27582fed7a6994259310c631bea83b7f91ffc6058816b5a49b81ec65373b"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.execution.json",
+      "sha256": "faf9597308c722a204c77c39148a43597dad52d39773dceb60479d8b23562460"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.live.json",
+      "sha256": "2ba86d74899a5767de9660586371a12b6738e2a0b9414ea10503a9784a171d2c"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.request.json",
+      "sha256": "79ea63d5154aa23761572b155272c57d31b1ec3751a590c178be015ef2be08c6"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.sse",
+      "sha256": "9d4232d5c4c2a2f3fb8b97dbfd92aa2ce04daa5da99f93fc997b82b63d6649a3"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/streaming.events.json",
+      "sha256": "6c2f497c3824c0f0e52e8d60d3b70471554ea303965b0fdf331dc90e061238e1"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/streaming.execution.json",
+      "sha256": "0bb2350f389b987ea6d029a4dfcf4a3206eff40677fe943b27d3054963fb8d6d"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/streaming.live.json",
+      "sha256": "27ec6dace106f64eaed2900b55cb7b9b7753b00aec0293841c835fcfa1a3d6f2"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/streaming.request.json",
+      "sha256": "69256c557df3cf961cd19d64f78effc820622bba7d8dda04d4a0cecebda8057f"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/evidence/streaming.sse",
+      "sha256": "a2e04c7cce4f1427c27e87fce7bc458cb6fa9cfec23ea02262400b0c14f43a36"
+    }
+  ],
+  "scope": "Actual HTTP FunctionModel producer and real tool callbacks. Browser handler/history evidence is supplied by the independent successful browser stage; controlled HTTP client continuation is separately retained. No live model calls or durable backend restart."
+}

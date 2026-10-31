@@ -11,13 +11,15 @@ meta:
 
 Choose a specific framework, bridge and configuration. These are partial, versioned qualifications at the AG-UI boundary. A passing capability applies only to its named scenario and evidence stages.
 
-Last qualified records import historical [#844](https://github.com/liveloveapp/hashbrown/pull/844) proof; the dates below describe that retained qualification, not a new execution. React and Angular share this evidence inventory; their display capabilities are recorded separately. Canonical consumer restore does not establish browser reload, reconnect or durable backend restart.
+The seven legacy Node profiles import historical [#844](https://github.com/liveloveapp/hashbrown/pull/844) proof; their dates describe that retained qualification, not a new execution. Additional profiles record their own execution identity and source commit; local retained evidence does not establish CI acceptance. React and Angular share this evidence inventory; their display capabilities are recorded separately. Canonical consumer restore does not establish browser reload, reconnect or durable backend restart.
 
 ## Recorded run health
 
 Static as-of snapshot of the reviewed qualification record, not a real-time status. Status: <code>not-run</code>. Historical qualifications are not the result of a new execution attempt.
 
-The [weekly baseline workflow](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml) is configured to run on main after the workflow is enabled, covering the seven approved pinned Node profiles. Candidate execution has not run and requires approved dependency/runtime constraints. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
+The [weekly baseline workflow](https://github.com/liveloveapp/hashbrown/blob/main/.github/workflows/framework-compatibility.yml) is configured to run on main after the workflow is enabled, covering the seven approved pinned Node profiles. Candidate execution for broader Node dependency/runtime constraints has not run and requires approval. Weekly attempts do not rewrite reviewed last qualified claims. This page does not claim a new weekly run exists or passed.
+
+A separate pinned Python baseline is configured for the isolated Pydantic AI host, prepared-store consumer, and live React and Angular browser gates. Its identical pinned candidate is deduplicated rather than executed as a second version combination. Broader Python dependency or runtime candidates require reviewed approval. These configured jobs do not establish a fresh execution or change last qualified claims.
 
 ## Reading the states
 
@@ -428,6 +430,135 @@ Qualification sources:
 - <a id="mastra-background-failure-source-3"></a>S3: [agent-framework-display.spec.ts](https://github.com/liveloveapp/hashbrown/blob/826953718d22af984606c51645cb18e6acd3655b/tools/conformance/specs/agent-framework-display.spec.ts) (SHA-256 <code>ad28bcb8b008</code>)
 - <a id="mastra-background-failure-source-4"></a>S4: [conformance.playwright.config.ts](https://github.com/liveloveapp/hashbrown/blob/826953718d22af984606c51645cb18e6acd3655b/tools/conformance/conformance.playwright.config.ts) (SHA-256 <code>35eca201329b</code>)
 
+### pydantic-ai/asgi-baseline
+
+Last qualified configuration; native profile, partial evidence only.
+
+Local retained execution; no CI acceptance is recorded for this qualification.
+
+| Configuration | Recorded value |
+| --- | --- |
+| Profile ID | <code>pydantic-ai/asgi-baseline</code> |
+| Framework / profile | pydantic-ai / asgi-baseline |
+| Last qualified | 2026-10-31 |
+| Source commit | [251b01b122846a86789c52cfd46b37c6d4f6b8a2](https://github.com/liveloveapp/hashbrown/commit/251b01b122846a86789c52cfd46b37c6d4f6b8a2) |
+| Evidence commit | [e14e5d185721bb72098753222d183cd64df327ef](https://github.com/liveloveapp/hashbrown/commit/e14e5d185721bb72098753222d183cd64df327ef) |
+| Execution kind | <code>local</code> |
+| Execution ID | <code>pydantic-baseline-2026-10-31T14:36:40.346Z</code> |
+| Runtime | Python <code>3.12.12</code>; uv <code>0.11.3</code> |
+| Platform | darwin/arm64 |
+| Protocol | Requested <code>1.0 in retained probes except cancel-default; omitted in ordinary browser requests</code>; effective <code>1.0 event envelope; terminal outcomes negotiated per request</code> |
+| Transport | http-sse |
+| Capture | [qualification-capture.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/qualification-capture.json) (SHA-256 <code>96dd50c1de42</code>) |
+| Producer source fingerprint | <code>e36f8f0d11da</code> |
+
+Exact dependency versions:
+
+| Dependency | Version |
+| --- | --- |
+| <code>pydantic-ai-slim</code> | <code>2.64.0</code> |
+| <code>ag-ui-protocol</code> | <code>1.0.0</code> |
+| <code>starlette</code> | <code>1.10.0</code> |
+| <code>uvicorn</code> | <code>0.54.0</code> |
+
+Evidence stage keys: E1 = <code>producer-execution</code>; E2 = <code>bridge-wire</code>; E3 = <code>core-consumer</code>; E4 = <code>canonical-persistence</code>; E5 = <code>next-request</code>; E6 = <code>browser-react</code>; E7 = <code>browser-angular</code>. Source keys S1–S60 refer to the unique qualification sources below.
+
+Capability cells (scenario IDs identify the reproducible contract):
+
+| Capability / scenario | Last qualified state and evidence |
+| --- | --- |
+| Actual server tool execution<br /><code>tools.server-execution</code> | passed<br />E1: pass/S60, E2: pass/S60<br />Required stages passed for the named deterministic profile. |
+| Canonical consumer restore<br /><code>recovery.canonical-consumer-restore</code> | passed<br />E3: pass/S60, E4: pass/S60, E5: pass/S60<br />Required stages passed for the named deterministic profile. |
+| React tool display<br /><code>tools.react-display</code> | passed<br />E2: pass/S60, E3: pass/S60, E6: pass/S60<br />Required stages passed for the named deterministic profile. |
+| Angular tool display<br /><code>tools.angular-display</code> | passed<br />E2: pass/S60, E3: pass/S60, E7: pass/S60<br />Required stages passed for the named deterministic profile. |
+| Same-name client tool stays inert<br /><code>tools.same-name-client-inert</code> | missing-upstream<br />E1: pass/S60, E3: pass/S60, E6: pass/S60, E7: pass/S60<br />The public adapter rejects a frontend tool whose name conflicts with a registered native tool before model or callback execution. This rejected run cannot qualify provider ownership or inert same-name execution. |
+| Tool start before completion<br /><code>tools.live-start</code> | passed<br />E1: pass/S60, E2: pass/S60<br />Required stages passed for the named deterministic profile. |
+| Native checkpoint restore<br /><code>recovery.native-checkpoint</code> | not-tested<br />Not qualified by this baseline. |
+| Native activities<br /><code>activities.native</code> | not-tested<br />Not qualified by this baseline. |
+| Attributed subagents<br /><code>delegation.attributed-subagents</code> | not-tested<br />Not qualified by this baseline. |
+| Citations and attribution<br /><code>activities.citations</code> | not-tested<br />Not qualified by this baseline. |
+| Native child execution<br /><code>delegation.native-child</code> | not-tested<br />Not qualified by this baseline. |
+| Activity before tool completion<br /><code>activities.live-start</code> | not-tested<br />Not qualified by this baseline. |
+| streamingText<br /><code>conversation.streaming</code> | passed<br />E1: pass/S60, E2: pass/S60, E3: pass/S60, E6: pass/S60, E7: pass/S60<br />Required stages passed for the named deterministic profile. |
+| multiTurnHistory<br /><code>conversation.history</code> | passed<br />E1: pass/S60, E2: pass/S60, E5: pass/S60<br />Required stages passed for the named deterministic profile. |
+| approvalResume<br /><code>approvals.resume</code> | not-tested<br />Not qualified by this baseline. |
+| sharedState<br /><code>state.snapshot-patch</code> | not-tested<br />Not qualified by this baseline. |
+| structuredOutput<br /><code>structured-output.schema</code> | not-tested<br />Not qualified by this baseline. |
+| trustedUi<br /><code>trusted-ui.components</code> | not-tested<br />Not qualified by this baseline. |
+| typedMedia<br /><code>media.typed-history</code> | not-tested<br />Not qualified by this baseline. |
+| threadIsolation<br /><code>recovery.thread-isolation</code> | not-tested<br />Not qualified by this baseline. |
+| browserReload<br /><code>recovery.browser-reload</code> | not-tested<br />Not qualified by this baseline. |
+| streamReconnect<br /><code>recovery.reconnect</code> | not-tested<br />Not qualified by this baseline. |
+| clientToolRoundtrip<br /><code>tools.client-roundtrip</code> | passed<br />E1: pass/S60, E2: pass/S60, E3: pass/S60, E5: pass/S60, E6: pass/S60, E7: pass/S60<br />Required stages passed for the named deterministic profile. |
+| toolFailure<br /><code>tools.failure</code> | recipe-required<br />E1: pass/S60, E2: pass/S60, E3: pass/S60, E6: pass/S60, E7: pass/S60<br />A real Python callback failure emits RUN&#95;ERROR and preserves a namespaced opaque failed-outcome attachment. Generic consumers preserve the result but do not interpret that vendor attachment as a typed tool failure. |
+| toolCancellation<br /><code>tools.cancel</code> | recipe-required<br />E1: pass/S60, E2: pass/S60, E3: pass/S60, E6: pass/S60, E7: pass/S60<br />First-party cancellation stops the actual gated callback without late completion. Ordinary browser requests omit protocolVersion and receive no cancelled terminal outcome; 1.0 probes retain cancelled run outcome. The interrupted tool result remains opaque and is not a typed tool cancellation. Subscriber disconnect is a separate non-terminal probe. |
+| abnormalEof<br /><code>conversation.abnormal-eof</code> | not-tested<br />Not qualified by this baseline. |
+
+Full digests and per-stage basis: [reviewed qualification record](https://github.com/liveloveapp/hashbrown/blob/main/tools/conformance/agent-frameworks/program/pydantic-qualification.json), profile <code>pydantic-ai/asgi-baseline</code>. Digests below show the first 12 SHA-256 characters.
+
+Qualification sources:
+
+- <a id="pydantic-ai-asgi-baseline-source-1"></a>S1: [project.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/packages/core/project.json) (SHA-256 <code>fdd517e1986f</code>)
+- <a id="pydantic-ai-asgi-baseline-source-2"></a>S2: [pydantic-ai.conformance.spec.ts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/packages/core/src/models/pydantic-ai.conformance.spec.ts) (SHA-256 <code>5f4e18937c72</code>)
+- <a id="pydantic-ai-asgi-baseline-source-3"></a>S3: [.python-version](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/.python-version) (SHA-256 <code>f01d748a75eb</code>)
+- <a id="pydantic-ai-asgi-baseline-source-4"></a>S4: [capture.mjs](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/capture.mjs) (SHA-256 <code>61383a9f776b</code>)
+- <a id="pydantic-ai-asgi-baseline-source-5"></a>S5: [capture.spec.mjs](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/capture.spec.mjs) (SHA-256 <code>869501708f11</code>)
+- <a id="pydantic-ai-asgi-baseline-source-6"></a>S6: [controller.d.mts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/controller.d.mts) (SHA-256 <code>0dbd80b208f0</code>)
+- <a id="pydantic-ai-asgi-baseline-source-7"></a>S7: [controller.mjs](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/controller.mjs) (SHA-256 <code>1e7a08c47cd9</code>)
+- <a id="pydantic-ai-asgi-baseline-source-8"></a>S8: [controller.spec.mjs](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/controller.spec.mjs) (SHA-256 <code>1d2f5f9b5d26</code>)
+- <a id="pydantic-ai-asgi-baseline-source-9"></a>S9: [host.py](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/host.py) (SHA-256 <code>875438e580ab</code>)
+- <a id="pydantic-ai-asgi-baseline-source-10"></a>S10: [host&#95;test.py](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/host_test.py) (SHA-256 <code>7b20ed86fd8b</code>)
+- <a id="pydantic-ai-asgi-baseline-source-11"></a>S11: [normalize.mjs](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/normalize.mjs) (SHA-256 <code>58a01898693d</code>)
+- <a id="pydantic-ai-asgi-baseline-source-12"></a>S12: [project.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/project.json) (SHA-256 <code>4c5b67c7e112</code>)
+- <a id="pydantic-ai-asgi-baseline-source-13"></a>S13: [pyproject.toml](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/pyproject.toml) (SHA-256 <code>7602e50a6a11</code>)
+- <a id="pydantic-ai-asgi-baseline-source-14"></a>S14: [uv.lock](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/uv.lock) (SHA-256 <code>c0738cdbad79</code>)
+- <a id="pydantic-ai-asgi-baseline-source-15"></a>S15: [app-driver.ts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/harness/app-driver.ts) (SHA-256 <code>f68a28a8adee</code>)
+- <a id="pydantic-ai-asgi-baseline-source-16"></a>S16: [plain-smoke.ts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/hosts/angular/src/app/plain-smoke.ts) (SHA-256 <code>f8e56d6db48f</code>)
+- <a id="pydantic-ai-asgi-baseline-source-17"></a>S17: [plain-smoke.tsx](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/hosts/react/src/plain-smoke.tsx) (SHA-256 <code>692d16069b60</code>)
+- <a id="pydantic-ai-asgi-baseline-source-18"></a>S18: [pydantic-ai.playwright.config.ts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/pydantic-ai.playwright.config.ts) (SHA-256 <code>250c645443a3</code>)
+- <a id="pydantic-ai-asgi-baseline-source-19"></a>S19: [pydantic-ai.spec.ts](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/pydantic-ai/pydantic-ai.spec.ts) (SHA-256 <code>53a92ce56927</code>)
+- <a id="pydantic-ai-asgi-baseline-source-20"></a>S20: [tsconfig.playwright.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/tsconfig.playwright.json) (SHA-256 <code>c496be4a7c9a</code>)
+- <a id="pydantic-ai-asgi-baseline-source-21"></a>S21: [cancel-default.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-default.events.json) (SHA-256 <code>4282fb38898b</code>)
+- <a id="pydantic-ai-asgi-baseline-source-22"></a>S22: [cancel-default.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-default.execution.json) (SHA-256 <code>2030be3d11fb</code>)
+- <a id="pydantic-ai-asgi-baseline-source-23"></a>S23: [cancel-default.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-default.request.json) (SHA-256 <code>766234d17df8</code>)
+- <a id="pydantic-ai-asgi-baseline-source-24"></a>S24: [cancel-default.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-default.sse) (SHA-256 <code>f0538fd1caeb</code>)
+- <a id="pydantic-ai-asgi-baseline-source-25"></a>S25: [cancel-v1.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-v1.events.json) (SHA-256 <code>36179eba7b33</code>)
+- <a id="pydantic-ai-asgi-baseline-source-26"></a>S26: [cancel-v1.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-v1.execution.json) (SHA-256 <code>5d9d9dde3a86</code>)
+- <a id="pydantic-ai-asgi-baseline-source-27"></a>S27: [cancel-v1.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-v1.request.json) (SHA-256 <code>62c6e754665e</code>)
+- <a id="pydantic-ai-asgi-baseline-source-28"></a>S28: [cancel-v1.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/cancel-v1.sse) (SHA-256 <code>c0132548eb01</code>)
+- <a id="pydantic-ai-asgi-baseline-source-29"></a>S29: [client-continuation.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-continuation.events.json) (SHA-256 <code>078cb45100d8</code>)
+- <a id="pydantic-ai-asgi-baseline-source-30"></a>S30: [client-continuation.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-continuation.execution.json) (SHA-256 <code>d2eaff9d8167</code>)
+- <a id="pydantic-ai-asgi-baseline-source-31"></a>S31: [client-continuation.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-continuation.request.json) (SHA-256 <code>ee5d3b766ec9</code>)
+- <a id="pydantic-ai-asgi-baseline-source-32"></a>S32: [client-continuation.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-continuation.sse) (SHA-256 <code>b305ccce72fe</code>)
+- <a id="pydantic-ai-asgi-baseline-source-33"></a>S33: [client-tool.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-tool.events.json) (SHA-256 <code>d7a2dd228584</code>)
+- <a id="pydantic-ai-asgi-baseline-source-34"></a>S34: [client-tool.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-tool.execution.json) (SHA-256 <code>0e9e619f50dc</code>)
+- <a id="pydantic-ai-asgi-baseline-source-35"></a>S35: [client-tool.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-tool.request.json) (SHA-256 <code>0a35c701aa76</code>)
+- <a id="pydantic-ai-asgi-baseline-source-36"></a>S36: [client-tool.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/client-tool.sse) (SHA-256 <code>7344f48c2438</code>)
+- <a id="pydantic-ai-asgi-baseline-source-37"></a>S37: [disconnect.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/disconnect.events.json) (SHA-256 <code>89c6ad86e204</code>)
+- <a id="pydantic-ai-asgi-baseline-source-38"></a>S38: [disconnect.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/disconnect.execution.json) (SHA-256 <code>f7b9d876df84</code>)
+- <a id="pydantic-ai-asgi-baseline-source-39"></a>S39: [disconnect.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/disconnect.request.json) (SHA-256 <code>02089a186573</code>)
+- <a id="pydantic-ai-asgi-baseline-source-40"></a>S40: [disconnect.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/disconnect.sse) (SHA-256 <code>8a3ce6f36761</code>)
+- <a id="pydantic-ai-asgi-baseline-source-41"></a>S41: [failure.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/failure.events.json) (SHA-256 <code>b07ccc4b4327</code>)
+- <a id="pydantic-ai-asgi-baseline-source-42"></a>S42: [failure.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/failure.execution.json) (SHA-256 <code>5508c53655df</code>)
+- <a id="pydantic-ai-asgi-baseline-source-43"></a>S43: [failure.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/failure.request.json) (SHA-256 <code>87994b10c299</code>)
+- <a id="pydantic-ai-asgi-baseline-source-44"></a>S44: [failure.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/failure.sse) (SHA-256 <code>345f492ae09f</code>)
+- <a id="pydantic-ai-asgi-baseline-source-45"></a>S45: [server-same-name.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-same-name.events.json) (SHA-256 <code>ebd650c7494f</code>)
+- <a id="pydantic-ai-asgi-baseline-source-46"></a>S46: [server-same-name.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-same-name.execution.json) (SHA-256 <code>9a8faafb5119</code>)
+- <a id="pydantic-ai-asgi-baseline-source-47"></a>S47: [server-same-name.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-same-name.request.json) (SHA-256 <code>7e53aff7c8b5</code>)
+- <a id="pydantic-ai-asgi-baseline-source-48"></a>S48: [server-same-name.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-same-name.sse) (SHA-256 <code>6ed1dfd58111</code>)
+- <a id="pydantic-ai-asgi-baseline-source-49"></a>S49: [server-tool.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-tool.events.json) (SHA-256 <code>579e27582fed</code>)
+- <a id="pydantic-ai-asgi-baseline-source-50"></a>S50: [server-tool.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-tool.execution.json) (SHA-256 <code>faf9597308c7</code>)
+- <a id="pydantic-ai-asgi-baseline-source-51"></a>S51: [server-tool.live.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-tool.live.json) (SHA-256 <code>2ba86d74899a</code>)
+- <a id="pydantic-ai-asgi-baseline-source-52"></a>S52: [server-tool.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-tool.request.json) (SHA-256 <code>79ea63d5154a</code>)
+- <a id="pydantic-ai-asgi-baseline-source-53"></a>S53: [server-tool.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/server-tool.sse) (SHA-256 <code>9d4232d5c4c2</code>)
+- <a id="pydantic-ai-asgi-baseline-source-54"></a>S54: [streaming.events.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/streaming.events.json) (SHA-256 <code>6c2f497c3824</code>)
+- <a id="pydantic-ai-asgi-baseline-source-55"></a>S55: [streaming.execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/streaming.execution.json) (SHA-256 <code>0bb2350f389b</code>)
+- <a id="pydantic-ai-asgi-baseline-source-56"></a>S56: [streaming.live.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/streaming.live.json) (SHA-256 <code>27ec6dace106</code>)
+- <a id="pydantic-ai-asgi-baseline-source-57"></a>S57: [streaming.request.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/streaming.request.json) (SHA-256 <code>69256c557df3</code>)
+- <a id="pydantic-ai-asgi-baseline-source-58"></a>S58: [streaming.sse](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/streaming.sse) (SHA-256 <code>a2e04c7cce4f</code>)
+- <a id="pydantic-ai-asgi-baseline-source-59"></a>S59: [qualification-execution.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/qualification-execution.json) (SHA-256 <code>28529f3239be</code>)
+- <a id="pydantic-ai-asgi-baseline-source-60"></a>S60: [qualification-stages.json](https://github.com/liveloveapp/hashbrown/blob/e14e5d185721bb72098753222d183cd64df327ef/tools/conformance/agent-frameworks/python/evidence/qualification-stages.json) (SHA-256 <code>732966dd4750</code>)
+
 ## Retained producer gaps
 
 ### langgraph: failed-tool-result
@@ -462,7 +593,7 @@ Listing a candidate is neither a compatibility claim nor a dependency approval. 
 
 Profile: <code>pydantic-ai/planned</code>. State: <code>not-tested</code>. Kind: <code>planned</code>.
 
-First additional framework; no dependencies approved or execution performed.
+Broader Pydantic AI capability profiles remain not-tested. The separate asgi-baseline record qualifies selected deterministic HTTP scenarios. Native same-name tool registration is rejected upstream; generic typed tool failure and cancellation require enrichment. No native restart, approval/state, structured UI, media, rich-step or subagent qualification is claimed.
 
 Scenario scope: all 26 scenarios in the shared catalog below.
 

@@ -1,0 +1,112 @@
+{
+  "name": "pydantic-ai-conformance",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/agent-frameworks/python",
+  "tags": ["private"],
+  "implicitDependencies": [
+    "core",
+    "angular",
+    "react",
+    "runtime-smoke-angular",
+    "runtime-smoke-react",
+    "conformance"
+  ],
+  "namedInputs": {
+    "pythonFixture": [
+      "{projectRoot}/*.py",
+      "{projectRoot}/*.mjs",
+      "{projectRoot}/pyproject.toml",
+      "{projectRoot}/uv.lock",
+      "{projectRoot}/.python-version",
+      "{projectRoot}/project.json",
+      "{workspaceRoot}/tools/conformance/harness/**/*",
+      "{workspaceRoot}/tools/conformance/pydantic-ai/**/*",
+      "{workspaceRoot}/tools/conformance/pydantic-ai.playwright.config.ts",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/program/catalog.json",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/program/pydantic-weekly*.mjs",
+      "{workspaceRoot}/.github/workflows/{pr-main,framework-compatibility}.yml",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/tsconfig.base.json",
+      {
+        "runtime": "node --version"
+      },
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.sse",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.events.json",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.execution.json",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.request.json",
+      "{projectRoot}/*.d.mts",
+      "{workspaceRoot}/packages/core/src/models/pydantic-ai.conformance.spec.ts",
+      "{workspaceRoot}/tools/conformance/agent-frameworks/python/evidence/*.live.json"
+    ]
+  },
+  "targets": {
+    "install": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "uv sync --frozen --project tools/conformance/agent-frameworks/python"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "python3 -c \"import ast,pathlib; [ast.parse(p.read_text(), filename=str(p)) for p in pathlib.Path('tools/conformance/agent-frameworks/python').glob('*.py')]\""
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "python3 -c \"import ast,pathlib; [ast.parse(p.read_text(), filename=str(p)) for p in pathlib.Path('tools/conformance/agent-frameworks/python').glob('*.py')]\" && eslint tools/conformance/agent-frameworks/python/*.mjs"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "tools/conformance/agent-frameworks/python/.venv/bin/python tools/conformance/agent-frameworks/python/host_test.py && node --test tools/conformance/agent-frameworks/python/*.spec.mjs"
+      },
+      "dependsOn": ["install", "consumer-test"]
+    },
+    "consumer-test": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": true,
+      "options": {
+        "command": "npx nx test core --testFile=pydantic-ai.conformance.spec.ts --runInBand --passWithNoTests=false --skip-nx-cache"
+      }
+    },
+    "example-e2e": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "playwright test --config tools/conformance/pydantic-ai.playwright.config.ts"
+      },
+      "dependsOn": [
+        "install",
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ]
+    },
+    "compatibility-baseline": {
+      "executor": "nx:run-commands",
+      "inputs": ["pythonFixture", "^production"],
+      "cache": false,
+      "options": {
+        "command": "node tools/conformance/agent-frameworks/program/pydantic-weekly.mjs"
+      }
+    }
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "framework": "pydantic-ai",
+  "profile": "asgi-baseline",
+  "versions": {
+    "pydantic-ai-slim": "2.64.0",
+    "ag-ui-protocol": "1.0.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0"
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "uv": "0.11.3"
+  },
+  "platform": "darwin/arm64",
+  "protocol": {
+    "requested": "1.0 in retained probes except cancel-default; omitted in ordinary browser requests",
+    "effective": "1.0 event envelope; terminal outcomes negotiated per request"
+  },
+  "transport": "http-sse",
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-baseline-2026-10-31T14:36:40.346Z"
+  },
+  "sourceInputs": [
+    {
+      "path": "packages/core/project.json",
+      "sha256": "fdd517e1986f36aa85cc0d6a9f34ed612ce6721e88d732e624f9a1e1bd620a7b"
+    },
+    {
+      "path": "packages/core/src/models/pydantic-ai.conformance.spec.ts",
+      "sha256": "5f4e18937c721a4a2f36ac28173a8c9e1ef81d7c969266396027b1426b3cf45d"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/.python-version",
+      "sha256": "f01d748a75eb195e6fd73201279bfb23f09036ddd360eb3e9ff40ef042acbc8a"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/capture.mjs",
+      "sha256": "61383a9f776b2644ea3582e260e891fd75ecce41d787b5c4c1766d73b89cb03e"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/capture.spec.mjs",
+      "sha256": "869501708f118d7ee35c410c596cf12823e07af3d9df92074753471fc79af5dc"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/controller.d.mts",
+      "sha256": "0dbd80b208f01cf6591e2a048b643550c835f5d6e2ef5c5fcfe924c0e2937ca2"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/controller.mjs",
+      "sha256": "1e7a08c47cd9df37122789031acfb7b74dff912ac5342d47d34cc133850d4811"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/controller.spec.mjs",
+      "sha256": "1d2f5f9b5d267c671b24bc10f6cd32077a0ad2f2b45a70745886adc5602b68e8"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/host.py",
+      "sha256": "875438e580ab052bcbb1920ea2d050151da219bc284d1da9a1d160aa25630386"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/host_test.py",
+      "sha256": "7b20ed86fd8bad14a6541d84d484713402cef00d6f53a29459bc5ff2cd0abf61"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/normalize.mjs",
+      "sha256": "58a01898693dd2e9acac399bd4b49cf3f6f87b8bb7466f236950398e8a06e8a5"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/project.json",
+      "sha256": "4c5b67c7e1129ef4cca78ff2087332e1541ffcb033c12aa3726521d9f701ba69"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/pyproject.toml",
+      "sha256": "7602e50a6a11e354ade9be0de3de09d6977109449f6993fc95522c74be343418"
+    },
+    {
+      "path": "tools/conformance/agent-frameworks/python/uv.lock",
+      "sha256": "c0738cdbad799556c26d95c9a1fecbdf9ec57bb659529e2de7b22f46fea0e416"
+    },
+    {
+      "path": "tools/conformance/harness/app-driver.ts",
+      "sha256": "f68a28a8adeed9018d66529d0696b2d2856ffa7da1c286e38a0740d6fe9005a0"
+    },
+    {
+      "path": "tools/conformance/hosts/angular/src/app/plain-smoke.ts",
+      "sha256": "f8e56d6db48fc998e412eeb0e3d1c0959f64313a3a221afbfb642450d173d308"
+    },
+    {
+      "path": "tools/conformance/hosts/react/src/plain-smoke.tsx",
+      "sha256": "692d16069b604235ddbae24842384aa93ef147d2c5d43f2fd852895fd448c224"
+    },
+    {
+      "path": "tools/conformance/pydantic-ai.playwright.config.ts",
+      "sha256": "250c645443a3dd9d0b94cc6ba53a46f65f528b223df930d20b883fc212a19731"
+    },
+    {
+      "path": "tools/conformance/pydantic-ai/pydantic-ai.spec.ts",
+      "sha256": "53a92ce569279ea17c7057bbc4e8910793ff0dd5bed2760602a207e3d7888afe"
+    },
+    {
+      "path": "tools/conformance/tsconfig.playwright.json",
+      "sha256": "c496be4a7c9a5da25b9b3e04b844d1ea62ebe7434a4cf6e681a9e6a40bb5957a"
+    }
+  ],
+  "sourceSha256": "e36f8f0d11da9b141d8bb8d3ff579721b0676ed1bc18f2ca00d38fe9a4eab105",
+  "wire": {
+    "path": "tools/conformance/agent-frameworks/python/evidence/server-tool.sse",
+    "sha256": "9d4232d5c4c2a2f3fb8b97dbfd92aa2ce04daa5da99f93fc997b82b63d6649a3"
+  },
+  "executionSummary": {
+    "path": "tools/conformance/agent-frameworks/python/evidence/qualification-execution.json",
+    "sha256": "28529f3239be1f5ed084c11ca037920c9b3429d847d65f9d3df0aa6851b557a8"
+  },
+  "events": [
+    {
+      "type": "RUN_STARTED",
+      "timestamp": 1793457064602,
+      "threadId": "capture-server-tool",
+      "runId": "capture-server-tool-run",
+      "protocolVersion": "1.0"
+    },
+    {
+      "type": "TEXT_MESSAGE_START",
+      "timestamp": 1793457064606,
+      "messageId": "d69cfa8a-dd2f-4ef7-8c59-274971c31d3e",
+      "role": "assistant"
+    },
+    {
+      "type": "TEXT_MESSAGE_END",
+      "timestamp": 1793457064606,
+      "messageId": "d69cfa8a-dd2f-4ef7-8c59-274971c31d3e"
+    },
+    {
+      "type": "TOOL_CALL_START",
+      "timestamp": 1793457064606,
+      "toolCallId": "capture-server-tool-server",
+      "toolCallName": "serverTool",
+      "parentMessageId": "d69cfa8a-dd2f-4ef7-8c59-274971c31d3e"
+    },
+    {
+      "type": "TOOL_CALL_ARGS",
+      "timestamp": 1793457064606,
+      "toolCallId": "capture-server-tool-server",
+      "delta": "{\"city\":\"London\"}"
+    },
+    {
+      "type": "TOOL_CALL_END",
+      "timestamp": 1793457064606,
+      "toolCallId": "capture-server-tool-server"
+    },
+    {
+      "type": "TOOL_CALL_RESULT",
+      "timestamp": 1793457064635,
+      "messageId": "0ad7ffd3-f2a6-4e06-a25b-5f4c7b839ea6",
+      "toolCallId": "capture-server-tool-server",
+      "content": "server-result:London",
+      "role": "tool"
+    },
+    {
+      "type": "TEXT_MESSAGE_START",
+      "timestamp": 1793457064637,
+      "messageId": "e80508cc-0755-43e1-b0d6-5d7050300540",
+      "role": "assistant"
+    },
+    {
+      "type": "TEXT_MESSAGE_CONTENT",
+      "timestamp": 1793457064637,
+      "messageId": "e80508cc-0755-43e1-b0d6-5d7050300540",
+      "delta": "Tool result: server-result:London"
+    },
+    {
+      "type": "TEXT_MESSAGE_END",
+      "timestamp": 1793457064638,
+      "messageId": "e80508cc-0755-43e1-b0d6-5d7050300540"
+    },
+    {
+      "type": "RUN_FINISHED",
+      "timestamp": 1793457064640,
+      "threadId": "capture-server-tool",
+      "runId": "capture-server-tool-run",
+      "outcome": {
+        "type": "success"
+      }
+    }
+  ],
+  "eventsSha256": "205974be7bf7e77d8d89f331e12baf2bf67d7f5fce1a5329601c23a26511c47f"
+}

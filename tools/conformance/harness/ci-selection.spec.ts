@@ -5,7 +5,7 @@ test('source-only checks do not provision browsers or PostgreSQL', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: false, browser: false });
+  expect(result).toEqual({ dotnet: false, browser: false, python: false });
 });
 
 test('cached workbench verification still provisions a browser on a cache miss', () => {
@@ -13,7 +13,7 @@ test('cached workbench verification still provisions a browser on a cache miss',
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: false, browser: true });
+  expect(result).toEqual({ dotnet: false, browser: true, python: false });
 });
 
 test('a .NET browser smoke needs both browser and database fixtures', () => {
@@ -24,7 +24,7 @@ test('a .NET browser smoke needs both browser and database fixtures', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: true });
+  expect(result).toEqual({ dotnet: true, browser: true, python: false });
 });
 
 test('a .NET HTTP contract run does not require browser installation', () => {
@@ -32,7 +32,7 @@ test('a .NET HTTP contract run does not require browser installation', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: false });
+  expect(result).toEqual({ dotnet: true, browser: false, python: false });
 });
 
 test('all browser suite entry points provision Chromium', () => {
@@ -48,5 +48,28 @@ test('packaged PR acceptance provisions PostgreSQL and Chromium', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: true });
+  expect(result).toEqual({ dotnet: true, browser: true, python: false });
+});
+
+test('Pydantic producer and live browser execution require Python', () => {
+  const tasks = ['install', 'test', 'consumer-test', 'example-e2e'].map(
+    (target) => `pydantic-ai-conformance:${target}`,
+  );
+
+  const results = tasks.map((task) => selectCiSetup([task]));
+
+  expect(results.every((result) => result.python)).toBe(true);
+  expect(results.at(-1)?.browser).toBe(true);
+});
+
+test('Pydantic syntax and data-only report checks do not provision Python', () => {
+  const tasks = [
+    'pydantic-ai-conformance:lint',
+    'pydantic-ai-conformance:build',
+    'framework-conformance-program:test',
+  ];
+
+  const result = selectCiSetup(tasks);
+
+  expect(result.python).toBe(false);
 });

@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","timestamp":1793457064694,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793457064699,"messageId":"32a4b371-6f1a-4323-a424-8877f9cd41a0","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793457064699,"messageId":"32a4b371-6f1a-4323-a424-8877f9cd41a0"}
+
+data: {"type":"TOOL_CALL_START","timestamp":1793457064699,"toolCallId":"capture-cancel-v1-server","toolCallName":"serverTool","parentMessageId":"32a4b371-6f1a-4323-a424-8877f9cd41a0"}
+
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793457064699,"toolCallId":"capture-cancel-v1-server","delta":"{\"city\":\"London\"}"}
+
+data: {"type":"TOOL_CALL_END","timestamp":1793457064700,"toolCallId":"capture-cancel-v1-server"}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"feaaa74b-fc75-40a0-8194-f1f1870f120c","toolCallId":"capture-cancel-v1-server","content":"The tool call was interrupted before a result was produced.","role":"tool"}
+
+data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"feaaa74b-fc75-40a0-8194-f1f1870f120c","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"}
+
+data: {"type":"RUN_FINISHED","timestamp":1793457064724,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","outcome":{"type":"cancelled"}}
+

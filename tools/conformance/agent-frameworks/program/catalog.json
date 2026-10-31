@@ -332,7 +332,7 @@
       "profile": "planned",
       "status": "not-tested",
       "kind": "planned",
-      "detail": "First additional framework; no dependencies approved or execution performed.",
+      "detail": "Broader Pydantic AI capability profiles remain not-tested. The separate asgi-baseline record qualifies selected deterministic HTTP scenarios. Native same-name tool registration is rejected upstream; generic typed tool failure and cancellation require enrichment. No native restart, approval/state, structured UI, media, rich-step or subagent qualification is claimed.",
       "scenarioIds": [
         "tools.server-execution",
         "recovery.canonical-consumer-restore",

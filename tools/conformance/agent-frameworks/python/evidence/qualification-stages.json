@@ -1,0 +1,278 @@
+{
+  "profileId": "pydantic-ai/asgi-baseline",
+  "execution": {
+    "kind": "local",
+    "id": "pydantic-baseline-2026-10-31T14:36:40.346Z"
+  },
+  "sourceSha256": "e36f8f0d11da9b141d8bb8d3ff579721b0676ed1bc18f2ca00d38fe9a4eab105",
+  "captureSha256": "96dd50c1de42be5cb73fcfb70c9785d5b96ad71f77626dde21a5e40eb5567e38",
+  "sourceCommit": "251b01b122846a86789c52cfd46b37c6d4f6b8a2",
+  "startedAt": "2026-10-31T14:36:40.346Z",
+  "completedAt": "2026-10-31T14:37:48.043Z",
+  "commands": [
+    {
+      "id": "producer-and-capture",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "canonical-consumer-and-next-request",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "react-and-angular-browser",
+      "status": "passed",
+      "exitCode": 0
+    }
+  ],
+  "observations": [
+    {
+      "scenarioId": "tools.server-execution",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.server-execution",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "canonical-persistence",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "recovery.canonical-consumer-restore",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.react-display",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.angular-display",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.same-name-client-inert",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.same-name-client-inert",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.same-name-client-inert",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.same-name-client-inert",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.live-start",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.live-start",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.streaming",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "conversation.history",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "next-request",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.client-roundtrip",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing required producer/consumer assertions from the source-bound baseline."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.failure",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "producer-execution",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "bridge-wire",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "core-consumer",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "browser-react",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    },
+    {
+      "scenarioId": "tools.cancel",
+      "stage": "browser-angular",
+      "result": "pass",
+      "basis": "Passing source-bound regression assertions for this scenario; a passing gap probe does not qualify the capability."
+    }
+  ],
+  "browserScope": "Both actual production hosts, fourteen live cases, real getWeather handler count and native continuation. Browser requests use ordinary Hashbrown protocol settings. No capture replay substitutes for this browser stage."
+}
