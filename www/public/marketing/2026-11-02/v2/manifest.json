@@ -1,0 +1,143 @@
+{
+  "week": "2026-11-02",
+  "revision": 2,
+  "authoredAt": "2026-10-31",
+  "research": "docs/marketing/2026-10-31-thumbnail-research.md",
+  "assets": [
+    {
+      "key": "mon-x-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/mon-x-web-llms.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "Brian Love beside the headline “Local models. Real limits.” November 2026; Chrome, WebLLM and Ollama.",
+      "sha256": "b416dcd0e32ca70f6ae4ff0c61cf1ab05ded7004e6d909084b1b8f246bb5c06d",
+      "bytes": 329746,
+      "provenance": {
+        "type": "original-photo-composition",
+        "source": "BL-002_approachable_original-wardrobe_v01.png",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "tue-li-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/tue-li-web-llms.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "Brian Love smiling beside “Local models. Real limits.” The November 2026 update covers Chrome, WebLLM and Ollama.",
+      "sha256": "f7a8acb0ffcd5b384acc6f9feebccea6301637307524301e232710a04e4232d2",
+      "bytes": 513914,
+      "provenance": {
+        "type": "original-photo-composition",
+        "source": "BL-018_broad-smile_original-wardrobe_v01.png",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "tue-x-schema-correctness",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/tue-x-schema-correctness.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Valid JSON. Wrong answer.” Brian Love in a thinking pose beside explanatory labels: Shape passes; Values fail.",
+      "sha256": "63912ab9b60360711c1d66da3c13ee2a77ac367c55d717c9b5b512110b8bf3a3",
+      "bytes": 374118,
+      "provenance": {
+        "type": "original-photo-with-explanatory-labels",
+        "source": "BL-025_analytical-thinking_original-wardrobe_v01.png",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "wed-x-tool-phases",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/wed-x-tool-phases.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“The app picks the tool.” An illustrated sequence: the app selects a tool; the model generates arguments; Hashbrown validates and runs it; then the model generates output.",
+      "sha256": "4ea9ac09abf347362913bc68b86fe43103ecb96cefa3551a2e4690e3e7196718",
+      "bytes": 64163,
+      "provenance": {
+        "type": "explanatory-graphic",
+        "source": "authored HTML/CSS illustration",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-li-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/thu-li-workbench.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“Your app decides.” Actual recorded Chrome workbench State inspector: revision 1, event “Plan accepted”, source “Application”.",
+      "sha256": "9a197773fd469e6161f98454ba66bdd340b050431545ed48ec21f32b78f8edb6",
+      "bytes": 190653,
+      "provenance": {
+        "type": "recorded-Chrome-replay-crop",
+        "source": "www/public/marketing/2026-11-02/workbench-accepted.png",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "thu-x-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/thu-x-workbench.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Preview before you apply.” The actual recorded Chrome workbench component shows the generated two-step plan. Recorded replay; no UI text was changed.",
+      "sha256": "5afe0ed647cab17d1638bc80640edac8aa041b6e6b6da4f77f9584bb5d211389",
+      "bytes": 151667,
+      "provenance": {
+        "type": "recorded-Chrome-replay-component",
+        "source": "Published Chrome replay capture c29b05b2d9c7d777b82c814d9ac545e98c6971da, milestone complete-1; actual component captured at 3x pixel density",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "fri-x-json-termination",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/fri-x-json-termination.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“One token. Broken JSON.” Clearly labeled illustration of a JSON title string truncated before its closing quote: {\"title\":\"A trusted UI.",
+      "sha256": "1f85972ce9896fc6221b27c69d49e514069117d4ab1534b34c97a9a959f0f003",
+      "bytes": 56979,
+      "provenance": {
+        "type": "explanatory-graphic",
+        "source": "authored HTML/CSS illustration; mlc-ai/web-llm pull/876",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sat-x-small-catalog",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/sat-x-small-catalog.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Start smaller.” Brian Love in a thinking pose beside “One trusted component” and an illustrative Panel component tag.",
+      "sha256": "85ec4d1b1a126ea5653b8425d152df4482f94fa8a6bfeca45399d7a52ede4f45",
+      "bytes": 361601,
+      "provenance": {
+        "type": "original-photo-with-component-illustration",
+        "source": "BL-003_skeptical-thinking_original-wardrobe_v01.png",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sun-x-local-network",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v2/sun-x-local-network.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local ≠ offline.” An illustration places inference on the device and shows separate app paths for tools, images and telemetry that may use the network.",
+      "sha256": "0d275b7cad2cb1686352e85976457193fa011b9335569ca40b9c7e11f377345a",
+      "bytes": 50962,
+      "provenance": {
+        "type": "explanatory-graphic",
+        "source": "authored HTML/CSS illustration",
+        "treatment": "HTML/CSS composition; original photographs and captured replay pixels; no face, pose or wardrobe edits",
+        "illustrative": true
+      }
+    }
+  ]
+}
