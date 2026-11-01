@@ -22,9 +22,16 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
     if (!ReferenceEquals(context.Registration.Catalog, catalog)) throw new NativeSessionRequestException(409);
     var configured = ConfigureOptions(options, context.Input, catalog, registered);
     var restored = Restore(messages.ToArray(), context);
+    context.PrepareRecoveredProviderInput(restored);
     context.Observe("Run.Forward");
     await foreach (var update in InnerAgent.RunStreamingAsync(restored, session, configured, context.Cancellation))
     {
+      if (context.Recovery is not null && context.ReadHeldRecoveryManifest().Calls.Count > 0)
+      {
+        // Validate the actual supported outer/raw relation before cloning any ordering evidence.
+        _ = Project(update, update.Contents);
+        context.ObserveHeldRecoveryCalls(update);
+      }
       for (var index = 0; index < update.Contents.Count; index++)
         if (update.Contents[index] is ToolApprovalRequestContent request) context.ObserveApproval(request, update.MessageId, index);
       foreach (var result in update.Contents.OfType<FunctionResultContent>()) await context.ObserveApprovalResultAsync(result);
@@ -33,6 +40,7 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
       {
         if (content is ToolApprovalRequestContent { RequiresConfirmation: false, ToolCall: FunctionCallContent call }) projected.Add(call);
         else if (content is FunctionCallContent callEcho && IsOwnedEcho(callEcho, context)) { }
+        else if (content is FunctionResultContent resultEcho && context.IsRecoveredBrowserResultEcho(resultEcho)) { }
         else projected.Add(content);
       }
       var publicUpdate = ProjectForPublic(update, projected);
@@ -111,6 +119,8 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
   private static IReadOnlyList<ChatMessage> Restore(IReadOnlyList<ChatMessage> messages, NativeSessionContext context)
   {
     if (messages.SelectMany(message => message.Contents).Any(content => content is ToolApprovalResponseContent or ToolApprovalRequestContent)) throw new NativeSessionRequestException(400);
+    if (context.Admission?.Snapshot is not null) messages = NativeCompletedHistoryProjection.Project(messages, context);
+    if (context.Recovery is not null) return NativeBrowserRecoveryNormalization.Normalize(messages, context);
     var evidence = context.ApprovalEvidence;
     if (evidence is null)
     {
@@ -170,7 +180,22 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
   private static bool Equivalent(object? arguments, JsonNode? expected) => JsonNode.DeepEquals(JsonSerializer.SerializeToNode(arguments), expected);
   private static bool IsOwnedEcho(FunctionCallContent call, NativeSessionContext context)
   {
-    if (!call.InformationalOnly || context.ApprovalEvidence is not { } evidence) return false;
+    if (!call.InformationalOnly) return false;
+    if (context.Recovery is not null)
+    {
+      var current = context.Recovery.Outcomes.Any(item => item.ToolCallId == call.CallId) || context.ApprovalEvidence?.Batch.Batch.ProtectedRequests.Any(item => item.Call.Id == call.CallId) == true;
+      if (current)
+      {
+        if (call.RawRepresentation is not null || call.Exception is not null || call.Annotations?.Count > 0 || call.AdditionalProperties?.Count > 0) throw new NativeSessionRequestException(409);
+        var original = JsonNode.Parse(context.PublicRequest)!["messages"]!.AsArray().OfType<JsonObject>().SelectMany(message => message["toolCalls"] is JsonArray calls ? calls.OfType<JsonObject>() : []).SingleOrDefault(item => item["id"]?.GetValue<string>() == call.CallId);
+        if (original is null || call.Name != original["function"]?["name"]?.GetValue<string>() || !Equivalent(call.Arguments, JsonNode.Parse(original["function"]!["arguments"]!.GetValue<string>()))) throw new NativeSessionRequestException(409);
+        return true;
+      }
+      // New native calls retain ordinary policy only after their own independent current model-capture witness.
+      if (context.MatchesCapturedRecoveryCall(call.CallId, call.Name, JsonSerializer.SerializeToNode(call.Arguments))) return false;
+      throw new NativeSessionRequestException(409);
+    }
+    if (context.ApprovalEvidence is not { } evidence) return false;
     var protectedCall = evidence.Batch.Batch.ProtectedRequests.FirstOrDefault(item => item.Call.Id == call.CallId)?.Call;
     if (protectedCall is not null) return protectedCall.Name == call.Name && Equivalent(call.Arguments, JsonNode.Parse(protectedCall.Arguments.GetRawText()));
     var browser = evidence.Batch.Batch.BrowserBindings.FirstOrDefault(item => item.CallId == call.CallId);
@@ -180,7 +205,12 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
   private static AgentResponseUpdate? ProjectForPublic(AgentResponseUpdate source, IList<AIContent> contents)
   {
     var projected = Project(source, contents);
-    return contents.Count == 0 && source.Contents.Count > 0 ? null : projected;
+    if (contents.Count == 0 && source.Contents.Count > 0)
+    {
+      if (source.AdditionalProperties?.Count > 0 || source.ContinuationToken is not null || source.FinishReason is not null && source.FinishReason != ChatFinishReason.ToolCalls || source.RawRepresentation is ChatResponseUpdate { ConversationId: not null }) throw new NativeSessionRequestException(503);
+      return null;
+    }
+    return projected;
   }
 
   /// <summary>Creates independent outer/raw updates, preserving every supported pinned property.</summary>

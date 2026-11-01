@@ -1,5 +1,6 @@
 #pragma warning disable MAAI001, MEAI001 // Pinned public native approval/update properties are characterized without private SDK inspection.
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AGUI.Abstractions;
@@ -47,7 +48,7 @@ foreach (var mutation in new[] { "unknown", "contents", "role", "parent", "respo
     Check(rejected, "Unknown or inconsistent native raw update must fail representability: " + mutation);
 }
 var publicBoundary = typeof(NativeSessionAgentFactory).Assembly.GetType("Hashbrown.AspNetCore.NativeApprovalAgent")!.GetMethod("ProjectForPublic", BindingFlags.NonPublic | BindingFlags.Static)!;
-foreach (var mutation in new[] { "valid", "unknown", "contents", "role" })
+foreach (var mutation in new[] { "valid", "unknown", "contents", "role", "metadata" })
 {
     var call = new FunctionCallContent("owned-echo", "backend", new Dictionary<string, object?> { ["code"] = "original" }) { InformationalOnly = true };
     var raw = new ChatResponseUpdate(ChatRole.Assistant, [call]) { MessageId = "native-echo-parent", ResponseId = "native-echo-parent" };
@@ -55,6 +56,7 @@ foreach (var mutation in new[] { "valid", "unknown", "contents", "role" })
     if (mutation == "unknown") outer.RawRepresentation = new object();
     if (mutation == "contents") raw.Contents = [new FunctionCallContent("foreign", "backend", new Dictionary<string, object?> { ["code"] = "foreign" })];
     if (mutation == "role") raw.Role = ChatRole.Tool;
+    if (mutation == "metadata") { raw.AdditionalProperties = new() { ["meaningful"] = true }; outer.AdditionalProperties = new() { ["meaningful"] = true }; }
     var rejected = false; AgentResponseUpdate? projected = null;
 
     try { projected = (AgentResponseUpdate?)publicBoundary.Invoke(null, [outer, new List<AIContent>()]); }
@@ -172,6 +174,343 @@ foreach (var scenario in new[] { "unknown-separate", "known-parent", "known-inde
     await ((IAsyncDisposable)context).DisposeAsync();
 }
 
+static async IAsyncEnumerable<AgentResponseUpdate> EmitBrowserEcho(FunctionResultContent result, string mutation, [EnumeratorCancellation] CancellationToken cancellationToken)
+{
+    await Task.CompletedTask;
+    for (var index = 0; index < (mutation == "repeated-exact" ? 2 : 1); index++)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var raw = new ChatResponseUpdate(ChatRole.Tool, [result]) { MessageId = "native-result-echo", ResponseId = "native-result-echo" };
+        if (mutation == "enclosing-metadata") raw.AdditionalProperties = new() { ["meaningful"] = true };
+        if (mutation == "continuation") raw.ContinuationToken = ResponseContinuationToken.FromBytes(new byte[] { 1 });
+        yield return new AgentResponseUpdate(raw);
+    }
+}
+// Lower-layer pure recovery validation: synthetic immutable witnesses grant no route, provider or executor authority.
+var normalizationFailures = new List<string>();
+var ownedEcho = restoreType.GetMethod("IsOwnedEcho", BindingFlags.Static | BindingFlags.NonPublic)!;
+foreach (var mixed in new[] { false, true })
+foreach (var mutation in new[] { "valid", "call-raw", "call-exception", "call-informational", "call-annotations", "call-metadata", "message-raw", "message-metadata", "text-raw", "text-annotations", "result-raw", "result-exception", "result-annotations", "result-metadata", "result-message-raw", "unknown-result-sibling", "decision-raw", "decision-annotations", "decision-message-raw", "unknown-decision-sibling", "historical-pending" })
+{
+    if (!mixed && mutation.StartsWith("decision-", StringComparison.Ordinal) || !mixed && mutation == "unknown-decision-sibling") continue;
+    var ownedKey = new NativeSessionKey("native", "owned", "pure-recovery", new Dictionary<string, string> { ["isolation"] = "owned" });
+    var lease = new NativeSessionLease(ownedKey, "pure-never-dispatched", 2, 3);
+    var browserArguments = JsonSerializer.SerializeToElement(new { city = "Paris" });
+    var nativeCall = new NativeToolCall("protected", "backend", 1, JsonSerializer.SerializeToElement(new { code = "A" }));
+    var protectedDescriptors = mixed ? new[] { new NativeApprovalDescriptor("protected-request", nativeCall, new("current", null, 2)) } : [];
+    var bound = mixed ? new NativeBoundApprovalBatch(new("pure-batch", protectedDescriptors, [new("browser-request", "browser", "frontend", browserArguments, new("current", null, 1))]), new Dictionary<string, NativePublicCallLocation> { ["browser-request"] = new("current", 1, 0), ["protected-request"] = new("current", 1, 1) }) : null;
+    var original = new JsonObject { ["threadId"] = "pure-recovery", ["runId"] = "pending", ["messages"] = new JsonArray(new JsonObject { ["id"] = "user", ["role"] = "user", ["content"] = "question" }, new JsonObject { ["id"] = "current", ["role"] = "assistant", ["content"] = "current text", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = "browser", ["type"] = "function", ["function"] = new JsonObject { ["name"] = "frontend", ["arguments"] = browserArguments.GetRawText() } }) }), ["tools"] = JsonSerializer.SerializeToNode(new[] { new { name = "frontend", description = "browser", parameters = originalBrowserSchema } }), ["forwardedProps"] = new JsonObject() };
+    if (mixed) original["messages"]![1]!["toolCalls"]!.AsArray().Add(new JsonObject { ["id"] = "protected", ["type"] = "function", ["function"] = new JsonObject { ["name"] = "backend", ["arguments"] = nativeCall.Arguments.GetRawText() } });
+    var browserCall = new FunctionCallContent("browser", "frontend", JsonSerializer.Deserialize<Dictionary<string, object?>>(browserArguments));
+    var textContent = new TextContent("current text");
+    var callMessage = new ChatMessage(ChatRole.Assistant, new List<AIContent> { textContent, browserCall }) { MessageId = "current" };
+    if (mixed) callMessage.Contents.Add(new FunctionCallContent("protected", "backend", JsonSerializer.Deserialize<Dictionary<string, object?>>(nativeCall.Arguments)));
+    var resultContent = new FunctionResultContent("browser", "exact known browser result");
+    var resultMessage = new ChatMessage(ChatRole.Tool, [resultContent]) { MessageId = "browser-result" };
+    var decisionContent = new InterruptResponseContent("protected-request") { Payload = JsonSerializer.SerializeToElement(new { approved = true }) };
+    var decisionMessage = new ChatMessage(ChatRole.User, [decisionContent]) { MessageId = "decision" };
+    var converted = new List<ChatMessage> { new(ChatRole.User, "question") { MessageId = "user" }, callMessage, resultMessage };
+    if (mixed) converted.Add(decisionMessage);
+    if (mutation == "historical-pending")
+    {
+        original["messages"]!.AsArray().Insert(1, new JsonObject { ["id"] = "prior-unresolved", ["role"] = "assistant", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = "prior-unresolved-call", ["type"] = "function", ["function"] = new JsonObject { ["name"] = "frontend", ["arguments"] = browserArguments.GetRawText() } }) });
+        converted.Insert(1, new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("prior-unresolved-call", "frontend", JsonSerializer.Deserialize<Dictionary<string, object?>>(browserArguments))]) { MessageId = "prior-unresolved" });
+        if (mixed) bound = new NativeBoundApprovalBatch(bound!.Batch, new Dictionary<string, NativePublicCallLocation> { ["browser-request"] = new("current", 2, 0), ["protected-request"] = new("current", 2, 1) });
+    }
+    var raw = original.DeepClone().AsObject(); raw["runId"] = "recovered";
+    raw["messages"]!.AsArray().Add(new JsonObject { ["id"] = "browser-result", ["role"] = "tool", ["toolCallId"] = "browser", ["content"] = "exact known browser result" });
+    raw["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = 2, outcomes = new[] { new { toolCallId = "browser", status = "result" } } } });
+    var recovery = new NativeBrowserRecoveryRequest(1, 2, [new("browser", "result")]);
+    var rawText = raw.ToJsonString();
+    var input = JsonSerializer.Deserialize(rawText, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", rawText, null, recovery, null], null)!;
+    contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, new NativeSessionAdmission(200, lease, new("{}", original.ToJsonString(), mixed ? [nativeCall] : [], ["browser"], false, new NativeApprovalSnapshot(bound))));
+    if (mixed) contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, new NativeApprovalEvidence(ownedKey.Id, "adapter", registeredCatalog.Identity, lease, bound!, 2, NativeApprovalState.DecisionAdmitted, [new("protected-request", NativeApprovalDecisionKind.Approved)], 2, 3, DateTimeOffset.UtcNow.AddMinutes(1)));
+    if (mutation == "call-raw") browserCall.RawRepresentation = new object();
+    if (mutation == "call-exception") browserCall.Exception = new InvalidOperationException("meaningful");
+    if (mutation == "call-informational") browserCall.InformationalOnly = true;
+    if (mutation == "call-annotations") browserCall.Annotations = [new CitationAnnotation()];
+    if (mutation == "call-metadata") browserCall.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "message-raw") callMessage.RawRepresentation = new object();
+    if (mutation == "message-metadata") callMessage.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "text-raw") textContent.RawRepresentation = new object();
+    if (mutation == "text-annotations") textContent.Annotations = [new CitationAnnotation()];
+    if (mutation == "result-raw") resultContent.RawRepresentation = new object();
+    if (mutation == "result-exception") resultContent.Exception = new InvalidOperationException("meaningful");
+    if (mutation == "result-annotations") resultContent.Annotations = [new CitationAnnotation()];
+    if (mutation == "result-metadata") resultContent.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "result-message-raw") resultMessage.RawRepresentation = new object();
+    if (mutation == "unknown-result-sibling") resultMessage.Contents.Add(new DataContent(new byte[] { 1 }, "application/octet-stream"));
+    if (mutation == "decision-raw") decisionContent.RawRepresentation = new object();
+    if (mutation == "decision-annotations") decisionContent.Annotations = [new CitationAnnotation()];
+    if (mutation == "decision-message-raw") decisionMessage.RawRepresentation = new object();
+    if (mutation == "unknown-decision-sibling") decisionMessage.Contents.Add(new DataContent(new byte[] { 1 }, "application/octet-stream"));
+    var before = MappingSnapshot(converted);
+    var rejected = false;
+
+    try { restore.Invoke(null, [converted, context]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    if (rejected != (mutation != "valid")) normalizationFailures.Add((mixed ? "mixed:" : "browser-only:") + mutation);
+    Check(MappingSnapshot(converted) == before, "Pure recovery normalization must preserve source graphs and unsupported evidence: " + mutation);
+    foreach (var echoMutation in mutation == "valid" ? new[] { "valid", "name", "arguments", "id", "annotations", "metadata", "raw", "exception" } : Array.Empty<string>())
+    {
+        var echo = new FunctionCallContent(echoMutation == "id" ? "altered-browser" : "browser", echoMutation == "name" ? "changed" : "frontend", echoMutation == "arguments" ? new Dictionary<string, object?> { ["city"] = "changed" } : JsonSerializer.Deserialize<Dictionary<string, object?>>(browserArguments)) { InformationalOnly = true };
+        if (echoMutation == "annotations") echo.Annotations = [new CitationAnnotation()];
+        if (echoMutation == "metadata") echo.AdditionalProperties = new() { ["meaningful"] = true };
+        if (echoMutation == "raw") echo.RawRepresentation = new object();
+        if (echoMutation == "exception") echo.Exception = new InvalidOperationException("meaningful");
+        var echoRejected = false; var suppressed = false;
+
+        try { suppressed = (bool)ownedEcho.Invoke(null, [echo, context])!; }
+        catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { echoRejected = true; }
+
+        if (echoMutation == "valid" ? echoRejected || !suppressed : !echoRejected) normalizationFailures.Add((mixed ? "mixed-echo:" : "browser-only-echo:") + echoMutation);
+    }
+    if (mutation == "valid")
+    foreach (var resultMutation in new[] { "valid", "repeated-exact", "changed-result", "changed-id", "tagged-result", "annotations", "metadata", "raw", "exception", "enclosing-metadata", "continuation" })
+    {
+        // Actual own bridge execution with a public synthetic inner streaming delegate; no route or journal authority is fabricated.
+        var journalProxy = DispatchProxy.Create<INativeSessionJournal, BrowserEchoJournal>();
+        var echoJournal = (BrowserEchoJournal)(object)journalProxy;
+        var echoRegistration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, ["native", journalProxy, registeredCatalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+        var http = new DefaultHttpContext();
+        var echoContext = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [echoRegistration, http, input, "owned", "owned", rawText, null, recovery, null], null)!;
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(echoContext, contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context));
+        contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(echoContext, contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context));
+        http.Items[contextType] = echoContext;
+        var echoResult = new FunctionResultContent(resultMutation == "changed-id" ? "altered-browser" : "browser", resultMutation == "changed-result" ? "changed" : resultMutation == "tagged-result" ? (object)JsonSerializer.SerializeToElement("exact known browser result") : "exact known browser result");
+        if (resultMutation == "annotations") echoResult.Annotations = [new CitationAnnotation()];
+        if (resultMutation == "metadata") echoResult.AdditionalProperties = new() { ["meaningful"] = true };
+        if (resultMutation == "raw") echoResult.RawRepresentation = new object();
+        if (resultMutation == "exception") echoResult.Exception = new InvalidOperationException("meaningful");
+        var bare = new NeverModel().AsAIAgent(new ChatClientAgentOptions { Name = "native" });
+        var echoInner = bare.AsBuilder().Use(null, (_, _, _, _, cancellation) => EmitBrowserEcho(echoResult, resultMutation, cancellation)).Build();
+        var echoSession = await echoInner.CreateSessionAsync();
+        contextType.GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(echoContext, [echoSession]);
+        var echoAgent = (AIAgent)Activator.CreateInstance(restoreType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [echoInner, registeredCatalog, new HttpContextAccessor { HttpContext = http }, new AIFunction[] { backend }, null], null)!;
+        var echoed = new List<AgentResponseUpdate>();
+        var rejectedResult = false;
+
+        try { await foreach (var update in echoAgent.RunStreamingAsync(converted, echoSession)) echoed.Add(update); }
+        catch (InvalidOperationException) { rejectedResult = true; }
+
+        var validEcho = resultMutation is "valid" or "repeated-exact";
+        if (validEcho ? rejectedResult || echoed.Count != 0 || echoJournal.LegacySettlements != 0 : !rejectedResult) normalizationFailures.Add((mixed ? "mixed-result-echo:" : "browser-only-result-echo:") + resultMutation);
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(echoContext, null);
+        await ((IAsyncDisposable)echoContext).DisposeAsync();
+    }
+    if (mixed && mutation == "valid")
+    foreach (var heldMutation in new[] { "valid", "empty", "unknown-version", "hidden-protected", "duplicate", "message-id", "call-id", "argument-limit", "total-count", "total-bytes" })
+    {
+        var validationReads = 0;
+        var heldCatalog = new NativeToolCatalog([new("backend", 1, backend.JsonSchema, _ => { validationReads++; return true; }, RequiresConfirmation: true), new("read", 1, backend.JsonSchema, _ => { validationReads++; return true; })]);
+        var heldId = heldMutation == "message-id" ? "user" : heldMutation == "call-id" ? "browser" : "z-held";
+        var heldCall = new NativeToolCall(heldId, heldMutation == "hidden-protected" ? "backend" : "read", heldMutation == "unknown-version" ? 2 : 1, JsonSerializer.SerializeToElement(new { code = heldMutation == "total-bytes" ? new string('x', 10000) : heldMutation == "argument-limit" ? new string('x', 100) : "held" }));
+        var pending = new List<NativeToolCall> { nativeCall };
+        if (heldMutation != "empty") pending.Add(heldCall);
+        if (heldMutation == "duplicate") pending.Add(heldCall);
+        var heldLimits = new NativeSessionOptions { MaximumCalls = heldMutation == "total-count" ? 1 : 256, ArgumentBytes = heldMutation == "argument-limit" ? 32 : 65536, PublicBytes = heldMutation == "total-bytes" ? 2000 : 1048576 };
+        var heldJournal = DispatchProxy.Create<INativeSessionJournal, BrowserEchoJournal>();
+        var heldRegistration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, ["native", heldJournal, heldCatalog, (Func<HttpContext, string?>)(_ => "owned"), heldLimits], null)!;
+        var heldContext = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [heldRegistration, new DefaultHttpContext(), input, "owned", "owned", rawText, null, recovery, null], null)!;
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(heldContext, new NativeSessionAdmission(200, lease, new("{}", original.ToJsonString(), pending, ["browser"], false, new NativeApprovalSnapshot(bound))));
+        contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(heldContext, new NativeApprovalEvidence(ownedKey.Id, "adapter", heldCatalog.Identity, lease, bound!, 2, NativeApprovalState.DecisionAdmitted, [new("protected-request", NativeApprovalDecisionKind.Approved)], 2, 3, DateTimeOffset.UtcNow.AddMinutes(1)));
+        var session = await new NeverModel().AsAIAgent(new ChatClientAgentOptions { Name = "native" }).CreateSessionAsync();
+        var rejectedHeldBind = false;
+
+        try { contextType.GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, [session]); }
+        catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejectedHeldBind = true; }
+
+        if (rejectedHeldBind != (heldMutation is not ("valid" or "empty")) || validationReads != 0) normalizationFailures.Add("held-bind:" + heldMutation + ":rejected=" + rejectedHeldBind + ":validators=" + validationReads);
+        if (heldMutation == "valid" && !rejectedHeldBind)
+        {
+            // Explicit synthetic capture/completion does NOT stand in for an independent actual-return snapshot.
+            ((System.Collections.Concurrent.ConcurrentDictionary<string, NativeToolCall>)contextType.GetField("_witnesses", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(heldContext)!).TryAdd(heldCall.Id, heldCall);
+            ((System.Collections.Concurrent.ConcurrentDictionary<string, (NativeToolCall Call, string Token, long Generation)>)contextType.GetField("_completedCurrentDispatches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(heldContext)!).TryAdd(heldCall.Id, (heldCall, lease.Token, lease.Generation));
+            var rejectedLookalike = false;
+
+            try { await (ValueTask)contextType.GetMethod("ObserveApprovalResultAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, [new FunctionResultContent(heldCall.Id, "unwitnessed native result")])!; }
+            catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejectedLookalike = true; }
+            catch (InvalidOperationException) { rejectedLookalike = true; }
+
+            if (!rejectedLookalike) normalizationFailures.Add("held-result:completed-descriptor-alone-is-not-actual-return-authority");
+            foreach (var observationMutation in new[] { "custom-dictionary", "custom-comparer", "raw-conversation-single", "raw-conversation-grouped", "changed-name", "changed-arguments", "foreign-sibling", "wrong-marker", "call-annotations", "call-metadata", "call-raw", "outer-metadata", "mixed-text", "duplicate", "header-bound", "shared-byte-budget" })
+            {
+                var callbackReads = 0;
+                var comparatorArmed = false;
+                IDictionary<string, object?> observationArguments = observationMutation == "custom-dictionary" ? new HeldCallbackDictionary(() => callbackReads++) : observationMutation == "custom-comparer" ? new Dictionary<string, object?>(new HeldCallbackComparer(() => { if (comparatorArmed) callbackReads++; })) : new Dictionary<string, object?>();
+                observationArguments.Add("code", "held");
+                if (observationMutation.StartsWith("raw-conversation", StringComparison.Ordinal)) observationArguments = new Dictionary<string, object?> { ["code"] = "held" };
+                var observationContext = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [heldRegistration, new DefaultHttpContext(), input, "owned", "owned", rawText, null, recovery, null], null)!;
+                foreach (var property in new[] { "Admission", "ApprovalEvidence" }) contextType.GetProperty(property, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(observationContext, contextType.GetProperty(property, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(heldContext));
+                contextType.GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(observationContext, [session]);
+                if (observationMutation == "changed-arguments") observationArguments["code"] = "changed";
+                var heldObservation = new FunctionCallContent(heldCall.Id, observationMutation == "changed-name" ? "changed" : heldCall.Name, observationArguments) { InformationalOnly = observationMutation != "wrong-marker" };
+                if (observationMutation == "call-annotations") heldObservation.Annotations = [new CitationAnnotation()];
+                if (observationMutation == "call-metadata") heldObservation.AdditionalProperties = new() { ["unknown"] = true };
+                if (observationMutation == "call-raw") heldObservation.RawRepresentation = new object();
+                var calls = new List<AIContent> { heldObservation };
+                if (observationMutation == "foreign-sibling") calls.Add(new FunctionCallContent("unexplained", "read", new Dictionary<string, object?>()) { InformationalOnly = true });
+                if (observationMutation == "mixed-text") calls.Add(new TextContent("unexplained sibling"));
+                if (observationMutation == "raw-conversation-grouped") calls.Insert(0, new FunctionCallContent(nativeCall.Id, nativeCall.Name, JsonSerializer.Deserialize<Dictionary<string, object?>>(nativeCall.Arguments.GetRawText())) { InformationalOnly = true });
+                var rawObservation = new ChatResponseUpdate(ChatRole.Assistant, calls) { MessageId = observationMutation == "header-bound" ? new string('x', 1025) : "held-native-group", ConversationId = observationMutation.StartsWith("raw-conversation", StringComparison.Ordinal) ? "unsupported-conversation" : null };
+                var observation = new AgentResponseUpdate(ChatRole.Assistant, calls) { MessageId = rawObservation.MessageId, RawRepresentation = rawObservation };
+                if (observationMutation == "outer-metadata") observation.AdditionalProperties = new() { ["unknown"] = true };
+                if (observationMutation == "shared-byte-budget") contextType.GetField("_heldRecoveryEvidenceBytes", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(observationContext, (long)heldLimits.PublicBytes - 1);
+                if (observationMutation == "duplicate") contextType.GetMethod("ObserveHeldRecoveryCalls", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(observationContext, [observation]);
+                var rejectedObservation = false;
+                callbackReads = 0; comparatorArmed = true;
+
+                try { contextType.GetMethod("ObserveHeldRecoveryCalls", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(observationContext, [observation]); }
+                catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejectedObservation = true; }
+
+                var registry = contextType.GetField("_heldRecovery", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(observationContext)!;
+                var groups = (System.Collections.ICollection)registry.GetType().GetField("_groups", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(registry)!;
+                if (!rejectedObservation || callbackReads != 0 || groups.Count != (observationMutation == "duplicate" ? 1 : 0)) normalizationFailures.Add("held-observer:" + observationMutation + ":rejected=" + rejectedObservation + ":callbacks=" + callbackReads + ":groups=" + groups.Count);
+                contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(observationContext, null);
+                await ((IAsyncDisposable)observationContext).DisposeAsync();
+            }
+            // Own-method boundary tests use synthetic completion only to exercise transitions, never real journal authority.
+            var getterReads = 0;
+            var snapshotHeld = contextType.GetMethod("SnapshotHeldRecoveryResult", BindingFlags.Instance | BindingFlags.NonPublic);
+            var publishHeld = contextType.GetMethod("PublishHeldRecoveryResult", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (snapshotHeld is null || publishHeld is null) normalizationFailures.Add("held-result:separate-actual-return-lifecycle-missing");
+            else
+            {
+                var rejectedGetter = false;
+                try { snapshotHeld.Invoke(heldContext, [heldCall, new RejectedResultGetter(() => getterReads++)]); }
+                catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejectedGetter = true; }
+                if (!rejectedGetter || getterReads != 0) normalizationFailures.Add("held-result:getter-free-snapshot");
+                var staged = snapshotHeld.Invoke(heldContext, [heldCall, "actual held result"]);
+                var rejectedBeforePublish = false;
+                try { await (ValueTask)contextType.GetMethod("ObserveApprovalResultAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, [new FunctionResultContent(heldCall.Id, "actual held result")])!; }
+                catch (InvalidOperationException) { rejectedBeforePublish = true; }
+                if (!rejectedBeforePublish) normalizationFailures.Add("held-result:staged-is-not-published");
+                publishHeld.Invoke(heldContext, [heldCall, staged]);
+                foreach (var heldResultMutation in new[] { "changed", "tagged", "valid", "duplicate" })
+                {
+                    var rejectedOutward = false;
+                    var value = heldResultMutation == "changed" ? "changed" : heldResultMutation == "tagged" ? (object)JsonSerializer.SerializeToElement("actual held result") : "actual held result";
+                    try { await (ValueTask)contextType.GetMethod("ObserveApprovalResultAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, [new FunctionResultContent(heldCall.Id, value)])!; }
+                    catch (InvalidOperationException) { rejectedOutward = true; }
+                    if (rejectedOutward != (heldResultMutation != "valid")) normalizationFailures.Add("held-result:outward-" + heldResultMutation);
+                }
+                var manifest = contextType.GetMethod("ReadHeldRecoveryManifest", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, []);
+                var missingGroupsRejected = false;
+                try { contextType.GetMethod("ReadSealedHeldRecovery", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(heldContext, [manifest]); }
+                catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { missingGroupsRejected = true; }
+                if (!missingGroupsRejected) normalizationFailures.Add("held-result:no-seal-without-call-observations");
+            }
+
+        }
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(heldContext, null);
+        await ((IAsyncDisposable)heldContext).DisposeAsync();
+    }
+    if (mixed && mutation == "valid")
+    foreach (var kind in new[] { NativeApprovalDecisionKind.Declined, NativeApprovalDecisionKind.Cancelled })
+    foreach (var rejectionMutation in new[] { "valid", "getter", "tagged-string", "wrong-string", "null", "ai-content", "journal-refusal", "duplicate" })
+    {
+        var getterReads = 0;
+        var literal = kind == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.";
+        object? rejectedValue = rejectionMutation switch
+        {
+            "getter" => new RejectedResultGetter(() => getterReads++),
+            "tagged-string" => JsonSerializer.SerializeToElement(literal),
+            "wrong-string" => literal + " changed",
+            "null" => null,
+            "ai-content" => new TextContent(literal),
+            _ => literal
+        };
+        var rejectionJournalProxy = DispatchProxy.Create<INativeSessionJournal, BrowserEchoJournal>();
+        var rejectionJournal = (BrowserEchoJournal)(object)rejectionJournalProxy; rejectionJournal.RefuseRejection = rejectionMutation == "journal-refusal";
+        var rejectionRegistration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, ["native", rejectionJournalProxy, registeredCatalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+        var rejectionContext = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [rejectionRegistration, new DefaultHttpContext(), input, "owned", "owned", rawText, null, recovery, null], null)!;
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(rejectionContext, contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context));
+        contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(rejectionContext, new NativeApprovalEvidence(ownedKey.Id, "adapter", registeredCatalog.Identity, lease, bound!, 2, NativeApprovalState.DecisionAdmitted, [new("protected-request", kind)], 2, 3, DateTimeOffset.UtcNow.AddMinutes(1)));
+        var rejectionSession = await new NeverModel().AsAIAgent(new ChatClientAgentOptions { Name = "native" }).CreateSessionAsync();
+        contextType.GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(rejectionContext, [rejectionSession]);
+        var observeResult = contextType.GetMethod("ObserveApprovalResultAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var rejectedObservation = false;
+
+        try
+        {
+            await (ValueTask)observeResult.Invoke(rejectionContext, [new FunctionResultContent("protected", rejectedValue)])!;
+            if (rejectionMutation == "duplicate") await (ValueTask)observeResult.Invoke(rejectionContext, [new FunctionResultContent("protected", rejectedValue)])!;
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejectedObservation = true; }
+        catch (InvalidOperationException) { rejectedObservation = true; }
+
+        var witnessed = ((System.Collections.IDictionary)contextType.GetField("_completedRecoveryResults", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(rejectionContext)!).Count;
+        var expectedSettlements = rejectionMutation is "valid" or "journal-refusal" or "duplicate" ? 1 : 0;
+        var expectedWitnesses = rejectionMutation is "valid" or "duplicate" ? 1 : 0;
+        if (getterReads != 0 || rejectionJournal.RejectionSettlements != expectedSettlements || witnessed != expectedWitnesses || rejectedObservation != (rejectionMutation != "valid")) normalizationFailures.Add(kind + ":rejection-" + rejectionMutation + ":getters=" + getterReads + ":settlements=" + rejectionJournal.RejectionSettlements + ":witnesses=" + witnessed);
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(rejectionContext, null);
+        await ((IAsyncDisposable)rejectionContext).DisposeAsync();
+    }
+    if (mutation == "valid")
+    {
+        var validationCallbacks = 0;
+        var pureCatalog = new NativeToolCatalog([new("backend", 1, backend.JsonSchema, _ => { validationCallbacks++; return true; }, RequiresConfirmation: true)]);
+        var pureJournal = DispatchProxy.Create<INativeSessionJournal, BrowserEchoJournal>();
+        var pureRegistration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, ["native", pureJournal, pureCatalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+        var pureContext = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [pureRegistration, new DefaultHttpContext(), input, "owned", "owned", rawText, null, recovery, null], null)!;
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(pureContext, contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context));
+        contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(pureContext, contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context));
+        var pureSession = await new NeverModel().AsAIAgent(new ChatClientAgentOptions { Name = "native" }).CreateSessionAsync();
+        contextType.GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(pureContext, [pureSession]);
+        var fresh = new NativeToolCall("fresh-native", "backend", 1, JsonSerializer.SerializeToElement(new { code = "fresh" }));
+        ((System.Collections.Concurrent.ConcurrentDictionary<string, NativeToolCall>)contextType.GetField("_witnesses", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(pureContext)!).TryAdd(fresh.Id, fresh);
+        ((System.Collections.Concurrent.ConcurrentDictionary<string, (NativeToolCall Call, string Token, long Generation)>)contextType.GetField("_completedCurrentDispatches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(pureContext)!).TryAdd(fresh.Id, (fresh, lease.Token, lease.Generation));
+
+        var completed = (bool)contextType.GetMethod("IsCompletedCurrentDispatch", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(pureContext, [fresh.Id])!;
+        var freshSuppressed = (bool)ownedEcho.Invoke(null, [new FunctionCallContent(fresh.Id, fresh.Name, JsonSerializer.Deserialize<Dictionary<string, object?>>(fresh.Arguments)) { InformationalOnly = true }, pureContext])!;
+
+        if (!completed || freshSuppressed || validationCallbacks != 0) normalizationFailures.Add((mixed ? "mixed:" : "browser-only:") + "fresh-completed-comparison-called-application-validator=" + validationCallbacks);
+        contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(pureContext, null);
+        await ((IAsyncDisposable)pureContext).DisposeAsync();
+    }
+    // Synthetic lower-layer witnesses are never released into journal cleanup or execution.
+    contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, null);
+    await ((IAsyncDisposable)context).DisposeAsync();
+}
+Check(normalizationFailures.Count == 0, "Recovery normalization/owned echo must fail closed before native/provider work: " + string.Join(", ", normalizationFailures));
+
+// Pure codec boundaries supplement the real public-route result fixtures without executing a handler or serializer callback.
+var resultSnapshotType = restoreType.Assembly.GetType("Hashbrown.AspNetCore.NativeBrowserRecoveryResultSnapshot")!;
+var snapshotResult = resultSnapshotType.GetMethod("Create", BindingFlags.Static | BindingFlags.NonPublic)!;
+var matchesResult = resultSnapshotType.GetMethod("Matches", BindingFlags.Instance | BindingFlags.NonPublic)!;
+var exactUtf8Result = "é \"quoted\" \\ line\n";
+var exactUtf8Bytes = System.Text.Encoding.UTF8.GetByteCount(exactUtf8Result);
+foreach (var limit in new[] { exactUtf8Bytes, exactUtf8Bytes - 1 })
+{
+    var refused = false; object? snapshot = null;
+
+    try { snapshot = snapshotResult.Invoke(null, [exactUtf8Result, limit]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { refused = true; }
+
+    Check(refused == (limit < exactUtf8Bytes), "Result witnesses enforce actual UTF-8 exact and one-byte-under boundaries.");
+    if (!refused) Check((bool)matchesResult.Invoke(snapshot, [exactUtf8Result])!, "A within-bound immutable CLR string remains exact.");
+}
+foreach (var depth in new[] { 64, 65 })
+{
+    using var document = JsonDocument.Parse(new string('[', depth) + "0" + new string(']', depth), new JsonDocumentOptions { MaxDepth = 128 });
+    var refused = false;
+
+    try { snapshotResult.Invoke(null, [document.RootElement, 1024]); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { refused = true; }
+
+    Check(refused == (depth > 64), "Result witnesses enforce exact JSON depth64 versus65 without serializing custom objects.");
+}
+using (var jsonNullDocument = JsonDocument.Parse("null"))
+{
+    var jsonNullSnapshot = snapshotResult.Invoke(null, [jsonNullDocument.RootElement, 1024])!;
+    var nullReturnSnapshot = snapshotResult.Invoke(null, [null, 1024])!;
+
+    Check((bool)matchesResult.Invoke(jsonNullSnapshot, [jsonNullDocument.RootElement])! && !(bool)matchesResult.Invoke(jsonNullSnapshot, ["null"])!, "JsonElement null retains its native type tag rather than becoming a CLR string.");
+    Check((bool)matchesResult.Invoke(nullReturnSnapshot, ["Success: Function completed."])! && !(bool)matchesResult.Invoke(nullReturnSnapshot, [jsonNullDocument.RootElement])!, "True null return requires the independently characterized native success sentinel.");
+}
+
 var unleasedAgent = NativeSessionAgentFactory.Create(new NeverModel(), "native", [backend], registeredCatalog, new HttpContextAccessor());
 var unleasedCreateRejected = false;
 
@@ -187,4 +526,36 @@ sealed class NeverModel : IChatClient
     public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new Exception("Preparation cannot invoke the model.");
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
     public void Dispose() { }
+}
+
+/// <summary>Counts forbidden legacy settlement calls in an explicitly synthetic own-bridge echo test; never grants durable authority.</summary>
+public class BrowserEchoJournal : DispatchProxy
+{
+    public int LegacySettlements { get; private set; }
+    public int RejectionSettlements { get; private set; }
+    public bool RefuseRejection { get; set; }
+    protected override object? Invoke(MethodInfo? method, object?[]? arguments)
+    {
+        if (method!.Name == nameof(INativeSessionJournal.SettleBrowserBypassResultAsync)) { LegacySettlements++; return ValueTask.FromResult(false); }
+        if (method.Name == nameof(INativeSessionJournal.SettleApprovalRejectionAsync)) { RejectionSettlements++; return ValueTask.FromResult(!RefuseRejection); }
+        throw new InvalidOperationException("Synthetic echo must not access journal method: " + method.Name);
+    }
+}
+
+sealed class RejectedResultGetter(Action read)
+{
+    public string Value { get { read(); return "unsupported native rejection object"; } }
+}
+
+/// <summary>Uncharacterized dictionary whose interface reads must never run at the ordering observer.</summary>
+sealed class HeldCallbackDictionary(Action callback) : Dictionary<string, object?>, IDictionary<string, object?>
+{
+    int ICollection<KeyValuePair<string, object?>>.Count { get { callback(); return Count; } }
+    bool IDictionary<string, object?>.TryGetValue(string key, out object? value) { callback(); return TryGetValue(key, out value); }
+}
+/// <summary>Armed application comparer exposes otherwise hidden dictionary lookup callbacks.</summary>
+sealed class HeldCallbackComparer(Action callback) : IEqualityComparer<string>
+{
+    public bool Equals(string? left, string? right) { callback(); return StringComparer.Ordinal.Equals(left, right); }
+    public int GetHashCode(string value) { callback(); return StringComparer.Ordinal.GetHashCode(value); }
 }

@@ -1,0 +1,256 @@
+#pragma warning disable MAAI001, MEAI001 // Exercises pinned public native content APIs and our own internal pure boundary.
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using AGUI.Abstractions;
+using AGUI.Server;
+using Hashbrown.AspNetCore;
+using Microsoft.Extensions.AI;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+var assembly = typeof(NativeSessionAgentFactory).Assembly;
+var projectionType = assembly.GetType("Hashbrown.AspNetCore.NativeCompletedHistoryProjection");
+Check(projectionType is not null, "The actual SDK must expose its internal completed accepted-history projection boundary.");
+var project = projectionType!.GetMethod("Project", BindingFlags.Static | BindingFlags.NonPublic)!;
+Check(project is not null, "Completed-history projection must use its explicit historical authority entrypoint.");
+var contextType = assembly.GetType("Hashbrown.AspNetCore.NativeSessionContext")!;
+var registrationType = assembly.GetType("Hashbrown.AspNetCore.NativeSessionRegistration")!;
+var effects = 0;
+var backend = AIFunctionFactory.Create((string code) => { effects++; return "must never execute " + code; }, "backend");
+var catalog = new NativeToolCatalog([new("backend", 1, backend.JsonSchema, RequiresConfirmation: true)]);
+await using var source = NpgsqlDataSource.Create("Host=127.0.0.1;Port=1;Username=fixture;Database=fixture");
+var journal = new PostgresNativeSessionJournal(source, catalog, "closed-history", "closed_history_unit");
+var registration = Activator.CreateInstance(registrationType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
+    ["native", journal, catalog, (Func<HttpContext, string?>)(_ => "owned"), new NativeSessionOptions()], null)!;
+var key = new NativeSessionKey("native", "owned", "history", new Dictionary<string, string> { ["isolation"] = "owned" });
+var lease = new NativeSessionLease(key, "pure-never-executed", 2, 3);
+var cases = new List<string>();
+
+// These are synthetic immutable lower-layer snapshots, not journal acquisition or execution authority.
+// Actual route/PG/public-session/wire tests separately establish the real admission and second-cycle RED.
+foreach (var split in new[] { false, true })
+foreach (var missingNativeIds in new[] { false, true })
+foreach (var pending in new[] { "none", "browser", "native", "batch" })
+{
+    var original = History(split);
+    var originalMessages = original["messages"]!.AsArray();
+    NativeBoundApprovalBatch? bound = null;
+    NativeToolCall[] pendingCalls = [];
+    string[] pendingBrowser = [];
+    if (pending != "none")
+    {
+        var currentId = pending == "browser" ? "current-browser" : "current-native";
+        var currentName = pending == "browser" ? "frontend" : "backend";
+        var arguments = pending == "browser" ? JsonSerializer.SerializeToElement(new { city = "Oslo" }) : JsonSerializer.SerializeToElement(new { code = "current" });
+        var index = originalMessages.Count;
+        originalMessages.Add(new JsonObject { ["id"] = "current-parent", ["role"] = "assistant", ["content"] = "current pending text", ["toolCalls"] = new JsonArray(Call(currentId, currentName, arguments.GetRawText())) });
+        if (pending == "browser") pendingBrowser = [currentId];
+        else pendingCalls = [new(currentId, currentName, 1, arguments)];
+        if (pending == "batch")
+        {
+            var descriptor = new NativeApprovalDescriptor("current-request", pendingCalls.Single(), new(null, null, 0));
+            bound = new(new("current-batch", [descriptor], []), new Dictionary<string, NativePublicCallLocation> { [descriptor.RequestId] = new("current-parent", index, 0) });
+        }
+    }
+    var saved = new NativeSessionSnapshot("{\"private\":\"unchanged\"}", NativeSessionHistory.Normalize(original.ToJsonString(), key, catalog, new()), pendingCalls, pendingBrowser, pending == "none", new(bound));
+    var incoming = original.DeepClone().AsObject(); incoming["runId"] = "ordinary";
+    if (pending == "none") incoming["messages"]!.AsArray().Add(new JsonObject { ["id"] = "next-user", ["role"] = "user", ["content"] = "next question" });
+    var converted = Convert(incoming);
+    if (missingNativeIds) foreach (var message in converted) message.MessageId = null;
+    var before = Snapshot(converted); var publicBefore = incoming.ToJsonString(); var savedBefore = saved.PublicRequest;
+    var context = Context(incoming, saved);
+
+    var projected = Invoke(converted, context);
+    var again = Invoke(converted, context);
+
+    Check(Snapshot(converted) == before && incoming.ToJsonString() == publicBefore && saved.PublicRequest == savedBefore && saved.NativeJson == "{\"private\":\"unchanged\"}", "Projection must not mutate typed/public/saved/opaque sources.");
+    Check(Snapshot(projected) == Snapshot(again), "Provider clone identities and content must be deterministic.");
+    Check(!projected.SelectMany(message => message.Contents).Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent), "Completed protected history must remain ordinary call/results and never regain approval authority.");
+    Check(Texts(projected).SequenceEqual(Texts(converted)), "All system/user/assistant text must remain exact and in relative order.");
+    var targetIds = new[] { "old-browser", "old-native" };
+    var flat = projected.SelectMany(message => message.Contents).ToArray();
+    Check(flat.OfType<FunctionCallContent>().Where(call => targetIds.Contains(call.CallId)).Select(call => call.CallId).SequenceEqual(targetIds), "Completed calls must retain their original canonical announcement order.");
+    foreach (var id in targetIds)
+    {
+        var index = Array.FindIndex(flat, content => content is FunctionCallContent call && call.CallId == id);
+        Check(index >= 0 && index + 1 < flat.Length && flat[index + 1] is FunctionResultContent result && result.CallId == id && Exact(result.Result, id == "old-browser" ? "known café result" : "\"protected effect\""), "Each completed call must have its exact ordinary result adjacent before later content: " + id);
+        var originalCall = converted.SelectMany(message => message.Contents).OfType<FunctionCallContent>().Single(call => call.CallId == id);
+        var projectedCall = flat.OfType<FunctionCallContent>().Single(call => call.CallId == id);
+        var originalResult = converted.SelectMany(message => message.Contents).OfType<FunctionResultContent>().Single(result => result.CallId == id);
+        Check(!ReferenceEquals(originalCall, projectedCall) && !ReferenceEquals(originalCall.Arguments, projectedCall.Arguments) && !ReferenceEquals(originalResult, flat[index + 1]), "Completed contents/arguments must be independently owned.");
+        Check(projected.Where(message => message.Contents.Any(content => content is FunctionCallContent call && call.CallId == id || content is FunctionResultContent result && result.CallId == id)).All(message => !string.IsNullOrWhiteSpace(message.MessageId)), "Rewritten historical clone messages need deterministic nonblank identities without inventing native witness identities.");
+    }
+    var rewrittenMessages = projected.Where(message => message.Contents.Any(content => content is FunctionCallContent call && targetIds.Contains(call.CallId) || content is FunctionResultContent result && targetIds.Contains(result.CallId))).ToArray();
+    var sourceIdentities = converted.Select(message => message.MessageId).OfType<string>().Concat(converted.SelectMany(message => message.Contents).OfType<FunctionCallContent>().Select(call => call.CallId)).ToHashSet(StringComparer.Ordinal);
+    Check(rewrittenMessages.Select(message => message.MessageId).Distinct(StringComparer.Ordinal).Count() == rewrittenMessages.Length && rewrittenMessages.All(message => message.MessageId is { } id && !sourceIdentities.Contains(id)), "Historical clone IDs must not collide with original message/call identities.");
+    if (pending != "none")
+    {
+        var current = flat.OfType<FunctionCallContent>().Single(call => call.CallId.StartsWith("current-", StringComparison.Ordinal));
+        Check(current.Name == (pending == "browser" ? "frontend" : "backend") && !flat.OfType<FunctionResultContent>().Any(result => result.CallId == current.CallId), "Current unsettled calls must stay outside historical settlement/approval projection.");
+    }
+    Check(effects == 0, "Pure completed-history projection cannot invoke any historical or current function.");
+    cases.Add($"valid:{split}:{missingNativeIds}:{pending}");
+    await Dispose(context);
+}
+
+foreach (var mutation in new[] { "historical-unresolved", "missing-result", "duplicate-result", "foreign-result", "foreign-call", "changed-call-name", "changed-call-args", "changed-call-id", "changed-result", "changed-call-role", "changed-result-role", "moved-calls", "changed-text", "unaccepted-prefix", "call-raw", "call-exception", "call-informational", "call-annotations", "call-metadata", "result-raw", "result-exception", "result-annotations", "result-metadata", "message-raw", "message-metadata", "text-raw", "unknown-result-sibling" })
+{
+    var original = History(false);
+    if (mutation == "historical-unresolved") original["messages"]!.AsArray().RemoveAt(original["messages"]!.AsArray().Count - 1);
+    var saved = new NativeSessionSnapshot("{}", NativeSessionHistory.Normalize(original.ToJsonString(), key, catalog, new()), [], [], true);
+    var incoming = original.DeepClone().AsObject(); incoming["runId"] = "ordinary";
+    incoming["messages"]!.AsArray().Add(new JsonObject { ["id"] = "next-user", ["role"] = "user", ["content"] = "next question" });
+    if (mutation == "unaccepted-prefix") incoming["messages"]![1]!["content"] = "changed accepted question";
+    var converted = Convert(incoming);
+    var callMessage = converted.First(message => message.Contents.OfType<FunctionCallContent>().Any());
+    var call = callMessage.Contents.OfType<FunctionCallContent>().First();
+    var resultMessage = converted.First(message => message.Contents.OfType<FunctionResultContent>().Any());
+    var result = resultMessage.Contents.OfType<FunctionResultContent>().First();
+    var text = converted.SelectMany(message => message.Contents).OfType<TextContent>().First();
+    if (mutation == "missing-result") converted.Remove(resultMessage);
+    if (mutation == "duplicate-result") converted.Add(new(ChatRole.Tool, [new FunctionResultContent(result.CallId, "known café result")]) { MessageId = "duplicate-result" });
+    if (mutation == "foreign-result") converted.Add(new(ChatRole.Tool, [new FunctionResultContent("foreign", "foreign")]) { MessageId = "foreign-result" });
+    if (mutation == "foreign-call") converted.Add(new(ChatRole.Assistant, [new FunctionCallContent("foreign", "frontend", new Dictionary<string, object?>())]) { MessageId = "foreign-call" });
+    if (mutation is "changed-call-name" or "changed-call-args" or "changed-call-id")
+    {
+        var replacement = new FunctionCallContent(mutation == "changed-call-id" ? "changed" : call.CallId, mutation == "changed-call-name" ? "changed" : call.Name, mutation == "changed-call-args" ? new Dictionary<string, object?> { ["city"] = "changed" } : call.Arguments);
+        callMessage.Contents[callMessage.Contents.IndexOf(call)] = replacement;
+    }
+    if (mutation == "changed-result") resultMessage.Contents[resultMessage.Contents.IndexOf(result)] = new FunctionResultContent(result.CallId, "changed");
+    if (mutation == "changed-call-role") callMessage.Role = ChatRole.User;
+    if (mutation == "changed-result-role") resultMessage.Role = ChatRole.Assistant;
+    if (mutation == "moved-calls")
+    {
+        var positions = callMessage.Contents.Select((content, index) => (content, index)).Where(item => item.content is FunctionCallContent).Select(item => item.index).ToArray();
+        (callMessage.Contents[positions[0]], callMessage.Contents[positions[1]]) = (callMessage.Contents[positions[1]], callMessage.Contents[positions[0]]);
+    }
+    if (mutation == "changed-text") text.Text = "changed source text";
+    if (mutation == "call-raw") call.RawRepresentation = new object();
+    if (mutation == "call-exception") call.Exception = new InvalidOperationException("meaningful");
+    if (mutation == "call-informational") call.InformationalOnly = true;
+    if (mutation == "call-annotations") call.Annotations = [new CitationAnnotation()];
+    if (mutation == "call-metadata") call.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "result-raw") result.RawRepresentation = new object();
+    if (mutation == "result-exception") result.Exception = new InvalidOperationException("meaningful");
+    if (mutation == "result-annotations") result.Annotations = [new CitationAnnotation()];
+    if (mutation == "result-metadata") result.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "message-raw") callMessage.RawRepresentation = new object();
+    if (mutation == "message-metadata") callMessage.AdditionalProperties = new() { ["meaningful"] = true };
+    if (mutation == "text-raw") text.RawRepresentation = new object();
+    if (mutation == "unknown-result-sibling") resultMessage.Contents.Add(new DataContent(new byte[] { 1 }, "application/octet-stream"));
+    var before = Snapshot(converted); var publicBefore = incoming.ToJsonString();
+    var context = Context(incoming, saved);
+    var rejected = false;
+
+    try { _ = Invoke(converted, context); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    Check(rejected, "Historical projection must refuse unsupported/unaccepted/ambiguous input before native work: " + mutation);
+    Check(Snapshot(converted) == before && incoming.ToJsonString() == publicBefore && effects == 0, "Rejection must preserve original source graphs without invoking a function: " + mutation);
+    cases.Add("reject:" + mutation);
+    await Dispose(context);
+}
+// These controls characterize the existing warm exception, without claiming synthetic evidence is journal authority.
+// The real journal/reservation and normal native continuation are verified separately by route tests.
+foreach (var closedHistory in new[] { false, true })
+foreach (var mutation in new[] { "valid", "foreign-metadata", "changed-status", "historical-annotation", "wrong-batch", "cold", "stale-before-lease", "stale-published" })
+{
+    if (!closedHistory && mutation == "historical-annotation") continue;
+    var original = History(false);
+    var messages = original["messages"]!.AsArray();
+    if (!closedHistory) while (messages.Count > 2) messages.RemoveAt(messages.Count - 1);
+    var currentIndex = messages.Count;
+    var browserArguments = JsonSerializer.SerializeToElement(new { city = "Oslo" });
+    var nativeCall = new NativeToolCall("warm-native", "backend", 1, JsonSerializer.SerializeToElement(new { code = "warm" }));
+    var descriptor = new NativeApprovalDescriptor("warm-native-request", nativeCall, new("warm-parent", null, 1));
+    var browser = new NativeBrowserRequestBinding("warm-browser-request", "warm-browser", "frontend", browserArguments, new("warm-parent", null, 0));
+    messages.Add(new JsonObject { ["id"] = "warm-parent", ["role"] = "assistant", ["content"] = "warm pending text", ["toolCalls"] = new JsonArray(Call(browser.CallId, browser.Name, browser.Arguments.GetRawText()), Call(nativeCall.Id, nativeCall.Name, nativeCall.Arguments.GetRawText())) });
+    var bound = new NativeBoundApprovalBatch(new("warm-batch", [descriptor], [browser]), new Dictionary<string, NativePublicCallLocation> { [browser.RequestId] = new("warm-parent", currentIndex, 0), [descriptor.RequestId] = new("warm-parent", currentIndex, 1) });
+    var saved = new NativeSessionSnapshot("{}", NativeSessionHistory.Normalize(original.ToJsonString(), key, catalog, new()), [nativeCall], [browser.CallId], false, new(bound));
+    var incoming = original.DeepClone().AsObject(); incoming["runId"] = "warm-resume";
+    var annotation = JsonNode.Parse("""{"b4.step":{"v":1,"kind":"server","status":"cancelled","settledAt":1793072013314}}""")!;
+    incoming["messages"]![currentIndex]!["toolCalls"]![0]!["metadata"] = annotation;
+    if (mutation == "foreign-metadata") annotation["foreign"] = true;
+    if (mutation == "changed-status") annotation["b4.step"]!["status"] = "complete";
+    if (mutation == "historical-annotation") incoming["messages"]![2]!["toolCalls"]![0]!["metadata"] = annotation.DeepClone();
+    incoming["resume"] = new JsonArray(new JsonObject { ["interruptId"] = descriptor.RequestId, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } });
+    var decisions = NativeApprovalAdmission.Parse(incoming.ToJsonString(), key, catalog, new());
+    var comparison = typeof(NativeApprovalAdmission).GetMethod("MatchesBoundPrefix", BindingFlags.Static | BindingFlags.NonPublic)!;
+    var comparatorAccepts = (bool)comparison.Invoke(null, [decisions.CanonicalPublicRequest, saved, bound])!;
+    Check(comparatorAccepts == (mutation is "valid" or "wrong-batch" or "cold" or "stale-before-lease" or "stale-published"), "Existing warm comparator must independently characterize the exact cancellation allowance: " + mutation);
+    var evidenceBound = mutation == "wrong-batch" ? new NativeBoundApprovalBatch(new("foreign-batch", [descriptor], [browser]), bound.PublicLocations) : bound;
+    // PostgreSQL consumes decisions at row.Revision + 1 while the acquired lease retains its original revision.
+    var publishedRevision = mutation == "stale-published" ? lease.Revision : 2;
+    var admittedRevision = mutation == "stale-before-lease" ? lease.Revision - 1 : mutation == "stale-published" ? publishedRevision : lease.Revision + 1;
+    var evidence = new NativeApprovalEvidence(key.Id, "closed-history", catalog.Identity, lease, evidenceBound, publishedRevision, NativeApprovalState.DecisionAdmitted, decisions.Decisions, lease.Generation, admittedRevision, DateTimeOffset.UtcNow.AddMinutes(1));
+    var recovery = mutation == "cold" ? new NativeBrowserRecoveryRequest(1, 2, [new(browser.CallId, "unavailable")]) : null;
+    var context = Context(incoming, saved, decisions, recovery);
+    contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, evidence);
+    var converted = Convert(incoming); var before = Snapshot(converted); var publicBefore = incoming.ToJsonString();
+    IReadOnlyList<ChatMessage>? projected = null; var rejected = false;
+
+    try { projected = Invoke(converted, context); }
+    catch (TargetInvocationException exception) when (exception.InnerException is InvalidOperationException) { rejected = true; }
+
+    Check(rejected == (mutation != "valid"), "Only genuine owned warm annotations may pass completed-history projection, with or without prior closed calls: " + closedHistory + ":" + mutation);
+    Check(Snapshot(converted) == before && incoming.ToJsonString() == publicBefore && saved.PublicRequest == NativeSessionHistory.Normalize(original.ToJsonString(), key, catalog, new()) && effects == 0, "Warm acceptance/refusal must preserve accepted/public/native graphs and effect count.");
+    if (projected is not null)
+    {
+        Check(Texts(projected).SequenceEqual(Texts(converted)), "Warm current annotation must preserve exact text ordering.");
+        var flat = projected.SelectMany(message => message.Contents).ToArray();
+        Check(!flat.OfType<FunctionResultContent>().Any(result => result.CallId is "warm-browser" or "warm-native") && !flat.Any(content => content is ToolApprovalRequestContent or ToolApprovalResponseContent), "A must not settle or restore approval authority for current warm calls.");
+        if (closedHistory) foreach (var id in new[] { "old-browser", "old-native" })
+        {
+            var index = Array.FindIndex(flat, content => content is FunctionCallContent call && call.CallId == id);
+            Check(index >= 0 && flat[index + 1] is FunctionResultContent result && result.CallId == id, "Warm annotation allowance must still pair completed prior history: " + id);
+        }
+    }
+    cases.Add($"warm:{closedHistory}:{mutation}");
+    await Dispose(context);
+}
+Console.WriteLine("Completed history cases: " + JsonSerializer.Serialize(cases));
+Console.WriteLine("Completed accepted native history projection passed.");
+
+JsonObject History(bool split)
+{
+    var root = JsonNode.Parse("""{"threadId":"history","runId":"saved","messages":[{"id":"system","role":"system","content":"exact system"},{"id":"question","role":"user","content":"accepted question"}],"tools":[{"name":"frontend","description":"browser declaration","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false}}],"context":[],"state":{"owned":true},"forwardedProps":{"application":{"owned":true}}}""")!.AsObject();
+    var messages = root["messages"]!.AsArray();
+    if (split)
+    {
+        messages.Add(new JsonObject { ["id"] = "old-first", ["role"] = "assistant", ["content"] = "announcement text", ["toolCalls"] = new JsonArray(Call("old-browser", "frontend", "{\"city\":\"Paris\"}")) });
+        messages.Add(new JsonObject { ["id"] = "old-between", ["role"] = "assistant", ["content"] = "between call text" });
+        messages.Add(new JsonObject { ["id"] = "old-second", ["role"] = "assistant", ["toolCalls"] = new JsonArray(Call("old-native", "backend", "{\"code\":\"A\"}")) });
+    }
+    else messages.Add(new JsonObject { ["id"] = "hashbrown-history-0", ["role"] = "assistant", ["content"] = "announcement text", ["toolCalls"] = new JsonArray(Call("old-browser", "frontend", "{\"city\":\"Paris\"}"), Call("old-native", "backend", "{\"code\":\"A\"}")) });
+    messages.Add(new JsonObject { ["id"] = "later-text", ["role"] = "assistant", ["content"] = "unrelated later text" });
+    messages.Add(new JsonObject { ["id"] = "old-browser-result", ["role"] = "tool", ["toolCallId"] = "old-browser", ["content"] = "known café result" });
+    messages.Add(new JsonObject { ["id"] = "old-native-result", ["role"] = "tool", ["toolCallId"] = "old-native", ["content"] = "\"protected effect\"" });
+    return root;
+}
+static JsonObject Call(string id, string name, string arguments) => new() { ["id"] = id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = name, ["arguments"] = arguments } };
+static List<ChatMessage> Convert(JsonObject incoming)
+{
+    var input = JsonSerializer.Deserialize(incoming.ToJsonString(), AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    // Match the independent native transport clone: browser declarations stay in trusted context, not the upstream converter.
+    input.Tools = [];
+    return input.ToChatRequestContext(JsonSerializerOptions.Web).Messages.ToList();
+}
+object Context(JsonObject incoming, NativeSessionSnapshot snapshot, NativeApprovalAdmissionEnvelope? decisions = null, NativeBrowserRecoveryRequest? recovery = null)
+{
+    var raw = incoming.ToJsonString();
+    var input = JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", raw, decisions, recovery, null], null)!;
+    contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, new NativeSessionAdmission(200, lease, snapshot));
+    return context;
+}
+IReadOnlyList<ChatMessage> Invoke(IReadOnlyList<ChatMessage> messages, object context) => (IReadOnlyList<ChatMessage>)project!.Invoke(null, [messages, context])!;
+async ValueTask Dispose(object context)
+{
+    // Synthetic snapshots must never escape this pure test into cleanup or storage operations.
+    contextType.GetProperty("Admission", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, null);
+    await ((IAsyncDisposable)context).DisposeAsync();
+}
+static IEnumerable<string> Texts(IEnumerable<ChatMessage> messages) => messages.SelectMany(message => message.Contents).OfType<TextContent>().Select(content => content.Text);
+static bool Exact(object? value, string expected) => value is string text ? text == expected : value is JsonElement { ValueKind: JsonValueKind.String } element && element.GetString() == expected;
+static string Snapshot(IEnumerable<ChatMessage> messages) => JsonSerializer.Serialize(messages.Select(message => new { message.Role, message.MessageId, message.AuthorName, message.CreatedAt, Raw = message.RawRepresentation is not null, Additional = message.AdditionalProperties, Contents = message.Contents.Select(content => new { Type = content.GetType().FullName, Raw = content.RawRepresentation is not null, Json = JsonSerializer.Serialize(content, content.GetType()) }) }));

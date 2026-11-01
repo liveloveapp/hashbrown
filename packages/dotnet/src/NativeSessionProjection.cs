@@ -13,12 +13,16 @@ internal sealed class NativeSessionProjectionEvidence(
     Func<string?, string?, JsonNode?, bool>? ownedCall = null,
     Func<IReadOnlyList<NativeProjectionApproval>>? approvals = null)
 {
+  /// <summary>Optional recovery-only proof of independent capture and same-claim durable completion for an anonymous server announcement.</summary>
+  internal Func<string?, string?, JsonNode?, bool>? CompletedAnonymousCall { get; init; }
   internal IReadOnlyList<NativeProjectionApproval> Approvals => approvals?.Invoke() ?? [];
   internal bool Available => available?.Invoke() ?? true;
   internal bool Matches(string? responseId, string? messageId) => matchesMessage(responseId, messageId);
   internal bool MatchesCall(string? responseId, string? callId, string? name, JsonNode? arguments) => matchesCall(responseId, callId, name, arguments);
   /// <summary>Matches only an exact current owned registered server descriptor, independently of provider/browser evidence.</summary>
   internal bool OwnsCall(string? callId, string? name, JsonNode? arguments) => ownedCall?.Invoke(callId, name, arguments) == true;
+  /// <summary>Checks only the explicit completed anonymous capability; older ordinary evidence never implies it.</summary>
+  internal bool OwnsCompletedAnonymousCall(string? callId, string? name, JsonNode? arguments) => CompletedAnonymousCall?.Invoke(callId, name, arguments) == true;
 }
 
 /// <summary>Independent immutable journal/capture witness for one supported native approval projection.</summary>
@@ -53,6 +57,7 @@ internal sealed class NativeSessionProjection
   private readonly Dictionary<string, string> _callParents = new(StringComparer.Ordinal);
   private readonly Dictionary<string, JsonObject> _rawBatchCalls = new(StringComparer.Ordinal);
   private readonly Dictionary<string, JsonNode?> _rawBatchResults = new(StringComparer.Ordinal);
+  private readonly Dictionary<string, JsonObject> _rawAnnouncements = new(StringComparer.Ordinal);
   private readonly HashSet<string> _messageIds = new(StringComparer.Ordinal);
   private readonly HashSet<string> _historicalCallIds = new(StringComparer.Ordinal);
   private readonly HashSet<string> _openTexts = new(StringComparer.Ordinal);
@@ -61,6 +66,8 @@ internal sealed class NativeSessionProjection
   private JsonObject? _request;
   private JsonArray _messages;
   private byte[]? _terminal;
+  private JsonObject? _terminalEvent;
+  private readonly Dictionary<string, (string? MessageId, int ContentIndex)> _pendingBrowserPositions = new(StringComparer.Ordinal);
   private string? _terminalType;
   private string? _terminalOutcome;
   private string? _activeAssistantMessageId;
@@ -143,7 +150,9 @@ internal sealed class NativeSessionProjection
     if (_frame.Count > 0) { Invalidate(); throw new IOException("Native SSE ended inside a frame."); }
     if (_terminal is null || _invalid || _evidence?.Available == false || _openTexts.Count > 0 || _openCalls.Count > 0 || _rawTexts.Count > 0 || _rawCalls.Count > 0) Discard();
     if (_available && !BatchObligationsAgree()) Discard();
-    _rawBatchCalls.Clear(); _rawBatchResults.Clear();
+    if (_available && !AdaptMixedTerminal()) Discard();
+    _terminalEvent = null;
+    _rawBatchCalls.Clear(); _rawBatchResults.Clear(); _rawAnnouncements.Clear(); _pendingBrowserPositions.Clear();
     var pending = _calls.Where(pair => !_answeredCalls.Contains(pair.Key)).ToArray();
     if (pending.Any(pair => !_browserTools.Contains(Required(pair.Value["function"]!, "name")) && !CurrentPending().Any(item => item.Protected && item.CallId == pair.Key))) Discard();
     if (_terminalType != "RUN_FINISHED" || _terminalOutcome is not ("success" or "interrupt")) Discard();
@@ -158,7 +167,38 @@ internal sealed class NativeSessionProjection
         _available && pending.Length == 0 && CurrentPending().Count == 0, _terminalType, _terminalOutcome);
   }
 
-  /// <summary>Publishes the held genuine bytes once, only after the caller has durably saved and authorized this owner/revision.</summary>
+  /// <summary>Keeps independently witnessed browser siblings open in the held public interrupt while preserving genuine native approval values.</summary>
+  private bool AdaptMixedTerminal()
+  {
+    if (_terminalType != "RUN_FINISHED" || _terminalOutcome != "interrupt") return true;
+    if (_terminalEvent is null || _terminal is null) return false;
+    var witnesses = CurrentPending().Where(item => !item.Protected).ToArray();
+    var calls = _calls.Where(pair => !_answeredCalls.Contains(pair.Key) && _browserTools.Contains(Required(pair.Value["function"]!, "name"))).Select(pair => pair.Key).ToHashSet(StringComparer.Ordinal);
+    if (calls.Count == 0) return witnesses.Length == 0;
+    if (witnesses.Length != calls.Count || witnesses.Select(item => item.CallId).Distinct(StringComparer.Ordinal).Count() != witnesses.Length || !calls.SetEquals(witnesses.Select(item => item.CallId))) return false;
+    var ordered = new List<string>();
+    for (var messageIndex = 0; messageIndex < _messages.Count; messageIndex++)
+    {
+      if (_messages[messageIndex] is not JsonObject message || message["toolCalls"] is not JsonArray publicCalls) continue;
+      for (var callIndex = 0; callIndex < publicCalls.Count; callIndex++)
+      {
+        if (publicCalls[callIndex] is not JsonObject call || !calls.Contains(Required(call, "id"))) continue;
+        var id = Required(call, "id");
+        var witness = witnesses.Single(item => item.CallId == id);
+        if (ordered.Contains(id, StringComparer.Ordinal) || !_pendingBrowserPositions.TryGetValue(id, out var native) || native.MessageId != witness.NativeMessageId || native.ContentIndex != witness.ContentIndex || witness.Name != call["function"]?["name"]?.GetValue<string>() || !JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), JsonNode.Parse(witness.Arguments.GetRawText())) || witness.PublicParent is not null && witness.PublicParent != Required(message, "id") || witness.PublicMessageIndex is not null && witness.PublicMessageIndex != messageIndex || witness.PublicCallIndex is not null && witness.PublicCallIndex != callIndex) return false;
+        ordered.Add(id);
+      }
+    }
+    if (ordered.Count != calls.Count) return false;
+    var adapted = _terminalEvent.DeepClone().AsObject();
+    adapted["outcome"]!["pendingToolCallIds"] = new JsonArray(ordered.Select(id => (JsonNode?)JsonValue.Create(id)).ToArray());
+    var bytes = StrictUtf8.GetBytes("data: " + adapted.ToJsonString() + "\n\n");
+    if (bytes.Length > _maximumTerminalBytes || bytes.Length > _maximumFrameBytes || _observed - _terminal.Length + bytes.Length > (long)_maximumBytes * 8 || RetainedBytes() + bytes.Length > _maximumBytes) return false;
+    _terminal = bytes;
+    return true;
+  }
+
+  /// <summary>Publishes the validated held public terminal once, only after the caller has durably saved and authorized this owner/revision.</summary>
   internal async ValueTask ReleaseTerminalAsync(Func<ReadOnlyMemory<byte>, ValueTask> forward, CancellationToken cancellationToken)
   {
     ArgumentNullException.ThrowIfNull(forward);
@@ -192,7 +232,7 @@ internal sealed class NativeSessionProjection
     if (terminal)
     {
       if (frame.Length > _maximumTerminalBytes) { Invalidate(); throw new IOException("Native terminal exceeds its byte bound."); }
-      _terminal = frame; _terminalType = type;
+      _terminal = frame; _terminalEvent = item; _terminalType = type;
       _terminalOutcome = type == "RUN_ERROR" ? "error" : item["outcome"]?["type"]?.GetValue<string>() ?? "success";
     }
     if (!_available) return terminal;
@@ -344,6 +384,7 @@ internal sealed class NativeSessionProjection
       else
       {
         if (approval.ContentIndex != index || approval.NativeMessageId != raw["messageId"]?.GetValue<string>() || call["$type"]?.GetValue<string>() != "functionCall" || call["name"]?.GetValue<string>() != approval.Name || call["informationalOnly"]?.GetValue<bool>() != false || call["annotations"] is not null || call["additionalProperties"] is not null || call.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties")) || !JsonNode.DeepEquals(call["arguments"], JsonNode.Parse(approval.Arguments.GetRawText()))) return false;
+        _pendingBrowserPositions[approval.CallId] = (approval.NativeMessageId, approval.ContentIndex);
         var parent = raw["messageId"]?.GetValue<string>() ?? _activeAssistantMessageId ?? $"assistant-{approval.CallId}";
         var obligation = new JsonObject { ["parentMessageId"] = parent, ["content"] = call.DeepClone() };
         if (_rawBatchCalls.TryGetValue(approval.CallId, out var prior) && !JsonNode.DeepEquals(prior, obligation)) return false;
@@ -412,22 +453,78 @@ internal sealed class NativeSessionProjection
 
   private static string Required(JsonNode node, string property) => !string.IsNullOrWhiteSpace(node[property]?.GetValue<string>()) ? node[property]!.GetValue<string>() : throw new JsonException($"Missing {property}.");
   private static void CopyName(JsonNode source, JsonObject target) { if (source["name"] is not null) target["name"] = source["name"]!.DeepClone(); }
+  private long RetainedBytes() => (_request is null ? 0 : Encoding.UTF8.GetByteCount(_request.ToJsonString())) +
+      _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => (long)Encoding.UTF8.GetByteCount(raw.ToJsonString())) +
+      _rawBatchCalls.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value.ToJsonString())) +
+      _rawBatchResults.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value?.ToJsonString() ?? "null")) +
+      _rawAnnouncements.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value.ToJsonString())) +
+      _pendingBrowserPositions.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + (pair.Value.MessageId is null ? 0 : Encoding.UTF8.GetByteCount(pair.Value.MessageId)) + sizeof(int));
   private void CheckBound()
   {
-    if (_messages.Count > _maximumMessages || _request is not null && Encoding.UTF8.GetByteCount(_request.ToJsonString()) + _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => Encoding.UTF8.GetByteCount(raw.ToJsonString())) +
-        _rawBatchCalls.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value.ToJsonString())) +
-        _rawBatchResults.Sum(pair => Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value?.ToJsonString() ?? "null")) > _maximumBytes) Discard();
+    if (_messages.Count > _maximumMessages || RetainedBytes() > _maximumBytes) Discard();
   }
   private void Discard()
   {
-    _available = false; _request = null; _messages = []; _texts.Clear(); _calls.Clear(); _rawTexts.Clear(); _rawCalls.Clear(); _callParents.Clear(); _rawBatchCalls.Clear(); _rawBatchResults.Clear(); _messageIds.Clear(); _historicalCallIds.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear();
+    _available = false; _request = null; _messages = []; _texts.Clear(); _calls.Clear(); _rawTexts.Clear(); _rawCalls.Clear(); _callParents.Clear(); _rawBatchCalls.Clear(); _rawBatchResults.Clear(); _rawAnnouncements.Clear(); _pendingBrowserPositions.Clear(); _terminalEvent = null; _messageIds.Clear(); _historicalCallIds.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear();
     _activeAssistantMessageId = null; _result = null;
   }
   private void Invalidate() { Discard(); _invalid = true; _frame.Clear(); _terminal = null; }
   private bool SupportedNativeRaw(JsonNode item, string type)
   {
-    try { return item["rawEvent"] is JsonObject raw && DiagnosticTypes(raw) && (SupportedNativeTextRaw(item, type) || SupportedApprovalRaw(item, type, raw) || SupportedNativeToolRaw(item, type)); }
+    try { return item["rawEvent"] is JsonObject raw && DiagnosticTypes(raw) && (SupportedNativeAnnouncementRaw(item, type, raw) || SupportedNativeTextRaw(item, type) || SupportedApprovalRaw(item, type, raw) || SupportedNativeToolRaw(item, type)); }
     catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException or ArgumentException) { return false; }
+  }
+
+  /// <summary>Validates every sibling in one characterized text-and-call announcement before selecting its redundant event diagnostic.</summary>
+  private bool SupportedNativeAnnouncementRaw(JsonNode item, string type, JsonObject raw)
+  {
+    if (type is not ("TEXT_MESSAGE_START" or "TEXT_MESSAGE_CONTENT" or "TEXT_MESSAGE_END" or "TOOL_CALL_START" or "TOOL_CALL_ARGS" or "TOOL_CALL_END") || raw["contents"] is not JsonArray { Count: > 1 } contents || contents.Count > _maximumMessages || contents.OfType<JsonObject>().Count(content => content["$type"]?.GetValue<string>() == "text") != 1) return false;
+    var allowed = new HashSet<string>(["authorName", "role", "contents", "additionalProperties", "responseId", "messageId", "conversationId", "createdAt", "finishReason", "modelId", "continuationToken"], StringComparer.Ordinal);
+    var id = raw["messageId"]?.GetValue<string>();
+    if (string.IsNullOrWhiteSpace(id) || raw["responseId"]?.GetValue<string>() != id || raw["role"]?.GetValue<string>() != "assistant" || raw["finishReason"]?.GetValue<string>() != "tool_calls" || raw["additionalProperties"] is not null || raw["conversationId"] is not null || raw["continuationToken"] is not null || raw.Any(property => !allowed.Contains(property.Key))) return false;
+    var seen = new HashSet<string>(StringComparer.Ordinal);
+    string? text = null;
+    for (var index = 0; index < contents.Count; index++)
+    {
+      if (contents[index] is not JsonObject content || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
+      if (content["$type"]?.GetValue<string>() == "text")
+      {
+        if (content.Any(property => property.Key is not ("$type" or "text" or "annotations" or "additionalProperties")) || content["text"] is not JsonValue value || !value.TryGetValue<string>(out text)) return false;
+        continue;
+      }
+      JsonObject call;
+      if (content["$type"]?.GetValue<string>() == "toolApprovalRequest")
+      {
+        if (content.Any(property => property.Key is not ("$type" or "toolCall" or "requiresConfirmation" or "requestId" or "annotations" or "additionalProperties")) || content["requiresConfirmation"]?.GetValue<bool>() != true || content["toolCall"] is not JsonObject protectedCall) return false;
+        var witness = _evidence?.Approvals.SingleOrDefault(approval => approval.Pending && approval.Protected && approval.RequestId == content["requestId"]?.GetValue<string>());
+        if (witness is null || witness.NativeMessageId != id || witness.ContentIndex != index || protectedCall["callId"]?.GetValue<string>() != witness.CallId || protectedCall["name"]?.GetValue<string>() != witness.Name || !JsonNode.DeepEquals(protectedCall["arguments"], JsonNode.Parse(witness.Arguments.GetRawText()))) return false;
+        call = protectedCall;
+      }
+      else
+      {
+        call = content;
+        if (!_browserTools.Contains(Required(call, "name"))) return false;
+        var witness = _evidence?.Approvals.SingleOrDefault(approval => approval.Pending && !approval.Protected && approval.CallId == call["callId"]?.GetValue<string>());
+        if (witness is not null && (witness.NativeMessageId != id || witness.ContentIndex != index || witness.Name != call["name"]?.GetValue<string>() || !JsonNode.DeepEquals(call["arguments"], JsonNode.Parse(witness.Arguments.GetRawText())))) return false;
+        if (witness is not null) _pendingBrowserPositions[witness.CallId] = (witness.NativeMessageId, witness.ContentIndex);
+      }
+      if (call["$type"]?.GetValue<string>() != "functionCall" || call["informationalOnly"]?.GetValue<bool>() != false || call["arguments"] is not JsonObject || call["annotations"] is not null || call["additionalProperties"] is not null || call.Any(property => property.Key is not ("$type" or "name" or "arguments" or "informationalOnly" or "callId" or "annotations" or "additionalProperties"))) return false;
+      var callId = Required(call, "callId");
+      if (!seen.Add(callId)) return false;
+      var obligation = new JsonObject { ["parentMessageId"] = id, ["content"] = call.DeepClone() };
+      if (_rawBatchCalls.TryGetValue(callId, out var previous) && !JsonNode.DeepEquals(previous, obligation)) return false;
+      _rawBatchCalls[callId] = obligation;
+    }
+    if (seen.Count == 0 || text is null) return false;
+    if (_rawAnnouncements.TryGetValue(id, out var announcement) && !JsonNode.DeepEquals(announcement, raw)) return false;
+    _rawAnnouncements[id] = (JsonObject)raw.DeepClone();
+    if (type.StartsWith("TEXT_MESSAGE_", StringComparison.Ordinal))
+    {
+      var name = item["name"]?.GetValue<string>() ?? (_texts.TryGetValue(id, out var existing) ? existing["name"]?.GetValue<string>() : null);
+      return item["messageId"]?.GetValue<string>() == id && name == raw["authorName"]?.GetValue<string>() && (type != "TEXT_MESSAGE_START" || item["role"]?.GetValue<string>() == "assistant") && (type != "TEXT_MESSAGE_CONTENT" || item["delta"]?.GetValue<string>() == text);
+    }
+    var selected = contents.OfType<JsonObject>().Select(content => content["$type"]?.GetValue<string>() == "toolApprovalRequest" ? content["toolCall"]!.AsObject() : content).SingleOrDefault(call => call["callId"]?.GetValue<string>() == item["toolCallId"]?.GetValue<string>());
+    return selected is not null && (type != "TOOL_CALL_START" || item["parentMessageId"]?.GetValue<string>() == id && item["toolCallName"]?.GetValue<string>() == selected["name"]?.GetValue<string>());
   }
 
   private static bool DiagnosticTypes(JsonObject raw)
@@ -546,6 +643,11 @@ internal sealed class NativeSessionProjection
   {
     try
     {
+      foreach (var (id, announcement) in _rawAnnouncements)
+      {
+        var text = announcement["contents"]!.AsArray().OfType<JsonObject>().Single(item => item["$type"]?.GetValue<string>() == "text")["text"]!.GetValue<string>();
+        if (!_texts.TryGetValue(id, out var message) || message["content"]?.GetValue<string>() != text || _openTexts.Contains(id)) return false;
+      }
       foreach (var (id, expected) in _rawBatchCalls)
       {
         if (!_calls.TryGetValue(id, out var call) || _openCalls.Contains(id) || !_callParents.TryGetValue(id, out var parent) || parent != Required(expected, "parentMessageId") ||
@@ -578,9 +680,15 @@ internal sealed class NativeSessionProjection
     var callId = item["toolCallId"]?.GetValue<string>();
     if (string.IsNullOrWhiteSpace(callId) || content["callId"]?.GetValue<string>() != callId || content["annotations"] is not null || content["additionalProperties"] is not null) return false;
     var nativeCall = _evidence?.MatchesCall(raw["responseId"]?.GetValue<string>(), callId, content["name"]?.GetValue<string>(), content["arguments"]) == true;
-    // Native function items have an output ID and call ID, but MEAI can leave MessageId and FinishReason null.
+    // Native function items may omit message identity. A declaration-only browser call with both identities absent
+    // uses only the canonical adapter's existing parent fallback; a nonnull provider alias still needs evidence.
     var anonymousNativeCall = nativeCall && raw["messageId"] is null;
-    if (!anonymousNativeCall && (string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) || !EquivalentResponseId(raw, raw["messageId"]?.GetValue<string>()))) return false;
+    var anonymousBrowserCall = raw["messageId"] is null && raw["responseId"] is null &&
+        raw["role"]?.GetValue<string>() == "assistant" && raw["finishReason"]?.GetValue<string>() == "tool_calls" &&
+        content["$type"]?.GetValue<string>() == "functionCall" && content["informationalOnly"]?.GetValue<bool>() == false &&
+        content["name"] is JsonValue browserName && browserName.TryGetValue<string>(out var declared) && _browserTools.Contains(declared);
+    var anonymousCall = anonymousNativeCall || anonymousBrowserCall;
+    if (!anonymousCall && (string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) || !EquivalentResponseId(raw, raw["messageId"]?.GetValue<string>()))) return false;
     if (type == "TOOL_CALL_RESULT")
     {
       if (!_calls.ContainsKey(callId) || raw["role"]?.GetValue<string>() != "tool" || raw["finishReason"] is not null || content["$type"]?.GetValue<string>() != "functionResult" || content.Any(property => property.Key is not ("$type" or "result" or "callId" or "annotations" or "additionalProperties"))) return false;
@@ -598,19 +706,21 @@ internal sealed class NativeSessionProjection
     {
       // Pinned MAF announces owned server calls with matching IDs: immediate tool_calls or deferred null finish.
       // Provider evidence also covers browser calls, so only the separate current owned server descriptor permits this shape.
-      if (informationalOnly != true || raw["finishReason"] is not null && raw["finishReason"]!.GetValue<string>() != "tool_calls" || string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) ||
-          raw["responseId"]?.GetValue<string>() != raw["messageId"]?.GetValue<string>() ||
-          _evidence?.OwnsCall(callId, content["name"]?.GetValue<string>(), content["arguments"]) != true) return false;
+      var owned = anonymousNativeCall
+          ? _evidence?.OwnsCompletedAnonymousCall(callId, content["name"]?.GetValue<string>(), content["arguments"]) == true
+          : _evidence?.OwnsCall(callId, content["name"]?.GetValue<string>(), content["arguments"]) == true;
+      if (informationalOnly != true || raw["finishReason"] is not null && raw["finishReason"]!.GetValue<string>() != "tool_calls" ||
+          !anonymousNativeCall && (string.IsNullOrWhiteSpace(raw["messageId"]?.GetValue<string>()) || raw["responseId"]?.GetValue<string>() != raw["messageId"]?.GetValue<string>()) || !owned) return false;
     }
     if (type == "TOOL_CALL_START")
     {
-      if (content["name"]?.GetValue<string>() != item["toolCallName"]?.GetValue<string>() || (raw["messageId"]?.GetValue<string>() != item["parentMessageId"]?.GetValue<string>() && !(anonymousNativeCall && item["parentMessageId"] is null)) || _rawCalls.ContainsKey(callId)) return false;
+      if (content["name"]?.GetValue<string>() != item["toolCallName"]?.GetValue<string>() || (raw["messageId"]?.GetValue<string>() != item["parentMessageId"]?.GetValue<string>() && !(anonymousCall && item["parentMessageId"] is null)) || _rawCalls.ContainsKey(callId)) return false;
       _rawCalls.Add(callId, (JsonObject)raw.DeepClone());
       return true;
     }
     // Anonymous witnessed diagnostics have no parent identity; the START's canonical assistant correlation owns it.
     if (!_rawCalls.TryGetValue(callId, out var first) || !JsonNode.DeepEquals(first, raw) || !_calls.TryGetValue(callId, out var call) || !_callParents.TryGetValue(callId, out var parent) ||
-        (raw["messageId"]?.GetValue<string>() != parent && !anonymousNativeCall) || call["function"]?["name"]?.GetValue<string>() != content["name"]?.GetValue<string>()) return false;
+        (raw["messageId"]?.GetValue<string>() != parent && !anonymousCall) || call["function"]?["name"]?.GetValue<string>() != content["name"]?.GetValue<string>()) return false;
     if (type != "TOOL_CALL_END") return true;
     try { return JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), content["arguments"]); }
     catch (JsonException) { return false; }

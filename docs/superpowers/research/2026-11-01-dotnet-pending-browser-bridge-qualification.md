@@ -1,0 +1,19 @@
+# Pending-browser native bridge qualification
+
+The unreleased server bridge was qualified on November 1, 2026 using the actual authenticated ASP.NET routes, public native agent/session APIs, PostgreSQL journal and pinned OpenAI serializers. These deterministic fixtures use injected local HTTP responses; they establish serialized request grammar and application behavior, not live vendor acceptance. Published npm 0.8.3 and NuGet 0.1.0-preview.1 remain unchanged and do not contain this feature.
+
+## Executed matrix
+
+The declared provider matrix contains 84 unique cases across OpenAI/Azure and Chat Completions/Responses. It includes 76 supported continuations, four intentional initial HTTP 400 serialization captures and four original-call-ID reuse controls. Captures and refusal controls are not supported continuation successes. Supported continuations preserve canonical history/configuration and survive two subsequent fresh-agent ordinary turns. Cases include multiple browser calls; approved, declined and cancelled protected calls; grouped/split/null native identities; trailing text; fresh native work; and up to three held ordinary server calls.
+
+The separate protected-result and held-result matrices each contain 56 unique cases: 20 supported returns and 36 refused or fenced outcomes. Supported strings, raw JSON, null and void retain their independently observed values. Unsupported objects/content collections, oversized/deep results, combined result-budget overflow, completion refusal, ownership loss and mutation after completion withhold provider continuation and successful publication. Application getter counters remain zero.
+
+All 24 declared held-call provider cases observe native call groups, seal complete independent result evidence and then enter provider projection, in that order. Held membership comes from the acquired journal descriptors; outward order does not grant invocation or result authority. Mixed protected batches use the last pending protected-request anchor; browser-only batches use the end anchor. The alternative placement is explicitly rejected.
+
+The combined five-suite matrix passes. A further nine regression suites pass 18 tests covering admission, store, completed history, session projection, approval host/decisions/store/publication and retention. Lower fixtures separately cover exact native metadata, missing/duplicate/foreign observations, immutable lineage, callback-free argument containers and aggregate bounds. Synthetic method-boundary tests are not presented as durable execution proofs.
+
+## Compatibility and scope
+
+The SDK build, reviewed unchanged public API check, eight package tests and lint pass. The original already-compiled public consumer executes unchanged against the candidate DLL: all 14 positional record deconstructions, four snapshot/save constructors and the original custom journal's 21 interface methods remain valid. A newly compiled reference-assembly consumer and packed-runtime consumer pass; all 52 frozen legacy evidence files retain their hashes. The core terminal transport slice passes its build, 2,529 tests in 108 suites, lint and API report; its existing three unused-variable and 48 API-report warnings remain outside this slice.
+
+This checkpoint qualifies the server/native bridge and optional mixed terminal pending-ID transport only. Core inert restoration/settlement, all React/Angular facades, real process-crash/replica tests, isolated candidate package consumers and actual browser controls remain subsequent implementation tasks. Server fixtures expose browser tools as declarations; they do not execute a real browser handler or establish the later browser no-replay assertion. No general exactly-once guarantee, SDK publication or cloud managed-identity qualification follows from these results.

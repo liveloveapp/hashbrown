@@ -850,6 +850,111 @@ test('owns an interrupted outcome before terminal acceptance', async () => {
   ).toBe(true);
 });
 
+test('preserves owned pending call identifiers in the accepted interrupt terminal', async () => {
+  const request = createRequest();
+  const pendingToolCallIds = ['browser-a', 'browser-b'];
+  const interrupts = [
+    { id: 'approval', reason: 'approval', toolCallId: 'protected' },
+  ];
+  const finished = {
+    type: EventType.RUN_FINISHED,
+    threadId: request.input.threadId,
+    runId: request.input.runId,
+    outcome: { type: 'interrupt', interrupts, pendingToolCallIds },
+  } as AGUIEvent;
+  const onEvent = jest.fn((event: AGUIEvent) => {
+    if (event.type === EventType.RUN_FINISHED)
+      pendingToolCallIds[0] = 'changed';
+  });
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), finished]),
+  }));
+
+  const outcome = await runAttempt({ transport, request, onEvent });
+
+  expect(outcome).toEqual({ kind: 'interrupted', interrupts });
+  const accepted = onEvent.mock.calls[1][0];
+  expect(accepted).not.toBe(finished);
+  expect(accepted).toMatchObject({
+    outcome: {
+      type: 'interrupt',
+      interrupts,
+      pendingToolCallIds: ['browser-a', 'browser-b'],
+    },
+  });
+  const ownedOutcome = Object.getOwnPropertyDescriptor(
+    accepted,
+    'outcome',
+  )?.value;
+  const ownedIds = Object.getOwnPropertyDescriptor(
+    ownedOutcome,
+    'pendingToolCallIds',
+  )?.value;
+  expect(ownedIds).not.toBe(pendingToolCallIds);
+  expect(Object.isFrozen(ownedOutcome)).toBe(true);
+  expect(Object.isFrozen(ownedIds)).toBe(true);
+  expect(Object.isFrozen(pendingToolCallIds)).toBe(false);
+});
+
+test('keeps an absent pending call list absent in the accepted interrupt terminal', async () => {
+  const request = createRequest();
+  const interrupts = [{ id: 'approval', reason: 'approval' }];
+  const finished = {
+    type: EventType.RUN_FINISHED,
+    threadId: request.input.threadId,
+    runId: request.input.runId,
+    outcome: { type: 'interrupt', interrupts },
+  } as AGUIEvent;
+  const onEvent = jest.fn();
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), finished]),
+  }));
+
+  const outcome = await runAttempt({ transport, request, onEvent });
+
+  expect(outcome).toEqual({ kind: 'interrupted', interrupts });
+  expect(
+    Object.getOwnPropertyDescriptor(onEvent.mock.calls[1][0], 'outcome')?.value,
+  ).toEqual({ type: 'interrupt', interrupts });
+});
+
+for (const [label, pendingToolCallIds] of [
+  ['null', null],
+  ['sparse', new Array(1)],
+  ['numeric member', [1]],
+  ['blank identifier', [' ']],
+  ['duplicate identifier', ['browser', 'browser']],
+] as const) {
+  test(`rejects malformed pending call identifiers before terminal acceptance: ${label}`, async () => {
+    const request = createRequest();
+    const finished = {
+      type: EventType.RUN_FINISHED,
+      threadId: request.input.threadId,
+      runId: request.input.runId,
+      outcome: {
+        type: 'interrupt',
+        interrupts: [{ id: 'approval', reason: 'approval' }],
+        pendingToolCallIds,
+      },
+    } as AGUIEvent;
+    const dispose = jest.fn();
+    const onEvent = jest.fn();
+    const transport = createTransport(async () => ({
+      events: createEvents([createStarted(request), finished]),
+      dispose,
+    }));
+
+    const attempt = runAttempt({ transport, request, onEvent });
+
+    await expect(attempt).rejects.toMatchObject({
+      code: 'PROTOCOL_ERROR',
+      retryable: false,
+    });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+}
+
 test.each([
   null,
   { type: 'unknown' },

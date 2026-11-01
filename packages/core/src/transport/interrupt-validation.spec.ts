@@ -345,3 +345,79 @@ test('never reads a cancelled outcome as interrupt-free success', () => {
 
   expect(act).toThrow(/cancelled/i);
 });
+
+test('owns pending tool call identifiers without adding approval authority', () => {
+  const pendingToolCallIds = ['browser-a', 'browser-b'];
+  const outcome = {
+    type: 'interrupt',
+    interrupts: [
+      { id: 'approval', reason: 'approval', toolCallId: 'protected' },
+    ],
+    pendingToolCallIds,
+  };
+
+  const result = validateRunFinishedOutcome(outcome);
+  pendingToolCallIds.push('later');
+
+  expect(result).toEqual({
+    type: 'interrupt',
+    interrupts: [
+      { id: 'approval', reason: 'approval', toolCallId: 'protected' },
+    ],
+    pendingToolCallIds: ['browser-a', 'browser-b'],
+  });
+  const owned = Object.getOwnPropertyDescriptor(
+    result,
+    'pendingToolCallIds',
+  )?.value;
+  expect(owned).not.toBe(pendingToolCallIds);
+  expect(Object.isFrozen(owned)).toBe(true);
+  expect(Object.isFrozen(result)).toBe(true);
+  expect(Object.isFrozen(pendingToolCallIds)).toBe(false);
+});
+
+test('owns an explicitly empty pending call list and omits an absent one', () => {
+  const interrupts = [{ id: 'approval', reason: 'approval' }];
+  const pendingToolCallIds: string[] = [];
+
+  const empty = validateRunFinishedOutcome({
+    type: 'interrupt',
+    interrupts,
+    pendingToolCallIds,
+  });
+  const absent = validateRunFinishedOutcome({ type: 'interrupt', interrupts });
+
+  expect(empty).toEqual({
+    type: 'interrupt',
+    interrupts,
+    pendingToolCallIds: [],
+  });
+  expect(
+    Object.getOwnPropertyDescriptor(empty, 'pendingToolCallIds')?.value,
+  ).not.toBe(pendingToolCallIds);
+  expect(Object.hasOwn(absent, 'pendingToolCallIds')).toBe(false);
+});
+
+for (const [label, pendingToolCallIds] of [
+  ['null', null],
+  ['object', {}],
+  ['number', 1],
+  ['sparse', new Array(1)],
+  ['undefined member', [undefined]],
+  ['numeric member', [1]],
+  ['empty identifier', ['']],
+  ['blank identifier', [' \t\n']],
+  ['duplicate identifier', ['browser', 'browser']],
+] as const) {
+  test(`rejects a malformed pending tool call list: ${label}`, () => {
+    const outcome = {
+      type: 'interrupt',
+      interrupts: [{ id: 'approval', reason: 'approval' }],
+      pendingToolCallIds,
+    };
+
+    const act = () => validateRunFinishedOutcome(outcome);
+
+    expect(act).toThrow(/run outcome/i);
+  });
+}
