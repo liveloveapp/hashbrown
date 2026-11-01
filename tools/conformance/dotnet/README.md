@@ -453,3 +453,31 @@ catalog, scope and configuration identities. Workflow schema 3 and native schema
 remain separate from package version. Recovery lookup is read-only, pending mixed
 browser work cannot cold restore, uncertain effects are not automatically retried,
 and mixed-version rolling operation is not guaranteed.
+
+### Pending browser recovery compatibility (source candidate)
+
+The unreleased pending browser recovery candidate has a fourth explicit Jest
+profile, `npx nx test-recovery-compatibility dotnet-conformance`. It requires
+qualified public NuGet and npm baseline descriptors and fails when they are absent.
+The ordinary `test-harness`, `test-runtime`, and `test-package` aggregate remains
+independent of private baseline paths.
+
+Both PR and full package acceptance invoke the mandatory recovery upgrade wrapper
+inside the existing `upgrade` phase. It first retains the original historical
+upgrade qualification, then prepares an isolated checkout of producer
+`df1340f713d3b65165a494eb09e53246298df858`, verifies the committed original
+preview1 archive pair, downloads and signature/payload-qualifies the exact official
+public NuGet archive, and separately installs and qualifies npm 0.8.3 consumers.
+The explicit compatibility profile proves four old-server rejection cases and
+sixteen bounded rejections with unchanged durable rows and no model requests.
+It does not execute those npm browser bundles; candidate browser journeys are a
+separate qualification step. Baseline and candidate descriptors remain distinct
+and are verified again after execution. All substeps must succeed before the
+existing upgrade phase can pass; failure receipts remain in its private evidence.
+
+Historical helper execution requires the original SDK 10.0.402 on PATH. The
+producer's already-installed TypeScript 6.0.3 is copied as physical tooling files;
+the standalone npm consumer still runs its own exact-lock registry installation.
+The archive fixtures and provenance are documented in
+[published-baselines/0.1.0-preview.1](./published-baselines/0.1.0-preview.1/README.md).
+No release or preview1/npm 0.8.3 pending-browser feature availability is claimed.

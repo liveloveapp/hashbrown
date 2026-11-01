@@ -41,6 +41,7 @@
       "{workspaceRoot}/.nvmrc"
     ],
     "harnessTests": [
+      "{projectRoot}/tests/published-recovery-baseline.spec.ts",
       "suiteTooling",
       "{projectRoot}/jest.harness.config.ts",
       "{projectRoot}/tests/fixtures/**/*.ts",
@@ -57,7 +58,10 @@
       "{projectRoot}/tests/routed-endpoint.spec.ts",
       "{projectRoot}/tests/stable-model-router.spec.ts",
       "{projectRoot}/tests/terminate-fixture.spec.ts",
-      "{projectRoot}/tests/wait-for-native-recovery.spec.ts"
+      "{projectRoot}/tests/wait-for-native-recovery.spec.ts",
+      "{projectRoot}/nuget-consumer/published-recovery-baseline.mjs",
+      "{projectRoot}/nuget-consumer/recovery-upgrade-runner.mjs",
+      "{projectRoot}/published-baselines/**/*"
     ],
     "runtimeTests": [
       "suiteTooling",
@@ -92,6 +96,7 @@
       "{projectRoot}/tests/native-approval-publication.spec.ts",
       "{projectRoot}/tests/native-approval-store.spec.ts",
       "{projectRoot}/tests/native-browser-recovery-admission.spec.ts",
+      "{projectRoot}/tests/native-browser-recovery-durability.spec.ts",
       "{projectRoot}/tests/native-browser-recovery-store.spec.ts",
       "{projectRoot}/tests/native-browser-recovery-wire.spec.ts",
       "{projectRoot}/tests/native-browser-recovery-results.spec.ts",
@@ -116,6 +121,13 @@
       "{projectRoot}/tests/server-identity.spec.ts",
       "{projectRoot}/tests/stateless-responses.spec.ts",
       "{projectRoot}/tests/tools.spec.ts"
+    ],
+    "recoveryCompatibilityTests": [
+      "suiteTooling",
+      "{projectRoot}/jest.recovery-compatibility.config.ts",
+      "{projectRoot}/tests/native-browser-recovery-compatibility.spec.ts",
+      "{projectRoot}/nuget-consumer/*.mjs",
+      "{projectRoot}/published-baselines/**/*"
     ]
   },
   "implicitDependencies": [
@@ -179,8 +191,8 @@
         "commands": [
           "dotnet format --verify-no-changes --no-restore",
           "eslint tests/fixtures/owned-package-host.ts tests/fixtures/package-live-worker.ts harness/live-package.ts harness/live-fixture.ts harness/live-runner.ts harness/live-diagnostics.ts tests/live-runner.spec.ts tests/live-fixture.spec.ts tests/live-diagnostics.spec.ts harness/terminate-fixture.ts harness/wait-for-native-recovery.ts harness/browser-smoke-selection.ts tests/terminate-fixture.spec.ts tests/wait-for-native-recovery.spec.ts tests/browser-smoke-selection.spec.ts smoke.playwright.config.ts package-smoke.playwright.config.ts",
-          "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts test-suites.ts tests/native-browser-recovery-admission.spec.ts tests/native-browser-recovery-store.spec.ts tests/native-browser-recovery-wire.spec.ts tests/native-browser-recovery-results.spec.ts tests/native-browser-recovery-held-results.spec.ts tests/native-completed-history-projection.spec.ts tests/native-session-projection.spec.ts tests/native-recovered-provider-input.spec.ts",
-          "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts test-suites.ts tests/native-browser-recovery-admission.spec.ts tests/native-browser-recovery-store.spec.ts tests/native-browser-recovery-wire.spec.ts tests/native-browser-recovery-results.spec.ts tests/native-browser-recovery-held-results.spec.ts tests/native-completed-history-projection.spec.ts tests/native-session-projection.spec.ts tests/native-recovered-provider-input.spec.ts"
+          "eslint verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs nuget-consumer/*.mjs nuget-consumer/*.cjs nuget-consumer/*.d.cts harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts jest.recovery-compatibility.config.ts test-suites.ts tests/native-browser-recovery-admission.spec.ts tests/native-browser-recovery-durability.spec.ts tests/native-browser-recovery-compatibility.spec.ts tests/native-browser-recovery-store.spec.ts tests/native-browser-recovery-wire.spec.ts tests/native-browser-recovery-results.spec.ts tests/native-browser-recovery-held-results.spec.ts tests/native-completed-history-projection.spec.ts tests/native-session-projection.spec.ts tests/native-recovered-provider-input.spec.ts tests/published-recovery-baseline.spec.ts",
+          "prettier --check verify-recipe.mjs verify-native-recipe.mjs native-recipe.test.mjs \"nuget-consumer/*.{mjs,cjs,cts}\" harness/dotnet-host.ts harness/package-reporter.ts harness/http-fixture.ts harness/durable-fixture.ts harness/browser-fixture.ts harness/local-native-approval-browser.ts local-specs/native-approval.spec.ts tests/dotnet-host.spec.ts tests/package-identities.spec.ts tests/package-upgrade.spec.ts tests/nuget-consumer.spec.ts package.playwright.config.ts local-native-approval.playwright.config.ts dotnet.playwright.config.ts jest.config.ts jest.harness.config.ts jest.runtime.config.ts jest.package.config.ts jest.recovery-compatibility.config.ts test-suites.ts tests/native-browser-recovery-admission.spec.ts tests/native-browser-recovery-durability.spec.ts tests/native-browser-recovery-compatibility.spec.ts tests/native-browser-recovery-store.spec.ts tests/native-browser-recovery-wire.spec.ts tests/native-browser-recovery-results.spec.ts tests/native-browser-recovery-held-results.spec.ts tests/native-completed-history-projection.spec.ts tests/native-session-projection.spec.ts tests/native-recovered-provider-input.spec.ts tests/published-recovery-baseline.spec.ts"
         ]
       },
       "dependsOn": ["build"],
@@ -401,6 +413,16 @@
           "env": "HASHBROWN_DOTNET_HOST_MODE"
         }
       ]
+    },
+    "test-recovery-compatibility": {
+      "executor": "@nx/jest:jest",
+      "cache": false,
+      "dependsOn": ["build"],
+      "options": {
+        "jestConfig": "tools/conformance/dotnet/jest.recovery-compatibility.config.ts",
+        "runInBand": true
+      },
+      "inputs": ["recoveryCompatibilityTests"]
     }
   }
 }

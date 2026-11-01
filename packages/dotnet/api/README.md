@@ -34,3 +34,12 @@ additions do not describe the published `0.1.0-preview.1` package.
 The PostgreSQL journal opts into the optional recovery interface through an
 explicit implementation. This reviewed assignability change adds no concrete
 public member and retains all existing signatures and documentation identifiers.
+
+The unreleased crash-maintenance refinement changes the documented behavior of
+`INativeSessionJournal.MaintainAsync` without changing its signature or XML member
+identifier. PostgreSQL maintenance uses one bounded budget for privacy purges and
+expired request-authority reconciliation. Its result counts distinct sessions
+actually changed. Applications schedule maintenance for each compatible journal
+registration; custom journals do not acquire this behavior merely by implementing
+the interface. The original published API and compiled-consumer evidence remain
+the compatibility baseline.

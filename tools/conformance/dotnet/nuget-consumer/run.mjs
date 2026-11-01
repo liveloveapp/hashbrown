@@ -234,7 +234,11 @@ export function acceptancePlan(
       [path.join(here, '../verify-recipe.mjs'), '--all', ...metadata],
       10,
     ),
-    phase('upgrade', [path.join(here, 'upgrade-runner.mjs'), ...metadata], 10),
+    phase(
+      'upgrade',
+      [path.join(here, 'recovery-upgrade-runner.mjs'), ...metadata],
+      25,
+    ),
     profile === 'pr'
       ? phase('smoke', [...browser, ...shared, '--smoke'], 15)
       : phase('matrix', [...browser, ...shared], 60),

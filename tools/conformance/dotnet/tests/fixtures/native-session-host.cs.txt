@@ -342,12 +342,45 @@ try
             expected.AddRange(Enumerable.Range(1, siblings).Select(index => "result:back_" + index));
             Check(seen.Where(item => item != "text:").SequenceEqual(expected), "Native full browser history must preserve exact original call/result order once: " + string.Join(',', seen));
             Check(model.Results[1].Where(pair => pair.Key.StartsWith("back_", StringComparison.Ordinal)).All(pair => pair.Value == JsonSerializer.Serialize("server-PDX")), "The next model request must contain genuine native backend results.");
-            var next = JsonNode.Parse(mixedJournal.LastSave!.PublicRequest)!.AsObject(); next["runId"] = Guid.NewGuid().ToString("N");
+            var savedCanonicalBeforeNext = mixedJournal.LastSave!.PublicRequest;
+            var next = JsonNode.Parse(savedCanonicalBeforeNext)!.AsObject(); next["runId"] = Guid.NewGuid().ToString("N");
             next["messages"]!.AsArray().Add(new JsonObject { ["id"] = "u2", ["role"] = "user", ["content"] = "next" });
             var third = await restarted.Send(next);
             Check(third.Body.Contains("RUN_FINISHED") && effects.Count == siblings, "Subsequent ordinary turns must never replay completed server work.");
-            expected.AddRange(["text:done", "text:next"]);
-            Check(model.Seen[2].Where(item => item != "text:").SequenceEqual(expected), "The next ordinary turn must preserve the complete canonical prefix exactly once.");
+            var savedBefore = JsonNode.Parse(savedCanonicalBeforeNext)!.AsObject();
+            var savedAfter = JsonNode.Parse(mixedJournal.LastSave!.PublicRequest)!.AsObject();
+            var beforeMessages = savedBefore["messages"]!.AsArray();
+            var requestedMessages = next["messages"]!.AsArray();
+            var afterMessages = savedAfter["messages"]!.AsArray();
+            Check(requestedMessages.Count == beforeMessages.Count + 1 && beforeMessages.Select((message, index) => JsonNode.DeepEquals(message, requestedMessages[index])).All(equal => equal) && JsonNode.DeepEquals(requestedMessages.Last(), new JsonObject { ["id"] = "u2", ["role"] = "user", ["content"] = "next" }), "The ordinary public request must retain every canonical prefix field/order and append exactly the new user message.");
+            Check(afterMessages.Count == requestedMessages.Count + 1 && requestedMessages.Select((message, index) => JsonNode.DeepEquals(message, afterMessages[index])).All(equal => equal) && afterMessages.Last()!["role"]!.GetValue<string>() == "assistant" && afterMessages.Last()!["content"]!.GetValue<string>() == "done", "The next saved public history must retain the exact entire requested prefix and append only its new assistant answer.");
+            var beforeConfiguration = savedBefore.DeepClone().AsObject(); beforeConfiguration.Remove("messages"); beforeConfiguration.Remove("runId");
+            var afterConfiguration = savedAfter.DeepClone().AsObject(); afterConfiguration.Remove("messages"); afterConfiguration.Remove("runId");
+            Check(JsonNode.DeepEquals(beforeConfiguration, afterConfiguration), "Ordinary publication must preserve every canonical configuration field.");
+            var expectedOrdinaryHistory = new List<string> { "text:hello" };
+            foreach (var index in Enumerable.Range(1, siblings)) expectedOrdinaryHistory.AddRange(["call:front_" + index, "result:front_" + index]);
+            foreach (var index in Enumerable.Range(1, siblings)) expectedOrdinaryHistory.AddRange(["call:back_" + index, "result:back_" + index]);
+            expectedOrdinaryHistory.AddRange(["text:done", "text:next"]);
+            var actualOrdinaryHistory = model.Seen[2].Where(item => item != "text:").ToArray();
+            var knownCanonicalContents = Enumerable.Range(1, siblings).SelectMany(index => new[] { new KeyValuePair<string, string>("front_" + index, "browser-result"), new KeyValuePair<string, string>("back_" + index, JsonSerializer.Serialize("server-PDX")) }).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            var savedToolContents = beforeMessages.OfType<JsonObject>().Where(message => message["role"]?.GetValue<string>() == "tool").ToDictionary(message => message["toolCallId"]!.GetValue<string>(), message => message["content"]!.GetValue<string>(), StringComparer.Ordinal);
+            Check(savedToolContents.Count == knownCanonicalContents.Count && knownCanonicalContents.All(pair => savedToolContents.TryGetValue(pair.Key, out var content) && content == pair.Value), "Saved canonical tool contents must independently equal the known browser result and JSON-encoded genuine backend return.");
+            var expectedOrdinaryResults = savedToolContents.ToDictionary(pair => pair.Key, pair => JsonSerializer.Serialize(pair.Value), StringComparer.Ordinal);
+            var ordinaryHistoryEvidence = JsonSerializer.Serialize(new
+            {
+                browserFirst,
+                siblings,
+                expectedNativeProjection = expectedOrdinaryHistory,
+                actualNativeProjection = actualOrdinaryHistory,
+                actualNativeResults = model.Results[2],
+                expectedCanonicalContentResults = expectedOrdinaryResults,
+                savedCanonicalBeforeNext = savedBefore,
+                ordinaryRequest = next,
+                savedCanonicalAfterNext = savedAfter
+            });
+            Console.WriteLine("Native mixed ordinary evidence: " + ordinaryHistoryEvidence);
+            Check(actualOrdinaryHistory.SequenceEqual(expectedOrdinaryHistory), "The native closed-history projection must contain exact adjacent call/result pairs once in original call order. Evidence: " + ordinaryHistoryEvidence);
+            Check(model.Results[2].Count == expectedOrdinaryResults.Count && expectedOrdinaryResults.All(pair => model.Results[2].TryGetValue(pair.Key, out var value) && value == pair.Value), "The ordinary native projection must preserve every exact independently validated canonical result-content string. Evidence: " + ordinaryHistoryEvidence);
         }
     }
     // Authentication, schema validation and name collisions must reject before native/model work.

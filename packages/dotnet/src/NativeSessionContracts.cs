@@ -199,6 +199,8 @@ public interface INativeSessionJournal
   ValueTask<int> ReconcileAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken cancellationToken = default);
   /// <summary>Terminally retires a selector with the same scoped operator CAS.</summary>
   ValueTask<int> RetireAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken cancellationToken = default);
-  /// <summary>Purges expired private bytes while retaining all selector tombstones and unknown fences.</summary>
+  /// <summary>Runs bounded maintenance preserving selector and effect fences; PostgreSQL also reconciles expired authority for retained sessions.</summary>
+  /// <returns>The number of distinct sessions transitioned or purged, at most the configured maintenance batch size.</returns>
+  /// <remarks>Schedule PostgreSQL maintenance for every trusted compatibility/catalog registration, with cancellation and observed failures. It uses locked database-clock checks, never executes model or tool work, and never extends private retention. Active owners remain unchanged; consumed decisions and uncertain effects remain fenced. Retained lease reconciliation is registration-specific; privacy purge is schema-wide. Backlog and scheduling govern recovery latency. Custom journals define their own maintenance behavior; implementing this interface does not imply PostgreSQL crash reconciliation or browser recovery support.</remarks>
   ValueTask<int> MaintainAsync(CancellationToken cancellationToken = default);
 }

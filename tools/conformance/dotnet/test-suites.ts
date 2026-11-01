@@ -1,6 +1,7 @@
 /** Explicit source test ownership; the conformance guard rejects missing or duplicate specs. */
 export const dotnetTestSuites = {
   harness: [
+    'tests/published-recovery-baseline.spec.ts',
     'tests/live-browser-fixture.spec.ts',
     'tests/live-budget.spec.ts',
     'tests/live-configuration.spec.ts',
@@ -33,6 +34,7 @@ export const dotnetTestSuites = {
     'tests/native-approval-publication.spec.ts',
     'tests/native-approval-store.spec.ts',
     'tests/native-browser-recovery-admission.spec.ts',
+    'tests/native-browser-recovery-durability.spec.ts',
     'tests/native-browser-recovery-results.spec.ts',
     'tests/native-browser-recovery-held-results.spec.ts',
     'tests/native-browser-recovery-store.spec.ts',
@@ -57,6 +59,9 @@ export const dotnetTestSuites = {
     'tests/server-identity.spec.ts',
     'tests/stateless-responses.spec.ts',
     'tests/tools.spec.ts',
+  ],
+  'recovery-compatibility': [
+    'tests/native-browser-recovery-compatibility.spec.ts',
   ],
   package: [
     'tests/browser-smoke-selection.spec.ts',

@@ -28,6 +28,7 @@ export const TESTING = [
   'FixtureLiveModelClient.cs',
   'FixtureNativeGate.cs',
   'FixtureNativeJournal.cs',
+  'FixtureNativeRecoveryControls.cs',
   'FixturePackageIdentity.cs',
   'FixtureProgressClient.cs',
   'FixtureRecoveryControls.cs',

@@ -1,0 +1,198 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.AspNetCore;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+static JsonElement Json(string value) => JsonSerializer.Deserialize<JsonElement>(value);
+static NativeSessionKey Key(string selector, string partition = "one", string agent = "agent", string scope = "alice") => new(agent, scope, selector, new Dictionary<string, string> { ["isolation"] = scope, ["tenant"] = partition, ["region"] = "west" });
+static string Request(NativeSessionKey key) => JsonSerializer.Serialize(new { threadId = key.Selector, runId = Guid.NewGuid().ToString("N"), messages = new[] { new { id = "user", role = "user", content = "maintenance" } }, tools = Array.Empty<object>(), forwardedProps = new { } });
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture required"));
+var schema = "browser_maintenance_" + Guid.NewGuid().ToString("N");
+var options = new NativeSessionOptions { MaintenanceBatch = 2 };
+var catalog = new NativeToolCatalog([new("server", 1, Json("{\"type\":\"object\"}"))]);
+var journal = new PostgresNativeSessionJournal(source, catalog, "model-one", schema, options);
+var other = new PostgresNativeSessionJournal(source, new NativeToolCatalog([new("server", 2, Json("{\"type\":\"object\"}"))]), "model-two", schema, options);
+var observed = new List<object>();
+async Task Execute(string sql, NativeSessionKey? key = null)
+{
+    await using var command = source.CreateCommand(sql);
+    if (key is not null) command.Parameters.AddWithValue("id", key.Id);
+    await command.ExecuteNonQueryAsync();
+}
+async Task<string> Row(NativeSessionKey key)
+{
+    await using var command = source.CreateCommand($"SELECT to_jsonb(s)::text FROM \"{schema}\".native_sessions s WHERE id=@id");
+    command.Parameters.AddWithValue("id", key.Id);
+    return (string)(await command.ExecuteScalarAsync())!;
+}
+async Task<JsonObject> Read(NativeSessionKey key) => JsonNode.Parse(await Row(key))!.AsObject();
+async Task Expire(NativeSessionKey key) => await Execute($"UPDATE \"{schema}\".native_sessions SET lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", key);
+async Task<NativeSessionAdmission> Acquire(PostgresNativeSessionJournal owner, NativeSessionKey key)
+{
+    var result = await owner.TryAcquireAsync(key, Request(key));
+    Check(result.Status == 200 && result.Lease is not null, "Real public acquisition must succeed");
+    return result;
+}
+try
+{
+    await journal.InitializeAsync();
+    await other.InitializeAsync();
+    var activeKey = Key("active");
+    var active = await Acquire(journal, activeKey);
+    var activeBefore = await Row(activeKey);
+    Check(await journal.MaintainAsync() == 0 && await Row(activeKey) == activeBefore, "Active lease must remain byte-for-byte unchanged");
+    Check(await journal.RenewAsync(active.Lease!), "Current unexpired owner renewal must work");
+    var renewed = await Row(activeKey);
+    Check(await journal.MaintainAsync() == 0 && await Row(activeKey) == renewed, "Renewal first must preserve its active authority under later locked maintenance clock");
+
+    var ownedKeys = new[] { Key("owned-a", "one"), Key("owned-b", "two", "second", "bob"), Key("owned-c", "three") };
+    var owned = new List<NativeSessionAdmission>();
+    foreach (var key in ownedKeys) { owned.Add(await Acquire(journal, key)); await Expire(key); }
+    var foreignKeys = new[] { Key("foreign-owned"), Key("foreign-saved"), Key("foreign-publishing") };
+    var foreignOwned = await Acquire(other, foreignKeys[0]);
+    var foreignSaved = await Acquire(other, foreignKeys[1]);
+    var savedReceipt = await other.SaveAsync(foreignSaved.Lease!, new("{}", Request(foreignKeys[1]), [], [], true));
+    Check(savedReceipt is not null, "Real foreign Saved receipt required");
+    var foreignPublishing = await Acquire(other, foreignKeys[2]);
+    var publishingReceipt = await other.SaveAsync(foreignPublishing.Lease!, new("{}", Request(foreignKeys[2]), [], [], true));
+    Check(publishingReceipt is not null && await other.AuthorizePublicationAsync(publishingReceipt), "Real foreign Publishing receipt required");
+    foreach (var key in foreignKeys) await Expire(key);
+    var foreignBefore = new List<string>();
+    foreach (var key in foreignKeys) foreignBefore.Add(await Row(key));
+
+    var first = await journal.MaintainAsync();
+    var second = await journal.MaintainAsync();
+    Check(first == 2 && second == 1 && await journal.MaintainAsync() == 0, "One combined bounded budget must drain compatible retained rows only");
+    for (var index = 0; index < foreignKeys.Length; index++) Check(await Row(foreignKeys[index]) == foreignBefore[index], "Incompatible retained Owned/Saved/Publishing row must remain untouched");
+    foreach (var key in ownedKeys)
+    {
+        var row = await Read(key);
+        Check(row["state"]!.GetValue<string>() == "Ready" && row["generation"]!.GetValue<long>() == 2 && row["revision"]!.GetValue<long>() == 2 && row["claim_revision"]!.GetValue<long>() == 1 && row["ever_saved"]!.GetValue<bool>() == false, "Unpublished safe initial Owned recovery must preserve lineage without inventing saved capability");
+        Check((await journal.ReadStatusAsync(key)).BrowserRecoveryCallIds is null, "Never-saved row has no pending capability");
+    }
+    var late = owned[0].Lease!;
+    var call = catalog.CreateCall("late-call", "server", Json("{}"));
+    Check(!await journal.RenewAsync(late), "Expired owner cannot renew after maintenance");
+    Check(!await journal.CaptureModelCallAsync(late, call), "Expired owner cannot capture after maintenance");
+    Check(await journal.GetOwnedCallAsync(late, call.Id) is null, "Expired owner cannot read owned dispatch authority");
+    Check(!await journal.TryStartDispatchAsync(late, call) && !await journal.CompleteDispatchAsync(late, call), "Expired owner cannot start or complete after maintenance");
+    Check(await journal.SaveAsync(late, new("{}", Request(ownedKeys[0]), [], [], true)) is null, "Expired owner cannot save after maintenance");
+    Check(!await journal.FailureCleanupAsync(late), "Expired owner cannot clean up newer Ready authority");
+    Check(await other.MaintainAsync() == 2 && await other.MaintainAsync() == 1, "Compatible owner must reconcile its own three retained states with bounded passes");
+    Check((await Read(foreignKeys[0]))["state"]!.GetValue<string>() == "Ready", "Foreign Owned becomes Ready only through its own compatible journal");
+    Check((await Read(foreignKeys[1]))["state"]!.GetValue<string>() == "Blocked", "Saved remains conservatively Blocked");
+    Check((await Read(foreignKeys[2]))["state"]!.GetValue<string>() == "PublicationUnknown", "Publishing remains unknown");
+    Check(!await other.AuthorizePublicationAsync(savedReceipt!) && !await other.FinalizePublicationAsync(savedReceipt!) && !await other.FinalizePublicationAsync(publishingReceipt!), "Late saved/publication receipts cannot authorize or finalize after maintenance");
+    foreach (var key in foreignKeys) await Execute($"UPDATE \"{schema}\".native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", key);
+    Check(await journal.MaintainAsync() == 2 && await journal.MaintainAsync() == 1, "Schema-wide privacy purge must include incompatible registrations and share the same row budget");
+    Check((await Read(foreignKeys[1]))["state"]!.GetValue<string>() == "Blocked" && (await Read(foreignKeys[2]))["state"]!.GetValue<string>() == "PublicationUnknown", "Privacy purge must retain uncertain tombstones");
+    foreach (var key in foreignKeys) Check((await Read(key))["payload"] is null, "Private payload must be purged schema-wide");
+
+    // Each corrupt row begins with a real public acquired payload; mutations never manufacture authority.
+    foreach (var corruption in new[] { "key-null-partitions", "key-partition", "column-selector", "native-format", "admitted-raw", "future-capture", "prior-started" })
+    {
+        var key = Key("corrupt-" + corruption);
+        var acquired = await Acquire(journal, key);
+        if (corruption is "future-capture" or "prior-started") Check(await journal.CaptureModelCallAsync(acquired.Lease!, catalog.CreateCall(corruption, "server", Json("{}"))), "Actual captured descriptor required for corruption seam");
+        var mutation = corruption switch
+        {
+            "key-null-partitions" => "key_data=jsonb_set(key_data::jsonb,'{partitions}','null'::jsonb)::text",
+            "key-partition" => "key_data=jsonb_set(key_data::jsonb,'{partitions,tenant}','\"foreign\"'::jsonb)::text",
+            "column-selector" => "selector='foreign'",
+            "native-format" => "payload=jsonb_set(payload::jsonb,'{formatVersion}','99'::jsonb)::text",
+            "admitted-raw" => "admitted_request='{'",
+            _ => "revision=revision"
+        };
+        await Execute($"UPDATE \"{schema}\".native_sessions SET {mutation},lease_until=clock_timestamp()-interval '1 second' WHERE id=@id", key);
+        if (corruption == "future-capture") await Execute($"UPDATE \"{schema}\".native_invocations SET captured_generation=2 WHERE session_id=@id", key);
+        // Current generation is one. A Started marker from another generation must still prevent Ready.
+        if (corruption == "prior-started")
+        {
+            await Execute($"UPDATE \"{schema}\".native_invocations SET state='Started',dispatch_generation=1 WHERE session_id=@id", key);
+            await Execute($"UPDATE \"{schema}\".native_sessions SET generation=2 WHERE id=@id", key);
+        }
+        Check(await journal.MaintainAsync() == 1 && (await Read(key))["state"]!.GetValue<string>() == "Blocked", "Invalid key/payload/original epoch must be fenced: " + corruption);
+        observed.Add(new { corruption, row = await Row(key) });
+    }
+
+    // A genuine unassociated Captured descriptor may be discarded only after retained validation.
+    var discardKey = Key("discard-captured");
+    var discard = await Acquire(journal, discardKey);
+    var discardCall = catalog.CreateCall("uncommitted", "server", Json("{}"));
+    Check(await journal.CaptureModelCallAsync(discard.Lease!, discardCall), "Actual uncommitted descriptor capture required");
+    await Expire(discardKey);
+    Check(await journal.MaintainAsync() == 1 && (await Read(discardKey))["state"]!.GetValue<string>() == "Ready", "Safe unassociated Captured work may be discarded after prior/prospective validation");
+    await using (var command = source.CreateCommand($"SELECT count(*) FROM \"{schema}\".native_invocations WHERE session_id=@id"))
+    {
+        command.Parameters.AddWithValue("id", discardKey.Id);
+        Check((long)(await command.ExecuteScalarAsync())! == 0, "Uncommitted call must be deleted only on safe Ready transition");
+    }
+
+    // Cancellation/SQL failure must roll back all selected rows rather than classify infrastructure as corruption.
+    var failureKeys = new[] { Key("failure-a"), Key("failure-b") };
+    foreach (var key in failureKeys) { await Acquire(journal, key); await Expire(key); }
+    var failureBefore = new List<string>();
+    foreach (var key in failureKeys) failureBefore.Add(await Row(key));
+    await Execute($"""
+        CREATE FUNCTION "{schema}".maintenance_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture infrastructure failure'; END $$;
+        CREATE TRIGGER maintenance_fail BEFORE UPDATE ON "{schema}".native_sessions FOR EACH ROW EXECUTE FUNCTION "{schema}".maintenance_fail();
+        """);
+    var failed = false;
+    try { await journal.MaintainAsync(); } catch (PostgresException) { failed = true; }
+    Check(failed, "Infrastructure SQL failure must surface");
+    for (var index = 0; index < failureKeys.Length; index++) Check(await Row(failureKeys[index]) == failureBefore[index], "SQL failure must roll back selected authority");
+    await Execute($"DROP TRIGGER maintenance_fail ON \"{schema}\".native_sessions");
+    using (var stop = new CancellationTokenSource())
+    {
+        stop.Cancel();
+        var cancelled = false;
+        try { await journal.MaintainAsync(stop.Token); } catch (OperationCanceledException) { cancelled = true; }
+        Check(cancelled, "Scheduler cancellation must surface");
+    }
+
+    await Execute($"""
+        CREATE FUNCTION "{schema}".maintenance_wait() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(71933027); RETURN NEW; END $$;
+        CREATE TRIGGER maintenance_wait BEFORE UPDATE ON "{schema}".native_sessions FOR EACH ROW EXECUTE FUNCTION "{schema}".maintenance_wait();
+        """);
+    await using (var blocker = await source.OpenConnectionAsync())
+    await using (var transaction = await blocker.BeginTransactionAsync())
+    {
+        await using (var gate = new NpgsqlCommand("SELECT pg_advisory_xact_lock(71933027)", blocker)) await gate.ExecuteNonQueryAsync();
+        using var cancel = new CancellationTokenSource();
+        var running = journal.MaintainAsync(cancel.Token).AsTask();
+        var waiting = false;
+        for (var attempt = 0; attempt < 300; attempt++)
+        {
+            await using var locks = source.CreateCommand("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND objid=71933027 AND NOT granted)");
+            if ((bool)(await locks.ExecuteScalarAsync())!) { waiting = true; break; }
+            await Task.Delay(10);
+        }
+        Check(waiting, "Maintenance must reach observed SQL update barrier before cancellation");
+        cancel.Cancel();
+        var cancelled = false;
+        try { await running; } catch (OperationCanceledException) { cancelled = true; }
+        Check(cancelled, "In-flight scheduler cancellation must surface rather than classify row corruption");
+        for (var index = 0; index < failureKeys.Length; index++) Check(await Row(failureKeys[index]) == failureBefore[index], "In-flight cancellation must roll back all selected authority");
+        await transaction.CommitAsync();
+    }
+    await Execute($"DROP TRIGGER maintenance_wait ON \"{schema}\".native_sessions");
+    Check(await journal.MaintainAsync() == 2, "Later successful pass must drain the unchanged failed batch");
+    var privacyKey = ownedKeys[0];
+    await Execute($"UPDATE \"{schema}\".native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", privacyKey);
+    foreach (var key in new[] { Key("combined-owned-a"), Key("combined-owned-b") }) { await Acquire(journal, key); await Expire(key); }
+    Check(await journal.MaintainAsync() == 2 && await journal.MaintainAsync() == 1, "Privacy plus retained lease backlog must use one combined budget, not two branch budgets");
+    Check((await Read(privacyKey))["payload"] is null, "Combined branch privacy expiry must purge payload");
+
+    var bothKey = Key("both-expired-dispatch");
+    var both = await Acquire(journal, bothKey);
+    var bothCall = catalog.CreateCall("both-started", "server", Json("{}"));
+    Check(await journal.CaptureModelCallAsync(both.Lease!, bothCall) && await journal.TryStartDispatchAsync(both.Lease!, bothCall), "Real Started marker must precede simultaneous lease/private expiry");
+    await Execute($"UPDATE \"{schema}\".native_sessions SET lease_until=clock_timestamp()-interval '1 second',expires_at=clock_timestamp()-interval '1 second' WHERE id=@id", bothKey);
+    Check(await journal.MaintainAsync() == 1, "Simultaneously eligible row must count once");
+    var bothAfter = await Read(bothKey);
+    Check(bothAfter["state"]!.GetValue<string>() == "Blocked" && bothAfter["payload"] is null, "Privacy dominates lease recovery while preserving full Started fence");
+    Console.WriteLine("Browser maintenance evidence: " + JsonSerializer.Serialize(new { first, second, observed, lateOwnerFenced = true, foreignRetentionPurged = true, sqlRollback = true }));
+    Console.WriteLine("Native browser maintenance contracts passed.");
+}
+finally { await Execute($"DROP SCHEMA \"{schema}\" CASCADE"); }

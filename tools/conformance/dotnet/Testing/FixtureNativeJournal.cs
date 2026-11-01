@@ -6,12 +6,24 @@ using Hashbrown.AspNetCore;
 namespace Hashbrown.Conformance.Testing;
 
 /// <summary>Test-only barrier decorator delegating every authority decision to the real journal.</summary>
-public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNativeGate gate, bool failSave = false, FixtureLiveApprovalProof? liveApproval = null) : INativeSessionJournal
+public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNativeGate gate, bool failSave = false, FixtureLiveApprovalProof? liveApproval = null) : INativeSessionBrowserRecoveryJournal
 {
     /// <inheritdoc />
     public ValueTask InitializeAsync(CancellationToken cancellationToken = default) => inner.InitializeAsync(cancellationToken);
     /// <inheritdoc />
     public ValueTask<NativeSessionAdmission> TryAcquireAsync(NativeSessionKey key, string publicRequestJson, CancellationToken cancellationToken = default) => inner.TryAcquireAsync(key, publicRequestJson, cancellationToken);
+    /// <inheritdoc />
+    public async ValueTask<NativeSessionAdmission> TryAcquireBrowserRecoveryAsync(NativeSessionKey key, string originalRawRequestJson, NativeBrowserRecoveryRequest recovery, CancellationToken cancellationToken = default)
+    {
+        gate.Record("cold-acquire-attempt");
+        var admission = await ((INativeSessionBrowserRecoveryJournal)inner).TryAcquireBrowserRecoveryAsync(key, originalRawRequestJson, recovery, cancellationToken);
+        if (admission.Lease is not null)
+        {
+            gate.Record("cold-acquire-success");
+            await gate.ReachAsync("cold-acquired", cancellationToken);
+        }
+        return admission;
+    }
     /// <inheritdoc />
     public async ValueTask<bool> CaptureModelCallAsync(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken = default)
     {
@@ -36,9 +48,10 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     /// <inheritdoc />
     public async ValueTask<bool> TryAdmitApprovalBatchAsync(NativeSessionLease lease, string batchId, NativeApprovalAdmissionEnvelope admission, CancellationToken cancellationToken = default)
     {
+        gate.Record("reservation-attempt");
         await gate.ReachAsync("before-decision-reservation", cancellationToken);
         var admitted = await inner.TryAdmitApprovalBatchAsync(lease, batchId, admission, cancellationToken);
-        if (admitted) { liveApproval?.Admitted(lease, batchId, admission); await gate.ReachAsync("decision-admitted", cancellationToken); }
+        if (admitted) { gate.Record("reservation-success"); liveApproval?.Admitted(lease, batchId, admission); await gate.ReachAsync("decision-admitted", cancellationToken); }
         return admitted;
     }
     /// <inheritdoc />
@@ -80,7 +93,7 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
         if (save.Approvals.PendingBatch is not null || save.ExpectedBrowserCallIds.Count > 0) await gate.ReachAsync("before-pending-save", cancellationToken);
         if (failSave) return null;
         var receipt = await inner.SaveAsync(lease, save, cancellationToken);
-        if (receipt is not null) { liveApproval?.Saved(lease, save, receipt); await gate.ReachAsync("after-save-before-publication", cancellationToken); }
+        if (receipt is not null) { gate.Record("save-success"); liveApproval?.Saved(lease, save, receipt); await gate.ReachAsync("after-save-before-publication", cancellationToken); }
         return receipt;
     }
     /// <inheritdoc />
@@ -106,7 +119,11 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
         return cleaned;
     }
     /// <inheritdoc />
-    public ValueTask<NativeSessionStatus> ReadStatusAsync(NativeSessionKey key, CancellationToken cancellationToken = default) => inner.ReadStatusAsync(key, cancellationToken);
+    public ValueTask<NativeSessionStatus> ReadStatusAsync(NativeSessionKey key, CancellationToken cancellationToken = default)
+    {
+        gate.Record("status-read");
+        return inner.ReadStatusAsync(key, cancellationToken);
+    }
     /// <inheritdoc />
     public ValueTask<NativeSessionInspection?> InspectAsync(IReadOnlySet<string> scopes, NativeSessionKey key, int limit = 50, CancellationToken cancellationToken = default) => inner.InspectAsync(scopes, key, limit, cancellationToken);
     /// <inheritdoc />
@@ -114,7 +131,11 @@ public sealed class FixtureNativeJournal(INativeSessionJournal inner, FixtureNat
     /// <inheritdoc />
     public ValueTask<int> RetireAsync(IReadOnlySet<string> scopes, NativeSessionKey key, string actor, NativeSessionReconciliation request, CancellationToken cancellationToken = default) => inner.RetireAsync(scopes, key, actor, request, cancellationToken);
     /// <inheritdoc />
-    public ValueTask<int> MaintainAsync(CancellationToken cancellationToken = default) => inner.MaintainAsync(cancellationToken);
+    public ValueTask<int> MaintainAsync(CancellationToken cancellationToken = default)
+    {
+        gate.Record("maintenance-call");
+        return inner.MaintainAsync(cancellationToken);
+    }
 }
 
 /// <summary>Adds only trusted fixture deployment partitions and forwards all native store operations to the real store.</summary>

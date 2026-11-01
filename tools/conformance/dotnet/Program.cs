@@ -213,12 +213,13 @@ if (nativeJournal is not null)
         if (builder.Configuration["NativeRegion"] is { } region) partitions.Add("region", region);
         return new(nativeName, scope, selector, partitions);
     }
+    FixtureNativeRecoveryControls.Map(app, source!, schema, Key);
     NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", nativeJournal, "recovery",
         (context, selector) => context.User.FindFirst("scope") is { } claim ? Key(claim.Value, selector) : null, nativeOptions);
     NativeSessionRecoveryEndpointConfiguration.MapOperations(app, "/native-sessions", nativeJournal, "checkpoint-operator",
         context => context.User.FindAll("operator-scope").Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal),
         context => context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, Key);
-    app.MapGet("/__test/native-stage", () => Results.Json(new { stage = nativeGate.Stage, renewalFailed = nativeGate.RenewalFailed, cleanupCompleted = nativeGate.CleanupCompleted }));
+    app.MapGet("/__test/native-stage", () => Results.Json(new { stage = nativeGate.Stage, renewalFailed = nativeGate.RenewalFailed, cleanupCompleted = nativeGate.CleanupCompleted, counts = nativeGate.Counts }));
     app.MapPost("/__test/release-native", () => { nativeGate.Release(); return Results.Ok(); });
     app.MapPost("/__test/expire-native-lease", async () =>
     {
@@ -238,6 +239,22 @@ if (nativeJournal is not null)
         while (await reader.ReadAsync()) { count = reader.GetInt64(2); rows.Add(new { id = reader.GetInt64(0), code = reader.GetString(1) }); }
         return Results.Json(new { count, rows });
     });
+    app.MapPost("/__test/maintain-native", async () => Results.Json(new { count = await nativeJournal.MaintainAsync() }));
+    app.MapGet("/__test/native-recovery-state", async (HttpContext context, string threadId) =>
+    {
+        if (context.User.FindFirst("scope")?.Value is not { } scope) return Results.Unauthorized();
+        if (threadId.Length > 1024) return Results.BadRequest();
+        await using var command = source!.CreateCommand($"""
+            SELECT jsonb_build_object(
+              'session',(SELECT to_jsonb(s) FROM "{schema}".native_sessions s WHERE id=@id),
+              'batches',COALESCE((SELECT jsonb_agg(to_jsonb(b) ORDER BY batch_id) FROM "{schema}".native_approval_batches b WHERE session_id=@id),'[]'::jsonb),
+              'members',COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY request_id) FROM "{schema}".native_approvals a WHERE session_id=@id),'[]'::jsonb),
+              'invocations',COALESCE((SELECT jsonb_agg(to_jsonb(c) ORDER BY call_id) FROM "{schema}".native_invocations c WHERE session_id=@id),'[]'::jsonb),
+              'effects',COALESCE((SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM "{schema}".fixture_native_approval_effects e WHERE session_id=@id),'[]'::jsonb))::text
+            """);
+        command.Parameters.AddWithValue("id", Key(scope, threadId).Id);
+        return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
+    }).RequireAuthorization("recovery");
     if (nativeApprovals)
     {
         app.MapPost("/__test/expire-native-payload", async () =>
@@ -253,7 +270,6 @@ if (nativeJournal is not null)
             await transaction.CommitAsync();
             return Results.Ok();
         });
-        app.MapPost("/__test/maintain-native", async () => Results.Json(new { count = await nativeJournal.MaintainAsync() }));
         app.MapGet("/__test/native-approval-state", async (HttpContext context, string threadId) =>
         {
             if (context.User.FindFirst("scope")?.Value is not { } scope) return Results.Unauthorized();
@@ -271,7 +287,8 @@ if (nativeJournal is not null)
             return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
         }).RequireAuthorization("recovery");
     }
-    NativeSessionEndpointConfiguration.Map(app, "/run", NativeSessionAgentFactory.Create(native, nativeName, [nativeFunction], nativeCatalog, accessor), "recovery");
+    var observedAgent = (AIAgent)FixtureIntegrationReflection.Call(null, typeof(NativeSessionAgentFactory), "CreateObservedForTests", native, nativeName, new[] { nativeFunction }, nativeCatalog, accessor, (Action<string>)nativeGate.Observe)!;
+    NativeSessionEndpointConfiguration.Map(app, "/run", observedAgent, "recovery");
 }
 else HashbrownEndpointConfiguration.Map(app, "/run",
     client.AsAIAgent(name: "Hashbrown", tools: [AIFunctionFactory.Create(tools.LookupAirport, "lookupAirport")]),

@@ -1,4 +1,5 @@
 import {
+  type DotnetHostSelection,
   type HistoricalDotnetHostSelection,
   resolveDotnetHost,
   selectDotnetHost,
@@ -17,6 +18,12 @@ export interface DurableFixtureCluster {
   readonly connectionString: string;
   /** Starts only the explicitly supplied, hash-verified immutable historical test executable. */
   readonly startHistorical: (
+    environment?: Readonly<Record<string, string>>,
+  ) => Promise<DotnetFixture>;
+  /** Starts an explicitly pinned independently retained published package; never changes candidate selection. */
+  readonly startPublished: (
+    selection: DotnetHostSelection,
+    origins: readonly [string, string],
     environment?: Readonly<Record<string, string>>,
   ) => Promise<DotnetFixture>;
   readonly start: (
@@ -98,6 +105,7 @@ export async function withDurableCluster<T>(
     workerEnvironment: Readonly<Record<string, string>> = {},
     selection:
       typeof hostSelection | HistoricalDotnetHostSelection = hostSelection,
+    packageOrigins?: readonly [string, string],
   ) => {
     let ready!: (fixture: DotnetFixture) => void;
     let fail!: (error: unknown) => void;
@@ -123,6 +131,7 @@ export async function withDurableCluster<T>(
       },
       router,
       selection,
+      packageOrigins,
     );
     running.push(task);
     void task.catch(fail);
@@ -136,6 +145,12 @@ export async function withDurableCluster<T>(
       schema,
       connectionString: database.connectionString,
       start,
+      startPublished: (selection, origins, values = {}) => {
+        if (selection.HASHBROWN_DOTNET_HOST_MODE !== 'package')
+          throw new Error('Explicit retained published package required');
+        resolveDotnetHost(selection);
+        return start(values, selection, origins);
+      },
       startHistorical: (values = {}) => {
         if (!historicalHost)
           throw new Error('Explicit historical test host required');

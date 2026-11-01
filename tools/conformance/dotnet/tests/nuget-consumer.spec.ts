@@ -783,7 +783,7 @@ export function spawn(command,argv,options){
   let status=0;
   if(argv[0].endsWith('/nuget-consumer/prepare.mjs'))await fs.writeFile(argv.at(-1),'{}');
   else if(argv[0].endsWith('/live-consumer/prepare.mjs')){const metadataPath=path.join(config.root,'npm.json');await fs.writeFile(metadataPath,'{}');child.stdout.emit('data',Buffer.from(JSON.stringify({metadataPath})+'\\\\n'));}
-  else if(argv[0].endsWith('/upgrade-runner.mjs')){
+  else if(argv[0].endsWith('/recovery-upgrade-runner.mjs')){
    const raw=options.env.HASHBROWN_UPGRADE_EVIDENCE_DIRECTORY;
    const gate=path.dirname(raw);const upload=path.join(config.repository,'test-results/dotnet-package',path.basename(gate));
    await fs.mkdir(raw,{recursive:true});
