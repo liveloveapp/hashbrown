@@ -128,7 +128,7 @@ results and 48 live results across eight groups, with 75 actual model calls and 
 reserved calls. Those results do not qualify milestone-two native approvals. The
 Task7 source matrix has 664 actual result identities reported in its current
 handoff. Published package qualification uses separate signature, payload and
-physical bundle acceptance evidence. Current milestone-two live qualification is pending.
+physical bundle acceptance evidence. Published-package live qualification now has 54 actual passed cases, three preflights and 93 model/wire calls using NuGet `0.1.0-preview.1` and published npm `0.8.3`; see the [versioned qualification record](../../../docs/superpowers/research/2026-10-31-dotnet-public-live-qualification.md). The browser matrix uses Responses, with Azure CLI Chat Completions covered by one preflight.
 Documentation compilation alone establishes no provider, browser or published-SDK
 qualification; preserve each gate's raw evidence and do not substitute intended
 counts for passing results.
@@ -444,8 +444,7 @@ npx nx check-docs dotnet-conformance --metadata=/absolute/path/candidate.json
 Missing or changed metadata fails closed. The check requires an already prepared
 candidate, retains sixteen standard and sixteen native program identities, and
 checks React/Angular parity. It does not create a replacement candidate.
-The recorded 54-case live result remains historical source-integration evidence;
-it is not live NuGet qualification.
+The historical 54-case source result remains distinct from the subsequently audited [54-case public NuGet live qualification](../../../docs/superpowers/research/2026-10-31-dotnet-public-live-qualification.md). Each has its own immutable package/runner provenance; do not substitute historical source evidence for a published-package run.
 
 Applications own authentication, authorization, PostgreSQL, configuration and
 provider secrets. For a source-to-package upgrade, remove copied Integration files
