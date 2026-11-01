@@ -141,6 +141,24 @@ test('postDevTo throws OutcomeUnknownError when a 2xx body is unreadable', async
   expect(error).toBeInstanceOf(OutcomeUnknownError);
 });
 
+test.each([
+  ['an empty body', () => new Response('', { status: 201 })],
+  ['no id', () => jsonResponse({ url: 'https://dev.to/a' }, { status: 201 })],
+  ['no URL', () => jsonResponse({ id: 42 }, { status: 201 })],
+])(
+  'postDevTo throws OutcomeUnknownError when the create answers 2xx with %s',
+  async (_, respond) => {
+    const fetchMock = vi.fn(async () => respond());
+
+    const error = await postDevTo('key-1', draft, fetchMock).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(OutcomeUnknownError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
+
 test.each([400, 401, 422])(
   'postDevTo throws an ordinary error when dev.to answers %i',
   async (status) => {

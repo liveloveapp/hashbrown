@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { validateImage } from '../channels/image.ts';
+import type { Draft, DraftArticle } from '../channels/types.ts';
+import { validateDraft } from '../channels/validation.ts';
 
 const TIME_ZONE = 'America/New_York';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -79,6 +81,28 @@ export const draftSchemas = {
   blog: blogDraft,
   devto: devtoDraft,
 } as const;
+
+/**
+ * Checks a stored draft the way approval must: its channel's shape, then the
+ * adapter's own dispatch-time rules (length limits included), so an approved
+ * post is never one the dispatcher would reject and retry until it fails.
+ *
+ * @throws When the draft does not match its channel's shape, or a
+ *   `ValidationError` when the adapter would reject it.
+ */
+export function assertApprovable(
+  channel: keyof typeof draftSchemas,
+  draft: unknown,
+): void {
+  draftSchemas[channel].parse(draft);
+  if (channel === 'x' || channel === 'linkedin') {
+    validateDraft(draft as Draft);
+  } else if (channel === 'devto') {
+    // The markdown body is read from the blog at dispatch; stand in for it.
+    const { article } = draft as { article: DraftArticle };
+    validateDraft({ channel: 'devto', text: 'body', article });
+  }
+}
 
 /** The calendar date (`YYYY-MM-DD`) of an instant in America/New_York. */
 export function newYorkDate(instant: Date): string {
