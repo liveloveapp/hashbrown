@@ -18,7 +18,7 @@ He says what he did or found, names the specific thing, and gives a plain verdic
 - Never: delve, leverage, seamless, robust, unlock, elevate, landscape, game-changer, supercharge, "the future of", "In today's...", "Here's the thing", "Let that sink in", "not X but Y", "it's not just X", "I'm thrilled to announce", triplets for rhythm, colon reveals.
 - Always name the specific thing: the package, the version, the number, the API.
 - X shape: what he did or found, one concrete detail, a plain verdict or a real question.
-- LinkedIn shape: one reflective opener, three to six single-line sentences, an honest admission where there is one, a short invite or question at the end. Link in the first comment.
+- LinkedIn shape: one reflective opener, three to six single-line sentences, an honest admission where there is one, a short invite or question at the end. The link, when there is one, goes on its own line at the end of the post.
 - Typos: occasional and natural, roughly one small slip in a few posts a week (a doubled word, a dropped letter, lowercase start). Never in names, package names, code, versions or URLs. The drafter adds them; the review shows them so Brian can keep or fix them.
 
 ## Images
@@ -36,12 +36,12 @@ A deterministic check runs on every draft, in `draft-week` and after every edit 
 | `emoji`         | More than one emoji across the whole post.                                                           |
 | `banned_phrase` | Any word or phrase from the "Never" list above, plus the "not X but Y" cadence.                      |
 | `length`        | X over 280 characters (each thread part too), LinkedIn over 3000, a dev.to title over 128.           |
-| `link`          | More than one URL in an X post. Any URL in LinkedIn `text` (it goes in `firstComment`).              |
+| `link`          | More than one URL in an X or LinkedIn post.                                                          |
 | `no_sources`    | A post with no sources, on every kind including `blog`.                                              |
 
 The check does not catch triplets for rhythm, colon reveals, or a made-up anecdote. Those are on the drafter and on Brian in review.
 
-What is checked per channel: X looks at `text` and every thread part. LinkedIn looks at `text` and `firstComment`. dev.to looks at the article title and description. The blog looks at the title and, when given, the markdown body (dashes and banned phrases only).
+What is checked per channel: X looks at `text` and every thread part. LinkedIn looks at `text`. dev.to looks at the article title and description. The blog looks at the title and, when given, the markdown body (dashes and banned phrases only).
 
 ## What a post may say
 
@@ -75,7 +75,7 @@ Content rules:
 
 **X.** What he did or found, in the past tense, with one concrete detail and a plain verdict ("Pretty easy.") or a real question ("Anyone else hit this?"). At most one link. A thread, when there is one, is plain posts with no hook numbering.
 
-**LinkedIn.** A short reflective opener. Three to six one-sentence lines. An honest admission when there is one. End on a short invite or question. The link goes in the first comment, never in the post.
+**LinkedIn.** A short reflective opener. Three to six one-sentence lines. An honest admission when there is one. End on a short invite or question. The link, when there is one, is the last line of the post. There is no first comment: LinkedIn only lets partner apps comment through its API.
 
 **Blog.** Open with one sentence that restates the title or states the intent. No "Introduction" header. Tutorials get a `## Goals` block of three to five bullets (the last one can be "Have fun!"), "Let's" transitions with the work in the next line, headings as questions with the answer underneath, and an explicit `## Conclusion`. Essays are short and built around one question. Close with an invitation, not a call to action: "let me know in the comments", "Please share...", "Good luck!". Stepwise code walkthroughs use First, Next, Then, Finally, "Here is", "A few things to note:", "Let's review:".
 

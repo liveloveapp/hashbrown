@@ -33,25 +33,13 @@ async function createPost(
   return restliId;
 }
 
-async function createComment(
-  auth: LinkedInAuth,
-  postUrn: string,
-  text: string,
-): Promise<void> {
-  await linkedInPost(
-    auth,
-    `/socialActions/${encodeURIComponent(postUrn)}/comments`,
-    { actor: auth.authorUrn, object: postUrn, message: { text } },
-  );
-}
-
 /**
- * Posts the draft to LinkedIn, then its `firstComment` if it has one. The
- * draft must already be validated.
+ * Posts the draft to LinkedIn, link included in its text. The draft must
+ * already be validated. There is no first comment: commenting needs LinkedIn's
+ * partner-only Community Management API.
  *
  * @throws When the post cannot be created; {@link OutcomeUnknownError} when it
- * may have been (timeout, network error, 5xx, no id). A failed comment does
- * not throw, because the post is already live; it comes back as a warning.
+ * may have been (timeout, network error, 5xx, no id).
  */
 export async function postLinkedIn(
   auth: LinkedInAuth,
@@ -78,22 +66,10 @@ export async function postLinkedIn(
     lifecycleState: 'PUBLISHED',
     isReshareDisabledByAuthor: false,
   });
-  const result: PostResult = {
+  return {
     channel: 'linkedin',
     postId: postUrn,
     url: `https://www.linkedin.com/feed/update/${postUrn}/`,
     postedAt: new Date().toISOString(),
   };
-
-  if (draft.firstComment) {
-    try {
-      await createComment(auth, postUrn, draft.firstComment);
-    } catch (error) {
-      result.warnings = [
-        `Post is live but the first comment failed; add it by hand. ${(error as Error).message}`,
-      ];
-    }
-  }
-
-  return result;
 }

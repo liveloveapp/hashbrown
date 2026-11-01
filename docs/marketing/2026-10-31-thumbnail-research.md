@@ -64,7 +64,7 @@ Organic photo guidance permits image aspect ratios from 3:1 to 4:5 and a 5 MB up
 
 Advertising documentation separately lists 1200 × 628 landscape, 1200 × 1200 square, and a 4:5 vertical recommendation, with paid vertical delivery restricted to mobile. That restriction belongs to the ad product; do not state that organic portrait posts disappear on desktop. Proposed organic exports: 1200 × 1200 and 1200 × 1500, followed by actual feed/crop checks. [Single-image advertising specifications](https://www.linkedin.com/help/linkedin/answer/a426534/single-image-ads-advertising-specifications?lang=en).
 
-The existing LinkedIn plan puts links in the author's first comment. Keep that editorial choice for this round. The inspected sources do not establish a universal organic distribution benefit from that placement; extra navigation may also lose visits. Do not turn “links in comments beat links in posts” into a factual design requirement. A future placement experiment needs its own authorization and comparable posts.
+The LinkedIn plan at the time put links in the author's first comment. (Since superseded: the self-serve LinkedIn app cannot comment through the API, so the link now goes in the post text.) The inspected sources do not establish a universal organic distribution benefit from that placement; extra navigation may also lose visits. Do not turn “links in comments beat links in posts” into a factual design requirement. A future placement experiment needs its own authorization and comparable posts.
 
 ### Measurement
 

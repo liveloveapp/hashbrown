@@ -74,47 +74,22 @@ test('postLinkedIn creates a post with versioned headers and escaped parentheses
   expect(result.warnings).toBeUndefined();
 });
 
-test('postLinkedIn posts firstComment on the new post after the post, unescaped', async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValueOnce(created())
-    .mockResolvedValueOnce(jsonResponse({}, { status: 201 }));
+test('postLinkedIn keeps a link in the post body and makes no comment call', async () => {
+  const fetchMock = vi.fn<typeof fetch>(async () => created());
 
   const result = await postLinkedIn(authWith(fetchMock), {
     channel: 'linkedin',
-    text: 'hi',
-    firstComment: 'Read it: https://hashbrown.dev/blog/x?utm_source=linkedin',
+    text: 'Read it: https://hashbrown.dev/blog/x',
   });
 
-  expect(fetchMock.mock.calls[1][0]).toBe(
-    `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(POST_URN)}/comments`,
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][0]).toBe(
+    'https://api.linkedin.com/rest/posts',
   );
-  expect(bodyOf(fetchMock, 1)).toEqual({
-    actor: AUTHOR,
-    object: POST_URN,
-    message: {
-      text: 'Read it: https://hashbrown.dev/blog/x?utm_source=linkedin',
-    },
+  expect(bodyOf(fetchMock, 0)).toMatchObject({
+    commentary: 'Read it: https://hashbrown.dev/blog/x',
   });
   expect(result.warnings).toBeUndefined();
-});
-
-test('postLinkedIn returns the live post with a warning when the comment fails', async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValueOnce(created())
-    .mockResolvedValueOnce(
-      jsonResponse({ message: 'ACCESS_DENIED' }, { status: 403 }),
-    );
-
-  const result = await postLinkedIn(authWith(fetchMock), {
-    channel: 'linkedin',
-    text: 'hi',
-    firstComment: 'link',
-  });
-
-  expect(result.postId).toBe(POST_URN);
-  expect(result.warnings?.[0]).toMatch(/first comment failed.*403/);
 });
 
 test('postLinkedIn does not retry a 5xx create, so a post is never doubled', async () => {
@@ -197,22 +172,6 @@ test('postLinkedIn throws an ordinary error when LinkedIn rejects the create wit
   expect((error as Error).message).toMatch(/HTTP 400/);
 });
 
-test('postLinkedIn keeps a 503 on the first comment as a warning', async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValueOnce(created())
-    .mockResolvedValueOnce(new Response('boom', { status: 503 }));
-
-  const result = await postLinkedIn(authWith(fetchMock), {
-    channel: 'linkedin',
-    text: 'hi',
-    firstComment: 'link',
-  });
-
-  expect(result.postId).toBe(POST_URN);
-  expect(result.warnings?.[0]).toMatch(/first comment failed/);
-});
-
 const IMAGE_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jV1sAAAAASUVORK5CYII=',
   'base64',
@@ -236,20 +195,18 @@ function initialized(uploadUrl = UPLOAD_URL, image = IMAGE_URN): Response {
   return jsonResponse({ value: { uploadUrl, image } });
 }
 
-test('postLinkedIn loads, initializes and uploads the image before publishing and commenting', async () => {
+test('postLinkedIn loads, initializes and uploads the image before publishing', async () => {
   const fetchMock = vi
     .fn<typeof fetch>()
     .mockResolvedValueOnce(imageResponse())
     .mockResolvedValueOnce(initialized())
     .mockResolvedValueOnce(new Response(null, { status: 201 }))
-    .mockResolvedValueOnce(created())
-    .mockResolvedValueOnce(jsonResponse({}, { status: 201 }));
+    .mockResolvedValueOnce(created());
 
   const result = await postLinkedIn(authWith(fetchMock), {
     channel: 'linkedin',
     text: 'Image post',
     image: IMAGE,
-    firstComment: 'More here',
   });
 
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
@@ -257,7 +214,6 @@ test('postLinkedIn loads, initializes and uploads the image before publishing an
     'https://api.linkedin.com/rest/images?action=initializeUpload',
     UPLOAD_URL,
     'https://api.linkedin.com/rest/posts',
-    `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(POST_URN)}/comments`,
   ]);
   expect(bodyOf(fetchMock, 1)).toEqual({
     initializeUploadRequest: { owner: AUTHOR },
@@ -280,9 +236,6 @@ test('postLinkedIn loads, initializes and uploads the image before publishing an
   ).toBe('image/png');
   expect(bodyOf(fetchMock, 3)).toMatchObject({
     content: { media: { id: IMAGE_URN, altText: IMAGE.altText } },
-  });
-  expect(bodyOf(fetchMock, 4)).toMatchObject({
-    message: { text: 'More here' },
   });
   expect(result.postId).toBe(POST_URN);
 });
