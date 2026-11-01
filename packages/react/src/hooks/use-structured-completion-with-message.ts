@@ -69,6 +69,8 @@ export function useStructuredCompletionWithMessage<
     pendingInterrupts: chat.pendingInterrupts,
     isResuming: chat.isResuming,
     resume: chat.resume,
+    pendingConversationRecovery: chat.pendingConversationRecovery,
+    resumeConversationRecovery: chat.resumeConversationRecovery,
     recovery: chat.recovery,
     restoreConversation: chat.restoreConversation,
     getRecoveryConfiguration: chat.getRecoveryConfiguration,

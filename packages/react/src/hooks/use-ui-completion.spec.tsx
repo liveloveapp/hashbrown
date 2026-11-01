@@ -45,6 +45,8 @@ test('useUiCompletion converts structured output into rendered React elements', 
     ],
   };
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -108,6 +110,8 @@ test('useUiCompletion renders fallbacks when props are still streaming', () => {
   };
 
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -168,6 +172,8 @@ test('useUiCompletion returns null output when the structured completion is empt
   useStructuredCompletionMock.mockReset();
 
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -214,6 +220,8 @@ test('useUiCompletion output carries the id of the assistant message behind it',
   const structuredOutput = { ui: [] };
   mockCompletion(
     {
+      pendingConversationRecovery: undefined,
+      resumeConversationRecovery: vi.fn(),
       recovery: { revision: 0, required: false },
       restoreConversation: vi.fn(),
       getRecoveryConfiguration: vi.fn(),
@@ -272,6 +280,8 @@ test('useUiCompletion accepts UiKit inputs and renders their components', () => 
     ],
   };
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -343,6 +353,8 @@ test('useUiCompletion forwards the system prompt string unchanged', () => {
   });
 
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -381,6 +393,8 @@ test('useUiCompletion forwards the system prompt string unchanged', () => {
 test('useUiCompletion propagates thread identity without exposing persistence state', () => {
   useStructuredCompletionMock.mockReset();
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),
@@ -433,6 +447,8 @@ test('useUiCompletion forwards and returns shared agent state unchanged', () => 
   const setState = vi.fn();
   useStructuredCompletionMock.mockReset();
   mockCompletion({
+    pendingConversationRecovery: undefined,
+    resumeConversationRecovery: vi.fn(),
     recovery: { revision: 0, required: false },
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),

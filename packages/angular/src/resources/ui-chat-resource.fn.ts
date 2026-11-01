@@ -16,7 +16,9 @@ import {
   type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
+  type PendingConversationRecovery,
   type PendingInterruptBatch,
+  type ResumeConversationRecoveryOptions,
   type ResumeOptions,
   s,
   type SubagentRun,
@@ -129,6 +131,17 @@ export interface UiChatResourceRef<
   readonly isResuming: Signal<boolean>;
   /** Submit a complete response batch to resume the interrupted interaction. */
   resume(options: ResumeOptions): void;
+
+  /** The inert browser recovery batch awaiting explicit settlement. */
+  readonly pendingConversationRecovery: Signal<
+    PendingConversationRecovery | undefined
+  >;
+
+  /**
+   * Explicitly settle every recovered browser call and protected decision.
+   * @param options - The complete outcomes and decisions for the current recovery batch.
+   */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
 
   /** The local recovery revision and whether an explicit restore is required. */
   readonly recovery: Signal<ConversationRecoveryState>;

@@ -8,7 +8,9 @@ import {
   createChatRuntime,
   type FinishReason,
   type JsonValue,
+  type PendingConversationRecovery,
   type PendingInterruptBatch,
+  type ResumeConversationRecoveryOptions,
   type ResumeOptions,
   s,
   type SubagentRun,
@@ -122,6 +124,15 @@ export interface UseStructuredChatResult<
 
   /** Submit a complete response batch to resume the interrupted interaction. */
   resume(options: ResumeOptions): void;
+
+  /** The inert browser recovery batch awaiting explicit settlement. */
+  readonly pendingConversationRecovery: PendingConversationRecovery | undefined;
+
+  /**
+   * Explicitly settle every recovered browser call and protected decision.
+   * @param options - The complete outcomes and decisions for the current recovery batch.
+   */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
 
   /** The local recovery revision and whether an explicit restore is required. */
   readonly recovery: ConversationRecoveryState;
@@ -381,6 +392,9 @@ export function useStructuredChat<
 
   const internalMessages = useHashbrownSignal(runtimeRef.current.messages);
   const recovery = useHashbrownSignal(getRuntime().recovery);
+  const pendingConversationRecovery = useHashbrownSignal(
+    getRuntime().pendingConversationRecovery,
+  );
   const subagents = useHashbrownSignal(getRuntime().subagents);
   const pendingInterrupts = useHashbrownSignal(getRuntime().pendingInterrupts);
   const isResuming = useHashbrownSignal(getRuntime().isResuming);
@@ -457,6 +471,8 @@ export function useStructuredChat<
     pendingInterrupts,
     isResuming,
     resume: getRuntime().resume,
+    pendingConversationRecovery,
+    resumeConversationRecovery: getRuntime().resumeConversationRecovery,
     recovery,
     restoreConversation: getRuntime().restoreConversation,
     getRecoveryConfiguration: getRuntime().getRecoveryConfiguration,
