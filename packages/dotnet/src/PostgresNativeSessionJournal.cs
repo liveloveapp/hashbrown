@@ -6,7 +6,7 @@ using Npgsql;
 namespace Hashbrown.AspNetCore;
 
 /// <summary>Short-transaction native session ownership journal; initialize before accepting native requests.</summary>
-public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal
+public sealed partial class PostgresNativeSessionJournal : INativeSessionJournal, INativeSessionBrowserRecoveryJournal
 {
   private readonly NpgsqlDataSource _source;
   private readonly NativeToolCatalog _catalog;

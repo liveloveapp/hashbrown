@@ -154,7 +154,7 @@ foreach (var scenario in new[] { "unknown-separate", "known-parent", "known-inde
     var publicMessages = new JsonArray(descriptors.Select(item => (JsonNode?)new JsonObject { ["id"] = "assistant-" + item.Call.Id, ["role"] = "assistant", ["content"] = "", ["toolCalls"] = new JsonArray(new JsonObject { ["id"] = item.Call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = "backend", ["arguments"] = item.Call.Arguments.GetRawText() } }) }).ToArray());
     var raw = new JsonObject { ["threadId"] = "mapping", ["runId"] = "mapping", ["messages"] = publicMessages, ["tools"] = new JsonArray() }.ToJsonString();
     var input = JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!;
-    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", raw, null, null], null)!;
+    var context = Activator.CreateInstance(contextType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [registration, new DefaultHttpContext(), input, "owned", "owned", raw, null, null, null], null)!;
     contextType.GetProperty("ApprovalEvidence", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(context, evidence);
     var converted = descriptors.Select(item => new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(item.Call.Id, "backend", JsonSerializer.Deserialize<Dictionary<string, object?>>(item.Call.Arguments))]) { MessageId = "assistant-" + item.Call.Id }).ToList();
     if (scenario == "unknown-moved-calls") converted.Reverse();

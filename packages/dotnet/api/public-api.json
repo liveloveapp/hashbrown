@@ -1616,7 +1616,10 @@
       "name": "Hashbrown.AspNetCore.PostgresNativeSessionJournal",
       "attributes": "Public, Sealed, BeforeFieldInit",
       "baseType": "System.Object",
-      "interfaces": ["Hashbrown.AspNetCore.INativeSessionJournal"],
+      "interfaces": [
+        "Hashbrown.AspNetCore.INativeSessionBrowserRecoveryJournal",
+        "Hashbrown.AspNetCore.INativeSessionJournal"
+      ],
       "generics": "",
       "members": [
         "method Public, Final, Virtual, HideBySig, VtableLayoutMask AuthorizePublicationAsync<>(Hashbrown.AspNetCore.NativeSavedReceipt receipt in=False out=False optional=False default=<none> nullable=NotNull/NotNull[],System.Threading.CancellationToken cancellationToken in=False out=False optional=True default=null nullable=NotNull/NotNull[]):System.Threading.Tasks.ValueTask`1<System.Boolean> nullable=NotNull/NotNull[NotNull/NotNull[]]",

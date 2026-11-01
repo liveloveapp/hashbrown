@@ -30,3 +30,7 @@ the published preview and a separate candidate reference/runtime consumer exerci
 compatibility before baseline acceptance. Package tests additionally execute the
 consumer against the runtime extracted from the locally packed candidate. These
 additions do not describe the published `0.1.0-preview.1` package.
+
+The PostgreSQL journal opts into the optional recovery interface through an
+explicit implementation. This reviewed assignability change adds no concrete
+public member and retains all existing signatures and documentation identifiers.

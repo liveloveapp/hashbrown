@@ -1,0 +1,718 @@
+#pragma warning disable MAAI001 // Public pinned native capture with real PostgreSQL and no provider network.
+using System.Runtime.CompilerServices;
+using System.Reflection;
+using System.Collections.Concurrent;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text.Encodings.Web;
+using Microsoft.Agents.AI;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.AspNetCore;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+const string LegacyBypassResult = "Tool call invocation rejected. No approval response was provided for this approval required tool call.";
+const string UnavailableResult = """{"hashbrownRecovery":{"version":1,"status":"result-unavailable","effect":"unknown","message":"The browser result is unavailable after recovery. The operation may already have occurred. No retry was performed."}}""";
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL fixture is required."));
+var schema = "browser_recovery_" + Guid.NewGuid().ToString("N");
+var catalog = new NativeToolCatalog([]);
+var journal = new PostgresNativeSessionJournal(source, catalog, "model-v1", schema);
+var key = new NativeSessionKey("agent", "alice", "browser-only", new Dictionary<string, string> { ["isolation"] = "alice", ["tenant"] = "one" });
+var initial = """{"threadId":"browser-only","runId":"initial","messages":[{"id":"user","role":"user","content":"run"}],"tools":[{"name":"frontend","description":"browser","parameters":{"type":"object"}}],"forwardedProps":{}}""";
+var prefix = """{"threadId":"browser-only","runId":"initial","messages":[{"id":"user","role":"user","content":"run"},{"id":"assistant","role":"assistant","toolCalls":[{"id":"browser","type":"function","function":{"name":"frontend","arguments":"{}"}}]}],"tools":[{"name":"frontend","description":"browser","parameters":{"type":"object"}}],"forwardedProps":{}}""";
+try
+{
+    await journal.InitializeAsync();
+    var owner = await journal.TryAcquireAsync(key, initial);
+    Check(owner.Status == 200 && owner.Lease is not null, "Setup must acquire genuine public journal ownership.");
+    var saved = await journal.SaveAsync(owner.Lease!, new NativeSessionSave("{}", prefix, [], ["browser"], false));
+    Check(saved is not null && await journal.AuthorizePublicationAsync(saved) && await journal.FinalizePublicationAsync(saved), "Setup must durably save and publish the browser-only snapshot through public journal boundaries.");
+
+    var status = await journal.ReadStatusAsync(key);
+
+    Check(status.Status == 200 && status.State == "Ready" && status.PublicRequest is not null, "Setup must expose the published canonical prefix.");
+    Check(status.BrowserRecoveryCallIds is not null && status.BrowserRecoveryCallIds.SequenceEqual(new[] { "browser" }), "Published browser-only Ready snapshot must advertise exact pending recovery call IDs.");
+    Check((object)journal is INativeSessionBrowserRecoveryJournal, "PostgreSQL journal must explicitly implement browser recovery capability.");
+    var recoveryJournal = (INativeSessionBrowserRecoveryJournal)(object)journal;
+    var settlement = JsonNode.Parse(prefix)!.AsObject();
+    settlement["runId"] = "recovered";
+    settlement["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"browser-result","role":"tool","toolCallId":"browser","content":"known"}"""));
+    settlement["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = status.Revision, outcomes = new[] { new { toolCallId = "browser", status = "result" } } } });
+    var originalRaw = settlement.ToJsonString();
+    var recovery = new NativeBrowserRecoveryRequest(1, status.Revision, [new("browser", "result")]);
+
+    var collision = settlement.DeepClone().AsObject();
+    collision["messages"]![2]!["id"] = "browser";
+    var beforeCollision = await Authority();
+
+    var collisionResult = await recoveryJournal.TryAcquireBrowserRecoveryAsync(key, collision.ToJsonString(), recovery);
+
+    Check(collisionResult.Status == 400, "Fresh recovery result message IDs must not collide with historical tool-call IDs at the current revision.");
+    Check(await Authority() == beforeCollision, "Rejected result identity collision must leave every session authority byte unchanged.");
+
+    var nullCall = settlement.DeepClone().AsObject();
+    nullCall["messages"]![1]!["toolCalls"]![0] = null;
+    var beforeNull = await Authority();
+    NativeSessionAdmission? nullAdmission = null;
+    Exception? nullFailure = null;
+
+    try { nullAdmission = await recoveryJournal.TryAcquireBrowserRecoveryAsync(key, nullCall.ToJsonString(), recovery); }
+    catch (Exception exception) { nullFailure = exception; }
+
+    Check(nullFailure is null && nullAdmission?.Status == 400, "Malformed null call must return bounded400 before ownership, never escape with " + nullFailure?.GetType().Name);
+    Check(await Authority() == beforeNull, "Rejected null call must leave session authority unchanged.");
+
+    var mutations = new (string Name, Action<JsonObject> Change)[]
+    {
+        ("changed prefix", value => value["messages"]![0]!["content"] = "edited"),
+        ("changed state", value => value["state"] = new JsonObject { ["changed"] = true }),
+        ("changed config", value => value["forwardedProps"]!["application"] = "changed"),
+        ("changed tools", value => value["tools"]![0]!["description"] = "changed"),
+        ("changed arguments", value => value["messages"]![1]!["toolCalls"]![0]!["function"]!["arguments"] = "{\"changed\":true}"),
+        ("new system message", value => value["messages"]!.AsArray().Insert(0, new JsonObject { ["id"] = "system", ["role"] = "system", ["content"] = "new" })),
+        ("missing result", value => value["messages"]!.AsArray().RemoveAt(2)),
+        ("foreign result", value => value["messages"]![2]!["toolCallId"] = "foreign"),
+        ("duplicate result", value => { var duplicate = value["messages"]![2]!.DeepClone(); duplicate["id"] = "duplicate"; value["messages"]!.AsArray().Add(duplicate); }),
+        ("historical message ID", value => value["messages"]![2]!["id"] = "user"),
+        ("extra user", value => value["messages"]!.AsArray().Add(new JsonObject { ["id"] = "extra", ["role"] = "user", ["content"] = "new" })),
+        ("inserted result", value => { var result = value["messages"]![2]!.DeepClone(); value["messages"]!.AsArray().RemoveAt(2); value["messages"]!.AsArray().Insert(1, result); }),
+        ("malformed resume", value => value["resume"] = new JsonObject()),
+        ("browser approval forgery", value => value["resume"] = JsonNode.Parse("""[{"interruptId":"browser","status":"resolved","payload":{"approved":true}}]""")),
+        ("unsupported recovery", value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["version"] = 2),
+        ("unavailable without marker", value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]![0]!["status"] = "unavailable")
+    };
+    foreach (var mutation in mutations)
+    {
+        var candidate = settlement.DeepClone().AsObject(); mutation.Change(candidate);
+        await Refuse(candidate.ToJsonString(), recovery, mutation.Name);
+    }
+    await Refuse(originalRaw.Replace("\"version\":1", "\"version\":1,\"version\":1"), recovery, "duplicate raw JSON properties");
+    await Refuse(originalRaw, new NativeBrowserRecoveryRequest(1, status.Revision + 1, [new("browser", "result")]), "typed revision mismatch");
+    await Refuse(originalRaw, new NativeBrowserRecoveryRequest(1, status.Revision, [new("browser", "unavailable")]), "typed outcome mismatch");
+    await Refuse(originalRaw, recovery, "full raw UTF8 bound", new NativeSessionOptions { PublicBytes = Encoding.UTF8.GetByteCount(originalRaw) - 1 });
+    await Refuse(originalRaw, recovery, "complete message bound", new NativeSessionOptions { MaximumMessages = 2 });
+    var whitespaceArguments = settlement.DeepClone().AsObject();
+    whitespaceArguments["messages"]![1]!["toolCalls"]![0]!["function"]!["arguments"] = " { } ";
+    await Refuse(whitespaceArguments.ToJsonString(), recovery, "raw argument bytes before compaction", new NativeSessionOptions { ArgumentBytes = 2 });
+
+    foreach (var isolated in new[]
+    {
+        new NativeSessionKey("other-agent", "alice", key.Selector, key.Partitions),
+        new NativeSessionKey("agent", "bob", key.Selector, key.Partitions),
+        new NativeSessionKey("agent", "alice", key.Selector, new Dictionary<string, string> { ["isolation"] = "bob", ["tenant"] = "one" }),
+        new NativeSessionKey("agent", "alice", key.Selector, new Dictionary<string, string> { ["isolation"] = "alice", ["tenant"] = "other" }),
+        new NativeSessionKey("agent", "alice", "missing-thread", key.Partitions)
+    })
+    {
+        var candidate = settlement.DeepClone().AsObject(); candidate["threadId"] = isolated.Selector;
+        var before = await Authority();
+        var isolatedResult = await recoveryJournal.TryAcquireBrowserRecoveryAsync(isolated, candidate.ToJsonString(), recovery);
+        var isolatedStatus = await journal.ReadStatusAsync(isolated);
+        Check(isolatedResult.Status == 410 && isolatedStatus.Status == 410 && await Authority() == before, "Every wrong agent/scope/isolation/partition/thread key must be indistinguishably absent without altering authority.");
+    }
+    string originalPayload;
+    await using (var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", key.Id); originalPayload = (string)(await command.ExecuteScalarAsync())!; }
+    foreach (var corruption in new[] { "unsupported-format", "missing-native", "invalid-native", "foreign-browser", "missing-approvals" })
+    {
+        var bad = JsonNode.Parse(originalPayload)!.AsObject();
+        if (corruption == "unsupported-format") bad["formatVersion"] = 99;
+        else if (corruption == "missing-native") bad["nativeJson"] = null;
+        else if (corruption == "invalid-native") bad["nativeJson"] = "[]";
+        else if (corruption == "foreign-browser") bad["expectedBrowserCallIds"] = new JsonArray("foreign");
+        else bad.Remove("approvals");
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", key.Id); command.Parameters.AddWithValue("payload", bad.ToJsonString()); await command.ExecuteNonQueryAsync(); }
+        var before = await Authority();
+        var corruptStatus = await journal.ReadStatusAsync(key);
+        var corruptAdmission = await recoveryJournal.TryAcquireBrowserRecoveryAsync(key, originalRaw, recovery);
+        Check(corruptStatus.BrowserRecoveryCallIds is null && corruptAdmission.Status >= 400 && await Authority() == before, "Corrupt/unsupported saved evidence must refuse without ownership or mutation: " + corruption);
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", key.Id); command.Parameters.AddWithValue("payload", originalPayload); await command.ExecuteNonQueryAsync(); }
+    }
+    var incompatible = new PostgresNativeSessionJournal(source, catalog, "different-model", schema);
+    var beforeIncompatible = await Authority();
+    Check((await ((INativeSessionBrowserRecoveryJournal)incompatible).TryAcquireBrowserRecoveryAsync(key, originalRaw, recovery)).Status == 409 && (await incompatible.ReadStatusAsync(key)).Status == 409 && await Authority() == beforeIncompatible, "Changed model compatibility must conflict without acquiring or rewriting saved authority.");
+
+    await using (var command = source.CreateCommand($"INSERT INTO \"{schema}\".native_invocations(session_id,call_id,name,version,descriptor,state,captured_generation,dispatch_generation) VALUES(@id,'started-tombstone','unbound-server',1,NULL,'Started',@generation,@generation)")) { command.Parameters.AddWithValue("id", key.Id); command.Parameters.AddWithValue("generation", status.Generation); await command.ExecuteNonQueryAsync(); }
+    var beforeStarted = await Authority();
+
+    var startedStatus = await journal.ReadStatusAsync(key);
+
+    Check(startedStatus.Status == 503 && startedStatus.BrowserRecoveryCallIds is null && startedStatus.PublicRequest is null, "Ready browser capability must fail closed when an unresolved Started invocation tombstone exists.");
+    Check((await recoveryJournal.TryAcquireBrowserRecoveryAsync(key, originalRaw, recovery)).Status >= 400 && await Authority() == beforeStarted, "Started invocation tombstone must prevent recovery ownership without changing saved authority.");
+    await using (var command = source.CreateCommand($"SELECT state FROM \"{schema}\".native_invocations WHERE session_id=@id AND call_id='started-tombstone'")) { command.Parameters.AddWithValue("id", key.Id); Check((string)(await command.ExecuteScalarAsync())! == "Started", "Refusal must retain the Started invocation fence."); }
+    await using (var command = source.CreateCommand($"DELETE FROM \"{schema}\".native_invocations WHERE session_id=@id AND call_id='started-tombstone'")) { command.Parameters.AddWithValue("id", key.Id); await command.ExecuteNonQueryAsync(); }
+
+    var concurrent = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => recoveryJournal.TryAcquireBrowserRecoveryAsync(key, originalRaw, recovery).AsTask()));
+
+    Check(concurrent.Count(item => item.Status == 200) == 1 && concurrent.Count(item => item.Status == 409) == 7, "Exact captured revision must admit one browser recovery CAS winner.");
+    var winner = concurrent.Single(item => item.Status == 200);
+    Check(!winner.IsNew && winner.Snapshot!.NativeJson == "{}" && winner.Snapshot.PublicRequest == status.PublicRequest, "Recovery winner must restore the unchanged saved snapshot.");
+    Check(await journal.FailureCleanupAsync(winner.Lease!), "Pre-effect winner cleanup must release ownership.");
+    Check((await recoveryJournal.TryAcquireBrowserRecoveryAsync(key, originalRaw, recovery)).Status == 409, "Stale captured revision must conflict even for byte-identical transcript after Ready cleanup.");
+    await GenuineCapture(false);
+    await GenuineCapture(true);
+    await GenuineCapture(true, cleanup: true);
+    await GenuineCapture(true, refuseReservation: true);
+    await GenuineCapture(true, coldLegacyResult: true);
+    await GenuineCapture(true, resultOverride: "café \"quoted\" \\ slash\nline");
+    await GenuineCapture(true, resultOverride: UnavailableResult + " ");
+    await GenuineCapture(true, unavailableResult: true);
+    await GenuineCapture(true, multipleBrowsers: true);
+    await GenuineCapture(true, legacyWarm: true);
+    Console.WriteLine("Native browser recovery PostgreSQL contracts passed.");
+}
+finally
+{
+    await using var connection = await source.OpenConnectionAsync();
+    await using var drop = new NpgsqlCommand($"DROP SCHEMA IF EXISTS {schema} CASCADE", connection);
+    await drop.ExecuteNonQueryAsync();
+}
+
+async Task<string> Authority()
+{
+    await using var command = source.CreateCommand($"SELECT row_to_json(session)::text FROM \"{schema}\".native_sessions session WHERE id=@id");
+    command.Parameters.AddWithValue("id", key.Id);
+    return (string)(await command.ExecuteScalarAsync())!;
+}
+
+async Task Refuse(string raw, NativeBrowserRecoveryRequest typed, string name, NativeSessionOptions? options = null)
+{
+    var before = await Authority();
+    INativeSessionBrowserRecoveryJournal selected = options is null ? (INativeSessionBrowserRecoveryJournal)(object)journal : new PostgresNativeSessionJournal(source, catalog, "model-v1", schema, options);
+
+    var result = await selected.TryAcquireBrowserRecoveryAsync(key, raw, typed);
+
+    Check(result.Status == 400, "Current-revision recovery must reject " + name + " with400; actual=" + result.Status);
+    Check(await Authority() == before, "Rejected " + name + " must leave all session authority bytes unchanged.");
+}
+
+async Task GenuineCapture(bool mixed, bool cleanup = false, bool refuseReservation = false, bool legacyWarm = false, bool coldLegacyResult = false, string? resultOverride = null, bool unavailableResult = false, bool multipleBrowsers = false)
+{
+    var effects = 0;
+    var browserResultText = unavailableResult ? UnavailableResult : resultOverride ?? (coldLegacyResult ? LegacyBypassResult : "known result for browser");
+    var function = AIFunctionFactory.Create(() => { effects++; return "protected"; }, "backend");
+    var genuineCatalog = new NativeToolCatalog(mixed ? [new("backend", 1, function.JsonSchema, RequiresConfirmation: true)] : []);
+    var genuineJournal = new PostgresNativeSessionJournal(source, genuineCatalog, "genuine-v1", schema);
+    var model = new CaptureModel(mixed, multipleBrowsers);
+    var observations = new ConcurrentQueue<JsonNode>();
+    INativeSessionBrowserRecoveryJournal routeJournal = genuineJournal;
+    ReservationGate? gate = null;
+    if (refuseReservation) { routeJournal = DispatchProxy.Create<INativeSessionBrowserRecoveryJournal, ReservationGate>(); gate = (ReservationGate)(object)routeJournal; gate.Inner = genuineJournal; }
+    var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+    builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0"); builder.Logging.ClearProviders(); builder.Services.AddRouting();
+    builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, RecoveryAuthentication>("fixture", _ => { });
+    builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+    var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+    NativeSessionEndpointConfiguration.Configure(builder.Services, "native", routeJournal, genuineCatalog, http => http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var functions = mixed ? new AIFunction[] { new ApprovalRequiredAIFunction(function) } : Array.Empty<AIFunction>();
+    var observed = typeof(NativeSessionAgentFactory).GetMethod("CreateObservedForTests", BindingFlags.NonPublic | BindingFlags.Static)!;
+    var agent = (AIAgent)observed.Invoke(null, [model, "native", functions, genuineCatalog, accessor, (Action<string>)(value => observations.Enqueue(JsonNode.Parse(value)!))])!;
+    await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+    NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+    NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/recover/{threadId}", genuineJournal, "native", (context, thread) => new("native", context.User.FindFirstValue(ClaimTypes.NameIdentifier)!, thread, new Dictionary<string, string> { ["isolation"] = context.User.FindFirstValue(ClaimTypes.NameIdentifier)! }));
+    await app.StartAsync();
+    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(20) };
+    var thread = mixed ? cleanup ? "genuine-mixed-cleanup" : refuseReservation ? "genuine-mixed-refusal" : legacyWarm ? "genuine-mixed-legacy" : coldLegacyResult ? "genuine-mixed-cold-legacy" : unavailableResult ? "genuine-mixed-unavailable" : multipleBrowsers ? "genuine-mixed-multiple" : resultOverride is not null ? resultOverride.StartsWith("café", StringComparison.Ordinal) ? "genuine-mixed-unicode" : "genuine-mixed-marker-like" : "genuine-mixed" : "genuine-browser";
+    var genuineKey = new NativeSessionKey("native", "alice", thread, new Dictionary<string, string> { ["isolation"] = "alice" });
+    var input = JsonNode.Parse(initial)!.AsObject(); input["threadId"] = thread; input["context"] = new JsonArray(); input["state"] = new JsonObject();
+    using var response = await http.PostAsync("/run", new StringContent(input.ToJsonString(), Encoding.UTF8, "application/json"));
+    var wire = await response.Content.ReadAsStringAsync();
+    Check(response.IsSuccessStatusCode && wire.Contains("RUN_FINISHED", StringComparison.Ordinal) && !wire.Contains("RUN_ERROR", StringComparison.Ordinal), "Genuine native browser publication must complete: " + wire);
+    NativeSessionStatus current = await genuineJournal.ReadStatusAsync(genuineKey);
+    using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    while (current.State == "Publishing") { await Task.Delay(10, budget.Token); current = await genuineJournal.ReadStatusAsync(genuineKey); }
+    Check(current.State == "Ready" && current.BrowserRecoveryCallIds is not null && model.Calls == 1 && effects == 0, "Public native capture/save/publication must produce real Ready browser evidence with zero protected effects.");
+    Check(observations.Any(item => item["stage"]?.GetValue<string>() == "Create.Guard") && observations.Any(item => item["stage"]?.GetValue<string>() == "Run.Guard"), "Passive own-factory preparation hook must observe genuine initial session creation/run.");
+    Check(current.BrowserRecoveryCallIds!.SequenceEqual(mixed && !multipleBrowsers ? new[] { "browser" } : new[] { "browser", "browser-2" }), "Genuine browser call order must survive public capture and durable publication.");
+    await using (var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id"))
+    {
+        command.Parameters.AddWithValue("id", genuineKey.Id);
+        var payload = JsonNode.Parse((string)(await command.ExecuteScalarAsync())!)!;
+        Check(payload["nativeJson"] is not null && !payload["nativeJson"]!.GetValue<string>().Contains("\"recovery\"", StringComparison.Ordinal), "Actual public native session serialization must persist without transient recovery.");
+        Check((payload["approvals"]!["pendingBatch"] is not null) == mixed, "Browser-only capture must never manufacture a protected approval batch.");
+    }
+    if (mixed)
+        Check(current.PendingInterrupts?.Count == 2 && current.PendingInterrupts.Select(item => item.ToolCallId).ToHashSet().SetEquals(new[] { "protected-1", "protected-2" }), "Genuine mixed Ready recovery must include every protected interrupt alongside browser capability.");
+    var configuration = new JsonObject { ["tools"] = input["tools"]!.DeepClone(), ["forwardedProps"] = input["forwardedProps"]!.DeepClone() };
+    using var recoveryRead = new HttpRequestMessage(HttpMethod.Post, "/recover/" + thread) { Content = new StringContent(configuration.ToJsonString(), Encoding.UTF8, "application/json") };
+    recoveryRead.Headers.Add("Hashbrown-Recovery-Version", "2");
+    using var recovered = await http.SendAsync(recoveryRead);
+    var recoveredBody = JsonNode.Parse(await recovered.Content.ReadAsStringAsync())!;
+
+    Check(recovered.IsSuccessStatusCode && recoveredBody["schemaVersion"]!.GetValue<int>() == 2 && recoveredBody["disposition"]!.GetValue<string>() == "Pending" && recoveredBody["snapshot"]?["pendingBrowserRecovery"]?["serverRevision"]?.GetValue<long>() == current.Revision, "Actual authenticated V2 read must expose the exact genuine pending browser revision.");
+    if (mixed) Check(recoveredBody["snapshot"]?["interrupts"]?.AsArray().Count == 2, "Actual mixed V2 response must retain the complete protected interrupt set.");
+    if (mixed)
+    {
+        using var legacyRead = await http.PostAsync("/recover/" + thread, new StringContent(configuration.ToJsonString(), Encoding.UTF8, "application/json"));
+        var legacyBody = JsonNode.Parse(await legacyRead.Content.ReadAsStringAsync())!;
+        Check(legacyRead.IsSuccessStatusCode && legacyBody["schemaVersion"]!.GetValue<int>() == 1 && legacyBody["reason"]?.GetValue<string>() == "PendingMixedBrowserResult" && legacyBody["snapshot"] is null, "Actual absent-header V1 mixed recovery must preserve its blocker and exclude snapshot/capability.");
+    }
+    using (var foreignRead = new HttpRequestMessage(HttpMethod.Post, "/recover/" + thread) { Content = new StringContent(configuration.ToJsonString(), Encoding.UTF8, "application/json") })
+    {
+        foreignRead.Headers.Add("Hashbrown-Recovery-Version", "2"); foreignRead.Headers.Add("X-Fixture-Owner", "bob");
+        var before = await GenuineAuthority();
+        using var foreignResponse = await http.SendAsync(foreignRead);
+        Check((int)foreignResponse.StatusCode == 410 && await GenuineAuthority() == before, "Actual authenticated foreign scope recovery must reveal no history or authority.");
+    }
+    Check(model.Calls == 1 && effects == 0, "Recovery reads must not prepare native state or call providers/effects.");
+
+    if (legacyWarm)
+    {
+        const string legacyBypass = "Tool call invocation rejected. No approval response was provided for this approval required tool call.";
+        const string declined = "Tool call invocation rejected.";
+        var warm = JsonNode.Parse(current.PublicRequest!)!.AsObject(); warm["runId"] = "legacy-warm";
+        var decisions = new JsonArray();
+        foreach (var interrupt in current.PendingInterrupts!) decisions.Add(new JsonObject { ["interruptId"] = interrupt.Id, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = false } });
+        warm["resume"] = decisions;
+        var owner = await genuineJournal.TryAcquireAsync(genuineKey, warm.ToJsonString());
+        Check(owner.Status == 200, "Legacy warm complete native decisions must still acquire without any recovery envelope.");
+        var evidence = await genuineJournal.GetOwnedApprovalEvidenceAsync(owner.Lease!);
+        var full = NativeApprovalAdmission.Parse(warm.ToJsonString(), genuineKey, genuineCatalog, new());
+        Check(evidence is not null && await genuineJournal.TryAdmitApprovalBatchAsync(owner.Lease!, evidence.Batch.Batch.BatchId, full), "Legacy warm complete decision reservation must remain valid.");
+        var browser = evidence!.Batch.Batch.BrowserBindings.Single();
+        Check(await genuineJournal.SettleBrowserBypassResultAsync(owner.Lease!, evidence.Batch.Batch.BatchId, browser.RequestId, browser.CallId, JsonSerializer.SerializeToElement(legacyBypass)), "Current Owned genuine legacy bypass must still settle its exact fixed rejection.");
+        Check(await genuineJournal.GetOwnedApprovalEvidenceAsync(owner.Lease!) is { State: NativeApprovalState.DecisionAdmitted }, "Current Owned legacy absent-result evidence remains valid before its canonical save.");
+        var completed = JsonNode.Parse(full.CanonicalPublicRequest)!.AsObject();
+        completed["messages"]!.AsArray().Add(new JsonObject { ["id"] = "legacy-browser-result", ["role"] = "tool", ["toolCallId"] = browser.CallId, ["content"] = legacyBypass });
+        foreach (var descriptor in evidence.Batch.Batch.ProtectedRequests)
+        {
+            Check(await genuineJournal.SettleApprovalRejectionAsync(owner.Lease!, new(evidence.Batch.Batch.BatchId, descriptor.RequestId, descriptor.Call.Id, NativeApprovalDecisionKind.Declined, JsonSerializer.SerializeToElement(declined))), "Legacy warm declined member must settle under its original full reservation.");
+            completed["messages"]!.AsArray().Add(new JsonObject { ["id"] = "legacy-declined-" + descriptor.Call.Id, ["role"] = "tool", ["toolCallId"] = descriptor.Call.Id, ["content"] = declined });
+        }
+        var receipt = await genuineJournal.SaveAsync(owner.Lease!, new NativeSessionSave(owner.Snapshot!.NativeJson!, completed.ToJsonString(), [], [], true));
+        Check(receipt is not null && await genuineJournal.AuthorizePublicationAsync(receipt) && await genuineJournal.FinalizePublicationAsync(receipt), "Legacy warm results must publish through actual public saved receipt boundaries.");
+        var completeStatus = await genuineJournal.ReadStatusAsync(genuineKey);
+        Check(completeStatus.Status == 200 && completeStatus.TurnCompleted && completeStatus.BrowserRecoveryCallIds is null, "Historical settled legacy browser result must remain readable from genuine saved canonical history.");
+        string originalPayload;
+        await using (var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); originalPayload = (string)(await command.ExecuteScalarAsync())!; }
+        var resurrected = JsonNode.Parse(originalPayload)!.AsObject();
+        var changedPublic = JsonNode.Parse(resurrected["publicRequest"]!.GetValue<string>())!.AsObject();
+        var messages = changedPublic["messages"]!.AsArray();
+        messages.Remove(messages.Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == browser.CallId));
+        resurrected["publicRequest"] = NativeSessionHistory.Normalize(changedPublic.ToJsonString(), genuineKey, genuineCatalog, new());
+        resurrected["expectedBrowserCallIds"] = new JsonArray(browser.CallId); resurrected["turnCompleted"] = false;
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", resurrected.ToJsonString()); await command.ExecuteNonQueryAsync(); }
+        var before = await GenuineAuthority();
+
+        var resurrectedStatus = await genuineJournal.ReadStatusAsync(genuineKey);
+
+        Check(resurrectedStatus.Status == 503 && resurrectedStatus.PublicRequest is null && resurrectedStatus.BrowserRecoveryCallIds is null, "Historical settled legacy browser call cannot regain pending recovery capability when its canonical result is missing.");
+        var claimed = changedPublic.DeepClone().AsObject(); claimed["runId"] = "resurrected";
+        claimed["messages"]!.AsArray().Add(new JsonObject { ["id"] = "resurrected-result", ["role"] = "tool", ["toolCallId"] = browser.CallId, ["content"] = "different result" });
+        claimed["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = completeStatus.Revision, outcomes = new[] { new { toolCallId = browser.CallId, status = "result" } } } });
+        Check((await ((INativeSessionBrowserRecoveryJournal)genuineJournal).TryAcquireBrowserRecoveryAsync(genuineKey, claimed.ToJsonString(), new(1, completeStatus.Revision, [new(browser.CallId, "result")]))).Status >= 400 && await GenuineAuthority() == before, "Already settled historical browser call must not acquire a new recovery owner or alter durable evidence.");
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", originalPayload); await command.ExecuteNonQueryAsync(); }
+        Check((await genuineJournal.ReadStatusAsync(genuineKey)).TurnCompleted && model.Calls == 1 && effects == 0, "Restored valid historical legacy completion must retain its warm behavior and zero repeated effects.");
+        return;
+    }
+
+    var settlement = JsonNode.Parse(current.PublicRequest!)!.AsObject(); settlement["runId"] = "recovered";
+    var ids = current.BrowserRecoveryCallIds!;
+    foreach (var id in ids)
+        settlement["messages"]!.AsArray().Add(new JsonObject { ["id"] = "recovered-result-" + id, ["role"] = "tool", ["toolCallId"] = id, ["content"] = id == "browser-2" ? UnavailableResult : mixed ? browserResultText : "known result for " + id });
+    settlement["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = current.Revision, outcomes = ids.Select(id => new { toolCallId = id, status = id == "browser-2" || unavailableResult ? "unavailable" : "result" }).ToArray() } });
+    var typed = new NativeBrowserRecoveryRequest(1, current.Revision, ids.Select(id => new NativeBrowserRecoveryOutcome(id, id == "browser-2" || unavailableResult ? "unavailable" : "result")).ToArray());
+    INativeSessionBrowserRecoveryJournal capable = genuineJournal;
+    if (!mixed)
+    {
+        var before = await GenuineAuthority();
+        var reversed = settlement.DeepClone().AsObject();
+        var messages = reversed["messages"]!.AsArray(); var last = messages[^1]!.DeepClone(); messages[^1] = messages[^2]!.DeepClone(); messages[^2] = last;
+        Check((await capable.TryAcquireBrowserRecoveryAsync(genuineKey, reversed.ToJsonString(), typed)).Status == 400 && await GenuineAuthority() == before, "Genuine multi-browser result suffix cannot be reversed at the valid captured revision.");
+        INativeSessionBrowserRecoveryJournal limited = new PostgresNativeSessionJournal(source, genuineCatalog, "genuine-v1", schema, new NativeSessionOptions { MaximumCalls = 1 });
+        Check((await limited.TryAcquireBrowserRecoveryAsync(genuineKey, settlement.ToJsonString(), typed)).Status == 400 && await GenuineAuthority() == before, "Complete genuine multi-browser call set must obey a smaller configured call cap before ownership.");
+        DateTime expires;
+        await using (var command = source.CreateCommand($"SELECT expires_at FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); expires = (DateTime)(await command.ExecuteScalarAsync())!; }
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); await command.ExecuteNonQueryAsync(); }
+        var expiredAuthority = await GenuineAuthority();
+        var expired = await genuineJournal.ReadStatusAsync(genuineKey);
+        Check(expired.State == "Expired" && expired.BrowserRecoveryCallIds is null && (await capable.TryAcquireBrowserRecoveryAsync(genuineKey, settlement.ToJsonString(), typed)).Status == 410 && await GenuineAuthority() == expiredAuthority, "Expired genuine Ready snapshot must refuse without callbacks, ownership or capability.");
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET expires_at=@expires WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("expires", expires); await command.ExecuteNonQueryAsync(); }
+        Check(await GenuineAuthority() == before, "Ready expiry control must restore the exact original current-revision authority before valid acquisition.");
+    }
+    if (mixed)
+    {
+        var decisions = new JsonArray();
+        foreach (var interrupt in current.PendingInterrupts!)
+            decisions.Add(cleanup && decisions.Count == 1 ? new JsonObject { ["interruptId"] = interrupt.Id, ["status"] = "cancelled" } : new JsonObject { ["interruptId"] = interrupt.Id, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = cleanup } });
+        settlement["resume"] = decisions;
+        if (!cleanup && !refuseReservation)
+        {
+            string original;
+            await using (var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); original = (string)(await command.ExecuteScalarAsync())!; }
+            var bad = JsonNode.Parse(original)!.AsObject();
+            var badPublic = JsonNode.Parse(bad["publicRequest"]!.GetValue<string>())!.AsObject();
+            badPublic["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"unbound-parent","role":"assistant","toolCalls":[{"id":"unbound-browser","type":"function","function":{"name":"frontend","arguments":"{}"}}]}"""));
+            bad["publicRequest"] = NativeSessionHistory.Normalize(badPublic.ToJsonString(), genuineKey, genuineCatalog, new());
+            bad["expectedBrowserCallIds"]!.AsArray().Add("unbound-browser");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", bad.ToJsonString()); await command.ExecuteNonQueryAsync(); }
+            var before = await GenuineAuthority();
+
+            var unboundStatus = await genuineJournal.ReadStatusAsync(genuineKey);
+
+            Check(unboundStatus.BrowserRecoveryCallIds is null, "Mixed pending capability must require exact equality between all expected browser IDs and genuine browser bindings.");
+            Check(await GenuineAuthority() == before, "Mismatched mixed capability read must not mutate authority.");
+            var unboundRequest = badPublic.DeepClone().AsObject(); unboundRequest["runId"] = "unbound";
+            var unboundIds = ids.Concat(new[] { "unbound-browser" }).ToArray();
+            foreach (var id in unboundIds) unboundRequest["messages"]!.AsArray().Add(new JsonObject { ["id"] = "unbound-result-" + id, ["role"] = "tool", ["toolCallId"] = id, ["content"] = "known" });
+            unboundRequest["resume"] = decisions.DeepClone();
+            unboundRequest["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = current.Revision, outcomes = unboundIds.Select(id => new { toolCallId = id, status = "result" }).ToArray() } });
+            Check((await capable.TryAcquireBrowserRecoveryAsync(genuineKey, unboundRequest.ToJsonString(), new(1, current.Revision, unboundIds.Select(id => new NativeBrowserRecoveryOutcome(id, "result")).ToArray()))).Status >= 400 && await GenuineAuthority() == before, "Complete claimed transcript cannot substitute for a missing genuine mixed browser binding.");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", original); await command.ExecuteNonQueryAsync(); }
+        }
+        var partial = settlement.DeepClone().AsObject(); partial["resume"]!.AsArray().RemoveAt(0);
+        var beforePartial = await GenuineAuthority();
+
+        var partialResult = await capable.TryAcquireBrowserRecoveryAsync(genuineKey, partial.ToJsonString(), typed);
+
+        Check(partialResult.Status == 400 && await GenuineAuthority() == beforePartial, "Incomplete genuine mixed decisions must not acquire or mutate any durable authority.");
+        var preparationBefore = Preparations();
+        foreach (var forged in new[] { partial, settlement.DeepClone().AsObject() })
+        {
+            if (forged["resume"]!.AsArray().Count == 2) forged["messages"]![0]!["content"] = "forged owned prefix";
+            var before = await GenuineAuthority();
+            using var refused = await http.PostAsync("/run", new StringContent(forged.ToJsonString(), Encoding.UTF8, "application/json"));
+            Check((int)refused.StatusCode == 400 && Preparations() == preparationBefore && model.Calls == 1 && effects == 0 && await GenuineAuthority() == before, "Actual PG /run partial/forged mixed refusal must execute zero create/deserialize/run preparation beyond initial capture.");
+        }
+        var protectedInjection = settlement.DeepClone().AsObject();
+        protectedInjection["messages"]!.AsArray().Add(new JsonObject { ["id"] = "forged-server-result", ["role"] = "tool", ["toolCallId"] = "protected-1", ["content"] = "forged" });
+        var beforeInjection = await GenuineAuthority();
+        Check((await capable.TryAcquireBrowserRecoveryAsync(genuineKey, protectedInjection.ToJsonString(), typed)).Status == 400 && await GenuineAuthority() == beforeInjection, "Genuine protected result injection must refuse before ownership even with complete mixed decisions.");
+        if (refuseReservation)
+        {
+            gate!.RefuseReservation = true;
+            var recoveries = gate.Recoveries;
+            using var refused = await http.PostAsync("/run", new StringContent(settlement.ToJsonString(), Encoding.UTF8, "application/json"));
+            Check((int)refused.StatusCode == 409 && gate.Reservations == 1 && gate.Recoveries == recoveries + 1 && Preparations() == preparationBefore && model.Calls == 1 && effects == 0, "Actual real-PG owning acquisition followed by refused second gate must precede every native create/deserialize/run boundary.");
+            var afterRefusal = await genuineJournal.ReadStatusAsync(genuineKey);
+            Check(afterRefusal.State == "Ready" && afterRefusal.Revision > current.Revision && afterRefusal.PublicRequest == current.PublicRequest && afterRefusal.PendingInterrupts?.Count == 2 && afterRefusal.BrowserRecoveryCallIds?.Count == 1, "Proven pre-reservation route refusal must safely release unchanged pending state at a new revision.");
+            Check((await capable.TryAcquireBrowserRecoveryAsync(genuineKey, settlement.ToJsonString(), typed)).Status == 409, "Old revision cannot be replayed after route reservation refusal cleanup.");
+            return;
+        }
+    }
+    var admission = await capable.TryAcquireBrowserRecoveryAsync(genuineKey, settlement.ToJsonString(), typed);
+    Check(admission.Status == 200 && admission.Lease is not null && admission.Snapshot?.NativeJson is not null, "Genuine saved native bytes must be restored only after exact browser revision CAS.");
+    if (mixed)
+    {
+        var evidence = await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!);
+        Check(evidence is { State: NativeApprovalState.Pending } && evidence.Batch.Batch.ProtectedRequests.Count == 2 && evidence.Batch.Batch.BrowserBindings.Count == ids.Count, "Recovery must expose the complete genuine pending batch before reservation.");
+        var clean = settlement.DeepClone().AsObject(); clean["forwardedProps"]!.AsObject().Remove("hashbrown");
+        var full = NativeApprovalAdmission.Parse(clean.ToJsonString(), genuineKey, genuineCatalog, new());
+        var incomplete = new NativeApprovalAdmissionEnvelope(full.CanonicalPublicRequest, full.Decisions.Take(1).ToArray());
+        var beforeReservation = await GenuineAuthority();
+
+        var partialReserved = await genuineJournal.TryAdmitApprovalBatchAsync(admission.Lease!, evidence!.Batch.Batch.BatchId, incomplete);
+
+        Check(!partialReserved && await GenuineAuthority() == beforeReservation, "Partial second-gate decisions must not consume any batch or member.");
+        var wrongPublic = JsonNode.Parse(full.CanonicalPublicRequest)!.AsObject();
+        wrongPublic["messages"]!.AsArray().Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == "browser")!["content"] = "forged";
+        var wrongCanonical = new NativeApprovalAdmissionEnvelope(NativeSessionHistory.Normalize(wrongPublic.ToJsonString(), genuineKey, genuineCatalog, new()), full.Decisions);
+        Check(!await genuineJournal.TryAdmitApprovalBatchAsync(admission.Lease!, evidence.Batch.Batch.BatchId, wrongCanonical) && await GenuineAuthority() == beforeReservation, "Second gate must recheck the exact admitted canonical request.");
+        Check(!await genuineJournal.TryAdmitApprovalBatchAsync(admission.Lease! with { Token = "foreign" }, evidence.Batch.Batch.BatchId, full) && await GenuineAuthority() == beforeReservation, "Second gate must recheck the exact owning token.");
+        await using (var changed = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET revision=revision+1 WHERE id=@id")) { changed.Parameters.AddWithValue("id", genuineKey.Id); await changed.ExecuteNonQueryAsync(); }
+        var changedLineage = await GenuineAuthority();
+        Check(!await genuineJournal.TryAdmitApprovalBatchAsync(admission.Lease!, evidence.Batch.Batch.BatchId, full) && await GenuineAuthority() == changedLineage, "Second gate must refuse changed captured-revision lineage without consuming decisions.");
+        await using (var restore = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET revision=revision-1 WHERE id=@id")) { restore.Parameters.AddWithValue("id", genuineKey.Id); await restore.ExecuteNonQueryAsync(); }
+        Check(await GenuineAuthority() == beforeReservation, "Lineage test must restore the exact pending owner before its valid control.");
+        var reserved = await genuineJournal.TryAdmitApprovalBatchAsync(admission.Lease!, evidence.Batch.Batch.BatchId, full);
+
+        Check(reserved, "Complete genuine mixed browser recovery must reserve its full decision batch before native preparation.");
+        var admitted = await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!);
+        Check(admitted is { State: NativeApprovalState.DecisionAdmitted } && admitted.Decisions.Count == 2 && admitted.AdmittedGeneration == admission.Lease!.Generation && admitted.AdmittedRevision == admission.Lease.Revision + 1, "Complete second gate must bind every decision to the current owning generation.");
+        await using (var command = source.CreateCommand($"SELECT call_id,state,result_digest FROM \"{schema}\".native_approvals WHERE session_id=@id AND kind='BrowserBypass' ORDER BY call_id"))
+        {
+            command.Parameters.AddWithValue("id", genuineKey.Id);
+            await using var reader = await command.ExecuteReaderAsync(); var checkedCount = 0;
+            while (await reader.ReadAsync())
+            {
+                var callId = reader.GetString(0); var content = callId == "browser-2" ? UnavailableResult : browserResultText;
+                var expectedDigest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(new { formatVersion = 1, kind = "browser-recovery-result", callId, content })))));
+                Check(reader.GetString(1) == "Settled" && reader.GetString(2) == expectedDigest, "Every actual browser member must persist its exact call-scoped cold domain digest before native preparation.");
+                Check(expectedDigest != Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(content))))), "Cold browser result digest must be separated from the legacy plain-string codec even for identical content.");
+                checkedCount++;
+            }
+            Check(checkedCount == ids.Count, "Domain digest proof must inspect the complete browser membership.");
+        }
+        string originalAdmitted;
+        await using (var command = source.CreateCommand($"SELECT admitted_request FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); originalAdmitted = (string)(await command.ExecuteScalarAsync())!; }
+        if (coldLegacyResult)
+        {
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET admitted_request=@request WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("request", admission.Snapshot!.PublicRequest); await command.ExecuteNonQueryAsync(); }
+            var beforeMissingColdResult = await GenuineAuthority(); var preparationBeforeColdRead = Preparations();
+
+            var missingColdResult = await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!);
+
+            Check(missingColdResult is null, "Cold known result equal to legacy rejection must not remain authoritative after its admitted result suffix is removed.");
+            Check(await GenuineAuthority() == beforeMissingColdResult && Preparations() == preparationBeforeColdRead && model.Calls == 1 && effects == 0, "Missing cold legacy-valued suffix must refuse without mutation or native preparation.");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET admitted_request=@request WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("request", originalAdmitted); await command.ExecuteNonQueryAsync(); }
+            Check(await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!) is { State: NativeApprovalState.DecisionAdmitted }, "Exact cold legacy-valued result must remain valid after restoring its own admitted suffix.");
+        }
+        string MutateAdmitted(Action<JsonObject> mutate)
+        {
+            var candidate = JsonNode.Parse(originalAdmitted)!.AsObject(); mutate(candidate);
+            return NativeSessionHistory.Canonical(JsonSerializer.SerializeToElement(candidate));
+        }
+        var corruptAdmissions = new List<(string Name, string Json)>
+        {
+            ("malformed-shape", "{}"),
+            ("noncanonical", " " + originalAdmitted),
+            ("oversized", originalAdmitted + new string(' ', new NativeSessionOptions().PublicBytes)),
+            ("missing-complete-suffix", admission.Snapshot!.PublicRequest),
+            ("changed-known-content", MutateAdmitted(value => value["messages"]!.AsArray().Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == "browser")!["content"] = "changed after digest")),
+            ("changed-prefix", MutateAdmitted(value => value["messages"]![0]!["content"] = "changed prefix after digest")),
+            ("changed-config", MutateAdmitted(value => value["forwardedProps"]!["application"] = "changed after digest")),
+            ("duplicate-result", MutateAdmitted(value => { var duplicate = value["messages"]!.AsArray().Last()!.DeepClone(); duplicate["id"] = "duplicate-after-digest"; value["messages"]!.AsArray().Add(duplicate); }))
+        };
+        if (multipleBrowsers)
+        {
+            corruptAdmissions.Add(("missing-one-result", MutateAdmitted(value => value["messages"]!.AsArray().RemoveAt(value["messages"]!.AsArray().Count - 1))));
+            corruptAdmissions.Add(("reordered-complete-suffix", MutateAdmitted(value => { var messages = value["messages"]!.AsArray(); var last = messages[^1]!.DeepClone(); messages[^1] = messages[^2]!.DeepClone(); messages[^2] = last; })));
+            corruptAdmissions.Add(("swapped-result-call-ids", MutateAdmitted(value => { var messages = value["messages"]!.AsArray(); messages[^1]!["toolCallId"] = "browser"; messages[^2]!["toolCallId"] = "browser-2"; })));
+        }
+        foreach (var corruptAdmission in corruptAdmissions)
+        {
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET admitted_request=@request WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("request", corruptAdmission.Json); await command.ExecuteNonQueryAsync(); }
+            var beforeCorruptAdmission = await GenuineAuthority(); var preparationBeforeRead = Preparations();
+            NativeApprovalEvidence? corruptEvidence = null; Exception? corruptFailure = null;
+
+            try { corruptEvidence = await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!); }
+            catch (Exception exception) { corruptFailure = exception; }
+
+            Check(corruptFailure is null && corruptEvidence is null, "Corrupt admitted canonical request must return no evidence without escaping: " + corruptAdmission.Name + "; failure=" + corruptFailure?.GetType().Name);
+            Check(await GenuineAuthority() == beforeCorruptAdmission && Preparations() == preparationBeforeRead && model.Calls == 1 && effects == 0, "Corrupt admission reader must not mutate rows or prepare native execution.");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET admitted_request=@request WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("request", originalAdmitted); await command.ExecuteNonQueryAsync(); }
+        }
+        Check(await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!) is { State: NativeApprovalState.DecisionAdmitted }, "Restored exact admitted canonical evidence must remain usable before its valid continuation.");
+        string originalCurrentDigest;
+        await using (var command = source.CreateCommand($"SELECT result_digest FROM \"{schema}\".native_approvals WHERE session_id=@id AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); originalCurrentDigest = (string)(await command.ExecuteScalarAsync())!; }
+        foreach (var currentLineage in new[] { "generation", "revision", "unsupported-digest" })
+        {
+            var originalAuthority = await GenuineAuthority();
+            var update = currentLineage == "generation"
+                ? $"UPDATE \"{schema}\".native_approval_batches SET admitted_generation=@value WHERE session_id=@id; UPDATE \"{schema}\".native_approvals SET admitted_generation=@value WHERE session_id=@id AND kind='Protected'"
+                : currentLineage == "revision"
+                    ? $"UPDATE \"{schema}\".native_approval_batches SET admitted_revision=@value WHERE session_id=@id; UPDATE \"{schema}\".native_approvals SET admitted_revision=@value WHERE session_id=@id AND kind='Protected'"
+                    : $"UPDATE \"{schema}\".native_approvals SET result_digest=repeat('C',64) WHERE session_id=@id AND call_id='browser'";
+            await using (var command = source.CreateCommand(update)) { command.Parameters.AddWithValue("id", genuineKey.Id); if (currentLineage != "unsupported-digest") command.Parameters.AddWithValue("value", currentLineage == "generation" ? admission.Lease!.Generation - 1 : admission.Lease!.Revision); await command.ExecuteNonQueryAsync(); }
+            var beforeCurrentLineage = await GenuineAuthority(); var preparationBeforeRead = Preparations();
+            var invalidCurrent = await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!);
+            Check(invalidCurrent is null && await GenuineAuthority() == beforeCurrentLineage && Preparations() == preparationBeforeRead && effects == 0 && model.Calls == 1, "Current consumed cold digest must reject wrong owning lineage or unsupported codec without preparation: " + currentLineage);
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approval_batches SET admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id; UPDATE \"{schema}\".native_approvals SET admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND kind='Protected'; UPDATE \"{schema}\".native_approvals SET result_digest=@digest WHERE session_id=@id AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("generation", admitted!.AdmittedGeneration!.Value); command.Parameters.AddWithValue("revision", admitted.AdmittedRevision!.Value); command.Parameters.AddWithValue("digest", originalCurrentDigest); await command.ExecuteNonQueryAsync(); }
+            Check(await GenuineAuthority() == originalAuthority, "Current lineage/digest negative must restore exact complete valid authority.");
+        }
+        if (cleanup)
+        {
+            var approvedCall = evidence.Batch.Batch.ProtectedRequests[0].Call;
+            Check(await genuineJournal.TryStartDispatchAsync(admission.Lease!, approvedCall), "Approved recovered protected call must commit its genuine Started dispatch fence.");
+            Check(await genuineJournal.GetOwnedApprovalEvidenceAsync(admission.Lease!) is { State: NativeApprovalState.DecisionAdmitted }, "Live current owner evidence must remain valid while an approved dispatch is Started.");
+            Check(await genuineJournal.FailureCleanupAsync(admission.Lease!), "Mixed consumed decision cleanup must fence its owner.");
+            var blocked = await genuineJournal.ReadStatusAsync(genuineKey);
+            Check(blocked.Status == 200 && blocked.State == "Blocked" && blocked.PublicRequest is null && blocked.BrowserRecoveryCallIds is null && blocked.PendingInterrupts is null, "Consumed mixed cleanup must become bounded Blocked without recovery capability or public history.");
+            Check((await genuineJournal.InspectAsync(new HashSet<string> { "alice" }, genuineKey))!.Invocations.Any(item => item.Id == approvedCall.Id && item.State == "Started"), "Consumed cleanup must retain the genuine Started invocation tombstone.");
+            Check((await capable.TryAcquireBrowserRecoveryAsync(genuineKey, settlement.ToJsonString(), typed)).Status == 409 && !await genuineJournal.TryStartDispatchAsync(admission.Lease!, evidence.Batch.Batch.ProtectedRequests[0].Call), "Blocked consumed mixed cleanup cannot reacquire or dispatch with the prior owner.");
+            using var blockedRead = new HttpRequestMessage(HttpMethod.Post, "/recover/" + thread) { Content = new StringContent(configuration.ToJsonString(), Encoding.UTF8, "application/json") };
+            blockedRead.Headers.Add("Hashbrown-Recovery-Version", "2");
+            using var blockedResponse = await http.SendAsync(blockedRead);
+            var blockedBody = JsonNode.Parse(await blockedResponse.Content.ReadAsStringAsync())!;
+            Check(blockedBody["disposition"]?.GetValue<string>() == "UnknownEffect" && blockedBody["snapshot"] is null, "Actual V2 consumed cleanup read must expose bounded UnknownEffect with no snapshot.");
+        }
+        else
+        {
+            var completed = JsonNode.Parse(full.CanonicalPublicRequest)!.AsObject();
+            foreach (var descriptor in evidence.Batch.Batch.ProtectedRequests)
+            {
+                const string rejection = "Tool call invocation rejected.";
+                Check(await genuineJournal.SettleApprovalRejectionAsync(admission.Lease!, new(evidence.Batch.Batch.BatchId, descriptor.RequestId, descriptor.Call.Id, NativeApprovalDecisionKind.Declined, JsonSerializer.SerializeToElement(rejection))), "Genuine declined member must settle under the admitted current owner.");
+                completed["messages"]!.AsArray().Add(new JsonObject { ["id"] = "declined-result-" + descriptor.Call.Id, ["role"] = "tool", ["toolCallId"] = descriptor.Call.Id, ["content"] = rejection });
+            }
+            var receipt = await genuineJournal.SaveAsync(admission.Lease!, new NativeSessionSave(admission.Snapshot!.NativeJson!, completed.ToJsonString(), [], [], true));
+            Check(receipt is not null && await genuineJournal.AuthorizePublicationAsync(receipt) && await genuineJournal.FinalizePublicationAsync(receipt), "Journal must atomically save/publish exact accepted browser and declined protected canonical results.");
+            var final = await genuineJournal.ReadStatusAsync(genuineKey);
+            Check(final.Status == 200 && final.State == "Ready" && final.TurnCompleted && final.BrowserRecoveryCallIds is null && final.PublicRequest == NativeSessionHistory.Normalize(completed.ToJsonString(), genuineKey, genuineCatalog, new()), "Published completion must validate accepted browser digest from saved canonical payload after admitted_request clears.");
+            await using (var command = source.CreateCommand($"SELECT admitted_request,payload FROM \"{schema}\".native_sessions WHERE id=@id"))
+            {
+                command.Parameters.AddWithValue("id", genuineKey.Id);
+                await using var reader = await command.ExecuteReaderAsync();
+                Check(await reader.ReadAsync() && reader.IsDBNull(0) && !reader.GetString(1).Contains("\"recovery\"", StringComparison.Ordinal), "Saved canonical/native payload and cleared admitted_request must contain no transient recovery envelope.");
+            }
+            Check(JsonNode.Parse(final.PublicRequest!)!["messages"]!.AsArray().Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == "browser")!["content"]!.GetValue<string>() == browserResultText, "Cold saved canonical result must retain exact decoded Unicode, escaping, marker-like or legacy-fixed content.");
+            string savedPayload; string savedDigest;
+            await using (var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); savedPayload = (string)(await command.ExecuteScalarAsync())!; }
+            await using (var command = source.CreateCommand($"SELECT result_digest FROM \"{schema}\".native_approvals WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); savedDigest = (string)(await command.ExecuteScalarAsync())!; }
+            foreach (var resultCase in new[] { "digest", "canonical-content", "missing-canonical-result" })
+            {
+                if (resultCase == "digest")
+                {
+                    await using var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET result_digest=repeat('A',64) WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'"); command.Parameters.AddWithValue("id", genuineKey.Id); await command.ExecuteNonQueryAsync();
+                }
+                else
+                {
+                    var bad = JsonNode.Parse(savedPayload)!.AsObject(); var publicRoot = JsonNode.Parse(bad["publicRequest"]!.GetValue<string>())!.AsObject();
+                    var result = publicRoot["messages"]!.AsArray().Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == "browser");
+                    if (resultCase == "missing-canonical-result") { publicRoot["messages"]!.AsArray().Remove(result); bad["expectedBrowserCallIds"] = new JsonArray("browser"); bad["turnCompleted"] = false; }
+                    else result!["content"] = "forged";
+                    bad["publicRequest"] = NativeSessionHistory.Normalize(publicRoot.ToJsonString(), genuineKey, genuineCatalog, new());
+                    await using var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id"); command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", bad.ToJsonString()); await command.ExecuteNonQueryAsync();
+                }
+                var beforeCorruptResult = await GenuineAuthority();
+                var corruptResult = await genuineJournal.ReadStatusAsync(genuineKey);
+                Check(corruptResult.Status == 503 && corruptResult.PublicRequest is null && corruptResult.BrowserRecoveryCallIds is null && await GenuineAuthority() == beforeCorruptResult, "Saved accepted browser result must reject corrupted " + resultCase + " without mutation.");
+                await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET payload=@payload WHERE id=@id; UPDATE \"{schema}\".native_approvals SET result_digest=@digest WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("payload", savedPayload); command.Parameters.AddWithValue("digest", savedDigest); await command.ExecuteNonQueryAsync(); }
+            }
+            long batchGeneration; long batchRevision; long publishedRevision; DateTime childExpiry; long browserCaptured;
+            await using (var command = source.CreateCommand($"SELECT admitted_generation,admitted_revision,published_revision,expires_at FROM \"{schema}\".native_approval_batches WHERE session_id=@id"))
+            {
+                command.Parameters.AddWithValue("id", genuineKey.Id); await using var reader = await command.ExecuteReaderAsync(); await reader.ReadAsync();
+                batchGeneration = reader.GetInt64(0); batchRevision = reader.GetInt64(1); publishedRevision = reader.GetInt64(2); childExpiry = reader.GetDateTime(3);
+            }
+            await using (var command = source.CreateCommand($"SELECT captured_generation FROM \"{schema}\".native_approvals WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); browserCaptured = (long)(await command.ExecuteScalarAsync())!; }
+            DateTime historicalExpiry;
+            await using (var command = source.CreateCommand("SELECT clock_timestamp()-interval '10 seconds'")) historicalExpiry = (DateTime)(await command.ExecuteScalarAsync())!;
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET expires_at=@expires WHERE session_id=@id; UPDATE \"{schema}\".native_approval_batches SET expires_at=@expires WHERE session_id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("expires", historicalExpiry); await command.ExecuteNonQueryAsync(); }
+            var historical = await genuineJournal.ReadStatusAsync(genuineKey);
+            Check(historical.Status == 200 && historical.TurnCompleted && historical.PublicRequest == final.PublicRequest && historical.BrowserRecoveryCallIds is null, "Completed canonical history remains valid after child execution expiry while parent retention is live.");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approval_batches SET expires_at=@expires WHERE session_id=@id; UPDATE \"{schema}\".native_approvals SET expires_at=@expires WHERE session_id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("expires", childExpiry); await command.ExecuteNonQueryAsync(); }
+            foreach (var lineageCase in new[] { "future-generation", "future-revision", "future-publication", "invalid-admitted-revision", "future-capture", "member-expiry" })
+            {
+                var update = lineageCase switch
+                {
+                    "future-generation" => $"UPDATE \"{schema}\".native_approval_batches SET admitted_generation=@value WHERE session_id=@id",
+                    "future-revision" => $"UPDATE \"{schema}\".native_approval_batches SET admitted_revision=@value WHERE session_id=@id",
+                    "future-publication" => $"UPDATE \"{schema}\".native_approval_batches SET published_revision=@value WHERE session_id=@id",
+                    "invalid-admitted-revision" => $"UPDATE \"{schema}\".native_approval_batches SET admitted_revision=@value WHERE session_id=@id",
+                    "future-capture" => $"UPDATE \"{schema}\".native_approvals SET captured_generation=@value WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'",
+                    _ => $"UPDATE \"{schema}\".native_approvals SET expires_at=expires_at-interval '1 second' WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'"
+                };
+                await using (var command = source.CreateCommand(update)) { command.Parameters.AddWithValue("id", genuineKey.Id); if (lineageCase != "member-expiry") command.Parameters.AddWithValue("value", lineageCase == "invalid-admitted-revision" ? publishedRevision : lineageCase is "future-generation" or "future-capture" ? final.Generation + 1 : final.Revision + 1); await command.ExecuteNonQueryAsync(); }
+                var beforeLineage = await GenuineAuthority();
+
+                var badLineage = await genuineJournal.ReadStatusAsync(genuineKey);
+
+                Check(badLineage.Status == 503 && badLineage.PublicRequest is null && badLineage.BrowserRecoveryCallIds is null, "Retained browser settlement must reject invalid durable epoch/expiry lineage: " + lineageCase);
+                Check(await GenuineAuthority() == beforeLineage, "Retained lineage refusal must not mutate any authority.");
+                await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approval_batches SET admitted_generation=@generation,admitted_revision=@revision,published_revision=@published WHERE session_id=@id; UPDATE \"{schema}\".native_approvals SET captured_generation=@capture,expires_at=@expiry WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("generation", batchGeneration); command.Parameters.AddWithValue("revision", batchRevision); command.Parameters.AddWithValue("published", publishedRevision); command.Parameters.AddWithValue("capture", browserCaptured); command.Parameters.AddWithValue("expiry", childExpiry); await command.ExecuteNonQueryAsync(); }
+            }
+            foreach (var historicalState in new[] { "Pending", "Retired" })
+            {
+                await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET state=@state WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("state", historicalState); await command.ExecuteNonQueryAsync(); }
+                var beforeState = await GenuineAuthority();
+
+                var inconsistentState = await genuineJournal.ReadStatusAsync(genuineKey);
+
+                Check(inconsistentState.Status == 503 && inconsistentState.PublicRequest is null && inconsistentState.BrowserRecoveryCallIds is null, "Historical browser member outside current pending batch must remain Settled: " + historicalState);
+                Check(await GenuineAuthority() == beforeState, "Historical member-state refusal must not mutate durable authority.");
+                await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET state='Settled' WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); await command.ExecuteNonQueryAsync(); }
+            }
+            if (coldLegacyResult)
+            {
+                var followup = JsonNode.Parse(final.PublicRequest!)!.AsObject(); followup["runId"] = "subsequent";
+                followup["messages"]!.AsArray().Add(new JsonObject { ["id"] = "subsequent-user", ["role"] = "user", ["content"] = "next" });
+                var next = await genuineJournal.TryAcquireAsync(genuineKey, followup.ToJsonString());
+                Check(next.Status == 200 && next.Snapshot!.PublicRequest == final.PublicRequest, "Later ordinary generation must restore exact saved cold fixed-string history.");
+                followup["messages"]!.AsArray().Add(new JsonObject { ["id"] = "subsequent-assistant", ["role"] = "assistant", ["content"] = "done" });
+                var nextReceipt = await genuineJournal.SaveAsync(next.Lease!, new NativeSessionSave(next.Snapshot!.NativeJson!, followup.ToJsonString(), [], [], true));
+                Check(nextReceipt is not null && await genuineJournal.AuthorizePublicationAsync(nextReceipt) && await genuineJournal.FinalizePublicationAsync(nextReceipt), "Later generation must republish retained cold domain digest without implicit replay.");
+                var reloaded = await genuineJournal.ReadStatusAsync(genuineKey);
+                Check(reloaded.Status == 200 && reloaded.TurnCompleted && JsonNode.Parse(reloaded.PublicRequest!)!["messages"]!.AsArray().Single(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == "browser")!["content"]!.GetValue<string>() == LegacyBypassResult, "Cold fixed-string content and domain provenance must survive a subsequent save/reload.");
+            }
+            string originalDescriptor;
+            await using (var command = source.CreateCommand($"SELECT private_descriptor FROM \"{schema}\".native_approvals WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); originalDescriptor = (string)(await command.ExecuteScalarAsync())!; }
+            foreach (var descriptorCase in new[] { "unsupported-format", "unknown-field", "missing-format", "null-binding" })
+            {
+            var unsupported = JsonNode.Parse(originalDescriptor)!.AsObject();
+            if (descriptorCase == "unsupported-format") unsupported["formatVersion"] = 99;
+            else if (descriptorCase == "unknown-field") unsupported["unknown"] = true;
+            else if (descriptorCase == "missing-format") unsupported.Remove("formatVersion");
+            else unsupported["browserBinding"] = null;
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET private_descriptor=@descriptor WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("descriptor", unsupported.ToJsonString()); await command.ExecuteNonQueryAsync(); }
+            var beforeUnsupported = await GenuineAuthority();
+
+            var unsupportedStatus = await genuineJournal.ReadStatusAsync(genuineKey);
+
+            Check(unsupportedStatus.Status == 503 && unsupportedStatus.BrowserRecoveryCallIds is null, "Unsupported retained browser descriptor format must fail closed after pending batch and admitted_request are cleared.");
+            Check(await GenuineAuthority() == beforeUnsupported, "Unsupported retained descriptor read must not mutate durable authority.");
+            await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_approvals SET private_descriptor=@descriptor WHERE session_id=@id AND kind='BrowserBypass' AND call_id='browser'")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("descriptor", originalDescriptor); await command.ExecuteNonQueryAsync(); }
+            }
+        }
+    }
+    else
+    {
+        var completed = settlement.DeepClone().AsObject(); completed["forwardedProps"]!.AsObject().Remove("hashbrown");
+        var receipt = await genuineJournal.SaveAsync(admission.Lease!, new NativeSessionSave(admission.Snapshot!.NativeJson!, completed.ToJsonString(), [], [], true));
+        Check(receipt is not null, "Genuine browser-only accepted known/unavailable results must save atomically.");
+        DateTime expires;
+        await using (var command = source.CreateCommand($"SELECT expires_at FROM \"{schema}\".native_sessions WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); expires = (DateTime)(await command.ExecuteScalarAsync())!; }
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); await command.ExecuteNonQueryAsync(); }
+        var expiredAuthority = await GenuineAuthority();
+        var expired = await genuineJournal.ReadStatusAsync(genuineKey);
+        var savedAttempt = settlement.DeepClone().AsObject(); savedAttempt["forwardedProps"]!["hashbrown"]!["recovery"]!["serverRevision"] = receipt!.SavedRevision;
+        var savedTyped = new NativeBrowserRecoveryRequest(1, receipt.SavedRevision, typed.Outcomes);
+        Check(expired.State == "Expired" && expired.BrowserRecoveryCallIds is null && (await capable.TryAcquireBrowserRecoveryAsync(genuineKey, savedAttempt.ToJsonString(), savedTyped)).Status == 410 && await GenuineAuthority() == expiredAuthority, "Expired genuine Saved snapshot must refuse at its exact current revision before any ownership or callback.");
+        await using (var command = source.CreateCommand($"UPDATE \"{schema}\".native_sessions SET expires_at=@expires WHERE id=@id")) { command.Parameters.AddWithValue("id", genuineKey.Id); command.Parameters.AddWithValue("expires", expires); await command.ExecuteNonQueryAsync(); }
+        Check(await genuineJournal.AuthorizePublicationAsync(receipt) && await genuineJournal.FinalizePublicationAsync(receipt), "Restored saved-receipt control must publish exact known/unavailable canonical results.");
+        var final = await genuineJournal.ReadStatusAsync(genuineKey);
+        Check(final.TurnCompleted && final.BrowserRecoveryCallIds is null && final.PublicRequest!.Contains("hashbrownRecovery", StringComparison.Ordinal), "Unavailable result uncertainty must persist in canonical completion after save/publication.");
+    }
+    Check(model.Calls == 1 && effects == 0, "Journal recovery acquisition/reservation must invoke no native preparation, provider or effect.");
+
+    int Preparations() => observations.Count(item => item["stage"]?.GetValue<string>() is "Create.Guard" or "Deserialize.Guard" or "Run.Guard");
+
+    async Task<string> GenuineAuthority()
+    {
+        await using var command = source.CreateCommand($"SELECT json_build_object('session',row_to_json(s),'calls',(SELECT json_agg(c ORDER BY call_id) FROM \"{schema}\".native_invocations c WHERE c.session_id=s.id),'members',(SELECT json_agg(a ORDER BY request_id) FROM \"{schema}\".native_approvals a WHERE a.session_id=s.id),'batches',(SELECT json_agg(b ORDER BY batch_id) FROM \"{schema}\".native_approval_batches b WHERE b.session_id=s.id))::text FROM \"{schema}\".native_sessions s WHERE id=@id");
+        command.Parameters.AddWithValue("id", genuineKey.Id);
+        return (string)(await command.ExecuteScalarAsync())!;
+    }
+}
+
+sealed class CaptureModel(bool mixed, bool multipleBrowsers) : IChatClient
+{
+    public int Calls { get; private set; }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Calls++;
+        if (Calls != 1) throw new Exception("Capture-only test must never continue the provider.");
+        var contents = new List<AIContent> { new FunctionCallContent("browser", "frontend", new Dictionary<string, object?>()) };
+        if (mixed && multipleBrowsers) contents.Add(new FunctionCallContent("browser-2", "frontend", new Dictionary<string, object?>()));
+        if (mixed) { contents.Add(new FunctionCallContent("protected-1", "backend", new Dictionary<string, object?>())); contents.Add(new FunctionCallContent("protected-2", "backend", new Dictionary<string, object?>())); }
+        else contents.Add(new FunctionCallContent("browser-2", "frontend", new Dictionary<string, object?>()));
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, contents) { MessageId = "native-parent" }) { ResponseId = "native-parent", FinishReason = ChatFinishReason.ToolCalls });
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var response = await GetResponseAsync(messages, options, cancellationToken);
+        if (mixed) { foreach (var update in response.ToChatResponseUpdates()) yield return update; yield break; }
+        foreach (var call in response.Messages.Single().Contents.Cast<FunctionCallContent>())
+        {
+            var message = new ChatMessage(ChatRole.Assistant, [call]) { MessageId = "parent-" + call.CallId };
+            foreach (var update in new ChatResponse(message) { ResponseId = message.MessageId, FinishReason = ChatFinishReason.ToolCalls }.ToChatResponseUpdates()) yield return update;
+        }
+        var trailing = new ChatMessage(ChatRole.Assistant, "text after announcement") { MessageId = "after-announcement" };
+        foreach (var update in new ChatResponse(trailing) { ResponseId = trailing.MessageId }.ToChatResponseUpdates()) yield return update;
+        yield return new ChatResponseUpdate { ResponseId = "native-parent", FinishReason = ChatFinishReason.ToolCalls };
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+sealed class RecoveryAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Request.Headers["X-Fixture-Owner"].FirstOrDefault() ?? "alice")], "fixture")), "fixture")));
+}
+
+public class ReservationGate : DispatchProxy
+{
+    public INativeSessionBrowserRecoveryJournal Inner { get; set; } = null!;
+    public bool RefuseReservation { get; set; }
+    public int Reservations { get; private set; }
+    public int Recoveries { get; private set; }
+    protected override object? Invoke(MethodInfo? method, object?[]? arguments)
+    {
+        if (method!.Name == nameof(INativeSessionBrowserRecoveryJournal.TryAcquireBrowserRecoveryAsync)) Recoveries++;
+        if (RefuseReservation && method.Name == nameof(INativeSessionJournal.TryAdmitApprovalBatchAsync)) { Reservations++; return ValueTask.FromResult(false); }
+        return method.Invoke(Inner, arguments);
+    }
+}

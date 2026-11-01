@@ -75,13 +75,36 @@ public sealed partial class PostgresNativeSessionJournal
     NativeSessionSnapshot snapshot; NativeApprovalEvidence? evidence;
     try { (snapshot, evidence) = await ReadApprovalSnapshot(connection, row, lease, now, cancellationToken); }
     catch (Exception exception) when (BadInput(exception)) { return false; }
-    if (evidence is null || evidence.Batch.Batch.BatchId != batchId || !NativeApprovalAdmission.MatchesPublishedBatch(admission, evidence) || !NativeApprovalAdmission.AdmitsOwnedPrefix(admission.CanonicalPublicRequest, snapshot, evidence) || row.AdmittedRequest != admission.CanonicalPublicRequest) return false;
+    if (evidence is null || evidence.Batch.Batch.BatchId != batchId || !NativeApprovalAdmission.MatchesPublishedBatch(admission, evidence) || row.AdmittedRequest != admission.CanonicalPublicRequest) return false;
+    var browserRecovery = false;
+    try
+    {
+      if (!NativeApprovalAdmission.AdmitsOwnedPrefix(admission.CanonicalPublicRequest, snapshot, evidence))
+      {
+        if (row.Revision != lease.Revision || !AdmitsBrowserRecoverySuffix(admission.CanonicalPublicRequest, snapshot) ||
+            !snapshot.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal).SetEquals(evidence.Batch.Batch.BrowserBindings.Select(item => item.CallId))) return false;
+        browserRecovery = true;
+      }
+    }
+    catch (Exception exception) when (BadInput(exception)) { return false; }
     var revision = row.Revision + 1;
     foreach (var decision in admission.Decisions)
-      await Execute(connection, $"UPDATE {Approvals} SET state='DecisionAdmitted',decision=@decision,admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch AND request_id=@request AND kind='Protected' AND state='Pending'", cancellationToken,
+    {
+      var changed = await Execute(connection, $"UPDATE {Approvals} SET state='DecisionAdmitted',decision=@decision,admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch AND request_id=@request AND kind='Protected' AND state='Pending'", cancellationToken,
           ("id", lease.Key.Id), ("batch", batchId), ("request", decision.RequestId), ("decision", decision.Kind.ToString()), ("generation", lease.Generation), ("revision", revision));
-    await Execute(connection, $"UPDATE {ApprovalBatches} SET state='DecisionAdmitted',admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch; UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken,
-        ("id", lease.Key.Id), ("batch", batchId), ("generation", lease.Generation), ("revision", revision));
+      if (changed != 1) return false;
+    }
+    if (browserRecovery)
+      foreach (var browser in evidence.Batch.Batch.BrowserBindings)
+      {
+        var result = BrowserResult(admission.CanonicalPublicRequest, browser.CallId) ?? throw new ArgumentException("Missing admitted browser result.");
+        var changed = await Execute(connection, $"UPDATE {Approvals} SET state='Settled',result_digest=@digest WHERE session_id=@id AND batch_id=@batch AND request_id=@request AND call_id=@call AND kind='BrowserBypass' AND state='Pending' AND decision IS NULL AND result_digest IS NULL", cancellationToken,
+            ("id", lease.Key.Id), ("batch", batchId), ("request", browser.RequestId), ("call", browser.CallId), ("digest", BrowserRecoveryResultDigest(browser.CallId, result)));
+        if (changed != 1) return false;
+      }
+    if (await Execute(connection, $"UPDATE {ApprovalBatches} SET state='DecisionAdmitted',admitted_generation=@generation,admitted_revision=@revision WHERE session_id=@id AND batch_id=@batch AND state='Pending'", cancellationToken,
+        ("id", lease.Key.Id), ("batch", batchId), ("generation", lease.Generation), ("revision", revision)) != 1) return false;
+    await Execute(connection, $"UPDATE {Sessions} SET revision=revision+1 WHERE id=@id", cancellationToken, ("id", lease.Key.Id));
     await transaction.CommitAsync(cancellationToken);
     return true;
   }
@@ -116,7 +139,7 @@ public sealed partial class PostgresNativeSessionJournal
   /// <inheritdoc />
   public async ValueTask<bool> SettleBrowserBypassResultAsync(NativeSessionLease lease, string batchId, string requestId, string callId, JsonElement result, CancellationToken cancellationToken = default)
   {
-    if (result.ValueKind != JsonValueKind.String || result.GetString() != "Tool call invocation rejected. No approval response was provided for this approval required tool call." || Encoding.UTF8.GetByteCount(result.GetRawText()) > _options.ArgumentBytes) return false;
+    if (result.ValueKind != JsonValueKind.String || result.GetString() != LegacyBrowserBypassResult || Encoding.UTF8.GetByteCount(result.GetRawText()) > _options.ArgumentBytes) return false;
     var digest = ApprovalResultDigest(result.Clone());
     await using var connection = await _source.OpenConnectionAsync(cancellationToken);
     await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
@@ -157,9 +180,22 @@ public sealed partial class PostgresNativeSessionJournal
   private async ValueTask<(NativeSessionSnapshot Snapshot, ApprovalPublication? Publication)> ReadValidatedApprovalSnapshot(NpgsqlConnection connection, Row row, NativeSessionKey key, DateTimeOffset now, CancellationToken cancellationToken)
   {
     if (!await HasApprovalCapacity(connection, key, 0, 0, cancellationToken)) throw new ArgumentException("Aggregate approval descriptor budget exceeded.");
+    if (row.AdmittedRequest is not null)
+    {
+      if (Encoding.UTF8.GetByteCount(row.AdmittedRequest) > _options.PublicBytes) throw new ArgumentException("Stored admitted request exceeds its public bound.");
+      NativeSessionRawRequest.Validate(row.AdmittedRequest);
+      if (row.AdmittedRequest != NativeSessionHistory.Normalize(row.AdmittedRequest, key, _catalog, _options)) throw new ArgumentException("Stored admitted request is not canonical.");
+    }
+    if (row.State == "Ready")
+    {
+      await using var started = Command(connection, $"SELECT EXISTS(SELECT 1 FROM {Calls} WHERE session_id=@id AND state='Started')", ("id", key.Id));
+      if ((bool)(await started.ExecuteScalarAsync(cancellationToken))!) throw new ArgumentException("Ready native session contains an unresolved Started invocation.");
+    }
     var snapshot = ValidatePayload(row.Payload, key, true);
+    await ValidateSettledBrowserResults(connection, row, key, snapshot, cancellationToken);
     if (snapshot.Approvals.PendingBatch is not { } bound) return (snapshot, null);
     var batch = bound.Batch;
+    if (!snapshot.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal).SetEquals(batch.BrowserBindings.Select(item => item.CallId))) throw new ArgumentException("Incomplete genuine mixed browser bindings.");
     if (snapshot.TurnCompleted || !row.EverSaved || batch.ProtectedRequests.Count + batch.BrowserBindings.Count > _options.MaximumCalls) throw new ArgumentException("Invalid pending approval snapshot.");
     long published; string state; long? admittedGeneration; long? admittedRevision; DateTimeOffset expiry;
     await using (var command = Command(connection, $"SELECT published_revision,member_digest,member_count,state,admitted_generation,admitted_revision,expires_at FROM {ApprovalBatches} WHERE session_id=@id AND batch_id=@batch", ("id", key.Id), ("batch", batch.BatchId)))
@@ -197,7 +233,7 @@ public sealed partial class PostgresNativeSessionJournal
             decisions.Add(new(member.RequestId, decision));
           }
         }
-        else if (reader.GetString(4) is not ("Pending" or "Settled") || state == "Pending" && reader.GetString(4) != "Pending" || !reader.IsDBNull(5) || !reader.IsDBNull(7) || !reader.IsDBNull(8) || (reader.GetString(4) == "Pending" ? !reader.IsDBNull(10) : reader.IsDBNull(10) || reader.GetString(10) != ApprovalResultDigest(JsonSerializer.SerializeToElement("Tool call invocation rejected. No approval response was provided for this approval required tool call.")))) throw new ArgumentException("Invalid browser bypass authority.");
+        else if (reader.GetString(4) is not ("Pending" or "Settled") || state == "Pending" && reader.GetString(4) != "Pending" || !reader.IsDBNull(5) || !reader.IsDBNull(7) || !reader.IsDBNull(8) || (reader.GetString(4) == "Pending" ? !reader.IsDBNull(10) : reader.IsDBNull(10) || !BrowserResultDigestMatches(row, snapshot, batch.BatchId, member.CallId, reader.GetString(10), admittedGeneration, admittedRevision))) throw new ArgumentException("Invalid browser bypass authority.");
       }
     if (count != expected.Count) throw new ArgumentException("Incomplete approval membership.");
     foreach (var item in batch.ProtectedRequests)

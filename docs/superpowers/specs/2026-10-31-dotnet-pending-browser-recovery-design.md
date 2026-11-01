@@ -76,6 +76,7 @@ Known strings become their exact AGUI tool-content string. Other JSON values use
 
 Unavailable content is this exact compact reserved string, generated only after an explicit application outcome:
 
+<!-- prettier-ignore -->
 ```json
 {"hashbrownRecovery":{"version":1,"status":"result-unavailable","effect":"unknown","message":"The browser result is unavailable after recovery. The operation may already have occurred. No retry was performed."}}
 ```
@@ -93,7 +94,15 @@ V2 keeps NativeSessionRecovery's existing outer fields: schemaVersion, dispositi
 Only the explicit continuation adds this transient AGUI extension:
 
 ```json
-{"hashbrown":{"recovery":{"version":1,"serverRevision":27,"outcomes":[{"toolCallId":"browser-call-1","status":"unavailable"}]}}}
+{
+  "hashbrown": {
+    "recovery": {
+      "version": 1,
+      "serverRevision": 27,
+      "outcomes": [{ "toolCallId": "browser-call-1", "status": "unavailable" }]
+    }
+  }
+}
 ```
 
 This fragment is within forwardedProps; responseSchema/ui and existing approved extensions remain alongside it. For a known value use status `result`; actual values occur only in the canonical tool messages. Resume is absent/empty for browser-only and complete for mixed. Strict parser rejects unknown fields, duplicate JSON properties, aliases/case variants, invalid version/revision, duplicate/missing/foreign IDs, invalid statuses and over-limit data. All applicable existing raw-request validation remains enabled.
@@ -124,6 +133,36 @@ One concurrent CAS winner may admit; stale-but-identical history still conflicts
 
 Default expectation is **no PostgreSQL DDL**: existing canonical history, ExpectedBrowserCallIds, BrowserBindings, native approval evidence and atomic saved session/public request are sufficient. Validate legacy persisted rows and version handling. If production proof reveals missing durable authority, stop that implementation path and specify an additive migration explicitly; do not fabricate bindings from untrusted history or relax the protected-count invariant to manufacture browser-only approval batches.
 
+### Browser result digest provenance
+
+Cold browser settlements use a domain-separated SHA256 of the canonical object
+`{formatVersion:1,kind:"browser-recovery-result",callId,content}`, where content is
+the exact supplied string. The existing 64-character uppercase hexadecimal field
+stores this digest without a schema change. Protected-result and legacy warm
+fixed-rejection digests retain their existing encoding.
+
+This distinction is necessary even when a known cold result equals the legacy
+fixed rejection string. Current ownership, batch state and admission epochs alone
+cannot distinguish a valid warm prefix from a cold claim whose accepted result
+suffix has been lost. Writers, owned evidence readers, retained history readers
+and the independent save validator must agree on the encoding.
+
+A historical settled browser member requires its exact saved canonical result.
+It cannot infer a missing result from either digest encoding. Before save, cold
+evidence requires the complete exact admitted result suffix and matching current
+batch, generation and claim lineage. The legacy plain fixed-rejection exception
+applies only to the actual current owned warm batch under the same lineage and a
+valid characterized warm prefix. Reuse the pure prefix comparison without
+manufacturing pending evidence or weakening its public admission guard. Preserve
+the existing cancellation annotation exception only on that warm path.
+
+Qualify both real public lifecycles, the cold-known-fixed-string case, suffix
+loss or alteration after reservation, missing historical results after save,
+later owned generations, exact Unicode/escaping and unavailable content. Reject
+unsupported development digests; no compatibility promise applies to disposable
+pre-fix cold fixtures. The journal remains the trusted data boundary, and no
+rolling mixed-version execution guarantee is introduced.
+
 ## Public native continuation bridge
 
 At NativeApprovalAgent.Restore after journal acquisition/evidence/full decision reservation and immediately before InnerAgent.RunStreamingAsync/FICC, build a pure independent native input clone from exact admitted evidence. Apply only to the current witnessed recovered batch; leave all previous history untouched.
@@ -136,13 +175,13 @@ NativeSessionProjection must bind normalized echoes and generated protected resu
 
 ## Local failure and retry ownership
 
-| Event | Required state |
-| --- | --- |
-| Synchronous local validation failure before dispatch | Identical pending batch/token, no calls or mutations. |
-| Proven pre-dispatch transport failure | Same batch may remain usable; no automatic retry. |
-| Definitive structured rejection proving no acquisition/effect | Preserve batch only if its revision remains valid; otherwise require authoritative refresh. A 409 always requires refresh. |
+| Event                                                                                             | Required state                                                                                                                     |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Synchronous local validation failure before dispatch                                              | Identical pending batch/token, no calls or mutations.                                                                              |
+| Proven pre-dispatch transport failure                                                             | Same batch may remain usable; no automatic retry.                                                                                  |
+| Definitive structured rejection proving no acquisition/effect                                     | Preserve batch only if its revision remains valid; otherwise require authoritative refresh. A 409 always requires refresh.         |
 | Acknowledgement, timeout, disconnect, cancellation, malformed stream, ambiguous admission/failure | Retire local submission claim into recovery-required, block every resubmission/generation and require authoritative recovery read. |
-| Acknowledged successful continuation | Adopt accepted canonical state; retain durable uncertainty diagnostics; clear pending epoch. |
+| Acknowledged successful continuation                                                              | Adopt accepted canonical state; retain durable uncertainty diagnostics; clear pending epoch.                                       |
 
 Unknown network errors are ambiguous even before an acknowledgement reaches the browser. Do not automatically restore a generic retryable resume checkpoint. “Once” means one admitted continuation per server revision/ownership, not a claim of one transport attempt in every network failure path. A fresh recovery lookup uses the current local revision and issues a fresh local token; it may return Busy/UnknownEffect/Completed/new pending state. A crash after protected Started remains UnknownEffect under existing fences, with zero redispatch. Fresh-thread escape remains explicit.
 

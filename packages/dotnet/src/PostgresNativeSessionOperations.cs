@@ -76,7 +76,7 @@ public sealed partial class PostgresNativeSessionJournal
         var id = reader.GetString(0);
         var call = publicMessages.SelectMany(message => message!["toolCalls"] is JsonArray calls ? calls : []).SingleOrDefault(item => item!["id"]!.GetValue<string>() == id);
         var result = publicMessages.SingleOrDefault(message => message!["role"]!.GetValue<string>() == "tool" && message["toolCallId"]!.GetValue<string>() == id);
-        if (binding is null || binding.CallId != id || call?["function"]?["name"]?.GetValue<string>() != binding.Name || !JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), JsonNode.Parse(binding.Arguments.GetRawText())) || result?["content"] is not JsonValue content || !content.TryGetValue<string>(out var text) || ApprovalResultDigest(JsonSerializer.SerializeToElement(text)) != reader.GetString(2)) return null;
+        if (binding is null || binding.CallId != id || call?["function"]?["name"]?.GetValue<string>() != binding.Name || !JsonNode.DeepEquals(JsonNode.Parse(call["function"]!["arguments"]!.GetValue<string>()), JsonNode.Parse(binding.Arguments.GetRawText())) || result?["content"] is not JsonValue content || !content.TryGetValue<string>(out var text) || !MatchesSavedBrowserResult(id, text, reader.GetString(2))) return null;
       }
     // Native bypass may keep Captured backend calls private until browser results arrive.
     // Completed calls must always appear with results, including all earlier turns.
@@ -161,23 +161,31 @@ public sealed partial class PostgresNativeSessionJournal
       string? history = null;
       var completed = false;
       IReadOnlyList<RecoveryInterrupt>? pendingInterrupts = null; string? recoveryReason = null;
+      IReadOnlyList<string>? browserRecoveryCallIds = null;
       if (row.State == "Ready")
       {
         try
         {
           var validated = await ReadValidatedApprovalSnapshot(connection, row, key, now, cancellationToken);
           var snapshot = validated.Snapshot; history = snapshot.PublicRequest; completed = snapshot.TurnCompleted;
+          if (row.EverSaved && snapshot.NativeJson is not null && !snapshot.TurnCompleted && snapshot.ExpectedBrowserCallIds.Count is > 0 and <= 256)
+          {
+            var expected = snapshot.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal);
+            browserRecoveryCallIds = Array.AsReadOnly(JsonNode.Parse(snapshot.PublicRequest)!["messages"]!.AsArray()
+                .SelectMany(message => message!["toolCalls"] is JsonArray calls ? calls : [])
+                .Select(call => call!["id"]!.GetValue<string>()).Where(expected.Contains).ToArray());
+          }
           if (validated.Publication is { } publication)
           {
             if (publication.State != NativeApprovalState.Pending || publication.Decisions.Count != 0 || publication.AdmittedGeneration is not null || publication.AdmittedRevision is not null) throw new ArgumentException("Consumed pending recovery is unavailable.");
             if (snapshot.ExpectedBrowserCallIds.Count > 0) recoveryReason = "PendingMixedBrowserResult";
-            else pendingInterrupts = Array.AsReadOnly(publication.Batch.Batch.ProtectedRequests.Select(item => new RecoveryInterrupt(item.RequestId, "tool_call", "Approval required for tool call: " + item.Call.Name,
+            pendingInterrupts = Array.AsReadOnly(publication.Batch.Batch.ProtectedRequests.Select(item => new RecoveryInterrupt(item.RequestId, "tool_call", "Approval required for tool call: " + item.Call.Name,
                 JsonSerializer.SerializeToElement(new { type = "object", properties = new { approved = new { type = "boolean" } }, required = new[] { "approved" } }), ToolCallId: item.Call.Id)).ToArray());
           }
         }
         catch (Exception exception) when (BadInput(exception)) { return new(503, "Unavailable", row.Generation, row.Revision); }
       }
-      return new(row.State == "Retired" ? 410 : 200, row.State, row.Generation, row.Revision, history, row.LeaseUntil, !row.EverSaved, completed, pendingInterrupts, recoveryReason);
+      return new(row.State == "Retired" ? 410 : 200, row.State, row.Generation, row.Revision, history, row.LeaseUntil, !row.EverSaved, completed, pendingInterrupts, recoveryReason) { BrowserRecoveryCallIds = browserRecoveryCallIds };
     }
     catch (Exception exception) when (exception is NpgsqlException or TimeoutException) { return new(503); }
   }

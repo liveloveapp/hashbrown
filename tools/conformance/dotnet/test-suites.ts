@@ -33,6 +33,7 @@ export const dotnetTestSuites = {
     'tests/native-approval-publication.spec.ts',
     'tests/native-approval-store.spec.ts',
     'tests/native-browser-recovery-admission.spec.ts',
+    'tests/native-browser-recovery-store.spec.ts',
     'tests/native-recovery-client.spec.ts',
     'tests/native-session-durability.spec.ts',
     'tests/native-session-host.spec.ts',
