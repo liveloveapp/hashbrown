@@ -1,11 +1,11 @@
-import { http } from '../http.ts';
+import { http, OutcomeUnknownError } from '../http.ts';
 import type { Draft, PostResult } from '../types.ts';
 
 const ARTICLES_URL = 'https://dev.to/api/articles';
 
 interface DevToArticleResponse {
-  id: number;
-  url: string;
+  id?: unknown;
+  url?: unknown;
   published_at?: string;
 }
 
@@ -25,7 +25,7 @@ interface ArticleBody {
  * @param fetch - The fetch implementation; defaults to `globalThis.fetch`.
  * @throws When dev.to rejects the API key or the article;
  *   `OutcomeUnknownError` when it may have been published (timeout,
- *   network error, 5xx, unreadable answer).
+ *   network error, 5xx, unreadable answer, 2xx without an id or URL).
  */
 export async function postDevTo(
   apiKey: string,
@@ -72,10 +72,18 @@ export async function postDevTo(
     throw error;
   }
 
+  const id = response?.id;
+  const url = response?.url;
+  if (typeof id !== 'number' || typeof url !== 'string') {
+    // A 2xx means dev.to accepted the create; only its id or URL is missing.
+    throw new OutcomeUnknownError(
+      'dev.to accepted the article but returned no id or URL.',
+    );
+  }
   return {
     channel: 'devto',
-    postId: String(response.id),
-    url: response.url,
+    postId: String(id),
+    url,
     postedAt: response.published_at ?? new Date().toISOString(),
   };
 }
