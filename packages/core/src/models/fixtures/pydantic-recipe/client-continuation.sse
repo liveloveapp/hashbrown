@@ -1,10 +1,10 @@
-data: {"type":"RUN_STARTED","timestamp":1793561440789,"threadId":"capture-client-tool","runId":"capture-client-continuation-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793570942427,"threadId":"capture-client-tool","runId":"capture-client-continuation-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793561440794,"messageId":"7ed78cb5-9b25-4161-b2c1-f2400a6c9b82","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793570942430,"messageId":"138df430-5098-4b44-99f9-345640f71c46","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793561440795,"messageId":"7ed78cb5-9b25-4161-b2c1-f2400a6c9b82","delta":"Tool result: controlled-client-result:London"}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793570942430,"messageId":"138df430-5098-4b44-99f9-345640f71c46","delta":"Tool result: controlled-client-result:London"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793561440796,"messageId":"7ed78cb5-9b25-4161-b2c1-f2400a6c9b82"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793570942430,"messageId":"138df430-5098-4b44-99f9-345640f71c46"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793561440799,"threadId":"capture-client-tool","runId":"capture-client-continuation-run","outcome":{"type":"success"}}
+data: {"type":"RUN_FINISHED","timestamp":1793570942432,"threadId":"capture-client-tool","runId":"capture-client-continuation-run","outcome":{"type":"success"}}
 

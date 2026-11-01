@@ -1,31 +1,31 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793561440789,
+    "timestamp": 1793570942427,
     "threadId": "capture-client-tool",
     "runId": "capture-client-continuation-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793561440794,
-    "messageId": "7ed78cb5-9b25-4161-b2c1-f2400a6c9b82",
+    "timestamp": 1793570942430,
+    "messageId": "138df430-5098-4b44-99f9-345640f71c46",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793561440795,
-    "messageId": "7ed78cb5-9b25-4161-b2c1-f2400a6c9b82",
+    "timestamp": 1793570942430,
+    "messageId": "138df430-5098-4b44-99f9-345640f71c46",
     "delta": "Tool result: controlled-client-result:London"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793561440796,
-    "messageId": "7ed78cb5-9b25-4161-b2c1-f2400a6c9b82"
+    "timestamp": 1793570942430,
+    "messageId": "138df430-5098-4b44-99f9-345640f71c46"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793561440799,
+    "timestamp": 1793570942432,
     "threadId": "capture-client-tool",
     "runId": "capture-client-continuation-run",
     "outcome": {

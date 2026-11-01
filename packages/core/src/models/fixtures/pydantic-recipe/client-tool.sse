@@ -1,14 +1,14 @@
-data: {"type":"RUN_STARTED","timestamp":1793561440767,"threadId":"capture-client-tool","runId":"capture-client-tool-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793570942416,"threadId":"capture-client-tool","runId":"capture-client-tool-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793561440776,"messageId":"6603feb8-99b6-4c38-9657-bb18f0b15028","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793570942419,"messageId":"f5dfc872-b124-4a14-9598-906638726655","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793561440776,"messageId":"6603feb8-99b6-4c38-9657-bb18f0b15028"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793570942420,"messageId":"f5dfc872-b124-4a14-9598-906638726655"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793561440776,"toolCallId":"capture-client-tool-client","toolCallName":"getWeather","parentMessageId":"6603feb8-99b6-4c38-9657-bb18f0b15028"}
+data: {"type":"TOOL_CALL_START","timestamp":1793570942420,"toolCallId":"capture-client-tool-client","toolCallName":"getWeather","parentMessageId":"f5dfc872-b124-4a14-9598-906638726655"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793561440777,"toolCallId":"capture-client-tool-client","delta":"{\"city\":\"London\"}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793570942420,"toolCallId":"capture-client-tool-client","delta":"{\"city\":\"London\"}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793561440777,"toolCallId":"capture-client-tool-client"}
+data: {"type":"TOOL_CALL_END","timestamp":1793570942420,"toolCallId":"capture-client-tool-client"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793561440780,"threadId":"capture-client-tool","runId":"capture-client-tool-run","outcome":{"type":"success","pendingToolCallIds":["capture-client-tool-client"]}}
+data: {"type":"RUN_FINISHED","timestamp":1793570942422,"threadId":"capture-client-tool","runId":"capture-client-tool-run","outcome":{"type":"success","pendingToolCallIds":["capture-client-tool-client"]}}
 

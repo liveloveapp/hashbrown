@@ -1,9 +1,9 @@
 {
   "execution": {
     "kind": "local",
-    "id": "pydantic-recipe-2026-11-01T19:30:29.088Z"
+    "id": "pydantic-recipe-2026-11-01T22:08:57.753Z"
   },
-  "sourceSha256": "0f5d5565f831d0b52cdc00d86b2991fe21a6de328e32bb3e58a168ac10520706",
+  "sourceSha256": "04068f46fd2d08a2f16f9777b0bf370135a3122a12cfb2bbcb2de9acf7f17e30",
   "versions": {
     "pydantic-ai-slim": "2.64.0",
     "ag-ui-protocol": "1.0.0",
@@ -17,11 +17,11 @@
   "realFrameworkExecution": true,
   "wire": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
-    "sha256": "0d4b4434cf10b4dca7020e8843f3e4ceb45e9968a77c34f0ed0659518b2d03c2"
+    "sha256": "52d6b4512faf33dd5f45cb1b0cd629a26590befc5a2ec25810ae05410d69604d"
   },
   "callbackObservationsRef": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.execution.json",
-    "sha256": "c66b3c577e6be198e54841a08b4feeafba16a1d5e71e9dbfff6648600ef24183"
+    "sha256": "70deb10b5205403fb0f4c653ce731d3df4b9b1ad3659d41f2d8f81f09c077ae1"
   },
   "liveObservationsRef": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.live.json",
@@ -33,7 +33,7 @@
   },
   "outcomeObservationsRef": {
     "path": "tools/conformance/agent-frameworks/python-recipe/evidence/outcome-observations.json",
-    "sha256": "16c2cfef3b694748bffa88bc74599fc4cfe9710731b696b99e13968f059f6aa8"
+    "sha256": "60431e45775da32d78f905161c2d7f36887a0b1a6d287e5dd5c48c4c3b29f39a"
   },
   "commands": [
     {
@@ -46,8 +46,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:29.092Z",
-      "completedAt": "2026-11-01T19:30:33.622Z",
+      "startedAt": "2026-11-01T22:08:57.754Z",
+      "completedAt": "2026-11-01T22:08:59.795Z",
       "exitCode": 0
     },
     {
@@ -60,8 +60,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:33.622Z",
-      "completedAt": "2026-11-01T19:30:39.365Z",
+      "startedAt": "2026-11-01T22:08:59.795Z",
+      "completedAt": "2026-11-01T22:09:01.513Z",
       "exitCode": 0
     },
     {
@@ -71,8 +71,8 @@
         "tools/conformance/agent-frameworks/python-recipe/capture.mjs",
         "--write"
       ],
-      "startedAt": "2026-11-01T19:30:39.365Z",
-      "completedAt": "2026-11-01T19:30:41.201Z",
+      "startedAt": "2026-11-01T22:09:01.513Z",
+      "completedAt": "2026-11-01T22:09:02.750Z",
       "exitCode": 0
     },
     {
@@ -85,8 +85,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:41.201Z",
-      "completedAt": "2026-11-01T19:30:48.554Z",
+      "startedAt": "2026-11-01T22:09:02.750Z",
+      "completedAt": "2026-11-01T22:09:06.159Z",
       "exitCode": 0
     },
     {
@@ -99,8 +99,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:48.554Z",
-      "completedAt": "2026-11-01T19:30:49.802Z",
+      "startedAt": "2026-11-01T22:09:06.159Z",
+      "completedAt": "2026-11-01T22:09:06.980Z",
       "exitCode": 0
     },
     {
@@ -113,8 +113,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:49.802Z",
-      "completedAt": "2026-11-01T19:30:51.506Z",
+      "startedAt": "2026-11-01T22:09:06.980Z",
+      "completedAt": "2026-11-01T22:09:08.392Z",
       "exitCode": 0
     },
     {
@@ -127,8 +127,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:30:51.506Z",
-      "completedAt": "2026-11-01T19:31:05.380Z",
+      "startedAt": "2026-11-01T22:09:08.392Z",
+      "completedAt": "2026-11-01T22:09:20.525Z",
       "exitCode": 0
     },
     {
@@ -141,8 +141,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:31:05.380Z",
-      "completedAt": "2026-11-01T19:31:07.214Z",
+      "startedAt": "2026-11-01T22:09:20.525Z",
+      "completedAt": "2026-11-01T22:09:22.412Z",
       "exitCode": 0
     },
     {
@@ -156,8 +156,8 @@
         "--output-style=static",
         "--runInBand"
       ],
-      "startedAt": "2026-11-01T19:31:07.214Z",
-      "completedAt": "2026-11-01T19:31:39.776Z",
+      "startedAt": "2026-11-01T22:09:22.412Z",
+      "completedAt": "2026-11-01T22:09:46.548Z",
       "exitCode": 0
     },
     {
@@ -170,8 +170,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:31:39.776Z",
-      "completedAt": "2026-11-01T19:31:46.162Z",
+      "startedAt": "2026-11-01T22:09:46.548Z",
+      "completedAt": "2026-11-01T22:09:52.369Z",
       "exitCode": 0
     },
     {
@@ -184,8 +184,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:31:46.162Z",
-      "completedAt": "2026-11-01T19:31:54.490Z",
+      "startedAt": "2026-11-01T22:09:52.369Z",
+      "completedAt": "2026-11-01T22:09:56.794Z",
       "exitCode": 0
     },
     {
@@ -198,8 +198,8 @@
         "--skip-nx-cache",
         "--output-style=static"
       ],
-      "startedAt": "2026-11-01T19:31:54.490Z",
-      "completedAt": "2026-11-01T19:33:16.392Z",
+      "startedAt": "2026-11-01T22:09:56.794Z",
+      "completedAt": "2026-11-01T22:10:54.950Z",
       "exitCode": 0
     }
   ],

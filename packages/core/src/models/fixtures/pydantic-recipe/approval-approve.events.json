@@ -1,45 +1,45 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793561440820,
+    "timestamp": 1793570942449,
     "threadId": "capture-approval-approve",
     "runId": "approval-approve-resume",
     "protocolVersion": "1.0"
   },
   {
     "type": "TOOL_CALL_RESULT",
-    "timestamp": 1793561440823,
+    "timestamp": 1793570942451,
     "metadata": {
       "hashbrown.tool": {
         "v": 1,
         "outcome": "success"
       }
     },
-    "messageId": "0cb63f72-f6e6-4cc4-878a-2b968828ccca",
+    "messageId": "241b70d5-7283-4425-ba09-ba7a44341654",
     "toolCallId": "capture-approval-approve-approval",
     "content": "approved native action",
     "role": "tool"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793561440826,
-    "messageId": "a2cf2c71-48fc-4b4a-948d-167cc69f8a7e",
+    "timestamp": 1793570942452,
+    "messageId": "c0e2988b-17b9-4002-b862-22701e7846cc",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793561440826,
-    "messageId": "a2cf2c71-48fc-4b4a-948d-167cc69f8a7e",
+    "timestamp": 1793570942452,
+    "messageId": "c0e2988b-17b9-4002-b862-22701e7846cc",
     "delta": "Tool result: approved native action"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793561440826,
-    "messageId": "a2cf2c71-48fc-4b4a-948d-167cc69f8a7e"
+    "timestamp": 1793570942452,
+    "messageId": "c0e2988b-17b9-4002-b862-22701e7846cc"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793561440829,
+    "timestamp": 1793570942453,
     "threadId": "capture-approval-approve",
     "runId": "approval-approve-resume",
     "outcome": {

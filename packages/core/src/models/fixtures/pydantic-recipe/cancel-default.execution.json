@@ -11,14 +11,14 @@
       "parts": [
         {
           "content": "server-tool",
-          "timestamp": "2026-11-01T19:30:40.637239Z",
+          "timestamp": "2026-11-01T22:09:02.303387Z",
           "part_kind": "user-prompt"
         }
       ],
-      "timestamp": "2026-11-01T19:30:40.641750Z",
+      "timestamp": "2026-11-01T22:09:02.305268Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19897-b17e-7113-b81b-3c35deb8f8a4",
+      "run_id": "01a19928-ad5f-74a7-b38f-87a1414c6ee8",
       "conversation_id": "capture-cancel-default",
       "metadata": {
         "__pydantic_ai__": {
@@ -56,7 +56,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-11-01T19:30:40.643619Z",
+      "timestamp": "2026-11-01T22:09:02.306572Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -64,7 +64,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19897-b17e-7113-b81b-3c35deb8f8a4",
+      "run_id": "01a19928-ad5f-74a7-b38f-87a1414c6ee8",
       "conversation_id": "capture-cancel-default",
       "metadata": null,
       "workspace_ref": null,
@@ -74,10 +74,10 @@
     },
     {
       "parts": [],
-      "timestamp": "2026-11-01T19:30:40.667498Z",
+      "timestamp": "2026-11-01T22:09:02.331797Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19897-b17e-7113-b81b-3c35deb8f8a4",
+      "run_id": "01a19928-ad5f-74a7-b38f-87a1414c6ee8",
       "conversation_id": "capture-cancel-default",
       "metadata": null,
       "state": "interrupted"
@@ -89,14 +89,14 @@
         "parts": [
           {
             "content": "server-tool",
-            "timestamp": "2026-11-01T19:30:40.637239Z",
+            "timestamp": "2026-11-01T22:09:02.303387Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-01T19:30:40.641750Z",
+        "timestamp": "2026-11-01T22:09:02.305268Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19897-b17e-7113-b81b-3c35deb8f8a4",
+        "run_id": "01a19928-ad5f-74a7-b38f-87a1414c6ee8",
         "conversation_id": "capture-cancel-default",
         "metadata": {
           "__pydantic_ai__": {
@@ -131,7 +131,7 @@
       "content": "server-tool"
     },
     {
-      "id": "8ec45a0b-6e89-449a-9cbe-5b5b15dd743c",
+      "id": "5f21e987-40bc-4634-ad89-685a9309304d",
       "role": "assistant",
       "toolCalls": [
         {

@@ -19,7 +19,7 @@
   "transport": "http-sse",
   "execution": {
     "kind": "local",
-    "id": "pydantic-recipe-2026-11-01T19:30:29.088Z"
+    "id": "pydantic-recipe-2026-11-01T22:08:57.753Z"
   },
   "sourceInputs": [
     {
@@ -28,7 +28,7 @@
     },
     {
       "path": ".github/workflows/pr-main.yml",
-      "sha256": "f13072ce1ab3cf52b7ae06f304c4a96da2768a0102c08a6de485cf24268b27f0"
+      "sha256": "cf144f7cb007cad5623e76d035afe3a38e230dfd53d1406aaa2d406166112d5c"
     },
     {
       "path": "packages/core/project.json",
@@ -199,86 +199,86 @@
       "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
     }
   ],
-  "sourceSha256": "0f5d5565f831d0b52cdc00d86b2991fe21a6de328e32bb3e58a168ac10520706",
+  "sourceSha256": "04068f46fd2d08a2f16f9777b0bf370135a3122a12cfb2bbcb2de9acf7f17e30",
   "wire": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
-    "sha256": "0d4b4434cf10b4dca7020e8843f3e4ceb45e9968a77c34f0ed0659518b2d03c2"
+    "sha256": "52d6b4512faf33dd5f45cb1b0cd629a26590befc5a2ec25810ae05410d69604d"
   },
   "executionSummary": {
     "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
-    "sha256": "99448fa4e18d056a83c22d5d19ab40d996e112bd4cf5239f069d86a434da0d57"
+    "sha256": "11ab24143847d1783291759245d047a1078435322627f84ec625f8f23b2cf95b"
   },
   "events": [
     {
       "type": "RUN_STARTED",
-      "timestamp": 1793561440544,
+      "timestamp": 1793570942272,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "protocolVersion": "1.0"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793561440553,
-      "messageId": "4b843c8e-766a-41cd-b825-f6b1051fb255",
+      "timestamp": 1793570942276,
+      "messageId": "b45596cf-bca4-4ae4-98c0-3e9a3302e20d",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793561440553,
-      "messageId": "4b843c8e-766a-41cd-b825-f6b1051fb255"
+      "timestamp": 1793570942276,
+      "messageId": "b45596cf-bca4-4ae4-98c0-3e9a3302e20d"
     },
     {
       "type": "TOOL_CALL_START",
-      "timestamp": 1793561440553,
+      "timestamp": 1793570942276,
       "toolCallId": "capture-server-tool-server",
       "toolCallName": "serverTool",
-      "parentMessageId": "4b843c8e-766a-41cd-b825-f6b1051fb255"
+      "parentMessageId": "b45596cf-bca4-4ae4-98c0-3e9a3302e20d"
     },
     {
       "type": "TOOL_CALL_ARGS",
-      "timestamp": 1793561440553,
+      "timestamp": 1793570942276,
       "toolCallId": "capture-server-tool-server",
       "delta": "{\"city\":\"London\"}"
     },
     {
       "type": "TOOL_CALL_END",
-      "timestamp": 1793561440555,
+      "timestamp": 1793570942277,
       "toolCallId": "capture-server-tool-server"
     },
     {
       "type": "TOOL_CALL_RESULT",
-      "timestamp": 1793561440589,
+      "timestamp": 1793570942282,
       "metadata": {
         "hashbrown.tool": {
           "v": 1,
           "outcome": "success"
         }
       },
-      "messageId": "1052d3b0-6853-41dd-be41-3dbe725ef7d3",
+      "messageId": "2331c0dc-deb4-45e4-a592-d2c3d196e7ac",
       "toolCallId": "capture-server-tool-server",
       "content": "server-result:London",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793561440594,
-      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0",
+      "timestamp": 1793570942283,
+      "messageId": "e0756311-6c10-4743-84b1-925e4b62a92f",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_CONTENT",
-      "timestamp": 1793561440594,
-      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0",
+      "timestamp": 1793570942283,
+      "messageId": "e0756311-6c10-4743-84b1-925e4b62a92f",
       "delta": "Tool result: server-result:London"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793561440596,
-      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0"
+      "timestamp": 1793570942283,
+      "messageId": "e0756311-6c10-4743-84b1-925e4b62a92f"
     },
     {
       "type": "RUN_FINISHED",
-      "timestamp": 1793561440601,
+      "timestamp": 1793570942286,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "outcome": {
@@ -286,5 +286,5 @@
       }
     }
   ],
-  "eventsSha256": "919a7f1dbc2dc30f134105a1b57301cf4ba410d1bf3707ab76c884c3db82d1be"
+  "eventsSha256": "be9d47dd8fcdb9379f28b1be39c5b00652b31076973d88c0561b5e2088b06a14"
 }

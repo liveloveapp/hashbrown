@@ -1,55 +1,55 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793561440867,
+    "timestamp": 1793570942477,
     "threadId": "capture-protocol",
     "runId": "protocol-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793561440870,
-    "messageId": "7613c23c-d570-49a7-8f5e-c84941ec957c",
+    "timestamp": 1793570942479,
+    "messageId": "4aa6d751-71b8-41c1-ab16-771d66d66cac",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793561440870,
-    "messageId": "7613c23c-d570-49a7-8f5e-c84941ec957c"
+    "timestamp": 1793570942479,
+    "messageId": "4aa6d751-71b8-41c1-ab16-771d66d66cac"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793561440870,
+    "timestamp": 1793570942479,
     "toolCallId": "capture-protocol-protocol",
     "toolCallName": "protocolTool",
-    "parentMessageId": "7613c23c-d570-49a7-8f5e-c84941ec957c"
+    "parentMessageId": "4aa6d751-71b8-41c1-ab16-771d66d66cac"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793561440870,
+    "timestamp": 1793570942479,
     "toolCallId": "capture-protocol-protocol",
     "delta": "{}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793561440871,
+    "timestamp": 1793570942479,
     "toolCallId": "capture-protocol-protocol"
   },
   {
     "type": "STEP_STARTED",
-    "timestamp": 1793561440873,
+    "timestamp": 1793570942480,
     "stepName": "work"
   },
   {
     "type": "STATE_SNAPSHOT",
-    "timestamp": 1793561440874,
+    "timestamp": 1793570942481,
     "snapshot": {
       "progress": 0
     }
   },
   {
     "type": "ACTIVITY_SNAPSHOT",
-    "timestamp": 1793561440874,
+    "timestamp": 1793570942481,
     "messageId": "capture-protocol-activity",
     "activityType": "progress",
     "content": {
@@ -58,7 +58,7 @@
   },
   {
     "type": "ACTIVITY_DELTA",
-    "timestamp": 1793561440879,
+    "timestamp": 1793570942486,
     "messageId": "capture-protocol-activity",
     "activityType": "progress",
     "patch": [
@@ -71,7 +71,7 @@
   },
   {
     "type": "STATE_DELTA",
-    "timestamp": 1793561440879,
+    "timestamp": 1793570942486,
     "delta": [
       {
         "op": "replace",
@@ -82,43 +82,43 @@
   },
   {
     "type": "STEP_FINISHED",
-    "timestamp": 1793561440879,
+    "timestamp": 1793570942486,
     "stepName": "work"
   },
   {
     "type": "TOOL_CALL_RESULT",
-    "timestamp": 1793561440880,
+    "timestamp": 1793570942487,
     "metadata": {
       "hashbrown.tool": {
         "v": 1,
         "outcome": "success"
       }
     },
-    "messageId": "6d9ab545-9b85-4d3a-abd2-d820d630dca9",
+    "messageId": "55ba9ec7-b04b-45ff-87ae-4908a582ea26",
     "toolCallId": "capture-protocol-protocol",
     "content": "standard protocol complete",
     "role": "tool"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793561440882,
-    "messageId": "22a39538-d738-45ac-9f8c-b5623c6b9709",
+    "timestamp": 1793570942489,
+    "messageId": "02fa1986-932d-4e1c-9399-f4a548618fba",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793561440882,
-    "messageId": "22a39538-d738-45ac-9f8c-b5623c6b9709",
+    "timestamp": 1793570942489,
+    "messageId": "02fa1986-932d-4e1c-9399-f4a548618fba",
     "delta": "Tool result: standard protocol complete"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793561440883,
-    "messageId": "22a39538-d738-45ac-9f8c-b5623c6b9709"
+    "timestamp": 1793570942489,
+    "messageId": "02fa1986-932d-4e1c-9399-f4a548618fba"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793561440885,
+    "timestamp": 1793570942491,
     "threadId": "capture-protocol",
     "runId": "protocol-run",
     "outcome": {
