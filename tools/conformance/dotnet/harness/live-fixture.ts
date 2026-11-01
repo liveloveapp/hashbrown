@@ -1,8 +1,16 @@
 import { spawn } from 'node:child_process';
-import { resolve } from 'node:path';
+import { type DotnetHostSelection, resolveDotnetHost } from './dotnet-host';
+import { livePackageChildEnvironment } from './live-package';
 import { LIVE_BUDGET_MANIFEST } from './live-budget';
 import { publicChildEnvironment } from './live-configuration';
 import { createLiveOutputReader, safeLiveError } from './live-diagnostics';
+
+/** Closed validated evidence emitted only after a child proves its actual loaded assembly. */
+export interface LivePackageIdentityWitness {
+  readonly role: 'fixture' | 'probe' | 'cleanup';
+  readonly identity: string;
+  readonly sha256: string;
+}
 
 /** Owned native fixture; provider credentials never leave its selected child environment. */
 export interface NativeLiveFixture {
@@ -16,6 +24,8 @@ export async function startNativeLiveFixture(
   group: string,
   signal: AbortSignal,
   origins: readonly string[],
+  selection: DotnetHostSelection,
+  onIdentity?: (identity: LivePackageIdentityWitness) => void,
 ): Promise<NativeLiveFixture> {
   if (
     group !== 'preflight' &&
@@ -34,24 +44,45 @@ export async function startNativeLiveFixture(
   )
     throw safeLiveError('LIVE_CHILD_START_FAILED');
   if (signal.aborted) throw safeLiveError('LIVE_CHILD_TIMEOUT');
-  const output = createLiveOutputReader();
+  let host;
+  try {
+    host = resolveDotnetHost(selection);
+  } catch {
+    throw safeLiveError('LIVE_CHILD_START_FAILED');
+  }
+  const cleanup = environment['FixtureDropSchemaOnly'] === 'true';
+  const output = createLiveOutputReader(host.loaded);
   const child = spawn(
-    environment['DOTNET_HOST_PATH'] ?? 'dotnet',
-    [resolve('dist/tools/conformance/dotnet/Hashbrown.Conformance.dll')],
+    host.command ?? environment['DOTNET_HOST_PATH'] ?? 'dotnet',
+    [host.executable],
     {
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...environment,
-        ASPNETCORE_URLS: 'http://127.0.0.1:0',
-        FixtureLive: 'true',
-        FixtureLiveGroup: group,
-        FixtureOrigins: origins.join(','),
-        Workflow: group === 'approval-resume-decline' ? 'confirm' : '',
-      },
+      cwd: host.workingDirectory,
+      env: (host.loaded
+        ? livePackageChildEnvironment
+        : (_host: typeof host, values: Readonly<Record<string, string>>) =>
+            values)(
+        host,
+        {
+          ...environment,
+          ASPNETCORE_URLS: 'http://127.0.0.1:0',
+          ...(cleanup ? {} : { FixtureLive: 'true' }),
+          FixtureLiveGroup: group,
+          FixtureOrigins: origins.join(','),
+          Workflow: group === 'approval-resume-decline' ? 'confirm' : '',
+        },
+        cleanup,
+      ),
     },
   );
-  child.stdout.on('data', output.stdout);
+  child.stdout.on('data', (chunk: Buffer) => {
+    output.stdout(chunk);
+    if (output.failed()) {
+      failed = true;
+      kill('SIGKILL');
+    }
+  });
   child.stderr.on('data', output.stderr);
   let exited = false;
   let failed = false;
@@ -118,6 +149,8 @@ export async function startNativeLiveFixture(
           'preflight',
           cleanupSignal,
           [],
+          selection,
+          onIdentity,
         );
         try {
           const response = await fetch(`${cleanup.url}/__test/drop-schema`, {
@@ -129,6 +162,7 @@ export async function startNativeLiveFixture(
           await cleanup.stop();
         }
       }
+      if (output.failed()) throw safeLiveError('LIVE_CHILD_FAILED');
     })());
   const abort = () => {
     void stop().catch(() => undefined);
@@ -139,12 +173,21 @@ export async function startNativeLiveFixture(
     while (!output.url()) {
       if (signal.aborted || Date.now() - started >= 15_000)
         throw safeLiveError('LIVE_CHILD_TIMEOUT');
-      if (failed || exited) throw safeLiveError('LIVE_CHILD_START_FAILED');
+      if (failed || exited || output.failed())
+        throw safeLiveError('LIVE_CHILD_START_FAILED');
       await new Promise<void>((done) => setTimeout(done, 20));
     }
     if (signal.aborted) throw safeLiveError('LIVE_CHILD_TIMEOUT');
+    if (failed || exited || output.failed())
+      throw safeLiveError('LIVE_CHILD_START_FAILED');
     const origin = output.url();
     if (!origin) throw safeLiveError('LIVE_CHILD_START_FAILED');
+    if (host.loaded)
+      onIdentity?.({
+        role: cleanup ? 'cleanup' : 'fixture',
+        identity: host.loaded.identity,
+        sha256: host.loaded.sha256,
+      });
     return Object.freeze({ url: origin, stop });
   } catch {
     await stop();
@@ -152,4 +195,105 @@ export async function startNativeLiveFixture(
       signal.aborted ? 'LIVE_CHILD_TIMEOUT' : 'LIVE_CHILD_START_FAILED',
     );
   }
+}
+
+/** Executes the immutable deterministic journal probe without enabling provider access. */
+export async function runPublicLiveProbe(
+  selection: DotnetHostSelection,
+  postgres: string,
+  signal: AbortSignal,
+  onIdentity?: (identity: LivePackageIdentityWitness) => void,
+): Promise<void> {
+  if (!postgres.trim() || signal.aborted)
+    throw safeLiveError('LIVE_CHILD_FAILED');
+  let host;
+  try {
+    host = resolveDotnetHost(selection, 'probe');
+  } catch {
+    throw safeLiveError('LIVE_CHILD_START_FAILED');
+  }
+  const { command, loaded } = host;
+  if (!loaded || !command) throw safeLiveError('LIVE_CHILD_START_FAILED');
+  const output = createLiveOutputReader(loaded);
+  const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
+  await new Promise<void>((accept, reject) => {
+    const child = spawn(command, [host.executable, 'none'], {
+      cwd: host.workingDirectory,
+      detached: process.platform !== 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...livePackageChildEnvironment(host, {}, true),
+        DOTNET_TEST_POSTGRES: postgres,
+      },
+    });
+    let completed = false;
+    let partial = '';
+    const kill = () => {
+      try {
+        if (!child.pid) return;
+        if (process.platform === 'win32') child.kill('SIGKILL');
+        else process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        /* Owned child has exited. */
+      }
+    };
+    deadline.addEventListener('abort', kill, { once: true });
+    child.stdout.on('data', (chunk: Buffer) => {
+      output.stdout(chunk);
+      for (const character of chunk.toString('utf8')) {
+        if (character === '\n') {
+          if (
+            partial.trim() ===
+            'Live approval real journal and native SDK proof passed; in-memory transport only.'
+          )
+            completed = true;
+          partial = '';
+        } else partial = (partial + character).slice(-256);
+      }
+      if (output.failed()) kill();
+    });
+    child.stderr.on('data', output.stderr);
+    child.once('error', () => {
+      deadline.removeEventListener('abort', kill);
+      kill();
+      reject(safeLiveError('LIVE_CHILD_START_FAILED'));
+    });
+    child.once('exit', kill);
+    child.once('close', async (code) => {
+      deadline.removeEventListener('abort', kill);
+      kill();
+      const groupAlive = () => {
+        if (!child.pid || process.platform === 'win32') return false;
+        try {
+          process.kill(-child.pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      const end = Date.now() + 1000;
+      while (groupAlive() && Date.now() < end)
+        await new Promise<void>((done) => setTimeout(done, 20));
+      if (
+        groupAlive() ||
+        deadline.aborted ||
+        code !== 0 ||
+        !completed ||
+        !output.identityVerified()
+      )
+        reject(safeLiveError('LIVE_CHILD_FAILED'));
+      else {
+        try {
+          onIdentity?.({
+            role: 'probe',
+            identity: loaded.identity,
+            sha256: loaded.sha256,
+          });
+          accept();
+        } catch {
+          reject(safeLiveError('LIVE_CHILD_FAILED'));
+        }
+      }
+    });
+  });
 }

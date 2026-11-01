@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { appendFile, copyFile, mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
   createLiveBudget,
@@ -22,12 +22,17 @@ import {
 } from './live-configuration';
 import { startLiveStaticServer } from './live-static-server';
 import { createLiveQualificationLedger } from './live-qualification';
+import {
+  finalizeLiveProvenance,
+  selectPublicLivePackage,
+} from './live-package';
 
 /** Validated command shape; no Playwright execution overrides are accepted. */
 export interface LiveRunnerArguments {
   readonly list: boolean;
   readonly credentialFile: string;
   readonly consumerMetadata?: string;
+  readonly nugetMetadata?: string;
 }
 
 /** Parses the entire CLI before credential loading or construction of any child process. */
@@ -41,10 +46,14 @@ export function parseLiveRunnerArguments(
     const name = args[index];
     const value = args[index + 1];
     if (
-      !['--credentials', '--consumer-metadata'].includes(name) ||
+      !['--credentials', '--consumer-metadata', '--nuget-metadata'].includes(
+        name,
+      ) ||
       values[name] !== undefined ||
       !value?.trim() ||
-      value.startsWith('--')
+      value.startsWith('--') ||
+      (['--consumer-metadata', '--nuget-metadata'].includes(name) &&
+        !isAbsolute(value))
     )
       throw new Error('LIVE_ARGUMENT_INVALID');
     values[name] = value;
@@ -52,6 +61,9 @@ export function parseLiveRunnerArguments(
   return {
     list: false,
     credentialFile: values['--credentials'] ?? '',
+    ...(values['--nuget-metadata']
+      ? { nugetMetadata: values['--nuget-metadata'] }
+      : {}),
     ...(values['--consumer-metadata']
       ? { consumerMetadata: values['--consumer-metadata'] }
       : {}),
@@ -117,6 +129,16 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       group: string;
     }
   >();
+  let cleanupFailed = false;
+  const drainFixture = async (fixture: LiveNativeFixture) => {
+    try {
+      await fixture.stop();
+    } catch {
+      cleanupFailed = true;
+      qualification.fail();
+      throw safeLiveError('LIVE_CHILD_FAILED');
+    }
+  };
   let closing = false;
   let active = false;
   const pendingStarts = new Set<Promise<void>>();
@@ -181,17 +203,29 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
           qualification.recordPreflight(preflight, stats, counters));
     return { ...stats, validEvidence: valid };
   };
-  const stopFixture = async (id: string) => {
+  const pendingStops = new Set<Promise<void>>();
+  const stopFixture = (id: string): Promise<void> => {
     const entry = fixtures.get(id);
-    if (!entry) return;
+    if (!entry) return Promise.resolve();
     fixtures.delete(id);
-    try {
-      await recordStats(entry.fixture, entry.project, entry.group);
-    } finally {
-      entry.allocation.dispose();
-      await entry.fixture.stop();
-      active = false;
-    }
+    const stopping = (async () => {
+      try {
+        await recordStats(entry.fixture, entry.project, entry.group);
+      } finally {
+        entry.allocation.dispose();
+        try {
+          await drainFixture(entry.fixture);
+        } finally {
+          active = false;
+        }
+      }
+    })();
+    pendingStops.add(stopping);
+    void stopping.then(
+      () => pendingStops.delete(stopping),
+      () => pendingStops.delete(stopping),
+    );
+    return stopping;
   };
   const readBody = async (request: import('node:http').IncomingMessage) => {
     let body = '';
@@ -249,6 +283,7 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
         throw new Error();
       const allocation = budget.reserveScenario(input.project, input.group);
       active = true;
+      let startDrained = false;
       const start = (async () => {
         const fixture = await options.startFixture(
           nativeLiveChildEnvironment(
@@ -268,7 +303,8 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
           options.origins,
         );
         if (closing || allocation.signal.aborted || options.signal?.aborted) {
-          await fixture.stop();
+          await drainFixture(fixture);
+          startDrained = true;
           throw new Error();
         }
         const id = randomBytes(16).toString('hex');
@@ -285,6 +321,7 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       try {
         await start;
       } catch {
+        if (!startDrained) cleanupFailed = true;
         active = false;
         allocation.dispose();
         throw new Error();
@@ -307,7 +344,8 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
     signal: budget.signal,
     snapshot: qualification.snapshot,
     assertComplete: () => {
-      if (active || fixtures.size || pendingStarts.size) qualification.fail();
+      if (active || fixtures.size || pendingStarts.size || pendingStops.size)
+        qualification.fail();
       qualification.assertComplete();
     },
     preflight: async (
@@ -361,6 +399,7 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
         if (!diagnostic({ stage: 'completed', preflight: name }))
           throw new Error();
       } catch {
+        if (!fixture) cleanupFailed = true;
         qualification.fail();
         throw safeLiveError('LIVE_PROVIDER_FAILED');
       } finally {
@@ -371,7 +410,7 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
           qualification.fail();
         } finally {
           allocation.dispose();
-          await fixture?.stop();
+          if (fixture) await drainFixture(fixture);
         }
       }
     },
@@ -380,11 +419,10 @@ export async function createLiveCoordinator(options: LiveCoordinatorOptions) {
       budget.dispose();
       server.closeAllConnections();
       await Promise.allSettled([...pendingStarts]);
-      const stopped = await Promise.allSettled(
-        [...fixtures.keys()].map(stopFixture),
-      );
+      for (const id of [...fixtures.keys()]) void stopFixture(id);
+      const stopped = await Promise.allSettled([...pendingStops]);
       await new Promise<void>((accept) => server.close(() => accept()));
-      if (stopped.some((entry) => entry.status === 'rejected'))
+      if (cleanupFailed || stopped.some((entry) => entry.status === 'rejected'))
         throw safeLiveError('LIVE_CHILD_FAILED');
     },
   });
@@ -488,6 +526,26 @@ async function prepareArtifacts(
   }
 }
 
+/** Reuses public smoke and immutable SDK provenance under a provider-free environment. */
+async function qualifyNuget(
+  metadata: string,
+  environment: Readonly<Record<string, string | undefined>>,
+  signal: AbortSignal,
+) {
+  const result = await runOwnedChild(
+    process.execPath,
+    [
+      resolve(__dirname, '../nuget-consumer/qualify.mjs'),
+      '--metadata',
+      metadata,
+    ],
+    publicChildEnvironment(environment),
+    signal,
+  );
+  if (result.code !== 0) throw safeLiveError('LIVE_CHILD_FAILED');
+  return selectPublicLivePackage(metadata);
+}
+
 /** Verified execution result includes actual evidence counts and explicit safe report locations. */
 export interface LiveExecutionResult {
   readonly exitCode: number;
@@ -504,7 +562,20 @@ async function executeQualification(
   configuration: LiveConfiguration,
   args: LiveRunnerArguments,
   environment: Readonly<Record<string, string | undefined>>,
+  qualifiedPackage: ReturnType<typeof selectPublicLivePackage>,
 ): Promise<LiveExecutionResult> {
+  const { nugetMetadata, consumerMetadata } = args;
+  if (!nugetMetadata) throw new Error('LIVE_NUGET_REQUIRED');
+  if (!consumerMetadata) throw new Error('LIVE_CONSUMER_REQUIRED');
+  const selected = selectPublicLivePackage(nugetMetadata);
+  if (
+    JSON.stringify(selected.provenance) !==
+    JSON.stringify(qualifiedPackage.provenance)
+  )
+    throw new Error('LIVE_NUGET_INVALID');
+  const npmSha256 = createHash('sha256')
+    .update(readFileSync(consumerMetadata))
+    .digest('hex');
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),
@@ -523,6 +594,23 @@ async function executeQualification(
         });
     },
   });
+  const recordIdentity = (
+    identity: import('./live-fixture').LivePackageIdentityWitness,
+  ) => {
+    writes = writes
+      .then(() =>
+        appendFile(
+          join(output, 'loaded-identities.jsonl'),
+          JSON.stringify(identity) + '\n',
+        ),
+      )
+      .catch(() => {
+        persistenceFailed = true;
+      });
+  };
+  let primary = 'failed';
+  let phase = 'npm-qualification';
+  let cleanupStatus = 'passed';
   let exitCode = 1;
   let verifiedMetadataPath: string | undefined;
   let provenancePath: string | undefined;
@@ -541,13 +629,30 @@ async function executeQualification(
     verifiedMetadataPath = metadata.metadataPath;
     provenancePath = join(output, 'consumer-provenance.json');
     await copyFile(metadata.metadataPath, provenancePath);
+    await appendFile(
+      join(output, 'nuget-provenance.json'),
+      JSON.stringify(selected.provenance),
+    );
+    await appendFile(
+      join(output, 'consumer-anchor.json'),
+      JSON.stringify({ before: npmSha256 }),
+    );
     react = await startLiveStaticServer(metadata.artifacts.react);
     angular = await startLiveStaticServer(metadata.artifacts.angular);
-    const { startNativeLiveFixture } = await import('./live-fixture');
+    const { startNativeLiveFixture, runPublicLiveProbe } =
+      await import('./live-fixture');
+    phase = 'public-probe';
+    await runPublicLiveProbe(
+      selected.selection,
+      environment['DOTNET_TEST_POSTGRES'] ?? '',
+      controller.signal,
+      recordIdentity,
+    );
     coordinator = await createLiveCoordinator({
       configuration,
       origins: [react.url, angular.url],
-      startFixture: startNativeLiveFixture,
+      startFixture: (...inputs) =>
+        startNativeLiveFixture(...inputs, selected.selection, recordIdentity),
       diagnostic: diagnostics.record,
       environment,
       signal: controller.signal,
@@ -555,21 +660,25 @@ async function executeQualification(
     coordinator.signal.addEventListener('abort', () => controller.abort(), {
       once: true,
     });
+    phase = 'openai-preflight';
     await coordinator.preflight(
       'openai-responses',
       'react-openai-key',
       'responses',
     );
+    phase = 'azure-preflight';
     await coordinator.preflight(
       'azure-responses',
       'react-azure-key',
       'responses',
     );
+    phase = 'azure-cli-preflight';
     await coordinator.preflight(
       'azure-cli-chat',
       'react-azure-cli',
       'chat-completions',
     );
+    phase = 'browser-matrix';
     const result = await runOwnedChild(
       process.execPath,
       [
@@ -591,22 +700,8 @@ async function executeQualification(
     );
     if (result.code !== 0) throw new Error('LIVE_QUALIFICATION_INCOMPLETE');
     coordinator.assertComplete();
-    // Revalidate the same immutable installation after provider/browser execution, without installing or overwriting metadata.
-    const after = await prepareArtifacts(
-      metadata.metadataPath,
-      environment,
-      controller.signal,
-    );
-    if (
-      after.metadataPath !== metadata.metadataPath ||
-      after.artifacts.react !== metadata.artifacts.react ||
-      after.artifacts.angular !== metadata.artifacts.angular
-    )
-      throw new Error('LIVE_CONSUMER_CHANGED');
-    await copyFile(
-      metadata.metadataPath,
-      join(output, 'consumer-provenance-after.json'),
-    );
+    primary = 'passed';
+    phase = 'completed';
     exitCode = 0;
   } catch {
     exitCode = 1;
@@ -616,10 +711,61 @@ async function executeQualification(
     try {
       await coordinator?.stop();
     } catch {
+      cleanupStatus = 'failed';
       exitCode = 1;
     }
     const cleanup = await Promise.allSettled([react?.stop(), angular?.stop()]);
-    if (cleanup.some((entry) => entry.status === 'rejected')) exitCode = 1;
+    if (cleanup.some((entry) => entry.status === 'rejected')) {
+      cleanupStatus = 'failed';
+      exitCode = 1;
+    }
+    const verification = await finalizeLiveProvenance(
+      async (signal) => {
+        const after = await qualifyNuget(nugetMetadata, environment, signal);
+        if (
+          JSON.stringify(after.provenance) !==
+          JSON.stringify(selected.provenance)
+        )
+          throw new Error();
+        await appendFile(
+          join(output, 'nuget-provenance-after.json'),
+          JSON.stringify(after.provenance),
+        );
+      },
+      async (signal) => {
+        if (
+          createHash('sha256')
+            .update(readFileSync(consumerMetadata))
+            .digest('hex') !== npmSha256
+        )
+          throw new Error();
+        const after = await prepareArtifacts(
+          args.consumerMetadata,
+          environment,
+          signal,
+        );
+        if (
+          createHash('sha256')
+            .update(readFileSync(consumerMetadata))
+            .digest('hex') !== npmSha256
+        )
+          throw new Error();
+        await copyFile(
+          after.metadataPath,
+          join(output, 'consumer-provenance-after.json'),
+        );
+        await appendFile(
+          join(output, 'consumer-anchor-after.json'),
+          JSON.stringify({ after: npmSha256 }),
+        );
+      },
+    );
+    if (verification.nuget !== 'passed' || verification.npm !== 'passed')
+      exitCode = 1;
+    await appendFile(
+      join(output, 'finalization.json'),
+      JSON.stringify({ primary, phase, cleanup: cleanupStatus, verification }),
+    );
     diagnostics.record({ stage: exitCode === 0 ? 'completed' : 'failed' });
     await writes;
     try {
@@ -660,6 +806,18 @@ export async function executeLiveRunner(
   if (environment['HASHBROWN_LIVE_OPT_IN'] !== '1')
     throw new Error('LIVE_OPT_IN_REQUIRED');
   if (!parsed.consumerMetadata) throw new Error('LIVE_CONSUMER_REQUIRED');
+  if (!parsed.nugetMetadata) throw new Error('LIVE_NUGET_REQUIRED');
+  const selected = selectPublicLivePackage(parsed.nugetMetadata);
+  const qualifiedPackage = await qualifyNuget(
+    parsed.nugetMetadata,
+    environment,
+    AbortSignal.timeout(30_000),
+  );
+  if (
+    JSON.stringify(selected.provenance) !==
+    JSON.stringify(qualifiedPackage.provenance)
+  )
+    throw new Error('LIVE_NUGET_INVALID');
   const configuration = await (
     dependencies.loadConfiguration ?? loadLiveConfiguration
   )({
@@ -667,10 +825,16 @@ export async function executeLiveRunner(
     credentialFile: parsed.credentialFile,
     projects: LIVE_PROJECTS.map((entry) => entry.name),
   });
+  if (
+    JSON.stringify(selectPublicLivePackage(parsed.nugetMetadata).provenance) !==
+    JSON.stringify(qualifiedPackage.provenance)
+  )
+    throw new Error('LIVE_NUGET_INVALID');
   const result = await (dependencies.execute ?? executeQualification)(
     configuration,
     parsed,
     environment,
+    qualifiedPackage,
   );
   return { ...result, projects: LIVE_PROJECTS.map((entry) => entry.name) };
 }

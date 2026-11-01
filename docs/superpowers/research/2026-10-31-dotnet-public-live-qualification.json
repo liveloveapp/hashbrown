@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "runnerRevision": "162682d0c95e72e22ddb4a6cf7a58d384b20c1f4",
+  "producerRevision": "df1340f713d3b65165a494eb09e53246298df858",
+  "package": {
+    "id": "Hashbrown.AspNetCore",
+    "version": "0.1.0-preview.1",
+    "archiveSha256": "288cdd59c3f123ea4f69bc044b4eed3eeae8ffd1ab53df64f9555148cd1d2f57",
+    "assemblySha256": "37c98d354cca12fb6b32e94210e747bd7b825881436fea9eae291de72ea3a9e2"
+  },
+  "npmVersions": {
+    "@hashbrownai/core": "0.8.3",
+    "@hashbrownai/react": "0.8.3",
+    "@hashbrownai/angular": "0.8.3"
+  },
+  "actualCases": 54,
+  "uniqueCases": 54,
+  "projects": {
+    "react-openai-key": 9,
+    "react-azure-key": 9,
+    "react-azure-cli": 9,
+    "angular-openai-key": 9,
+    "angular-azure-key": 9,
+    "angular-azure-cli": 9
+  },
+  "successfulDistinctPreflights": [
+    "openai-responses",
+    "azure-responses",
+    "azure-cli-chat"
+  ],
+  "actualModelCalls": 93,
+  "actualHttpWireCalls": 93,
+  "inputTokens": 9291,
+  "outputTokens": 1287,
+  "reservedCalls": 123,
+  "maxRunCalls": 128,
+  "maxOutputTokens": 384,
+  "cancelledCalls": 6,
+  "nativeApprovalCases": 6,
+  "nativeApprovalUsageCompleteCalls": 18,
+  "nativeApprovalUsageIncompleteCalls": 0,
+  "identityWitnesses": {
+    "probe": 1,
+    "fixture": 57,
+    "cleanup": 12
+  },
+  "witnessTotal": 70,
+  "diagnosticRows": 265,
+  "diagnosticBytes": 64943,
+  "finalization": {
+    "primary": "passed",
+    "phase": "completed",
+    "cleanup": "passed",
+    "verification": {
+      "nuget": "passed",
+      "npm": "passed"
+    }
+  },
+  "beforeAfterProvenanceEqual": true,
+  "sourceTreeCleanBeforeAndAfter": true,
+  "runnerSourceHashesMatched": 30,
+  "configAndSpecsMatchHEAD": true,
+  "privacyFileManifestMatchesRootScan": true,
+  "filesSha256": {
+    "safe-diagnostics.jsonl": "ce9cfe22bb8c9d100102c4f4c9230a63f44944abf3bff1bbf3f0da53aecb5f76",
+    "nuget-provenance-after.json": "74e487c2da5a418a334318474425cdb0fa5781f646e80f0fb8883a75602a7cd0",
+    "consumer-provenance.json": "c0599f72c562620efab6bb9e6434306fda66594cadf896087798f618a226640d",
+    "consumer-provenance-after.json": "c0599f72c562620efab6bb9e6434306fda66594cadf896087798f618a226640d",
+    "finalization.json": "6f2a7c7fc3a1dd7ebad7880129f6e3e7f0b97c078bfc3448f3ef5fb6b10e2afd",
+    "consumer-anchor.json": "30e095cc28948a208a1225eb2d3fbc792832b09cb2e6e8b12af357fc67ed8cd3",
+    "nuget-provenance.json": "74e487c2da5a418a334318474425cdb0fa5781f646e80f0fb8883a75602a7cd0",
+    "consumer-anchor-after.json": "4c640bfcb3700bcce2655ea0902e9530a3c679e9d57c3a43c67b92d5847e7cd8",
+    "loaded-identities.jsonl": "21b78b8e9a7e165b9866d5e35be2b355120d7ada5ecbfd0f017c4a43c5e25aeb",
+    "playwright/.last-run.json": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+  },
+  "scopeLimitations": [
+    "Azure CLI Chat Completions is a single preflight; 54 browser scenarios use Responses.",
+    "Cloud managed identity and pending-browser cold recovery are unqualified.",
+    "General cases persist aggregate actual usage; only native approval persists explicit usage-completeness counts.",
+    "Raw provider payloads are deliberately absent; native result, history and approval facts are validated in memory and retained as bounded facts."
+  ],
+  "npmSourceFilesRehashed": 19,
+  "npmBundleFilesRehashed": 17,
+  "npmModuleOriginsPublishedOnly": true,
+  "finalImmutableAnchorsMatchInitial": true,
+  "qualifiedOn": "2026-10-31",
+  "skips": 0,
+  "retries": 0,
+  "failures": 0
+}
