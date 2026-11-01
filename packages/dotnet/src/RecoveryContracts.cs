@@ -18,7 +18,12 @@ public sealed record RecoveryInterrupt(string Id, string Reason, string Message,
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConversationSnapshot(string ThreadId, JsonElement Messages, JsonElement? State,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RecoveryInterrupt>? Interrupts = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ConfiguredSystemMessageId = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ConfiguredSystemMessageId = null)
+{
+  /// <summary>Optional explicit settlement capability, advertised only by a capable native journal under negotiated V2 recovery.</summary>
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public PendingBrowserRecovery? PendingBrowserRecovery { get; init; }
+}
 
 /// <summary>Versioned read-only checkpoint disposition; effect and generation outcomes are independent.</summary>
 public sealed record CheckpointRecovery(int SchemaVersion, string BatchId, long ServerRevision, string EffectState,

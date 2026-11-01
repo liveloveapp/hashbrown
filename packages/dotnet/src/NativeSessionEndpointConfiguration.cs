@@ -50,14 +50,17 @@ public static class NativeSessionEndpointConfiguration
         _ = HashbrownRequestClient.ReadSchema(input);
         var key = new NativeSessionKey(name, scope, input.ThreadId, new Dictionary<string, string> { ["isolation"] = isolation });
         var raw = NativeSessionRawRequest.Get(http);
-        NativeApprovalAdmissionEnvelope? decisions = input.Resume is { Count: > 0 } ? NativeApprovalAdmission.Parse(raw, key, registration.Catalog, registration.Options) : null;
-        _ = decisions?.CanonicalPublicRequest ?? NativeSessionHistory.Normalize(raw, key, registration.Catalog, registration.Options);
-        context = new NativeSessionContext(registration, http, input, scope, isolation, raw, decisions, composed.Observer);
+        var recovery = NativeBrowserRecoveryAdmission.Parse(raw, registration.Options);
+        if (recovery is not null && registration.Journal is not INativeSessionBrowserRecoveryJournal) return Results.StatusCode(406);
+        var admissionRaw = recovery is null ? raw : NativeBrowserRecoveryAdmission.Sanitize(raw, removeResume: false).ToJsonString();
+        NativeApprovalAdmissionEnvelope? decisions = input.Resume is { Count: > 0 } ? NativeApprovalAdmission.Parse(admissionRaw, key, registration.Catalog, registration.Options) : null;
+        _ = decisions?.CanonicalPublicRequest ?? NativeSessionHistory.Normalize(admissionRaw, key, registration.Catalog, registration.Options);
+        context = new NativeSessionContext(registration, http, input, scope, isolation, raw, decisions, recovery, composed.Observer);
         context.Observe("Original.Raw.Before", raw);
         context.ObserveInput("Original.Typed.Before", input);
         if (composed.SupportsApprovals)
         {
-          var clone = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput))!.AsObject();
+          var clone = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(context.Input, AGUIJsonSerializerContext.Default.RunAgentInput))!.AsObject();
           clone["tools"] = new System.Text.Json.Nodes.JsonArray();
           var upstream = JsonSerializer.Deserialize(clone.ToJsonString(), AGUIJsonSerializerContext.Default.RunAgentInput)!;
           var index = filter.Arguments.IndexOf(input);

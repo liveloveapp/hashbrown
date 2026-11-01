@@ -1,0 +1,579 @@
+#pragma warning disable MAAI001 // Tests public pinned native composition with no provider calls.
+using System.Net;
+using System.Reflection;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using Hashbrown.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.AI;
+using Microsoft.Agents.AI;
+using AGUI.Abstractions;
+using AGUI.Server;
+using System.Runtime.CompilerServices;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+var original = """{"threadId":"thread","runId":"saved","messages":[{"id":"user","role":"user","content":"run"},{"id":"assistant","role":"assistant","toolCalls":[{"id":"browser","type":"function","function":{"name":"frontend","arguments":"{}"}}]}],"tools":[{"name":"frontend","description":"browser","parameters":{"type":"object"}}],"forwardedProps":{}}""";
+var configuration = """{"tools":[{"name":"frontend","description":"browser","parameters":{"type":"object"}}],"forwardedProps":{}}""";
+
+var old = DispatchProxy.Create<INativeSessionJournal, RecoveryJournal>();
+var capable = DispatchProxy.Create<INativeSessionBrowserRecoveryJournal, RecoveryJournal>();
+var oldState = (RecoveryJournal)(object)old;
+var state = (RecoveryJournal)(object)capable;
+oldState.Status = new(200, "Ready", Revision: 7, PublicRequest: original);
+state.Status = oldState.Status;
+state.Status = state.Status with { BrowserRecoveryCallIds = new[] { "browser" } };
+var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0"); builder.Logging.ClearProviders(); builder.Logging.AddConsole(); builder.Logging.SetMinimumLevel(LogLevel.Warning); builder.Services.AddRouting();
+builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>("fixture", _ => { });
+builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+var accessor = new HttpContextAccessor();
+var catalog = new NativeToolCatalog([]);
+NativeSessionEndpointConfiguration.Configure(builder.Services, "native", capable, catalog, _ => "owned", new NativeSessionOptions { PublicBytes = 8192 });
+var observed = typeof(NativeSessionAgentFactory).GetMethod("CreateObservedForTests", BindingFlags.NonPublic | BindingFlags.Static)!;
+var admissionObservations = new List<JsonNode>();
+var refusalModel = new RefusingModel();
+var agent = (AIAgent)observed.Invoke(null, [refusalModel, "native", Array.Empty<AIFunction>(), catalog, accessor, (Action<string>)(value => admissionObservations.Add(JsonNode.Parse(value)!))])!;
+var bindingConverter = new ControlledBindingConverter();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Insert(0, bindingConverter));
+builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+var executing = DispatchProxy.Create<INativeSessionBrowserRecoveryJournal, ExecutingJournal>();
+var execution = (ExecutingJournal)(object)executing;
+var observations = new List<JsonNode>();
+var model = new BoundaryModel { SecondBrowser = true, TrailingText = true };
+NativeSessionEndpointConfiguration.Configure(builder.Services, "execute", executing, catalog, _ => "owned", new NativeSessionOptions { PublicBytes = 8192 });
+var executableAgent = (AIAgent)observed.Invoke(null, [model, "execute", Array.Empty<AIFunction>(), catalog, accessor, (Action<string>)(value => observations.Add(JsonNode.Parse(value)!))])!;
+var protectedEffects = 0;
+var protectedFunction = AIFunctionFactory.Create(() => { protectedEffects++; return "protected"; }, "backend");
+var mixedCatalog = new NativeToolCatalog([new("backend", 1, protectedFunction.JsonSchema, RequiresConfirmation: true)]);
+var mixedExecuting = DispatchProxy.Create<INativeSessionBrowserRecoveryJournal, ExecutingJournal>();
+var mixedExecution = (ExecutingJournal)(object)mixedExecuting; mixedExecution.Catalog = mixedCatalog;
+var mixedObservations = new List<JsonNode>();
+var mixedModel = new BoundaryModel { Mixed = true };
+NativeSessionEndpointConfiguration.Configure(builder.Services, "mixed-execute", mixedExecuting, mixedCatalog, _ => "owned", new NativeSessionOptions { PublicBytes = 8192 });
+var mixedAgent = (AIAgent)observed.Invoke(null, [mixedModel, "mixed-execute", new AIFunction[] { new ApprovalRequiredAIFunction(protectedFunction) }, mixedCatalog, accessor, (Action<string>)(value => mixedObservations.Add(JsonNode.Parse(value)!))])!;
+await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+NativeSessionKey Key(string thread) => new("native", "owned", thread, new Dictionary<string, string> { ["isolation"] = "owned" });
+NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/old/{threadId}", old, "native", (_, thread) => Key(thread));
+NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/capable/{threadId}", capable, "native", (_, thread) => Key(thread));
+NativeSessionEndpointConfiguration.Map(app, "/run", agent, "native");
+NativeSessionEndpointConfiguration.Map(app, "/execute", executableAgent, "native");
+NativeSessionEndpointConfiguration.Map(app, "/mixed-execute", mixedAgent, "native");
+await app.StartAsync();
+using var http = new HttpClient { BaseAddress = new(app.Urls.Single()) };
+
+var legacy = await Send("old", null);
+Check(legacy.Status == 200 && legacy.Body!["schemaVersion"]!.GetValue<int>() == 1 && legacy.Body["snapshot"] is null, "V1 must preserve blocked pending browser recovery.");
+var incapable = await Send("old", ["2"]);
+Check(incapable.Status == 406 && oldState.Acquisitions == 0, "V2 must refuse an old custom journal without capability or ordinary acquisition.");
+var negotiated = await Send("capable", ["2"]);
+Check(negotiated.Status == 200 && negotiated.Body!["schemaVersion"]!.GetValue<int>() == 2 && negotiated.Body["disposition"]!.GetValue<string>() == "Pending", "Explicit V2 must expose pending browser capability.");
+var capability = negotiated.Body!["snapshot"]?["pendingBrowserRecovery"];
+Check(capability?["protocolVersion"]?.GetValue<int>() == 1 && capability["serverRevision"]?.GetValue<long>() == 7 && capability["callIds"]?.ToJsonString() == "[\"browser\"]", "Capability must carry the exact complete browser IDs and captured revision.");
+var mixed = JsonNode.Parse(original)!.AsObject();
+mixed["messages"]![1]!["toolCalls"]!.AsArray().Add(JsonNode.Parse("""{"id":"protected","type":"function","function":{"name":"backend","arguments":"{}"}}"""));
+state.Status = new(200, "Ready", Revision: 7, PublicRequest: mixed.ToJsonString(), RecoveryReason: "PendingMixedBrowserResult", PendingInterrupts: [new("ficc_protected", "tool_call", "Approve", JsonSerializer.SerializeToElement(new { type = "object" }), ToolCallId: "protected")]) { BrowserRecoveryCallIds = ["browser"] };
+
+var mixedLegacy = await Send("capable", null);
+var mixedV2 = await Send("capable", ["2"]);
+
+Check(mixedLegacy.Body?["reason"]?.GetValue<string>() == "PendingMixedBrowserResult" && mixedLegacy.Body?["snapshot"] is null, "V1 retains the legacy mixed blocker reason and excludes the snapshot.");
+Check(mixedV2.Body?["disposition"]?.GetValue<string>() == "Pending" && mixedV2.Body?["reason"] is null && mixedV2.Body?["snapshot"]?["interrupts"]?.AsArray().Count == 1 && mixedV2.Body?["snapshot"]?["pendingBrowserRecovery"]?["callIds"]?.ToJsonString() == "[\"browser\"]", "A genuine mixed V2 capability must include complete protected interrupts and clear its legacy blocker reason.");
+state.Status = new(200, "Ready", Revision: 7, PublicRequest: original) { BrowserRecoveryCallIds = ["browser"] };
+foreach (var values in new[] { new[] { "" }, new[] { "02" }, new[] { "+2" }, new[] { "2.0" }, new[] { "v2" }, new[] { "2", "2" } })
+{
+    var invalid = await Send("capable", values);
+
+    Check(invalid.Status == 400, "Malformed/duplicate/signed/aliased version must fail before status lookup: " + string.Join("|", values));
+}
+Check((await Send("capable", ["3"])).Status == 406, "Unknown numeric version must return 406.");
+foreach (var unsafeState in new[] { "Owned", "Saved", "Publishing", "PublicationUnknown", "Blocked", "Expired", "Missing" })
+{
+    state.Status = state.Status with { State = unsafeState };
+
+    var result = await Send("capable", ["2"]);
+
+    Check(result.Body?["snapshot"]?["pendingBrowserRecovery"] is null, "Unsafe disposition must never carry capability: " + unsafeState);
+}
+foreach (var corrupt in new NativeSessionStatus[] {
+    new(200, "Ready", Revision: 0, PublicRequest: original),
+    new(200, "Ready", Revision: 7, PublicRequest: original, RecoveryReason: "UnknownEffect"),
+    new(200, "Ready", Revision: 7, PublicRequest: original.Replace("\"frontend\",\"arguments\"", "\"unbound\",\"arguments\"")),
+    new(200, "Ready", Revision: 7, PublicRequest: original, IsNew: true),
+    new(200, "Ready", Revision: 7, PublicRequest: original, TurnCompleted: true) })
+{
+    state.Status = corrupt with { BrowserRecoveryCallIds = new[] { "browser" } };
+
+    var result = await Send("capable", ["2"]);
+
+    Check(result.Body?["snapshot"]?["pendingBrowserRecovery"] is null, "Corrupt/unbound browser evidence must not advertise capability.");
+}
+state.Status = new(200, "Ready", Revision: 7, PublicRequest: original);
+state.Status = state.Status with { BrowserRecoveryCallIds = new[] { "browser" } };
+Check(state.Acquisitions == 0 && oldState.Acquisitions == 0, "Read-only recovery must execute no acquisition, native preparation, provider or effects.");
+state.Status = state.Status with { State = "Ready" };
+var settlement = JsonNode.Parse(original)!.AsObject();
+settlement["runId"] = "recovered";
+settlement["forwardedProps"] = JsonNode.Parse("""{"hashbrown":{"recovery":{"version":1,"serverRevision":7,"outcomes":[{"toolCallId":"browser","status":"result"}]}}}""");
+settlement["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"result","role":"tool","toolCallId":"browser","content":"known"}"""));
+foreach (var mutation in new Action<JsonObject>[] {
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"] = new JsonObject(),
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["version"] = 2,
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["serverRevision"] = 0,
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["serverRevision"] = 9007199254740992L,
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["unknown"] = true,
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"] = new JsonArray(),
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]![0]!["status"] = "retry",
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]![0]!["value"] = "duplicated",
+    value => value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]!.AsArray().Add(value["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]![0]!.DeepClone()),
+    value => value["messages"]!.AsArray().RemoveAt(2),
+    value => value["messages"]![2]!["toolCallId"] = "foreign",
+    value => value["messages"]!.AsArray().Add(value["messages"]![2]!.DeepClone()) })
+{
+    var invalid = settlement.DeepClone().AsObject(); mutation(invalid);
+    var before = state.Acquisitions;
+
+    var rejected = await Run(invalid.ToJsonString());
+
+    Check(rejected == 400 && state.Acquisitions == before, "Malformed recovery must reject before every journal admission/native preparation boundary: " + invalid.ToJsonString());
+}
+foreach (var raw in new[] {
+    settlement.ToJsonString().Replace("\"version\":1", "\"version\":1,\"version\":1"),
+    settlement.ToJsonString().Replace("\"recovery\":", "\"Recovery\":"),
+    settlement.ToJsonString().Replace("\"serverRevision\":", "\"ServerRevision\":"),
+    settlement.ToJsonString().Replace("\"status\":\"result\"", "\"status\":\"result\",\"Status\":\"result\""),
+    settlement.ToJsonString().Replace("\"known\"", new string('[', 70) + "0" + new string(']', 70)) })
+{
+    var before = state.Acquisitions;
+
+    var rejected = await Run(raw);
+
+    Check(rejected == 400 && state.Acquisitions == before, "Ambiguous or deep original recovery must reject before journal authority.");
+}
+Check(await Run(new string(' ', 8193)) == 413, "Oversize raw recovery is bounded before binding.");
+var unavailable = settlement.DeepClone().AsObject();
+unavailable["forwardedProps"]!["hashbrown"]!["recovery"]!["outcomes"]![0]!["status"] = "unavailable";
+var unavailableExact = "{\"hashbrownRecovery\":{\"version\":1,\"status\":\"result-unavailable\",\"effect\":\"unknown\",\"message\":\"The browser result is unavailable after recovery. The operation may already have occurred. No retry was performed.\"}}";
+unavailable["messages"]![2]!["content"] = unavailableExact;
+Check(await Run(unavailable.ToJsonString()) == 409, "The exact unavailable representation passes syntax to authoritative refusal.");
+unavailable["messages"]![2]!["content"] = " " + unavailableExact;
+var beforeUnavailable = state.Acquisitions;
+
+var unavailableAlias = await Run(unavailable.ToJsonString());
+
+Check(unavailableAlias == 400 && state.Acquisitions == beforeUnavailable, "Whitespace-equivalent unavailable JSON must reject before journal authority; diagnostics require the exact compact reserved string.");
+
+var priorOrdinary = state.OrdinaryAcquisitions;
+var priorRecovery = state.RecoveryAcquisitions;
+
+var refusedSettlement = await Run(settlement.ToJsonString());
+
+Check(refusedSettlement == 409 && state.RecoveryAcquisitions == priorRecovery + 1 && state.OrdinaryAcquisitions == priorOrdinary && state.LastRaw == settlement.ToJsonString(), "Explicit settlement must pass exact original bytes once to optional journal and never fall back or rebase.");
+foreach (var bindingCase in new[] { "recovery", "sibling", "state", "equal" })
+{
+    var divergent = settlement.DeepClone().AsObject(); divergent["runId"] = "binding-" + bindingCase;
+    divergent["forwardedProps"]!["application"] = new JsonObject { ["approved"] = true };
+    divergent["state"] = new JsonObject { ["nested"] = new JsonObject { ["value"] = "original" } };
+    var bindingRaw = divergent.ToJsonString(); admissionObservations.Clear();
+    var ordinaryBefore = state.OrdinaryAcquisitions; var recoveryBefore = state.RecoveryAcquisitions;
+
+    var bindingStatus = await Run(bindingRaw);
+
+    Check(bindingConverter.Original == bindingRaw && bindingConverter.Changed == (bindingCase != "equal"), "Controlled public Web binder preserves original bytes and changes only the intended nested typed graph.");
+    Check(bindingStatus == (bindingCase == "equal" ? 409 : 400) && state.OrdinaryAcquisitions == ordinaryBefore && state.RecoveryAcquisitions == recoveryBefore + (bindingCase == "equal" ? 1 : 0) && refusalModel.Calls == 0 && !admissionObservations.Any(item => item["stage"]!.GetValue<string>() is "Deserialize.Guard" or "Create.Guard" or "Run.Guard"), "Original raw versus Web-bound nested recovery/sibling/state inequality must reject before sanitation, either journal method, native preparation or callbacks; equal binding reaches authoritative refusal.");
+}
+execution.Reset(); model.Reset(null); observations.Clear();
+var nullableVirgin = JsonNode.Parse(original)!.AsObject(); nullableVirgin["threadId"] = "nullable-canonical"; nullableVirgin["runId"] = "nullable-initial";
+nullableVirgin["messages"]!.AsArray().RemoveAt(1); nullableVirgin["forwardedProps"] = null;
+
+var nullableStatus = await Execute(nullableVirgin.ToJsonString());
+
+var nullableSubmitted = JsonNode.Parse(execution.SubmittedPublicRequest!)!.AsObject();
+var nullableSaved = JsonNode.Parse(execution.Saved!.PublicRequest)!.AsObject();
+Check(nullableStatus == 200 && nullableVirgin.ContainsKey("forwardedProps") && nullableVirgin["forwardedProps"] is null && nullableSubmitted.ContainsKey("forwardedProps") && nullableSubmitted["forwardedProps"] is null && !nullableSaved.ContainsKey("forwardedProps"), "Ordinary explicit forwardedProps:null reaches native save, then the production authoritative Normalize/save boundary canonicalizes it to an absent property; null is not a distinct durable recovery shape.");
+var nullExtension = JsonNode.Parse(original)!.AsObject(); nullExtension["runId"] = "ordinary-null-extension"; nullExtension["messages"]!.AsArray().RemoveAt(1);
+nullExtension["forwardedProps"] = new JsonObject { ["hashbrown"] = null };
+var ordinaryBeforeNull = state.OrdinaryAcquisitions; var recoveryBeforeNull = state.RecoveryAcquisitions; admissionObservations.Clear();
+
+var nullExtensionStatus = await Run(nullExtension.ToJsonString());
+
+Check(nullExtensionStatus == 400 && state.OrdinaryAcquisitions == ordinaryBeforeNull && state.RecoveryAcquisitions == recoveryBeforeNull && refusalModel.Calls == 0 && !admissionObservations.Any(item => item["stage"]!.GetValue<string>() is "Deserialize.Guard" or "Create.Guard" or "Run.Guard"), "Ordinary hashbrown:null is unsupported and rejects at ReadSchema before either journal method, native preparation or provider work.");
+foreach (var baseProperties in new JsonNode?[] { null, new JsonObject(), JsonNode.Parse("""{"hashbrown":{}}"""), JsonNode.Parse("""{"hashbrown":{"responseSchema":{"type":"object"},"ui":{"components":[]}},"application":{"approved":true}}""") })
+{
+    execution.Reset(); model.Reset(baseProperties); observations.Clear();
+    var virgin = JsonNode.Parse(original)!.AsObject();
+    virgin["threadId"] = "shape-" + Guid.NewGuid().ToString("N"); virgin["runId"] = "initial";
+    virgin["messages"]!.AsArray().RemoveAt(1);
+    if (baseProperties is null) virgin.Remove("forwardedProps"); else virgin["forwardedProps"] = baseProperties.DeepClone();
+
+    var started = await Execute(virgin.ToJsonString());
+
+    Check(started == 200 && execution.Saved is not null && model.Calls == 1 && execution.Saved.ExpectedBrowserCallIds.SequenceEqual(new[] { "browser", "browser-2" }), "A genuine initial native session must save the pending browser call before sanitation qualification.");
+    var saved = execution.Saved!;
+    Check(JsonNode.DeepEquals(JsonNode.Parse(saved.PublicRequest)!["forwardedProps"], baseProperties), "Initial save preserves trusted absent/empty/sibling container shape.");
+    var recovered = JsonNode.Parse(saved.PublicRequest)!.AsObject(); recovered["runId"] = "recovered";
+    var forwarded = recovered["forwardedProps"] as JsonObject; if (forwarded is null) { forwarded = new JsonObject(); recovered["forwardedProps"] = forwarded; }
+    var extension = forwarded["hashbrown"] as JsonObject; if (extension is null) { extension = new JsonObject(); forwarded["hashbrown"] = extension; }
+    extension["recovery"] = JsonNode.Parse("""{"version":1,"serverRevision":7,"outcomes":[{"toolCallId":"browser","status":"result"},{"toolCallId":"browser-2","status":"result"}]}""");
+    recovered["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"result","role":"tool","toolCallId":"browser","content":"known"}"""));
+    recovered["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"result-2","role":"tool","toolCallId":"browser-2","content":"second known"}"""));
+    var recoveredRaw = " \n" + recovered.ToJsonString() + "\n ";
+    var directKey = new NativeSessionKey("execute", "owned", virgin["threadId"]!.GetValue<string>(), new Dictionary<string, string> { ["isolation"] = "owned" });
+    foreach (var typed in new[] {
+        new NativeBrowserRecoveryRequest(1, 6, [new("browser", "result")]),
+        new NativeBrowserRecoveryRequest(1, 7, [new("foreign", "result")]),
+        new NativeBrowserRecoveryRequest(1, 7, [new("browser", "unavailable")]) })
+    {
+        var beforeOwnership = execution.Ownerships;
+
+        var refused = await executing.TryAcquireBrowserRecoveryAsync(directKey, recoveredRaw, typed);
+
+        Check(refused.Status == 409 && refused.Lease is null && execution.Ownerships == beforeOwnership, "Independent custom journal must reject typed/raw mismatches before ownership.");
+    }
+    var crossedKey = new NativeSessionKey("execute", "owned", directKey.Selector, new Dictionary<string, string> { ["isolation"] = "owned", ["tenant"] = "foreign" });
+    var crossedAdmission = await executing.TryAcquireBrowserRecoveryAsync(crossedKey, recoveredRaw, new(1, 7, [new("browser", "result"), new("browser-2", "result")]));
+    Check(crossedAdmission.Status == 409 && crossedAdmission.Lease is null && execution.Ownerships == 1, "Every ordinal partition belongs to the independently validated complete key.");
+    var duplicateRaw = recoveredRaw.Replace("\"version\":1", "\"version\":1,\"version\":1");
+    var duplicateAdmission = await executing.TryAcquireBrowserRecoveryAsync(directKey, duplicateRaw, new(1, 7, [new("browser", "result"), new("browser-2", "result")]));
+    Check(duplicateAdmission.Status == 400 && duplicateAdmission.Lease is null && execution.Ownerships == 1, "A capable journal independently rejects duplicate original JSON even when invoked without HTTP validation.");
+    var strictPrefix = JsonNode.Parse(saved.PublicRequest)!["messages"]!.AsArray();
+    var announcement = strictPrefix.Select((item, index) => (item, index)).First(item => item.item?["toolCalls"] is JsonArray calls && calls.Any(call => call?["id"]?.GetValue<string>() == "browser")).index;
+    Check(announcement < strictPrefix.Count - 1, "Strict admission qualification requires genuine saved text after the browser announcement.");
+    var inserted = recovered.DeepClone().AsObject();
+    var firstResult = inserted["messages"]!.AsArray()[strictPrefix.Count]!.DeepClone();
+    inserted["messages"]!.AsArray().RemoveAt(strictPrefix.Count);
+    inserted["messages"]!.AsArray().Insert(announcement + 1, firstResult);
+    var reversed = recovered.DeepClone().AsObject();
+    var suffix = reversed["messages"]!.AsArray();
+    var firstSuffix = suffix[strictPrefix.Count]!.DeepClone(); suffix[strictPrefix.Count] = suffix[strictPrefix.Count + 1]!.DeepClone(); suffix[strictPrefix.Count + 1] = firstSuffix;
+    var orderingRejected = true;
+    foreach (var wrongOrder in new[] { inserted, reversed })
+    {
+        var ownershipBefore = execution.Ownerships;
+        var orderedRefusal = await executing.TryAcquireBrowserRecoveryAsync(directKey, wrongOrder.ToJsonString(), new(1, 7, [new("browser", "result"), new("browser-2", "result")]));
+        orderingRejected &= orderedRefusal.Status == 409 && orderedRefusal.Lease is null && execution.Ownerships == ownershipBefore;
+    }
+    Check(orderingRejected, "Explicit strict authority must reject inserted or reversed browser result suffixes before ownership; legacy warm interleaving is insufficient.");
+    var ordinaryBefore = execution.Ordinary; var recoveryBefore = execution.Recovery;
+    observations.Clear();
+
+    var resumed = await Execute(recoveredRaw);
+
+    Check(resumed == 200 && model.Calls == 2 && execution.Ordinary == ordinaryBefore && execution.Recovery == recoveryBefore + 1 && execution.LastRaw == recoveredRaw && execution.Ownerships == 2, "A strict independently validated original envelope admits one existing saved continuation without ordinary fallback.");
+    var originalBefore = observations.Single(item => item["stage"]!.GetValue<string>() == "Original.Typed.Before")["value"]!.GetValue<string>();
+    var originalAfter = observations.Single(item => item["stage"]!.GetValue<string>() == "Original.Typed.After")["value"]!.GetValue<string>();
+    Check(originalBefore == originalAfter && observations.Where(item => item["stage"]!.GetValue<string>().StartsWith("Original.Raw", StringComparison.Ordinal)).All(item => item["value"]!.GetValue<string>() == recoveredRaw), "Original bound graph and exact raw bytes remain immutable through real execution.");
+    foreach (var stage in new[] { "Executable.Typed.Admitted", "Transport.Typed.Admitted", "Transport.Typed.After", "Public.Admitted" })
+    {
+        var view = JsonNode.Parse(observations.Single(item => item["stage"]!.GetValue<string>() == stage)["value"]!.GetValue<string>())!;
+        Check(JsonNode.DeepEquals(view["forwardedProps"], baseProperties) && view["forwardedProps"]?["hashbrown"]?["recovery"] is null, "Actual independent admitted/executable/transport/public views adopt the exact trusted base container shape: " + stage);
+    }
+    Check(execution.Saved is { TurnCompleted: true } && JsonNode.DeepEquals(JsonNode.Parse(execution.Saved.PublicRequest)!["forwardedProps"], baseProperties) && !execution.Saved.NativeJson!.Contains("\"recovery\"", StringComparison.Ordinal), "Actual projection/save/private session exclude recovery and preserve approved siblings/empty shape.");
+    var next = JsonNode.Parse(execution.Saved!.PublicRequest)!.AsObject(); next["runId"] = "next";
+    next["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"next-user","role":"user","content":"next"}"""));
+
+    var continued = await Execute(next.ToJsonString());
+
+    Check(continued == 200 && model.Calls == 3 && execution.Ordinary == ordinaryBefore + 1 && execution.Recovery == recoveryBefore + 1 && JsonNode.DeepEquals(JsonNode.Parse(execution.Saved!.PublicRequest)!["forwardedProps"], baseProperties), "Subsequent ordinary generation remains transient-free with its exact original configuration shape.");
+}
+mixedExecution.Reset(); mixedModel.Reset(new JsonObject()); mixedObservations.Clear();
+var mixedVirgin = JsonNode.Parse(original)!.AsObject(); mixedVirgin["threadId"] = "mixed-reservation"; mixedVirgin["runId"] = "mixed-initial"; mixedVirgin["messages"]!.AsArray().RemoveAt(1);
+Check(await Execute(mixedVirgin.ToJsonString(), "/mixed-execute") == 200 && mixedModel.Calls == 1 && protectedEffects == 0 && mixedExecution.Saved?.Approvals.PendingBatch?.Batch.ProtectedRequests.Count == 2 && mixedExecution.Saved.Approvals.PendingBatch.Batch.BrowserBindings.Count == 1, "Actual native mixed initial capture must durably bind every protected and browser call without executing effects.");
+var mixedSaved = mixedExecution.Saved!;
+var mixedRequest = JsonNode.Parse(mixedSaved.PublicRequest)!.AsObject(); mixedRequest["runId"] = "mixed-recovered";
+mixedRequest["forwardedProps"] = JsonNode.Parse("""{"hashbrown":{"recovery":{"version":1,"serverRevision":7,"outcomes":[{"toolCallId":"browser","status":"result"}]}}}""");
+mixedRequest["messages"]!.AsArray().Add(JsonNode.Parse("""{"id":"mixed-browser-result","role":"tool","toolCallId":"browser","content":"known"}"""));
+var completeDecisions = new JsonArray(mixedSaved.Approvals.PendingBatch!.Batch.ProtectedRequests.Select(item => (JsonNode)new JsonObject { ["interruptId"] = item.RequestId, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = true } }).ToArray());
+mixedRequest["resume"] = completeDecisions;
+foreach (var mutation in new Action<JsonObject>[] {
+    value => value.Remove("resume"),
+    value => value["resume"]!.AsArray().RemoveAt(1),
+    value => value["resume"]![0]!["interruptId"] = "foreign",
+    value => value["tools"]![0]!["description"] = "changed",
+    value => value["state"] = new JsonObject { ["forged"] = true },
+    value => value["messages"]![0]!["content"] = "changed history",
+    value => { var calls = value["messages"]![1]!["toolCalls"]!.AsArray(); var first = calls[0]!.DeepClone(); calls[0] = calls[1]!.DeepClone(); calls[1] = first; },
+    value => value["messages"]![1]!["toolCalls"]![0]!["function"]!["arguments"] = "{\"forged\":true}",
+    value => value["messages"]!.AsArray().Add(new JsonObject { ["id"] = "forged-protected-result", ["role"] = "tool", ["toolCallId"] = "protected-1", ["content"] = "forged" }) })
+{
+    var invalid = mixedRequest.DeepClone().AsObject(); mutation(invalid); mixedObservations.Clear();
+    var priorAttempts = mixedExecution.Recovery;
+
+    var rejected = await Execute(invalid.ToJsonString(), "/mixed-execute");
+
+    Check(rejected == 409 && mixedExecution.Recovery == priorAttempts + 1 && mixedExecution.Ownerships == 1 && mixedModel.Calls == 1 && protectedEffects == 0 && !mixedObservations.Any(item => item["stage"]!.GetValue<string>() is "Deserialize.Guard" or "Create.Guard" or "Run.Guard"), "Authoritative mixed key/history/result/complete-decision refusals grant no lease or preparation authority.");
+}
+var duplicateDecisions = mixedRequest.DeepClone().AsObject(); duplicateDecisions["resume"]![1]!["interruptId"] = duplicateDecisions["resume"]![0]!["interruptId"]!.DeepClone();
+var beforeDuplicate = mixedExecution.Recovery;
+Check(await Execute(duplicateDecisions.ToJsonString(), "/mixed-execute") == 400 && mixedExecution.Recovery == beforeDuplicate && mixedExecution.Ownerships == 1, "Duplicate mixed decisions fail syntax before authoritative acquisition.");
+mixedExecution.BlockReservation = true; mixedObservations.Clear();
+var completeMixed = Execute(mixedRequest.ToJsonString(), "/mixed-execute");
+await mixedExecution.ReservationEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+Check(!completeMixed.IsCompleted && mixedModel.Calls == 1 && protectedEffects == 0 && !mixedObservations.Any(item => item["stage"]!.GetValue<string>() is "Deserialize.Guard" or "Create.Guard" or "Run.Guard"), "A complete recovered mixed batch must reserve every genuine decision before any native preparation or provider/effect work.");
+mixedExecution.ReservationRelease.TrySetResult();
+Check(await completeMixed == 409 && mixedExecution.Reservations == 1 && mixedExecution.Ownerships == 2 && mixedModel.Calls == 1 && protectedEffects == 0, "A failed complete reservation cannot reach native preparation or effects.");
+var normalizerRejected = false;
+try { _ = NativeSessionHistory.Normalize(settlement.ToJsonString(), Key("thread"), catalog, new()); } catch (ArgumentException) { normalizerRejected = true; }
+Check(normalizerRejected, "Ordinary canonical normalization must explicitly reject the reserved recovery envelope before any journal/provider callback.");
+Console.WriteLine("Native browser recovery admission passed.");
+async Task<int> Execute(string raw, string route = "/execute")
+{
+    using var request = new HttpRequestMessage(HttpMethod.Post, route) { Content = new StringContent(raw, Encoding.UTF8, "application/json") };
+    request.Headers.Add("X-Authenticated", "fixture");
+    using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+    using var stream = await response.Content.ReadAsStreamAsync(); using var bytes = new MemoryStream();
+    try { await stream.CopyToAsync(bytes); }
+    catch (IOException exception) { throw new Exception("Native fixture stream failed: " + Encoding.UTF8.GetString(bytes.ToArray()) + "\nObservations: " + JsonSerializer.Serialize(observations), exception); }
+    return (int)response.StatusCode;
+}
+async Task<int> Run(string raw)
+{
+    using var request = new HttpRequestMessage(HttpMethod.Post, "/run") { Content = new StringContent(raw, Encoding.UTF8, "application/json") };
+    request.Headers.Add("X-Authenticated", "fixture");
+    using var response = await http.SendAsync(request);
+    return (int)response.StatusCode;
+}
+async Task<(int Status, JsonNode? Body)> Send(string route, string[]? versions)
+{
+    using var request = new HttpRequestMessage(HttpMethod.Post, "/" + route + "/thread") { Content = new StringContent(configuration, Encoding.UTF8, "application/json") };
+    request.Headers.Add("X-Authenticated", "fixture");
+    if (versions is not null) request.Headers.TryAddWithoutValidation("Hashbrown-Recovery-Version", versions);
+    using var response = await http.SendAsync(request);
+    Check(response.Headers.CacheControl?.NoStore == true, "Every recovery response must remain no-store.");
+    var text = await response.Content.ReadAsStringAsync();
+    return ((int)response.StatusCode, string.IsNullOrEmpty(text) ? null : JsonNode.Parse(text));
+}
+public class RecoveryJournal : DispatchProxy
+{
+    public NativeSessionStatus Status { get; set; } = new(410);
+    public int Acquisitions { get; private set; }
+    public int OrdinaryAcquisitions { get; private set; }
+    public int RecoveryAcquisitions { get; private set; }
+    public string? LastRaw { get; private set; }
+    protected override object? Invoke(MethodInfo? method, object?[]? args)
+    {
+        if (method!.Name == "ReadStatusAsync") return ValueTask.FromResult(Status);
+        Acquisitions++;
+        if (method.Name is "TryAcquireAsync" or "TryAcquireBrowserRecoveryAsync")
+        {
+            if (method.Name == "TryAcquireAsync") OrdinaryAcquisitions++; else RecoveryAcquisitions++;
+            LastRaw = (string)args![1]!;
+            return ValueTask.FromResult(new NativeSessionAdmission(409));
+        }
+        throw new Exception("Read-only route reached journal authority: " + method.Name);
+    }
+}
+sealed class FixtureAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(Request.Headers["X-Authenticated"] != "fixture" ? AuthenticateResult.NoResult() : AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "owned")], "fixture")), "fixture")));
+}
+
+sealed class RefusingModel : IChatClient
+{
+    public int Calls { get; private set; }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default) { Calls++; throw new Exception("Unexpected provider preparation."); }
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default) { Calls++; throw new Exception("Unexpected provider preparation."); }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+public class ExecutingJournal : DispatchProxy
+{
+    public NativeSessionSnapshot? Saved { get; private set; }
+    public int Ordinary { get; private set; }
+    public int Recovery { get; private set; }
+    public int Ownerships { get; private set; }
+    public string? LastRaw { get; private set; }
+    public string? SubmittedPublicRequest { get; private set; }
+    public NativeToolCatalog Catalog { get; set; } = new([]);
+    public bool BlockReservation { get; set; }
+    public int Reservations { get; private set; }
+    public TaskCompletionSource ReservationEntered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ReservationRelease { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private NativeSessionKey? _key;
+    private NativeSessionLease? _lease;
+    public void Reset() { Saved = null; Ordinary = 0; Recovery = 0; Ownerships = 0; Reservations = 0; BlockReservation = false; ReservationEntered = new(TaskCreationOptions.RunContinuationsAsynchronously); ReservationRelease = new(TaskCreationOptions.RunContinuationsAsynchronously); LastRaw = null; SubmittedPublicRequest = null; _key = null; _lease = null; }
+    protected override object? Invoke(MethodInfo? method, object?[]? args)
+    {
+        if (method!.Name is "TryAcquireAsync" or "TryAcquireBrowserRecoveryAsync")
+        {
+            var key = (NativeSessionKey)args![0]!; var raw = (string)args[1]!; LastRaw = raw;
+            JsonObject current;
+            try
+            {
+                using var original = JsonDocument.Parse(raw, new JsonDocumentOptions { MaxDepth = 64 });
+                ValidateOriginal(original.RootElement);
+                if (method.Name == "TryAcquireBrowserRecoveryAsync") ValidateRecoveryWire(original.RootElement);
+                if (Encoding.UTF8.GetByteCount(raw) > 8192) return ValueTask.FromResult(new NativeSessionAdmission(400));
+                current = JsonNode.Parse(raw)!.AsObject();
+            }
+            catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException or KeyNotFoundException) { return ValueTask.FromResult(new NativeSessionAdmission(400)); }
+            if (method.Name == "TryAcquireBrowserRecoveryAsync")
+            {
+                Recovery++;
+                var typed = (NativeBrowserRecoveryRequest)args[2]!;
+                var wire = current["forwardedProps"]!["hashbrown"]!["recovery"]!.AsObject();
+                if (wire.Count != 3 || wire["version"]!.GetValue<int>() != typed.ProtocolVersion || wire["serverRevision"]!.GetValue<long>() != typed.ServerRevision || typed.ServerRevision != 7 || Saved is null || key.Id != _key!.Id || typed.Outcomes.Count != Saved.ExpectedBrowserCallIds.Count || !Saved.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal).SetEquals(typed.Outcomes.Select(item => item.ToolCallId)) || typed.Outcomes.Any(item => item.Status != "result") || wire["outcomes"]!.AsArray().Count != typed.Outcomes.Count || wire["outcomes"]!.AsArray().Select((item, index) => item!["toolCallId"]!.GetValue<string>() != typed.Outcomes[index].ToolCallId || item["status"]!.GetValue<string>() != typed.Outcomes[index].Status).Any(item => item)) return ValueTask.FromResult(new NativeSessionAdmission(409));
+                var expected = Saved.Approvals.PendingBatch?.Batch.ProtectedRequests.Select(item => item.RequestId).ToHashSet(StringComparer.Ordinal) ?? [];
+                var decisions = current["resume"] as JsonArray;
+                if ((decisions?.Count ?? 0) != expected.Count || decisions is not null && !expected.SetEquals(decisions.Select(item => item!["interruptId"]!.GetValue<string>()))) return ValueTask.FromResult(new NativeSessionAdmission(409));
+                var stored = JsonNode.Parse(Saved.PublicRequest)!.AsObject();
+                var forwarded = current["forwardedProps"]!.AsObject(); var extension = forwarded["hashbrown"]!.AsObject(); extension.Remove("recovery");
+                if (extension.Count == 0 && stored["forwardedProps"]?["hashbrown"] is null) forwarded.Remove("hashbrown");
+                if (forwarded.Count == 0 && !stored.ContainsKey("forwardedProps")) current.Remove("forwardedProps");
+                current.Remove("resume");
+            }
+            else Ordinary++;
+            var canonical = NativeSessionHistory.Normalize(current.ToJsonString(), key, Catalog, new());
+            var storedCanonical = Saved is null ? null : new NativeSessionSnapshot(Saved.NativeJson, NativeSessionHistory.Normalize(Saved.PublicRequest, key, Catalog, new()), Saved.PendingCalls, Saved.ExpectedBrowserCallIds, Saved.TurnCompleted, Saved.Approvals);
+            var admits = method.Name == "TryAcquireBrowserRecoveryAsync"
+                ? storedCanonical is not null && AdmitsStrictRecovery(canonical, storedCanonical)
+                : NativeSessionHistory.Admits(canonical, storedCanonical);
+            if (!admits) return ValueTask.FromResult(new NativeSessionAdmission(409));
+            _key = key; Ownerships++; _lease = new(key, "owned-" + Ownerships, Ownerships, Ownerships == 1 ? 6 : 8);
+            return ValueTask.FromResult(new NativeSessionAdmission(200, _lease, Saved, Saved is null));
+        }
+        if (method.Name == "SaveAsync")
+        {
+            var value = (NativeSessionSave)args![1]!;
+            SubmittedPublicRequest = value.PublicRequest;
+            // Match production PostgresNativeSessionJournal.SaveAsync's public canonical boundary.
+            var canonical = NativeSessionHistory.Normalize(value.PublicRequest, _key!, Catalog, new());
+            Saved = new(value.NativeJson, canonical, value.PendingCalls, value.ExpectedBrowserCallIds, value.TurnCompleted, value.Approvals);
+            return ValueTask.FromResult<NativeSavedReceipt?>(new(_lease!, 7));
+        }
+        if (method.Name is "RenewAsync" or "AuthorizePublicationAsync" or "FinalizePublicationAsync" or "FailureCleanupAsync") return ValueTask.FromResult(true);
+        if (method.Name == "CaptureModelCallAsync" || method.Name == "CaptureApprovalBatchAsync") return ValueTask.FromResult(true);
+        if (method.Name == "GetOwnedApprovalEvidenceAsync")
+        {
+            if (Saved?.Approvals.PendingBatch is not { } batch) throw new Exception("Browser-only recovery must never invent a protected approval batch.");
+            return ValueTask.FromResult<NativeApprovalEvidence?>(new(_key!.Id, "fixture", Catalog.Identity, _lease!, batch, 7, NativeApprovalState.Pending, [], null, null, DateTimeOffset.UtcNow.AddMinutes(10)));
+        }
+        if (method.Name == "TryAdmitApprovalBatchAsync")
+        {
+            if (!BlockReservation) throw new Exception("Complete mixed reservation requires its explicit gate.");
+            Reservations++; ReservationEntered.TrySetResult();
+            return RefuseAfterGate();
+        }
+        throw new Exception("Unexpected journal method in isolated browser boundary: " + method.Name);
+    }
+    private static bool AdmitsStrictRecovery(string canonical, NativeSessionSnapshot stored)
+    {
+        var incoming = JsonNode.Parse(canonical)!.AsObject();
+        var original = JsonNode.Parse(stored.PublicRequest)!.AsObject();
+        var messages = incoming["messages"]!.AsArray(); var prefix = original["messages"]!.AsArray();
+        var expected = stored.ExpectedBrowserCallIds.ToHashSet(StringComparer.Ordinal);
+        if (expected.Count == 0 || expected.Count != stored.ExpectedBrowserCallIds.Count || messages.Count != prefix.Count + expected.Count) return false;
+        if (prefix.Where((message, index) => !JsonNode.DeepEquals(message, messages[index])).Any()) return false;
+        var ordered = prefix.OfType<JsonObject>().SelectMany(message => message["toolCalls"] is JsonArray calls ? calls.OfType<JsonObject>() : []).Select(call => call["id"]!.GetValue<string>()).Where(expected.Contains).ToArray();
+        if (ordered.Length != expected.Count || !expected.SetEquals(ordered) || prefix.Any(message => message?["role"]?.GetValue<string>() == "tool" && expected.Contains(message["toolCallId"]!.GetValue<string>()))) return false;
+        var ids = prefix.Select(message => message!["id"]!.GetValue<string>()).ToHashSet(StringComparer.Ordinal);
+        for (var index = 0; index < ordered.Length; index++)
+        {
+            var result = messages[prefix.Count + index];
+            if (result?["role"]?.GetValue<string>() != "tool" || result["toolCallId"]?.GetValue<string>() != ordered[index] || result["id"] is not JsonValue id || !id.TryGetValue<string>(out var fresh) || string.IsNullOrWhiteSpace(fresh) || !ids.Add(fresh)) return false;
+        }
+        incoming.Remove("messages"); original.Remove("messages");
+        return JsonNode.DeepEquals(incoming, original);
+    }
+    private async ValueTask<bool> RefuseAfterGate() { await ReservationRelease.Task; return false; }
+    private static void ValidateRecoveryWire(JsonElement root)
+    {
+        var forwarded = root.GetProperty("forwardedProps");
+        var hashbrown = forwarded.GetProperty("hashbrown");
+        if (forwarded.EnumerateObject().Any(item => item.Name != "hashbrown" && string.Equals(item.Name, "hashbrown", StringComparison.OrdinalIgnoreCase)) || hashbrown.EnumerateObject().Any(item => item.Name != "recovery" && string.Equals(item.Name, "recovery", StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("Ambiguous original recovery alias.");
+        var recovery = hashbrown.GetProperty("recovery");
+        if (recovery.ValueKind != JsonValueKind.Object || recovery.EnumerateObject().Count() != 3 || recovery.EnumerateObject().Any(item => item.Name is not ("version" or "serverRevision" or "outcomes"))) throw new ArgumentException("Unknown original recovery fields.");
+        foreach (var outcome in recovery.GetProperty("outcomes").EnumerateArray())
+            if (outcome.ValueKind != JsonValueKind.Object || outcome.EnumerateObject().Count() != 2 || outcome.EnumerateObject().Any(item => item.Name is not ("toolCallId" or "status"))) throw new ArgumentException("Unknown original outcome fields.");
+    }
+    private static void ValidateOriginal(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in value.EnumerateObject())
+            {
+                if (!names.Add(property.Name)) throw new ArgumentException("Duplicate original property.");
+                ValidateOriginal(property.Value);
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.Array) foreach (var item in value.EnumerateArray()) ValidateOriginal(item);
+    }
+}
+sealed class BoundaryModel : IChatClient
+{
+    public int Calls { get; private set; }
+    public bool SecondBrowser { get; init; }
+    public bool TrailingText { get; init; }
+    public bool Mixed { get; init; }
+    private JsonNode? _expected;
+    public void Reset(JsonNode? expected) { Calls = 0; _expected = expected?.DeepClone(); }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken ct = default)
+    {
+        if (options is null || !options.TryGetRunAgentInput(out var actual)) throw new Exception("Provider must observe actual typed transport options.");
+        var serialized = JsonSerializer.SerializeToNode(actual, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+        if (!JsonNode.DeepEquals(serialized["forwardedProps"], _expected) || serialized["forwardedProps"]?["hashbrown"]?["recovery"] is not null) throw new Exception("Provider options must adopt trusted sanitized container shape.");
+        Calls++;
+        if (Calls != 1) return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "{}") { MessageId = "done-" + Calls }) { ResponseId = "done-" + Calls });
+        var contents = new List<AIContent> { new FunctionCallContent("browser", "frontend", new Dictionary<string, object?>()) };
+        if (SecondBrowser) contents.Add(new FunctionCallContent("browser-2", "frontend", new Dictionary<string, object?>()));
+        if (Mixed) { contents.Add(new FunctionCallContent("protected-1", "backend", new Dictionary<string, object?>())); contents.Add(new FunctionCallContent("protected-2", "backend", new Dictionary<string, object?>())); }
+        var response = new List<ChatMessage> { new(ChatRole.Assistant, contents) { MessageId = "browser-parent" } };
+        if (TrailingText) response.Add(new(ChatRole.Assistant, "text after announcement") { MessageId = "after-announcement" });
+        return Task.FromResult(new ChatResponse(response) { ResponseId = "browser-parent", FinishReason = ChatFinishReason.ToolCalls });
+    }
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var response = await GetResponseAsync(messages, options, cancellationToken);
+        if (Calls == 1 && TrailingText)
+        {
+            // Each content update has its own genuine identity; finish metadata is a separate final update.
+            foreach (var message in response.Messages)
+            {
+                if (message.Contents.All(content => content is FunctionCallContent))
+                {
+                    foreach (var call in message.Contents.Cast<FunctionCallContent>())
+                    {
+                        var declaration = new ChatMessage(ChatRole.Assistant, [call]) { MessageId = "parent-" + call.CallId };
+                        foreach (var update in new ChatResponse(declaration) { ResponseId = declaration.MessageId, FinishReason = ChatFinishReason.ToolCalls }.ToChatResponseUpdates()) yield return update;
+                    }
+                }
+                else foreach (var update in new ChatResponse(message) { ResponseId = message.MessageId }.ToChatResponseUpdates()) yield return update;
+            }
+            yield return new ChatResponseUpdate { ResponseId = "browser-parent", FinishReason = ChatFinishReason.ToolCalls };
+        }
+        else foreach (var update in response.ToChatResponseUpdates()) yield return update;
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+sealed class ControlledBindingConverter : JsonConverter<RunAgentInput>
+{
+    public string? Original { get; private set; }
+    public bool Changed { get; private set; }
+    public override RunAgentInput Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        var raw = document.RootElement.GetRawText();
+        var input = JsonSerializer.Deserialize(raw, AGUIJsonSerializerContext.Default.RunAgentInput)!;
+        if (!input.RunId.StartsWith("binding-", StringComparison.Ordinal)) return input;
+        Original = raw; Changed = input.RunId != "binding-equal";
+        if (input.RunId is "binding-recovery" or "binding-sibling")
+        {
+            var forwarded = JsonNode.Parse(input.ForwardedProperties!.Value.GetRawText())!;
+            if (input.RunId == "binding-recovery") forwarded["hashbrown"]!["recovery"]!["serverRevision"] = 8;
+            else forwarded["application"]!["approved"] = false;
+            input.ForwardedProperties = JsonSerializer.SerializeToElement(forwarded);
+        }
+        else if (input.RunId == "binding-state") input.State = JsonSerializer.SerializeToElement(new { nested = new { value = "changed" } });
+        return input;
+    }
+    public override void Write(Utf8JsonWriter writer, RunAgentInput value, JsonSerializerOptions options) => JsonSerializer.Serialize(writer, value, AGUIJsonSerializerContext.Default.RunAgentInput);
+}

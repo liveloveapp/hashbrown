@@ -20,3 +20,13 @@ record members remain in the public API baseline but need no invented XML entrie
 
 Changes to these baselines require explicit API review. Do not regenerate them to
 silence an API mismatch.
+
+The unreleased browser recovery protocol adds four public types and two nullable
+init-only properties to the reviewed original contract. The metadata review
+preserves all original constructors, Deconstruct methods and journal signatures.
+Its 18 authored XML identifiers extend the documented baseline from 394 to 412;
+internal helper documentation is excluded. An unchanged consumer compiled against
+the published preview and a separate candidate reference/runtime consumer exercise
+compatibility before baseline acceptance. Package tests additionally execute the
+consumer against the runtime extracted from the locally packed candidate. These
+additions do not describe the published `0.1.0-preview.1` package.

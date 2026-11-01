@@ -96,6 +96,16 @@ internal sealed class NativeSessionProjection
     CheckBound();
   }
 
+  /// <summary>Adopts only the journal-admitted original extension-container shape before native preparation; events and canonical history remain intact.</summary>
+  internal void AdoptAdmittedForwardedProperties(string admittedPublicRequest)
+  {
+    if (_request is null || _complete || _invalid) throw new NativeSessionRequestException(503);
+    var admitted = JsonNode.Parse(admittedPublicRequest)!.AsObject();
+    if (admitted.TryGetPropertyValue("forwardedProps", out var forwarded)) _request["forwardedProps"] = forwarded?.DeepClone();
+    else _request.Remove("forwardedProps");
+    CheckBound();
+  }
+
   /// <summary>Returns an immutable completed projection; before completion no continuation history is available.</summary>
   internal NativeSessionProjectionResult Result => _result ?? new(false, null, Array.Empty<string>(), false, _terminalType, _terminalOutcome);
 

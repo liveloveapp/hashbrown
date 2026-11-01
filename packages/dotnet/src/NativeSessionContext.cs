@@ -21,15 +21,18 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   private readonly ConcurrentDictionary<string, NativeToolCall> _witnesses = new(StringComparer.Ordinal);
   private Task? _heartbeat;
   private AgentSession? _session;
+  private readonly RunAgentInput _originalInput;
   private bool _closed;
   private bool _disposed;
   private bool? _cleanupResult;
-  internal NativeSessionContext(NativeSessionRegistration registration, HttpContext http, RunAgentInput input, string scope, string isolation, string originalRaw, NativeApprovalAdmissionEnvelope? decisions, Action<string>? observer = null)
+  internal NativeSessionContext(NativeSessionRegistration registration, HttpContext http, RunAgentInput input, string scope, string isolation, string originalRaw, NativeApprovalAdmissionEnvelope? decisions, NativeBrowserRecoveryRequest? recovery, Action<string>? observer = null)
   {
     _observer = observer;
-    Registration = registration; Http = http; Input = input; Scope = scope; Isolation = isolation;
-    OriginalRaw = originalRaw; Decisions = decisions;
-    var publicInput = System.Text.Json.Nodes.JsonNode.Parse(originalRaw)!.AsObject(); publicInput.Remove("resume");
+    Registration = registration; Http = http; _originalInput = input; Scope = scope; Isolation = isolation;
+    OriginalRaw = originalRaw; Decisions = decisions; Recovery = recovery;
+    Input = recovery is null ? input : JsonSerializer.Deserialize(NativeBrowserRecoveryAdmission.Sanitize(originalRaw, removeResume: false).ToJsonString(), AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var publicInput = recovery is null ? System.Text.Json.Nodes.JsonNode.Parse(originalRaw)!.AsObject() : NativeBrowserRecoveryAdmission.Sanitize(originalRaw);
+    publicInput.Remove("resume");
     PublicRequest = publicInput.ToJsonString();
     _work = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
   }
@@ -38,7 +41,7 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   internal RunAgentInput Input { get; }
   internal string Scope { get; }
   internal string Isolation { get; }
-  internal string PublicRequest { get; }
+  internal string PublicRequest { get; private set; }
   internal RunAgentInput? TransportInput { get; set; }
   /// <summary>Emits immutable diagnostic values only; callbacks never grant native authority.</summary>
   internal void Observe(string stage, string? value = null) => NativeSessionObservation.Record(_observer, stage, value);
@@ -48,7 +51,8 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     if (_observer is not null) Observe(stage, JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput));
   }
   internal string OriginalRaw { get; }
-  internal NativeApprovalAdmissionEnvelope? Decisions { get; }
+  internal NativeApprovalAdmissionEnvelope? Decisions { get; private set; }
+  internal NativeBrowserRecoveryRequest? Recovery { get; }
   internal NativeApprovalEvidence? ApprovalEvidence { get; private set; }
   private readonly List<NativeApprovalDescriptor> _protectedRequests = [];
   private readonly List<NativeBrowserRequestBinding> _browserRequests = [];
@@ -71,6 +75,19 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     Admission = await AcquireAsync(ownedKey, cancellationToken);
     Observe("Acquire.Completed", Admission.Status.ToString(System.Globalization.CultureInfo.InvariantCulture));
     if (Admission.Status != 200 || Admission.Lease is null) throw new NativeSessionRequestException(Admission.Status);
+    if (Recovery is not null)
+    {
+      if (Admission.IsNew || Admission.Snapshot is not { NativeJson: not null } saved) throw new NativeSessionRequestException(503);
+      try
+      {
+        var sanitized = NativeBrowserRecoveryAdmission.Sanitize(OriginalRaw, saved.PublicRequest);
+        PublicRequest = sanitized.ToJsonString();
+        Input.ForwardedProperties = JsonSerializer.Deserialize(PublicRequest, AGUIJsonSerializerContext.Default.RunAgentInput)!.ForwardedProperties?.Clone();
+        if (TransportInput is not null) TransportInput.ForwardedProperties = Input.ForwardedProperties?.Clone();
+        if (Decisions is not null) Decisions = new(NativeSessionHistory.Normalize(PublicRequest, ownedKey, Registration.Catalog, Registration.Options), Decisions.Decisions);
+      }
+      catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException) { throw new NativeSessionRequestException(503); }
+    }
     foreach (var call in Admission.Snapshot?.PendingCalls ?? []) { _pending[call.Id] = call; _witnesses[call.Id] = call; }
     _heartbeat = HeartbeatAsync();
     if (Decisions is not null)
@@ -84,10 +101,21 @@ internal sealed class NativeSessionContext : IAsyncDisposable
       if (ApprovalEvidence.State != NativeApprovalState.DecisionAdmitted || ApprovalEvidence.AdmittedGeneration != Lease.Generation) throw new NativeSessionRequestException(409);
       Observe("Admission.Completed");
     }
+    if (Recovery is not null)
+    {
+      Projection?.AdoptAdmittedForwardedProperties(PublicRequest);
+      ObserveInput("Executable.Typed.Admitted", Input);
+      if (TransportInput is not null) ObserveInput("Transport.Typed.Admitted", TransportInput);
+      Observe("Public.Admitted", PublicRequest);
+    }
   }
   /// <summary>Resolves finalization races with authoritative retries, waiting briefly only on a live Publishing observation.</summary>
   private async ValueTask<NativeSessionAdmission> AcquireAsync(NativeSessionKey key, CancellationToken cancellationToken)
   {
+    if (Recovery is not null)
+      return Registration.Journal is INativeSessionBrowserRecoveryJournal capable
+          ? await capable.TryAcquireBrowserRecoveryAsync(key, OriginalRaw, Recovery, cancellationToken)
+          : new NativeSessionAdmission(406);
     var admission = await Registration.Journal.TryAcquireAsync(key, OriginalRaw, cancellationToken);
     if (admission.Status != 409) return admission;
     var started = Stopwatch.GetTimestamp();
@@ -270,7 +298,7 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     finally
     {
       Observe("Original.Raw.After", OriginalRaw);
-      ObserveInput("Original.Typed.After", Input);
+      ObserveInput("Original.Typed.After", _originalInput);
       if (TransportInput is not null) ObserveInput("Transport.Typed.After", TransportInput);
       Observe("Context.Disposed");
       _heartbeatStop.Dispose(); _work.Dispose();

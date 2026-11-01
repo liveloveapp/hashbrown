@@ -30,7 +30,14 @@ public static class NativeSessionHistory
   public static string Normalize(string request, NativeSessionKey key, NativeToolCatalog catalog, NativeSessionOptions options)
   {
     if (Encoding.UTF8.GetByteCount(request) > options.PublicBytes) throw new ArgumentException("Native public history exceeds its limit.");
-    using (var raw = JsonDocument.Parse(request)) ValidateShape(raw.RootElement, options);
+    using (var raw = JsonDocument.Parse(request))
+    {
+      ValidateShape(raw.RootElement, options);
+      if (raw.RootElement.TryGetProperty("forwardedProps", out var forwarded) && forwarded.ValueKind == JsonValueKind.Object)
+        foreach (var extension in forwarded.EnumerateObject())
+          if (string.Equals(extension.Name, "hashbrown", StringComparison.OrdinalIgnoreCase) && extension.Value.ValueKind == JsonValueKind.Object && extension.Value.EnumerateObject().Any(item => string.Equals(item.Name, "recovery", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Explicit browser recovery requires the optional journal admission boundary.");
+    }
     var input = JsonSerializer.Deserialize(request, AGUIJsonSerializerContext.Default.RunAgentInput) ?? throw new ArgumentException("A native public request is required.");
     if (input.ThreadId != key.Selector || input.Resume is { Count: > 0 } || input.Messages is not { Count: > 0 } || input.Messages.Count > options.MaximumMessages) throw new ArgumentException("Invalid native history selector, resume or message count.");
     var serialized = JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput);

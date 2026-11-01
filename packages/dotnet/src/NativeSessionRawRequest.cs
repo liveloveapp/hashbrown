@@ -42,10 +42,7 @@ internal static class NativeSessionRawRequest
       try
       {
         raw = Utf8.GetString(captured.GetBuffer(), 0, checked((int)captured.Length));
-        using var document = JsonDocument.Parse(raw, new JsonDocumentOptions { MaxDepth = 64 });
-        if (document.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
-        RejectDuplicates(document.RootElement);
-        RejectProtocolAliases(document.RootElement);
+        Validate(raw);
       }
       catch (Exception exception) when (exception is JsonException or DecoderFallbackException)
       { http.Response.StatusCode = 400; return; }
@@ -60,6 +57,14 @@ internal static class NativeSessionRawRequest
       http.Items.Remove(typeof(NativeSessionRawRequest));
     }
   };
+  /// <summary>Independently checks strict bounded-depth protocol syntax before any sanitizer or journal parser.</summary>
+  internal static void Validate(string raw)
+  {
+    using var document = JsonDocument.Parse(raw, new JsonDocumentOptions { MaxDepth = 64 });
+    if (document.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
+    RejectDuplicates(document.RootElement);
+    RejectProtocolAliases(document.RootElement);
+  }
   private static void RejectProtocolAliases(JsonElement root)
   {
     Check(root, ["threadId", "runId", "messages", "tools", "context", "state", "forwardedProps", "resume"]);

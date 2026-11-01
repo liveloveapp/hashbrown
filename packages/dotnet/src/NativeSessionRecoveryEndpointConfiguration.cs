@@ -27,6 +27,13 @@ public static class NativeSessionRecoveryEndpointConfiguration
       if (context.User.Identity?.IsAuthenticated != true) return Results.Unauthorized();
       try
       {
+        var version = 1;
+        if (context.Request.Headers.TryGetValue("Hashbrown-Recovery-Version", out var versions))
+        {
+          if (versions.Count != 1 || versions[0] is not { Length: > 0 } requested || requested.Any(character => character is < '0' or > '9') || requested.Length > 1 && requested[0] == '0') return Results.BadRequest();
+          if (requested != "2" || journal is not INativeSessionBrowserRecoveryJournal) return Results.StatusCode(406);
+          version = 2;
+        }
         var key = resolveKey(context, threadId);
         if (key is null) return Results.Forbid();
         if (key.Selector != threadId) return Results.BadRequest();
@@ -47,6 +54,7 @@ public static class NativeSessionRecoveryEndpointConfiguration
           "Expired" => "Expired",
           _ => "Unavailable"
         };
+        var reason = status.RecoveryReason;
         if (status.PublicRequest is { } original)
         {
           var input = JsonSerializer.Deserialize(original, AGUIJsonSerializerContext.Default.RunAgentInput) ?? throw new JsonException();
@@ -54,13 +62,18 @@ public static class NativeSessionRecoveryEndpointConfiguration
           var supplied = JsonSerializer.SerializeToElement(new RunAgentInput { ThreadId = "", RunId = "", Tools = configuration.Tools?.ToList(), ForwardedProperties = configuration.ForwardedProps }, AGUIJsonSerializerContext.Default.RunAgentInput);
           var system = input.Messages.FirstOrDefault() as AGUISystemMessage;
           if (!JsonNode.DeepEquals(JsonNode.Parse(expected.GetRawText()), JsonNode.Parse(supplied.GetRawText())) || system?.Content != configuration.System) return Results.Conflict();
-          if (disposition == "Completed" || disposition == "Pending" && status.RecoveryReason is null)
+          var browserRecovery = version == 2 && journal is INativeSessionBrowserRecoveryJournal && NativeBrowserRecoveryAdmission.CanAdvertise(status, input);
+          if (browserRecovery) { disposition = "Pending"; reason = null; }
+          if (browserRecovery || disposition == "Completed" || disposition == "Pending" && status.RecoveryReason is null)
           {
             var serialized = JsonSerializer.SerializeToElement(input, AGUIJsonSerializerContext.Default.RunAgentInput);
-            snapshot = new(input.ThreadId, serialized.GetProperty("messages").Clone(), input.State?.Clone(), Interrupts: status.PendingInterrupts, ConfiguredSystemMessageId: system?.Id);
+            snapshot = new(input.ThreadId, serialized.GetProperty("messages").Clone(), input.State?.Clone(), Interrupts: status.PendingInterrupts, ConfiguredSystemMessageId: system?.Id)
+            {
+              PendingBrowserRecovery = browserRecovery ? new(1, status.Revision, status.BrowserRecoveryCallIds!) : null
+            };
           }
         }
-        return Results.Json(new NativeSessionRecovery(1, disposition, status.Revision, snapshot, status.RecoveryReason));
+        return Results.Json(new NativeSessionRecovery(version, disposition, status.Revision, snapshot, reason));
       }
       catch (Exception exception) when (exception is ArgumentException or JsonException) { return Results.BadRequest(); }
       catch (Exception exception) when (exception is DbException or TimeoutException) { return Results.StatusCode(503); }
