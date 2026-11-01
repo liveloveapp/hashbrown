@@ -733,6 +733,22 @@ class Journey {
             record.threadId === this.threadId,
         )
         .map((record) => record.seq),
+      holdReceiptIds: this.observer
+        .records()
+        .filter(
+          (record) =>
+            record.kind === 'hold-received' &&
+            record.scenarioId === this.scope.scenarioId &&
+            record.threadId === this.threadId,
+        )
+        .map((record) => {
+          const receiptId = record.receiptId;
+          assert.ok(
+            typeof receiptId === 'string' && receiptId.length > 0,
+            'Actual scoped hold receipt identity required',
+          );
+          return receiptId;
+        }),
       computations: this.computations,
       providerRequests: [...this.requests],
       effects: state.effects,
@@ -981,7 +997,7 @@ class Journey {
           Boolean((await this.status(page)).pendingInterrupts?.id),
         )
         .toBe(true);
-    else
+    else {
       await expect
         .poll(
           () =>
@@ -993,6 +1009,29 @@ class Journey {
           { timeout: 30_000 },
         )
         .toBe(phase.browsers.length);
+      for (const call of phase.browsers) {
+        const entry = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        assert.ok(
+          entry,
+          'Actual current entered browser receipt required before hold observation',
+        );
+        await expect
+          .poll(() =>
+            this.observer
+              .records()
+              .some(
+                (record) =>
+                  record.kind === 'hold-received' &&
+                  record.scenarioId === this.scope.scenarioId &&
+                  record.threadId === this.threadId &&
+                  record.receiptId === entry.receiptId,
+              ),
+          )
+          .toBe(true);
+      }
+    }
     const after = await this.phaseCounters();
     const warm = await this.status(page);
     const facts = {
@@ -1111,17 +1150,6 @@ class Journey {
           .find((entry) => entry.correlation === call.city);
         assert.ok(entry);
         expect(entry.result).toEqual(call.value);
-        await expect
-          .poll(() =>
-            this.observer
-              .records()
-              .some(
-                (record) =>
-                  record.kind === 'hold-received' &&
-                  record.receiptId === entry.receiptId,
-              ),
-          )
-          .toBe(true);
         this.bindings.set(call.city, {
           correlation: call.city,
           canonicalCallId: call.id,

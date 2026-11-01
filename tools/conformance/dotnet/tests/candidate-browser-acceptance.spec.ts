@@ -216,9 +216,9 @@ function phaseFacts(mixed=true) {
  const pendingBatch=mixed?{batch:{batchId:'actual-saved-batch',protectedRequests:[{requestId:interrupt.id,call:{...p,version:1},nativeLocation:{messageId:'native-current',messageIndex:null,contentIndex:1},requiresConfirmation:true}],browserBindings:[{requestId:'ficc_current-browser-1',callId:b.id,name:b.name,arguments:b.arguments,nativeLocation:{messageId:'native-current',messageIndex:null,contentIndex:0},requiresConfirmation:false}]},publicLocations:{[interrupt.id]:{assistantMessageId:'current-parent',messageIndex:4,callIndex:1},ficc_currentBrowser:{assistantMessageId:'current-parent',messageIndex:4,callIndex:0}}}:null;
  if(pendingBatch){pendingBatch.publicLocations['ficc_current-browser-1']=pendingBatch.publicLocations.ficc_currentBrowser;delete pendingBatch.publicLocations.ficc_currentBrowser;}
  const payload={formatVersion:2,nativeJson:JSON.stringify({retainedNativeSession:'opaque-original'}),publicRequest:JSON.stringify({threadId:'owned-thread',messages,tools:[{name:'getWeather',description:'Owned browser',parameters:{type:'object',properties:{city:{type:'string'}},required:['city']}}],forwardedProps:{}}),pendingCalls:mixed?[{...p,version:1}]:[],expectedBrowserCallIds:[b.id],turnCompleted:false,approvals:{pendingBatch}};
- const before={entries:[{seq:2,receiptId:'historical-receipt',correlation:'Historical city',canonicalCallId:'history-entered-browser',toolName:'getWeather',arguments:{city:'Historical city'},result:'Historical exact'}],attemptSequences:[1],computations:1,providerRequests:[{body:{historical:'initial'}},{body:{historical:'continuation'}}],effects:[{id:1,call_id:'earlier-native',code:'ATL'}],nativeWitnesses:[{seq:1,callId:'earlier-native',runId:'earlier-run',domain:'native-outward-before-public-projection'}]};
+ const before={entries:[{seq:2,receiptId:'historical-receipt',correlation:'Historical city',canonicalCallId:'history-entered-browser',toolName:'getWeather',arguments:{city:'Historical city'},result:'Historical exact'}],attemptSequences:[1,3],holdReceiptIds:['historical-receipt'],computations:1,providerRequests:[{body:{historical:'initial'}},{body:{historical:'continuation'}}],effects:[{id:1,call_id:'earlier-native',code:'ATL'}],nativeWitnesses:[{seq:1,callId:'earlier-native',runId:'earlier-run',domain:'native-outward-before-public-projection'}]};
  const after=structuredClone(before);after.providerRequests.push({body:{current:'initial'}});
- if(!mixed){after.entries.push({seq:20,receiptId:'current-receipt',correlation:b.correlation,toolName:b.name,arguments:b.arguments,result:'Declared known'});after.attemptSequences.push(19);after.computations++;}
+ if(!mixed){after.entries.push({seq:20,receiptId:'current-receipt',correlation:b.correlation,toolName:b.name,arguments:b.arguments,result:'Declared known'});after.attemptSequences.push(19,21);after.holdReceiptIds.push('current-receipt');after.computations++;}
  return {expected:{runId:'original-run',threadId:'owned-thread',browsers:[b],protected:mixed?[p]:[]},sourceEvents:[{type:'RUN_STARTED',threadId:'owned-thread',runId:'original-run'},{type:'TOOL_CALL_START',toolCallId:b.id,toolCallName:b.name,parentMessageId:'current-parent'},...(mixed?[{type:'TOOL_CALL_START',toolCallId:p.id,toolCallName:p.name,parentMessageId:'current-parent'}]:[]),{type:'RUN_FINISHED',threadId:'owned-thread',runId:'original-run',...(mixed?{outcome:{type:'interrupt',interrupts:[structuredClone(interrupt)],pendingToolCallIds:[b.id]}}:{})}],publicState:{threadId:'owned-thread',pendingInterrupts:mixed?{id:'genuine-warm-token',interrupts:[structuredClone(interrupt)]}:null,pendingConversationRecovery:null,events:[{type:'RUN_FINISHED',runId:'original-run'}]},savedSession:{state:'Ready',revision:23,payload:JSON.stringify(payload)},before,after};
 }
 function changePayload(facts,mutate){const payload=JSON.parse(facts.savedSession.payload);mutate(payload);facts.savedSession.payload=JSON.stringify(payload);}
@@ -303,10 +303,12 @@ const second={id:'current-browser-2',name:'getWeather',arguments:{city:'Second o
 facts.expected.browsers.push(second);
 changePayload(facts,payload=>{const request=JSON.parse(payload.publicRequest);request.messages.at(-1).toolCalls.push({id:second.id,type:'function',function:{name:second.name,arguments:JSON.stringify(second.arguments)}});payload.publicRequest=JSON.stringify(request);payload.expectedBrowserCallIds.push(second.id);});
 facts.sourceEvents.splice(facts.sourceEvents.length-1,0,{type:'TOOL_CALL_START',toolCallId:second.id,toolCallName:second.name,parentMessageId:'current-parent'});
-facts.after.entries.push({seq:22,receiptId:'second-current-receipt',correlation:second.correlation,toolName:second.name,arguments:second.arguments,result:'Second declared known'});facts.after.attemptSequences.push(21);facts.after.computations++;
+facts.after.entries.push({seq:24,receiptId:'second-current-receipt',correlation:second.correlation,toolName:second.name,arguments:second.arguments,result:'Second declared known'});facts.after.attemptSequences.push(23,25);facts.after.holdReceiptIds.push('second-current-receipt');facts.after.computations++;
 assert.equal(subject.classifyCandidateWarmPhase(facts),'entered-browser-handler');
 const changed=structuredClone(facts);const secondSequence=changed.after.entries[2].seq;
 changed.after.entries[2]={...structuredClone(changed.after.entries[1]),seq:secondSequence,receiptId:'distinct-second-receipt-for-first-browser'};
+changed.after.holdReceiptIds[2]=changed.after.entries[2].receiptId;
+assert.deepEqual([...changed.after.holdReceiptIds.slice(changed.before.holdReceiptIds.length)].sort(),changed.after.entries.slice(changed.before.entries.length).map(entry=>entry.receiptId).sort());
 assert.equal(changed.after.entries.length,facts.after.entries.length);assert.equal(new Set(changed.after.entries.map(entry=>entry.receiptId)).size,changed.after.entries.length);assert.deepEqual(changed.after.attemptSequences,facts.after.attemptSequences);assert.equal(changed.after.computations,facts.after.computations);
 assert.throws(()=>subject.classifyCandidateWarmPhase(changed),/correlation|browser|coverage|entry|witness|distinct|equal/i);
 `);
@@ -353,4 +355,28 @@ for(const mutate of mutations){const changed=structuredClone(original);mutate(ch
 `);
 
   expect(result).toContain('passed');
+});
+
+test('warm entered observer accounting requires exact entry and hold receipt pairs while paused phases add neither request domain', () => {
+  const output = probe(`
+${warmPhaseFixture}
+const entered=phaseFacts(false);
+assert.equal(entered.after.attemptSequences.length-entered.before.attemptSequences.length,2);
+assert.equal(subject.classifyCandidateWarmPhase(entered),'entered-browser-handler');
+const mutations=[
+ value=>value.after.holdReceiptIds.pop(),
+ value=>value.after.holdReceiptIds[1]='foreign-hold-receipt',
+ value=>value.after.holdReceiptIds.push('current-receipt'),
+ value=>value.after.holdReceiptIds[0]='edited-history-hold',
+ value=>value.after.attemptSequences.push(23),
+ value=>value.after.attemptSequences.pop(),
+ value=>{value.after.entries.push({...value.after.entries[1],seq:24,receiptId:'duplicate-dispatch-receipt'});value.after.attemptSequences.push(23,25);value.after.holdReceiptIds.push('duplicate-dispatch-receipt');value.after.computations++;},
+];
+for(const mutate of mutations){const changed=structuredClone(entered);mutate(changed);assert.throws(()=>subject.classifyCandidateWarmPhase(changed),/hold|receipt|entry|witness|attempt|browser|histor|preserv|equal|coverage/i);}
+const paused=phaseFacts(true);
+assert.equal(subject.classifyCandidateWarmPhase(paused),'paused-for-protected-interrupt');
+for(const mutate of [value=>value.after.holdReceiptIds.push('unentered-receipt'),value=>value.after.holdReceiptIds[0]='edited-history-hold',value=>value.after.attemptSequences.push(19),value=>value.after.computations++]){const changed=structuredClone(paused);mutate(changed);assert.throws(()=>subject.classifyCandidateWarmPhase(changed),/hold|receipt|attempt|comput|histor|preserv|equal|paused/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
 });

@@ -735,6 +735,7 @@ export interface CandidateWarmPhaseCounters {
     result?: unknown;
   }>[];
   readonly attemptSequences: readonly number[];
+  readonly holdReceiptIds: readonly string[];
   readonly computations: number;
   readonly providerRequests: readonly unknown[];
   readonly effects: readonly object[];
@@ -1056,7 +1057,26 @@ export function classifyCandidateWarmPhase(
     before.attemptSequences,
     'Historical observer attempts changed',
   );
+  assert.deepEqual(
+    after.holdReceiptIds.slice(0, before.holdReceiptIds.length),
+    before.holdReceiptIds,
+    'Historical observer hold receipts changed',
+  );
+  for (const holds of [before.holdReceiptIds, after.holdReceiptIds]) {
+    assert.ok(
+      holds.every(
+        (receiptId) => typeof receiptId === 'string' && receiptId.length > 0,
+      ),
+      'Actual hold receipt identities required',
+    );
+    assert.equal(
+      new Set(holds).size,
+      holds.length,
+      'Distinct actual hold receipts required',
+    );
+  }
   const newEntries = after.entries.slice(before.entries.length);
+  const newHolds = after.holdReceiptIds.slice(before.holdReceiptIds.length);
   const newAttempts = after.attemptSequences.slice(
     before.attemptSequences.length,
   );
@@ -1257,6 +1277,11 @@ export function classifyCandidateWarmPhase(
       'Paused browser phase cannot contain a received attempt',
     );
     assert.equal(
+      newHolds.length,
+      0,
+      'Paused browser phase cannot contain a hold receipt',
+    );
+    assert.equal(
       after.computations,
       before.computations,
       'Paused phase computation count changed',
@@ -1290,8 +1315,8 @@ export function classifyCandidateWarmPhase(
   );
   assert.equal(
     newAttempts.length,
-    expected.browsers.length,
-    'Every entered browser must have one received attempt',
+    expected.browsers.length * 2,
+    'Every entered browser must have exactly one entry and one hold received attempt',
   );
   assert.equal(
     after.computations - before.computations,
@@ -1302,6 +1327,11 @@ export function classifyCandidateWarmPhase(
     new Set(newEntries.map((entry) => entry.receiptId)).size,
     newEntries.length,
     'Distinct actual entry receipts required',
+  );
+  assert.deepEqual(
+    [...newHolds].sort(),
+    newEntries.map((entry) => entry.receiptId).sort(),
+    'Exact entered browser entry and hold receipt coverage required',
   );
   assert.equal(
     new Set(expected.browsers.map((call) => call.correlation)).size,
