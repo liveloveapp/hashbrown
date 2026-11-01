@@ -365,6 +365,97 @@ async function post(
   };
 }
 
+/** Reads an actual client ACK prefix without treating a proxy socket write as receipt. */
+async function consumedAcknowledgement(url: string) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Origin: origin,
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Fixture-Principal': 'alice',
+    },
+    body: input,
+    signal: AbortSignal.timeout(5000),
+  });
+  expect(response.status).toBe(200);
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('Actual response body reader required');
+  const chunks: Buffer[] = [];
+  let length = 0;
+  while (length < acknowledgement.length) {
+    const chunk = await reader.read();
+    if (chunk.done) throw new Error('Client EOF before complete ACK');
+    chunks.push(Buffer.from(chunk.value));
+    length += chunk.value.length;
+  }
+  expect(Buffer.concat(chunks)).toEqual(acknowledgement);
+  return reader;
+}
+
+/** Drains actual owned HTTP tasks without ever releasing the post-ACK intervention gate. */
+async function assertNoPostAckMutationWithoutRelease(
+  mode: 'disconnect-after-delivered-ack' | 'malform-after-upstream-ack',
+): Promise<void> {
+  await withUpstream(
+    async (worker) =>
+      withProxy(worker, async (proxy) => {
+        proxy.armRun(threadId, mode);
+        const reader = await consumedAcknowledgement(`${proxy.origin}/run`);
+        const ack = await proxy.waitForThread(
+          threadId,
+          'downstream-ack-write',
+          AbortSignal.timeout(5000),
+        );
+
+        await proxy.close();
+        await reader.cancel().catch(() => undefined);
+
+        const records = proxy
+          .records(threadId)
+          .filter((record) => record.requestId === ack.requestId);
+        expect(
+          Buffer.concat(
+            records
+              .filter((record) => record.kind === 'upstream-body')
+              .map((record) => record.bytes),
+          ),
+        ).toEqual(Buffer.concat([acknowledgement, terminal]));
+        expect(records.filter((record) => record.kind === 'mutation')).toEqual(
+          [],
+        );
+        expect(
+          Buffer.concat(
+            records
+              .filter((record) => record.kind === 'delivered-body')
+              .map((record) => record.bytes),
+          ),
+        ).toEqual(acknowledgement);
+        expect(
+          records.filter((record) => record.kind === 'request'),
+        ).toHaveLength(1);
+        const stopped = proxy
+          .records()
+          .filter((record) => record.kind === 'stop-complete');
+        expect(stopped).toHaveLength(1);
+        expect(stopped[0].seq).toBeGreaterThan(ack.seq);
+      }),
+    async (incoming, response) => {
+      await bytes(incoming);
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      response.end(Buffer.concat([acknowledgement, terminal]));
+    },
+  );
+}
+
+test('candidate proxy drained disconnect cannot mutate after consumed ACK without parent release', async () => {
+  await assertNoPostAckMutationWithoutRelease('disconnect-after-delivered-ack');
+});
+
+test('candidate proxy drained malformed stream cannot mutate after consumed ACK without parent release', async () => {
+  await assertNoPostAckMutationWithoutRelease('malform-after-upstream-ack');
+});
+
 /** Consumes an upstream body before assertions about forwarding. */
 async function bytes(incoming: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
@@ -559,7 +650,39 @@ test('candidate proxy malformed stream is derived after actual upstream ACK with
       withProxy(worker, async (proxy) => {
         proxy.armRun(threadId, 'malform-after-upstream-ack');
 
-        const response = await post(`${proxy.origin}/run`);
+        const reader = await consumedAcknowledgement(`${proxy.origin}/run`);
+        const ack = await proxy.waitForThread(
+          threadId,
+          'downstream-ack-write',
+          AbortSignal.timeout(5000),
+        );
+        proxy.release('unrelated-request');
+        expect(
+          proxy
+            .records(threadId)
+            .filter(
+              (record) =>
+                record.kind === 'mutation' ||
+                record.kind === 'downstream-closed',
+            ),
+        ).toEqual([]);
+        expect(
+          Buffer.concat(
+            proxy
+              .records(threadId)
+              .filter((record) => record.kind === 'delivered-body')
+              .map((record) => record.bytes),
+          ),
+        ).toEqual(acknowledgement);
+
+        proxy.release(ack.requestId);
+        const received: Buffer[] = [acknowledgement];
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          received.push(Buffer.from(chunk.value));
+        }
+        const receivedBody = Buffer.concat(received);
 
         const upstream = Buffer.concat(
           proxy
@@ -574,7 +697,7 @@ test('candidate proxy malformed stream is derived after actual upstream ACK with
             .map((record) => record.bytes),
         );
         expect(upstream).toEqual(Buffer.concat([acknowledgement, terminal]));
-        expect(delivered).toEqual(response.body);
+        expect(delivered).toEqual(receivedBody);
         expect(delivered).not.toEqual(upstream);
         expect(delivered.subarray(0, acknowledgement.length)).toEqual(
           acknowledgement,
@@ -865,7 +988,38 @@ test('candidate proxy post-ACK disconnect delivers only actual ACK prefix and ne
       withProxy(worker, async (proxy) => {
         proxy.armRun(threadId, 'disconnect-after-delivered-ack');
 
-        await expect(post(`${proxy.origin}/run`)).rejects.toThrow();
+        const reader = await consumedAcknowledgement(`${proxy.origin}/run`);
+        const ack = await proxy.waitForThread(
+          threadId,
+          'downstream-ack-write',
+          AbortSignal.timeout(5000),
+        );
+        proxy.release('unrelated-request');
+        expect(
+          proxy
+            .records(threadId)
+            .filter(
+              (record) =>
+                record.kind === 'mutation' ||
+                record.kind === 'downstream-closed',
+            ),
+        ).toEqual([]);
+        expect(
+          Buffer.concat(
+            proxy
+              .records(threadId)
+              .filter((record) => record.kind === 'delivered-body')
+              .map((record) => record.bytes),
+          ),
+        ).toEqual(acknowledgement);
+
+        proxy.release(ack.requestId);
+        await expect(reader.read()).rejects.toThrow();
+        await proxy.waitFor(
+          ack.requestId,
+          'downstream-closed',
+          AbortSignal.timeout(5000),
+        );
 
         expect(requests).toBe(1);
         expect(

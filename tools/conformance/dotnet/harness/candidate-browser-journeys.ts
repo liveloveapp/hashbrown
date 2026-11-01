@@ -2874,6 +2874,61 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
           ),
         )
         .toBe(true);
+      if (id === 'failure.ack-disconnect' || id === 'failure.malformed-ack') {
+        await journey.proxy.waitFor(
+          run.proxyId,
+          'downstream-ack-write',
+          AbortSignal.timeout(30_000),
+        );
+        const publicState = await journey.status(restored.page);
+        const records = journey.proxy
+          .records(journey.threadId)
+          .filter((record) => record.requestId === run.proxyId);
+        journey.records.ackBeforeIntervention = {
+          requestId: run.proxyId,
+          runId: run.input.runId,
+          publicState,
+          records,
+        };
+        expect(publicState.threadId).toBe(journey.threadId);
+        expect(
+          publicState.events.filter(
+            (event) =>
+              event.type === 'RUN_STARTED' && event.runId === run.input.runId,
+          ),
+        ).toHaveLength(1);
+        expect(
+          records.filter(
+            (record) =>
+              record.kind === 'mutation' ||
+              record.kind === 'downstream-closed' ||
+              record.kind === 'fault',
+          ),
+        ).toEqual([]);
+        const delivered = Buffer.concat(
+          records
+            .filter((record) => record.kind === 'delivered-body')
+            .map((record) => record.bytes),
+        );
+        const source = Buffer.concat(
+          records
+            .filter((record) => record.kind === 'upstream-body')
+            .map((record) => record.bytes),
+        );
+        expect(delivered.length).toBeGreaterThan(0);
+        expect(delivered).toEqual(source.subarray(0, delivered.length));
+        const frame = delivered.toString('utf8').trim();
+        assert.ok(
+          frame.startsWith('data:'),
+          'Actual delivered ACK SSE data frame required',
+        );
+        expect(JSON.parse(frame.slice(5).trim())).toMatchObject({
+          type: 'RUN_STARTED',
+          threadId: journey.threadId,
+          runId: run.input.runId,
+        });
+        journey.proxy.release(run.proxyId);
+      }
     }
     await failedAttempt(journey, restored.page, current, pending, before);
     return;

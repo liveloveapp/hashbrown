@@ -801,6 +801,13 @@ export async function startCandidateRecoveryProxy(
             }
             await deliver(buffered.subarray(0, ackEnd));
             const suffix = buffered.subarray(ackEnd);
+            if (
+              runMode === 'disconnect-after-delivered-ack' ||
+              runMode === 'malform-after-upstream-ack'
+            ) {
+              // The parent releases only after the actual consumer has parsed this ACK.
+              await hold();
+            }
             if (runMode === 'disconnect-after-delivered-ack') {
               await append({ kind: 'mutation', ...context, reason: runMode });
               response.destroy();
