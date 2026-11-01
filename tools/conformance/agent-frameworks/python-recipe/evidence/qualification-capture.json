@@ -19,7 +19,7 @@
   "transport": "http-sse",
   "execution": {
     "kind": "local",
-    "id": "pydantic-recipe-2026-10-31T19:58:25.799Z"
+    "id": "pydantic-recipe-2026-11-01T19:30:29.088Z"
   },
   "sourceInputs": [
     {
@@ -36,7 +36,7 @@
     },
     {
       "path": "packages/core/src/effects/generate-message.effects.spec.ts",
-      "sha256": "ac2c4b983404687ae652add597afd2802410b65617e000a64f9db39818911545"
+      "sha256": "7f6d3bc278a76462e276ed8b5282d0791eba839568d5ef217234ec215d73cd1e"
     },
     {
       "path": "packages/core/src/models/pydantic-recipe.conformance.spec.ts",
@@ -199,86 +199,86 @@
       "sha256": "dae10e23c4ed531d04cdcce397cd9814b3002a3039e9c27b5628b1d259a80d82"
     }
   ],
-  "sourceSha256": "42e62a1a29fb7947db2d8376dbfc3bd3844de64a899ec2a8b22c2036b3d8da32",
+  "sourceSha256": "0f5d5565f831d0b52cdc00d86b2991fe21a6de328e32bb3e58a168ac10520706",
   "wire": {
     "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
-    "sha256": "9b6de024f0635a37326602796e4bfc81e04f11957a472b6a54cf5b0a3be1451f"
+    "sha256": "0d4b4434cf10b4dca7020e8843f3e4ceb45e9968a77c34f0ed0659518b2d03c2"
   },
   "executionSummary": {
     "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
-    "sha256": "962963ffa44c8ff0925f50489684078809d87767315211e96fb250aba7257e2e"
+    "sha256": "99448fa4e18d056a83c22d5d19ab40d996e112bd4cf5239f069d86a434da0d57"
   },
   "events": [
     {
       "type": "RUN_STARTED",
-      "timestamp": 1793476710056,
+      "timestamp": 1793561440544,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "protocolVersion": "1.0"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793476710058,
-      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6",
+      "timestamp": 1793561440553,
+      "messageId": "4b843c8e-766a-41cd-b825-f6b1051fb255",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793476710058,
-      "messageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
+      "timestamp": 1793561440553,
+      "messageId": "4b843c8e-766a-41cd-b825-f6b1051fb255"
     },
     {
       "type": "TOOL_CALL_START",
-      "timestamp": 1793476710059,
+      "timestamp": 1793561440553,
       "toolCallId": "capture-server-tool-server",
       "toolCallName": "serverTool",
-      "parentMessageId": "4259943d-8058-46ec-8488-ca479a34b3e6"
+      "parentMessageId": "4b843c8e-766a-41cd-b825-f6b1051fb255"
     },
     {
       "type": "TOOL_CALL_ARGS",
-      "timestamp": 1793476710059,
+      "timestamp": 1793561440553,
       "toolCallId": "capture-server-tool-server",
       "delta": "{\"city\":\"London\"}"
     },
     {
       "type": "TOOL_CALL_END",
-      "timestamp": 1793476710059,
+      "timestamp": 1793561440555,
       "toolCallId": "capture-server-tool-server"
     },
     {
       "type": "TOOL_CALL_RESULT",
-      "timestamp": 1793476710063,
+      "timestamp": 1793561440589,
       "metadata": {
         "hashbrown.tool": {
           "v": 1,
           "outcome": "success"
         }
       },
-      "messageId": "25be9133-0011-4df4-8b58-531f1fcc75e6",
+      "messageId": "1052d3b0-6853-41dd-be41-3dbe725ef7d3",
       "toolCallId": "capture-server-tool-server",
       "content": "server-result:London",
       "role": "tool"
     },
     {
       "type": "TEXT_MESSAGE_START",
-      "timestamp": 1793476710064,
-      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
+      "timestamp": 1793561440594,
+      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0",
       "role": "assistant"
     },
     {
       "type": "TEXT_MESSAGE_CONTENT",
-      "timestamp": 1793476710064,
-      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3",
+      "timestamp": 1793561440594,
+      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0",
       "delta": "Tool result: server-result:London"
     },
     {
       "type": "TEXT_MESSAGE_END",
-      "timestamp": 1793476710065,
-      "messageId": "20fba362-2423-4a66-9ffb-ddd7b1837ce3"
+      "timestamp": 1793561440596,
+      "messageId": "c6c47c9f-af30-462f-868c-d23c976660b0"
     },
     {
       "type": "RUN_FINISHED",
-      "timestamp": 1793476710066,
+      "timestamp": 1793561440601,
       "threadId": "capture-server-tool",
       "runId": "capture-server-tool-run",
       "outcome": {
@@ -286,5 +286,5 @@
       }
     }
   ],
-  "eventsSha256": "0437c1c1c8cdcf15837644c3885bdd43209377be3bec4344ef0090d205c23318"
+  "eventsSha256": "919a7f1dbc2dc30f134105a1b57301cf4ba410d1bf3707ab76c884c3db82d1be"
 }

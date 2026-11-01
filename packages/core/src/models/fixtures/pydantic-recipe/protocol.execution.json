@@ -11,14 +11,14 @@
       "parts": [
         {
           "content": "protocol",
-          "timestamp": "2026-10-31T19:58:30.253177Z",
+          "timestamp": "2026-11-01T19:30:40.866921Z",
           "part_kind": "user-prompt"
         }
       ],
-      "timestamp": "2026-10-31T19:58:30.254591Z",
+      "timestamp": "2026-11-01T19:30:40.869235Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+      "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
       "conversation_id": "capture-protocol",
       "metadata": {
         "__pydantic_ai__": {
@@ -56,7 +56,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:58:30.255486Z",
+      "timestamp": "2026-11-01T19:30:40.870610Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -64,7 +64,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+      "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
       "conversation_id": "capture-protocol",
       "metadata": null,
       "workspace_ref": null,
@@ -80,16 +80,16 @@
           "tool_call_id": "capture-protocol-protocol",
           "tool_kind": null,
           "metadata": null,
-          "timestamp": "2026-10-31T19:58:30.261206Z",
+          "timestamp": "2026-11-01T19:30:40.879217Z",
           "outcome": "success",
           "retry": null,
           "part_kind": "tool-return"
         }
       ],
-      "timestamp": "2026-10-31T19:58:30.261987Z",
+      "timestamp": "2026-11-01T19:30:40.880688Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+      "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
       "conversation_id": "capture-protocol",
       "metadata": null,
       "state": "complete"
@@ -121,7 +121,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-10-31T19:58:30.262883Z",
+      "timestamp": "2026-11-01T19:30:40.882510Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -129,7 +129,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+      "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
       "conversation_id": "capture-protocol",
       "metadata": null,
       "workspace_ref": null,
@@ -144,14 +144,14 @@
         "parts": [
           {
             "content": "protocol",
-            "timestamp": "2026-10-31T19:58:30.253177Z",
+            "timestamp": "2026-11-01T19:30:40.866921Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:58:30.254591Z",
+        "timestamp": "2026-11-01T19:30:40.869235Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+        "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
         "conversation_id": "capture-protocol",
         "metadata": {
           "__pydantic_ai__": {
@@ -166,14 +166,14 @@
         "parts": [
           {
             "content": "protocol",
-            "timestamp": "2026-10-31T19:58:30.253177Z",
+            "timestamp": "2026-11-01T19:30:40.866921Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-10-31T19:58:30.254591Z",
+        "timestamp": "2026-11-01T19:30:40.869235Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+        "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
         "conversation_id": "capture-protocol",
         "metadata": {
           "__pydantic_ai__": {
@@ -211,7 +211,7 @@
         },
         "model_name": "function::model_stream",
         "model_id": "function:function::model_stream",
-        "timestamp": "2026-10-31T19:58:30.255486Z",
+        "timestamp": "2026-11-01T19:30:40.870610Z",
         "kind": "response",
         "provider_name": null,
         "provider_url": null,
@@ -219,7 +219,7 @@
         "provider_details": null,
         "provider_response_id": null,
         "finish_reason": null,
-        "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+        "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
         "conversation_id": "capture-protocol",
         "metadata": null,
         "workspace_ref": null,
@@ -235,16 +235,16 @@
             "tool_call_id": "capture-protocol-protocol",
             "tool_kind": null,
             "metadata": null,
-            "timestamp": "2026-10-31T19:58:30.261206Z",
+            "timestamp": "2026-11-01T19:30:40.879217Z",
             "outcome": "success",
             "retry": null,
             "part_kind": "tool-return"
           }
         ],
-        "timestamp": "2026-10-31T19:58:30.261987Z",
+        "timestamp": "2026-11-01T19:30:40.880688Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a1938a-cf6d-7618-8f17-a79cdbec3f72",
+        "run_id": "01a19897-b263-7628-9bb3-3b3a6cf7b5c0",
         "conversation_id": "capture-protocol",
         "metadata": null,
         "state": "complete"
@@ -276,7 +276,7 @@
       "content": "protocol"
     },
     {
-      "id": "15ec50dc-b3b8-498a-938b-8ef9f848ee91",
+      "id": "50bab5f6-d4df-44d5-8842-1786c1f42960",
       "role": "assistant",
       "toolCalls": [
         {
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "id": "2ff19840-111f-43ce-9a64-9e1226c6c691",
+      "id": "b793d357-7b20-4830-b30f-8617ed5323de",
       "role": "tool",
       "content": "standard protocol complete",
       "toolCallId": "capture-protocol-protocol",
@@ -302,7 +302,7 @@
       }
     },
     {
-      "id": "9e8a6072-42c7-40d4-ac63-14efe8c13b0a",
+      "id": "5177f3b0-00cf-4e0e-9691-dabe7b4fe209",
       "role": "assistant",
       "content": "Tool result: standard protocol complete"
     }

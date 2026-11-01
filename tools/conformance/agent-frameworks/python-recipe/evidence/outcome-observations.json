@@ -4,7 +4,7 @@
       "scenarioId": "tools.failure",
       "wire": {
         "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.sse",
-        "sha256": "494bfa220c6c8c0a56142ea58c4e7e22e7589ee3d40d6916ae8a3d47234c05c2"
+        "sha256": "e648a64d1501f7e9d4503807d235d21ef4913ed67dc96a227281b2aa74fb66ce"
       },
       "toolCallId": "capture-failure-server",
       "outcome": "failure",
@@ -14,7 +14,7 @@
       "scenarioId": "tools.cancel",
       "wire": {
         "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.sse",
-        "sha256": "64ceb2ecec8028e6aa928bb1a12ee2fcb0eece1d4a0a0bba2f5bee1285505f99"
+        "sha256": "3fdd44fb563a241e3508ae2610c5fe30b88651c1b36d2871655baba7d2239f62"
       },
       "toolCallId": "capture-cancel-default-server",
       "outcome": "cancelled",
@@ -24,7 +24,7 @@
       "scenarioId": "approvals.resume",
       "wire": {
         "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.sse",
-        "sha256": "7c5b18d094763d09ba3b85765ba0ddfc1939507e948dfbd97fbc84d9c1547eea"
+        "sha256": "ed8be4ffc5783c6cef57da92a456e17c9f60e9fbdf7735c91798d02260e8386a"
       },
       "toolCallId": "capture-approval-deny-approval",
       "outcome": "denied",

@@ -1,14 +1,14 @@
-data: {"type":"RUN_STARTED","timestamp":1793476710243,"threadId":"capture-approval-deny","runId":"approval-deny-resume","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793561440851,"threadId":"capture-approval-deny","runId":"approval-deny-resume","protocolVersion":"1.0"}
 
-data: {"type":"TOOL_CALL_RESULT","timestamp":1793476710244,"metadata":{"hashbrown.tool":{"v":1,"outcome":"denied"}},"messageId":"48b35356-6b58-43fb-be73-9e8c0227322f","toolCallId":"capture-approval-deny-approval","content":"The tool call was denied.","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","timestamp":1793561440854,"metadata":{"hashbrown.tool":{"v":1,"outcome":"denied"}},"messageId":"59a4a705-2fac-4512-b049-5ffd998ce0f8","toolCallId":"capture-approval-deny-approval","content":"The tool call was denied.","role":"tool"}
 
-data: {"type":"REASONING_ENCRYPTED_VALUE","timestamp":1793476710244,"subtype":"message","entityId":"48b35356-6b58-43fb-be73-9e8c0227322f","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"denied\"}}"}
+data: {"type":"REASONING_ENCRYPTED_VALUE","timestamp":1793561440854,"subtype":"message","entityId":"59a4a705-2fac-4512-b049-5ffd998ce0f8","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"denied\"}}"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793476710246,"messageId":"910dbb8a-c408-4fbf-918d-9e0de4724303","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793561440857,"messageId":"5eac1d2f-e203-44e3-b110-d0c3052c3de6","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793476710246,"messageId":"910dbb8a-c408-4fbf-918d-9e0de4724303","delta":"Tool result: The tool call was denied."}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793561440857,"messageId":"5eac1d2f-e203-44e3-b110-d0c3052c3de6","delta":"Tool result: The tool call was denied."}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793476710246,"messageId":"910dbb8a-c408-4fbf-918d-9e0de4724303"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793561440858,"messageId":"5eac1d2f-e203-44e3-b110-d0c3052c3de6"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793476710247,"threadId":"capture-approval-deny","runId":"approval-deny-resume","outcome":{"type":"success"}}
+data: {"type":"RUN_FINISHED","timestamp":1793561440860,"threadId":"capture-approval-deny","runId":"approval-deny-resume","outcome":{"type":"success"}}
 
