@@ -35,6 +35,7 @@ export function UiCompletionLeaf({
         state: result.state,
         isLoading: result.isLoading,
         isResuming: result.isResuming,
+        pendingInterrupts: result.pendingInterrupts,
         error: result.error
           ? { name: result.error.name, message: result.error.message }
           : null,

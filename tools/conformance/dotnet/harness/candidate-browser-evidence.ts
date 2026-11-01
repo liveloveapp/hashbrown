@@ -348,3 +348,54 @@ export function assertCandidateMixedContinuation(
     decisions,
   );
 }
+
+/** Captures a genuinely paused phase without inventing a canonical binding for an unentered operation. */
+export async function captureCandidatePausedObserverBaseline(
+  observer: CandidateHandlerObserver,
+  scope: CandidateObserverScope,
+  computations: number,
+  previous?: Readonly<{
+    baseline: CandidateObserverBaseline;
+    computations: number;
+  }>,
+): Promise<CandidateObserverBaseline> {
+  const entries = observer.entries(scope);
+  const attempts = observer
+    .records()
+    .filter(
+      (record) =>
+        record.kind === 'request-received' &&
+        record.scenarioId === scope.scenarioId &&
+        record.threadId === scope.threadId,
+    )
+    .map((record) => record.seq);
+  assert.ok(
+    Number.isSafeInteger(computations) && computations >= 0,
+    'Actual computation count required',
+  );
+  if (previous) {
+    assert.equal(
+      computations,
+      previous.computations,
+      'Paused phase computation count changed',
+    );
+    assertCandidateObserverUnchanged(observer, scope, previous.baseline);
+    return previous.baseline;
+  }
+  assert.equal(
+    entries.length,
+    0,
+    'Fresh paused observer baseline must be empty',
+  );
+  assert.equal(
+    attempts.length,
+    0,
+    'Fresh paused observer attempt baseline must be empty',
+  );
+  assert.equal(computations, 0, 'Fresh paused computation count must be zero');
+  return {
+    initialEntries: entries,
+    boundEntries: entries,
+    attemptSequences: attempts,
+  };
+}

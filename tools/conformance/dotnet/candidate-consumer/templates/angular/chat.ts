@@ -59,6 +59,7 @@ export class ChatLeaf {
       status: this.result.status(),
       isLoading: this.result.isLoading(),
       isResuming: this.result.isResuming(),
+      pendingInterrupts: this.result.pendingInterrupts(),
       error: this.result.error() ? candidateError(this.result.error()) : null,
       ...this.runtime.observations(),
     };

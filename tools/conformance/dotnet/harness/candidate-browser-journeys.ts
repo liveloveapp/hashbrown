@@ -7,8 +7,11 @@ import {
   assertCandidateProxyIntervention,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
+  type CandidateWarmPhaseCounters,
   captureCandidateOriginalRun,
+  classifyCandidateWarmPhase,
   finalizeCandidateAcceptance,
+  readCandidatePendingBrowserCalls,
   reconcileCandidateBusyReader,
 } from './candidate-browser-acceptance';
 import assert from 'node:assert/strict';
@@ -50,6 +53,7 @@ import {
   type CandidateExpectedBrowserOutcome,
   type CandidateExpectedProtectedDecision,
   type CandidateObserverBaseline,
+  captureCandidatePausedObserverBaseline,
 } from './candidate-browser-evidence';
 import {
   expectNativeRunCapture,
@@ -94,6 +98,10 @@ interface Status {
   readonly threadId: string;
   readonly facade: string;
   readonly pending: Pending | null;
+  readonly pendingInterrupts?: Readonly<{
+    id: string;
+    interrupts: readonly Record<string, unknown>[];
+  }> | null;
   readonly recovery: {
     readonly revision: number;
     readonly required: boolean;
@@ -214,6 +222,12 @@ interface Snapshot {
   readonly counts: Readonly<Record<string, number>>;
   readonly observerAttempts: readonly number[];
 }
+type PhaseCounters = CandidateWarmPhaseCounters &
+  Readonly<{
+    runCount: number;
+    sessionRevision: number;
+    sessionGeneration: number;
+  }>;
 interface CapturedRun {
   readonly proxyId: string;
   readonly status?: number;
@@ -375,6 +389,10 @@ class Journey {
   readonly threadId = `candidate-${crypto.randomUUID()}`;
   readonly scope: { scenarioId: string; threadId: string };
   readonly contexts: BrowserContext[] = [];
+  readonly warmAdmissions = new Map<
+    string,
+    'entered-browser-handler' | 'paused-for-protected-interrupt'
+  >();
   readonly finalFaultObservations: Omit<
     CandidateFaultObservation,
     'records'
@@ -545,6 +563,12 @@ class Journey {
     const previous: readonly BrowserCall[] = plan.history
       ? [
           {
+            id: 'history-entered-browser',
+            city: 'Owned entered history city',
+            value: 'Entered history exact browser result',
+            status: 'result',
+          },
+          {
             id: 'prior-browser',
             city: 'Owned prior city',
             value: 'Earlier exact browser result',
@@ -572,7 +596,7 @@ class Journey {
       endpoint: this.proxy.origin,
       observer,
       prompt: plan.history
-        ? `Prior ${this.threadId}`
+        ? `Entered history ${this.threadId}`
         : `Current ${this.threadId}`,
       nextPrompt: plan.history
         ? `Current ${this.threadId}`
@@ -694,6 +718,29 @@ class Journey {
       .filter(
         (input) => Array.isArray(input.tools) && !Array.isArray(input.messages),
       );
+  }
+  async phaseCounters(): Promise<PhaseCounters> {
+    await this.collect();
+    const state = await this.state();
+    return {
+      entries: this.observer.entries(this.scope),
+      attemptSequences: this.observer
+        .records()
+        .filter(
+          (record) =>
+            record.kind === 'request-received' &&
+            record.scenarioId === this.scope.scenarioId &&
+            record.threadId === this.threadId,
+        )
+        .map((record) => record.seq),
+      computations: this.computations,
+      providerRequests: [...this.requests],
+      effects: state.effects,
+      nativeWitnesses: [...this.witnesses],
+      runCount: this.runs().length,
+      sessionRevision: state.session?.revision ?? 0,
+      sessionGeneration: state.session?.generation ?? 0,
+    };
   }
   async snapshot(): Promise<Snapshot> {
     await this.collect();
@@ -822,24 +869,46 @@ class Journey {
         { toolCalls: interleaved },
       );
   }
-  async published(phase: Phase): Promise<NativeState> {
+  async published(
+    phase: Phase,
+    page: Page,
+    before: PhaseCounters,
+  ): Promise<NativeState> {
+    const key = `publication-${phase.prompt}`;
+    this.records[key] = {
+      before,
+      stateBeforeReady: await this.state(),
+      publicBeforeReady: await this.status(page),
+    };
+    await expect
+      .poll(() => this.runs().length, { timeout: 30_000 })
+      .toBe(before.runCount + 1);
+    const initialRun = this.runs().at(-1);
+    assert.ok(initialRun);
     await expect
       .poll(
-        () =>
-          this.observer
-            .entries(this.scope)
-            .filter((entry) =>
-              phase.browsers.some((call) => call.city === entry.correlation),
-            ).length,
+        async () => {
+          const session = (await this.state()).session;
+          return (
+            session?.state === 'Ready' &&
+            session.revision > before.sessionRevision &&
+            session.generation > before.sessionGeneration
+          );
+        },
         { timeout: 30_000 },
       )
-      .toBe(phase.browsers.length);
-    await expect
-      .poll(async () => (await this.state()).session?.state, {
-        timeout: 30_000,
-      })
-      .toBe('Ready');
+      .toBe(true);
     const state = await this.state();
+    assert.ok(state.session);
+    this.records[key] = {
+      before,
+      initialRun,
+      state,
+      publicAtReady: await this.status(page),
+      sourceRecords: this.proxy
+        .records(this.threadId)
+        .filter((record) => record.requestId === initialRun.proxyId),
+    };
     const request = publicRequest(state);
     const locations = request.messages
       .flatMap((message, messageIndex) =>
@@ -862,9 +931,7 @@ class Journey {
     expect(locations.map((item) => item.call.id).sort()).toEqual(
       [...phase.browsers, ...phase.protected].map((call) => call.id).sort(),
     );
-    const initialRun = this.runs().at(-1);
-    assert.ok(initialRun);
-    // Original browser handlers remain held: require actual complete, exactly delivered protocol independently of HTTP EOF.
+    // A genuine mixed interrupt is a complete non-error terminal; normal terminal disposal is classified independently of HTTP EOF.
     await expect(async () => {
       captureCandidateOriginalRun(
         this.proxy.records(this.threadId),
@@ -885,6 +952,97 @@ class Journey {
       initialRun.proxyId,
       expectNativeRunCapture,
     );
+    this.records[key] = {
+      before,
+      initialRun,
+      state,
+      locations,
+      sourceEvents: events,
+      sourceBody: body,
+      publicAtProtocol: await this.status(page),
+    };
+    await expect
+      .poll(
+        async () =>
+          (await this.status(page)).events.filter(
+            (event) =>
+              event.type === 'RUN_FINISHED' &&
+              event.runId === initialRun.input.runId,
+          ).length,
+      )
+      .toBe(1);
+    const terminal = events.at(-1);
+    assert.ok(terminal);
+    const interrupted =
+      object(terminal.outcome) && terminal.outcome.type === 'interrupt';
+    if (interrupted)
+      await expect
+        .poll(async () =>
+          Boolean((await this.status(page)).pendingInterrupts?.id),
+        )
+        .toBe(true);
+    else
+      await expect
+        .poll(
+          () =>
+            this.observer
+              .entries(this.scope)
+              .filter((entry) =>
+                phase.browsers.some((call) => call.city === entry.correlation),
+              ).length,
+          { timeout: 30_000 },
+        )
+        .toBe(phase.browsers.length);
+    const after = await this.phaseCounters();
+    const warm = await this.status(page);
+    const facts = {
+      expected: {
+        runId: String(initialRun.input.runId),
+        threadId: this.threadId,
+        browsers: phase.browsers.map((call) => ({
+          id: call.id,
+          name: 'getWeather',
+          arguments: { city: call.city },
+          correlation: call.city,
+        })),
+        protected: phase.protected.map((call) => ({
+          id: call.id,
+          name: 'lookupAirport',
+          arguments: { code: call.code },
+        })),
+      },
+      sourceEvents: events,
+      publicState: {
+        threadId: warm.threadId,
+        pendingInterrupts: warm.pendingInterrupts,
+        pendingConversationRecovery: warm.pending,
+        events: warm.events,
+      },
+      savedSession: state.session,
+      before,
+      after,
+    };
+    this.records[key] = {
+      before,
+      after,
+      initialRun,
+      state,
+      locations,
+      sourceEvents: events,
+      sourceBody: body,
+      warmPublicState: warm,
+      facts,
+      observerRecords: this.observer.records(),
+    };
+    expect(
+      this.observer
+        .records()
+        .filter(
+          (record) => record.kind === 'fault' || record.kind === 'rejected',
+        ),
+    ).toEqual([]);
+    const mode = classifyCandidateWarmPhase(facts);
+    this.warmAdmissions.set(phase.prompt, mode);
     if (phase.split) {
       expect(new Set(locations.map((item) => item.messageId)).size).toBe(2);
       const first = locations.find(
@@ -938,47 +1096,79 @@ class Journey {
           )?.parentMessageId,
         ).toBe(parent);
     }
-    for (const call of phase.browsers) {
-      const location = locations.find((item) => item.call.id === call.id);
-      assert.ok(location);
-      const fn = location.call.function as { name: string; arguments: string };
-      expect(fn.name).toBe('getWeather');
-      expect(JSON.parse(fn.arguments)).toEqual({ city: call.city });
-      const entry = this.observer
-        .entries(this.scope)
-        .find((entry) => entry.correlation === call.city);
-      assert.ok(entry);
-      expect(entry.result).toEqual(call.value);
-      await expect
-        .poll(() =>
-          this.observer
-            .records()
-            .some(
-              (record) =>
-                record.kind === 'hold-received' &&
-                record.receiptId === entry.receiptId,
-            ),
-        )
-        .toBe(true);
-      this.bindings.set(call.city, {
-        correlation: call.city,
-        canonicalCallId: call.id,
-        toolName: 'getWeather',
-        arguments: { city: call.city },
-      });
+    if (mode === 'entered-browser-handler') {
+      for (const call of phase.browsers) {
+        const location = locations.find((item) => item.call.id === call.id);
+        assert.ok(location);
+        const fn = location.call.function as {
+          name: string;
+          arguments: string;
+        };
+        expect(fn.name).toBe('getWeather');
+        expect(JSON.parse(fn.arguments)).toEqual({ city: call.city });
+        const entry = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        assert.ok(entry);
+        expect(entry.result).toEqual(call.value);
+        await expect
+          .poll(() =>
+            this.observer
+              .records()
+              .some(
+                (record) =>
+                  record.kind === 'hold-received' &&
+                  record.receiptId === entry.receiptId,
+              ),
+          )
+          .toBe(true);
+        this.bindings.set(call.city, {
+          correlation: call.city,
+          canonicalCallId: call.id,
+          toolName: 'getWeather',
+          arguments: { city: call.city },
+        });
+      }
+      this.baseline = await bindCandidateObserverBaseline(
+        this.observer,
+        this.scope,
+        [...this.bindings.values()],
+      );
+    } else {
+      this.baseline = await captureCandidatePausedObserverBaseline(
+        this.observer,
+        this.scope,
+        this.computations,
+        this.observerBaseline
+          ? {
+              baseline: this.observerBaseline,
+              computations: before.computations,
+            }
+          : undefined,
+      );
     }
-    this.baseline = await bindCandidateObserverBaseline(
-      this.observer,
-      this.scope,
-      [...this.bindings.values()],
-    );
-    this.records[`publication-${phase.prompt}`] = {
+    this.records[key] = {
+      before,
+      after,
+      initialRun,
       state,
       locations,
-      entries: this.baseline,
       sourceEvents: events,
       sourceBody: body,
+      warmPublicState: warm,
+      facts,
+      warmAdmission: mode,
+      entries: this.baseline,
+      currentEnteredCallIds:
+        mode === 'entered-browser-handler'
+          ? phase.browsers.map((call) => call.id)
+          : [],
+      currentUnenteredCallIds:
+        mode === 'paused-for-protected-interrupt'
+          ? phase.browsers.map((call) => call.id)
+          : [],
     };
+    this.stable();
     return state;
   }
   async abandon(context: BrowserContext, phase: Phase): Promise<void> {
@@ -1002,6 +1192,7 @@ class Journey {
         .toBe(true);
       this.observer.release(entry.receiptId);
     }
+    this.stable();
   }
   stable(): void {
     expect(this.computations).toBe(this.baseline.boundEntries.length);
@@ -1052,17 +1243,9 @@ class Journey {
         expect(state.session.revision).toBeGreaterThan(0);
         const capability = raw.body.snapshot.pendingBrowserRecovery;
         assert.ok(object(capability));
-        const currentCalls = publicRequest(state)
-          .messages.flatMap((message) =>
-            Array.isArray(message.toolCalls)
-              ? (message.toolCalls as Record<string, unknown>[])
-              : [],
-          )
-          .filter(
-            (call) =>
-              String(call.id).startsWith('current-browser') ||
-              (call.id === 'prior-browser' && this.runs().length === 1),
-          );
+        const currentCalls = readCandidatePendingBrowserCalls(
+          state.session.payload,
+        );
         expect(capability).toEqual({
           protocolVersion: 1,
           serverRevision: state.session.revision,
@@ -1142,6 +1325,35 @@ class Journey {
         .getByTestId(`decision-${interrupt.id}`)
         .selectOption(call.decision);
     }
+    const mode = this.warmAdmissions.get(phase.prompt);
+    assert.ok(mode, 'Actual original phase admission evidence required');
+    this.records[`browser-input-${phase.prompt}`] = await Promise.all(
+      phase.browsers.map(async (call) => {
+        const receipt = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        return {
+          toolCallId: call.id,
+          warmAdmission: mode,
+          status: call.status,
+          provenance:
+            call.status === 'unavailable'
+              ? 'operator-declared-unavailable'
+              : mode === 'entered-browser-handler'
+                ? 'observed-original-handler-return'
+                : 'operator-declared-known',
+          ...(call.status === 'result'
+            ? {
+                declaredValue: call.value,
+                actualEditorJson: await page
+                  .getByTestId(`outcome-value-${call.id}`)
+                  .inputValue(),
+              }
+            : {}),
+          ...(receipt ? { originalReceipt: receipt } : {}),
+        };
+      }),
+    );
     return status.pending;
   }
   decisions(
@@ -2007,7 +2219,21 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
   let original = await journey.open();
   expect(journey.requests).toHaveLength(0);
   expect(journey.runs()).toHaveLength(0);
+  let beforeCurrent: PhaseCounters;
   if (plan.history) {
+    const entered: Phase = {
+      browsers: [
+        {
+          id: 'history-entered-browser',
+          city: 'Owned entered history city',
+          value: 'Entered history exact browser result',
+          status: 'result',
+        },
+      ],
+      protected: [],
+      prompt: journey.config.prompt,
+      split: false,
+    };
     const prior: Phase = {
       browsers: [
         {
@@ -2018,32 +2244,72 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
         },
       ],
       protected: [{ id: 'prior-protected', code: 'ATL', decision: 'approve' }],
-      prompt: journey.config.prompt,
+      prompt: `Prior ${journey.threadId}`,
       split: false,
     };
+    journey.script(journey.active, entered, 'Entered history complete');
     journey.script(journey.active, prior, 'Prior complete');
+    let beforePhase = await journey.phaseCounters();
     await original.page.getByTestId('start').click();
-    const previous = await journey.published(prior);
+    const enteredPublication = await journey.published(
+      entered,
+      original.page,
+      beforePhase,
+    );
+    await journey.abandon(original.context, entered);
+    original = await journey.open();
+    await journey.read(original.page);
+    let pending = await journey.fill(original.page, entered);
+    let before = await journey.snapshot();
+    await original.page.getByTestId('submit').click();
+    historical = await complete(
+      journey,
+      original.page,
+      entered,
+      enteredPublication,
+      pending,
+      before,
+      historical,
+      1,
+      'Entered history complete',
+    );
+    beforePhase = await journey.phaseCounters();
+    await original.page.getByTestId('prompt').fill(prior.prompt);
+    await original.page.getByTestId('start').click();
+    const priorPublication = await journey.published(
+      prior,
+      original.page,
+      beforePhase,
+    );
     await journey.abandon(original.context, prior);
     original = await journey.open();
     await journey.read(original.page);
-    const pending = await journey.fill(original.page, prior);
-    const before = await journey.snapshot();
+    pending = await journey.fill(original.page, prior);
+    before = await journey.snapshot();
     await original.page.getByTestId('submit').click();
     historical = await complete(
       journey,
       original.page,
       prior,
-      previous,
+      priorPublication,
       pending,
       before,
-      new Map(),
+      historical,
       1,
       'Prior complete',
     );
-    await original.page.getByTestId('next').click();
-  } else await original.page.getByTestId('start').click();
-  const published = await journey.published(current);
+    beforeCurrent = await journey.phaseCounters();
+    await original.page.getByTestId('prompt').fill(current.prompt);
+    await original.page.getByTestId('start').click();
+  } else {
+    beforeCurrent = await journey.phaseCounters();
+    await original.page.getByTestId('start').click();
+  }
+  const published = await journey.published(
+    current,
+    original.page,
+    beforeCurrent,
+  );
   const publication = await journey.snapshot();
   const currentEffects = published.effects.filter((effect) =>
     current.protected.some((call) => call.id === effect.call_id),

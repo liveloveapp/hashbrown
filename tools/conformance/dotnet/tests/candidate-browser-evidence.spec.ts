@@ -226,3 +226,33 @@ try {
 
   expect(output.trim()).toBe('passed');
 });
+
+test('paused observer baseline reads actual empty observations without binding and preserves later genuinely entered history', () => {
+  const output = probe(`
+const { captureCandidatePausedObserverBaseline, bindCandidateObserverBaseline, assertCandidateObserverUnchanged }=await import(evidenceUrl);
+const {startCandidateHandlerObserver}=await import(observerUrl);
+const root=await fs.realpath(await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()),'candidate-paused-baseline-')));
+const observer=await startCandidateHandlerObserver({ownedOrigins:['http://127.0.0.1:4301'],evidencePath:path.join(root,'observer.jsonl'),limits:{requestBytes:4096,resultBytes:4096,records:100,holdTimeoutMs:5000}});
+try {
+ const scope={scenarioId:'real-paused-history',threadId:'owned-paused-thread'};let computations=0;let bindCalls=0;
+ const observed={...observer,bindCanonical:(...args)=>{bindCalls++;return observer.bindCanonical(...args);}};
+ const registration=observer.register({scope,operations:[{correlation:'history-entered',toolName:'getWeather',arguments:{city:'History city'},compute:()=>{computations++;return 'Historical exact';}},{correlation:'current-paused',toolName:'getWeather',arguments:{city:'Paused city'},compute:()=>{computations++;return 'Must remain unentered';}}]});
+ const empty=await captureCandidatePausedObserverBaseline(observed,scope,computations);
+ assert.deepEqual(empty.initialEntries,observer.entries(scope));assert.deepEqual(empty.boundEntries,observer.entries(scope));assert.deepEqual(empty.attemptSequences,observer.records().filter(record=>record.kind==='request-received').map(record=>record.seq));assert.equal(computations,0);assert.equal(bindCalls,0,'No fabricated empty binding may be submitted');
+ const response=await fetch(registration.entryUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({correlation:'history-entered',toolName:'getWeather',arguments:{city:'History city'}})});assert.equal(response.status,201);
+ const entered=await bindCandidateObserverBaseline(observed,scope,[{correlation:'history-entered',canonicalCallId:'actual-history-call',toolName:'getWeather',arguments:{city:'History city'}}]);
+ assert.equal(computations,1);assert.equal(bindCalls,1);
+ const previous={baseline:entered,computations};
+ const paused=await captureCandidatePausedObserverBaseline(observed,scope,computations,previous);
+ assert.deepEqual(paused,entered);assert.equal(bindCalls,1,'An unentered next phase cannot add a canonical association');assertCandidateObserverUnchanged(observer,scope,entered);
+ await assert.rejects(captureCandidatePausedObserverBaseline(observed,scope,computations),/empty|observ|entry|history|baseline|bind/i,'Existing history cannot be presented as a fresh empty scope');
+ await assert.rejects(captureCandidatePausedObserverBaseline(observed,scope,computations+1,previous),/comput|count|baseline|observ|phase|equal/i);
+ const duplicate=await fetch(registration.entryUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({correlation:'history-entered',toolName:'getWeather',arguments:{city:'History city'}})});assert.equal(duplicate.status,201);assert.equal(computations,2);
+ await assert.rejects(captureCandidatePausedObserverBaseline(observed,scope,computations,previous),/entry|observ|attempt|baseline|equal|changed/i,'Unexpected actual entry cannot be rebased away');
+ assert.equal(bindCalls,1,'All paused checks must leave strict actual-witness binding untouched');
+ await assert.rejects(observer.bindCanonical(scope,[]),/bind|scope|duplicate/i);
+}finally{await observer.close();await fs.rm(root,{recursive:true,force:true});}
+`);
+
+  expect(output.trim()).toBe('passed');
+});

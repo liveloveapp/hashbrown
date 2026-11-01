@@ -722,3 +722,618 @@ export function captureCandidateOriginalRun<T>(
   }
   return decoded;
 }
+
+/** Actual before/after phase observations; these values never grant SDK or journal authority. */
+export interface CandidateWarmPhaseCounters {
+  readonly entries: readonly Readonly<{
+    seq: number;
+    correlation?: string;
+    receiptId?: string;
+    canonicalCallId?: string;
+    toolName?: string;
+    arguments?: unknown;
+    result?: unknown;
+  }>[];
+  readonly attemptSequences: readonly number[];
+  readonly computations: number;
+  readonly providerRequests: readonly unknown[];
+  readonly effects: readonly object[];
+  readonly nativeWitnesses: readonly object[];
+}
+/** Expected fixture call values joined to independently captured original publication facts. */
+export interface CandidateWarmPhaseFacts {
+  readonly expected: Readonly<{
+    runId: string;
+    threadId: string;
+    browsers: readonly Readonly<{
+      id: string;
+      name: string;
+      arguments: Readonly<Record<string, unknown>>;
+      correlation: string;
+    }>[];
+    protected: readonly Readonly<{
+      id: string;
+      name: string;
+      arguments: Readonly<Record<string, unknown>>;
+    }>[];
+  }>;
+  readonly sourceEvents: readonly Record<string, unknown>[];
+  readonly publicState: Readonly<{
+    threadId: string;
+    pendingInterrupts: unknown;
+    pendingConversationRecovery: unknown;
+    events: readonly Readonly<{ type: string; runId: string }>[];
+  }>;
+  readonly savedSession: Readonly<{
+    state: string;
+    revision: number;
+    payload: string;
+  }>;
+  readonly before: CandidateWarmPhaseCounters;
+  readonly after: CandidateWarmPhaseCounters;
+}
+/** Resolves the exact complete saved pending browser set, rejecting unknown or already settled identities. */
+export function readCandidatePendingBrowserCalls(
+  payloadText: string,
+): readonly Record<string, unknown>[] {
+  const payload: unknown = JSON.parse(payloadText);
+  assert.ok(
+    candidateAcceptanceObject(payload),
+    'Saved pending payload required',
+  );
+  assert.ok(
+    Array.isArray(payload.expectedBrowserCallIds) &&
+      payload.expectedBrowserCallIds.length > 0,
+    'Complete pending browser IDs required',
+  );
+  const expected = payload.expectedBrowserCallIds;
+  assert.ok(
+    expected.every((id) => typeof id === 'string' && id.length > 0) &&
+      new Set(expected).size === expected.length,
+    'Unique pending browser identities required',
+  );
+  assert.equal(
+    typeof payload.publicRequest,
+    'string',
+    'Saved canonical public request required',
+  );
+  const request: unknown = JSON.parse(payload.publicRequest as string);
+  assert.ok(
+    candidateAcceptanceObject(request) &&
+      Array.isArray(request.messages) &&
+      Array.isArray(request.tools),
+    'Canonical browser declarations/history required',
+  );
+  const browserNames = request.tools.map((tool) => {
+    assert.ok(candidateAcceptanceObject(tool) && typeof tool.name === 'string');
+    return tool.name;
+  });
+  assert.equal(
+    new Set(browserNames).size,
+    browserNames.length,
+    'Unique browser declaration names required',
+  );
+  const calls: Record<string, unknown>[] = [];
+  const callIds = new Set<string>();
+  const resultIds = new Set<string>();
+  const messageIds = new Set<string>();
+  for (const message of request.messages) {
+    assert.ok(
+      candidateAcceptanceObject(message) &&
+        typeof message.id === 'string' &&
+        !messageIds.has(message.id),
+      'Unique canonical message identity required',
+    );
+    messageIds.add(message.id);
+    if (message.toolCalls !== undefined) {
+      assert.equal(message.role, 'assistant', 'Canonical call role invalid');
+      assert.ok(Array.isArray(message.toolCalls));
+      for (const call of message.toolCalls) {
+        assert.ok(
+          candidateAcceptanceObject(call) &&
+            typeof call.id === 'string' &&
+            !callIds.has(call.id) &&
+            candidateAcceptanceObject(call.function) &&
+            typeof call.function.name === 'string' &&
+            typeof call.function.arguments === 'string',
+          'Unique canonical call identity and arguments required',
+        );
+        assert.ok(
+          candidateAcceptanceObject(JSON.parse(call.function.arguments)),
+          'Canonical browser arguments must be objects',
+        );
+        callIds.add(call.id);
+        calls.push(call);
+      }
+    }
+    if (message.role === 'tool') {
+      assert.ok(
+        typeof message.toolCallId === 'string' &&
+          callIds.has(message.toolCallId) &&
+          !resultIds.has(message.toolCallId),
+        'Canonical result identity invalid',
+      );
+      resultIds.add(message.toolCallId);
+    }
+  }
+  const pending = calls.filter((call) => {
+    assert.ok(candidateAcceptanceObject(call.function));
+    return (
+      browserNames.includes(String(call.function.name)) &&
+      !resultIds.has(String(call.id))
+    );
+  });
+  assert.deepEqual(
+    pending.map((call) => call.id),
+    expected,
+    'Saved pending browser IDs must exactly equal all unanswered declared browser calls',
+  );
+  return pending;
+}
+
+/** Classifies current warm dispatch using complete source, public interruption, saved payload and phase-relative observations. */
+export function classifyCandidateWarmPhase(
+  facts: CandidateWarmPhaseFacts,
+): 'entered-browser-handler' | 'paused-for-protected-interrupt' {
+  const { expected, before, after, publicState, savedSession, sourceEvents } =
+    facts;
+  assert.equal(
+    savedSession.state,
+    'Ready',
+    'Current phase journal must be Ready',
+  );
+  assert.ok(
+    Number.isSafeInteger(savedSession.revision) && savedSession.revision > 0,
+    'Current phase revision invalid',
+  );
+  const payload: unknown = JSON.parse(savedSession.payload);
+  assert.ok(
+    candidateAcceptanceObject(payload) &&
+      payload.formatVersion === 2 &&
+      payload.turnCompleted === false &&
+      typeof payload.nativeJson === 'string' &&
+      payload.nativeJson.length > 0,
+    'Current saved pending payload required',
+  );
+  JSON.parse(payload.nativeJson);
+  const request: unknown = JSON.parse(String(payload.publicRequest));
+  assert.ok(
+    candidateAcceptanceObject(request) &&
+      request.threadId === expected.threadId &&
+      Array.isArray(request.messages),
+    'Saved phase thread/canonical identity differs',
+  );
+  assert.ok(
+    !Object.hasOwn(request, 'runId'),
+    'Saved canonical history must omit normalized runId',
+  );
+  assert.equal(
+    publicState.threadId,
+    expected.threadId,
+    'Public phase thread differs',
+  );
+  assert.ok(
+    publicState.pendingConversationRecovery === null ||
+      publicState.pendingConversationRecovery === undefined,
+    'Cold pending authority cannot precede explicit restore',
+  );
+  const first = sourceEvents[0];
+  const terminal = sourceEvents.at(-1);
+  assert.ok(
+    first?.type === 'RUN_STARTED' &&
+      terminal?.type === 'RUN_FINISHED' &&
+      sourceEvents.filter(
+        (event) => event.type === 'RUN_FINISHED' || event.type === 'RUN_ERROR',
+      ).length === 1,
+    'Complete non-error phase source terminal required',
+  );
+  for (const event of [first, terminal]) {
+    assert.equal(
+      event.runId,
+      expected.runId,
+      'Source phase run identity differs',
+    );
+    assert.equal(
+      event.threadId,
+      expected.threadId,
+      'Source phase thread identity differs',
+    );
+  }
+  assert.equal(
+    publicState.events.filter(
+      (event) =>
+        event.type === 'RUN_FINISHED' && event.runId === expected.runId,
+    ).length,
+    1,
+    'Actual public consumed current terminal required',
+  );
+  const browsers = readCandidatePendingBrowserCalls(savedSession.payload);
+  assert.deepEqual(
+    browsers.map((call) => call.id),
+    expected.browsers.map((call) => call.id),
+    'Current browser pending IDs differ',
+  );
+  const targets = [...expected.browsers, ...expected.protected];
+  assert.equal(
+    new Set(targets.map((call) => call.id)).size,
+    targets.length,
+    'Distinct current phase call IDs required',
+  );
+  const locations = request.messages
+    .flatMap((message, messageIndex) => {
+      assert.ok(candidateAcceptanceObject(message));
+      return Array.isArray(message.toolCalls)
+        ? message.toolCalls.map((call, callIndex) => {
+            assert.ok(candidateAcceptanceObject(call));
+            return { call, messageIndex, callIndex, messageId: message.id };
+          })
+        : [];
+    })
+    .filter((item) => targets.some((call) => call.id === item.call.id));
+  assert.equal(
+    locations.length,
+    targets.length,
+    'Complete current canonical call locations required',
+  );
+  for (const target of targets) {
+    const location = locations.find((item) => item.call.id === target.id);
+    assert.ok(location && candidateAcceptanceObject(location.call.function));
+    assert.equal(
+      location.call.function.name,
+      target.name,
+      'Current canonical call name differs',
+    );
+    assert.deepEqual(
+      JSON.parse(String(location.call.function.arguments)),
+      target.arguments,
+      'Current canonical arguments differ',
+    );
+  }
+  const starts = sourceEvents.filter(
+    (event) => event.type === 'TOOL_CALL_START',
+  );
+  assert.deepEqual(
+    starts.map((event) => event.toolCallId),
+    locations.map((item) => item.call.id),
+    'Current source call identities/order differ',
+  );
+  let activeAssistantMessageId: string | undefined;
+  for (const event of sourceEvents) {
+    if (event.type === 'TEXT_MESSAGE_START') {
+      assert.ok(
+        typeof event.messageId === 'string' && event.messageId.length > 0,
+        'Actual source text parent identity required',
+      );
+      activeAssistantMessageId = event.messageId;
+    }
+    if (event.type !== 'TOOL_CALL_START') continue;
+    const location = locations.find(
+      (item) => item.call.id === event.toolCallId,
+    );
+    assert.ok(location && candidateAcceptanceObject(location.call.function));
+    assert.equal(
+      event.toolCallName,
+      location.call.function.name,
+      'Source call name differs',
+    );
+    const parent =
+      event.parentMessageId ??
+      activeAssistantMessageId ??
+      `assistant-${String(event.toolCallId)}`;
+    assert.equal(
+      parent,
+      location.messageId,
+      'Source/canonical parent location differs',
+    );
+  }
+  assert.deepEqual(
+    after.providerRequests.slice(0, before.providerRequests.length),
+    before.providerRequests,
+    'Historical provider prefix changed',
+  );
+  assert.equal(
+    after.providerRequests.length - before.providerRequests.length,
+    1,
+    'Exactly one current initial provider request required',
+  );
+  assert.deepEqual(
+    after.effects,
+    before.effects,
+    'Current initial effects must remain zero and historical effects preserved',
+  );
+  assert.deepEqual(
+    after.nativeWitnesses,
+    before.nativeWitnesses,
+    'Current initial native outputs must remain zero and historical native witnesses preserved',
+  );
+  assert.deepEqual(
+    after.entries.slice(0, before.entries.length),
+    before.entries,
+    'Historical observer entry/binding changed',
+  );
+  assert.deepEqual(
+    after.attemptSequences.slice(0, before.attemptSequences.length),
+    before.attemptSequences,
+    'Historical observer attempts changed',
+  );
+  const newEntries = after.entries.slice(before.entries.length);
+  const newAttempts = after.attemptSequences.slice(
+    before.attemptSequences.length,
+  );
+  assert.ok(
+    Number.isSafeInteger(before.computations) &&
+      Number.isSafeInteger(after.computations),
+    'Actual phase computation counts required',
+  );
+  assert.ok(
+    Array.isArray(payload.pendingCalls) &&
+      candidateAcceptanceObject(payload.approvals),
+    'Saved native pending authority required',
+  );
+  const pendingCalls = payload.pendingCalls;
+  assert.deepEqual(
+    pendingCalls
+      .map((call) => {
+        assert.ok(candidateAcceptanceObject(call));
+        return call.id;
+      })
+      .sort(),
+    expected.protected.map((call) => call.id).sort(),
+    'Exact saved pending protected membership required',
+  );
+  for (const target of expected.protected) {
+    const call = pendingCalls.find(
+      (item) => candidateAcceptanceObject(item) && item.id === target.id,
+    );
+    assert.ok(candidateAcceptanceObject(call));
+    assert.equal(call.name, target.name, 'Saved protected name differs');
+    assert.deepEqual(
+      call.arguments,
+      target.arguments,
+      'Saved protected arguments differ',
+    );
+    assert.ok(
+      Number.isSafeInteger(call.version) && Number(call.version) > 0,
+      'Saved catalog version required',
+    );
+  }
+  const outcome = terminal.outcome;
+  if (candidateAcceptanceObject(outcome) && outcome.type === 'interrupt') {
+    assert.ok(
+      expected.protected.length > 0,
+      'A plan cannot invent protected pause authority',
+    );
+    assert.deepEqual(
+      Object.keys(outcome).sort(),
+      ['interrupts', 'pendingToolCallIds', 'type'],
+      'Exact mixed source outcome required',
+    );
+    assert.deepEqual(
+      outcome.pendingToolCallIds,
+      browsers.map((call) => call.id),
+      'Source pending browser identity/order differs',
+    );
+    assert.ok(
+      Array.isArray(outcome.interrupts),
+      'Complete source interrupts required',
+    );
+    const warm = publicState.pendingInterrupts;
+    assert.ok(
+      candidateAcceptanceObject(warm) &&
+        typeof warm.id === 'string' &&
+        warm.id.length > 0 &&
+        Array.isArray(warm.interrupts),
+      'Actual public warm interrupt batch required',
+    );
+    assert.deepEqual(
+      warm.interrupts,
+      outcome.interrupts,
+      'Public warm/source interrupt metadata differs',
+    );
+    const bound = payload.approvals.pendingBatch;
+    assert.ok(
+      candidateAcceptanceObject(bound) &&
+        candidateAcceptanceObject(bound.batch) &&
+        candidateAcceptanceObject(bound.publicLocations),
+      'Saved pending approval binding required',
+    );
+    const publicLocations = bound.publicLocations;
+    const batch = bound.batch;
+    assert.ok(
+      typeof batch.batchId === 'string' &&
+        batch.batchId.length > 0 &&
+        Array.isArray(batch.protectedRequests) &&
+        Array.isArray(batch.browserBindings),
+      'Saved complete pending batch required',
+    );
+    const descriptors = batch.protectedRequests;
+    const bindings = batch.browserBindings;
+    assert.equal(
+      descriptors.length,
+      expected.protected.length,
+      'Complete protected request set required',
+    );
+    assert.equal(
+      bindings.length,
+      expected.browsers.length,
+      'Complete browser binding set required',
+    );
+    const requestIds: string[] = [];
+    const checkLocation = (requestId: unknown, callId: string) => {
+      assert.ok(
+        typeof requestId === 'string' &&
+          requestId.length > 0 &&
+          !requestIds.includes(requestId),
+        'Unique saved native request ID required',
+      );
+      requestIds.push(requestId);
+      const position = publicLocations[requestId];
+      const canonical = locations.find((item) => item.call.id === callId);
+      assert.ok(candidateAcceptanceObject(position) && canonical);
+      assert.deepEqual(
+        position,
+        {
+          assistantMessageId: canonical.messageId,
+          messageIndex: canonical.messageIndex,
+          callIndex: canonical.callIndex,
+        },
+        'Saved public binding location differs',
+      );
+    };
+    const wantedInterrupts = descriptors.map((descriptor) => {
+      assert.ok(
+        candidateAcceptanceObject(descriptor) &&
+          descriptor.requiresConfirmation === true &&
+          candidateAcceptanceObject(descriptor.call),
+      );
+      const call = descriptor.call;
+      const target = expected.protected.find((entry) => entry.id === call.id);
+      assert.ok(target, 'Foreign saved protected identity');
+      assert.equal(call.name, target.name);
+      assert.deepEqual(call.arguments, target.arguments);
+      checkLocation(descriptor.requestId, target.id);
+      return {
+        id: descriptor.requestId,
+        reason: 'tool_call',
+        toolCallId: target.id,
+        message: 'Approval required for tool call: ' + target.name,
+        responseSchema: {
+          type: 'object',
+          properties: { approved: { type: 'boolean' } },
+          required: ['approved'],
+        },
+      };
+    });
+    assert.equal(
+      new Set(wantedInterrupts.map((interrupt) => interrupt.toolCallId)).size,
+      expected.protected.length,
+      'Duplicate saved protected identity',
+    );
+    assert.deepEqual(
+      outcome.interrupts,
+      wantedInterrupts,
+      'Source interrupt metadata differs from saved genuine requests',
+    );
+    for (const binding of bindings) {
+      assert.ok(
+        candidateAcceptanceObject(binding) &&
+          binding.requiresConfirmation === false,
+      );
+      const target = expected.browsers.find(
+        (entry) => entry.id === binding.callId,
+      );
+      assert.ok(target, 'Foreign browser binding');
+      assert.equal(binding.name, target.name);
+      assert.deepEqual(
+        binding.arguments,
+        target.arguments,
+        'Saved browser binding arguments differ',
+      );
+      checkLocation(binding.requestId, target.id);
+    }
+    assert.equal(
+      new Set(
+        bindings.map((binding) => {
+          assert.ok(candidateAcceptanceObject(binding));
+          return binding.callId;
+        }),
+      ).size,
+      expected.browsers.length,
+      'Duplicate saved browser binding',
+    );
+    assert.deepEqual(
+      Object.keys(publicLocations).sort(),
+      requestIds.sort(),
+      'Saved native/public binding coverage differs',
+    );
+    assert.equal(
+      newEntries.length,
+      0,
+      'Paused browser phase cannot contain an actual entry or fabricated binding',
+    );
+    assert.equal(
+      newAttempts.length,
+      0,
+      'Paused browser phase cannot contain a received attempt',
+    );
+    assert.equal(
+      after.computations,
+      before.computations,
+      'Paused phase computation count changed',
+    );
+    return 'paused-for-protected-interrupt';
+  }
+  assert.equal(
+    expected.protected.length,
+    0,
+    'Protected phase requires a genuine interrupt',
+  );
+  assert.ok(
+    outcome === undefined ||
+      (candidateAcceptanceObject(outcome) && outcome.type === 'success'),
+    'Ordinary browser phase requires non-error successful outcome',
+  );
+  assert.ok(
+    publicState.pendingInterrupts === null ||
+      publicState.pendingInterrupts === undefined,
+    'Unexpected public warm interrupt',
+  );
+  assert.equal(
+    payload.approvals.pendingBatch,
+    null,
+    'Browser-only phase cannot invent protected bindings',
+  );
+  assert.equal(
+    newEntries.length,
+    expected.browsers.length,
+    'Every original browser must have an actual entered handler witness',
+  );
+  assert.equal(
+    newAttempts.length,
+    expected.browsers.length,
+    'Every entered browser must have one received attempt',
+  );
+  assert.equal(
+    after.computations - before.computations,
+    expected.browsers.length,
+    'Entered phase computation delta differs',
+  );
+  assert.equal(
+    new Set(newEntries.map((entry) => entry.receiptId)).size,
+    newEntries.length,
+    'Distinct actual entry receipts required',
+  );
+  assert.equal(
+    new Set(expected.browsers.map((call) => call.correlation)).size,
+    expected.browsers.length,
+    'Distinct expected browser correlations required',
+  );
+  assert.deepEqual(
+    newEntries.map((entry) => entry.correlation).sort(),
+    expected.browsers.map((call) => call.correlation).sort(),
+    'Exact current browser entry correlation coverage required',
+  );
+  for (const entry of newEntries) {
+    const target = expected.browsers.find(
+      (call) => call.correlation === entry.correlation,
+    );
+    assert.ok(
+      target &&
+        typeof entry.receiptId === 'string' &&
+        entry.receiptId.length > 0,
+      'Actual registered browser entry witness required',
+    );
+    assert.equal(entry.toolName, target.name);
+    assert.deepEqual(
+      entry.arguments,
+      target.arguments,
+      'Entered original arguments differ',
+    );
+    assert.equal(
+      entry.canonicalCallId,
+      undefined,
+      'A future/unentered canonical binding cannot substitute for the original entry',
+    );
+  }
+  return 'entered-browser-handler';
+}
