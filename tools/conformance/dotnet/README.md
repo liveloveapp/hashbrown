@@ -102,7 +102,7 @@ identical project and dependency closure once in locked mode. They do not invoke
 check framework parity, the single exact candidate pin and authenticated initialization.
 
 Native recovery uses a complete trusted key, current configuration and server
-revision. Native-only Pending approval snapshots restore with a fresh local batch
+revision. In the published preview1/V1 baseline, native-only Pending approval snapshots restore with a fresh local batch
 token and no lookup/restore model, executor or browser-handler work. An explicit
 current decision is required to continue. Live mixed continuation can settle a
 cancelled original browser sibling (handler count zero) and receive a fresh model
@@ -121,7 +121,8 @@ before model work; native-output capacity may be discovered after a real model
 request and rejects before excess capture, protected dispatch or publication,
 without fence eviction or automatic retry. Native schema 2 migration requires
 stopped/drained/quiescent schema1 workers; it preserves existing safety metadata
-and is separate from workflow checkpoint schema3. Public recovery remains schema1.
+and is separate from workflow checkpoint schema3. Published native recovery remains
+schema1; the unreleased V2 browser capability is described separately below.
 
 Historical milestone-one qualification recorded 408 physical deterministic browser
 results and 48 live results across eight groups, with 75 actual model calls and 99
@@ -450,9 +451,10 @@ Applications own authentication, authorization, PostgreSQL, configuration and
 provider secrets. For a source-to-package upgrade, remove copied Integration files
 and update imports, stop and drain old workers, and retain the original agent,
 catalog, scope and configuration identities. Workflow schema 3 and native schema 2
-remain separate from package version. Recovery lookup is read-only, pending mixed
-browser work cannot cold restore, uncertain effects are not automatically retried,
-and mixed-version rolling operation is not guaranteed.
+remain separate from package version. Recovery lookup is read-only. Published
+preview1 with npm SDKs 0.8.3 cannot cold-restore unresolved browser work; uncertain
+effects are not automatically retried, and mixed-version rolling operation is not
+guaranteed.
 
 ### Pending browser recovery compatibility (source candidate)
 
@@ -481,3 +483,67 @@ the standalone npm consumer still runs its own exact-lock registry installation.
 The archive fixtures and provenance are documented in
 [published-baselines/0.1.0-preview.1](./published-baselines/0.1.0-preview.1/README.md).
 No release or preview1/npm 0.8.3 pending-browser feature availability is claimed.
+
+### Candidate browser recovery acceptance
+
+Keep the immutable published NuGet/npm descriptors separate from source-candidate
+descriptors. `prepare-live-consumer` and the existing local native approval/browser
+suites retain the published client contract; those results do not qualify the new
+cold browser APIs. A locally packed candidate with the same version string is not
+an official published artifact.
+
+The candidate artifact targets prepare real private npm tarballs and an isolated
+NuGet consumer. Supply distinct fresh absolute pointer paths; preparation refuses
+replacements. Qualification never falls back to source, a registry package or a
+cache when a selected archive is missing. The candidate manifest preserves the
+frozen third-party dependency graph and changes only core, React and Angular to
+their exact packed archive references.
+
+```sh
+npx nx prepare-candidate-npm dotnet-conformance -- --metadata=/absolute/fresh/candidate-npm.json
+npx nx prepare-candidate-nuget dotnet-conformance -- --metadata=/absolute/fresh/candidate-nuget.json
+npx nx candidate-consumer-check dotnet-conformance -- --npm-metadata=/absolute/fresh/candidate-npm.json --metadata=/absolute/fresh/candidate-nuget.json
+```
+
+The isolation check requires actual candidate compilation and missing-recovery-API
+compiler failures when each public 0.8.3 SDK is substituted. A separate cache-only
+control installs exact candidate bytes with its owned HTTP source stopped and
+selected sentinel archive absent. Production candidate qualification must still
+refuse a missing archive. Source/build/installed bytes, module origins, archive
+hashes, aliases, symlinks, added source/config files, pointer anchors and NuGet
+loaded-role identities are checked independently.
+
+The [candidate isolation record](../../../docs/superpowers/research/2026-11-01-dotnet-browser-candidate-isolation.md)
+records the separately executed artifact checks. It qualifies the minimal installed
+consumer and isolation boundary, not the cold-recovery browser journeys below.
+
+The unreleased client installs `pendingConversationRecovery` only after inert
+restoration of a validated V2 native snapshot. React exposes a value; Angular
+exposes a Signal. All six root-exported public facades per framework forward the
+same recovery contract. The internal with-message helper is exercised through
+public UI completion; it is not a seventh public facade.
+
+Settlement requires one explicit known or unavailable outcome per original browser
+call and every genuine protected approve/decline/cancel decision in the same
+`resumeConversationRecovery` call. The local batch ID, local restore revision and
+durable server revision have distinct roles. Recovery read and continuation must
+stay on compatible V2-capable workers. Timeout, cancellation, disconnect, malformed
+stream, unknown delivery failure or conflict requires a separate authoritative
+read, never automatic resubmission or revision substitution. Unavailable results
+retain an escaped persistent uncertainty diagnostic and do not authorize a retry.
+
+[Task 6 durability and compatibility evidence](../../../docs/superpowers/research/2026-11-01-dotnet-browser-durability-qualification.md)
+records the executed process-death, maintenance and exact old-server refusal
+cases. Application-scheduled PostgreSQL maintenance uses one combined bounded
+budget for compatible expired-authority reconciliation and schema-wide privacy
+purges; its result counts distinct changed sessions. Reads remain inert and
+consumption/dispatch fences survive. Custom journals define their own maintenance.
+
+The candidate browser gate has a separate evidence boundary: positively observe
+initial browser-handler entry, then independently measure no additional entry for
+the original call IDs after page destruction, restoration, settlement and reload.
+It must use actual installed candidate facades, qualified NuGet workers, durable
+rows and raw provider captures across React/Angular, OpenAI/Azure and Chat
+Completions/Responses. Artifact isolation and Node HTTP primitive tests alone do
+not establish that browser qualification. Keep its actual results separate from
+the 54-case published-package live record above.

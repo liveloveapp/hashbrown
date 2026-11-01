@@ -71,6 +71,7 @@ internal sealed class NativeSessionProjection
   private string? _terminalType;
   private string? _terminalOutcome;
   private string? _activeAssistantMessageId;
+  private (string MessageId, JsonObject Raw)? _textTransition;
   private bool _available = true;
   private bool _invalid;
   private bool _complete;
@@ -148,7 +149,7 @@ internal sealed class NativeSessionProjection
     if (_complete) return;
     _complete = true;
     if (_frame.Count > 0) { Invalidate(); throw new IOException("Native SSE ended inside a frame."); }
-    if (_terminal is null || _invalid || _evidence?.Available == false || _openTexts.Count > 0 || _openCalls.Count > 0 || _rawTexts.Count > 0 || _rawCalls.Count > 0) Discard();
+    if (_terminal is null || _invalid || _evidence?.Available == false || _openTexts.Count > 0 || _openCalls.Count > 0 || _rawTexts.Count > 0 || _rawCalls.Count > 0 || _textTransition is not null) Discard();
     if (_available && !BatchObligationsAgree()) Discard();
     if (_available && !AdaptMixedTerminal()) Discard();
     _terminalEvent = null;
@@ -238,7 +239,7 @@ internal sealed class NativeSessionProjection
     if (!_available) return terminal;
     try
     {
-      if (!KnownFields(item, type) || item["metadata"] is not null || item["subagentRunId"] is not null || item["rawEvent"] is not null && !SupportedNativeRaw(item, type)) { Discard(); return terminal; }
+      if (!KnownFields(item, type) || item["metadata"] is not null || item["subagentRunId"] is not null || !SupportedCurrentRaw(item, type)) { Discard(); return terminal; }
       switch (type)
       {
         case "RUN_STARTED":
@@ -454,6 +455,7 @@ internal sealed class NativeSessionProjection
   private static string Required(JsonNode node, string property) => !string.IsNullOrWhiteSpace(node[property]?.GetValue<string>()) ? node[property]!.GetValue<string>() : throw new JsonException($"Missing {property}.");
   private static void CopyName(JsonNode source, JsonObject target) { if (source["name"] is not null) target["name"] = source["name"]!.DeepClone(); }
   private long RetainedBytes() => (_request is null ? 0 : Encoding.UTF8.GetByteCount(_request.ToJsonString())) +
+      (_textTransition is { } transition ? (long)Encoding.UTF8.GetByteCount(transition.MessageId) + Encoding.UTF8.GetByteCount(transition.Raw.ToJsonString()) : 0) +
       _rawCalls.Values.Concat(_rawTexts.Values).Sum(raw => (long)Encoding.UTF8.GetByteCount(raw.ToJsonString())) +
       _rawBatchCalls.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value.ToJsonString())) +
       _rawBatchResults.Sum(pair => (long)Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value?.ToJsonString() ?? "null")) +
@@ -466,9 +468,36 @@ internal sealed class NativeSessionProjection
   private void Discard()
   {
     _available = false; _request = null; _messages = []; _texts.Clear(); _calls.Clear(); _rawTexts.Clear(); _rawCalls.Clear(); _callParents.Clear(); _rawBatchCalls.Clear(); _rawBatchResults.Clear(); _rawAnnouncements.Clear(); _pendingBrowserPositions.Clear(); _terminalEvent = null; _messageIds.Clear(); _historicalCallIds.Clear(); _openTexts.Clear(); _openCalls.Clear(); _answeredCalls.Clear();
-    _activeAssistantMessageId = null; _result = null;
+    _activeAssistantMessageId = null; _textTransition = null; _result = null;
   }
   private void Invalidate() { Discard(); _invalid = true; _frame.Clear(); _terminal = null; }
+
+  /// <summary>Defers only the pinned text-end diagnostic until its immediately following genuine tool start validates it.</summary>
+  private bool SupportedCurrentRaw(JsonObject item, string type)
+  {
+    if (_textTransition is { } transition)
+    {
+      // Equality grants no call authority: the real next event must still pass the unchanged semantic validator once.
+      if (type != "TOOL_CALL_START" || item["parentMessageId"]?.GetValue<string>() != transition.MessageId ||
+          item["rawEvent"] is not JsonObject next || !JsonNode.DeepEquals(transition.Raw, next) || !SupportedNativeRaw(item, type)) return false;
+      _textTransition = null;
+      return true;
+    }
+    if (item["rawEvent"] is null || SupportedNativeRaw(item, type)) return true;
+    if (type != "TEXT_MESSAGE_END" || item["rawEvent"] is not JsonObject raw || !DiagnosticTypes(raw)) return false;
+    var id = item["messageId"]?.GetValue<string>();
+    if (id is null || !_openTexts.Contains(id) || _rawTexts.ContainsKey(id) || !_texts.TryGetValue(id, out var text) ||
+        raw["messageId"]?.GetValue<string>() != id || !EquivalentResponseId(raw, id) ||
+        text["role"]?.GetValue<string>() != "assistant" || raw["role"]?.GetValue<string>() != "assistant" ||
+        raw["authorName"]?.GetValue<string>() != text["name"]?.GetValue<string>() ||
+        item["name"] is not null && item["name"]!.GetValue<string>() != text["name"]?.GetValue<string>() ||
+        raw["contents"] is not JsonArray { Count: > 0 } contents || contents.Count > _maximumMessages ||
+        contents.Any(content => content is not JsonObject || content["$type"]?.GetValue<string>() is not ("functionCall" or "toolApprovalRequest"))) return false;
+    // Retain one bounded owned obligation; unknown fields and every sibling are checked on the real next event.
+    _textTransition = (id, (JsonObject)raw.DeepClone());
+    return true;
+  }
+
   private bool SupportedNativeRaw(JsonNode item, string type)
   {
     try { return item["rawEvent"] is JsonObject raw && DiagnosticTypes(raw) && (SupportedNativeAnnouncementRaw(item, type, raw) || SupportedNativeTextRaw(item, type) || SupportedApprovalRaw(item, type, raw) || SupportedNativeToolRaw(item, type)); }

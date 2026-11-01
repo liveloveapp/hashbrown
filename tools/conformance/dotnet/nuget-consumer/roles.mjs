@@ -18,6 +18,7 @@ export const TESTING = [
   'FixtureAcknowledgement.cs',
   'FixtureAuthenticationHandler.cs',
   'FixtureCaptureGate.cs',
+  'FixtureCandidateResultEvidence.cs',
   'FixtureClock.cs',
   'FixtureIntegrationReflection.cs',
   'FixtureInterruptStore.cs',

@@ -1,0 +1,139 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Hashbrown.AspNetCore;
+
+// Characterized from actual source probes A7YhjJ/yjw8Jx (Chat) and k0T00X/vC8P3d (Responses),
+// 2026-11-01. IDs are consistently renamed; raw fields, sibling shapes and ordering are retained.
+// This private unit fixture exercises the production fold, not a provider/browser acceptance claim.
+static JsonObject Object(object value) => JsonSerializer.SerializeToNode(value)!.AsObject();
+static string Frame(JsonObject value) => "data: " + value.ToJsonString() + "\n\n";
+static string Input() => """{"threadId":"thread","runId":"run","messages":[{"id":"user","role":"user","content":"Prompt"}],"tools":[],"context":[],"state":{},"forwardedProps":{}}""";
+static string Id(int index) => new[] { "split-browser-one", "split-protected-one", "split-browser-two", "split-protected-two" }[index];
+static string Name(int index) => index % 2 == 0 ? "getWeather" : "lookupAirport";
+static JsonObject Arguments(int index) => index % 2 == 0
+    ? Object(new { city = index == 0 ? "First owned city" : "Second owned city" })
+    : Object(new { code = index == 1 ? "PDX" : "SEA" });
+static string Parent(string api, int index) => api == "chat" ? "chat-parent" : index < 2 ? "msg-one" : "msg-two";
+static JsonObject Call(int index)
+{
+    var call = Object(new { name = Name(index), arguments = Arguments(index), informationalOnly = false, callId = Id(index), annotations = (object?)null, additionalProperties = (object?)null });
+    call["$type"] = "functionCall";
+    if (index % 2 == 0) return call;
+    var approval = Object(new { toolCall = call, requiresConfirmation = true, requestId = "ficc_" + Id(index), annotations = (object?)null, additionalProperties = (object?)null });
+    approval["$type"] = "toolApprovalRequest";
+    return approval;
+}
+static JsonObject Raw(string api, string parent, JsonArray contents, string? finish) => Object(new
+{
+    authorName = "HashbrownNative", role = "assistant", contents,
+    additionalProperties = (object?)null, responseId = api == "chat" ? parent : "resp-original",
+    messageId = parent, conversationId = (object?)null, createdAt = "2026-11-01T20:10:07+00:00",
+    finishReason = finish, modelId = "fixture-openai-model", continuationToken = (object?)null,
+});
+static JsonObject TextRaw(string api, string parent, string text) => Raw(api, parent,
+    new JsonArray(Object(new Dictionary<string, object?> { ["$type"] = "text", ["text"] = text, ["annotations"] = null, ["additionalProperties"] = null })), null);
+static List<JsonObject> Events(string api)
+{
+    var events = new List<JsonObject> { Object(new { type = "RUN_STARTED", threadId = "thread", runId = "run", protocolVersion = "1.0" }) };
+    var texts = new[] { "First actual announc", "ement café ", "Second actual announ", "cement 🛫 " };
+    for (var group = 0; group < (api == "chat" ? 1 : 2); group++)
+    {
+        var parent = Parent(api, group * 2);
+        events.Add(Object(new { type = "TEXT_MESSAGE_START", messageId = parent, role = "assistant", name = "HashbrownNative", rawEvent = TextRaw(api, parent, api == "chat" ? "" : texts[group * 2]) }));
+        foreach (var text in api == "chat" ? texts : texts.Skip(group * 2).Take(2))
+            events.Add(Object(new { type = "TEXT_MESSAGE_CONTENT", messageId = parent, delta = text, rawEvent = TextRaw(api, parent, text) }));
+        var indexes = api == "chat" ? Enumerable.Range(0, 4) : Enumerable.Range(group * 2, 2);
+        var raw = Raw(api, parent, api == "chat" ? new JsonArray(Enumerable.Range(0, 4).Select(index => (JsonNode)Call(index)).ToArray()) : new JsonArray(Call(group * 2)), api == "chat" ? "tool_calls" : null);
+        events.Add(Object(new { type = "TEXT_MESSAGE_END", messageId = parent, rawEvent = raw }));
+        foreach (var index in indexes)
+        {
+            var diagnostic = api == "chat" ? raw : Raw(api, parent, new JsonArray(Call(index)), null);
+            events.Add(Object(new { type = "TOOL_CALL_START", toolCallId = Id(index), toolCallName = Name(index), parentMessageId = parent, rawEvent = diagnostic }));
+            events.Add(Object(new { type = "TOOL_CALL_ARGS", toolCallId = Id(index), delta = Arguments(index).ToJsonString(), rawEvent = diagnostic }));
+            events.Add(Object(new { type = "TOOL_CALL_END", toolCallId = Id(index), rawEvent = diagnostic }));
+        }
+    }
+    events.Add(Object(new { type = "RUN_FINISHED", threadId = "thread", runId = "run", outcome = new { type = "interrupt", interrupts = new[] { 1, 3 }.Select(index => new
+    {
+        id = "ficc_" + Id(index), reason = "tool_call", message = "Approval required for tool call: lookupAirport", toolCallId = Id(index),
+        responseSchema = new { type = "object", properties = new { approved = new { type = "boolean" } }, required = new[] { "approved" } },
+    }).ToArray() } }));
+    return events;
+}
+
+var mutations = args.FirstOrDefault() == "positive" ? new[] { "valid" } : new[] {
+    "missing-next", "terminal-next", "step-next", "second-end", "missing-next-raw",
+    "changed-next-raw", "wrong-end-id", "wrong-raw-message", "wrong-parent",
+    "forged-call-id", "foreign-tool", "changed-arguments", "missing-approval-witness",
+    "missing-provider-witness", "wrong-content-index", "untrusted-alias",
+    "unsupported-sibling", "raw-extra-key", "raw-metadata", "continuation",
+    "annotations", "wrong-role", "missing-sibling", "later-arguments",
+};
+var observations = new JsonArray();
+foreach (var api in new[] { "chat", "responses" })
+foreach (var mutation in mutations)
+{
+    // Chat uses identical response/message IDs; only Responses requires an alias witness.
+    if (api == "chat" && mutation == "missing-provider-witness") continue;
+    // Arrange: independently fixed native witnesses are never derived from mutated diagnostics.
+    var events = Events(api);
+    var approvals = Enumerable.Range(0, 4).Select(index => new NativeProjectionApproval("ficc_" + Id(index), Id(index), Name(index), JsonSerializer.SerializeToElement(Arguments(index)), index % 2 == 1, true, Parent(api, index), api == "chat" ? index : 0)).ToArray();
+    if (mutation == "missing-approval-witness") approvals = approvals.Where(item => item.CallId != Id(1)).ToArray();
+    if (mutation == "wrong-content-index") approvals = approvals.Select(item => item.CallId == Id(0) ? item with { ContentIndex = 99 } : item).ToArray();
+    var evidence = new NativeSessionProjectionEvidence(
+        (response, message) => mutation != "missing-provider-witness" && api == "responses" && response == "resp-original" && message is "msg-one" or "msg-two",
+        (response, call, name, arguments) => mutation != "missing-provider-witness" && api == "responses" && response == "resp-original" && Enumerable.Range(0, 4).Any(index => call == Id(index) && name == Name(index) && JsonNode.DeepEquals(arguments, Arguments(index))),
+        approvals: () => approvals);
+    var endIndex = events.FindIndex(item => item["type"]!.GetValue<string>() == "TEXT_MESSAGE_END");
+    var end = events[endIndex];
+    var next = events[endIndex + 1];
+    if (mutation == "missing-next") events.RemoveRange(endIndex + 1, events.Count - endIndex - 1);
+    if (mutation == "terminal-next") events.RemoveRange(endIndex + 1, events.Count - endIndex - 2);
+    if (mutation == "step-next") events.Insert(endIndex + 1, Object(new { type = "STEP_STARTED", stepName = "intervening" }));
+    if (mutation == "second-end") events.Insert(endIndex + 1, end.DeepClone().AsObject());
+    if (mutation == "missing-next-raw") next.Remove("rawEvent");
+    if (mutation == "changed-next-raw") next["rawEvent"]!["modelId"] = "changed-model";
+    if (mutation == "wrong-end-id") end["messageId"] = "unopened-text";
+    if (mutation == "wrong-raw-message") end["rawEvent"]!["messageId"] = "other-text";
+    if (mutation == "wrong-parent") next["parentMessageId"] = "other-text";
+    foreach (var item in events.Where(item => item["rawEvent"] is JsonObject && item["rawEvent"]!["contents"]!.AsArray().Any(content => content?["$type"]?.GetValue<string>() != "text")))
+    {
+        var raw = item["rawEvent"]!.AsObject();
+        var content = raw["contents"]![0]!.AsObject();
+        if (mutation == "forged-call-id") content["callId"] = "forged-id";
+        if (mutation == "foreign-tool") content["name"] = "foreign-tool";
+        if (mutation == "changed-arguments") content["arguments"] = new JsonObject { ["city"] = "forged-city" };
+        if (mutation == "untrusted-alias") raw["responseId"] = "untrusted-response";
+        if (mutation == "unsupported-sibling") raw["contents"]!.AsArray().Add(new JsonObject { ["$type"] = "reasoning", ["text"] = "meaningful" });
+        if (mutation == "raw-extra-key") raw["unknownMeaning"] = true;
+        if (mutation == "raw-metadata") raw["additionalProperties"] = new JsonObject { ["meaningful"] = true };
+        if (mutation == "continuation") raw["continuationToken"] = "meaningful";
+        if (mutation == "annotations") content["annotations"] = new JsonArray(new JsonObject { ["type"] = "citation" });
+        if (mutation == "wrong-role") raw["role"] = "tool";
+    }
+    if (mutation == "missing-sibling") events.RemoveAll(item => item["toolCallId"]?.GetValue<string>() == Id(1));
+    if (mutation == "later-arguments") events.First(item => item["type"]?.GetValue<string>() == "TOOL_CALL_ARGS")["delta"] = "{\"city\":\"forged-city\"}";
+    var projection = new NativeSessionProjection(Input(), new HashSet<string>(["getWeather"], StringComparer.Ordinal), evidence: evidence);
+    var forwarded = new MemoryStream();
+
+    // Act: observe the actual production parser, including every UTF-8/frame boundary.
+    var bytes = Encoding.UTF8.GetBytes(string.Concat(events.Select(Frame)));
+    foreach (var value in bytes) await projection.ObserveAsync(new byte[] { value }, chunk => forwarded.WriteAsync(chunk), default);
+    projection.Complete();
+    var released = new MemoryStream();
+    var didRelease = false;
+    try { await projection.ReleaseTerminalAsync(chunk => released.WriteAsync(chunk), default); didRelease = true; }
+    catch (InvalidOperationException) when (!projection.Result.Available) { }
+
+    // Asserted by the TypeScript caller; compilation/errors are never converted to a passing observation.
+    observations.Add(Object(new {
+        api, mutation, available = projection.Result.Available,
+        publicRequest = projection.Result.PublicRequestJson is { } json ? JsonNode.Parse(json) : null,
+        browsers = projection.Result.ExpectedBrowserCallIds,
+        forwardedTerminal = Encoding.UTF8.GetString(forwarded.ToArray()).Contains("RUN_FINISHED", StringComparison.Ordinal),
+        released = didRelease,
+        releasedTerminal = didRelease ? JsonNode.Parse(Encoding.UTF8.GetString(released.ToArray()).Split('\n').First(line => line.StartsWith("data:", StringComparison.Ordinal))[5..]) : null,
+    }));
+}
+Console.WriteLine("Transitions: " + observations.ToJsonString());

@@ -671,14 +671,14 @@ const nightly=await fs.readFile('.github/workflows/nightly.yml','utf8');
 assert.ok(nightly.includes('npx nx package-acceptance dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx provider-e2e dotnet-conformance'));
 assert.ok(!workflow.includes('npx nx prepare-live-consumer dotnet-conformance'));
-assert.ok(workflow.includes('needs: [ci, targets, preview]'));
+assert.ok(workflow.includes('needs: [ci, targets, preview, candidate-cold-recovery]'));
 assert.ok(workflow.includes('if [[ "$CI_RESULT" != "success" ]]'));
 assert.ok(workflow.includes('timeout-minutes: 90'));
 const {spawnSync}=await import('node:child_process');
 const marker='        run: |';
 const gate=workflow.slice(workflow.lastIndexOf(marker)+marker.length).split('\\n').map(line=>line.replace(/^          /,'')).join('\\n');
-for(const result of ['failure','skipped','cancelled'])assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:result,TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped'}}).status,1);
-assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:'success',TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped'}}).status,0);
+for(const result of ['failure','skipped','cancelled'])assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:result,TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped',CANDIDATE_REQUIRED:'true',CANDIDATE_RESULT:'success'}}).status,1);
+assert.equal(spawnSync('bash',['-c',gate],{env:{PATH:process.env.PATH,CI_RESULT:'success',TARGETS_RESULT:'success',PREVIEW_RESULT:'skipped',CANDIDATE_REQUIRED:'true',CANDIDATE_RESULT:'success'}}).status,0);
 
 assert.ok(workflow.includes('packages/dotnet/packages.lock.json'));
 assert.ok(workflow.includes('tests/fixtures/pre-extraction-host.json'));

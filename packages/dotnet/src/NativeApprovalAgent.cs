@@ -34,7 +34,11 @@ internal sealed class NativeApprovalAgent(AIAgent inner, NativeToolCatalog catal
       }
       for (var index = 0; index < update.Contents.Count; index++)
         if (update.Contents[index] is ToolApprovalRequestContent request) context.ObserveApproval(request, update.MessageId, index);
-      foreach (var result in update.Contents.OfType<FunctionResultContent>()) await context.ObserveApprovalResultAsync(result);
+      foreach (var result in update.Contents.OfType<FunctionResultContent>())
+      {
+        await context.ObserveApprovalResultAsync(result);
+        context.ObserveRecoveryResultForTests(result);
+      }
       var projected = new List<AIContent>();
       foreach (var content in update.Contents)
       {

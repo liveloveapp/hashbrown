@@ -43,3 +43,12 @@ actually changed. Applications schedule maintenance for each compatible journal
 registration; custom journals do not acquire this behavior merely by implementing
 the interface. The original published API and compiled-consumer evidence remain
 the compatibility baseline.
+
+The committed [durability and compatibility checkpoint](../../../docs/superpowers/research/2026-11-01-dotnet-browser-durability-qualification.md)
+records that unchanged published-version consumer against the exact final
+acceptance archive DLL: 14 Deconstruct calls, four snapshot/save constructors and
+the original 21-method custom journal. All 52 frozen original files remained
+unchanged. This supplements the reviewed metadata/XML contract; it does not make
+the new APIs available in published preview1. Candidate packaging and browser
+acceptance require separate qualification of their final source and artifact
+identities.

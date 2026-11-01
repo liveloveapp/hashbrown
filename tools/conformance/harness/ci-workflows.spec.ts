@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { parse } from 'yaml';
 
 const readWorkflow = (name: string) =>
@@ -153,7 +154,12 @@ test('ordinary previews and production still await validation and PR Gate requir
   );
   expect(jobs.targets.if).toContain("github.ref == 'refs/heads/main'");
   expect(jobs['pr-gate'].name).toBe('PR Gate');
-  expect(jobs['pr-gate'].needs).toEqual(['ci', 'targets', 'preview']);
+  expect(jobs['pr-gate'].needs).toEqual([
+    'ci',
+    'targets',
+    'preview',
+    'candidate-cold-recovery',
+  ]);
   expect(jobs['pr-gate'].steps[0].env.CI_RESULT).toBe('${{ needs.ci.result }}');
   expect(jobs['pr-gate'].steps[0].run).toMatch(
     /if \[\[ "\$CI_RESULT" != "success" \]\]; then[\s\S]*?exit 1/,
@@ -166,4 +172,119 @@ test('ordinary previews and production still await validation and PR Gate requir
     if: "steps.setup.outputs.dotnet == 'true'",
     run: 'npx nx package-pr-acceptance dotnet-conformance',
   });
+});
+
+test('candidate cold recovery uses existing affected selection in an independent pinned bounded job', () => {
+  const { jobs } = readWorkflow('pr-main');
+  const job = jobs['candidate-cold-recovery'];
+
+  expect(jobs.ci['timeout-minutes']).toBe(90);
+  expect(jobs.ci.outputs.dotnet).toBe('${{ steps.setup.outputs.dotnet }}');
+  expect(job).toBeDefined();
+  expect(job.needs).toEqual(['ci']);
+  expect(job.if).toBe(
+    "${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}",
+  );
+  expect(job['runs-on']).toBe('ubuntu-latest');
+  expect(job['timeout-minutes']).toBe(300);
+  expect(job.env.DOTNET_TEST_POSTGRES).toBe(jobs.ci.env.DOTNET_TEST_POSTGRES);
+  const steps = job.steps as {
+    uses?: string;
+    with?: Record<string, unknown>;
+    run?: string;
+    if?: string;
+  }[];
+  expect(
+    steps.find((step) => step.uses === 'actions/checkout@v7')?.with?.[
+      'persist-credentials'
+    ],
+  ).toBe(false);
+  expect(
+    steps.find((step) => step.uses === 'actions/setup-node@v7')?.with?.[
+      'node-version-file'
+    ],
+  ).toBe('.nvmrc');
+  expect(
+    steps.find((step) => step.uses === 'actions/setup-dotnet@v6')?.with?.[
+      'global-json-file'
+    ],
+  ).toBe('tools/conformance/dotnet/global.json');
+  expect(steps.some((step) => step.run === 'npm ci')).toBe(true);
+  const scripts = steps.map((step) => step.run ?? '').join('\n');
+  expect(scripts).toContain('postgres:18');
+  expect(scripts).toContain('hashbrown-postgres-cold');
+  expect(scripts).toContain('npx playwright install chromium');
+  expect(scripts).toContain('candidate-consumer/ci.mjs');
+  expect(scripts).toContain('--evidence=');
+  expect(scripts).not.toMatch(
+    /--pilot|--smoke|--regressions|live-provider|credentials|nx affected/,
+  );
+  const upload = steps.find(
+    (step) => step.uses === 'actions/upload-artifact@v7',
+  );
+  expect(upload?.if).toBe('always()');
+  expect(upload?.with).toEqual({
+    name: 'dotnet-candidate-cold-recovery',
+    path: 'test-results/dotnet-candidate-recovery',
+    'retention-days': 7,
+    'if-no-files-found': 'error',
+  });
+  expect(
+    steps.some(
+      (step) =>
+        step.if === 'always()' &&
+        String(step.run).includes('docker rm --force hashbrown-postgres-cold'),
+    ),
+  ).toBe(true);
+  expect(JSON.stringify(job)).not.toMatch(
+    /secrets\.|secrets:|deployments|live-provider-e2e/,
+  );
+});
+
+test('PR aggregate requires actual candidate success exactly when the existing dotnet selection requires it', () => {
+  const { jobs } = readWorkflow('pr-main');
+  const step = jobs['pr-gate'].steps[0];
+  const execute = (required: string, result: string) => {
+    try {
+      execFileSync('bash', ['-c', step.run], {
+        env: {
+          PATH: process.env['PATH'],
+          CI_RESULT: 'success',
+          TARGETS_RESULT: 'skipped',
+          PREVIEW_RESULT: 'skipped',
+          CANDIDATE_REQUIRED: required,
+          CANDIDATE_RESULT: result,
+        },
+        stdio: 'pipe',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  expect(step.env.CANDIDATE_REQUIRED).toBe('${{ needs.ci.outputs.dotnet }}');
+  expect(step.env.CANDIDATE_RESULT).toBe(
+    '${{ needs.candidate-cold-recovery.result }}',
+  );
+  expect(execute('true', 'success')).toBe(true);
+  expect(execute('false', 'skipped')).toBe(true);
+  expect(execute('false', 'success')).toBe(true);
+  for (const [required, result] of [
+    ['true', 'skipped'],
+    ['true', 'failure'],
+    ['true', 'cancelled'],
+    ['false', 'failure'],
+    ['false', 'cancelled'],
+    ['', 'success'],
+    ['unexpected', 'success'],
+  ]) {
+    expect({ required, result, passed: execute(required, result) }).toEqual({
+      required,
+      result,
+      passed: false,
+    });
+  }
+  expect(jobs.preview.needs).toEqual(['ci', 'targets']);
+  expect(jobs.production.needs).toEqual(['ci', 'targets']);
 });

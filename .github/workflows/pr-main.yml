@@ -22,6 +22,8 @@ jobs:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      dotnet: ${{ steps.setup.outputs.dotnet }}
     env:
       # Only protected main runs may populate the shared cache. PRs retain
       # the workspace's anonymous read-only access and isolated writes.
@@ -172,6 +174,93 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  candidate-cold-recovery:
+    name: .NET candidate cold recovery
+    needs: [ci]
+    if: ${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+          cache: true
+          cache-dependency-path: |
+            tools/conformance/dotnet/packages.lock.json
+            packages/dotnet/packages.lock.json
+            tools/conformance/dotnet/global.json
+            packages/dotnet/global.json
+            tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
+
+      - name: Select pinned Playwright cache
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install and check Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
+
+      - name: Start owned PostgreSQL18
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres-cold \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres-cold pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres-cold
+          exit 1
+
+      - name: Run fresh candidate isolation and all cold recovery journeys
+        run: node tools/conformance/dotnet/candidate-consumer/ci.mjs --evidence="$GITHUB_WORKSPACE/test-results/dotnet-candidate-recovery"
+
+      - name: Upload allowlisted candidate cold evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-candidate-cold-recovery
+          path: test-results/dotnet-candidate-recovery
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Stop owned PostgreSQL
+        if: always()
+        run: docker rm --force hashbrown-postgres-cold || true
+
   targets:
     name: Select deployment targets
     if: >-
@@ -292,7 +381,7 @@ jobs:
   pr-gate:
     name: PR Gate
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-    needs: [ci, targets, preview]
+    needs: [ci, targets, preview, candidate-cold-recovery]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -301,9 +390,26 @@ jobs:
           CI_RESULT: ${{ needs.ci.result }}
           TARGETS_RESULT: ${{ needs.targets.result }}
           PREVIEW_RESULT: ${{ needs.preview.result }}
+          CANDIDATE_REQUIRED: ${{ needs.ci.outputs.dotnet }}
+          CANDIDATE_RESULT: ${{ needs.candidate-cold-recovery.result }}
         run: |
           if [[ "$CI_RESULT" != "success" ]]; then
             echo "Validation result: $CI_RESULT"
+            exit 1
+          fi
+
+          if [[ "$CANDIDATE_REQUIRED" == "true" ]]; then
+            if [[ "$CANDIDATE_RESULT" != "success" ]]; then
+              echo "Required candidate cold recovery result: $CANDIDATE_RESULT"
+              exit 1
+            fi
+          elif [[ "$CANDIDATE_REQUIRED" == "false" ]]; then
+            if [[ "$CANDIDATE_RESULT" != "success" && "$CANDIDATE_RESULT" != "skipped" ]]; then
+              echo "Unexpected candidate cold recovery result: $CANDIDATE_RESULT"
+              exit 1
+            fi
+          else
+            echo "Missing or invalid affected .NET selection: $CANDIDATE_REQUIRED"
             exit 1
           fi
 

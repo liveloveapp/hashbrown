@@ -399,6 +399,47 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     _pending.TryRemove(descriptor.Call.Id, out _);
     if (Recovery is not null) ObserveSettledRecoveryRejection(descriptor, result);
   }
+  /// <summary>Copies only an accepted current protected result for the existing passive test observer before public projection.</summary>
+  internal void ObserveRecoveryResultForTests(FunctionResultContent result)
+  {
+    if (_observer is null || Recovery is null) return;
+    try
+    {
+      var evidence = ApprovalEvidence;
+      var descriptor = evidence?.Batch.Batch.ProtectedRequests.SingleOrDefault(item => item.Call.Id == result.CallId);
+      if (descriptor is null || evidence!.State != NativeApprovalState.DecisionAdmitted || evidence.AdmittedGeneration != Lease.Generation) return;
+      NativeBrowserRecoveryResultWitness witness;
+      lock (_recoveryResultLock)
+      {
+        if (!_observedRecoveryResults.Contains(result.CallId) || !_completedRecoveryResults.TryGetValue(result.CallId, out witness!) || witness.RequestId != descriptor.RequestId || witness.BatchId != evidence.Batch.Batch.BatchId || witness.OwnerToken != Lease.Token || witness.Generation != Lease.Generation) return;
+      }
+      string? rawJson = null, text = null, jsonKind = null;
+      string nativeType;
+      if (result.Result is JsonElement json) { nativeType = "System.Text.Json.JsonElement"; rawJson = witness.Snapshot.WireContent; jsonKind = json.ValueKind.ToString(); }
+      else if (result.Result is string) { nativeType = "System.String"; text = witness.Snapshot.WireContent; }
+      else if (result.Result is null) nativeType = "null";
+      else return;
+      Observe("Native.Result.Observed", JsonSerializer.Serialize(new
+      {
+        scope = Scope,
+        threadId = Input.ThreadId,
+        runId = Input.RunId,
+        callId = result.CallId,
+        requestId = descriptor.RequestId,
+        batchId = evidence.Batch.Batch.BatchId,
+        admittedGeneration = evidence.AdmittedGeneration,
+        admittedRevision = evidence.AdmittedRevision,
+        domain = "native-outward-before-public-projection",
+        nativeType,
+        jsonKind,
+        rawJson,
+        text,
+        isNull = result.Result is null
+      }));
+    }
+    catch (Exception) { /* Passive result diagnostics cannot alter accepted execution or ownership. */ }
+  }
+
   /// <summary>Projects only server-owned captured or admitted witnesses; provider diagnostics grant no approval authority.</summary>
   internal IReadOnlyList<NativeProjectionApproval> ProjectionApprovals()
   {

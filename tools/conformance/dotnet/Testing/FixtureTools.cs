@@ -8,6 +8,8 @@ namespace Hashbrown.Conformance.Testing;
 /// <summary>Deterministic server effects used only by the integration fixture.</summary>
 public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = null, string schema = "hashbrown", FixtureNativeGate? nativeGate = null, Func<HttpContext?>? nativeContext = null)
 {
+    /// <summary>Optional passive candidate-only sink; normal fixture compositions perform no handler snapshot work.</summary>
+    internal FixtureCandidateResultEvidence? CandidateEvidence { get; init; }
     private int _server;
     private int _protected;
     private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -103,7 +105,9 @@ public sealed class FixtureTools(string workflow, NpgsqlDataSource? source = nul
         }
         Interlocked.Increment(ref _protected);
         if (nativeGate is not null) await nativeGate.ReachAsync("effect-persisted", cancellationToken);
-        return new { code, name = "Portland International Airport" };
+        var result = new { code, name = "Portland International Airport" };
+        CandidateEvidence?.Handler(context, descriptor, evidence, () => (result.GetType().FullName!, JsonSerializer.SerializeToElement(result)));
+        return result;
     }
 
     /// <summary>Number of actual server tool executions.</summary>

@@ -102,7 +102,7 @@ export class ReadingApproval {
 
 The start button sends an ordinary request through this same chat instance. The approval controls appear only when the agent pauses that interaction. The displayed batch is the batch submitted by its controls. Never attach an old form’s answers to a newly arrived batch ID.
 
-`approved: false` is a resolved denial. Cancellation instead uses `status: 'cancelled'` without a payload. Stopping a running request is different from either answer. Before the resume acknowledgement, retry may be possible; after acknowledgement, failure can require recovery or a new thread. The server must handle duplicate delivery and enforce expiry and ownership independently.
+`approved: false` is a resolved denial. Cancellation instead uses `status: 'cancelled'` without a payload. Stopping a running request is different from either answer. For this ordinary resume flow, retry may be possible before acknowledgement; after acknowledgement, failure can require recovery or a new thread. [Cold browser recovery](#settle-recovered-browser-work-unreleased) has a stricter single-attempt rule. The server must handle duplicate delivery and enforce expiry and ownership independently.
 
 ## Explore it in the workbench
 
@@ -223,5 +223,15 @@ Snapshots contain a stable thread ID, canonical native messages, optional shared
 Keep the server's operational disposition separate from this runtime API: installing available history does not authorize another send or decision while the effect is busy or unknown. Invalidate lookup guards on thread changes and disposal, reject unknown envelope versions/statuses, and offer explicit refresh or a deliberate new thread. See the [authenticated .NET recovery recipe](/docs/angular/platform/dotnet) for retained-history limits, UI guards and protected operator reconciliation.
 
 Native requests retain cancellation text but strip private runtime provenance. After a cold reload, structured/UI recovery cannot prove that this text is a runtime cancellation marker and rejects it if it does not match the configured response schema. Keep recovery blocked or deliberately start a new thread; do not remove messages, infer ownership from their text, or fabricate provenance. Plain-chat recovery retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.
+
+### Settle recovered browser work (unreleased)
+
+Published npm SDKs `0.8.3` and NuGet `0.1.0-preview.1` do not contain this workflow. A compatible V2 native recovery read can provide an inert `chat.pendingConversationRecovery()` batch. Its `id` is fresh local ownership; `serverRevision` is the durable revision captured by the lookup, separate from `chat.recovery().revision` used to guard restoration.
+
+Collect one explicit known result or unavailable choice for every original browser call, plus one decision for every genuine protected interrupt. Submit them together through `resumeConversationRecovery({ batchId, outcomes, entries })`. Do not invoke original browser handlers or call ordinary `resume` to bypass this batch. Incomplete local input leaves the batch unchanged. Start new form choices when the local pending ID changes.
+
+The first cold continuation has one logical transport attempt. Timeout, disconnect, cancellation, malformed acknowledgement, unknown network failure or a revision conflict requires an explicit authoritative refresh. Do not resend the old batch or generate a replacement request. The refreshed state may be Pending, Busy, Completed or UnknownEffect; a new thread is an explicit separate action.
+
+An unavailable result records uncertainty: the operation may already have occurred. Render the persistent `browser-result-unavailable` diagnostic as escaped text, including after another reload. It is separate from `unstructured-assistant-history` and does not require `structuredHistory: 'preserve-diagnostics'`. See [native browser recovery](/docs/angular/platform/dotnet-native-tools#pending-browser-recovery-unreleased) for negotiation, complete settlement and deployment boundaries.
 
 For a runnable TypeScript/Postgres reference that survives a server restart, see [Durable recovery with b4.run](/docs/angular/platform/b4run). It separates conversation checkpoints, native approval grants, and the application’s accepted plan.

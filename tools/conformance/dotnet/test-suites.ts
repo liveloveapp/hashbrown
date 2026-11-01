@@ -1,6 +1,17 @@
 /** Explicit source test ownership; the conformance guard rejects missing or duplicate specs. */
 export const dotnetTestSuites = {
   harness: [
+    'tests/candidate-ci.spec.ts',
+    'tests/candidate-browser-evidence.spec.ts',
+    'tests/candidate-browser-acceptance.spec.ts',
+    'tests/candidate-browser-process.spec.ts',
+    'tests/candidate-recovery-controls.spec.ts',
+    'tests/candidate-browser-manifest.spec.ts',
+    'tests/candidate-deadline-transport.spec.ts',
+    'tests/candidate-browser-recovery.spec.ts',
+    'tests/candidate-consumer.spec.ts',
+    'tests/candidate-handler-observer.spec.ts',
+    'tests/candidate-recovery-proxy.spec.ts',
     'tests/published-recovery-baseline.spec.ts',
     'tests/live-browser-fixture.spec.ts',
     'tests/live-budget.spec.ts',
@@ -18,6 +29,9 @@ export const dotnetTestSuites = {
     'tests/wait-for-native-recovery.spec.ts',
   ],
   runtime: [
+    'tests/candidate-native-evidence.spec.ts',
+    'tests/candidate-split-producer.spec.ts',
+    'tests/candidate-native-text-transition.spec.ts',
     'tests/browser-tool-schema.spec.ts',
     'tests/durable-interrupts.spec.ts',
     'tests/endpoint-registration.spec.ts',

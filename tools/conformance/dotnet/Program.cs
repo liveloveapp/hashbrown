@@ -23,14 +23,16 @@ var connectionString = builder.Configuration["InterruptConnectionString"];
 await using var source = connectionString is null ? null : NpgsqlDataSource.Create(connectionString);
 var schema = builder.Configuration["InterruptSchema"] ?? "hashbrown";
 var nativeGate = new FixtureNativeGate(builder.Configuration["NativeGate"] ?? "");
+var candidateEvidence = builder.Configuration["FixtureCandidateRecoveryEvidence"] == "true" ? new FixtureCandidateResultEvidence() : null;
 IHttpContextAccessor? nativeAccessor = null;
-var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema, nativeGate, () => nativeAccessor?.HttpContext);
+var tools = new FixtureTools(builder.Configuration["Workflow"] ?? "", source, schema, nativeGate, () => nativeAccessor?.HttpContext) { CandidateEvidence = candidateEvidence };
 var nativeName = builder.Configuration["NativeAgentName"] ?? "HashbrownNative";
 AIFunction nativeFunction = AIFunctionFactory.Create(nativeApprovals ? tools.LookupProtectedNativeAirport : tools.LookupNativeAirport, "lookupAirport");
+if (candidateEvidence is not null) nativeFunction = candidateEvidence.Wrap(nativeFunction, () => nativeAccessor?.HttpContext);
 if (nativeApprovals) nativeFunction = new ApprovalRequiredAIFunction(nativeFunction);
 if (nativeApprovals && !nativeEnabled) throw new InvalidOperationException("Protected native fixture requires native sessions.");
 var nativeCatalog = new NativeToolCatalog([new("lookupAirport", int.Parse(builder.Configuration["RegistryVersion"] ?? "1"), nativeFunction.JsonSchema, RequiresConfirmation: nativeApprovals)]);
-var nativeOptions = new NativeSessionOptions { PayloadCapacity = int.Parse(builder.Configuration["NativePayloadCapacity"] ?? "128"), SelectorCapacity = int.Parse(builder.Configuration["NativeSelectorCapacity"] ?? "4096"), MaximumCalls = int.Parse(builder.Configuration["NativeMaximumCalls"] ?? "256"), Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
+var nativeOptions = new NativeSessionOptions { PublicBytes = FixtureCandidateResultEvidence.ReadPublicBytes(builder.Configuration["NativePublicBytes"]), PayloadCapacity = int.Parse(builder.Configuration["NativePayloadCapacity"] ?? "128"), SelectorCapacity = int.Parse(builder.Configuration["NativeSelectorCapacity"] ?? "4096"), MaximumCalls = int.Parse(builder.Configuration["NativeMaximumCalls"] ?? "256"), Lease = TimeSpan.FromSeconds(double.Parse(builder.Configuration["NativeLeaseSeconds"] ?? "30", System.Globalization.CultureInfo.InvariantCulture)) };
 var liveApproval = builder.Configuration["FixtureLive"] == "true" && builder.Configuration["FixtureLiveGroup"] == "native-approval" ? new FixtureLiveApprovalProof(nativeCatalog.Identity) : null;
 INativeSessionJournal? nativeJournal = null;
 if (nativeEnabled)
@@ -214,6 +216,7 @@ if (nativeJournal is not null)
         return new(nativeName, scope, selector, partitions);
     }
     FixtureNativeRecoveryControls.Map(app, source!, schema, Key);
+    candidateEvidence?.Map(app);
     NativeSessionRecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/native-session", nativeJournal, "recovery",
         (context, selector) => context.User.FindFirst("scope") is { } claim ? Key(claim.Value, selector) : null, nativeOptions);
     NativeSessionRecoveryEndpointConfiguration.MapOperations(app, "/native-sessions", nativeJournal, "checkpoint-operator",
@@ -287,7 +290,8 @@ if (nativeJournal is not null)
             return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
         }).RequireAuthorization("recovery");
     }
-    var observedAgent = (AIAgent)FixtureIntegrationReflection.Call(null, typeof(NativeSessionAgentFactory), "CreateObservedForTests", native, nativeName, new[] { nativeFunction }, nativeCatalog, accessor, (Action<string>)nativeGate.Observe)!;
+    Action<string> observeNative = value => { nativeGate.Observe(value); candidateEvidence?.Observe(value); };
+    var observedAgent = (AIAgent)FixtureIntegrationReflection.Call(null, typeof(NativeSessionAgentFactory), "CreateObservedForTests", native, nativeName, new[] { nativeFunction }, nativeCatalog, accessor, observeNative)!;
     NativeSessionEndpointConfiguration.Map(app, "/run", observedAgent, "recovery");
 }
 else HashbrownEndpointConfiguration.Map(app, "/run",

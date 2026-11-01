@@ -35,7 +35,7 @@ dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
 
 </hb-code-example>
 
-Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only, pending mixed browser work cannot cold restore, and uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
+Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only. Published NuGet `0.1.0-preview.1` with npm SDKs `0.8.3` cannot cold-restore unresolved browser work; [candidate recovery](#pending-browser-recovery-unreleased) below is unreleased. Uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
 
 <hb-code-example header="Package reference">
 
@@ -225,17 +225,123 @@ The recovery route accepts `POST /threads/{threadId}/native-session` with the cu
 
 Recovery returns a versioned public disposition and server revision, never the opaque native JSON, hidden descriptors or request authority. Restore a completed or otherwise known-safe snapshot only when provided. Ignore stale refresh responses using the existing revision/configuration guards.
 
-Native-only pending approvals can return a safe published `Pending` snapshot. Restoring it creates a fresh local batch token; recovery lookup and restoration perform no model, executor or browser-handler work. Submit an explicit current decision to continue, including on another worker after restart. Apply the existing configuration and server-revision guards so stale refreshes cannot adopt an old batch. The public recovery response remains schema version 1; this is separate from the native database schema.
+### Published recovery behavior
 
-**Pending mixed approvals with an unresolved browser sibling cannot be cold-restored.** Recovery returns `Pending` with reason `PendingMixedBrowserResult`, **no snapshot** and no adoptable resumable batch. SDK cancellation annotations do not provide the missing browser result. Show the unavailable reason, disable sends and decision controls for that conversation, and expose an explicit new-thread action. An authorized operator can use the existing terminal retirement path after establishing the required quiescence/evidence. Do not omit the call, invent a result or change tool registration to restore it.
+With NuGet `0.1.0-preview.1` and npm SDKs `0.8.3`, native-only pending approvals can return a safe `Pending` snapshot. Restoring it creates a fresh local batch token; recovery lookup and restoration perform no model, executor or browser-handler work. Submit an explicit current decision to continue, including on another worker after restart. Apply the existing configuration and server-revision guards so stale refreshes cannot adopt an old batch. This published recovery response uses schema version 1, independently of the native database schema.
 
-Ordinary pending browser results still return `NativePendingBrowserResults` with **no snapshot**. `restoreConversation` rejects unresolved executable browser tools. Completed canonical histories containing genuine native results remain restorable without rerunning historical work. Busy, unknown, incompatible, expired, retired and missing states never authorize new execution under the same selector. This is bounded continuation recovery, not general chat archive storage.
+**The published pair cannot cold-restore pending mixed approvals with an unresolved browser sibling.** Recovery returns `Pending` with reason `PendingMixedBrowserResult`, **no snapshot** and no adoptable resumable batch. SDK cancellation annotations do not provide the missing browser result. Show the unavailable reason, disable sends and decision controls for that conversation, and expose an explicit new-thread action. An authorized operator can use the existing terminal retirement path after establishing the required quiescence/evidence. Do not omit the call, invent a result or change tool registration to restore it.
+
+In that published flow, ordinary pending browser results return `NativePendingBrowserResults` with **no snapshot**, and `restoreConversation` rejects unresolved executable browser tools. Completed canonical histories containing genuine native results remain restorable without rerunning historical work. Busy, unknown, incompatible, expired, retired and missing states never authorize new execution under the same selector. This is bounded continuation recovery, not general chat archive storage.
 
 Operators can inspect `GET /native-sessions/{scope}/{threadId}` and submit `NativeSessionReconciliation` to the corresponding `/reconcile` or `/retire` route. Supply the inspected expected state, generation and revision, a bounded reason/evidence reference, and an explicit external-quiescence acknowledgement. Establish that the old worker and downstream operation can no longer act before reconciling uncertainty. These audited transitions are terminal: they never execute, retry or reopen a function. Operator grants should be separate from ordinary conversation access.
+
+## Pending browser recovery (unreleased)
+
+This workflow is absent from published npm `0.8.3` and NuGet `0.1.0-preview.1`. It requires separately qualified, matching candidate server, core and framework packages. A locally packed package retaining a published version number is still a source candidate. The [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) separates candidate acceptance from the published-package live qualification.
+
+PostgreSQL opts into `INativeSessionBrowserRecoveryJournal`. A custom journal must explicitly implement that optional contract; the base `INativeSessionJournal` interface alone supplies no browser recovery capability. Keep both recovery reads and continuation requests on the same compatible V2-capable deployment. Stop and drain incompatible workers before upgrading; a V2 advertisement does not qualify an older worker's continuation handling.
+
+### Refresh and restore without execution
+
+Use authenticated `POST /threads/{threadId}/native-session`, `cache: 'no-store'`, the unchanged JSON value from `chat.getRecoveryConfiguration()`, and exactly one `Hashbrown-Recovery-Version: 2` header. Retain your application authorization and request-forgery policy. Malformed negotiation returns 400; an unsupported version or incapable journal returns 406. Refuse schema-1 downgrade for unresolved browser work.
+
+Capture `chat.recovery.revision` before the asynchronous read. Pass that **local revision** as `expectedRevision` to `restoreConversation`; it is different from the response's durable `serverRevision`. Invalidate pending reads on thread/configuration changes, superseding reads and disposal. Network JSON remains untrusted: validate schema version 2, the known disposition, matching thread, a positive safe server revision, capability protocol version 1, equal outer/capability revisions and complete unique original call IDs. Preserve the entire canonical snapshot and let atomic restoration independently validate it against the current tools, schemas and configuration. A TypeScript cast cannot supply authority.
+
+Only a valid `Pending` snapshot with `pendingBrowserRecovery` enables this path. Busy, UnknownEffect, Expired, Unavailable, unsupported, corrupt or unbound states grant no settlement capability. Restoration is inert: it performs no network, model, native executor or original browser-handler work. It installs `chat.pendingConversationRecovery` with a fresh local `id`, the captured `serverRevision`, original `toolCalls` and genuine protected `interrupts`. The local ID is neither a server lease nor a durable lookup key.
+
+### Submit every explicit observation together
+
+Start a fresh form for each local pending ID. Collect one choice for every original browser call and every genuine protected interrupt before enabling its single Submit action:
+
+| Pending item | Explicit choices |
+| --- | --- |
+| Browser call | A result already known by the application: `{ toolCallId, status: 'result', value }`; or an explicit `{ toolCallId, status: 'unavailable' }` choice |
+| Protected interrupt | Approve with `{ interruptId, status: 'resolved', payload: { approved: true } }`; decline with `{ approved: false }`; or cancel with `{ interruptId, status: 'cancelled' }` and no payload |
+
+These protected payloads apply to this recipe's boolean-object approval contract; validate a different agent's own interrupt schema. Do not call original handlers to reconstruct results, silently default missing choices to unavailable, or turn browser call IDs into `ResumeEntry` values. Known strings retain their exact content; object, array and null values are JSON serialized. Values must be plain, noncyclic JSON. The client limits JSON depth to 64 and the complete serialized request to 1 MiB of UTF-8; server limits may be smaller.
+
+Call `chat.resumeConversationRecovery` once with the current local `batchId`, the complete `outcomes` array and all genuine protected `entries`. Browser-only batches omit entries or supply an empty array. Do not call ordinary `resume` first or manually edit canonical history; the SDK constructs result messages and transient continuation metadata. Disable ordinary send/resume and duplicate settlement while pending or recovery is required.
+
+This **unreleased** helper submits choices from your form. Keep both maps empty until the user explicitly selects each observation and decision. Set `batchId` when that form is opened; discard it and the maps when the pending ID changes. Call `submitRecovery(chat, draft)` from one explicit Submit event on the existing configured chat instance, never during render. If a cold batch is present, show this complete form instead of the ordinary warm approval controls.
+
+<hb-code-example header="Unreleased recovery form submission">
+
+```tsx
+import type {
+  BrowserRecoveryOutcome,
+  Chat,
+  PendingConversationRecovery,
+  ResumeConversationRecoveryOptions,
+  ResumeEntry,
+} from '@hashbrownai/core';
+import type { UseChatResult } from '@hashbrownai/react';
+
+/** Explicit selections owned by one local recovery form. */
+interface RecoveryDraft {
+  readonly batchId: string;
+  readonly outcomes: ReadonlyMap<string, BrowserRecoveryOutcome>;
+  readonly decisions: ReadonlyMap<string, 'approve' | 'decline' | 'cancel'>;
+}
+
+/** Builds a complete submission without changing the form or conversation. */
+function recoveryOptions(
+  pending: PendingConversationRecovery,
+  draft: RecoveryDraft,
+): ResumeConversationRecoveryOptions {
+  if (
+    draft.batchId !== pending.id ||
+    draft.outcomes.size !== pending.toolCalls.length ||
+    draft.decisions.size !== pending.interrupts.length
+  ) throw Error('Complete the current recovery form');
+  return {
+    batchId: pending.id,
+    outcomes: pending.toolCalls.map(({ id }) => {
+      const outcome = draft.outcomes.get(id);
+      if (!outcome || outcome.toolCallId !== id)
+        throw Error('Choose an outcome for every original browser call');
+      return outcome;
+    }),
+    entries: pending.interrupts.map(({ id }): ResumeEntry => {
+      const decision = draft.decisions.get(id);
+      if (decision === 'cancel')
+        return { interruptId: id, status: 'cancelled' };
+      if (decision !== 'approve' && decision !== 'decline')
+        throw Error('Choose every protected decision');
+      return {
+        interruptId: id,
+        status: 'resolved',
+        payload: { approved: decision === 'approve' },
+      };
+    }),
+  };
+}
+
+/** Call once from the form's Submit event and display synchronous form errors. */
+export function submitRecovery(
+  chat: Pick<UseChatResult<Chat.AnyTool>,
+    'pendingConversationRecovery' | 'resumeConversationRecovery'>,
+  draft: RecoveryDraft,
+): void {
+  const pending = chat.pendingConversationRecovery;
+  if (!pending) throw Error('Refresh authoritative recovery first');
+  const options = recoveryOptions(pending, draft);
+  chat.resumeConversationRecovery(options);
+}
+```
+
+</hb-code-example>
+
+A synchronous local validation error leaves the batch unchanged so the form can be corrected. The first cold continuation has one logical transport attempt and one built-in HTTP fetch, even with retry configuration. Timeout, cancellation, disconnect, malformed acknowledgement, unknown network failure or a 409 requires an explicit authoritative refresh. Do not resend the old token, silently substitute a newer server revision or generate a replacement request. The refresh may return Pending, Busy, Completed or UnknownEffect. An explicit new thread selects a new identity; it does not cancel server work.
+
+An unavailable result records uncertainty: the original operation may already have occurred, and no retry is authorized. The canonical result yields `recovery.diagnostics` with kind `browser-result-unavailable`, including after save and another reload. A known string exactly equal to the reserved unavailable marker is conservatively uncertain too; a near match is not the same marker. This diagnostic is independent of the `unstructured-assistant-history` policy. Render diagnostic content, arguments, names and IDs using ordinary escaped React interpolation. Newly model-issued IDs follow normal application authorization/idempotency policy; this workflow does not promise exactly-once external effects.
 
 ## Retention and deployment
 
 Run `journal.MaintainAsync` from an application-owned bounded background job with cancellation and observed failures. Expiry uses the database clock; caller cancellation timestamps are telemetry. Approval expiry cannot outlive its session. Maintenance purges private native/history/argument payloads while retaining permanent selector tombstones, consumed-decision and invocation fences and bounded audit evidence. Purge does not permit selector or call identity reuse. Defaults remain 128 live/private payloads and 4096 total selectors per agent/scope. Retained fences count toward bounded capacity; deleting a row to reuse a selector defeats the fence.
+
+The **unreleased PostgreSQL implementation** also reconciles expired request authority. Schedule maintenance for every trusted compatible agent/model/tool-catalog registration, with consistent options; reads do not repair expired authority. One combined `MaintenanceBatch` budget covers reconciliation and privacy purges. The return value counts distinct sessions actually changed. Database time, locked-row rechecks and skipped competing locks determine eligibility; repeated passes drain backlog, without promising recovery exactly at lease expiry.
+
+Safely expired Owned work may become Ready only after complete dispatch and consumption checks. Consumed approve, decline and cancel decisions remain fences even before Started. Uncertain Owned or Saved work becomes Blocked; expired Publishing becomes PublicationUnknown. These uncertain states read as UnknownEffect and require independent outcome evidence and operator policy. Maintenance never infers an external result or redispatches a tool. A continuation requires a fresh authoritative revision. Privacy purge remains schema-wide, while retained lease reconciliation is registration-specific. Custom journals define their own maintenance behavior. See the [durability and compatibility checkpoint](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-01-dotnet-browser-durability-qualification.md) for the separately executed process-death and old-server checks.
 
 Input and selector/new-payload-slot capacity known at admission is rejected before model work. New native-output call or descriptor capacity can only be discovered from legitimate model output: a model request may already have occurred. Reject excess capture/allocation before protected dispatch or interrupt/terminal publication, without evicting retained fences, granting partial approval authority or automatically retrying the model. Reaching retained-call capacity does not prohibit a later model turn that needs no new call. Plan scope lifecycle and capacity explicitly.
 
