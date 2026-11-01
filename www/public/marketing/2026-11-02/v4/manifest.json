@@ -1,0 +1,143 @@
+{
+  "week": "2026-11-02",
+  "revision": 4,
+  "authoredAt": "2026-11-01",
+  "design": "Four simplified replacements: photo announcement, bounded tools-to-component workflow, user acceptance, preview versus accepted state. Five preceding cards unchanged.",
+  "assets": [
+    {
+      "key": "mon-x-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v4/mon-x-web-llms.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local models. Real limits.” November 2026 web LLM update, with Brian Love’s original airport photograph on a charcoal and amber card.",
+      "sha256": "7815120b234a0f7a2920d0aa46a6ddda384ec42c8df9fac3aa5d1d4074850b85",
+      "bytes": 482945,
+      "provenance": {
+        "type": "original-photo-editorial",
+        "source": "IMG_6068.HEIC / photo kit v02 sRGB original photograph; authored headline",
+        "treatment": "Hashbrown palette; original photo or explicitly labeled conceptual illustration. No replay screenshots or fabricated model output.",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "tue-li-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v4/tue-li-web-llms.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“Tools → One component.” A simple illustration connects selected tools to one component. A caption reads “Tested in Chrome + WebLLM.” This summarizes the bounded qualified workflow; it is not a model-output screenshot.",
+      "sha256": "7599059abbb58b3e6ef969ca3a93fc160e76c8e2741aca4a087c90dc36738990",
+      "bytes": 67566,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram summarizing the single-component tool workflows qualified in the November web LLM update",
+        "treatment": "Hashbrown palette; original photo or explicitly labeled conceptual illustration. No replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "tue-x-schema-correctness",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v3/tue-x-schema-correctness.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "Illustration: “Valid JSON. Wrong answer.” The request says 2, but valid JSON contains {\"count\":3}. Shape passes while values fail. This is an explanatory example, not a captured model result.",
+      "sha256": "fe98c38505708088f568851cf4e368c78540a8b20f5a1fc77d2ce8a51231db69",
+      "bytes": 70484,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored HTML/CSS explanatory example of schema validity versus requested values",
+        "treatment": "HTML/CSS composition in Hashbrown palette; original photograph or unchanged recorded replay crop; authored explanations labeled Illustration; no generated face or model result",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "wed-x-tool-phases",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v3/wed-x-tool-phases.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“The app picks the tool.” An illustration of structured tool phases: the app selects a tool, the model generates arguments, Hashbrown validates and runs the tool, then the model generates output.",
+      "sha256": "58062771686db08df3b303e5a466c40618196f4abb887dc867fa28384530986e",
+      "bytes": 70068,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored HTML/CSS illustration of opt-in structured tool phases",
+        "treatment": "HTML/CSS composition in Hashbrown palette; original photograph or unchanged recorded replay crop; authored explanations labeled Illustration; no generated face or model result",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-li-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v4/thu-li-workbench.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“AI suggests. You apply.” An illustrative generated suggestion contains abstract lines and an amber Accept button. It explains user acceptance before an application write and is not a screenshot of the workbench.",
+      "sha256": "da6e0b4eea862d901c6f901ce92bac8aa5c5fdf1ca962b43332ef0f866eab9e8",
+      "bytes": 73409,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored illustration of the workbench application-controlled acceptance boundary; abstract lines are not fabricated model output",
+        "treatment": "Hashbrown palette; original photo or explicitly labeled conceptual illustration. No replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-x-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v4/thu-x-workbench.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Preview ≠ Saved.” An illustration separates a preview suggestion from saved application state, with a downward arrow labeled Accept connecting them. This is a conceptual diagram, not a captured interface.",
+      "sha256": "c669570fdc0a4a65cea1cae88fd6fc80c3b950994ffe01185f047623b0c4683b",
+      "bytes": 62412,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram of the workbench preview and accepted application-state boundary",
+        "treatment": "Hashbrown palette; original photo or explicitly labeled conceptual illustration. No replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "fri-x-json-termination",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v3/fri-x-json-termination.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“One token. Broken JSON.” An illustration shows a title string truncated before its closing quotation mark and closing object brace: {\"title\":\"A trusted UI. This is not a captured failure log.",
+      "sha256": "28c4b3092acc361134d7e7e48019ff2d69626b1d31b3f01e2489414f54e955c6",
+      "bytes": 54653,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored HTML/CSS illustration; upstream mlc-ai/web-llm PR 876",
+        "treatment": "HTML/CSS composition in Hashbrown palette; original photograph or unchanged recorded replay crop; authored explanations labeled Illustration; no generated face or model result",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sat-x-small-catalog",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v3/sat-x-small-catalog.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Start smaller.” A large illustrative component card reads “One trusted component” and <Panel />. It represents limiting the component catalog, not a measured model output.",
+      "sha256": "52858d1c8020df697cb4d23ae2b162439092def8b73f79c7efe8cd28c201a9f5",
+      "bytes": 49488,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored HTML/CSS illustration of a bounded exposed component catalog",
+        "treatment": "HTML/CSS composition in Hashbrown palette; original photograph or unchanged recorded replay crop; authored explanations labeled Illustration; no generated face or model result",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sun-x-local-network",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v3/sun-x-local-network.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local ≠ offline.” An illustration places inference on the device and connects the application to tools, images and telemetry paths that may still use the network.",
+      "sha256": "ed026eae286c85a39ceba027742417f7d398f4f2417c76eadc6d80b5d3d6c78f",
+      "bytes": 58486,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored HTML/CSS illustration separating local inference from application network behavior",
+        "treatment": "HTML/CSS composition in Hashbrown palette; original photograph or unchanged recorded replay crop; authored explanations labeled Illustration; no generated face or model result",
+        "illustrative": true
+      }
+    }
+  ]
+}
