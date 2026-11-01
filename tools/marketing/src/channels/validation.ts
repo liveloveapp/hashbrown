@@ -15,7 +15,6 @@ export class ValidationError extends Error {
 const MAX_X_CHARS = 280;
 
 const MAX_LINKEDIN_CHARS = 3000;
-const MAX_LINKEDIN_COMMENT_CHARS = 1250;
 
 const MAX_DEVTO_TITLE = 128;
 const MAX_DEVTO_TAGS = 4;
@@ -88,24 +87,23 @@ function validateLinkedIn(draft: Draft): void {
   }
   if (draft.threadParts) {
     throw new ValidationError(
-      'LinkedIn does not support threads. Use text, plus firstComment for a follow-up.',
+      'LinkedIn does not support threads. Put everything, link included, in text.',
       { rule: 'linkedin-no-threads', field: 'threadParts' },
     );
   }
   if (draft.link) {
     throw new ValidationError(
-      'LinkedIn adapter does not build link previews. Put the URL in firstComment or in the text.',
+      'LinkedIn adapter does not build link previews. Put the URL in the text.',
       { rule: 'linkedin-no-link-preview', field: 'link' },
     );
   }
+  // Commenting needs LinkedIn's partner-only Community Management API; a
+  // self-serve app gets a 403 after the post is already live.
   if (draft.firstComment !== undefined) {
-    const len = codePointLength(draft.firstComment);
-    if (len === 0 || len > MAX_LINKEDIN_COMMENT_CHARS) {
-      throw new ValidationError(
-        `LinkedIn firstComment must be 1-1250 characters (got ${len}).`,
-        { rule: 'linkedin-comment-length', field: 'firstComment' },
-      );
-    }
+    throw new ValidationError(
+      'LinkedIn firstComment is not supported: comments need partner API access. Put the URL in the text.',
+      { rule: 'linkedin-no-first-comment', field: 'firstComment' },
+    );
   }
 }
 

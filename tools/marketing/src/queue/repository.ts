@@ -167,8 +167,8 @@ export async function markPublishing(
  * one never is.
  *
  * @param result - Where the post lives. `warning` is a follow-up step that
- *   failed after the post went live (a LinkedIn first comment); it is stored
- *   as `last_error` on the published row, which is otherwise cleared.
+ *   failed after the post went live; it is stored as
+ *   `last_error` on the published row, which is otherwise cleared.
  * @throws {PostStateError} When the post is missing or not `approved`,
  *   `publishing` or `held`; the row is left unchanged.
  */
