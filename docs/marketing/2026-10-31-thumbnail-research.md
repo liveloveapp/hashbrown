@@ -128,7 +128,7 @@ The existing static-image pipeline supports PNG/JPEG images with URL, alt text a
 
 Include the meaningful headline in alt text, describe the actual product crop or illustrative relationship, and identify Brian where relevant. Do not use alt text as keyword stuffing or claim it provides a reach bonus. X's guide explicitly emphasizes objective descriptions and including or summarizing image text. [Image-description guidance](https://help.x.com/en/using-x/write-image-descriptions).
 
-All mockup interfaces that are not captured product behavior must be labeled as illustrations. Use original photograph treatments from the pilot kit for this exploration; no public asset replacement or photo-library approval is inferred from a local concept review.
+Identify authored mockups as explanatory graphics in alt text and review metadata. Brian's November 1 design review removes generic “Illustration” labels from the visible cards: every visible element must help explain the subject or identify the brand. Use original photograph treatments from the pilot kit for this exploration; no public asset replacement or photo-library approval is inferred from a local concept review.
 
 ## Measurement plan: learn without manufacturing a winner
 
