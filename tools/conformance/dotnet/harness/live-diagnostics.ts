@@ -1,3 +1,4 @@
+import { StringDecoder } from 'node:string_decoder';
 import { selectLiveFailurePhase } from './live-failure-phase';
 import { LIVE_NATIVE_APPROVAL_FIELDS } from './live-native-approval';
 import { LIVE_PROJECTS } from './live-configuration';
@@ -157,40 +158,78 @@ export function createLiveDiagnostics(sink: LiveDiagnosticSink) {
 }
 
 /**
- * Discards child output; only a validated listening origin survives in memory.
+ * Discards child output; only a validated origin and closed identity state survive.
  * The bounded partial stdout line is never exposed or sent to a persistence sink.
  */
-export function createLiveOutputReader() {
+export function createLiveOutputReader(expected?: {
+  readonly identity: string;
+  readonly location: string;
+  readonly sha256: string;
+}) {
+  const decoder = new StringDecoder('utf8');
   let partial = '';
+  let discarded = false;
   let origin: string | undefined;
+  let identity = false;
+  let failed = false;
+  const line = (value: string) => {
+    if (value.startsWith('HASHBROWN_PACKAGE_IDENTITY:')) {
+      if (!expected || identity || failed) {
+        failed = true;
+        return;
+      }
+      try {
+        const actual = JSON.parse(
+          value.slice('HASHBROWN_PACKAGE_IDENTITY:'.length),
+        );
+        if (
+          Object.keys(actual).sort().join(',') !== 'identity,location,sha256' ||
+          actual.identity !== expected.identity ||
+          actual.location !== expected.location ||
+          actual.sha256 !== expected.sha256
+        )
+          throw new Error();
+        identity = true;
+      } catch {
+        failed = true;
+      }
+      return;
+    }
+    const match = value.match(/Now listening on: (http:\/\/127\.0\.0\.1:\d+)$/);
+    if (!match) return;
+    try {
+      const url = new URL(match[1]);
+      if (url.port && Number(url.port) > 0 && Number(url.port) <= 65535)
+        origin = url.origin;
+    } catch {
+      /* Raw output is discarded. */
+    }
+  };
   return Object.freeze({
     stdout: (chunk: Uint8Array) => {
-      if (origin) return;
-      const lines = (partial + Buffer.from(chunk).toString('utf8')).split(
-        /\r?\n/,
-      );
-      partial = (lines.pop() ?? '').slice(-512);
-      for (const line of lines) {
-        const match = line.match(
-          /Now listening on: (http:\/\/127\.0\.0\.1:\d+)$/,
-        );
-        if (!match) continue;
-        try {
-          const url = new URL(match[1]);
-          if (url.port && Number(url.port) > 0 && Number(url.port) <= 65535) {
-            origin = url.origin;
+      // Scan incrementally: arbitrary chunk sizes never become retained general output.
+      for (const character of decoder.write(Buffer.from(chunk))) {
+        if (character === '\n') {
+          if (!discarded) line(partial.replace(/\r$/, ''));
+          partial = '';
+          discarded = false;
+        } else if (!discarded) {
+          partial += character;
+          if (partial.length > 8192) {
+            if (partial.startsWith('HASHBROWN_PACKAGE_IDENTITY:'))
+              failed = true;
             partial = '';
-            return;
+            discarded = true;
           }
-        } catch {
-          /* Invalid ports and malformed URLs are discarded with the raw line. */
         }
       }
     },
     stderr: (chunk: Uint8Array) => {
       void chunk;
     },
-    url: () => origin,
+    url: () => (!failed && (!expected || identity) ? origin : undefined),
+    identityVerified: () => identity && !failed,
+    failed: () => failed,
   });
 }
 

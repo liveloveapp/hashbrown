@@ -1160,3 +1160,263 @@ test('full artifact scanner rejects separately persisted newline-separated sensi
     ),
   ).toBe(true);
 });
+
+test('public live execution requires explicit absolute NuGet metadata before credentials', async () => {
+  const load = jest.fn();
+
+  await expect(
+    executeLiveRunner(
+      [
+        '--credentials',
+        '/must-not-read',
+        '--consumer-metadata',
+        '/tmp/npm.json',
+      ],
+      { HASHBROWN_LIVE_OPT_IN: '1' },
+      { loadConfiguration: load },
+    ),
+  ).rejects.toThrow('LIVE_NUGET_REQUIRED');
+  for (const args of [
+    ['--nuget-metadata', 'relative.json'],
+    ['--nuget-metadata', '/tmp/a', '--nuget-metadata', '/tmp/b'],
+  ])
+    expect(() => parseLiveRunnerArguments(args)).toThrow(
+      'LIVE_ARGUMENT_INVALID',
+    );
+
+  expect(load).not.toHaveBeenCalled();
+});
+
+test('public live arguments preserve the pinned NuGet pointer', () => {
+  const result = parseLiveRunnerArguments([
+    '--nuget-metadata',
+    '/tmp/public.json',
+  ]);
+
+  expect(result).toMatchObject({ nugetMetadata: '/tmp/public.json' });
+});
+
+test('public package gate rejects source mode and truthy published impostors safely', async () => {
+  const { selectPublicLivePackage } = await import('../harness/live-package');
+  const directory = await mkdtemp(join(tmpdir(), 'hashbrown-public-gate-'));
+  const pointer = join(directory, 'pointer.json');
+  const metadata = join(directory, 'metadata.json');
+  const { createHash } = await import('node:crypto');
+  const hash = (text: string) =>
+    createHash('sha256').update(text).digest('hex');
+  const body = JSON.stringify({
+    published: true,
+    identity: { id: 'Hashbrown.AspNetCore', version: '0.1.0-preview.1' },
+  });
+  await writeFile(metadata, body);
+  const pointerBody = JSON.stringify({ metadata, sha256: hash(body) });
+  await writeFile(pointer, pointerBody);
+  await writeFile(pointer + '.sha256', hash(pointerBody));
+
+  try {
+    expect(() => selectPublicLivePackage(pointer)).toThrow(
+      'LIVE_NUGET_INVALID',
+    );
+    expect(() => selectPublicLivePackage('relative')).toThrow(
+      'LIVE_NUGET_INVALID',
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('live package configuration cannot replace pinned launcher context or leak cleanup credentials', async () => {
+  const { livePackageChildEnvironment } =
+    await import('../harness/live-package');
+  const host = {
+    executable: '/p/fixture.dll',
+    environment: {
+      PATH: '/pinned/sdk',
+      DOTNET_ROOT: '/pinned',
+      HASHBROWN_DOTNET_PACKAGE_IDENTITY: 'true',
+    },
+    loaded: {
+      identity: 'released',
+      location: '/p/Hashbrown.AspNetCore.dll',
+      sha256: 'a'.repeat(64),
+    },
+  };
+  const selected = {
+    ASPNETCORE_URLS: 'http://127.0.0.1:0',
+    PATH: '/injected',
+    DOTNET_ROOT: '/injected',
+    ApiKey: 'selected-secret',
+    AzureAuthentication: 'api-key',
+    Provider: 'openai',
+    AZURE_CONFIG_DIR: '/secret-cli',
+    InterruptConnectionString: 'pg-secret',
+    InterruptSchema: 'owned',
+  };
+
+  const fixture = livePackageChildEnvironment(host, selected, false);
+  const cleanup = livePackageChildEnvironment(host, selected, true);
+
+  expect(fixture).toMatchObject({
+    PATH: '/pinned/sdk',
+    DOTNET_ROOT: '/pinned',
+    ApiKey: 'selected-secret',
+  });
+  expect(fixture.AZURE_CONFIG_DIR).toBeUndefined();
+  expect(cleanup.ApiKey).toBeUndefined();
+  expect(cleanup.AZURE_CONFIG_DIR).toBeUndefined();
+  expect(cleanup).toMatchObject({
+    ASPNETCORE_URLS: 'http://127.0.0.1:0',
+    InterruptConnectionString: 'pg-secret',
+    InterruptSchema: 'owned',
+  });
+});
+
+test('final provenance attempts both independent checks with a fresh bounded signal after failure', async () => {
+  const { finalizeLiveProvenance } = await import('../harness/live-package');
+  const calls: string[] = [];
+
+  const result = await finalizeLiveProvenance(
+    async (signal) => {
+      calls.push(`nuget:${signal.aborted}`);
+      throw new Error('private-secret-canary');
+    },
+    async (signal) => {
+      calls.push(`npm:${signal.aborted}`);
+    },
+  );
+
+  expect(calls).toEqual(['nuget:false', 'npm:false']);
+  expect(result).toEqual({ nuget: 'failed', npm: 'passed' });
+  expect(JSON.stringify(result)).not.toContain('secret-canary');
+});
+
+for (const failure of ['delete-cleanup', 'partial-start'])
+  test(`coordinator retains ${failure} failure after the request releases its fixture entry`, async () => {
+    const coordinator = await createLiveCoordinator({
+      configuration: {
+        projects: LIVE_PROJECTS,
+        model: 'gpt-4.1-mini',
+        providerEnvironment: () => ({}),
+      },
+      origins: [],
+      startFixture: async () => {
+        if (failure === 'partial-start')
+          throw new Error('private-start-canary');
+        return {
+          url: 'http://127.0.0.1:1',
+          stop: async () => {
+            throw new Error('private-cleanup-canary');
+          },
+        };
+      },
+      diagnostic: () => true,
+    });
+    const headers = { 'X-Live-Capability': coordinator.capability };
+    const response = await fetch(`${coordinator.url}/fixture`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        project: 'react-openai-key',
+        group: 'streaming-plain',
+      }),
+    });
+    if (failure === 'delete-cleanup') {
+      const { id } = (await response.json()) as { id: string };
+      const deleted = await fetch(`${coordinator.url}/fixture/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      expect(deleted.status).toBe(400);
+    } else expect(response.status).toBe(400);
+
+    await expect(coordinator.stop()).rejects.toThrow('LIVE_CHILD_FAILED');
+  });
+
+test('coordinator shutdown waits for an in-flight DELETE through stats and eventual cleanup failure', async () => {
+  const { createServer } = await import('node:http');
+  let releaseStats!: () => void;
+  let releaseDrain!: () => void;
+  let statsStarted!: () => void;
+  let drainStarted!: () => void;
+  const statsGate = new Promise<void>((done) => {
+    releaseStats = done;
+  });
+  const drainGate = new Promise<void>((done) => {
+    releaseDrain = done;
+  });
+  const observedStats = new Promise<void>((done) => {
+    statsStarted = done;
+  });
+  const observedDrain = new Promise<void>((done) => {
+    drainStarted = done;
+  });
+  const fixtureServer = createServer(async (request, response) => {
+    request.resume();
+    statsStarted();
+    await statsGate;
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end('{}');
+  });
+  await new Promise<void>((done) => fixtureServer.listen(0, '127.0.0.1', done));
+  const origin = `http://127.0.0.1:${(fixtureServer.address() as import('node:net').AddressInfo).port}`;
+  const coordinator = await createLiveCoordinator({
+    configuration: {
+      projects: LIVE_PROJECTS,
+      model: 'gpt-4.1-mini',
+      providerEnvironment: () => ({}),
+    },
+    origins: [],
+    startFixture: async () => ({
+      url: origin,
+      stop: async () => {
+        drainStarted();
+        await drainGate;
+        throw new Error('private-drain-canary');
+      },
+    }),
+    diagnostic: () => true,
+  });
+  const headers = { 'X-Live-Capability': coordinator.capability };
+  const started = await fetch(`${coordinator.url}/fixture`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      project: 'react-openai-key',
+      group: 'streaming-plain',
+    }),
+  });
+  const { id } = (await started.json()) as { id: string };
+  const deleted = fetch(`${coordinator.url}/fixture/${id}`, {
+    method: 'DELETE',
+    headers,
+  }).catch(() => undefined);
+  await observedStats;
+  let shutdownSettled = false;
+  const shutdown = coordinator.stop();
+  void shutdown.then(
+    () => {
+      shutdownSettled = true;
+    },
+    () => {
+      shutdownSettled = true;
+    },
+  );
+
+  try {
+    await new Promise<void>((done) => setTimeout(done, 30));
+    expect(shutdownSettled).toBe(false);
+    releaseStats();
+    await observedDrain;
+    await new Promise<void>((done) => setTimeout(done, 30));
+    expect(shutdownSettled).toBe(false);
+    releaseDrain();
+
+    await expect(shutdown).rejects.toThrow('LIVE_CHILD_FAILED');
+  } finally {
+    releaseStats();
+    await observedDrain;
+    releaseDrain();
+    await Promise.allSettled([shutdown, deleted]);
+    fixtureServer.closeAllConnections();
+    await new Promise<void>((done) => fixtureServer.close(() => done()));
+  }
+});

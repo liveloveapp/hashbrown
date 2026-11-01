@@ -1,3 +1,4 @@
+import { startNativeLiveFixture as startSelectedLiveFixture } from '../harness/live-fixture';
 import { createDotnetProbeDirectory } from '../harness/dotnet-probe-directory';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -6,6 +7,17 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+
+/** Explicit source selection is confined to existing deterministic launcher tests. */
+const startNativeLiveFixture = (
+  ...args: [
+    Readonly<Record<string, string>>,
+    string,
+    AbortSignal,
+    readonly string[],
+  ]
+) =>
+  startSelectedLiveFixture(...args, { HASHBROWN_DOTNET_HOST_MODE: 'source' });
 
 const execute = promisify(execFile);
 
@@ -73,7 +85,6 @@ test('live native fixture enforces dispatch, options, gate, cancellation, and wi
 }, 60_000);
 
 test('native live launcher starts without dispatch and drains its process group on cancellation', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const { publicChildEnvironment } =
     await import('../harness/live-configuration');
   const controller = new AbortController();
@@ -112,7 +123,6 @@ test('native live launcher starts without dispatch and drains its process group 
 }, 20_000);
 
 test('live child cleanup kills an independent-stdio descendant after its parent exits on SIGTERM', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-descendant-'));
   const parent = join(directory, 'parent');
   const descendant = join(directory, 'descendant.cjs');
@@ -164,7 +174,6 @@ test('live child cleanup kills an independent-stdio descendant after its parent 
 }, 10_000);
 
 test('native live cleanup drains its worker before a separate credential-free schema owner starts', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-cleanup-'));
   const executable = join(directory, 'worker');
   const observation = join(directory, 'observation.json');
@@ -215,7 +224,6 @@ server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:
 }, 10_000);
 
 test('schema cleanup mode needs no provider configuration and rejects unowned schemas', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const { publicChildEnvironment } =
     await import('../harness/live-configuration');
   const environment = {
@@ -250,7 +258,6 @@ test('schema cleanup mode needs no provider configuration and rejects unowned sc
 }, 20_000);
 
 test('native live cleanup failure is retained after all owned children stop', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const directory = await mkdtemp(
     join(tmpdir(), 'hashbrown-live-cleanup-failed-'),
   );
@@ -286,7 +293,6 @@ server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:
 }, 10_000);
 
 test('native approval native live cleanup drains its worker before a separate credential-free schema owner starts', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const directory = await mkdtemp(join(tmpdir(), 'hashbrown-live-cleanup-'));
   const executable = join(directory, 'worker');
   const observation = join(directory, 'observation.json');
@@ -339,7 +345,6 @@ server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:
 }, 10_000);
 
 test('native approval native live cleanup failure is retained after all owned children stop', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const directory = await mkdtemp(
     join(tmpdir(), 'hashbrown-live-cleanup-failed-'),
   );
@@ -377,7 +382,6 @@ server.listen(0,'127.0.0.1',()=>console.log('Now listening on: http://127.0.0.1:
 }, 10_000);
 
 test('native approval launcher rejects missing protected mode or owned context before creating a child', async () => {
-  const { startNativeLiveFixture } = await import('../harness/live-fixture');
   const environment = {
     FixtureNativeSessions: 'true',
     FixtureNativeApprovals: 'true',
@@ -403,3 +407,145 @@ test('native approval launcher rejects missing protected mode or owned context b
       ),
     ).rejects.toThrow('LIVE_CHILD_START_FAILED');
 });
+
+for (const mode of ['wrong', 'missing', 'exit'])
+  test(`guarded package launcher rejects ${mode} identity and drains the real child`, async () => {
+    const { ownedDescriptor } = await import('./fixtures/owned-package-host');
+    const { packageLiveWorker } =
+      await import('./fixtures/package-live-worker');
+    const owned = ownedDescriptor(packageLiveWorker);
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), 2000);
+
+    try {
+      await expect(
+        startSelectedLiveFixture(
+          { Model: mode },
+          'structured-schema',
+          controller.signal,
+          [],
+          owned.selection,
+        ),
+      ).rejects.toThrow(/^LIVE_CHILD_/);
+      const records = (
+        await readFile(join(owned.root, 'spawn-observations.jsonl'), 'utf8')
+      )
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line));
+
+      expect(records).toHaveLength(1);
+      expect(() => process.kill(records[0].pid, 0)).toThrow();
+    } finally {
+      clearTimeout(deadline);
+      await rm(owned.root, { recursive: true, force: true });
+    }
+  });
+
+test('guarded package child validates split identity and launches the same provider-free cleanup and probe roles', async () => {
+  const { ownedDescriptor } = await import('./fixtures/owned-package-host');
+  const { packageLiveWorker } = await import('./fixtures/package-live-worker');
+  const { runPublicLiveProbe } = await import('../harness/live-fixture');
+  const owned = ownedDescriptor(packageLiveWorker);
+  const witnesses: unknown[] = [];
+  const controller = new AbortController();
+  const schema = 'durable_live_0123456789abcdef0123456789abcdef';
+
+  try {
+    const fixture = await startSelectedLiveFixture(
+      {
+        Model: 'split',
+        ApiKey: 'selected-key-canary',
+        AzureAuthentication: 'api-key',
+        AZURE_CONFIG_DIR: 'unselected-cli-canary',
+        UNREVIEWED_SECRET: 'private-canary',
+        FixtureNativeSessions: 'true',
+        FixtureNativeApprovals: 'true',
+        NativeGate: '',
+        InterruptSchema: schema,
+        InterruptConnectionString: 'owned-pg-canary',
+      },
+      'native-approval',
+      controller.signal,
+      [],
+      owned.selection,
+      (identity) => witnesses.push(identity),
+    );
+    await fixture.stop();
+    await runPublicLiveProbe(
+      owned.selection,
+      'probe-owned-pg-canary',
+      AbortSignal.timeout(2000),
+      (identity) => witnesses.push(identity),
+    );
+    const records = (
+      await readFile(join(owned.root, 'spawn-observations.jsonl'), 'utf8')
+    )
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+
+    expect(records.map((entry) => entry.role)).toEqual([
+      'fixture',
+      'cleanup',
+      'probe',
+    ]);
+    expect(records[0].selected).toMatchObject({
+      ApiKey: 'selected-key-canary',
+      FixtureLive: 'true',
+    });
+    for (const record of records) {
+      expect(record.selected.UNREVIEWED_SECRET).toBeUndefined();
+      expect(record.selected.AZURE_CONFIG_DIR).toBeUndefined();
+      expect(() => process.kill(record.pid, 0)).toThrow();
+    }
+    for (const record of records.slice(1)) {
+      expect(record.selected.ApiKey).toBeUndefined();
+      expect(record.selected.FixtureLive).toBeUndefined();
+    }
+    expect(witnesses).toEqual(
+      ['fixture', 'cleanup', 'probe'].map((role) =>
+        expect.objectContaining({
+          role,
+          sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      ),
+    );
+    expect(JSON.stringify(witnesses)).not.toMatch(
+      /canary|location|environment/,
+    );
+  } finally {
+    controller.abort();
+    await rm(owned.root, { recursive: true, force: true });
+  }
+});
+
+for (const changed of [
+  'roles/fixture/Program.cs',
+  'sdk/host/fxr/10.0.13/libhostfxr.dylib',
+  'Program.cs',
+])
+  test(`guarded package launcher rejects changed ${changed} before spawning`, async () => {
+    const { ownedDescriptor } = await import('./fixtures/owned-package-host');
+    const { packageLiveWorker } =
+      await import('./fixtures/package-live-worker');
+    const owned = ownedDescriptor(packageLiveWorker);
+    await writeFile(join(owned.root, changed), 'changed');
+
+    try {
+      await expect(
+        startSelectedLiveFixture(
+          {},
+          'structured-schema',
+          AbortSignal.timeout(1000),
+          [],
+          owned.selection,
+        ),
+      ).rejects.toThrow('LIVE_CHILD_START_FAILED');
+      await expect(
+        readFile(join(owned.root, 'spawn-observations.jsonl')),
+      ).rejects.toThrow();
+    } finally {
+      await rm(owned.root, { recursive: true, force: true });
+    }
+  });

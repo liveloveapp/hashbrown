@@ -318,25 +318,24 @@ scenarios without credentials, builds, native processes, or model calls:
 npx nx live-provider-e2e dotnet-conformance --list
 ```
 
-Build the current native fixture and prepare a standalone published consumer, then explicitly opt in to real model traffic.
+Prepare a public NuGet consumer from an unchanged detached checkout of release `df1340f713d3b65165a494eb09e53246298df858`, importing the original signed `Hashbrown.AspNetCore` `0.1.0-preview.1` archive and matching qualified package/symbols through the existing published import mode. Keep that checkout and descriptor intact through final verification. Prepare a standalone published npm consumer, then explicitly opt in to real model traffic. The current runner wraps the released fixture/probe roles; its source provenance is recorded separately from the package producer.
 The authorized env file supplies `OPENAI_API_KEY`, `AZURE_API_KEY`,
 `AZURE_ENDPOINT`, and optional `AZURE_MODEL=gpt-4.1-mini`. Azure CLI mode uses the
-existing CLI account and receives no API key. The runner never logs in, provisions
+existing CLI account and receives no API key. Set server-owned `AZURE_CONFIG_DIR` to that existing signed-in profile explicitly: package roles retain their isolated `HOME`. Only selected Azure CLI fixture children receive that profile; probe, cleanup, qualification and browser children do not. The runner never logs in, provisions
 resources, changes roles, or selects an account.
 
 ```sh
 npx nx build dotnet-conformance
 npx nx prepare-live-consumer dotnet-conformance
-HASHBROWN_LIVE_OPT_IN=1 npx nx live-provider-e2e dotnet-conformance --credentials /absolute/path/to/authorized.env --consumer-metadata /absolute/path/from-prepare/consumer-metadata.json
+HASHBROWN_LIVE_OPT_IN=1 npx nx live-provider-e2e dotnet-conformance --credentials /absolute/path/to/authorized.env --consumer-metadata /absolute/path/from-prepare/consumer-metadata.json --nuget-metadata /absolute/path/to/public-candidate.json
 ```
 
 The preparation target builds a fresh standalone consumer using the published
 React, Angular, and core packages pinned to 0.8.3 and reports its metadata path.
-The live runner requires that explicit `--consumer-metadata` path before loading
-credentials. Keep the same frozen consumer for published deterministic and live
+The live runner requires explicit absolute `--consumer-metadata` and anchored public `--nuget-metadata` paths before loading credentials. It accepts only the reviewed signed archive SHA256 `288cdd59c3f123ea4f69bc044b4eed3eeae8ffd1ab53df64f9555148cd1d2f57` and DLL SHA256 `37c98d354cca12fb6b32e94210e747bd7b825881436fea9eae291de72ea3a9e2`, with genuine published import proof; there is no source fallback. Keep the same frozen consumer for published deterministic and live
 qualification; host or template changes require fresh preparation and qualification.
 Every source, template, bundle, installed package, and resolved module origin is
-revalidated before and after a successful live run without rewriting the trusted
+revalidated before execution and after children and owned schema cleanup drain on every outcome without rewriting the trusted
 baseline. The live runner does not implicitly install another consumer. Provider credentials are excluded from
 consumer builds, Playwright workers, Chromium, browser URLs, and bundles.
 

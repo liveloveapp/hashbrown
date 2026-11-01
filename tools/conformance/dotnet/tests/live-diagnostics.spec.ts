@@ -80,7 +80,13 @@ test('discards split stdout and stderr, exposing only a validated in-memory loop
 
   expect(reader.url()).toBe('http://127.0.0.1:45231');
   expect(JSON.stringify(reader)).not.toMatch(/canary|sec\*\*\*ary/);
-  expect(Object.keys(reader).sort()).toEqual(['stderr', 'stdout', 'url']);
+  expect(Object.keys(reader).sort()).toEqual([
+    'failed',
+    'identityVerified',
+    'stderr',
+    'stdout',
+    'url',
+  ]);
 });
 
 test('never returns non-loopback addresses or credential-bearing listening URLs', () => {
@@ -273,4 +279,46 @@ test('sanitized native approval proof remains independently parseable while all 
   diagnostics.record({ ...proof, nativeApprovalCompletions: 2 });
   expect(() => parseLiveNativeApprovalProof(JSON.parse(lines[1]))).toThrow();
   expect(() => diagnostics.assertHealthy()).not.toThrow();
+});
+
+test('package identity is incremental, bounded and required before readiness', () => {
+  const expected = {
+    identity: 'Hashbrown.AspNetCore, Version=0.1.0.0',
+    location: '/tmp/released/Hashbrown.AspNetCore.dll',
+    sha256: 'a'.repeat(64),
+  };
+  const reader = createLiveOutputReader(expected);
+  const line = `HASHBROWN_PACKAGE_IDENTITY:${JSON.stringify(expected)}\n`;
+  reader.stdout(Buffer.from('Now listening on: http://127.0.0.1:4219\n'));
+
+  expect(reader.url()).toBeUndefined();
+  for (const byte of Buffer.from(line)) reader.stdout(Uint8Array.of(byte));
+
+  expect(reader.url()).toBe('http://127.0.0.1:4219');
+  reader.stdout(Buffer.from(line));
+  expect(reader.url()).toBeUndefined();
+  expect(reader.failed()).toBe(true);
+});
+
+test('wrong or oversized package identity fails closed without exposing raw child output', () => {
+  const expected = {
+    identity: 'released',
+    location: '/tmp/assembly.dll',
+    sha256: 'b'.repeat(64),
+  };
+
+  for (const line of [
+    'HASHBROWN_PACKAGE_IDENTITY:{broken-secret-canary}\n',
+    `HASHBROWN_PACKAGE_IDENTITY:${JSON.stringify({ ...expected, sha256: 'c'.repeat(64) })}\n`,
+    `HASHBROWN_PACKAGE_IDENTITY:${'x'.repeat(9000)}\n`,
+  ]) {
+    const reader = createLiveOutputReader(expected);
+    reader.stdout(
+      Buffer.from(line + 'Now listening on: http://127.0.0.1:4219\n'),
+    );
+
+    expect(reader.url()).toBeUndefined();
+    expect(reader.failed()).toBe(true);
+    expect(JSON.stringify(reader)).not.toContain('secret-canary');
+  }
 });
