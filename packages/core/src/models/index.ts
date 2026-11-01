@@ -8,6 +8,10 @@ export type {
 export { groupTurns, type Turn } from './group-turns';
 export type { FinishReason, TokenUsage } from './run-finish';
 export type {
+  PendingBrowserRecovery,
+  PendingConversationRecovery,
+  BrowserRecoveryOutcome,
+  ResumeConversationRecoveryOptions,
   ConversationSnapshot,
   ConversationRestoreOptions,
   ConversationRecoveryDiagnostic,

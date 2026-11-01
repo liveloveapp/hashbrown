@@ -533,6 +533,7 @@ export const reducer = createReducer(
   on(
     devActions.setMessages,
     devActions.restoreConversation,
+    internalActions.browserRecoveryAcknowledged,
     (state, action): ToolCallsState => {
       const committed = toEntityState(
         action.payload.localProjection?.toolCalls ??

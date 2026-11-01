@@ -1,0 +1,23 @@
+# Core browser-recovery checkpoint qualification
+
+The core portion of pending-browser cold recovery is implemented and qualified as unreleased source. Published npm 0.8.3 and NuGet 0.1.0-preview.1 remain separate immutable artifacts and do not contain these new APIs. This checkpoint follows the [server bridge qualification](2026-11-01-dotnet-pending-browser-bridge-qualification.md); framework forwarding, process-crash and isolated candidate browser acceptance remain later tasks.
+
+## Implemented behavior
+
+A negotiated browser capability restores an inert, immutable pending batch. Original browser handlers are excluded from execution. Complete explicit known or unavailable results, together with every genuine protected decision for mixed batches, build one immutable canonical request before a synchronous claim. The initial send reuses its prepared run identity, preserved history/configuration and exact result strings. Native decision authority remains separate from browser results.
+
+The implementation binds each local pending epoch to captured trusted configuration. It rejects incomplete or contradictory membership, malformed outcomes, non-data JSON and changed configuration before claiming. Supported JSON includes dense ordinary arrays, plain/null-prototype objects and shared noncyclic values; accessors, custom prototypes, hidden/symbol properties and cycles are rejected without reading getters. Tests cover depth 64/65 and the complete serialized request at exactly 1 MiB of UTF-8 and one byte over. Allocated request/result identities avoid all retained message and call identities.
+
+Initial cold requests permit at most one logical transport attempt and one built-in HTTP fetch, including configured retry predicates that request retries for HTTP 500 or 409. A private association with the owned immutable input controls HTTP retry suppression; no provider field or public mutable flag carries it. Subsequent ordinary requests retain their configured retry behavior, including when historical tool content contains the reserved uncertainty marker.
+
+Ambiguous failures, cancellation and effect cleanup after dispatch require an authoritative read. They cannot reopen a stale batch or ordinary generation. A separately proved cached startup claim that never acquired a logical generation or sent a request can be explicitly released. Native expiry is rechecked before sending; an expired batch remains unsent and requires refresh. Explicit new-thread retirement fences late callbacks. A successful cold continuation that publishes a new native interrupt releases its old claim atomically, preserving the fresh batch for ordinary warm resume.
+
+Exact reserved browser-result content produces a public discriminated uncertainty diagnostic after accepted continuation and later restoration. Known results equal to that marker remain conservatively uncertain; near matches, assistant text and protected results do not fabricate browser diagnostics. Existing unstructured-assistant diagnostics retain their fields and canonical chronological order. No durable sidecar flag is required.
+
+## Executed checks
+
+The full core run passes 2,653 tests in 109 suites, including all 124 new recovery cases and 14 unchanged snapshots, with no skips. After mechanical cleanup, 431 affected cold/warm/generation/logical-retry/HTTP tests pass across seven suites. Core build, lint and generated public API checks pass. Lint retains three existing unused-variable warnings in unchanged tool-step code. The 37 API Extractor warning lines match the previous server-bridge checkpoint; no new API warnings are introduced.
+
+An independent compile-only consumer imports the actual built public package declarations from an isolated copy, without source aliases, symlinks or an install. It checks the new pending/options/runtime contract, diagnostic narrowing and negative type assertions with strict TypeScript 6.0.3 and declaration checking enabled. Its inventory hashes 146 built declarations and reuses declarations from 17 already installed dependency packages. This is local source-candidate verification, not registry publication or candidate browser qualification.
+
+Independent specification and quality reviews closed the browser/native identity-overlap finding and the fresh-interrupt/effect-cleanup lifecycle findings before approval. Their regressions remain in the executed suite. This checkpoint establishes core behavior with controlled transports and fetches; actual React/Angular browser handlers, PostgreSQL worker death/replicas and packed candidate end-to-end execution remain subsequent acceptance layers. It makes no live vendor, general exactly-once or published-feature claim.

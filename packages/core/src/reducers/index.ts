@@ -1,4 +1,6 @@
+import { ownsBrowserRecoveryCheckpoint } from '../recovery/browser-recovery';
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { s } from '../schema';
 import { retireHistoryDiagnostics } from '../models/history-diagnostics';
 import { ɵcreateCancelledTurnMarker } from '../models/cancelled-turn';
 import type { Message } from '@ag-ui/core';
@@ -120,6 +122,63 @@ export type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
 
+/** Checks trusted configuration identity before accepting an inert facade update. */
+function unchangedPendingRecoveryOptions(
+  state: State,
+  action: ReturnType<typeof devActions.updateOptions>,
+): boolean {
+  const nextConfig = fromConfig.reducer(state.config, action);
+  // Schemas carry parsing behavior; matching wire schemas alone cannot rebind it.
+  if (
+    state.config.responseSchema !== nextConfig.responseSchema ||
+    state.config.requestResponseSchema !== nextConfig.requestResponseSchema ||
+    state.config.transport !== nextConfig.transport ||
+    state.config.system !== nextConfig.system ||
+    state.config.debounce !== nextConfig.debounce ||
+    state.config.retries !== nextConfig.retries ||
+    state.config.ui !== nextConfig.ui
+  )
+    return false;
+  if (action.payload.tools !== undefined) {
+    const tools = action.payload.tools;
+    const current = fromTools.selectTools(state.tools);
+    if (tools.length !== current.length) return false;
+    if (
+      tools.some((tool, index) => {
+        const existing = current[index];
+        return (
+          tool.name !== existing.name ||
+          tool.description !== existing.description ||
+          tool.handler !== existing.handler ||
+          s.normalizeSchemaInput(tool.schema) !== existing.schema
+        );
+      })
+    )
+      return false;
+  }
+  return true;
+}
+
+/** Rejects configuration rebinding before public dispatch and again at reduction. @internal */
+export function ɵassertPendingRecoveryUpdateAllowed(
+  state: State,
+  update: ReturnType<typeof devActions.updateOptions>,
+): void {
+  if (
+    !state.recovery.pendingBrowserRecovery &&
+    !state.recovery.claimId &&
+    !state.recovery.required
+  )
+    return;
+  const newThread =
+    Object.hasOwn(update.payload, 'threadId') &&
+    update.payload.threadId !== state.thread.threadId;
+  if (!newThread && !unchangedPendingRecoveryOptions(state, update))
+    throw new Error(
+      'Cannot change configuration while browser recovery is pending.',
+    );
+}
+
 /**
  * Computes canonical AG-UI acceptance before a transport event fans out to
  * derived reducer slices.
@@ -130,6 +189,101 @@ export function ɵprepareRootAction(
   state: State,
   action: { readonly type: string; readonly payload?: unknown },
 ) {
+  if (action.type === devActions.resumeConversationRecovery.type) {
+    const recovery = action as ReturnType<
+      typeof devActions.resumeConversationRecovery
+    >;
+    if (
+      state.recovery.claimId === recovery.payload.claimId &&
+      state.recovery.checkpoint === recovery.payload.checkpoint
+    )
+      return { type: '@hashbrown/noop' };
+    if (
+      !state.recovery.pendingBrowserRecovery ||
+      state.recovery.claimId ||
+      state.recovery.required ||
+      state.recovery.pendingBrowserRecovery !== recovery.payload.batch ||
+      state.interrupts.pending !== recovery.payload.checkpoint.nativeBatch ||
+      !ownsBrowserRecoveryCheckpoint(
+        recovery.payload.checkpoint,
+        recovery.payload.batch,
+      )
+    )
+      throw new Error('Stale or unvalidated browser recovery claim.');
+    if (recovery.payload.checkpoint.nativeBatch)
+      assertInterruptsNotExpired(
+        recovery.payload.checkpoint.nativeBatch.interrupts,
+        Date.now(),
+      );
+    return action;
+  }
+  if (action.type === internalActions.browserRecoveryAcknowledged.type) {
+    const acknowledgement = action as ReturnType<
+      typeof internalActions.browserRecoveryAcknowledged
+    >;
+    if (
+      state.recovery.claimId !== acknowledgement.payload.claimId ||
+      state.recovery.checkpoint !== acknowledgement.payload.checkpoint ||
+      state.interrupts.pending !==
+        acknowledgement.payload.checkpoint.nativeBatch ||
+      acknowledgement.payload.canonicalMessages !==
+        acknowledgement.payload.checkpoint.canonicalMessages ||
+      acknowledgement.payload.toolsByName !==
+        acknowledgement.payload.checkpoint.toolsByName ||
+      acknowledgement.payload.responseSchema !==
+        acknowledgement.payload.checkpoint.responseSchema ||
+      state.generationOwnership.generationId !== acknowledgement.payload.claimId
+    )
+      return { type: '@hashbrown/noop' };
+    return action;
+  }
+  if (action.type === internalActions.browserRecoveryClaimReleased.type) {
+    const release = action as ReturnType<
+      typeof internalActions.browserRecoveryClaimReleased
+    >;
+    return state.recovery.claimId === release.payload.claimId &&
+      state.generationOwnership.generationId === undefined
+      ? action
+      : { type: '@hashbrown/noop' };
+  }
+  if (action.type === internalActions.browserRecoverySettled.type) {
+    const settlement = action as ReturnType<
+      typeof internalActions.browserRecoverySettled
+    >;
+    return state.recovery.claimId === settlement.payload.claimId
+      ? action
+      : { type: '@hashbrown/noop' };
+  }
+  if (
+    state.recovery.pendingBrowserRecovery ||
+    state.recovery.claimId ||
+    state.recovery.required
+  ) {
+    if (action.type === devActions.updateOptions.type) {
+      const update = action as ReturnType<typeof devActions.updateOptions>;
+      const newThread =
+        Object.hasOwn(update.payload, 'threadId') &&
+        update.payload.threadId !== state.thread.threadId;
+      if (!newThread) {
+        ɵassertPendingRecoveryUpdateAllowed(state, update);
+        return { type: '@hashbrown/noop' };
+      }
+      return { ...action, ɵretireBrowserRecovery: true };
+    } else if (
+      [
+        devActions.init.type,
+        devActions.resume.type,
+        devActions.setState.type,
+        devActions.setMessages.type,
+        devActions.sendMessage.type,
+        devActions.resendMessages.type,
+      ].some((type) => type === action.type)
+    ) {
+      throw new Error(
+        'Cannot mutate a conversation while browser recovery is pending.',
+      );
+    }
+  }
   if (
     action.type === devActions.resume.type ||
     action.type === internalActions.resumeAcknowledged.type
@@ -723,7 +877,9 @@ export const selectToolCallEntities = select(
 );
 export const selectPendingToolCalls = select(
   selectToolCallsState,
-  fromToolCalls.selectPendingToolCalls,
+  (state: State) => state.recovery.pendingBrowserRecovery,
+  (toolCalls, pendingRecovery) =>
+    pendingRecovery ? [] : fromToolCalls.selectPendingToolCalls(toolCalls),
 );
 
 /**
@@ -979,7 +1135,11 @@ export const selectPendingInterrupts = (state: State) =>
   state.interrupts.pending;
 /** Selects the whole resumed interaction phase. */
 export const selectIsResuming = (state: State) =>
-  state.interrupts.generationId !== undefined;
+  state.interrupts.generationId !== undefined ||
+  state.recovery.claimId !== undefined;
+
+/** Selects the dedicated cold recovery lifecycle for effect eligibility. @internal */
+export const ɵselectBrowserRecoveryState = (state: State) => state.recovery;
 
 /** Selects the silent startup barrier installed by restoration. @internal */
 export const ɵselectRestorationBarrier = (state: State) =>

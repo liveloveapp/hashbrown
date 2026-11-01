@@ -8,6 +8,8 @@ import type {
   ConversationRecoveryState,
   ConversationRestoreOptions,
   ConversationSnapshot,
+  PendingConversationRecovery,
+  ResumeConversationRecoveryOptions,
 } from './models/conversation-recovery';
 import type { PendingInterruptBatch, ResumeOptions } from './models/interrupt';
 import {
@@ -59,10 +61,13 @@ import {
   selectUiRequested,
   selectUnifiedError,
   selectViewMessages,
+  ɵassertPendingRecoveryUpdateAllowed,
   ɵprepareRootAction,
+  ɵselectBrowserRecoveryState,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
   ɵselectEffectiveCommittedAgUiMessages,
+  ɵselectGenerationId,
   ɵselectInterrupts,
   ɵselectStateWriteLocked,
   ɵselectSubagents,
@@ -82,7 +87,14 @@ import {
 } from './reducers/ag-ui-message-history';
 import { cloneAndFreezeOptionalJsonValue, type JsonValue } from './utils';
 import { createCanonicalRunAgentInput } from './transport/hashbrown-run-agent-input';
+import { deepEqual } from './utils/deep-equal';
 import type { FinishReason, TokenUsage } from './models/run-finish';
+import {
+  createBrowserRecoveryCheckpoint,
+  ownPendingBrowserRecovery,
+  readBrowserRecoveryDiagnostic,
+} from './recovery/browser-recovery';
+import { isProviderToolCall } from './models/tool-step';
 
 /** Settlement and thread ownership used by completion adapters. @internal */
 export interface ɵRuntimeSchedulingState {
@@ -177,6 +189,12 @@ export interface ChatRuntime<
     snapshot: ConversationSnapshot<State>,
     options: ConversationRestoreOptions,
   ): void;
+  /** Inert browser calls and genuine interrupts awaiting explicit recovery settlement. */
+  readonly pendingConversationRecovery: StateSignal<
+    PendingConversationRecovery | undefined
+  >;
+  /** Validate and synchronously claim every browser outcome and protected decision. */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
   /** Observed native subagent invocations in the current conversation. */
   readonly subagents: StateSignal<readonly SubagentRun[]>;
   /** The current batch, retained until the server acknowledges resume. */
@@ -345,6 +363,16 @@ export function createChatRuntime(init: {
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `hashbrown-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const pendingRecoveryConfigurations = new WeakMap<
+    PendingConversationRecovery,
+    {
+      readonly wire: ConversationRecoveryConfiguration;
+      readonly responseSchema: s.HashbrownType | undefined;
+      readonly requestResponseSchema: s.HashbrownType | undefined;
+      readonly transport: TransportOrFactory | undefined;
+      readonly tools: readonly Readonly<Chat.Internal.Tool>[];
+    }
+  >();
   let systemMessageId = createCanonicalId();
   const lower = (messages: readonly Chat.AnyMessageInput[]) =>
     lowerViewMessagesToAgUi(messages, { createId: createCanonicalId });
@@ -412,6 +440,7 @@ export function createChatRuntime(init: {
     pendingStateWriteLockReservations.add(reservationId);
     stopObservingAction = state.when(
       devActions.resume,
+      devActions.resumeConversationRecovery,
       devActions.sendMessage,
       devActions.setMessages,
       devActions.resendMessages,
@@ -446,7 +475,21 @@ export function createChatRuntime(init: {
     | { readonly value: ReturnType<typeof cloneAndFreezeOptionalJsonValue> }
     | undefined;
 
+  function assertNoPendingBrowserRecovery() {
+    if (
+      !synchronousThreadChange &&
+      state.read(
+        (root) =>
+          root.recovery.pendingBrowserRecovery ||
+          root.recovery.claimId ||
+          root.recovery.required,
+      )
+    )
+      throw new Error('Browser recovery is pending.');
+  }
+
   function setState(nextState: unknown) {
+    assertNoPendingBrowserRecovery();
     if (synchronousRestoration)
       throw new Error('Conversation restoration is in progress.');
     if (
@@ -473,8 +516,11 @@ export function createChatRuntime(init: {
   let synchronousResumeClaim: string | undefined;
   let effectsRunning = false;
   let startupResumeAction: ReturnType<typeof devActions.resume> | undefined;
+  let startupRecoveryAction:
+    ReturnType<typeof devActions.resumeConversationRecovery> | undefined;
 
   function assertMessageSchedulingAllowed() {
+    assertNoPendingBrowserRecovery();
     if (synchronousRestoration)
       throw new Error('Conversation restoration is in progress.');
     if (synchronousThreadChange) return;
@@ -488,6 +534,7 @@ export function createChatRuntime(init: {
   }
 
   function resume(options: ResumeOptions) {
+    assertNoPendingBrowserRecovery();
     if (synchronousRestoration)
       throw new Error('Conversation restoration is in progress.');
     if (synchronousThreadChange) throw new Error('Stale interrupt batch.');
@@ -533,6 +580,78 @@ export function createChatRuntime(init: {
           synchronousResumeClaim = undefined;
       });
     }
+  }
+
+  function resumeConversationRecovery(
+    options: ResumeConversationRecoveryOptions,
+  ) {
+    if (
+      synchronousRestoration ||
+      synchronousThreadChange ||
+      synchronousResumeClaim
+    )
+      throw new Error('Browser recovery is pending or already claimed.');
+    const recovery = state.read((root) => root.recovery);
+    if (
+      !recovery.pendingBrowserRecovery ||
+      recovery.claimId ||
+      recovery.required
+    )
+      throw new Error('Stale or already claimed browser recovery batch.');
+    const captured = pendingRecoveryConfigurations.get(
+      recovery.pendingBrowserRecovery,
+    );
+    const tools = state.read(selectTools);
+    if (
+      !captured ||
+      !deepEqual(captured.wire, getRecoveryConfiguration()) ||
+      captured.responseSchema !== state.read(selectResponseSchema) ||
+      captured.requestResponseSchema !==
+        state.read(selectRequestResponseSchema) ||
+      captured.transport !== state.read(selectTransport) ||
+      captured.tools.length !== tools.length ||
+      captured.tools.some(
+        (tool, index) =>
+          tool.handler !== tools[index].handler ||
+          tool.schema !== tools[index].schema,
+      )
+    )
+      throw new Error(
+        'Browser recovery configuration changed after restoration.',
+      );
+    const checkpoint = createBrowserRecoveryCheckpoint(
+      recovery.pendingBrowserRecovery,
+      options,
+      {
+        messages: state.read(ɵselectEffectiveCommittedAgUiMessages),
+        state: state.read(ɵselectCommittedAgentState),
+        responseSchema: state.read(selectResponseSchema),
+        requestResponseSchema: state.read(selectRequestResponseSchema),
+        debounce: state.read(selectDebounce),
+        retries: state.read(selectRetries),
+        internalTools: state.read(selectTools),
+        toolsByName: state.read(selectToolEntities),
+        uiRequested: state.read(selectUiRequested),
+        transportProvider: state.read(selectTransport),
+      },
+      state.read(ɵselectCommittedAgUiMessages),
+      state.read(selectThreadId) ?? '',
+      createCanonicalId,
+      state.read(ɵselectInterrupts).pending,
+    );
+    const claimId = createCanonicalId();
+    const action = devActions.resumeConversationRecovery({
+      claimId,
+      batch: recovery.pendingBrowserRecovery,
+      checkpoint,
+    });
+    synchronousResumeClaim = claimId;
+    if (!effectsRunning) startupRecoveryAction = action;
+    dispatchGenerationSchedulingAction(action);
+    void Promise.resolve().then(() => {
+      if (synchronousResumeClaim === claimId)
+        synchronousResumeClaim = undefined;
+    });
   }
 
   function setMessages(messages: Chat.MessageInput<any, Chat.AnyTool>[]) {
@@ -598,6 +717,10 @@ export function createChatRuntime(init: {
   ) {
     if (synchronousRestoration)
       throw new Error('Conversation restoration is in progress.');
+    ɵassertPendingRecoveryUpdateAllowed(
+      state.read((root) => root),
+      devActions.updateOptions(options),
+    );
     const threadChanged =
       Object.hasOwn(options, 'threadId') &&
       options.threadId !==
@@ -613,6 +736,7 @@ export function createChatRuntime(init: {
       });
       synchronousResumeClaim = undefined;
       startupResumeAction = undefined;
+      startupRecoveryAction = undefined;
       pendingStateWriteLockReservations.clear();
     }
     const update = devActions.updateOptions({
@@ -768,6 +892,8 @@ export function createChatRuntime(init: {
       toolsByName,
       responseSchema,
     );
+    const pendingBrowserCalls: PendingConversationRecovery['toolCalls'][number][] =
+      [];
     for (const message of canonicalMessages) {
       for (const key of [
         'contentResolved',
@@ -812,18 +938,44 @@ export function createChatRuntime(init: {
         const projected = projection.toolCalls.find(
           (candidate) => candidate.id === call.id,
         );
-        if (Object.hasOwn(toolsByName, call.function.name)) {
-          if (projected?.status !== 'done')
+        if (
+          !isProviderToolCall(call) &&
+          Object.hasOwn(toolsByName, call.function.name)
+        ) {
+          if (
+            projected?.status !== 'done' &&
+            snapshot.pendingBrowserRecovery === undefined
+          )
             throw new TypeError(
               'Recovery contains an unresolved executable browser tool call.',
             );
           if (
             s.isHashbrownType(toolsByName[call.function.name].schema) &&
-            projected.argumentsResolved === undefined
+            projected?.argumentsResolved === undefined
           )
             throw new TypeError(
               'Recovery tool arguments do not match the registered schema.',
             );
+          if (projected?.status !== 'done') {
+            const args = cloneAndFreezeOptionalJsonValue(
+              JSON.parse(call.function.arguments),
+            );
+            if (
+              args === null ||
+              typeof args !== 'object' ||
+              Array.isArray(args)
+            )
+              throw new TypeError(
+                'Recovery browser arguments must be an object.',
+              );
+            pendingBrowserCalls.push(
+              Object.freeze({
+                id: call.id,
+                name: call.function.name,
+                arguments: args,
+              }),
+            );
+          }
         }
       }
     }
@@ -836,6 +988,25 @@ export function createChatRuntime(init: {
             interrupts: snapshot.interrupts,
           });
     if (interrupts) assertInterruptsNotExpired(interrupts, Date.now());
+    const pendingBrowserRecovery = ownPendingBrowserRecovery(
+      snapshot.pendingBrowserRecovery,
+      pendingBrowserCalls,
+      interrupts ?? Object.freeze([]),
+      createCanonicalId,
+    );
+    if (pendingBrowserRecovery)
+      pendingRecoveryConfigurations.set(
+        pendingBrowserRecovery,
+        Object.freeze({
+          wire: getRecoveryConfiguration(),
+          responseSchema: state.read(selectResponseSchema),
+          requestResponseSchema: state.read(selectRequestResponseSchema),
+          transport: state.read(selectTransport),
+          tools: Object.freeze(
+            state.read(selectTools).map((tool) => Object.freeze({ ...tool })),
+          ),
+        }),
+      );
     const batch = interrupts
       ? Object.freeze({ id: createCanonicalId(), interrupts })
       : undefined;
@@ -850,6 +1021,7 @@ export function createChatRuntime(init: {
         : undefined,
       state: ownedState,
       batch,
+      pendingBrowserRecovery,
       responseSchema,
       toolsByName,
     });
@@ -888,8 +1060,11 @@ export function createChatRuntime(init: {
       effectCleanupFn = state.runEffects();
       effectsRunning = true;
       const acceptedResume = startupResumeAction;
+      const acceptedRecovery = startupRecoveryAction;
       startupResumeAction = undefined;
-      if (acceptedResume) state.dispatch(acceptedResume);
+      startupRecoveryAction = undefined;
+      if (acceptedRecovery) state.dispatch(acceptedRecovery);
+      else if (acceptedResume) state.dispatch(acceptedResume);
       else state.dispatch(internalActions.start());
     });
 
@@ -901,6 +1076,20 @@ export function createChatRuntime(init: {
   }
 
   function stop(clearStreamingMessage = false) {
+    const recovery = state.read(ɵselectBrowserRecoveryState);
+    if (
+      startupRecoveryAction &&
+      startupRecoveryAction.payload.claimId === recovery.claimId &&
+      startupRecoveryAction.payload.checkpoint === recovery.checkpoint &&
+      state.read(ɵselectGenerationId) === undefined
+    ) {
+      const claimId = startupRecoveryAction.payload.claimId;
+      startupRecoveryAction = undefined;
+      if (synchronousResumeClaim === claimId)
+        synchronousResumeClaim = undefined;
+      state.dispatch(internalActions.browserRecoveryClaimReleased({ claimId }));
+      return;
+    }
     const isLoading =
       state.read(selectIsLoading) ||
       state.read(selectIsResuming) ||
@@ -924,6 +1113,11 @@ export function createChatRuntime(init: {
     (root) => selectIsLoading(root) || selectIsResuming(root),
   );
   const runtime = {
+    pendingConversationRecovery: state.createSignal(
+      (root): PendingConversationRecovery | undefined =>
+        root.recovery.pendingBrowserRecovery,
+    ),
+    resumeConversationRecovery,
     getRecoveryConfiguration,
     restoreConversation,
     recovery: state.createSignal(
@@ -933,14 +1127,31 @@ export function createChatRuntime(init: {
           root.interrupts.recoveryRequired,
         ɵselectCommittedAgUiMessages,
         selectResponseSchema,
-        (recovery, required, messages, schema) => {
+        selectToolEntities,
+        selectThreadId,
+        (recovery, required, messages, schema, toolsByName, threadId) => {
+          const browserCallIds = new Set(
+            messages.flatMap((message) =>
+              message.role === 'assistant'
+                ? (message.toolCalls ?? [])
+                    .filter(
+                      (call) =>
+                        !isProviderToolCall(call) &&
+                        Object.hasOwn(toolsByName, call.function.name),
+                    )
+                    .map((call) => call.id)
+                : [],
+            ),
+          );
           const diagnostics = messages.flatMap((message) => {
-            const diagnostic = readHistoryDiagnostic(message, schema);
+            const diagnostic =
+              readHistoryDiagnostic(message, schema) ??
+              readBrowserRecoveryDiagnostic(message, threadId, browserCallIds);
             return diagnostic ? [diagnostic] : [];
           });
           return {
             revision: recovery.revision,
-            required,
+            required: required || recovery.required,
             ...(diagnostics.length
               ? { diagnostics: Object.freeze(diagnostics) }
               : {}),
@@ -1043,21 +1254,37 @@ export function createChatRuntime(init: {
     };
   });
   runtimeRequestSchemaSetters.set(runtime.resume, (schema) => {
-    dispatchGenerationSchedulingAction(
-      devActions.updateOptions({ ɵrequestResponseSchema: schema ?? null }),
+    const update = devActions.updateOptions({
+      ɵrequestResponseSchema: schema ?? null,
+    });
+    ɵassertPendingRecoveryUpdateAllowed(
+      state.read((root) => root),
+      update,
     );
+    dispatchGenerationSchedulingAction(update);
   });
   runtimeSchedulingSignals.set(
     runtime.resume,
     state.createSignal(
-      select(ɵselectInterrupts, (interrupts) => ({
-        threadEpoch: interrupts.epoch,
-        restorationEpoch: state.read((root) => root.recovery.restorationEpoch),
-        successfulResumes: interrupts.successfulResumes,
-        recoveryRequired: interrupts.recoveryRequired,
-        isResuming: interrupts.generationId !== undefined,
-        pending: interrupts.pending !== undefined,
-      })),
+      select(
+        ɵselectInterrupts,
+        ɵselectBrowserRecoveryState,
+        (interrupts, recovery) => ({
+          threadEpoch: interrupts.epoch,
+          restorationEpoch: recovery.restorationEpoch,
+          successfulResumes:
+            interrupts.successfulResumes + recovery.successfulResumes,
+          recoveryRequired: interrupts.recoveryRequired || recovery.required,
+          isResuming:
+            interrupts.generationId !== undefined ||
+            recovery.claimId !== undefined,
+          pending:
+            !interrupts.recoveryRequired &&
+            !recovery.required &&
+            (interrupts.pending !== undefined ||
+              recovery.pendingBrowserRecovery !== undefined),
+        }),
+      ),
     ),
   );
   return runtime;

@@ -1,3 +1,4 @@
+import type { BrowserRecoveryCheckpoint } from '../reducers/resume-checkpoint';
 import type { PendingInterruptBatch } from '../models/interrupt';
 import type { ToolMessage } from '@ag-ui/core';
 import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
@@ -9,6 +10,19 @@ export default createActionGroup('internal', {
     generationId: string;
     attemptId: string;
     batch: PendingInterruptBatch;
+  }>(),
+  browserRecoveryAcknowledged: props<{
+    claimId: string;
+    checkpoint: BrowserRecoveryCheckpoint;
+    canonicalMessages: BrowserRecoveryCheckpoint['canonicalMessages'];
+    toolsByName: BrowserRecoveryCheckpoint['toolsByName'];
+    responseSchema: BrowserRecoveryCheckpoint['responseSchema'];
+    localProjection?: never;
+  }>(),
+  browserRecoveryClaimReleased: props<{ claimId: string }>(),
+  browserRecoverySettled: props<{
+    claimId: string;
+    outcome: 'success' | 'failed' | 'cancelled' | 'retired';
   }>(),
   resumeSettlementStarted: emptyProps(),
   resumeAcknowledged: props<{ generationId: string; claimId: string }>(),

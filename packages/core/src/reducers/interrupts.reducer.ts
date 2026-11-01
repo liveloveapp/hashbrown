@@ -38,6 +38,29 @@ export const reducer = createReducer(
     successfulResumes: state.successfulResumes,
   })),
   on(
+    internalActions.browserRecoveryAcknowledged,
+    (state, action): InterruptsState =>
+      state.pending === action.payload.checkpoint.nativeBatch
+        ? {
+            ...state,
+            pending: undefined,
+            claimId: undefined,
+            generationId: undefined,
+            acknowledged: false,
+          }
+        : state,
+  ),
+  on(devActions.updateOptions, (state, action): InterruptsState =>
+    (action as typeof action & { readonly ɵretireBrowserRecovery?: boolean })
+      .ɵretireBrowserRecovery
+      ? {
+          ...initialInterruptsState,
+          epoch: state.epoch + 1,
+          successfulResumes: state.successfulResumes,
+        }
+      : state,
+  ),
+  on(
     internalActions.logicalGenerationStarted,
     (state, action): InterruptsState => ({
       ...state,

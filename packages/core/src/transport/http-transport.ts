@@ -1,3 +1,4 @@
+import { isColdRecoveryRequest } from './recovery-request-policy';
 import { parseSSEStream } from '@ag-ui/client';
 import type { AGUIEvent } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
@@ -91,6 +92,7 @@ export class HttpTransport implements Transport {
       });
     }
 
+    const allowResponseRetries = !isColdRecoveryRequest(request.input);
     const internalAbortController = new AbortController();
     let requestAbortListenerAttached = false;
     const handleRequestAbort = () => {
@@ -165,7 +167,7 @@ export class HttpTransport implements Transport {
       };
 
       const fetchResponse =
-        this.retry && this.retry.maxRetries > 0
+        allowResponseRetries && this.retry && this.retry.maxRetries > 0
           ? createHttpResponseRetryFetch(
               this.fetchImpl,
               this.baseUrl,
