@@ -1,0 +1,143 @@
+{
+  "week": "2026-11-02",
+  "revision": 5,
+  "authoredAt": "2026-11-01",
+  "design": "Approved LLA/Hashbrown system: light base for four practical guidance cards, dark for three technical posts, amber for two announcements. Hashbrown primary, LLA studio signature; Bend patch on author photo only.",
+  "assets": [
+    {
+      "key": "mon-x-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/mon-x-web-llms.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local models. Real limits.” November 2026 web LLM update, with Brian Love’s original airport photograph in a rounded frame and the LiveLoveApp Bend patch, on Hashbrown amber.",
+      "sha256": "e3d4b78febfcb8c25c895d09383da9defbc2452ec1325c0e1533e56f70baa12d",
+      "bytes": 453377,
+      "provenance": {
+        "type": "original-photo-editorial",
+        "source": "Original IMG_6068.HEIC photograph from photo kit v02; official LiveLoveApp patch and mark; approved amber concept",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "tue-li-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/tue-li-web-llms.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“Tools → One component.” An illustration connects selected tools to one trusted component and reads “Tested in Chrome + WebLLM.” Hashbrown amber, soft rounded surfaces and the original LLA mark frame this summary of the bounded tested workflow.",
+      "sha256": "ccb718def97a189fff9f050db0845502081ff87c9a3879950f3502a2c370c785",
+      "bytes": 70111,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored conceptual diagram of the qualified single-component tool workflows in the November update; approved LLA-inspired amber treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "tue-x-schema-correctness",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/tue-x-schema-correctness.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Valid JSON. Wrong answer.” An illustration asks for 2 but shows valid JSON containing {\"count\":3}. Shape passes while the requested value fails. This authored example is not a captured model result.",
+      "sha256": "2db0cf5f9b41d7ea7710ffb508c8d995402e8f5d190c7b31056dfa8dc341ac53",
+      "bytes": 68474,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored schema-versus-values illustration; approved dark LLA/Hashbrown concept",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "wed-x-tool-phases",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/wed-x-tool-phases.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“The app picks the tool.” An illustration lists four structured tool phases: the app selects a tool, the model generates arguments, Hashbrown validates and runs the handler, then the model generates output. Charcoal and amber with the original Hashbrown and LLA marks.",
+      "sha256": "ba3ec4300910b299a97fbf4f3088ffbf7afc37c1330c20d0e01d92fc27d52f2a",
+      "bytes": 69079,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram of opt-in application-controlled structured tool phases; current LLA typography and hairline-list treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-li-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/thu-li-workbench.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“AI suggests. You apply.” An illustrative generated suggestion uses abstract text lines and a charcoal Accept pill to explain acceptance before an application write. Ivory and brown with the original Hashbrown and LLA marks. This is not a workbench screenshot.",
+      "sha256": "cee050e9235b7ed90eacd5ad8bc0f7dfa21d4d6c5af1d42e4472209b398747cc",
+      "bytes": 54428,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Approved light acceptance concept; authored abstract illustration of the workbench application-controlled acceptance boundary",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-x-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/thu-x-workbench.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Preview ≠ Saved.” An illustration separates a preview suggestion from saved application state. An arrow labeled Accept connects the soft ivory preview row to the charcoal application-state row. This explains the acceptance boundary and is not a captured interface.",
+      "sha256": "69b4f4ed85a76d324f1bad2de7cdc690e235733a861d0811a033ab1806a97aaa",
+      "bytes": 59425,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored preview-versus-accepted-state diagram in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "fri-x-json-termination",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/fri-x-json-termination.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“One token. Broken JSON.” An illustration shows a title string cut off before the closing quotation mark and object brace, with an amber cursor. It explains JSON termination failure and is not a captured failure log.",
+      "sha256": "25ca7e3433bde53029a779c6221e6666e760de8afb152a7f086a78b59f750ec4",
+      "bytes": 54559,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored truncation illustration supported by mlc-ai/web-llm PR 876; approved dark technical treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sat-x-small-catalog",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/sat-x-small-catalog.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Start smaller.” An illustrative soft rounded surface reads “One trusted component” and <Panel /> on Hashbrown ivory. It represents a bounded exposed component catalog and is not a measured model output.",
+      "sha256": "015ab2375da8deb7d8321155c730e8573218858817c0119f99615f42ec61e028",
+      "bytes": 48997,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored bounded-component-catalog illustration in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sun-x-local-network",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v5/sun-x-local-network.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local ≠ offline.” An illustration places inference on the device and connects the app to tools, images and telemetry paths that may still use the network. Ivory and brown with the original Hashbrown and LLA marks.",
+      "sha256": "24cee0168af48c724564667e8f803cd8fa80d7b3ca2f7ec950c06670e0f5e69f",
+      "bytes": 56458,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram separating local inference from application network paths, in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved LLA typography, rounded surfaces, pill controls and original one-colour brand marks with Hashbrown amber/ivory/brown/charcoal. Original airport photograph on the author announcement only. All conceptual diagrams labeled Illustration; no replay screenshots or fabricated model output.",
+        "illustrative": true
+      }
+    }
+  ]
+}
