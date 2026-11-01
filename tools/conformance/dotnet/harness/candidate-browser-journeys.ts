@@ -7,6 +7,7 @@ import {
   assertCandidateProxyIntervention,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
+  captureCandidateOriginalRun,
   finalizeCandidateAcceptance,
   reconcileCandidateBusyReader,
 } from './candidate-browser-acceptance';
@@ -863,11 +864,14 @@ class Journey {
     );
     const initialRun = this.runs().at(-1);
     assert.ok(initialRun);
-    await this.proxy.waitFor(
-      initialRun.proxyId,
-      'complete',
-      AbortSignal.timeout(30_000),
-    );
+    // Original browser handlers remain held: require actual complete, exactly delivered protocol independently of HTTP EOF.
+    await expect(async () => {
+      captureCandidateOriginalRun(
+        this.proxy.records(this.threadId),
+        initialRun.proxyId,
+        expectNativeRunCapture,
+      );
+    }).toPass({ timeout: 30_000 });
     const wireRecords = this.proxy
       .records(this.threadId)
       .filter((record) => record.requestId === initialRun.proxyId);
@@ -876,10 +880,11 @@ class Journey {
         .filter((record) => record.kind === 'upstream-body')
         .map((record) => record.bytes),
     ).toString('utf8');
-    const events = expectNativeRunCapture({
-      body,
-      truncated: wireRecords.some((record) => record.kind === 'fault'),
-    });
+    const events = captureCandidateOriginalRun(
+      wireRecords,
+      initialRun.proxyId,
+      expectNativeRunCapture,
+    );
     if (phase.split) {
       expect(new Set(locations.map((item) => item.messageId)).size).toBe(2);
       const first = locations.find(

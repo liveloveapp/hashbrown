@@ -174,3 +174,33 @@ assert.equal(drained,true);
 
   expect(result.trim()).toBe('passed');
 });
+
+test('original protocol completion permits only exact delivered postterminal disposal and refuses all earlier or unrelated fault classes', () => {
+  const result = probe(`
+const {captureCandidateOriginalRun:capture}=subject;
+const {expectNativeRunCapture:decode}=await import(${JSON.stringify(pathToFileURL(resolve(__dirname, '../harness/native-wire.ts')).href)});
+const requestId='actual-original-request',runId='actual-original-run';
+const frame=event=>Buffer.from('data: '+JSON.stringify(event)+String.fromCharCode(10,10));
+const events=[{type:'RUN_STARTED',threadId:'owned-thread',runId},{type:'TOOL_CALL_START',toolCallId:'original-browser',toolCallName:'getWeather',parentMessageId:'actual-parent'},{type:'TOOL_CALL_ARGS',toolCallId:'original-browser',delta:'{"city":"Owned current city 1"}'},{type:'TOOL_CALL_END',toolCallId:'original-browser'},{type:'RUN_FINISHED',threadId:'owned-thread',runId}];
+const record=(seq,kind,extra={})=>({requestId,seq,kind,bytes:Buffer.alloc(0),...extra});
+const good=events.flatMap((event,index)=>[record(7+index*2,'upstream-body',{bytes:frame(event)}),record(8+index*2,'delivered-body',{bytes:frame(event)})]);
+good.push(record(17,'downstream-closed'),record(18,'fault',{reason:'aborted'}));
+assert.deepEqual(capture(good,requestId,decode),events,'Normal actual terminal disposal is not a truncated protocol');
+assert.deepEqual(capture(good.filter(item=>item.kind!=='fault'),requestId,decode),events);
+assert.deepEqual(capture([...good,{...record(3,'fault',{reason:'foreign infrastructure fault'}),requestId:'another-request'}],requestId,decode),events,'Classification must remain scoped to the actual request');
+const variants=[
+ good.map(item=>item.kind==='fault'?{...item,seq:6}:item).sort((a,b)=>a.seq-b.seq),
+ good.filter(item=>item.seq!==15&&item.seq!==16),
+ good.map(item=>item.kind==='fault'?{...item,reason:'Response byte limit'}:item),
+ good.map(item=>item.kind==='fault'?{...item,reason:'unexpected source failure'}:item),
+ [...good,record(19,'mutation',{reason:'unexpected mutation'})],
+ good.filter(item=>item.kind!=='downstream-closed'),
+ good.map(item=>item.seq===16?{...item,bytes:Buffer.from('changed delivered terminal')}:item),
+ [...good,record(19,'upstream-body',{bytes:Buffer.from(String.fromCharCode(10))}),record(20,'delivered-body',{bytes:Buffer.from(String.fromCharCode(10))})],
+ good.filter(item=>item.seq!==16),
+];
+for(const changed of variants) assert.throws(()=>capture(changed,requestId,decode),/fault|dispos|terminal|truncat|protocol|source|deliver|mutation|close|expect|equal|false|true/i);
+`);
+
+  expect(result.trim()).toBe('passed');
+});

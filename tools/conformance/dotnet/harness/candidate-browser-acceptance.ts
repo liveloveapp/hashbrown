@@ -658,3 +658,67 @@ export function assertCandidateDefinitiveRejection(
     'Definitive rejection cannot contain a proxy fault, mutation or ACK',
   );
 }
+
+/** Original pass-mode proxy source/delivery facts, independently of an HTTP EOF observation. */
+export interface CandidateOriginalRunRecord {
+  readonly requestId: string;
+  readonly seq: number;
+  readonly kind: string;
+  readonly bytes: Uint8Array;
+  readonly reason?: string;
+}
+/** Decodes the actual original source protocol while classifying its scoped transport evidence. */
+export function captureCandidateOriginalRun<T>(
+  records: readonly CandidateOriginalRunRecord[],
+  requestId: string,
+  decode: (capture: Readonly<{ body: string; truncated: boolean }>) => T,
+): T {
+  const scoped = records.filter((record) => record.requestId === requestId);
+  const source = scoped.filter((record) => record.kind === 'upstream-body');
+  const delivered = scoped.filter((record) => record.kind === 'delivered-body');
+  const sourceBytes = Buffer.concat(
+    source.map((record) => Buffer.from(record.bytes)),
+  );
+  // The actual strict protocol decoder must establish a complete successful terminal before any disposal can be accepted.
+  const decoded = decode({
+    body: sourceBytes.toString('utf8'),
+    truncated: false,
+  });
+  assert.ok(
+    scoped.every(
+      (record, index) =>
+        Number.isSafeInteger(record.seq) &&
+        record.seq > 0 &&
+        (index === 0 || record.seq > scoped[index - 1].seq),
+    ),
+    'Original protocol record sequence must remain strictly ordered',
+  );
+  assert.deepEqual(
+    scoped.filter((record) => record.kind === 'mutation'),
+    [],
+    'Original pass-mode protocol cannot contain a mutation',
+  );
+  assert.ok(source.length > 0, 'Actual complete source protocol required');
+  assert.deepEqual(
+    Buffer.concat(delivered.map((record) => Buffer.from(record.bytes))),
+    sourceBytes,
+    'Original delivered protocol bytes must equal the entire actual source',
+  );
+  const closes = scoped.filter((record) => record.kind === 'downstream-closed');
+  assert.ok(closes.length <= 1, 'Original disposal closure must be unique');
+  const close = closes[0];
+  if (close)
+    assert.ok(
+      [...source, ...delivered].every((record) => record.seq < close.seq),
+      'Source or delivered bytes arrived after terminal disposal closure',
+    );
+  const lastSource = source[source.length - 1];
+  for (const fault of scoped.filter((record) => record.kind === 'fault')) {
+    assert.equal(fault.reason, 'aborted', 'Unexpected original protocol fault');
+    assert.ok(
+      close && lastSource.seq < close.seq && close.seq < fault.seq,
+      'Only actual postterminal disposal aborted after downstream closure is permitted',
+    );
+  }
+  return decoded;
+}
