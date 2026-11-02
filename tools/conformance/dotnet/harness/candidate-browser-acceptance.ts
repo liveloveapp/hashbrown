@@ -1367,3 +1367,49 @@ export function classifyCandidateWarmPhase(
   }
   return 'entered-browser-handler';
 }
+
+/** Public authority-bearing state independently observed around one explicit recovery read. */
+export interface CandidateReadAdoptionState {
+  readonly pending: unknown;
+  readonly pendingInterrupts?: unknown;
+  readonly messages?: unknown;
+  readonly state?: unknown;
+  readonly recovery: Readonly<{ revision: number; required: boolean }>;
+}
+
+/** Validates local adoption of an actual authoritative response independently of its server/PG validation. */
+export function assertCandidateReadAdoption(
+  response: Readonly<{ disposition: string; snapshot?: unknown }>,
+  before: CandidateReadAdoptionState,
+  after: CandidateReadAdoptionState,
+): void {
+  if (response.snapshot !== undefined && response.snapshot !== null) {
+    if (response.disposition !== 'Pending')
+      assert.equal(
+        after.pending,
+        null,
+        'Completed snapshot must clear pending authority',
+      );
+    return;
+  }
+  for (const key of [
+    'pending',
+    'pendingInterrupts',
+    'messages',
+    'state',
+    'recovery',
+  ] as const) {
+    assert.deepEqual(
+      after[key],
+      before[key],
+      `Snapshotless authoritative read must preserve ${key}`,
+    );
+  }
+  if (before.pending !== null && before.pending !== undefined) {
+    assert.equal(
+      before.recovery.required,
+      true,
+      'Retained pending authority must remain inert behind the required recovery barrier',
+    );
+  }
+}

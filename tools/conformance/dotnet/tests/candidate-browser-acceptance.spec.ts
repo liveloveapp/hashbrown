@@ -6,6 +6,26 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('snapshotless authoritative metadata preserves an inert pre-ACK batch and cannot mint or erase local authority', () => {
+  const output = probe(`
+const before={pending:{id:'actual-old-token',serverRevision:6,toolCalls:[{id:'browser',name:'getWeather',arguments:{city:'owned'}}],interrupts:[{id:'ficc_protected',toolCallId:'protected',reason:'tool_call'}]},pendingInterrupts:{id:'warm-token',interrupts:[{id:'ficc_protected'}]},messages:[{id:'user',role:'user',content:'actual history'}],state:{owned:true},recovery:{revision:9,required:true}};
+const response={schemaVersion:2,disposition:'UnknownEffect',serverRevision:10};
+
+subject.assertCandidateReadAdoption(response,before,structuredClone(before));
+const mutations=[value=>value.pending=null,value=>value.pending.id='minted-token',value=>value.pending.toolCalls=[],value=>value.pendingInterrupts=null,value=>value.messages.push({id:'invented',role:'assistant',content:'invented'}),value=>value.state={owned:false},value=>value.recovery.revision++,value=>value.recovery.required=false];
+for(const mutate of mutations){const after=structuredClone(before);mutate(after);assert.throws(()=>subject.assertCandidateReadAdoption(response,before,after),/pending|snapshot|authorit|preserv|history|state|revision|required|equal/i);}
+const unblocked=structuredClone(before);unblocked.recovery.required=false;assert.throws(()=>subject.assertCandidateReadAdoption(response,unblocked,structuredClone(unblocked)),/required|inert|barrier|authorit/i);
+const fresh={pending:null,pendingInterrupts:null,messages:[],state:null,recovery:{revision:0,required:false}};
+subject.assertCandidateReadAdoption(response,fresh,structuredClone(fresh));
+assert.throws(()=>subject.assertCandidateReadAdoption(response,fresh,{...fresh,pending:before.pending}),/pending|snapshot|authorit|equal/i);
+const completed={disposition:'Completed',snapshot:{threadId:'owned-thread',messages:before.messages,state:before.state}};
+subject.assertCandidateReadAdoption(completed,before,{...before,pending:null});
+assert.throws(()=>subject.assertCandidateReadAdoption(completed,before,structuredClone(before)),/pending|complete|clear|equal/i);
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 /** Exercises isolated acceptance counterexamples; parsed fixtures supply no native or browser execution authority. */
 function probe(body: string): string {
   return execFileSync(

@@ -5,6 +5,7 @@ import {
   assertCandidateFacadeSchema,
   assertCandidateProviderTextHistory,
   assertCandidateProxyIntervention,
+  assertCandidateReadAdoption,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
   type CandidateWarmPhaseCounters,
@@ -2102,6 +2103,12 @@ async function authoritative(
   const previousPendingId = beforeUi.pending?.id;
   const response = await rawRead(journey, fresh, page);
   const session = (await journey.state()).session;
+  journey.records[`authoritative-${String(response.requestId)}`] = {
+    response,
+    session,
+    beforeUi,
+    adopted: await journey.status(page),
+  };
   assertCandidateAuthoritativeResponse(
     { status: response.status, body: response.body },
     session,
@@ -2125,14 +2132,20 @@ async function authoritative(
       await expect
         .poll(async () => (await journey.status(page)).pending?.id)
         .not.toBe(previousPendingId);
-  } else expect((await journey.status(page)).pending).toBeNull();
+  }
+  const adopted = await journey.status(page);
   journey.records[`authoritative-${String(response.requestId)}`] = {
     response,
     session,
     beforeUi,
-    adopted: await journey.status(page),
+    adopted,
     hasSnapshot: snapshot !== null && snapshot !== undefined,
   };
+  assertCandidateReadAdoption(
+    { disposition: String(metadata.disposition), snapshot },
+    beforeUi,
+    adopted,
+  );
   journey.stable();
   return response;
 }
@@ -2203,8 +2216,65 @@ async function failedAttempt(
     .poll(async () => Boolean((await journey.status(page)).localError))
     .toBe(true);
   await journey.unchanged(beforeRepeat);
+  const beforeReadUi = await journey.status(page);
   const read = await authoritative(journey, page);
   journey.records.reconciliation = read;
+  assert.ok(object(read.body));
+  if (
+    (read.body.snapshot === undefined || read.body.snapshot === null) &&
+    beforeReadUi.recovery.required
+  ) {
+    const afterRead = await journey.snapshot();
+    const afterReadWitnesses = [...journey.witnesses];
+    for (const action of ['negative-repeat-submit', 'negative-send']) {
+      await page.getByTestId(action).click();
+      expect((await journey.status(page)).lastAction).toBe(
+        action === 'negative-repeat-submit'
+          ? 'negative-repeat-submit:resumeConversationRecovery'
+          : 'negative-send',
+      );
+      await expect
+        .poll(async () => Boolean((await journey.status(page)).localError))
+        .toBe(true);
+      await journey.unchanged(afterRead);
+      expect(journey.witnesses).toEqual(afterReadWitnesses);
+      journey.stable();
+    }
+    journey.records.snapshotlessRefusals = {
+      beforeReadUi,
+      afterRead,
+      publicState: await journey.status(page),
+    };
+    if (read.body.disposition === 'UnknownEffect') {
+      const beforeFreshWitnesses = [...journey.witnesses];
+      const fresh = await journey.open();
+      const freshRead = await authoritative(journey, fresh.page, false);
+      assert.ok(object(freshRead.body));
+      expect(freshRead.body.disposition).toBe('UnknownEffect');
+      expect(freshRead.body.snapshot).toBeUndefined();
+      expect((await journey.status(fresh.page)).pending).toBeNull();
+      const afterFreshRead = await journey.snapshot();
+      expect(afterFreshRead.runs).toEqual(afterRead.runs);
+      expect(afterFreshRead.providerCount).toBe(afterRead.providerCount);
+      expect(afterFreshRead.state).toEqual(afterRead.state);
+      expect(journey.witnesses).toEqual(beforeFreshWitnesses);
+      for (const stage of [
+        'cold-acquire-success',
+        'reservation-success',
+        'Run.Forward',
+        'Deserialize.Forward',
+      ])
+        expect(afterFreshRead.counts[stage] ?? 0).toBe(
+          afterRead.counts[stage] ?? 0,
+        );
+      journey.records.freshUnknownEffect = {
+        response: freshRead,
+        publicState: await journey.status(fresh.page),
+        before: afterRead,
+        after: afterFreshRead,
+      };
+    }
+  }
   const reconciledUi = await journey.status(page);
   assertCandidateProxyIntervention({
     scenario: journey.record.scenario,
