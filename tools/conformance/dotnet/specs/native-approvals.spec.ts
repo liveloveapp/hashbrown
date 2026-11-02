@@ -996,13 +996,22 @@ for (const variant of [
                 }) => message.toolCalls ?? [],
               )
               .find((call: { id: string }) => call.id === browser.id);
-            expect(genuineBrowserCall.metadata).toMatchObject({
-              'b4.step': {
-                kind: 'server',
-                status: 'cancelled',
-                settledAt: expect.any(Number),
+            expect(genuineBrowserCall).toBeDefined();
+            expect(genuineBrowserCall).toMatchObject({
+              id: browser.id,
+              type: 'function',
+              function: {
+                name: browser.name,
+                arguments: JSON.stringify(browser.arguments),
               },
             });
+            expect(
+              local.messages.filter(
+                (message: { role: string; toolCallId?: string }) =>
+                  message.role === 'tool' && message.toolCallId === browser.id,
+              ),
+            ).toEqual([]);
+            const originalLocal = JSON.stringify(local);
             expect(local.messages[0]).toMatchObject({
               role: 'system',
               content: 'Runtime smoke system prompt.',
@@ -1028,11 +1037,15 @@ for (const variant of [
                             return call;
                           const { metadata, ...original } = call;
                           if (variant === 'raw') return original;
+                          // These are supplied adversarial annotations, never observed SDK metadata.
                           const step = {
-                            ...(metadata?.['b4.step'] ?? {}),
-                          } as Record<string, unknown>;
-                          if (variant === 'untimed') delete step['settledAt'];
-                          else step['settledAt'] = 1700000000000;
+                            v: 1,
+                            kind: 'server',
+                            status: 'cancelled',
+                            ...(variant === 'server-time'
+                              ? { settledAt: 1700000000000 }
+                              : {}),
+                          };
                           return {
                             ...original,
                             metadata: { ...metadata, 'b4.step': step },
@@ -1044,6 +1057,8 @@ for (const variant of [
               ),
               interrupts: genuine.outcome.interrupts,
             };
+            expect(JSON.stringify(local)).toBe(originalLocal);
+            expect(JSON.parse(localRaw)).toEqual(local);
             const supplied = {
               schemaVersion: 1,
               disposition: 'Pending',
@@ -1085,6 +1100,13 @@ for (const variant of [
               evidenceLayer:
                 'adversarial supplied response, not server persisted metadata variant',
               variant,
+              consumerDomain:
+                process.env['HASHBROWN_DOTNET_HOST_MODE'] === 'package'
+                  ? 'prepared-npm-package'
+                  : 'workspace-source',
+              npmMetadataPointer:
+                process.env['HASHBROWN_LOCAL_NATIVE_CONSUMER_METADATA'] ?? null,
+              genuineBrowserMetadata: genuineBrowserCall.metadata ?? null,
               actualFailedPreReservationSdkRequest: localRaw,
               supplied,
             });
