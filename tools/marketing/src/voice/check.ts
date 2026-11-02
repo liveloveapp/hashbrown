@@ -79,7 +79,6 @@ function fieldsOf(post: VoiceCheckInput): Field[] {
     case 'linkedin': {
       const d = draft as Draft;
       add('text', d.text);
-      add('firstComment', d.firstComment);
       break;
     }
     case 'devto': {
@@ -180,21 +179,12 @@ export function checkVoice(post: VoiceCheckInput): VoiceIssue[] {
   const length = lengthIssue(post);
   if (length) issues.push(length);
 
-  if (post.channel === 'x') {
+  if (post.channel === 'x' || post.channel === 'linkedin') {
     const urls = urlsIn(post, fields);
     if (urls.length > 1) {
       issues.push({
         rule: 'link',
-        message: `X post holds ${urls.length} URLs; at most one.`,
-      });
-    }
-  }
-  if (post.channel === 'linkedin') {
-    const text = fields.find((f) => f.name === 'text')?.text ?? '';
-    if (text.match(URL_RE) || (post.draft as Draft).link) {
-      issues.push({
-        rule: 'link',
-        message: 'LinkedIn text holds a URL; put it in firstComment.',
+        message: `${post.channel === 'x' ? 'X' : 'LinkedIn'} post holds ${urls.length} URLs; at most one.`,
       });
     }
   }

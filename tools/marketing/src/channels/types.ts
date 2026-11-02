@@ -31,7 +31,10 @@ export interface Draft {
   link?: { url: string; previewTitle?: string };
   scheduledAt?: string;
   article?: DraftArticle;
-  /** LinkedIn only: posted as the author's first comment right after the post. */
+  /**
+   * Not supported: LinkedIn comments need partner API access, so validation
+   * rejects it. Put the link in `text`.
+   */
   firstComment?: string;
   /** Required by the social queue; omitted only by legacy direct helpers. */
   image?: DraftImage;

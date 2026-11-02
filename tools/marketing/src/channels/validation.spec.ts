@@ -45,9 +45,9 @@ test('validateDraft rejects a draft whose channel is not the adapter channel', (
 });
 
 test('validateDraft enforces the LinkedIn rules', () => {
-  expect(ruleOf({ channel: 'linkedin', text: 'hi', firstComment: 'c' })).toBe(
-    undefined,
-  );
+  expect(
+    ruleOf({ channel: 'linkedin', text: 'Read it: https://hashbrown.dev/a' }),
+  ).toBe(undefined);
   expect(ruleOf({ channel: 'linkedin', text: '   ' })).toBe(
     'linkedin-text-required',
   );
@@ -63,12 +63,12 @@ test('validateDraft enforces the LinkedIn rules', () => {
   expect(
     ruleOf({ channel: 'linkedin', text: 'hi', link: { url: 'https://a.b' } }),
   ).toBe('linkedin-no-link-preview');
-  expect(ruleOf({ channel: 'linkedin', text: 'hi', firstComment: '' })).toBe(
-    'linkedin-comment-length',
+  expect(ruleOf({ channel: 'linkedin', text: 'hi', firstComment: 'c' })).toBe(
+    'linkedin-no-first-comment',
   );
-  expect(
-    ruleOf({ channel: 'linkedin', text: 'hi', firstComment: 'a'.repeat(1251) }),
-  ).toBe('linkedin-comment-length');
+  expect(ruleOf({ channel: 'linkedin', text: 'hi', firstComment: '' })).toBe(
+    'linkedin-no-first-comment',
+  );
 });
 
 const article = { title: 'A title', tags: ['angular'] };

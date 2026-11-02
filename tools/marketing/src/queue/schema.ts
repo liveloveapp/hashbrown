@@ -48,7 +48,14 @@ const linkedinDraft = z.strictObject({
   image: postImage,
   text: z.string().min(1),
   link: link.optional(),
-  firstComment: z.string().min(1).optional(),
+  // Commenting needs LinkedIn's partner-only Community Management API; the
+  // self-serve app (w_member_social) gets a 403, so the link goes in text.
+  firstComment: z
+    .never({
+      error:
+        'LinkedIn drafts have no firstComment (comments need partner API access); put the URL in text',
+    })
+    .optional(),
 });
 
 const blogDraft = z.strictObject({

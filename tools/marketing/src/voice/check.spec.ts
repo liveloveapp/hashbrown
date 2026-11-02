@@ -76,9 +76,8 @@ test('counts a joined emoji sequence as one emoji', () => {
 
 test('counts emoji across every checked field', () => {
   const draft: QueueDraft = {
-    channel: 'linkedin',
-    text: 'a short note \u{1F44D}',
-    firstComment: 'link below \u{1F525}',
+    channel: 'x',
+    threadParts: ['a short note \u{1F44D}', 'more below \u{1F525}'],
   };
   expect(rules(check(draft))).toEqual(['emoji']);
 });
@@ -155,18 +154,23 @@ test('allows one URL on X and flags two, counting the link field', () => {
   expect(rules(check(draft))).toEqual(['link']);
 });
 
-test('flags a URL in LinkedIn text but allows it in the first comment', () => {
-  const inText: QueueDraft = {
+test('allows one URL in LinkedIn text and flags two, counting the link field', () => {
+  const one: QueueDraft = {
     channel: 'linkedin',
     text: 'new post https://hashbrown.dev/blog/a',
   };
-  expect(rules(check(inText))).toEqual(['link']);
-  const inComment: QueueDraft = {
+  expect(check(one)).toEqual([]);
+  const two: QueueDraft = {
     channel: 'linkedin',
-    text: 'new post',
-    firstComment: 'https://hashbrown.dev/blog/a',
+    text: 'new post https://hashbrown.dev/a and https://hashbrown.dev/b',
   };
-  expect(check(inComment)).toEqual([]);
+  expect(rules(check(two))).toEqual(['link']);
+  const withLink: QueueDraft = {
+    channel: 'linkedin',
+    text: 'new post https://hashbrown.dev/a',
+    link: { url: 'https://hashbrown.dev/b' },
+  };
+  expect(rules(check(withLink))).toContain('link');
 });
 
 test('requires sources on every kind, including blog', () => {

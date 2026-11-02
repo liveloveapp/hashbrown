@@ -111,7 +111,7 @@ test('rejects firstComment on an x draft', () => {
   expect(result.success).toBe(false);
 });
 
-test('accepts firstComment on a linkedin draft', () => {
+test('rejects firstComment on a linkedin draft, because comments need partner API access', () => {
   const [post] = week().posts;
   const result = WeekImport.safeParse(
     week({
@@ -124,6 +124,28 @@ test('accepts firstComment on a linkedin draft', () => {
             image,
             text: 'Hi',
             firstComment: 'Link',
+          },
+        },
+      ],
+    }),
+  );
+
+  expect(result.success).toBe(false);
+  expect(result.error?.issues[0]?.message).toMatch(/put the URL in text/);
+});
+
+test('accepts a URL in linkedin text', () => {
+  const [post] = week().posts;
+  const result = WeekImport.safeParse(
+    week({
+      posts: [
+        {
+          ...post,
+          channel: 'linkedin',
+          draft: {
+            channel: 'linkedin',
+            image,
+            text: 'Read it: https://hashbrown.dev/blog/a',
           },
         },
       ],

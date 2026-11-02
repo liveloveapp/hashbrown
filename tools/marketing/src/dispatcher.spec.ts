@@ -263,14 +263,14 @@ describe('dispatchMarketing', () => {
     repository.leaseDuePosts.mockResolvedValue([
       post({
         channel: 'linkedin',
-        draft: { channel: 'linkedin', image, text: 'hi', firstComment: 'link' },
+        draft: { channel: 'linkedin', image, text: 'hi' },
       }),
     ]);
     const { deps } = setup({
       post: async () => ({
         ...result,
         channel: 'linkedin',
-        warnings: ['first comment failed', 'second thing'],
+        warnings: ['first thing', 'second thing'],
       }),
     });
 
@@ -280,7 +280,7 @@ describe('dispatchMarketing', () => {
       externalId: 'ext-1',
       externalUrl: 'https://x.com/i/status/1',
       publishedAt: new Date('2026-10-29T14:00:01Z'),
-      warning: 'first comment failed; second thing',
+      warning: 'first thing; second thing',
     });
     expect(repository.markRetry).not.toHaveBeenCalled();
     expect(outcome).toMatchObject({ published: 1, failed: 0 });
