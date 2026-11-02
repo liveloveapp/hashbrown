@@ -452,6 +452,65 @@ export function refreshCandidateFaultObservation(
   return { ...original, events: latest.events, transport: latest.transport };
 }
 
+/** Checks exact stage counts around a read-only operation with an explicit expected status-read delta. */
+export function assertCandidateStageCounts(
+  before: Readonly<Record<string, number>>,
+  after: Readonly<Record<string, number>>,
+  expectedStatusReadDelta: 0 | 1 = 0,
+): void {
+  assert.ok(
+    expectedStatusReadDelta === 0 || expectedStatusReadDelta === 1,
+    'Expected status-read delta must be exactly zero or one',
+  );
+  const expected =
+    expectedStatusReadDelta === 0
+      ? before
+      : { ...before, 'status-read': (before['status-read'] ?? 0) + 1 };
+  assert.deepEqual(after, expected, 'Read-only operation stage counts changed');
+}
+
+/** Independently captured run, provider, journal and observer facts around an inert operation. */
+export interface CandidateUnchangedSnapshot {
+  readonly state: unknown;
+  readonly runs: readonly unknown[];
+  readonly providerCount: number;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly observerAttempts: readonly number[];
+}
+
+/** Requires all original inert-operation facts while keeping any explicit status-read expectation scoped. */
+export function assertCandidateUnchangedSnapshot(
+  before: CandidateUnchangedSnapshot,
+  after: CandidateUnchangedSnapshot,
+  expectedStatusReadDelta: 0 | 1 = 0,
+): void {
+  assert.deepEqual(
+    after.runs,
+    before.runs,
+    'Inert operation run requests changed',
+  );
+  assert.equal(
+    after.providerCount,
+    before.providerCount,
+    'Inert operation provider count changed',
+  );
+  assertCandidateStageCounts(
+    before.counts,
+    after.counts,
+    expectedStatusReadDelta,
+  );
+  assert.deepEqual(
+    after.state,
+    before.state,
+    'Inert operation physical journal state changed',
+  );
+  assert.deepEqual(
+    after.observerAttempts,
+    before.observerAttempts,
+    'Inert operation observer attempts changed',
+  );
+}
+
 /** Requires exact causal evidence before accepting an upstream abort caused by malformed-frame decoder disposal. */
 function assertCandidateMalformedDisposal(
   observation: CandidateFaultObservation,

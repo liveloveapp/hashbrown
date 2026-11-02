@@ -6,6 +6,7 @@ import {
   assertCandidateProviderTextHistory,
   assertCandidateProxyIntervention,
   assertCandidateReadAdoption,
+  assertCandidateUnchangedSnapshot,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
   type CandidateWarmPhaseCounters,
@@ -777,13 +778,12 @@ class Journey {
         .map((record) => record.seq),
     };
   }
-  async unchanged(before: Snapshot): Promise<void> {
+  async unchanged(
+    before: Snapshot,
+    expectedStatusReadDelta: 0 | 1 = 0,
+  ): Promise<void> {
     const after = await this.snapshot();
-    expect(after.runs).toEqual(before.runs);
-    expect(after.providerCount).toBe(before.providerCount);
-    expect(after.counts).toEqual(before.counts);
-    expect(after.state).toEqual(before.state);
-    expect(after.observerAttempts).toEqual(before.observerAttempts);
+    assertCandidateUnchangedSnapshot(before, after, expectedStatusReadDelta);
   }
   async control(name: string, fixture = this.active): Promise<unknown> {
     const response = await fetch(`${fixture.url}/__test/${name}`, {
@@ -2869,6 +2869,13 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       ).toBeGreaterThan(16_384);
       await expect.poll(() => journey.runs().at(-1)?.status).toBe(413);
       const after = await journey.snapshot();
+      journey.records.definitiveRejection = {
+        before,
+        after,
+        rawRun: run,
+        status: await journey.status(restored.page),
+        nativeWitnesses: [...journey.witnesses],
+      };
       expect(after.providerCount).toBe(before.providerCount);
       expect(after.counts).toEqual(before.counts);
       expect(after.state).toEqual(before.state);
@@ -2881,22 +2888,36 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
           ),
         )
         .toBe(true);
+      const witnessesBeforeRead = [...journey.witnesses];
+      journey.records.definitiveReadStart = {
+        before: after,
+        witnessesBeforeRead,
+        publicState: await journey.status(restored.page),
+      };
       const reconciliation = await authoritative(journey, restored.page);
-      await journey.unchanged(after);
-      journey.finalDefinitiveObservations.push({
-        requestId: run.proxyId,
-        runId: run.input.runId,
-      });
+      const afterReconciliation = await journey.snapshot();
+      const witnessesAfterRead = [...journey.witnesses];
       journey.records.definitiveRejection = {
         before,
         after,
         rawRun: run,
         status: await journey.status(restored.page),
         reconciliation,
+        afterReconciliation,
+        witnessesBeforeRead,
+        witnessesAfterRead,
         bytes: journey.proxy
           .records(journey.threadId)
           .filter((record) => record.requestId === run.proxyId),
       };
+      // This one actual authoritative lookup invokes journal ReadStatusAsync once.
+      assertCandidateUnchangedSnapshot(after, afterReconciliation, 1);
+      expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+      journey.stable();
+      journey.finalDefinitiveObservations.push({
+        requestId: run.proxyId,
+        runId: run.input.runId,
+      });
       return;
     }
     if (id === 'failure.cancel-after-ack') {

@@ -6,6 +6,37 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('inert snapshot comparison still rejects journal provider run or observer changes independently of status-read accounting', () => {
+  const output = probe(`
+const before={state:{session:{state:'Ready',revision:6,generation:1},effects:[],members:[]},runs:[{proxyId:'original',input:{runId:'original-run'}}],providerCount:1,counts:{'status-read':1,'Run.Forward':1},observerAttempts:[]};
+
+subject.assertCandidateUnchangedSnapshot(before,structuredClone(before));
+for(const mutate of [value=>value.state.session.revision++,value=>value.state.session.generation++,value=>value.state.session.state='Blocked',value=>value.state.effects.push({call_id:'unexpected'}),value=>value.state.members.push({call_id:'unexpected'}),value=>value.providerCount++,value=>value.runs.push({proxyId:'unexpected'}),value=>value.observerAttempts.push(99),value=>value.counts['Run.Forward']++]){const changed=structuredClone(before);mutate(changed);assert.throws(()=>subject.assertCandidateUnchangedSnapshot(before,changed),/inert|operation|physical|state|provider|run|observer|count|stage|equal/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('explicit reconciliation status read permits exactly one named counter increment and preserves every other stage key', () => {
+  const output = probe(`
+const check=subject.assertCandidateStageCounts;
+const before={'status-read':1,'Run.Forward':1,'cold-acquire-success':0,'reservation-success':0,'Native.Result.Observed':0};
+const after={...before,'status-read':2};
+
+check(before,after,1);
+check(before,{...before});
+check({},{});
+check({}, {'status-read':1},1);
+assert.throws(()=>check(before,after),/count|stage|read|equal/i);
+for(const changed of [{...before},{...after,'status-read':3},{...after,'status-read':0},{...after,'Run.Forward':2},{...after,'cold-acquire-success':1},{...after,'reservation-success':1},{...after,'Native.Result.Observed':1},{...after,'unexpected-zero-stage':0},{'status-read':2}])assert.throws(()=>check(before,changed,1),/count|stage|read|equal/i);
+assert.throws(()=>check({}, {'status-read':0}),/count|stage|read|equal/i);
+for(const delta of [-1,2,0.5,NaN,Infinity,'1',null])assert.throws(()=>check(before,{...before},delta),/delta|status|read|count|stage/i);
+assert.deepEqual(before,{'status-read':1,'Run.Forward':1,'cold-acquire-success':0,'reservation-success':0,'Native.Result.Observed':0});
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 test('retained malformed proof preserves original parser facts but validates every later ACK and lifecycle observation without rollback', () => {
   const output = probe(`
 const {assertCandidateProxyIntervention:check,refreshCandidateFaultObservation:refresh}=subject;
