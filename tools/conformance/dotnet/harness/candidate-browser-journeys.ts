@@ -2,6 +2,7 @@ import {
   assertCandidateAuthoritativeResponse,
   assertCandidateCorruptionEvidence,
   assertCandidateDefinitiveRejection,
+  assertCandidateExpiredRead,
   assertCandidateFacadeSchema,
   assertCandidateProviderTextHistory,
   assertCandidateProxyIntervention,
@@ -2064,11 +2065,23 @@ async function blocked(
 ): Promise<void> {
   const before = await journey.snapshot();
   const beforeUi = await journey.status(page);
+  const beforeWitnesses = [...journey.witnesses];
   const response = await rawRead(journey, false, page);
+  journey.records.blockedReadStart = {
+    response,
+    before,
+    beforeUi,
+    beforeWitnesses,
+    publicState: await journey.status(page),
+  };
   await expect
     .poll(async () => (await journey.status(page)).pending)
     .toBeNull();
-  if (scenario.startsWith('version.'))
+  if (
+    scenario.startsWith('version.') ||
+    scenario === 'server.expired' ||
+    scenario === 'server.corrupt'
+  )
     await expect
       .poll(async () =>
         Boolean(
@@ -2093,7 +2106,14 @@ async function blocked(
     'Deserialize.Forward',
   ])
     expect(after.counts[name] ?? 0).toBe(before.counts[name] ?? 0);
-  journey.records.blockedRead = { response, before, after, status: afterUi };
+  journey.records.blockedRead = {
+    response,
+    before,
+    after,
+    status: afterUi,
+    beforeWitnesses,
+    afterWitnesses: [...journey.witnesses],
+  };
 }
 
 async function authoritative(
@@ -2526,7 +2546,17 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
   if (id === 'server.expired' || id === 'server.corrupt') {
     await blocked(journey, restored.page, id);
     const observed = journey.records.blockedRead as {
-      response: { status: number; body: unknown };
+      response: {
+        status: number;
+        body: unknown;
+        bodyText: string;
+        bodyBase64: string;
+      };
+      before: Snapshot;
+      after: Snapshot;
+      status: Status;
+      beforeWitnesses: readonly Witness[];
+      afterWitnesses: readonly Witness[];
     };
     if (id === 'server.corrupt') {
       const mutation = journey.records.corruption as {
@@ -2548,9 +2578,16 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       }).toEqual(mutation.before);
     }
     if (id === 'server.expired') {
-      expect(observed.response.status).toBe(200);
-      assert.ok(object(observed.response.body));
-      expect(observed.response.body.disposition).toBe('Expired');
+      assertCandidateExpiredRead({
+        response: observed.response,
+        publishedState: published,
+        before: observed.before,
+        after: observed.after,
+        beforeWitnesses: observed.beforeWitnesses,
+        afterWitnesses: observed.afterWitnesses,
+        controls: journey.records.controls,
+        publicState: observed.status,
+      });
     }
     if (
       object(observed.response.body) &&

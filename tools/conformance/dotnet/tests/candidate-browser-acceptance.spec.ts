@@ -6,6 +6,58 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('maintained expiry requires exact empty410 joined to the retired purged lineage and one inert status read', () => {
+  const output = probe(`
+function facts(){
+ const published={session:{id:'actual-session',selector:'actual-thread',agent:'HashbrownNative',scope:'alice',state:'Ready',revision:40,generation:4,ever_saved:true,payload:JSON.stringify({formatVersion:2,nativeJson:'{}',publicRequest:'{}',pendingCalls:[],expectedBrowserCallIds:['browser']}),token:null,lease_until:null,admitted_request:null,expires_at:'2030-01-01T00:00:00Z'},members:[{session_id:'actual-session',batch_id:'actual-batch',call_id:'browser',request_id:'ficc_browser',kind:'BrowserBypass',state:'Pending',captured_generation:4,private_descriptor:'owned browser descriptor',admitted_generation:null,admitted_revision:null,result_digest:null},{session_id:'actual-session',batch_id:'actual-batch',call_id:'protected',request_id:'ficc_protected',kind:'Protected',state:'Pending',captured_generation:4,private_descriptor:'owned protected descriptor',admitted_generation:null,admitted_revision:null,result_digest:null}],batches:[{session_id:'actual-session',batch_id:'actual-batch',state:'Pending',member_count:2,published_revision:38,admitted_generation:null,admitted_revision:null}],invocations:[{session_id:'actual-session',call_id:'protected',state:'Captured',captured_generation:4,descriptor:'owned invocation descriptor',dispatch_generation:null}],effects:[]};
+ const state=structuredClone(published);Object.assign(state.session,{state:'Retired',revision:41,generation:5,payload:null,expires_at:'2000-01-01T00:00:00Z'});for(const row of state.members){row.state='Retired';row.private_descriptor=null;}for(const row of state.batches)row.state='Retired';for(const row of state.invocations)row.descriptor=null;
+ const before={state,runs:[{proxyId:'actual-original-run',input:{threadId:'actual-thread',runId:'actual-public-run'}}],providerCount:1,counts:{'Run.Forward':1,'maintenance-call':1},observerAttempts:[]};
+ const after=structuredClone(before);after.counts['status-read']=1;
+ return {response:{status:410,body:null,bodyText:'',bodyBase64:''},publishedState:published,before,after,beforeWitnesses:[],afterWitnesses:[],controls:[{name:'expire-native-payload',method:'POST',status:200,bodyText:''},{name:'maintain-native',method:'POST',status:200,bodyText:'{"count":1}'}],publicState:{pending:null,localError:'Error: Recovery read failed: 410',error:null}};
+}
+const original=facts();
+
+subject.assertCandidateExpiredRead(original);
+const mutations=[
+ value=>{value.response.status=200;value.response.body={schemaVersion:2,disposition:'Expired',serverRevision:41};},
+ value=>value.response.status=503,
+ value=>value.response.body={},
+ value=>value.response.bodyText='non-JSON entity hidden by parser',
+ value=>value.response.bodyBase64='eA==',
+ value=>value.publicState.pending={id:'invented',toolCalls:[]},
+ value=>{value.publicState.localError=null;value.publicState.error=null;},
+ value=>value.controls.pop(),
+ value=>value.controls[0].status=500,
+ value=>value.controls[1].bodyText='{"count":0}',
+ value=>value.publishedState.session.state='Blocked',
+ value=>{value.before.state.session.revision=40;value.after.state.session.revision=40;},
+ value=>{value.before.state.session.generation=4;value.after.state.session.generation=4;},
+ value=>{value.before.state.session.id='foreign';value.after.state.session.id='foreign';},
+ value=>{value.before.state.session.expires_at='2030-01-01T00:00:00Z';value.after.state.session.expires_at='2030-01-01T00:00:00Z';},
+ value=>{value.before.state.session.state='Expired';value.after.state.session.state='Expired';},
+ ...['payload','token','lease_until','admitted_request'].map(key=>value=>{value.before.state.session[key]='unpurged';value.after.state.session[key]='unpurged';}),
+ value=>{value.before.state.members[0].private_descriptor='unpurged';value.after.state.members[0].private_descriptor='unpurged';},
+ value=>{value.before.state.members[0].state='Pending';value.after.state.members[0].state='Pending';},
+ value=>{value.before.state.members.pop();value.after.state.members.pop();},
+ value=>{value.before.state.batches[0].state='Pending';value.after.state.batches[0].state='Pending';},
+ value=>{value.before.state.invocations[0].descriptor='unpurged';value.after.state.invocations[0].descriptor='unpurged';},
+ value=>value.after.state.effects.push({call_id:'unexpected'}),
+ value=>value.after.providerCount++,
+ value=>value.after.runs.push({proxyId:'unexpected'}),
+ value=>value.after.observerAttempts.push(9),
+ value=>value.after.counts['status-read']=2,
+ value=>delete value.after.counts['status-read'],
+ value=>value.after.counts['Acquire.Start']=1,
+ value=>value.after.counts['Deserialize.Forward']=1,
+ value=>value.after.counts['cold-acquire-success']=1,
+ value=>value.afterWitnesses.push({callId:'unexpected',domain:'handler-return'}),
+];
+for(const mutate of mutations){const changed=facts();mutate(changed);assert.throws(()=>subject.assertCandidateExpiredRead(changed),/410|empty|body|entity|capab|pending|error|expir|retir|purge|lineage|identity|session|member|batch|descriptor|control|maint|status|read|count|stage|state|physical|provider|run|observer|witness|generation|revision|equal/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 test('malformed HTTP completion requires an actual complete entity while aborted readiness waits for its asynchronous fault receipt', () => {
   const output = probe(`
 const {isCandidateMalformedBoundaryReady:ready,assertCandidateProxyIntervention:check}=subject;

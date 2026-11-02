@@ -492,6 +492,298 @@ export interface CandidateUnchangedSnapshot {
   readonly observerAttempts: readonly number[];
 }
 
+/** Actual response, tombstone lineage and independent inert-read witnesses for the maintained expiry fixture. */
+export interface CandidateExpiredReadFacts {
+  readonly response: Readonly<{
+    status: number;
+    body: unknown;
+    bodyText: string;
+    bodyBase64: string;
+  }>;
+  readonly publishedState: unknown;
+  readonly before: CandidateUnchangedSnapshot;
+  readonly after: CandidateUnchangedSnapshot;
+  readonly beforeWitnesses: readonly unknown[];
+  readonly afterWitnesses: readonly unknown[];
+  readonly controls: unknown;
+  readonly publicState: Readonly<{
+    pending: unknown;
+    localError?: unknown;
+    error?: unknown;
+  }>;
+}
+
+/** Checks the actual maintained-expiry recovery response against its retained physical proof. */
+export function assertCandidateExpiredRead(
+  facts: CandidateExpiredReadFacts,
+): void {
+  assert.equal(
+    facts.response.status,
+    410,
+    'Maintained expired recovery must return 410',
+  );
+  assert.equal(
+    facts.response.body,
+    null,
+    'Expired response cannot grant a snapshot or capability',
+  );
+  assert.equal(facts.response.bodyText, '', 'Expired raw entity must be empty');
+  assert.equal(
+    facts.response.bodyBase64,
+    '',
+    'Expired raw entity bytes must be empty',
+  );
+  assert.equal(
+    facts.publicState.pending,
+    null,
+    'Expired public view cannot grant pending authority',
+  );
+  const handled = facts.publicState.localError || facts.publicState.error;
+  assert.ok(
+    (typeof handled === 'string' &&
+      handled.includes('Recovery read failed: 410')) ||
+      (candidateAcceptanceObject(handled) &&
+        typeof handled.message === 'string' &&
+        handled.message.includes('Recovery read failed: 410')),
+    'Actual mounted expired-read error required',
+  );
+  assert.ok(
+    Array.isArray(facts.controls) && facts.controls.length === 2,
+    'Actual expiry and maintenance controls required',
+  );
+  const controls = facts.controls;
+  assert.deepEqual(
+    controls.map((control) => {
+      assert.ok(candidateAcceptanceObject(control));
+      assert.equal(
+        control.method,
+        'POST',
+        'Actual expiry control method differs',
+      );
+      assert.equal(control.status, 200, 'Actual expiry control failed');
+      return control.name;
+    }),
+    ['expire-native-payload', 'maintain-native'],
+    'Actual expiry control lineage differs',
+  );
+  assert.ok(
+    candidateAcceptanceObject(controls[0]) &&
+      candidateAcceptanceObject(controls[1]) &&
+      typeof controls[1].bodyText === 'string',
+  );
+  assert.equal(
+    controls[0].bodyText,
+    '',
+    'Expiry control response must remain empty',
+  );
+  assert.deepEqual(
+    JSON.parse(controls[1].bodyText),
+    { count: 1 },
+    'Actual maintenance must retire the owned expired session',
+  );
+  assert.equal(
+    facts.before.counts['maintenance-call'],
+    1,
+    'Actual maintenance observation required',
+  );
+  const published = facts.publishedState,
+    retired = facts.before.state;
+  assert.ok(
+    candidateAcceptanceObject(published) &&
+      candidateAcceptanceObject(retired) &&
+      candidateAcceptanceObject(published.session) &&
+      candidateAcceptanceObject(retired.session),
+    'Actual published and retired journal lineage required',
+  );
+  const original = published.session,
+    tombstone = retired.session;
+  assert.equal(
+    original.state,
+    'Ready',
+    'Expiry must derive from the actual published Ready session',
+  );
+  assert.ok(
+    typeof original.payload === 'string' &&
+      original.payload.length > 0 &&
+      original.ever_saved === true,
+    'Published saved payload lineage required',
+  );
+  assert.equal(
+    tombstone.state,
+    'Retired',
+    'Maintained expired journal must be Retired',
+  );
+  assert.equal(
+    tombstone.ever_saved,
+    true,
+    'Retired saved lineage must remain recorded',
+  );
+  for (const key of ['id', 'selector', 'agent', 'scope']) {
+    assert.ok(
+      typeof original[key] === 'string' && original[key].length > 0,
+      'Actual session identity required',
+    );
+    assert.equal(
+      tombstone[key],
+      original[key],
+      `Retired session ${key} identity changed`,
+    );
+  }
+  for (const key of ['revision', 'generation']) {
+    assert.ok(
+      Number.isSafeInteger(original[key]) &&
+        Number(original[key]) > 0 &&
+        Number.isSafeInteger(tombstone[key]) &&
+        Number(tombstone[key]) > Number(original[key]),
+      `Retired ${key} must advance from publication`,
+    );
+  }
+  assert.ok(
+    typeof original.expires_at === 'string' &&
+      typeof tombstone.expires_at === 'string' &&
+      Number.isFinite(Date.parse(original.expires_at)) &&
+      Number.isFinite(Date.parse(tombstone.expires_at)) &&
+      Date.parse(tombstone.expires_at) < Date.parse(original.expires_at),
+    'Actual expiry timestamp must move before original payload retention',
+  );
+  for (const key of ['payload', 'token', 'lease_until', 'admitted_request'])
+    assert.equal(tombstone[key], null, `Retired ${key} must be purged`);
+  const rows = (state: Record<string, unknown>, key: string) => {
+    const values = state[key];
+    assert.ok(Array.isArray(values), `Actual ${key} rows required`);
+    return values.map((value) => {
+      assert.ok(candidateAcceptanceObject(value));
+      return value;
+    });
+  };
+  const members = rows(retired, 'members'),
+    originalMembers = rows(published, 'members');
+  const batches = rows(retired, 'batches'),
+    originalBatches = rows(published, 'batches');
+  const invocations = rows(retired, 'invocations'),
+    originalInvocations = rows(published, 'invocations');
+  const compareIds = (
+    current: readonly Record<string, unknown>[],
+    prior: readonly Record<string, unknown>[],
+    key: string,
+    label: string,
+  ) => {
+    assert.ok(prior.length > 0, `Actual published ${label} lineage required`);
+    for (const row of [...current, ...prior])
+      assert.ok(
+        typeof row[key] === 'string' && row[key].length > 0,
+        `Actual ${label} identity required`,
+      );
+    assert.equal(
+      new Set(prior.map((row) => row[key])).size,
+      prior.length,
+      `Distinct published ${label} identities required`,
+    );
+    assert.deepEqual(
+      current.map((row) => row[key]).sort(),
+      prior.map((row) => row[key]).sort(),
+      `Retired ${label} identities changed`,
+    );
+  };
+  compareIds(members, originalMembers, 'call_id', 'member');
+  compareIds(batches, originalBatches, 'batch_id', 'batch');
+  compareIds(invocations, originalInvocations, 'call_id', 'invocation');
+  for (const member of members) {
+    const prior = originalMembers.find((row) => row.call_id === member.call_id);
+    assert.ok(prior);
+    for (const key of [
+      'session_id',
+      'batch_id',
+      'request_id',
+      'kind',
+      'captured_generation',
+    ])
+      assert.equal(
+        member[key],
+        prior[key],
+        `Retired member ${key} lineage changed`,
+      );
+    assert.equal(
+      member.session_id,
+      original.id,
+      'Retired member session differs',
+    );
+    assert.equal(member.state, 'Retired', 'Expired member must be retired');
+    for (const key of [
+      'private_descriptor',
+      'admitted_generation',
+      'admitted_revision',
+      'result_digest',
+    ])
+      assert.equal(
+        member[key],
+        null,
+        `Retired member ${key} authority must be absent`,
+      );
+  }
+  for (const batch of batches) {
+    const prior = originalBatches.find(
+      (row) => row.batch_id === batch.batch_id,
+    );
+    assert.ok(prior);
+    assert.equal(
+      batch.session_id,
+      original.id,
+      'Retired batch session differs',
+    );
+    for (const key of ['member_count', 'published_revision'])
+      assert.equal(
+        batch[key],
+        prior[key],
+        `Retired batch ${key} lineage changed`,
+      );
+    assert.equal(batch.state, 'Retired', 'Expired batch must be retired');
+    assert.equal(
+      batch.admitted_generation,
+      null,
+      'Expired batch cannot retain admitted generation',
+    );
+    assert.equal(
+      batch.admitted_revision,
+      null,
+      'Expired batch cannot retain admitted revision',
+    );
+  }
+  for (const invocation of invocations) {
+    const prior = originalInvocations.find(
+      (row) => row.call_id === invocation.call_id,
+    );
+    assert.ok(prior);
+    assert.equal(
+      invocation.session_id,
+      original.id,
+      'Retired invocation session differs',
+    );
+    for (const key of ['state', 'captured_generation', 'dispatch_generation'])
+      assert.equal(
+        invocation[key],
+        prior[key],
+        `Retired invocation ${key} lineage changed`,
+      );
+    assert.equal(
+      invocation.descriptor,
+      null,
+      'Retired invocation descriptor must be purged',
+    );
+  }
+  assert.deepEqual(
+    retired.effects,
+    published.effects,
+    'Expiry cannot introduce native effects',
+  );
+  assertCandidateUnchangedSnapshot(facts.before, facts.after, 1);
+  assert.deepEqual(
+    facts.afterWitnesses,
+    facts.beforeWitnesses,
+    'Expired read cannot introduce native witnesses',
+  );
+}
+
 /** Requires all original inert-operation facts while keeping any explicit status-read expectation scoped. */
 export function assertCandidateUnchangedSnapshot(
   before: CandidateUnchangedSnapshot,
