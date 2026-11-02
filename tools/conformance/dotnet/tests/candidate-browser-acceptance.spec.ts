@@ -6,6 +6,81 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('retained malformed proof preserves original parser facts but validates every later ACK and lifecycle observation without rollback', () => {
+  const output = probe(`
+const {assertCandidateProxyIntervention:check,refreshCandidateFaultObservation:refresh}=subject;
+const requestId='actual-proxy-request',runId='actual-public-run';
+const frame=value=>Buffer.from('data: '+JSON.stringify(value)+String.fromCharCode(10,10));
+const ack=frame({type:'RUN_STARTED',threadId:'actual-thread',runId});const result=frame({type:'TOOL_CALL_RESULT',toolCallId:'protected',content:'native original'});const changed=Buffer.from(result);changed[6]=33;
+const record=(seq,kind,extra={})=>({seq,kind,requestId,bytes:Buffer.alloc(0),...extra});
+const records=[record(35,'upstream-body',{bytes:ack}),record(36,'upstream-ack'),record(38,'delivered-body',{bytes:ack}),record(39,'downstream-ack-write'),record(40,'upstream-body',{bytes:result}),record(41,'mutation',{reason:'malform-after-upstream-ack'}),record(42,'delivered-body',{bytes:changed}),record(43,'downstream-closed'),record(44,'fault',{reason:'aborted'})];
+const original={scenario:'failure.malformed-ack',requestId,runId,error:{name:'SyntaxError',message:'Actual malformed JSON'},recoveryRequired:true,events:[{type:'RUN_STARTED',runId,requestId:runId,monotonicMs:494.7}],transport:[{kind:'started',requestId:runId,monotonicMs:326.2},{kind:'error',requestId:runId,monotonicMs:507.2},{kind:'disposed',requestId:runId,monotonicMs:507.3}]};
+check({...original,records});
+const duplicateAck={events:[...original.events,{...original.events[0],monotonicMs:508}],transport:[...original.transport],error:null,recoveryRequired:false};
+
+assert.throws(()=>check({...refresh(original,duplicateAck),records}),/ACK|ack|consum|equal/i);
+for(const kind of ['error','disposed']){const latest={events:[...original.events],transport:[...original.transport,{kind,requestId:runId,monotonicMs:508}],error:null,recoveryRequired:false};assert.throws(()=>check({...refresh(original,latest),records}),/error|dispos|lifecycle|request|equal/i);}
+const latest={events:[...original.events,{type:'RUN_STARTED',runId:'unrelated-run',requestId:'unrelated-run',monotonicMs:600}],transport:[...original.transport,{kind:'started',requestId:'unrelated-run',monotonicMs:590}],error:null,recoveryRequired:false};
+const combined=refresh(original,latest);check({...combined,records});assert.deepEqual(combined.events,latest.events);assert.deepEqual(combined.transport,latest.transport);assert.deepEqual(combined.error,original.error);assert.equal(combined.recoveryRequired,true);assert.notEqual(combined.events,original.events);
+for(const changed of [{events:[],transport:original.transport},{events:[{...original.events[0],monotonicMs:493}],transport:original.transport},{events:original.events,transport:original.transport.slice(1)},{events:original.events,transport:original.transport.map((value,index)=>index===0?{...value,requestId:'edited-original-request'}:value)}])assert.throws(()=>refresh(original,changed),/prefix|rollback|drop|original|preserv|equal/i);
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('malformed continuation permits only proven same-request decoder teardown after exact corrupt delivery and downstream close', () => {
+  const output = probe(`
+const check=subject.assertCandidateProxyIntervention;
+const requestId='actual-proxy-request',runId='actual-public-run';
+const frame=value=>Buffer.from('data: '+JSON.stringify(value)+String.fromCharCode(10,10));
+const ack=frame({type:'RUN_STARTED',threadId:'actual-thread',runId});
+const result=frame({type:'TOOL_CALL_RESULT',toolCallId:'protected',content:'{"code":"PDX"}'});
+const changed=Buffer.from(result);changed[6]=33;
+const record=(seq,kind,extra={})=>({seq,kind,requestId,bytes:Buffer.alloc(0),...extra});
+const original={scenario:'failure.malformed-ack',requestId,runId,error:{name:'SyntaxError',message:'Unexpected token ! in actual source JSON'},recoveryRequired:true,records:[record(33,'request'),record(34,'upstream-headers',{status:200}),record(35,'upstream-body',{bytes:ack}),record(36,'upstream-ack'),record(37,'delivered-headers',{status:200}),record(38,'delivered-body',{bytes:ack}),record(39,'downstream-ack-write'),record(40,'upstream-body',{bytes:result}),record(41,'mutation',{reason:'malform-after-upstream-ack'}),record(42,'delivered-body',{bytes:changed}),record(43,'downstream-closed'),record(44,'fault',{reason:'aborted'})],events:[{type:'RUN_STARTED',runId,requestId:runId,monotonicMs:494.7}],transport:[{kind:'started',requestId:runId,monotonicMs:326.2},{kind:'error',requestId:runId,monotonicMs:507.2},{kind:'disposed',requestId:runId,monotonicMs:507.3}]};
+const copy=()=>({...structuredClone(original),records:original.records.map(value=>({...value,bytes:Buffer.from(value.bytes)}))});
+
+check(original);
+check({...original,error:'SyntaxError: Unexpected token ! in actual source JSON'});
+const mutations=[
+ value=>delete value.error,
+ value=>value.error={name:'TypeError',message:'unrelated infrastructure failure'},
+ value=>value.error='Unrelated message containing SyntaxError',
+ value=>value.recoveryRequired=false,
+ value=>value.transport[1].requestId='foreign-public-run',
+ value=>value.events[0].requestId='foreign-public-run',
+ value=>value.transport[2].monotonicMs=500,
+ value=>value.transport[1].monotonicMs=490,
+ value=>value.transport=value.transport.filter(item=>item.kind!=='error'),
+ value=>value.transport=value.transport.filter(item=>item.kind!=='disposed'),
+ value=>value.transport.push({kind:'error',requestId:runId,monotonicMs:507.25}),
+ value=>value.transport.push({kind:'disposed',requestId:runId,monotonicMs:507.4}),
+ value=>value.transport.push({kind:'aborted',requestId:runId,abortSource:'caller',monotonicMs:507.1}),
+ value=>value.transport.push({kind:'deadline',requestId:runId,abortSource:'deadline',monotonicMs:507.1}),
+ value=>value.transport.push({kind:'complete',requestId:runId,monotonicMs:507.4}),
+ value=>value.records=value.records.filter(item=>item.kind!=='downstream-closed'),
+ value=>{value.records.find(item=>item.kind==='fault').seq=42;},
+ value=>{value.records.find(item=>item.kind==='downstream-closed').seq=41;},
+ value=>value.records.push(record(45,'fault',{reason:'aborted'})),
+ value=>value.records.push(record(45,'upstream-body',{bytes:frame({type:'RUN_FINISHED',threadId:'actual-thread',runId})})),
+ value=>value.records.push(record(45,'delivered-body',{bytes:Buffer.from('late')})),
+ value=>{value.records.find(item=>item.kind==='fault').reason='Response byte limit';},
+ value=>{value.records.find(item=>item.kind==='upstream-body').seq=NaN;},
+ value=>value.requestId='foreign-proxy-request',
+ value=>value.scenario='failure.ack-disconnect',
+ value=>{value.records.find(item=>item.kind==='mutation').reason='another-mutation';},
+ value=>value.records=value.records.filter(item=>item.kind!=='mutation'),
+ value=>{value.records.find(item=>item.seq===42).bytes=Buffer.from(result);},
+ value=>{const bytes=value.records.find(item=>item.seq===42).bytes;bytes[bytes.length-3]=33;},
+ value=>{value.records.find(item=>item.seq===38).bytes=Buffer.from('data: {}'+String.fromCharCode(10,10));},
+ value=>{value.records.find(item=>item.seq===40).bytes=Buffer.from(changed);},
+];
+for(const mutate of mutations){const value=copy();mutate(value);assert.throws(()=>check(value),/fault|abort|source|ACK|ack|malform|mutat|byte|deliver|parser|Syntax|error|dispos|request|run|scope|requir|seq|order|close|late|equal|causal/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 test('snapshotless authoritative metadata preserves an inert pre-ACK batch and cannot mint or erase local authority', () => {
   const output = probe(`
 const before={pending:{id:'actual-old-token',serverRevision:6,toolCalls:[{id:'browser',name:'getWeather',arguments:{city:'owned'}}],interrupts:[{id:'ficc_protected',toolCallId:'protected',reason:'tool_call'}]},pendingInterrupts:{id:'warm-token',interrupts:[{id:'ficc_protected'}]},messages:[{id:'user',role:'user',content:'actual history'}],state:{owned:true},recovery:{revision:9,required:true}};

@@ -415,13 +415,201 @@ export interface CandidateFaultObservation {
     kind: string;
     requestId: string;
     reason?: string;
+    seq?: number;
     bytes: Uint8Array;
   }>[];
-  readonly events: readonly Readonly<{ type: string; runId: string }>[];
+  readonly events: readonly Readonly<{
+    type: string;
+    runId: string;
+    requestId?: string;
+    monotonicMs?: number;
+  }>[];
+  readonly error?: unknown;
+  readonly recoveryRequired?: boolean;
   readonly transport: readonly Readonly<{
     kind: string;
     abortSource?: string;
+    requestId?: string;
+    monotonicMs?: number;
   }>[];
+}
+
+/** Combines original parser failure proof with later public iterator/lifecycle observations for retained validation. */
+export function refreshCandidateFaultObservation(
+  original: Omit<CandidateFaultObservation, 'records'>,
+  latest: Pick<CandidateFaultObservation, 'events' | 'transport'>,
+): Omit<CandidateFaultObservation, 'records'> {
+  assert.deepEqual(
+    latest.events.slice(0, original.events.length),
+    original.events,
+    'Latest consumed events must preserve the original prefix without rollback',
+  );
+  assert.deepEqual(
+    latest.transport.slice(0, original.transport.length),
+    original.transport,
+    'Latest lifecycle must preserve the original prefix without rollback',
+  );
+  return { ...original, events: latest.events, transport: latest.transport };
+}
+
+/** Requires exact causal evidence before accepting an upstream abort caused by malformed-frame decoder disposal. */
+function assertCandidateMalformedDisposal(
+  observation: CandidateFaultObservation,
+): void {
+  const records = observation.records.filter(
+    (record) => record.requestId === observation.requestId,
+  );
+  const sequence = (record: (typeof records)[number]) => {
+    const value = record.seq;
+    assert.ok(
+      typeof value === 'number' && Number.isSafeInteger(value) && value > 0,
+      'Actual malformed receipt sequence required',
+    );
+    return value;
+  };
+  for (let index = 0; index < records.length; index++)
+    assert.ok(
+      index === 0 || sequence(records[index - 1]) < sequence(records[index]),
+      'Malformed receipt sequence must remain strictly ordered',
+    );
+  const only = (kind: string) => {
+    const found = records.filter((record) => record.kind === kind);
+    assert.equal(found.length, 1, `Unique malformed ${kind} receipt required`);
+    return found[0];
+  };
+  const fault = only('fault'),
+    close = only('downstream-closed'),
+    mutation = only('mutation'),
+    ackWrite = only('downstream-ack-write');
+  assert.equal(fault.reason, 'aborted', 'Unexpected malformed proxy fault');
+  assert.equal(
+    mutation.reason,
+    'malform-after-upstream-ack',
+    'Actual malformed mutation required',
+  );
+  assert.ok(
+    sequence(ackWrite) < sequence(mutation) &&
+      sequence(mutation) < sequence(close) &&
+      sequence(close) < sequence(fault),
+    'Malformed mutation/closure/fault causal order differs',
+  );
+  const sourceRecords = records.filter(
+    (record) => record.kind === 'upstream-body',
+  );
+  const deliveredRecords = records.filter(
+    (record) => record.kind === 'delivered-body',
+  );
+  for (const record of [...sourceRecords, ...deliveredRecords])
+    assert.ok(
+      sequence(record) < sequence(close),
+      'Late malformed source/delivered bytes after closure',
+    );
+  const source = Buffer.concat(
+    sourceRecords.map((record) => Buffer.from(record.bytes)),
+  );
+  const delivered = Buffer.concat(
+    deliveredRecords.map((record) => Buffer.from(record.bytes)),
+  );
+  const beforeMutation = Buffer.concat(
+    sourceRecords
+      .filter((record) => sequence(record) < sequence(mutation))
+      .map((record) => Buffer.from(record.bytes)),
+  ).toString('utf8');
+  const boundaries = [...beforeMutation.matchAll(/\r?\n\r?\n/g)];
+  assert.ok(
+    boundaries.length >= 2,
+    'Complete genuine postACK frame must precede malformed mutation',
+  );
+  const ackBoundary = boundaries[0];
+  const ackEnd = ackBoundary.index + ackBoundary[0].length;
+  const postEnd = boundaries[1].index;
+  const postFrame = beforeMutation.slice(ackEnd, postEnd);
+  const data = postFrame.indexOf('data:');
+  const opening = data < 0 ? -1 : postFrame.indexOf('{', data + 5);
+  assert.ok(opening >= 0, 'Genuine postACK JSON opening required');
+  JSON.parse(
+    postFrame
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trimStart())
+      .join('\n'),
+  );
+  const offset = Buffer.byteLength(
+    beforeMutation.slice(0, ackEnd) + postFrame.slice(0, opening),
+    'utf8',
+  );
+  assert.ok(
+    delivered.length > offset && delivered.length <= source.length,
+    'Actual malformed delivered source prefix required',
+  );
+  const expected = Buffer.from(source.subarray(0, delivered.length));
+  assert.equal(
+    expected[offset],
+    123,
+    'Actual genuine opening JSON byte required',
+  );
+  expected[offset] = 33;
+  assert.deepEqual(
+    delivered,
+    expected,
+    'Malformed delivery must change exactly one genuine source byte',
+  );
+  let preceding = 0;
+  const corruptDelivery = deliveredRecords.find((record) => {
+    preceding += record.bytes.length;
+    return preceding > offset;
+  });
+  assert.ok(
+    corruptDelivery &&
+      sequence(mutation) < sequence(corruptDelivery) &&
+      sequence(corruptDelivery) < sequence(close),
+    'Corrupt delivered frame must precede downstream closure',
+  );
+  const error = observation.error;
+  assert.ok(
+    (candidateAcceptanceObject(error) &&
+      error.name === 'SyntaxError' &&
+      typeof error.message === 'string' &&
+      error.message.trim().length > 0) ||
+      (typeof error === 'string' && /^SyntaxError: \S[\s\S]*$/.test(error)),
+    'Actual public SyntaxError parser observation required',
+  );
+  assert.equal(
+    observation.recoveryRequired,
+    true,
+    'Actual parser failure must require recovery',
+  );
+  const consumed = observation.events.filter(
+    (event) =>
+      event.type === 'RUN_STARTED' && event.runId === observation.runId,
+  );
+  assert.equal(consumed.length, 1, 'Actual current consumed ACK required');
+  assert.equal(
+    consumed[0].requestId,
+    observation.runId,
+    'Consumed ACK public request identity differs',
+  );
+  const lifecycle = observation.transport.filter(
+    (record) => record.requestId === observation.runId,
+  );
+  assert.deepEqual(
+    lifecycle.map((record) => record.kind),
+    ['started', 'error', 'disposed'],
+    'Actual same-request parser error then disposal required without caller/deadline/complete',
+  );
+  const clock = (value: number | undefined) => {
+    assert.ok(
+      typeof value === 'number' && Number.isFinite(value),
+      'Actual parser lifecycle clock required',
+    );
+    return value;
+  };
+  assert.ok(
+    clock(lifecycle[0].monotonicMs) <= clock(consumed[0].monotonicMs) &&
+      clock(consumed[0].monotonicMs) < clock(lifecycle[1].monotonicMs) &&
+      clock(lifecycle[1].monotonicMs) <= clock(lifecycle[2].monotonicMs),
+    'Consumed ACK/parser error/disposal clock order differs',
+  );
 }
 /** Requires actual per-run mutation/source/delivery/consumedACK evidence and rejects infrastructure faults. */
 export function assertCandidateProxyIntervention(
@@ -540,7 +728,12 @@ export function assertCandidateProxyIntervention(
       'Actual held downstream closure required',
     );
   }
-  for (const fault of records.filter((record) => record.kind === 'fault'))
+  const faults = records.filter((record) => record.kind === 'fault');
+  if (observation.scenario === 'failure.malformed-ack' && faults.length > 0) {
+    assertCandidateMalformedDisposal(observation);
+    return;
+  }
+  for (const fault of faults)
     assert.ok(
       source &&
         fault.reason === 'Held response aborted' &&

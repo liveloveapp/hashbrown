@@ -14,6 +14,7 @@ import {
   finalizeCandidateAcceptance,
   readCandidatePendingBrowserCalls,
   reconcileCandidateBusyReader,
+  refreshCandidateFaultObservation,
 } from './candidate-browser-acceptance';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -2181,18 +2182,39 @@ async function failedAttempt(
     (failed.counts['cold-acquire-success'] ?? 0) -
       (before.counts['cold-acquire-success'] ?? 0),
   ).toBeLessThanOrEqual(1);
+  journey.records.failureAtClosure = {
+    failed,
+    publicState: await journey.status(page),
+    proxy: journey.proxy.records(journey.threadId),
+  };
+  if (journey.record.scenario === 'failure.malformed-ack') {
+    await expect
+      .poll(async () => {
+        const status = await journey.status(page);
+        return (
+          Boolean(status.error) &&
+          ['error', 'disposed'].every((kind) =>
+            status.transport.some(
+              (record) =>
+                record.kind === kind && record.requestId === run.input.runId,
+            ),
+          )
+        );
+      })
+      .toBe(true);
+  }
   const current = await journey.status(page);
   const began = current.events.filter(
     (event) => event.type === 'RUN_STARTED' && event.runId === run.input.runId,
   );
-  assertCandidateProxyIntervention({
-    scenario: journey.record.scenario,
-    requestId: run.proxyId,
-    runId: run.input.runId,
-    records: journey.proxy.records(journey.threadId),
-    events: current.events,
-    transport: current.transport,
-  });
+  const originalFailure = Object.freeze(
+    structuredClone({
+      error: current.error,
+      recoveryRequired: current.recovery.required,
+      events: current.events,
+      transport: current.transport,
+    }),
+  );
   journey.records.ambiguity = {
     before,
     failed,
@@ -2200,8 +2222,17 @@ async function failedAttempt(
     pending,
     consumedAcknowledgements: began,
     lifecycle: current.transport,
+    publicState: current,
+    originalFailure,
     proxy: journey.proxy.records(journey.threadId),
   };
+  assertCandidateProxyIntervention({
+    scenario: journey.record.scenario,
+    requestId: run.proxyId,
+    runId: run.input.runId,
+    records: journey.proxy.records(journey.threadId),
+    ...originalFailure,
+  });
   const beforeRepeat = await journey.snapshot();
   await page.getByTestId('negative-repeat-submit').click();
   expect((await journey.status(page)).lastAction).toBe(
@@ -2276,21 +2307,21 @@ async function failedAttempt(
     }
   }
   const reconciledUi = await journey.status(page);
+  const reconciledObservation = refreshCandidateFaultObservation(
+    {
+      scenario: journey.record.scenario,
+      requestId: run.proxyId,
+      runId: run.input.runId,
+      ...originalFailure,
+    },
+    reconciledUi,
+  );
   assertCandidateProxyIntervention({
-    scenario: journey.record.scenario,
-    requestId: run.proxyId,
-    runId: run.input.runId,
+    ...reconciledObservation,
     records: journey.proxy.records(journey.threadId),
-    events: reconciledUi.events,
-    transport: reconciledUi.transport,
   });
-  journey.finalFaultObservations.push({
-    scenario: journey.record.scenario,
-    requestId: run.proxyId,
-    runId: run.input.runId,
-    events: reconciledUi.events,
-    transport: reconciledUi.transport,
-  });
+  journey.finalFaultObservations.push(reconciledObservation);
+  journey.records.reconciledPublicState = reconciledUi;
   const reread = await journey.snapshot();
   expect(reread.runs).toHaveLength(before.runs.length + 1);
   expect(
