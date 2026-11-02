@@ -19,6 +19,7 @@ import {
   classifyCandidateWarmPhase,
   finalizeCandidateAcceptance,
   isCandidateMalformedBoundaryReady,
+  isCandidateNativeCleanupComplete,
   readCandidatePendingBrowserCalls,
   reconcileCandidateBusyReader,
   refreshCandidateFaultObservation,
@@ -2606,6 +2607,181 @@ async function authoritative(
   journey.stable();
   return response;
 }
+
+/** Waits the exact source-proven owned native contexts before measuring later inert commands. */
+async function waitForCandidateNativeCleanup(
+  journey: Journey,
+  page: Page,
+  run: CapturedRun,
+): Promise<void> {
+  const current = {
+    requestId: run.proxyId,
+    runId: run.input.runId,
+    threadId: journey.threadId,
+    scenarioId: journey.record.id,
+  };
+  const received = () => {
+    const records = journey.proxy.records();
+    return records
+      .filter(
+        (record) => record.kind === 'request' && record.incomingBody.length > 0,
+      )
+      .flatMap((record) => {
+        const input = JSON.parse(
+          record.incomingBody.toString('utf8'),
+        ) as Record<string, unknown>;
+        if (!Array.isArray(input.messages)) return [];
+        assert.equal(record.threadId, input.threadId);
+        const owner = journey.workers.find(
+          (worker) => worker.id === record.workerId,
+        );
+        assert.ok(
+          owner,
+          'Actual request must name a qualified owned native worker',
+        );
+        const scoped = records.filter(
+          (item) => item.requestId === record.requestId,
+        );
+        for (const item of scoped) {
+          assert.equal(
+            item.threadId,
+            record.threadId,
+            'Native boundary thread changed',
+          );
+          assert.equal(
+            item.scenarioId,
+            record.scenarioId,
+            'Native boundary scenario changed',
+          );
+          assert.equal(
+            item.workerId,
+            record.workerId,
+            'Native boundary worker changed',
+          );
+          assert.equal(
+            item.routeEpoch,
+            record.routeEpoch,
+            'Native boundary route epoch changed',
+          );
+        }
+        const headers = scoped.filter(
+          (item) => item.kind === 'upstream-headers',
+        );
+        return [
+          {
+            requestId: record.requestId,
+            runId: input.runId,
+            threadId: input.threadId,
+            scenarioId: record.scenarioId,
+            workerId: record.workerId,
+            routeEpoch: record.routeEpoch,
+            origin: owner.fixture.url,
+            loadedIdentityEvidence: join(journey.root, owner.id + '.json'),
+            upstreamStatus: headers[0]?.status,
+            upstreamHeaderCount: headers.length,
+            sourceAcknowledgementCount: scoped.filter(
+              (item) => item.kind === 'upstream-ack',
+            ).length,
+            sourceBody: Buffer.concat(
+              scoped
+                .filter((item) => item.kind === 'upstream-body')
+                .map((item) => item.bytes),
+            ).toString('utf8'),
+          },
+        ];
+      });
+  };
+  const initialRequests = received();
+  const currentRequest = initialRequests.find(
+    (request) => request.requestId === run.proxyId,
+  );
+  assert.ok(currentRequest, 'Current failed request must be retained');
+  const owner = journey.workers.find(
+    (worker) => worker.id === currentRequest.workerId,
+  );
+  assert.ok(owner);
+  const membership = initialRequests.map((request) => ({
+    requestId: request.requestId,
+    runId: request.runId,
+    threadId: request.threadId,
+    scenarioId: request.scenarioId,
+    workerId: request.workerId,
+    routeEpoch: request.routeEpoch,
+    origin: request.origin,
+    loadedIdentityEvidence: request.loadedIdentityEvidence,
+  }));
+  const allReceived = () =>
+    journey.proxy
+      .records()
+      .filter((record) => record.kind === 'request')
+      .map((record) => ({
+        requestId: record.requestId,
+        threadId: record.threadId,
+        scenarioId: record.scenarioId,
+        workerId: record.workerId,
+        routeEpoch: record.routeEpoch,
+        incomingBodyBase64: record.incomingBody.toString('base64'),
+        forwardedBodyBase64: record.forwardedBody.toString('base64'),
+      }));
+  const receivedMembership = allReceived();
+  const rejections = journey.proxy
+    .records()
+    .filter((record) => record.kind === 'rejected');
+  const capture = async () => {
+    await journey.collect();
+    const publicState = await journey.status(page);
+    return {
+      current,
+      membership,
+      requests: received(),
+      receivedRequests: allReceived(),
+      worker: {
+        id: owner.id,
+        origin: owner.fixture.url,
+        loadedIdentityEvidence: join(journey.root, owner.id + '.json'),
+        counts: { ...owner.stages },
+      },
+      publicState,
+    };
+  };
+  const prefence = await capture();
+  let pollCount = 0;
+  let observations: readonly unknown[] = [];
+  journey.records.nativeCleanup = { prefence, pollCount, observations };
+  await expect
+    .poll(
+      async () => {
+        const facts = await capture();
+        pollCount++;
+        observations = [...observations.slice(-31), facts];
+        journey.records.nativeCleanup = { prefence, pollCount, observations };
+        assert.deepEqual(
+          allReceived(),
+          receivedMembership,
+          'Every received request, including non-run/unbegun reads, must stay unchanged during cleanup',
+        );
+        assert.deepEqual(
+          journey.proxy
+            .records()
+            .filter((record) => record.kind === 'rejected'),
+          rejections,
+          'A new global rejected request cannot disappear during cleanup',
+        );
+        const ready = isCandidateNativeCleanupComplete(facts);
+        if (ready)
+          journey.records.nativeCleanup = {
+            prefence,
+            pollCount,
+            observations,
+            settled: facts,
+          };
+        return ready;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+}
+
 async function failedAttempt(
   journey: Journey,
   page: Page,
@@ -2703,6 +2879,41 @@ async function failedAttempt(
     records: journey.proxy.records(journey.threadId),
     ...originalFailure,
   });
+  await waitForCandidateNativeCleanup(journey, page, run);
+  const afterNativeCleanup = await journey.snapshot();
+  journey.records.nativeCleanupLimits = {
+    before,
+    after: afterNativeCleanup,
+    witnesses: [...journey.witnesses],
+  };
+  expect(afterNativeCleanup.runs).toHaveLength(before.runs.length + 1);
+  expect(
+    afterNativeCleanup.providerCount - before.providerCount,
+  ).toBeLessThanOrEqual(1);
+  expect(
+    afterNativeCleanup.state.effects.length - before.state.effects.length,
+  ).toBeLessThanOrEqual(
+    phase.protected.filter((call) => call.decision === 'approve').length,
+  );
+  expect(
+    (afterNativeCleanup.counts['cold-acquire-success'] ?? 0) -
+      (before.counts['cold-acquire-success'] ?? 0),
+  ).toBeLessThanOrEqual(1);
+  for (const witness of journey.witnesses) {
+    expect(witness.threadId).toBe(journey.threadId);
+    expect(witness.runId).toBe(run.input.runId);
+    expect(phase.protected.some((call) => call.id === witness.callId)).toBe(
+      true,
+    );
+    expect(
+      pending.interrupts.some(
+        (interrupt) =>
+          interrupt.toolCallId === witness.callId &&
+          interrupt.id === witness.requestId,
+      ),
+    ).toBe(true);
+  }
+  journey.stable();
   const beforeRepeat = await journey.snapshot();
   await page.getByTestId('negative-repeat-submit').click();
   expect((await journey.status(page)).lastAction).toBe(

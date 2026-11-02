@@ -1024,3 +1024,72 @@ for(const framework of ['angular','react']){
 
   expect(output.trim()).toBe('passed');
 });
+
+test('native cleanup readiness binds every begun owned run and waits all server teardown witnesses independently of SDK disposal', () => {
+  const output = probe(`
+
+const threadId='actual-thread',scenarioId='failure.cancel-after-ack',workerId='owned-worker';
+const origin='http://127.0.0.1:43101',loadedIdentityEvidence='/owned/worker-proof.json';
+function member(requestId,runId){return {requestId,runId,threadId,scenarioId,workerId,routeEpoch:0,origin,loadedIdentityEvidence};}
+function request(identity){return {...identity,upstreamStatus:200,upstreamHeaderCount:1,sourceAcknowledgementCount:1,sourceBody:'data: '+JSON.stringify({type:'RUN_STARTED',threadId,runId:identity.runId})+'\\n\\n'};}
+function facts(){
+ const membership=[member('proxy-original','original-run'),member('proxy-current','current-run')];
+ return {current:{requestId:'proxy-current',runId:'current-run',threadId,scenarioId},membership,requests:membership.map(request),worker:{id:workerId,origin,loadedIdentityEvidence,counts:{'Original.Raw.Before':2,'Original.Typed.Before':2,'Transport.Typed.Before':2,'Original.Raw.After':2,'Original.Typed.After':2,'Transport.Typed.After':2,'Context.Disposed':2}},publicState:{isLoading:false,isResuming:false,transport:[{kind:'started',requestId:'current-run'},{kind:'aborted',requestId:'current-run'},{kind:'error',requestId:'current-run'},{kind:'disposed',requestId:'current-run'}]}};
+}
+const complete=facts();
+assert.equal(subject.isCandidateNativeCleanupComplete(complete),true);
+assert.deepEqual(complete,facts());
+for(const terminal of ['Original.Raw.After','Original.Typed.After','Transport.Typed.After','Context.Disposed']){
+ const lagging=facts();lagging.worker.counts[terminal]=1;
+ assert.equal(subject.isCandidateNativeCleanupComplete(lagging),false,'Old warm disposal cannot certify both actual contexts');
+ delete lagging.worker.counts[terminal];
+ assert.equal(subject.isCandidateNativeCleanupComplete(lagging),false,'Missing terminal witness is not completion');
+}
+for(const mutate of [v=>v.publicState.isLoading=true,v=>v.publicState.isResuming=true,v=>v.publicState.transport=v.publicState.transport.filter(x=>x.kind!=='disposed')]){
+ const lagging=facts();mutate(lagging);assert.equal(subject.isCandidateNativeCleanupComplete(lagging),false);
+}
+const mutations=[
+ v=>v.requests.push(request(member('late-proxy','late-run'))),
+ v=>v.requests.pop(),
+ v=>v.requests.push(structuredClone(v.requests[1])),
+ v=>v.membership.push(structuredClone(v.membership[1])),
+ v=>v.current.requestId='foreign',
+ v=>v.current.runId='foreign',
+ v=>v.current.threadId='foreign',
+ v=>v.current.scenarioId='foreign',
+ v=>v.requests[1].workerId='foreign-worker',
+ v=>v.worker.id='foreign-worker',
+ v=>v.worker.origin='http://127.0.0.1:43102',
+ v=>v.worker.loadedIdentityEvidence='/foreign/proof.json',
+ v=>v.requests[1].origin='http://127.0.0.1:43102',
+ v=>v.requests[1].loadedIdentityEvidence='/foreign/proof.json',
+ v=>v.requests[1].routeEpoch=1,
+ v=>v.requests[1].upstreamStatus=413,
+ v=>delete v.requests[1].upstreamStatus,
+ v=>v.requests[1].upstreamHeaderCount=2,
+ v=>v.requests[1].sourceAcknowledgementCount=0,
+ v=>v.requests[1].sourceAcknowledgementCount=2,
+ v=>delete v.requests[1].sourceBody,
+ v=>v.requests[1].sourceBody='data: '+JSON.stringify({type:'RUN_STARTED',threadId,runId:'foreign'})+'\\n\\n',
+ v=>v.requests[1].sourceBody='data: '+JSON.stringify({type:'RUN_STARTED',threadId:'foreign',runId:'current-run'})+'\\n\\n',
+ v=>v.requests[1].sourceBody='data: '+JSON.stringify({type:'RUN_FINISHED',threadId,runId:'current-run'})+'\\n\\n',
+ v=>v.requests[1].sourceBody='data: {"type":"RUN_STARTED"',
+ v=>v.requests[1].sourceBody='data: {"type":"RUN_STARTED"}\\n\\n',
+ v=>v.worker.counts['Original.Raw.Before']=3,
+ v=>v.worker.counts['Original.Typed.Before']=1,
+ v=>delete v.worker.counts['Transport.Typed.Before'],
+ v=>v.worker.counts['Context.Disposed']=3,
+ v=>v.worker.counts['Original.Raw.After']=-1,
+ v=>v.worker.counts['Transport.Typed.After']=1.5,
+ v=>v.publicState.transport.push({kind:'disposed',requestId:'current-run'}),
+ v=>v.publicState.transport.at(-1).requestId='foreign',
+];
+for(const mutate of mutations){
+ const changed=facts();mutate(changed);
+ assert.throws(()=>subject.isCandidateNativeCleanupComplete(changed));
+}
+
+`);
+
+  expect(output.trim()).toBe('passed');
+});

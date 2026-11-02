@@ -2949,3 +2949,165 @@ export function assertCandidateRacePublicQualification(value: unknown): void {
     1,
   );
 }
+
+/**
+ * Requires exact source-proven owned native contexts before certifying their cleanup.
+ * Client disposal and a prior warm disposal cannot substitute for server teardown.
+ */
+export function isCandidateNativeCleanupComplete(value: unknown): boolean {
+  const obj = (input: unknown): Record<string, unknown> => {
+    assert.ok(
+      candidateAcceptanceObject(input),
+      'Actual native cleanup object required',
+    );
+    return input;
+  };
+  const arr = (input: unknown): readonly unknown[] => {
+    assert.ok(
+      Array.isArray(input),
+      'Actual native cleanup membership required',
+    );
+    return input;
+  };
+  const text = (input: unknown): string => {
+    assert.ok(
+      typeof input === 'string' && input.length > 0,
+      'Actual native cleanup identity required',
+    );
+    return input;
+  };
+  const facts = obj(value);
+  const current = obj(facts.current);
+  for (const key of ['requestId', 'runId', 'threadId', 'scenarioId'])
+    text(current[key]);
+  const worker = obj(facts.worker);
+  for (const key of ['id', 'origin', 'loadedIdentityEvidence'])
+    text(worker[key]);
+  const membership = arr(facts.membership).map(obj);
+  const requests = arr(facts.requests).map(obj);
+  assert.ok(membership.length > 0);
+  assert.equal(
+    requests.length,
+    membership.length,
+    'Received native run membership changed',
+  );
+  const keys = [
+    'requestId',
+    'runId',
+    'threadId',
+    'scenarioId',
+    'workerId',
+    'routeEpoch',
+    'origin',
+    'loadedIdentityEvidence',
+  ] as const;
+  const identity = (request: Record<string, unknown>) => {
+    const result: Record<string, unknown> = {};
+    for (const key of keys) {
+      const actual = request[key];
+      if (key === 'routeEpoch')
+        assert.ok(
+          typeof actual === 'number' &&
+            Number.isSafeInteger(actual) &&
+            actual >= 0,
+        );
+      else text(actual);
+      result[key] = actual;
+    }
+    return result;
+  };
+  const expected = membership.map(identity);
+  const received = requests.map(identity);
+  assert.deepEqual(
+    received,
+    expected,
+    'Native request identities cannot change while draining',
+  );
+  assert.equal(
+    new Set(expected.map((request) => request.requestId)).size,
+    expected.length,
+  );
+  assert.equal(
+    new Set(expected.map((request) => request.runId)).size,
+    expected.length,
+  );
+  assert.equal(
+    expected.filter(
+      (request) =>
+        request.requestId === current.requestId &&
+        request.runId === current.runId,
+    ).length,
+    1,
+  );
+  for (const request of requests) {
+    assert.equal(request.threadId, current.threadId);
+    assert.equal(request.scenarioId, current.scenarioId);
+    assert.equal(request.workerId, worker.id);
+    assert.equal(request.origin, worker.origin);
+    assert.equal(request.loadedIdentityEvidence, worker.loadedIdentityEvidence);
+    assert.equal(
+      request.upstreamStatus,
+      200,
+      'Only genuinely begun native streams enter this fence',
+    );
+    assert.equal(request.upstreamHeaderCount, 1);
+    assert.equal(request.sourceAcknowledgementCount, 1);
+    const source = text(request.sourceBody);
+    const boundary = /\r?\n\r?\n/.exec(source);
+    assert.ok(boundary, 'A complete actual source ACK frame is required');
+    const frame = source.slice(0, boundary.index);
+    const data = frame
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).replace(/^ /, ''))
+      .join('\n');
+    const acknowledgement = obj(JSON.parse(data));
+    assert.equal(acknowledgement.type, 'RUN_STARTED');
+    assert.equal(acknowledgement.threadId, request.threadId);
+    assert.equal(acknowledgement.runId, request.runId);
+  }
+  const target = membership.length;
+  const counts = obj(worker.counts);
+  for (const count of Object.values(counts))
+    assert.ok(
+      typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
+    );
+  for (const stage of [
+    'Original.Raw.Before',
+    'Original.Typed.Before',
+    'Transport.Typed.Before',
+  ])
+    assert.equal(
+      counts[stage],
+      target,
+      'Every owned begun native context must be accounted for: ' + stage,
+    );
+  let complete = true;
+  for (const stage of [
+    'Original.Raw.After',
+    'Original.Typed.After',
+    'Transport.Typed.After',
+    'Context.Disposed',
+  ]) {
+    const count = counts[stage];
+    if (count === undefined) complete = false;
+    else {
+      assert.ok(
+        typeof count === 'number' && count <= target,
+        'Unexpected extra native teardown: ' + stage,
+      );
+      if (count !== target) complete = false;
+    }
+  }
+  const state = obj(facts.publicState);
+  assert.equal(typeof state.isLoading, 'boolean');
+  assert.equal(typeof state.isResuming, 'boolean');
+  const lifecycle = arr(state.transport).map(obj);
+  for (const event of lifecycle) assert.equal(event.requestId, current.runId);
+  assert.equal(lifecycle.filter((event) => event.kind === 'started').length, 1);
+  const disposed = lifecycle.filter((event) => event.kind === 'disposed');
+  assert.ok(disposed.length <= 1);
+  return (
+    complete && !state.isLoading && !state.isResuming && disposed.length === 1
+  );
+}

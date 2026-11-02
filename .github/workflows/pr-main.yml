@@ -261,6 +261,101 @@ jobs:
         if: always()
         run: docker rm --force hashbrown-postgres-cold || true
 
+  dotnet-source-browser:
+    name: .NET full source browser qualification
+    needs: [ci]
+    if: ${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+      HASHBROWN_DOTNET_HOST_MODE: 'source'
+      NX_NO_CLOUD: 'true'
+      NX_DAEMON: 'false'
+      NX_PARALLEL: '1'
+      PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/dotnet-source-browser/report.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+          cache: true
+          cache-dependency-path: |
+            tools/conformance/dotnet/packages.lock.json
+            packages/dotnet/packages.lock.json
+            tools/conformance/dotnet/global.json
+            packages/dotnet/global.json
+            tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
+
+      - name: Select pinned Playwright cache
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install and check Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
+
+      - name: Start owned source PostgreSQL18
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres-source \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres-source pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres-source
+          exit 1
+
+      - name: Run complete uncached source browser suite
+        run: npx nx provider-e2e dotnet-conformance --skipNxCache --reporter=list,json
+
+      - name: Upload actual source browser inventory and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-source-browser
+          path: |
+            test-results/dotnet-source-browser
+            test-results/conformance/dotnet
+            playwright-report/conformance/dotnet
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Stop owned source PostgreSQL
+        if: always()
+        run: docker rm --force hashbrown-postgres-source || true
+
   targets:
     name: Select deployment targets
     if: >-
@@ -381,7 +476,8 @@ jobs:
   pr-gate:
     name: PR Gate
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-    needs: [ci, targets, preview, candidate-cold-recovery]
+    needs:
+      [ci, targets, preview, candidate-cold-recovery, dotnet-source-browser]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -392,6 +488,7 @@ jobs:
           PREVIEW_RESULT: ${{ needs.preview.result }}
           CANDIDATE_REQUIRED: ${{ needs.ci.outputs.dotnet }}
           CANDIDATE_RESULT: ${{ needs.candidate-cold-recovery.result }}
+          SOURCE_BROWSER_RESULT: ${{ needs.dotnet-source-browser.result }}
         run: |
           if [[ "$CI_RESULT" != "success" ]]; then
             echo "Validation result: $CI_RESULT"
@@ -403,9 +500,17 @@ jobs:
               echo "Required candidate cold recovery result: $CANDIDATE_RESULT"
               exit 1
             fi
+            if [[ "$SOURCE_BROWSER_RESULT" != "success" ]]; then
+              echo "Required full source browser result: $SOURCE_BROWSER_RESULT"
+              exit 1
+            fi
           elif [[ "$CANDIDATE_REQUIRED" == "false" ]]; then
             if [[ "$CANDIDATE_RESULT" != "success" && "$CANDIDATE_RESULT" != "skipped" ]]; then
               echo "Unexpected candidate cold recovery result: $CANDIDATE_RESULT"
+              exit 1
+            fi
+            if [[ "$SOURCE_BROWSER_RESULT" != "success" && "$SOURCE_BROWSER_RESULT" != "skipped" ]]; then
+              echo "Unexpected full source browser result: $SOURCE_BROWSER_RESULT"
               exit 1
             fi
           else

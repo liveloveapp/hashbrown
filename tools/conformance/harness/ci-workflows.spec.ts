@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { parse } from 'yaml';
+import { selectCiSetup } from './ci-selection';
 
 const readWorkflow = (name: string) =>
   parse(readFileSync(`.github/workflows/${name}.yml`, 'utf8'));
@@ -159,6 +160,7 @@ test('ordinary previews and production still await validation and PR Gate requir
     'targets',
     'preview',
     'candidate-cold-recovery',
+    'dotnet-source-browser',
   ]);
   expect(jobs['pr-gate'].steps[0].env.CI_RESULT).toBe('${{ needs.ci.result }}');
   expect(jobs['pr-gate'].steps[0].run).toMatch(
@@ -254,6 +256,7 @@ test('PR aggregate requires actual candidate success exactly when the existing d
           PREVIEW_RESULT: 'skipped',
           CANDIDATE_REQUIRED: required,
           CANDIDATE_RESULT: result,
+          SOURCE_BROWSER_RESULT: 'success',
         },
         stdio: 'pipe',
       });
@@ -287,4 +290,188 @@ test('PR aggregate requires actual candidate success exactly when the existing d
   }
   expect(jobs.preview.needs).toEqual(['ci', 'targets']);
   expect(jobs.production.needs).toEqual(['ci', 'targets']);
+});
+
+test('full source .NET browser qualification has its own selected pinned uncached worker and owned database', () => {
+  const workflow = readWorkflow('pr-main');
+  const job = workflow.jobs['dotnet-source-browser'];
+
+  expect(job).toBeDefined();
+  expect(job.needs).toEqual(['ci']);
+  expect(job.if).toBe(
+    "${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}",
+  );
+  expect(job['runs-on']).toBe('ubuntu-latest');
+  expect(job['timeout-minutes']).toBe(300);
+  expect(job.env).toMatchObject({
+    DOTNET_TEST_POSTGRES: workflow.jobs.ci.env.DOTNET_TEST_POSTGRES,
+    HASHBROWN_DOTNET_HOST_MODE: 'source',
+    NX_NO_CLOUD: 'true',
+    NX_DAEMON: 'false',
+    NX_PARALLEL: '1',
+    PLAYWRIGHT_JSON_OUTPUT_FILE:
+      'test-results/dotnet-source-browser/report.json',
+  });
+  const steps = job.steps as {
+    name?: string;
+    uses?: string;
+    with?: Record<string, unknown>;
+    run?: string;
+    if?: string;
+  }[];
+  expect(
+    steps.find((step) => step.uses === 'actions/checkout@v7')?.with?.[
+      'persist-credentials'
+    ],
+  ).toBe(false);
+  expect(
+    steps.find((step) => step.uses === 'actions/setup-node@v7')?.with?.[
+      'node-version-file'
+    ],
+  ).toBe('.nvmrc');
+  expect(
+    steps.find((step) => step.uses === 'actions/setup-dotnet@v6')?.with?.[
+      'global-json-file'
+    ],
+  ).toBe('tools/conformance/dotnet/global.json');
+  expect(steps.some((step) => step.run === 'npm ci')).toBe(true);
+  const scripts = steps.map((step) => step.run ?? '').join('\n');
+  expect(scripts).toContain('postgres:18');
+  expect(scripts).toContain('--name hashbrown-postgres-source');
+  expect(scripts).toContain(
+    'docker exec hashbrown-postgres-source pg_isready -U postgres',
+  );
+  expect(scripts).toContain('npx playwright install chromium');
+  const sourceRun = steps.find((step) =>
+    step.run?.includes('npx nx provider-e2e'),
+  );
+  expect(sourceRun?.run).toBe(
+    'npx nx provider-e2e dotnet-conformance --skipNxCache --reporter=list,json',
+  );
+  expect(scripts).not.toMatch(
+    /--grep|--project|--shard|--retries|--timeout|--smoke|--pilot|--regressions|live-provider|nx affected/,
+  );
+  const upload = steps.find(
+    (step) => step.uses === 'actions/upload-artifact@v7',
+  );
+  expect(upload?.if).toBe('always()');
+  expect(upload?.with?.name).toBe('dotnet-source-browser');
+  expect(upload?.with?.path).toContain('test-results/dotnet-source-browser');
+  expect(upload?.with?.path).toContain('test-results/conformance/dotnet');
+  expect(upload?.with?.path).toContain('playwright-report/conformance/dotnet');
+  expect(upload?.with?.['if-no-files-found']).toBe('error');
+  expect(
+    steps.some(
+      (step) =>
+        step.if === 'always()' &&
+        step.run?.includes('docker rm --force hashbrown-postgres-source'),
+    ),
+  ).toBe(true);
+  expect(JSON.stringify(job)).not.toMatch(
+    /secrets\.|secrets:|deployments|NX_CLOUD_ACCESS_TOKEN|HASHBROWN_DOTNET_CONSUMER_METADATA|candidate-consumer|prepare-live-consumer/,
+  );
+});
+
+test('actual PR Gate Bash requires both independent .NET results and rejects unknown affected selections', () => {
+  const { jobs } = readWorkflow('pr-main');
+  const step = jobs['pr-gate'].steps[0];
+  const execute = (
+    required: string,
+    candidate: string,
+    source: string,
+    ci = 'success',
+  ) => {
+    try {
+      execFileSync('bash', ['-c', step.run], {
+        env: {
+          PATH: process.env['PATH'],
+          CI_RESULT: ci,
+          TARGETS_RESULT: 'skipped',
+          PREVIEW_RESULT: 'skipped',
+          CANDIDATE_REQUIRED: required,
+          CANDIDATE_RESULT: candidate,
+          SOURCE_BROWSER_RESULT: source,
+        },
+        stdio: 'pipe',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  for (const selection of ['true', 'false', '', 'invalid'])
+    for (const candidate of ['success', 'failure', 'cancelled', 'skipped', ''])
+      for (const source of ['success', 'failure', 'cancelled', 'skipped', '']) {
+        const expected =
+          selection === 'true'
+            ? candidate === 'success' && source === 'success'
+            : selection === 'false' &&
+              ['success', 'skipped'].includes(candidate) &&
+              ['success', 'skipped'].includes(source);
+        expect({
+          selection,
+          candidate,
+          source,
+          passed: execute(selection, candidate, source),
+        }).toEqual({ selection, candidate, source, passed: expected });
+      }
+  expect(step.env.SOURCE_BROWSER_RESULT).toBe(
+    '${{ needs.dotnet-source-browser.result }}',
+  );
+  for (const ci of ['failure', 'cancelled', 'skipped', ''])
+    expect(execute('true', 'success', 'success', ci)).toBe(false);
+});
+
+test('feature dispatch retains full affected graph selection without weakening the eight-project source browser contract', () => {
+  const workflow = readWorkflow('pr-main');
+  const selection = workflow.jobs.ci.steps.find(
+    (step: { id?: string }) => step.id === 'setup',
+  );
+  const config = readFileSync(
+    'tools/conformance/dotnet/dotnet.playwright.config.ts',
+    'utf8',
+  );
+  const project = JSON.parse(
+    readFileSync('tools/conformance/dotnet/project.json', 'utf8'),
+  );
+
+  expect(workflow.on.workflow_dispatch).toBeNull();
+  expect(selection.run).toContain(
+    'npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e,example-e2e,package-pr-acceptance --graph=',
+  );
+  expect(selection.run).toContain('select-ci-setup.ts');
+  expect(workflow.jobs.targets.if).toContain("github.ref == 'refs/heads/main'");
+  expect(workflow.jobs.production.if).toContain(
+    "github.ref == 'refs/heads/main'",
+  );
+  expect(
+    selectCiSetup(['core:build', 'dotnet-conformance:build']),
+  ).toMatchObject({ dotnet: true });
+  expect(selectCiSetup(['core:build', 'www:build'])).toMatchObject({
+    dotnet: false,
+  });
+  expect(
+    selectCiSetup(['dotnet-conformance:package-pr-acceptance']),
+  ).toMatchObject({ dotnet: true, browser: true });
+  expect(project.targets['provider-e2e'].cache).toBe(false);
+  expect(project.targets['provider-e2e'].options.command).toBe(
+    'playwright test --config tools/conformance/dotnet/dotnet.playwright.config.ts',
+  );
+  expect(project.targets['provider-e2e'].dependsOn).toContainEqual({
+    projects: ['runtime-smoke-react', 'runtime-smoke-angular'],
+    target: 'build',
+  });
+  for (const contract of [
+    "testDir: resolve(__dirname, 'specs')",
+    'workers: 1',
+    'retries: 0',
+    'timeout: 30_000',
+    'expect: { timeout: 5_000 }',
+    "['chat-completions', 'responses']",
+    "['react', 'angular']",
+    "['openai', 'azure']",
+  ])
+    expect(config).toContain(contract);
+  expect(config).not.toMatch(/testMatch:|grep:|shard:|fullyParallel: true/);
 });
