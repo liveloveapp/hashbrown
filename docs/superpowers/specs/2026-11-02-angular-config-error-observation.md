@@ -1,6 +1,6 @@
 # Observe actual Angular config errors after scheduler cleanup
 
-Status: independently reviewed fixture correction; the focused actual browser journey passed all four Angular provider/API compositions. Full matrix and integration remain pending. Attempt18 case204 remains retained integration RED.
+Status: independently reviewed fixture correction; the focused actual browser journey passed all eight React/Angular provider/API compositions, including retained actual error/no-work/view evidence. Full matrix and integration remain pending. Attempt18 case204 remains retained integration RED.
 
 ## Evidence and cause
 
@@ -19,3 +19,5 @@ Classification, original error text/stack and epoch are captured before the defe
 The existing actual browser mutation journey must observe the genuine config-error record only after its explicit action, retain zero additional provider/native/browser effects, retire the failed view and perform a genuine read in a new original-config view before settlement. Preserve all372 manifest keys and existing replay/single-use guards. Parent runs source review, focused browser/fixture checks, type/lint and fresh candidate qualification. No new dependency, public API or SDK/Core behavior change.
 
 Retain the actual DOM error record, including epoch and stack, together with independently captured native/provider/observer before/after snapshots and public configuration/pending views before assertions or remount. The no-work assertion remains exact; retained public configuration and pending batch must also remain equal. This packet is evidence from the real SDK error, never a synthesized expected failure.
+
+React's existing error boundary retires the failed subtree and exposes only the genuine exception. Record the actual remaining status-element count and require zero for React; do not attempt to read or reconstruct an unavailable public view. Angular retains the mounted resource: require one status element and compare its actual configuration and pending batch. Select this contract by the known framework, never by a timeout fallback. Both frameworks retain the same actual error and independent native/provider/observer no-work comparisons, then reopen and read before settlement. The earlier unconditional post-error status read failed in attempt19; it remains failed evidence. Verify all eight framework/provider/API combinations before a fresh full matrix.

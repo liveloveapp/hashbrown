@@ -3164,21 +3164,30 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       stack: string;
     };
     const after = await journey.snapshot();
-    const publicAfter = await journey.status(restored.page);
+    const statusElements = await restored.page.getByTestId('status').count();
+    const retainsPublicView = journey.record.composition.startsWith('angular.');
+    const publicAfter = retainsPublicView
+      ? await journey.status(restored.page)
+      : undefined;
     journey.records.pendingConfigurationRejection = {
       failure,
       before,
       after,
       publicBefore,
-      publicAfter,
+      statusElements,
+      ...(publicAfter ? { publicAfter } : {}),
     };
     expect(failure.classification).toBe('config-error');
     expect(failure.epoch).toBeGreaterThan(0);
     expect(failure.error).toMatch(/browser recovery is pending/i);
     expect(failure.stack).toBeTruthy();
     assertCandidateUnchangedSnapshot(before, after, 0);
-    expect(publicAfter.configuration).toEqual(publicBefore.configuration);
-    expect(publicAfter.pending).toEqual(publicBefore.pending);
+    expect(statusElements).toBe(retainsPublicView ? 1 : 0);
+    if (retainsPublicView) {
+      assert.ok(publicAfter, 'Angular retains its actual public resource view');
+      expect(publicAfter.configuration).toEqual(publicBefore.configuration);
+      expect(publicAfter.pending).toEqual(publicBefore.pending);
+    }
     await restored.context.close();
     restored = await journey.open();
     await journey.read(restored.page);
