@@ -1,0 +1,143 @@
+{
+  "week": "2026-11-02",
+  "revision": 7,
+  "authoredAt": "2026-11-01",
+  "design": "Approved logo-free versions of all nine cards. Preserve the light/dark/amber palette, typography, headlines and visuals; remove both footer wordmarks and the author-photo patch.",
+  "assets": [
+    {
+      "key": "mon-x-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/mon-x-web-llms.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local models. Real limits.” November 2026 web LLM update, with Brian Love’s original airport photograph in a rounded frame on an amber background.",
+      "sha256": "1d112f6a617e6e512ddd5f2297d50d95fc24c8ac9d73ea22db6fc5828a4df09a",
+      "bytes": 440624,
+      "provenance": {
+        "type": "original-photo-editorial",
+        "source": "Original IMG_6068.HEIC photograph from photo kit v02; approved logo-free photo treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": false
+      }
+    },
+    {
+      "key": "tue-li-web-llms",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/tue-li-web-llms.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“Tools → One component.” An illustration connects selected tools to one trusted component and reads “Tested in Chrome + WebLLM.” Amber and soft rounded surfaces frame this summary of the bounded tested workflow.",
+      "sha256": "99b59efc6b5c7d37688145937cc2d320e3b97fec3fed13529d978bd32772feb7",
+      "bytes": 65361,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored conceptual diagram of the qualified single-component tool workflows in the November update; approved LLA-inspired amber treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "tue-x-schema-correctness",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/tue-x-schema-correctness.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Valid JSON. Wrong answer.” An illustration asks for 2 but shows valid JSON containing {\"count\":3}. Shape passes while the requested value fails. This authored example is not a captured model result.",
+      "sha256": "320aa412092a253624e9ff2b730ab67be06b887a99390cafbac3bf8d81a0f571",
+      "bytes": 63916,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored schema-versus-values illustration; approved dark LLA/Hashbrown concept",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "wed-x-tool-phases",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/wed-x-tool-phases.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“The app picks the tool.” An illustration lists four structured tool phases: the app selects a tool, the model generates arguments, Hashbrown validates and runs the handler, then the model generates output. Charcoal and amber.",
+      "sha256": "0cb8c867acf66ebe788d2589b736201e3f65988715d125c6d119a953b57b5b88",
+      "bytes": 64544,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram of opt-in application-controlled structured tool phases; current LLA typography and hairline-list treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-li-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/thu-li-workbench.png",
+      "width": 1200,
+      "height": 1500,
+      "altText": "“AI suggests. You apply.” An illustrative generated suggestion uses abstract text lines and a charcoal Accept pill to explain acceptance before an application write. Ivory and brown. This is not a workbench screenshot.",
+      "sha256": "6b4b7aa8f715308fb22a096e86db70027998412399b912f413b9bc9f7e7f28aa",
+      "bytes": 49394,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Approved light acceptance concept; authored abstract illustration of the workbench application-controlled acceptance boundary",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "thu-x-workbench",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/thu-x-workbench.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Preview ≠ Saved.” An illustration separates a preview suggestion from saved application state. An arrow labeled Accept connects the soft ivory preview row to the charcoal application-state row. This explains the acceptance boundary and is not a captured interface.",
+      "sha256": "8d6f02e278a25bd21b33eef2ccd428738f81455c6d8645586a8835bc64ace27e",
+      "bytes": 54751,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored preview-versus-accepted-state diagram in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "fri-x-json-termination",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/fri-x-json-termination.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“One token. Broken JSON.” An illustration shows a title string cut off before the closing quotation mark and object brace, with an amber cursor. It explains JSON termination failure and is not a captured failure log.",
+      "sha256": "9150d6a590e34ccb54a4b6faa716af9609f46d90927d5323ea00add9eab29e59",
+      "bytes": 49870,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored truncation illustration supported by mlc-ai/web-llm PR 876; approved dark technical treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sat-x-small-catalog",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/sat-x-small-catalog.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Start smaller.” An illustrative soft rounded surface reads “One trusted component” and <Panel /> on Hashbrown ivory. It represents a bounded exposed component catalog and is not a measured model output.",
+      "sha256": "871ee515891d0bfa8e2b65f031af7862117199957d5d198005f5c15ac6bb3be3",
+      "bytes": 44047,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored bounded-component-catalog illustration in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    },
+    {
+      "key": "sun-x-local-network",
+      "url": "https://hashbrown.dev/marketing/2026-11-02/v7/sun-x-local-network.png",
+      "width": 1200,
+      "height": 1200,
+      "altText": "“Local ≠ offline.” An illustration places inference on the device and connects the app to tools, images and telemetry paths that may still use the network. Ivory and brown.",
+      "sha256": "81947d64379e76d9bb60e48adcb6563c74b819117d44006e045f6d3a27bc03ef",
+      "bytes": 51799,
+      "provenance": {
+        "type": "explanatory-illustration",
+        "source": "Authored diagram separating local inference from application network paths, in the approved light LLA/Hashbrown treatment",
+        "treatment": "Approved logo-free LLA-inspired composition with Hashbrown palette. No footer wordmarks, LLA patch or generic illustration captions. Original photograph and explanatory diagrams retain accurate alt text and source metadata.",
+        "illustrative": true
+      }
+    }
+  ]
+}
