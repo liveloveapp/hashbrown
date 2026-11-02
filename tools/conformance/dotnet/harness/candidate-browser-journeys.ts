@@ -8,6 +8,7 @@ import {
   assertCandidateProxyIntervention,
   assertCandidateReadAdoption,
   assertCandidateUnchangedSnapshot,
+  assertCandidateUnknownEffectLocalState,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
   type CandidateWarmPhaseCounters,
@@ -2877,6 +2878,17 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
     await restored.page.getByTestId('submit').click();
     await journey.barrier(stage);
     const held = await journey.snapshot();
+    const unknownRun = journey.runs().at(-1);
+    assert.ok(
+      unknownRun && typeof unknownRun.input.runId === 'string',
+      'Actual unknown-effect continuation run required',
+    );
+    journey.records.unknownEffectCrash = {
+      stage,
+      held,
+      run: unknownRun,
+      originalPending: pending,
+    };
     expect(
       held.state.invocations.find(
         (call) => call.call_id === current.protected[0].id,
@@ -2886,31 +2898,134 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       stage === 'effect-persisted' ? 1 : 0,
     );
     await journey.stop(journey.active);
+    journey.records.unknownEffectAfterStop = {
+      publicState: await journey.status(restored.page),
+      proxy: journey.proxy.records(journey.threadId),
+      nativeWitnesses: [...journey.witnesses],
+    };
+    await expect
+      .poll(
+        async () => {
+          const status = await journey.status(restored.page);
+          const lifecycle = status.transport.filter(
+            (record) => record.requestId === unknownRun.input.runId,
+          );
+          return (
+            status.recovery.required &&
+            !status.isLoading &&
+            !status.isResuming &&
+            lifecycle.some((record) => record.kind === 'disposed') &&
+            lifecycle.some((record) =>
+              ['error', 'aborted', 'deadline', 'complete'].includes(
+                record.kind,
+              ),
+            )
+          );
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const retiredLocal = await journey.status(restored.page);
+    journey.records.unknownEffectAfterKill = {
+      stage,
+      held,
+      run: unknownRun,
+      originalPending: pending,
+      publicState: retiredLocal,
+      proxy: journey.proxy.records(journey.threadId),
+      nativeWitnesses: [...journey.witnesses],
+    };
+    assertCandidateUnknownEffectLocalState({
+      runId: unknownRun.input.runId,
+      originalPending: pending,
+      status: retiredLocal,
+    });
     const peer = await journey.start();
     journey.script(peer, current);
     await journey.switch(peer);
     await journey.control('expire-native-lease');
     await journey.control('maintain-native');
+    const beforeRead = await journey.snapshot();
+    const witnessesBeforeRead = [...journey.witnesses];
+    journey.records.unknownEffectReadStart = {
+      before: beforeRead,
+      witnessesBeforeRead,
+      publicState: await journey.status(restored.page),
+    };
     const response = await authoritative(journey, restored.page);
+    const afterRead = await journey.snapshot();
+    const witnessesAfterRead = [...journey.witnesses];
+    journey.records.unknownEffectRead = {
+      response,
+      before: beforeRead,
+      after: afterRead,
+      witnessesBeforeRead,
+      witnessesAfterRead,
+      publicState: await journey.status(restored.page),
+    };
     assert.ok(object(response.body));
     expect(response.body.disposition).toBe('UnknownEffect');
-    expect((await journey.status(restored.page)).pending).toBeNull();
-    const blockedState = await journey.snapshot();
-    await restored.page.getByTestId('negative-repeat-submit').click();
-    await journey.unchanged(blockedState);
+    expect(response.body.snapshot).toBeUndefined();
+    assertCandidateUnchangedSnapshot(beforeRead, afterRead, 1);
+    expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+    assertCandidateUnknownEffectLocalState({
+      runId: unknownRun.input.runId,
+      originalPending: pending,
+      status: await journey.status(restored.page),
+    });
+    const blockedState = afterRead;
+    for (const action of ['negative-repeat-submit', 'negative-send']) {
+      await restored.page.getByTestId(action).click();
+      expect((await journey.status(restored.page)).lastAction).toBe(
+        action === 'negative-repeat-submit'
+          ? 'negative-repeat-submit:resumeConversationRecovery'
+          : 'negative-send',
+      );
+      await expect
+        .poll(async () =>
+          Boolean((await journey.status(restored.page)).localError),
+        )
+        .toBe(true);
+      await journey.unchanged(blockedState);
+      expect(journey.witnesses).toEqual(witnessesAfterRead);
+      journey.stable();
+    }
     const fresh = await journey.open();
+    const beforeFreshRead = await journey.snapshot();
+    const witnessesBeforeFreshRead = [...journey.witnesses];
     const newRead = await authoritative(journey, fresh.page, false);
+    const afterFreshRead = await journey.snapshot();
+    journey.records.unknownEffectFreshRead = {
+      response: newRead,
+      before: beforeFreshRead,
+      after: afterFreshRead,
+      witnessesBefore: witnessesBeforeFreshRead,
+      witnessesAfter: [...journey.witnesses],
+      publicState: await journey.status(fresh.page),
+    };
     assert.ok(object(newRead.body));
     expect(newRead.body.disposition).toBe('UnknownEffect');
+    expect(newRead.body.snapshot).toBeUndefined();
     expect((await journey.status(fresh.page)).pending).toBeNull();
+    assertCandidateUnchangedSnapshot(beforeFreshRead, afterFreshRead, 1);
+    expect(journey.witnesses).toEqual(witnessesBeforeFreshRead);
+    journey.stable();
     const final = await journey.snapshot();
     expect(final.state.effects).toEqual(held.state.effects);
+    expect(final.runs).toHaveLength(before.runs.length + 1);
     expect(
       (final.counts['cold-acquire-success'] ?? 0) -
         (before.counts['cold-acquire-success'] ?? 0),
     ).toBe(1);
     expect(final.providerCount - before.providerCount).toBe(0);
-    journey.records.unknownEffect = { held, final, stage };
+    journey.records.unknownEffect = {
+      held,
+      final,
+      stage,
+      retiredLocal,
+      response,
+      newRead,
+    };
     return;
   }
   if (id.startsWith('failure.')) {

@@ -6,6 +6,39 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('unknown-effect local claim accepts both actual ACK timings while requiring retired inert SDK state and original pending identity', () => {
+  const output = probe(`
+const runId='actual-current-run';
+function facts(){const pending={id:'actual-old-token',serverRevision:6,toolCalls:[{id:'current-browser-1',name:'getWeather',arguments:{city:'Owned current city 1'}}],interrupts:[{id:'ficc_current-protected-1',reason:'tool_call',message:'Approval required for tool call: lookupAirport',toolCallId:'current-protected-1',responseSchema:{type:'object',properties:{approved:{type:'boolean'}},required:['approved']}}]};return {runId,originalPending:pending,status:{pending:structuredClone(pending),recovery:{required:true},isLoading:false,isResuming:false,events:[],transport:[{kind:'started',requestId:runId},{kind:'error',requestId:runId},{kind:'disposed',requestId:runId}]}};}
+
+subject.assertCandidateUnknownEffectLocalState(facts());
+for(const kind of ['aborted','deadline']){const value=facts();value.status.transport.splice(1,0,{kind,requestId:runId,abortSource:kind==='deadline'?'deadline':'caller'});subject.assertCandidateUnknownEffectLocalState(value);}
+const acked=facts();acked.status.events.push({type:'RUN_STARTED',runId,requestId:runId});acked.status.pending=null;subject.assertCandidateUnknownEffectLocalState(acked);
+for(const original of [facts(),structuredClone(acked)]){
+ const completed=structuredClone(original);completed.status.transport=[{kind:'started',requestId:runId},{kind:'disposed',requestId:runId},{kind:'complete',requestId:runId}];
+ subject.assertCandidateUnknownEffectLocalState(completed);
+ for(const mutate of [value=>value.status.transport=[{kind:'started',requestId:runId},{kind:'complete',requestId:runId},{kind:'disposed',requestId:runId}],value=>value.status.transport.push({kind:'complete',requestId:runId}),value=>value.status.transport.push({kind:'disposed',requestId:runId}),value=>value.status.transport[2].requestId='foreign-completion',value=>value.status.transport[1].requestId='foreign-disposal',value=>value.status.transport=value.status.transport.filter(record=>record.kind!=='complete'),value=>value.status.transport=value.status.transport.filter(record=>record.kind!=='disposed')]){const changed=structuredClone(completed);mutate(changed);assert.throws(()=>subject.assertCandidateUnknownEffectLocalState(changed),/complet|dispos|lifecycle|request|settle|retir|order|equal/i);}
+}
+const mutations=[
+ value=>value.status.recovery.required=false,
+ value=>value.status.isLoading=true,
+ value=>value.status.isResuming=true,
+ value=>value.status.transport=value.status.transport.filter(record=>record.kind!=='disposed'),
+ value=>value.status.transport[2].requestId='foreign-request',
+ value=>value.status.transport=value.status.transport.filter(record=>record.kind!=='error'),
+ value=>value.status.pending.id='changed-pending-token',
+ value=>value.status.pending.toolCalls[0].arguments.city='changed arguments',
+ value=>value.status.pending.interrupts=[],
+ value=>value.originalPending.id='changed-original-token',
+ value=>value.status.pending=null,
+];
+for(const mutate of mutations){const value=facts();mutate(value);assert.throws(()=>subject.assertCandidateUnknownEffectLocalState(value),/unknown|ACK|ack|requir|idle|load|resum|dispos|retir|lifecycle|pending|original|identity|error|settle|equal/i);}
+for(const mutate of [value=>value.status.events.push({...value.status.events[0]}),value=>value.status.events[0].requestId='foreign-request',value=>value.status.events[0].runId='foreign-run',value=>value.status.pending=structuredClone(value.originalPending)]){const value=structuredClone(acked);mutate(value);assert.throws(()=>subject.assertCandidateUnknownEffectLocalState(value),/ACK|ack|identity|request|run|pending|equal/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 test('maintained expiry requires exact empty410 joined to the retired purged lineage and one inert status read', () => {
   const output = probe(`
 function facts(){

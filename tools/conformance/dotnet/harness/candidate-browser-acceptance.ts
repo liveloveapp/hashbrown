@@ -435,6 +435,116 @@ export interface CandidateFaultObservation {
   }>[];
 }
 
+/** Actual old mounted facade state after an interrupted unknown-effect continuation. */
+export interface CandidateUnknownEffectFacts {
+  readonly runId: string;
+  readonly originalPending: unknown;
+  readonly status: Readonly<{
+    pending: unknown;
+    recovery: Readonly<{ required: boolean }>;
+    isLoading: boolean;
+    isResuming: boolean;
+    events: readonly Readonly<{
+      type: string;
+      runId: string;
+      requestId?: string;
+    }>[];
+    transport: readonly Readonly<{ kind: string; requestId: string }>[];
+  }>;
+}
+
+/** Validates the retired local unknown-effect claim using actual consumed ACK observations. */
+export function assertCandidateUnknownEffectLocalState(
+  facts: CandidateUnknownEffectFacts,
+): void {
+  const { status, runId, originalPending } = facts;
+  assert.ok(
+    typeof runId === 'string' && runId.length > 0,
+    'Actual unknown-effect run identity required',
+  );
+  assert.ok(
+    candidateAcceptanceObject(originalPending) &&
+      typeof originalPending.id === 'string' &&
+      originalPending.id.length > 0,
+    'Actual original pending identity required',
+  );
+  assert.equal(
+    status.recovery.required,
+    true,
+    'UnknownEffect must retain the required recovery barrier',
+  );
+  assert.equal(
+    status.isLoading,
+    false,
+    'UnknownEffect SDK must be idle after retirement',
+  );
+  assert.equal(
+    status.isResuming,
+    false,
+    'UnknownEffect SDK resume claim must be retired',
+  );
+  const lifecycle = status.transport.filter(
+    (record) => record.requestId === runId,
+  );
+  const disposed = lifecycle.filter((record) => record.kind === 'disposed');
+  assert.equal(disposed.length, 1, 'Actual current SDK disposal required');
+  const disposalIndex = lifecycle.indexOf(disposed[0]);
+  if (lifecycle.some((record) => record.kind === 'complete')) {
+    assert.deepEqual(
+      lifecycle.map((record) => record.kind),
+      ['started', 'disposed', 'complete'],
+      'Actual current completed lifecycle must dispose before its unique completion',
+    );
+  } else {
+    assert.ok(
+      lifecycle.some(
+        (record, index) =>
+          index < disposalIndex &&
+          ['error', 'aborted', 'deadline'].includes(record.kind),
+      ),
+      'Actual current transport settlement must precede disposal',
+    );
+    assert.equal(
+      disposalIndex,
+      lifecycle.length - 1,
+      'Retired current lifecycle cannot resume after disposal',
+    );
+  }
+  const acknowledgements = status.events.filter(
+    (event) =>
+      event.type === 'RUN_STARTED' &&
+      (event.runId === runId || event.requestId === runId),
+  );
+  assert.ok(
+    acknowledgements.length <= 1,
+    'UnknownEffect consumed ACK must be unique',
+  );
+  for (const acknowledgement of acknowledgements) {
+    assert.equal(
+      acknowledgement.runId,
+      runId,
+      'Consumed ACK run identity differs',
+    );
+    assert.equal(
+      acknowledgement.requestId,
+      runId,
+      'Consumed ACK request identity differs',
+    );
+  }
+  if (acknowledgements.length === 1)
+    assert.equal(
+      status.pending,
+      null,
+      'ACKed unknown-effect pending must be cleared',
+    );
+  else
+    assert.deepEqual(
+      status.pending,
+      originalPending,
+      'PreACK unknown-effect pending must preserve the exact original inert batch',
+    );
+}
+
 /** Reports whether actual scoped receipts have reached the malformed-run validation boundary. */
 export function isCandidateMalformedBoundaryReady(
   records: CandidateFaultObservation['records'],
