@@ -56,6 +56,10 @@ export function useStructuredCompletionWithMessage<
         > =>
           message.role === 'assistant' &&
           !(message.toolCalls && message.toolCalls.length) &&
+          !(
+            message.content === '' &&
+            message.serverToolCalls?.some((call) => call.kind !== 'provider')
+          ) &&
           message.content !== null &&
           message.content !== undefined,
       ) ?? null,

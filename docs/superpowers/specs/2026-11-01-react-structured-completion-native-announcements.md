@@ -1,6 +1,6 @@
 # React Structured Completion Native Announcements
 
-Status: independently reviewed and implemented. Five maintained regressions failed meaningfully before the selector correction and pass afterward. React build, all 253 tests in 22 files, lint (10 existing warnings, no errors), API report and four e2e tests pass. Fresh artifact/full-matrix qualification remains pending; no full-matrix result is claimed.
+Status: independently reviewed and implemented. The browser-tool correction passed its initial five maintained regressions. The separate-server amendment then produced four meaningful failures in 13 focused tests before its narrow correction. All 13 focused tests, all 258 React tests in 22 files, build, lint (10 existing warnings, no errors), API report and four e2e tests pass. Fresh artifact/full-matrix qualification remains pending; no full-matrix result is claimed.
 
 ## Problem and decision
 
@@ -27,3 +27,16 @@ Files: all tests, including the actual unmocked UI-hook integration, in packages
 - [x] Root runs focused hook tests and records meaningful selector RED separately from type/fixture setup failures. No implementation before release.
 - [x] Apply only the nonempty-toolCalls candidate exclusion after reviewed RED. Root runs focused GREEN, all five affected React gates (build/test/lint/API/e2e), independent SPEC/QUALITY rereviews and source binding checks. No other package source patch is anticipated.
 - [ ] Root preserves the prior bounded 12-stage Pydantic qualification (none of its 44 selected source inputs changed in this selector slice), refreshes both source-candidate artifacts and all20 isolation controls, then actual exact all372. All rows remain required; earlier partial runs remain failures. No publication is authorized by this correction.
+
+
+## Separate native server-announcement amendment
+
+Responses can publish browser and protected calls in distinct assistant parents. Core keeps unregistered native/server calls in existing display-only serverToolCalls, leaving regular toolCalls empty on a protected-only parent. The narrow repaired boundary is EXACT empty content plus a serverToolCalls entry whose kind is not provider: skip only content === '' && serverToolCalls.some(call => call.kind !== 'provider'). Keep the existing registered-browser toolCalls exclusion unchanged, first eligible ordering, defined/non-null content checks and legitimate no-server empty-string answers.
+
+Actual attempt16 consumed valid schema JSON/current success but exposed output:"" from an empty protected-only parent. Canonical split-parent Completed, Pending explicit browser-null/protected-decline continuation and trusted UI restore regressions must derive serverToolCalls from real Core calls/results, never fabricated public messages. Keep stable fixture transports/tools/schemas. Wire/IDs/arguments/history, Core/Angular/public signatures and all372 cases remain unchanged. Verification and fresh qualification remain required.
+
+## Provider and nonempty server-associated answer preservation
+
+Provider builtin events and ordinary function events can share the actual assistant ID with a genuine parsed final answer. Do not blanket-exclude serverToolCalls, even for a non-provider or unclassified entry. ALL nonempty parsed server-associated answers remain eligible under existing first-answer behavior. Existing b4.step v1 kind:provider/builtin:web_search metadata is optional display data; an absent public kind is not a reason to discard nonempty answer content. This amendment is a narrow empty-announcement view boundary, not a promise of universal server/provider classification or a new metadata API.
+
+Real mounted typed-event controls preserve a nonempty structured/UI answer on its same provider-associated ID, including true statusless b4.step metadata {v:1,kind:provider,builtin:web_search} and entirely absent normalized metadata; structured controls assert actual Core-derived serverToolCall.kind is absent and true statusless raw metadata remains intact. Mixed provider/native nonempty answer content stays eligible before later answers, while an exact-empty mixed announcement yields to the later actual answer. Known provider-only attached content remains supported. Existing split-native, first-answer, nested falsy and legitimate no-server root-empty-string controls remain required. No production predicate change precedes revised focused RED and SPEC/QUALITY approval.
