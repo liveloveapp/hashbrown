@@ -2788,7 +2788,22 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
         ),
       async () => {
         const beforeRead = await journey.snapshot();
+        const witnessesBeforeRead = [...journey.witnesses];
+        journey.records.busyReadStart = {
+          before: beforeRead,
+          witnessesBeforeRead,
+          publicState: await journey.status(blockedPage.page),
+        };
         const response = await authoritative(journey, blockedPage.page);
+        const afterRead = await journey.snapshot();
+        const witnessesAfterRead = [...journey.witnesses];
+        journey.records.busyReconciled = {
+          response,
+          before: beforeRead,
+          after: afterRead,
+          witnessesBeforeRead,
+          witnessesAfterRead,
+        };
         assert.ok(object(response.body));
         expect(response.body.disposition).toBe('Completed');
         expect(
@@ -2798,12 +2813,9 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
               message.content === 'Candidate complete',
           ),
         ).toBe(true);
-        await journey.unchanged(beforeRead);
-        journey.records.busyReconciled = {
-          response,
-          before: beforeRead,
-          after: await journey.snapshot(),
-        };
+        assertCandidateUnchangedSnapshot(beforeRead, afterRead, 1);
+        expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+        journey.stable();
       },
     );
     return;
