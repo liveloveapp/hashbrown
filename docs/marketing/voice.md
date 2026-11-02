@@ -25,6 +25,10 @@ He says what he did or found, names the specific thing, and gives a plain verdic
 
 Every X and LinkedIn post includes one screenshot or thumbnail and accurate alt text. Use the real workbench or code when the post explains behavior. Use a branded explanatory diagram when a screenshot would obscure the point. Show the image in weekly review. Keep provenance clear: an illustrative diagram is not a measured model result.
 
+Every visible element must help the reader understand the message or recognize the brand. Remove unnecessary eyebrows, bylines, captions and decoration. Do not add a generic “Illustration” label to a social card. Describe explanatory graphics accurately in alt text and review metadata; keep visible annotations only when they help explain the subject.
+
+Default to logo-free social cards. Let the headline and supporting visual lead; keep continuity through palette, typography and composition. Do not add studio or product wordmarks, patches or stamps simply to fill a footer.
+
 ## The voice check
 
 A deterministic check runs on every draft, in `draft-week` and after every edit in review. It covers banned words and phrases, em dashes, hashtags, emoji count, channel length limits, link rules per channel, and "sources present". It reports problems and does not rewrite.
