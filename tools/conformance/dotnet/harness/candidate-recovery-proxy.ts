@@ -394,6 +394,8 @@ export async function startCandidateRecoveryProxy(
       if (response.headersSent) return;
       for (const [name, value] of Object.entries(headers))
         if (value !== undefined) response.setHeader(name, value);
+      // Fresh downstream sockets keep injected empty responses from replaying on reused connections.
+      response.setHeader('Connection', 'close');
       response.writeHead(status);
       await append({
         kind: 'delivered-headers',

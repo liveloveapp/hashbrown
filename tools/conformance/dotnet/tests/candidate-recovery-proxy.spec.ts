@@ -1,6 +1,7 @@
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import {
+  Agent,
   createServer,
   type IncomingMessage,
   request,
@@ -454,6 +455,85 @@ test('candidate proxy drained disconnect cannot mutate after consumed ACK withou
 
 test('candidate proxy drained malformed stream cannot mutate after consumed ACK without parent release', async () => {
   await assertNoPostAckMutationWithoutRelease('malform-after-upstream-ack');
+});
+
+test('candidate proxy closes each downstream response so a keepalive client uses a fresh socket for its next request', async () => {
+  let reads = 0;
+  await withUpstream(
+    async (worker) =>
+      withProxy(worker, async (proxy) => {
+        const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+        const read = () =>
+          new Promise<{
+            localPort: number;
+            connection: string | undefined;
+            body: Buffer;
+          }>((resolve, reject) => {
+            const outgoing = request(
+              `${proxy.origin}${recoveryPath}`,
+              {
+                method: 'POST',
+                agent,
+                headers: {
+                  Origin: origin,
+                  'Content-Type': 'application/json',
+                  'Content-Length': '2',
+                  'X-Fixture-Principal': 'alice',
+                },
+              },
+              (response) => {
+                const localPort = response.socket.localPort;
+                if (typeof localPort !== 'number') {
+                  reject(new Error('Actual client socket local port required'));
+                  response.resume();
+                  return;
+                }
+                const chunks: Buffer[] = [];
+                response.on('data', (chunk: Buffer) =>
+                  chunks.push(Buffer.from(chunk)),
+                );
+                response.once('error', reject);
+                response.once('end', () =>
+                  resolve({
+                    localPort,
+                    connection: response.headers.connection,
+                    body: Buffer.concat(chunks),
+                  }),
+                );
+              },
+            );
+            outgoing.once('error', reject);
+            outgoing.setTimeout(5000, () =>
+              outgoing.destroy(new Error('Owned sequential read timeout')),
+            );
+            outgoing.end('{}');
+          });
+
+        try {
+          const first = await read();
+          const second = await read();
+
+          expect(JSON.parse(first.body.toString('utf8'))).toEqual({ read: 1 });
+          expect(JSON.parse(second.body.toString('utf8'))).toEqual({ read: 2 });
+          expect(second.localPort).not.toBe(first.localPort);
+          expect(first.connection).toBe('close');
+          expect(second.connection).toBe('close');
+          expect(reads).toBe(2);
+          expect(
+            proxy
+              .records(threadId)
+              .filter((record) => record.kind === 'request'),
+          ).toHaveLength(2);
+        } finally {
+          agent.destroy();
+        }
+      }),
+    async (incoming, response) => {
+      await bytes(incoming);
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ read: ++reads }));
+    },
+  );
 });
 
 /** Consumes an upstream body before assertions about forwarding. */
