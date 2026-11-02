@@ -391,7 +391,8 @@ export class CandidateFrameworkErrors implements ErrorHandler {
   /** Angular supplies the actual effect/bootstrap exception; no synthetic rejection is created. */
   handleError(error: unknown): void {
     const failure = candidateFrameworkError(error);
-    this.failure.set(failure);
     finishCandidateConfigAction(failure.epoch ?? undefined);
+    // Angular invokes this during the failed tick; publish after its scheduler cleanup.
+    queueMicrotask(() => this.failure.set(failure));
   }
 }

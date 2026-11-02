@@ -3152,6 +3152,7 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
     ])
       await localNegative(journey, restored.page, action);
     const before = await journey.snapshot();
+    const publicBefore = await journey.status(restored.page);
     await restored.page.getByTestId('negative-config').click();
     await expect(restored.page.getByTestId('config-error')).toBeVisible();
     const failure = JSON.parse(
@@ -3162,11 +3163,22 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       error: string;
       stack: string;
     };
+    const after = await journey.snapshot();
+    const publicAfter = await journey.status(restored.page);
+    journey.records.pendingConfigurationRejection = {
+      failure,
+      before,
+      after,
+      publicBefore,
+      publicAfter,
+    };
     expect(failure.classification).toBe('config-error');
     expect(failure.epoch).toBeGreaterThan(0);
     expect(failure.error).toMatch(/browser recovery is pending/i);
     expect(failure.stack).toBeTruthy();
-    await journey.unchanged(before);
+    assertCandidateUnchangedSnapshot(before, after, 0);
+    expect(publicAfter.configuration).toEqual(publicBefore.configuration);
+    expect(publicAfter.pending).toEqual(publicBefore.pending);
     await restored.context.close();
     restored = await journey.open();
     await journey.read(restored.page);

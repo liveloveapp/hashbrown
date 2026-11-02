@@ -10,6 +10,8 @@
 
 ---
 
+**Historical completion:** This milestone shipped in [PR #868](https://github.com/liveloveapp/hashbrown/pull/868). The [published-package qualification record](../research/2026-10-31-dotnet-public-live-qualification.md) records the actual 54 live cases, three preflights and package provenance. Merged-main CI, deployment and production docs were verified before starting pending-browser recovery. The original checklist below is retained as the implementation plan; it does not request another paid live run or imply that unreleased recovery APIs exist in the published binaries.
+
 ### Task 1: Public package selection and provenance
 
 Files: `tools/conformance/dotnet/harness/live-runner.ts`, new focused `harness/live-package.ts` if useful, `tests/live-runner.spec.ts`, new `tests/live-package.spec.ts`, and `test-suites.ts` when needed.

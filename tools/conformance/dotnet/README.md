@@ -543,9 +543,13 @@ consumption/dispatch fences survive. Custom journals define their own maintenanc
 
 Completion-family qualification must preserve the current thread until recovered settlement and Completed restoration finish. Completion, structured completion and UI completion replace input history, so the next independent prediction must first prove that replacement on the original native thread receives an actual 400, then use the visible New thread control to supply a fresh caller-owned `threadId` through the existing facade option and prove the fresh prediction receives 200. Retain both request identities and the unchanged original session/effect evidence. Chat qualification instead appends the next turn on the same owned thread. This explicit application lifecycle adds no SDK command and must not silently override a provided selector; the full browser gate remains separately required.
 
-The candidate browser gate has a separate evidence boundary: positively observe
-initial browser-handler entry, then independently measure no additional entry for
-the original call IDs after page destruction, restoration, settlement and reload.
+The candidate browser gate has a separate evidence boundary: browser-only phases
+must positively observe initial handler entry. A mixed phase paused by a genuine
+protected-tool interrupt can have an unentered browser call only after its source
+and delivered terminal, public pending interrupts and saved journal identities
+independently agree. Capture each phase's actual entries, attempts and computations,
+then require no additional execution for the original call IDs after page destruction,
+restoration, settlement and reload. Preserve the positive duplicate-observer control.
 It must use actual installed candidate facades, qualified NuGet workers, durable
 rows and raw provider captures across React/Angular, OpenAI/Azure and Chat
 Completions/Responses. Artifact isolation and Node HTTP primitive tests alone do
