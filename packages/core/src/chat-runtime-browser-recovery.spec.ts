@@ -110,6 +110,364 @@ function fixture(
   return { runtime, handler, requests, snapshot, tool };
 }
 
+/** Adds the actual native tool-only empty content field without rewriting call descriptors. */
+function emptyToolSnapshot(
+  subject: ReturnType<typeof fixture>,
+  mixed: boolean,
+): ConversationSnapshot<{ count: number }> {
+  return {
+    ...subject.snapshot,
+    messages: subject.snapshot.messages.map((message) =>
+      message.role === 'assistant' ? { ...message, content: '' } : message,
+    ),
+    ...(mixed
+      ? {
+          interrupts: [
+            {
+              id: 'ficc_protected-call',
+              reason: 'tool_call',
+              toolCallId: 'protected-call',
+              message: 'Approval required for tool call: charge',
+              responseSchema: {
+                type: 'object',
+                properties: { approved: { type: 'boolean' } },
+                required: ['approved'],
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
+/** Mirrors the trusted answer-object or exposed-component UI wire shape used by candidate consumers. */
+function emptyToolResponseSchema(ui: boolean) {
+  return ui
+    ? s.object('Candidate UI', {
+        ui: s.array(
+          'Components',
+          s.object('Candidate component', {
+            CandidateCard: s.object('Candidate card', {
+              props: s.object('Card props', { text: s.string('Text') }),
+            }),
+          }),
+        ),
+      })
+    : s.object('Candidate answer', { answer: s.string('Answer') });
+}
+
+test('strict structured Pending restore accepts native empty tool shells inertly for browser-only and mixed batches', async () => {
+  for (const ui of [false, true])
+    for (const mixed of [false, true]) {
+      const subject = fixture(mixed);
+      subject.runtime.updateOptions({
+        responseSchema: emptyToolResponseSchema(ui),
+        ui,
+      });
+      await settle();
+      const snapshot = emptyToolSnapshot(subject, mixed);
+      const original = JSON.stringify(snapshot);
+
+      subject.runtime.restoreConversation(snapshot, {
+        expectedRevision: subject.runtime.recovery().revision,
+      });
+      const pending = subject.runtime.pendingConversationRecovery();
+      const cleanup = subject.runtime.start();
+      await settle();
+
+      try {
+        expect(pending).toEqual({
+          id: expect.any(String),
+          serverRevision: 27,
+          toolCalls: [
+            { id: 'browser-call', name: 'save', arguments: { value: 7 } },
+          ],
+          interrupts: snapshot.interrupts ?? [],
+        });
+        expect(subject.runtime.pendingConversationRecovery()).toBe(pending);
+        expect(subject.runtime.state()).toEqual({ count: 2 });
+        expect(subject.runtime.recovery().diagnostics).toBeUndefined();
+        expect(Object.isFrozen(pending?.toolCalls[0].arguments)).toBe(true);
+        expect(JSON.stringify(snapshot)).toBe(original);
+        expect(subject.handler).not.toHaveBeenCalled();
+        expect(subject.requests).toHaveLength(0);
+      } finally {
+        cleanup();
+      }
+    }
+});
+
+test('strict structured Completed restore preserves native empty tool shells with settled results and a valid answer', async () => {
+  for (const ui of [false, true])
+    for (const mixed of [false, true]) {
+      const subject = fixture(mixed);
+      subject.runtime.updateOptions({
+        responseSchema: emptyToolResponseSchema(ui),
+        ui,
+      });
+      await settle();
+      const pending = emptyToolSnapshot(subject, mixed);
+      const answer = ui
+        ? { ui: [{ CandidateCard: { props: { text: 'Restored answer' } } }] }
+        : { answer: 'Restored answer' };
+      const snapshot: ConversationSnapshot<{ count: number }> = {
+        threadId: pending.threadId,
+        configuredSystemMessageId: pending.configuredSystemMessageId,
+        state: pending.state,
+        messages: [
+          ...pending.messages,
+          {
+            id: 'browser-result',
+            role: 'tool',
+            toolCallId: 'browser-call',
+            content: '{"saved":true}',
+          },
+          ...(mixed
+            ? [
+                {
+                  id: 'protected-result',
+                  role: 'tool' as const,
+                  toolCallId: 'protected-call',
+                  content: '{"charged":true}',
+                },
+              ]
+            : []),
+          {
+            id: 'final-answer',
+            role: 'assistant',
+            content: JSON.stringify(answer),
+          },
+        ],
+      };
+      const original = JSON.stringify(snapshot);
+
+      subject.runtime.restoreConversation(snapshot, {
+        expectedRevision: subject.runtime.recovery().revision,
+      });
+      const cleanup = subject.runtime.start();
+      await settle();
+
+      try {
+        expect(subject.runtime.pendingConversationRecovery()).toBeUndefined();
+        expect(subject.runtime.messages().at(-1)?.content).toEqual(answer);
+        expect(subject.runtime.recovery().diagnostics).toBeUndefined();
+        expect(subject.runtime.state()).toEqual({ count: 2 });
+        expect(JSON.stringify(snapshot)).toBe(original);
+        expect(subject.handler).not.toHaveBeenCalled();
+        expect(subject.requests).toHaveLength(0);
+      } finally {
+        cleanup();
+      }
+    }
+});
+
+test('structured cold settlement retains the exact native empty tool content and call descriptors in its canonical request', async () => {
+  const subject = fixture(true);
+  subject.runtime.updateOptions({
+    responseSchema: emptyToolResponseSchema(false),
+    transport: {
+      name: 'structured empty shell',
+      send: async (request) => {
+        subject.requests.push(request);
+        const identity = {
+          threadId: request.input.threadId,
+          runId: request.input.runId,
+        };
+        return {
+          events: (async function* (): AsyncIterable<AGUIEvent> {
+            yield { type: EventType.RUN_STARTED, ...identity };
+            yield {
+              type: EventType.TOOL_CALL_RESULT,
+              messageId: 'protected-result',
+              toolCallId: 'protected-call',
+              content: '{"charged":true}',
+              role: 'tool',
+            };
+            yield {
+              type: EventType.TEXT_MESSAGE_START,
+              messageId: 'final-answer',
+              role: 'assistant',
+            };
+            yield {
+              type: EventType.TEXT_MESSAGE_CONTENT,
+              messageId: 'final-answer',
+              delta: '{"answer":"Settled answer"}',
+            };
+            yield {
+              type: EventType.TEXT_MESSAGE_END,
+              messageId: 'final-answer',
+            };
+            yield { type: EventType.RUN_FINISHED, ...identity };
+          })(),
+        };
+      },
+    },
+  });
+  await settle();
+  const snapshot = emptyToolSnapshot(subject, true);
+  const original = JSON.stringify(snapshot);
+
+  subject.runtime.restoreConversation(snapshot, {
+    expectedRevision: subject.runtime.recovery().revision,
+  });
+  const cleanup = subject.runtime.start();
+  await settle();
+
+  try {
+    expect(subject.handler).not.toHaveBeenCalled();
+    expect(subject.requests).toHaveLength(0);
+    subject.runtime.resumeConversationRecovery({
+      batchId: subject.runtime.pendingConversationRecovery()?.id ?? '',
+      outcomes: [
+        {
+          toolCallId: 'browser-call',
+          status: 'result',
+          value: { saved: true },
+        },
+      ],
+      entries: [
+        {
+          interruptId: 'ficc_protected-call',
+          status: 'resolved',
+          payload: { approved: true },
+        },
+      ],
+    });
+    await settle();
+
+    expect(subject.requests).toHaveLength(1);
+    expect(
+      subject.requests[0].input.messages.slice(0, snapshot.messages.length),
+    ).toEqual(snapshot.messages);
+    expect(subject.requests[0].input.resume).toEqual([
+      {
+        interruptId: 'ficc_protected-call',
+        status: 'resolved',
+        payload: { approved: true },
+      },
+    ]);
+    expect(subject.runtime.messages().at(-1)?.content).toEqual({
+      answer: 'Settled answer',
+    });
+    expect(subject.runtime.recovery().required).toBe(false);
+    expect(subject.runtime.pendingConversationRecovery()).toBeUndefined();
+    expect(JSON.stringify(snapshot)).toBe(original);
+    expect(subject.handler).not.toHaveBeenCalled();
+  } finally {
+    cleanup();
+  }
+});
+
+test('empty tool shell support does not bypass strict content call capability interrupt or configuration validation', async () => {
+  const subject = fixture(true);
+  subject.runtime.updateOptions({
+    responseSchema: emptyToolResponseSchema(false),
+  });
+  await settle();
+  const valid = emptyToolSnapshot(subject, true);
+  const announcement = valid.messages.find(
+    (message) => message.role === 'assistant',
+  );
+  if (!announcement || announcement.role !== 'assistant')
+    throw new Error('Expected native tool announcement');
+  const replace = (
+    message: Message,
+  ): ConversationSnapshot<{ count: number }> => ({
+    ...valid,
+    messages: [...valid.messages.slice(0, 2), message],
+  });
+  const variants: ConversationSnapshot<{ count: number }>[] = [
+    {
+      ...replace({ id: announcement.id, role: 'assistant', content: '' }),
+      pendingBrowserRecovery: undefined,
+    },
+    {
+      ...replace({ ...announcement, toolCalls: [] }),
+      pendingBrowserRecovery: undefined,
+    },
+    ...[' ', 'not JSON', '{"wrong":true}'].map((content) =>
+      replace({ ...announcement, content }),
+    ),
+    replace({
+      ...announcement,
+      toolCalls: [
+        {
+          id: 'browser-call',
+          type: 'function',
+          function: { name: 'save', arguments: '{"value":"wrong"}' },
+        },
+        ...(announcement.toolCalls?.slice(1) ?? []),
+      ],
+    }),
+    replace({
+      ...announcement,
+      toolCalls: [
+        {
+          id: 'browser-call',
+          type: 'function',
+          function: { name: 'save', arguments: 'not JSON' },
+        },
+        ...(announcement.toolCalls?.slice(1) ?? []),
+      ],
+    }),
+    replace({
+      ...announcement,
+      toolCalls: [
+        ...(announcement.toolCalls ?? []),
+        ...(announcement.toolCalls?.slice(0, 1) ?? []),
+      ],
+    }),
+    {
+      ...valid,
+      pendingBrowserRecovery: {
+        protocolVersion: 1,
+        serverRevision: 0,
+        callIds: ['browser-call'],
+      },
+    },
+    {
+      ...valid,
+      pendingBrowserRecovery: {
+        protocolVersion: 1,
+        serverRevision: 27,
+        callIds: ['protected-call'],
+      },
+    },
+    {
+      ...valid,
+      interrupts: [
+        {
+          id: 'forged-request',
+          reason: 'tool_call',
+          toolCallId: 'browser-call',
+        },
+      ],
+    },
+    { ...valid, configuredSystemMessageId: 'foreign-system' },
+    {
+      ...valid,
+      messages: [
+        {
+          id: 'original-system',
+          role: 'system',
+          content: 'changed trusted configuration',
+        },
+        ...valid.messages.slice(1),
+      ],
+    },
+  ];
+
+  for (const snapshot of variants) {
+    const before = observe(subject.runtime);
+    expect(() =>
+      subject.runtime.restoreConversation(snapshot, {
+        expectedRevision: before.recovery.revision,
+      }),
+    ).toThrow();
+    expectUnchanged(subject, before);
+  }
+});
+
 test('exports the exact browser recovery contracts through the public API', () => {
   const { runtime } = fixture();
   const outcomes: readonly BrowserRecoveryOutcome[] = [

@@ -912,6 +912,7 @@ export function createChatRuntime(init: {
         !ɵisCancelledTurnMarker(message) &&
         !readHistoryDiagnostic(message, responseSchema) &&
         message.content !== undefined &&
+        !(message.content === '' && (message.toolCalls?.length ?? 0) > 0) &&
         projection.messages.find(
           (candidate) =>
             candidate.role === 'assistant' &&
