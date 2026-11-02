@@ -167,11 +167,12 @@ export async function withDurableCluster<T>(
     try {
       let owner: DotnetFixture | undefined;
       for (const worker of workers) {
+        if (worker.process.exited()) continue;
         const alive = await fetch(`${worker.url}/health`).then(
           (response) => response.ok,
           () => false,
         );
-        if (alive) {
+        if (alive && !worker.process.exited()) {
           owner = worker;
           break;
         }

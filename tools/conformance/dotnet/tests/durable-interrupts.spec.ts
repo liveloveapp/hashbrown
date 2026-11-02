@@ -5,6 +5,60 @@ import {
   withDurableCluster,
 } from '../harness/durable-fixture';
 import { postRun, runInput } from '../harness/http-fixture';
+import { createServer } from 'node:http';
+
+for (const status of [400, 200] as const) {
+  test(`cleanup never contacts an exited worker address reused by a foreign HTTP ${status} listener`, async () => {
+    const requests: Array<{
+      method: string | undefined;
+      url: string | undefined;
+    }> = [];
+    const replacement = createServer((request, response) => {
+      requests.push({ method: request.method, url: request.url });
+      response.writeHead(status, { Connection: 'close' });
+      response.end();
+    });
+    let listening = false;
+    let cleanupSucceeded = false;
+    let clusterFailure: unknown;
+
+    try {
+      await withDurableCluster('openai', async (cluster) => {
+        const worker = await cluster.start({ Workflow: '' });
+        const address = new URL(worker.url);
+
+        await worker.stop();
+        expect(worker.process.exited()).toMatchObject({ signal: 'SIGKILL' });
+        expect(worker.requests).toEqual([]);
+        await new Promise<void>((resolve, reject) => {
+          replacement.once('error', reject);
+          replacement.listen(Number(address.port), address.hostname, resolve);
+        });
+        listening = true;
+
+        expect(replacement.address()).toMatchObject({
+          address: address.hostname,
+          port: Number(address.port),
+        });
+      });
+      cleanupSucceeded = true;
+    } catch (error) {
+      clusterFailure = error;
+    } finally {
+      if (listening) {
+        const drained = new Promise<void>((resolve, reject) => {
+          replacement.close((error) => (error ? reject(error) : resolve()));
+        });
+        replacement.closeAllConnections();
+        await drained;
+      }
+    }
+
+    expect(requests).toEqual([]);
+    expect(cleanupSucceeded).toBe(true);
+    if (clusterFailure) throw clusterFailure;
+  });
+}
 
 function answers(
   events: ReadonlyArray<Record<string, unknown>>,

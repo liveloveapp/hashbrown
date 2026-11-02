@@ -127,8 +127,9 @@ schema1; the unreleased V2 browser capability is described separately below.
 Historical milestone-one qualification recorded 408 physical deterministic browser
 results and 48 live results across eight groups, with 75 actual model calls and 99
 reserved calls. Those results do not qualify milestone-two native approvals. The
-Task7 source matrix has 664 actual result identities reported in its current
-handoff. Published package qualification uses separate signature, payload and
+earlier native-approval milestone recorded 664 source result identities in its
+historical Task7 handoff. That evidence is separate from the pending-browser cold
+recovery candidate gate below. Published package qualification uses separate signature, payload and
 physical bundle acceptance evidence. Published-package live qualification now has 54 actual passed cases, three preflights and 93 model/wire calls using NuGet `0.1.0-preview.1` and published npm `0.8.3`; see the [versioned qualification record](../../../docs/superpowers/research/2026-10-31-dotnet-public-live-qualification.md). The browser matrix uses Responses, with Azure CLI Chat Completions covered by one preflight.
 Documentation compilation alone establishes no provider, browser or published-SDK
 qualification; preserve each gate's raw evidence and do not substitute intended
@@ -503,6 +504,7 @@ their exact packed archive references.
 npx nx prepare-candidate-npm dotnet-conformance -- --metadata=/absolute/fresh/candidate-npm.json
 npx nx prepare-candidate-nuget dotnet-conformance -- --metadata=/absolute/fresh/candidate-nuget.json
 npx nx candidate-consumer-check dotnet-conformance -- --npm-metadata=/absolute/fresh/candidate-npm.json --metadata=/absolute/fresh/candidate-nuget.json
+npx nx candidate-recovery-browser dotnet-conformance -- --npm-metadata=/absolute/fresh/candidate-npm.json --metadata=/absolute/fresh/candidate-nuget.json
 ```
 
 The isolation check requires actual candidate compilation and missing-recovery-API
