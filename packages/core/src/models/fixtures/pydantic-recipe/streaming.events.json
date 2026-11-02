@@ -1,37 +1,37 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793570942230,
+    "timestamp": 1793587341089,
     "threadId": "capture-streaming",
     "runId": "capture-streaming-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793570942259,
-    "messageId": "2e61c3db-97e9-4583-a743-d4117b38fe73",
+    "timestamp": 1793587341120,
+    "messageId": "ed269dd2-9d39-46e9-b94b-847ae010c259",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793570942260,
-    "messageId": "2e61c3db-97e9-4583-a743-d4117b38fe73",
+    "timestamp": 1793587341120,
+    "messageId": "ed269dd2-9d39-46e9-b94b-847ae010c259",
     "delta": "Pydantic streaming "
   },
   {
     "type": "TEXT_MESSAGE_CONTENT",
-    "timestamp": 1793570942263,
-    "messageId": "2e61c3db-97e9-4583-a743-d4117b38fe73",
+    "timestamp": 1793587341123,
+    "messageId": "ed269dd2-9d39-46e9-b94b-847ae010c259",
     "delta": "answer."
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793570942263,
-    "messageId": "2e61c3db-97e9-4583-a743-d4117b38fe73"
+    "timestamp": 1793587341123,
+    "messageId": "ed269dd2-9d39-46e9-b94b-847ae010c259"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793570942265,
+    "timestamp": 1793587341125,
     "threadId": "capture-streaming",
     "runId": "capture-streaming-run",
     "outcome": {

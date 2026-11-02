@@ -1,38 +1,38 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793570942384,
+    "timestamp": 1793587341234,
     "threadId": "capture-disconnect",
     "runId": "capture-disconnect-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793570942387,
-    "messageId": "f81b6d22-e043-4916-8bad-8e54c5f96e84",
+    "timestamp": 1793587341237,
+    "messageId": "49f6d10a-1a50-462c-9a73-4166be555335",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793570942387,
-    "messageId": "f81b6d22-e043-4916-8bad-8e54c5f96e84"
+    "timestamp": 1793587341237,
+    "messageId": "49f6d10a-1a50-462c-9a73-4166be555335"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793570942387,
+    "timestamp": 1793587341237,
     "toolCallId": "capture-disconnect-server",
     "toolCallName": "serverTool",
-    "parentMessageId": "f81b6d22-e043-4916-8bad-8e54c5f96e84"
+    "parentMessageId": "49f6d10a-1a50-462c-9a73-4166be555335"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793570942387,
+    "timestamp": 1793587341237,
     "toolCallId": "capture-disconnect-server",
     "delta": "{\"city\":\"London\"}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793570942387,
+    "timestamp": 1793587341237,
     "toolCallId": "capture-disconnect-server"
   }
 ]
