@@ -431,3 +431,47 @@ test.each(['single', 'week'] as const)(
     expect(h.err.join('')).toContain('image');
   },
 );
+
+test.each([
+  {
+    name: 'an X post over 280 characters',
+    stored: post({ draft: { channel: 'x', image, text: 'a'.repeat(281) } }),
+  },
+  {
+    name: 'a blank LinkedIn post',
+    stored: post({
+      channel: 'linkedin',
+      draft: { channel: 'linkedin', image, text: '   ' },
+    }),
+  },
+  {
+    name: 'a dev.to title over 128 characters',
+    stored: post({
+      channel: 'devto',
+      draft: {
+        channel: 'devto',
+        blogSlug: 'a-post',
+        article: { title: 't'.repeat(129), tags: [], description: '' },
+      },
+    }),
+  },
+])(
+  'approval refuses $name, which dispatch would reject, before changing state',
+  async ({ stored }) => {
+    for (const mode of ['single', 'week'] as const) {
+      const ops = operations({
+        readPost: vi.fn(async () => stored),
+        readWeek: vi.fn(async () => ({ week, posts: [stored] })),
+      });
+      const h = harness(ops);
+
+      const result = await h.run(
+        'approve',
+        ...(mode === 'single' ? ['--post', postId] : ['--week', '2026-11-09']),
+      );
+
+      expect(result).toBe(1);
+      expect(ops.approvePosts).not.toHaveBeenCalled();
+    }
+  },
+);

@@ -556,3 +556,81 @@ test.each(['upload', 'metadata'])(
     );
   },
 );
+
+test.each([
+  ['an empty body', () => new Response('', { status: 201 })],
+  ['no data', () => jsonResponse({}, { status: 201 })],
+  ['no id', () => jsonResponse({ data: { text: 'hello' } }, { status: 201 })],
+])(
+  'postX throws OutcomeUnknownError when the create answers 2xx with %s',
+  async (_, respond) => {
+    const fetchMock = vi.fn(async () => respond());
+    const { auth } = setup(fetchMock);
+
+    const error = await postX(auth, { channel: 'x', text: 'hello' }).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(OutcomeUnknownError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('postX stops a thread whose first tweet answered 2xx without an id', async () => {
+  const fetchMock = vi.fn(async () => jsonResponse({}, { status: 201 }));
+  const { auth } = setup(fetchMock);
+
+  const error = await postX(auth, {
+    channel: 'x',
+    threadParts: ['one', 'two'],
+  }).catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(OutcomeUnknownError);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test('postX saves a rotated refresh token before failing an image upload that timed out mid-refresh', async () => {
+  vi.useFakeTimers();
+  const later = (ms: number, response: Response) =>
+    new Promise<Response>((resolve) => setTimeout(() => resolve(response), ms));
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(imageResponse())
+    // The upload's 401 arrives late, and the refresh outlasts its deadline.
+    .mockImplementationOnce(() =>
+      later(15_000, jsonResponse({}, { status: 401 })),
+    )
+    .mockImplementationOnce(() =>
+      later(
+        10_000,
+        jsonResponse({
+          access_token: 'access-2',
+          refresh_token: 'refresh-2',
+          token_type: 'bearer',
+          expires_in: 7200,
+        }),
+      ),
+    );
+  const { auth, credentials } = setup(fetchMock);
+
+  const pending = postX(auth, { channel: 'x', text: 'hello', image }).catch(
+    async (caught: unknown) => ({
+      error: caught,
+      stored: await credentials.get('x'),
+    }),
+  );
+  await vi.advanceTimersByTimeAsync(30_000);
+  const { error, stored } = (await pending) as {
+    error: unknown;
+    stored: Awaited<ReturnType<typeof credentials.get>>;
+  };
+
+  expect((error as Error).message).toMatch(/timed out/);
+  expect(stored).toMatchObject({
+    accessToken: 'access-2',
+    refreshToken: 'refresh-2',
+  });
+  expect(callsOf(fetchMock).some(([url]) => url.endsWith('/tweets'))).toBe(
+    false,
+  );
+});
