@@ -141,7 +141,7 @@ Then let Brian talk it through. For each change:
 
 ## Step 7: Go ahead
 
-Only after Brian's explicit go-ahead (Hard rule 1), and only for what it names. Before starting, confirm: no `[BRIAN:` anywhere and every post's `voiceIssues` is empty or Brian accepted the issue.
+Only after Brian's explicit go-ahead (Hard rule 1), and only for what it names. Before starting, confirm: no `[BRIAN:` anywhere and every post's `voiceIssues` is empty or Brian accepted the issue. A `length` issue can't be accepted: the adapter would reject the post at dispatch, so `approve` refuses it.
 
 **Past-due slots.** Right before any `approve`, run `week show --week W` and compare every post you are about to approve with the current time. Any post whose `scheduledAt` is already past, or less than 30 minutes away, must not be approved as it is: move it to a future slot with `week edit` (show Brian the new day and time, and get his go-ahead for that post again) or cancel it with his agreement. The dispatcher holds X, LinkedIn and dev.to posts it reaches more than 6 hours late, and anything late but under 6 hours goes out at the wrong time.
 

@@ -37,6 +37,22 @@ vi.mock('./queue/repository.ts', async (importOriginal) => ({
 const NOW = new Date('2026-10-29T14:00:00Z');
 const HOUR = 60 * 60 * 1000;
 
+test('live social dispatch dependencies do not require a GitHub credential', () => {
+  const fetchMock = vi.fn();
+
+  const deps = createDispatchDependencies(
+    {
+      DATABASE_URL: 'postgres://user:pass@localhost:1/none',
+      MARKETING_CREDENTIALS_KEY: Buffer.alloc(32).toString('base64'),
+      MARKETING_DRY_RUN: '0',
+    },
+    fetchMock as unknown as typeof fetch,
+  );
+
+  expect(deps.dryRun).toBe(false);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
 function post(overrides: Partial<QueuedPost> = {}): QueuedPost {
   return {
     id: 'p1',
@@ -587,7 +603,7 @@ describe('createDispatchDependencies', () => {
 
   test('names every missing variable', () => {
     expect(() => createDispatchDependencies({})).toThrow(
-      /DATABASE_URL.*MARKETING_CREDENTIALS_KEY.*MARKETING_GITHUB_TOKEN/,
+      /DATABASE_URL.*MARKETING_CREDENTIALS_KEY/,
     );
   });
 

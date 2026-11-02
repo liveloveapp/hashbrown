@@ -372,7 +372,9 @@ function parseDryRun(value: string | undefined): boolean {
 /**
  * Builds the tick's dependencies from the environment. In dry run
  * (`MARKETING_DRY_RUN` is `1` or `true`) GitHub is disabled and its token is
- * not required.
+ * not required. In live mode, GitHub credentials are required only when a
+ * blog or dev.to post invokes a GitHub operation; social-only ticks can run
+ * without repository access.
  *
  * @param fetchImpl - The fetch the adapters use; defaults to `globalThis.fetch`.
  * @throws When a required variable is missing, naming each, or
@@ -383,11 +385,7 @@ export function createDispatchDependencies(
   fetchImpl?: typeof fetch,
 ): DispatchDependencies {
   const dryRun = parseDryRun(env['MARKETING_DRY_RUN']);
-  const required = [
-    'DATABASE_URL',
-    'MARKETING_CREDENTIALS_KEY',
-    ...(dryRun ? [] : ['MARKETING_GITHUB_TOKEN']),
-  ];
+  const required = ['DATABASE_URL', 'MARKETING_CREDENTIALS_KEY'];
   const missing = required.filter((name) => !env[name]);
   if (missing.length > 0) {
     throw new Error(`Missing environment variables: ${missing.join(', ')}`);
@@ -404,7 +402,7 @@ export function createDispatchDependencies(
     adapters: createAdapters({ credentials, env, dryRun, fetch: fetchImpl }),
     github: dryRun
       ? DISABLED_GITHUB
-      : createGitHubClient(env['MARKETING_GITHUB_TOKEN'] as string),
+      : createGitHubClient(env['MARKETING_GITHUB_TOKEN']),
     isLive: headIsLive,
     now: () => new Date(),
     dryRun,

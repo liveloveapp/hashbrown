@@ -21,6 +21,7 @@ import {
 } from '../src/queue/repository.ts';
 import {
   addDays,
+  assertApprovable,
   draftSchemas,
   newYorkDate,
   WeekImport,
@@ -337,7 +338,7 @@ async function execute(
     case 'approve': {
       if (flags.post !== undefined) {
         const post = await requirePost(dependencies, flags.post);
-        draftSchemas[post.channel].parse(post.draft);
+        assertApprovable(post.channel, post.draft);
         const approved = await operations.approvePosts(post.weekId, post.id);
         return emit(dependencies, { approved });
       }
@@ -348,7 +349,7 @@ async function execute(
       for (const post of found.posts.filter(
         (post) => post.status === 'draft',
       )) {
-        draftSchemas[post.channel].parse(post.draft);
+        assertApprovable(post.channel, post.draft);
       }
       const approved = await operations.approvePosts(found.week.id, undefined);
       return emit(dependencies, { approved });
