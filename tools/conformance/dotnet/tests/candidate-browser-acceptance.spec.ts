@@ -637,3 +637,292 @@ for(const mutate of [value=>value.after.holdReceiptIds.push('unentered-receipt')
 
   expect(output.trim()).toBe('passed');
 });
+
+const ordinaryThreadFixture = String.raw`
+function ordinaryThreadFacts(facade='completion', api='chat-completions') {
+ const completion=facade.endsWith('completion');
+ const oldThread='retained-thread', freshThread=completion?'explicit-fresh-thread':oldThread;
+ const oldMessages=[{id:'system',role:'system',content:'trusted system'},{id:'prior-user',role:'user',content:'original input'},{id:'call-parent',role:'assistant',content:'',toolCalls:[{id:'old-browser',type:'function',function:{name:'getWeather',arguments:'{"city":"owned"}'}}]},{id:'old-result',role:'tool',toolCallId:'old-browser',content:'known old result'},{id:'old-answer',role:'assistant',content:'Candidate complete'}];
+ const configuration={system:'trusted system',tools:[{name:'getWeather',description:'Weather',parameters:{type:'object',properties:{city:{type:'string'}},required:['city'],additionalProperties:false}}],forwardedProps:{}};
+ if(facade.startsWith('structured-'))configuration.forwardedProps={hashbrown:{responseSchema:{type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false}}};
+ if(facade.startsWith('ui-'))configuration.forwardedProps={hashbrown:{responseSchema:{type:'object',properties:{ui:{type:'array',items:{type:'object',properties:{CandidateCard:{type:'object',properties:{props:{type:'object',properties:{text:{type:'string'}},required:['text'],additionalProperties:false}},required:['props'],additionalProperties:false}},required:['CandidateCard'],additionalProperties:false}}},required:['ui'],additionalProperties:false}}};
+ if(facade.startsWith('structured-'))oldMessages.at(-1).content=JSON.stringify({answer:'Candidate complete'});
+ if(facade.startsWith('ui-'))oldMessages.at(-1).content=JSON.stringify({ui:[{CandidateCard:{props:{text:'Candidate complete'}}}]});
+ const prompt='Ordinary retained-thread';
+ const replacement=[structuredClone(oldMessages[0]),{id:'ordinary-user',role:'user',content:prompt}];
+ const input=(threadId,runId,messages)=>({threadId,runId,messages:structuredClone(messages),tools:structuredClone(configuration.tools),context:[],state:null,forwardedProps:structuredClone(configuration.forwardedProps)});
+ const oldRequest=input(oldThread,'old-run',oldMessages);delete oldRequest.runId;
+ const state=(threadId,request)=>({session:{id:threadId+'-key',selector:threadId,state:'Ready',revision:8,generation:2,ever_saved:true,token:null,lease_until:null,admitted_request:null,payload:JSON.stringify({formatVersion:2,nativeJson:'{"stateBag":{}}',publicRequest:JSON.stringify(request),pendingCalls:[],expectedBrowserCallIds:[],turnCompleted:true,approvals:{pendingBatch:null}})},invocations:[],batches:[],members:[],effects:[]});
+ const originalState=state(oldThread,oldRequest);
+ const observer={records:[{seq:1,kind:'request-received',threadId:oldThread},{seq:2,kind:'entry-committed',threadId:oldThread,receiptId:'observed-old-receipt'},{seq:3,kind:'request-received',threadId:oldThread},{seq:4,kind:'hold-received',threadId:oldThread,receiptId:'observed-old-receipt'}],entries:[{receiptId:'observed-old-receipt',canonicalCallId:'old-browser',correlation:'owned',toolName:'getWeather',arguments:{city:'owned'},result:'known old result'}],attemptSequences:[1,3],holdReceiptIds:['observed-old-receipt'],computations:1};
+ const oldRuns=[{requestId:'old-original-proxy',input:{...structuredClone(oldRequest),runId:'old-original-run'},status:200},{requestId:'old-recovery-proxy',input:{...structuredClone(oldRequest),runId:'old-recovery-run'},status:200}];
+ const witnesses=[{seq:1,threadId:oldThread,callId:'historic-protected',domain:'native-outward-before-public-project',value:'historic-result'}];
+ const baseline={state:originalState,witnesses,observer,runs:oldRuns,providerCount:2,proxyRejections:[],counts:{"Transport.Typed.Before":2,"Recovery.Provider.Projected":1,"Serialize.Forward":2,"Executable.Typed.Admitted":1,"Deserialize.Forward":1,"Transport.Typed.Admitted":1,"Original.Typed.After":2,"Serialize.Guard":2,"Original.Raw.Before":2,"Transport.Independent":2,"Create.Completed":1,"Acquire.Start":2,"cold-acquire-attempt":1,"Context.Disposed":2,"Deserialize.Completed":1,"Create.Forward":1,"Store.Key":2,"Serialize.Completed":2,"Original.Typed.Before":2,"Transport.Typed.After":2,"Run.Guard":2,"Acquire.Completed":2,"Run.Forward":2,"Deserialize.Guard":1,"Original.Typed.AfterPrepare":2,"Public.Admitted":1,"save-success":2,"Original.Raw.After":2,"status-read":3,"Create.Guard":1,"cold-acquire-success":1}};
+ const rejectedInput=input(oldThread,'replacement-rejected-run',replacement);
+ const rejectedRun={requestId:'rejected-proxy',input:rejectedInput,status:400};
+ const rejected={request:rejectedRun,receipt:{requestId:'rejected-proxy',upstreamStatus:400,deliveredStatus:400,bodyText:'',bodyBase64:'',sourceEvents:[],deliveredEvents:[],requestSeq:10,headersSeq:11,completeSeq:12,monotonicMs:12},publicState:{threadId:oldThread,pending:null,isLoading:false,isResuming:false,error:{name:'TransportError',message:'Bad Request (400)'},recovery:{required:false},output:null,localError:null,lastAction:'next',events:[],transport:[{kind:'started',requestId:rejectedInput.runId},{kind:'error',requestId:rejectedInput.runId},{kind:'disposed',requestId:rejectedInput.runId}]},after:{...structuredClone(baseline),runs:[...structuredClone(oldRuns),rejectedRun]}};
+ if(completion)for(const stage of ["Original.Raw.Before","Original.Typed.Before","Transport.Independent","Transport.Typed.Before","Original.Typed.AfterPrepare","Store.Key","Acquire.Start","Acquire.Completed","Original.Raw.After","Original.Typed.After","Transport.Typed.After","Context.Disposed"])rejected.after.counts[stage]=(rejected.after.counts[stage]??0)+1;
+ const newInput=input(freshThread,'ordinary-accepted-run',completion?replacement:[...oldMessages,{id:'ordinary-user',role:'user',content:prompt}]);
+ if(completion)newInput.messages[0].id='fresh-configured-system';
+ const answer=facade.startsWith('structured-')?JSON.stringify({answer:'Ordinary complete'}):facade.startsWith('ui-')?JSON.stringify({ui:[{CandidateCard:{props:{text:'Ordinary complete'}}}]}):'Ordinary complete';
+ const events=[{type:'RUN_STARTED',threadId:freshThread,runId:newInput.runId},{type:'TEXT_MESSAGE_START',messageId:'ordinary-answer',role:'assistant'},{type:'TEXT_MESSAGE_CONTENT',messageId:'ordinary-answer',delta:answer},{type:'TEXT_MESSAGE_END',messageId:'ordinary-answer'},{type:'RUN_FINISHED',threadId:freshThread,runId:newInput.runId}];
+ const saved={...structuredClone(newInput),messages:[...structuredClone(newInput.messages),{id:'ordinary-answer',role:'assistant',content:answer}]};delete saved.runId;
+ const provider=api==='responses'?{input:newInput.messages.map(({role,content})=>({role,content:[{type:role==='assistant'?'output_text':'input_text',text:content}]}))}:{messages:newInput.messages.map(({role,content,toolCalls,toolCallId})=>({role,content,...(toolCalls?{tool_calls:toolCalls}:{}),...(toolCallId?{tool_call_id:toolCallId}:{})}))};
+ const schema=configuration.forwardedProps.hashbrown?.responseSchema;
+ if(schema){if(api==='responses')provider.text={format:{type:'json_schema',name:'hashbrown',schema,strict:true}};else provider.response_format={type:'json_schema',json_schema:{name:'hashbrown',schema,strict:true}};}
+ const run={requestId:'accepted-proxy',input:newInput,status:200};
+ const navigation=completion?{control:'new-thread',fromThreadId:oldThread,toThreadId:freshThread,startedMs:20,completedMs:21,beforeUrl:'http://127.0.0.1:4401/?config='+encodeURIComponent(JSON.stringify({facade,threadId:oldThread,nextPrompt:prompt,observer:{entryUrl:'http://127.0.0.1:4402/owned-old-entry',holdBaseUrl:'http://127.0.0.1:4402/owned-old-hold'}})),afterUrl:'http://127.0.0.1:4401/?config='+encodeURIComponent(JSON.stringify({facade,threadId:freshThread,nextPrompt:prompt,observer:{entryUrl:'http://127.0.0.1:4402/owned-old-entry',holdBaseUrl:'http://127.0.0.1:4402/owned-old-hold'}})),status:{facade,threadId:freshThread,pending:null,pendingInterrupts:null,output:null,isLoading:false,isResuming:false,recovery:{required:false},events:[],transport:[]},runs:structuredClone(rejected.after.runs),providerCount:2}:undefined;
+ const accepted={request:run,receipt:{requestId:'accepted-proxy',upstreamStatus:200,deliveredStatus:200,requestSeq:30,headersSeq:31,completeSeq:37,monotonicMs:30,sourceEvents:events,deliveredEvents:structuredClone(events)},publicState:{threadId:freshThread,pending:null,isLoading:false,isResuming:false,error:null,recovery:{required:false},events:[{type:'RUN_STARTED',runId:newInput.runId,requestId:newInput.runId},{type:'RUN_FINISHED',runId:newInput.runId,requestId:newInput.runId}],transport:[{kind:'started',requestId:newInput.runId},{kind:'disposed',requestId:newInput.runId},{kind:'complete',requestId:newInput.runId}],output:facade.startsWith('structured-')?{answer:'Ordinary complete'}:facade.startsWith('ui-')?{ui:[{CandidateCard:{props:{text:'Ordinary complete'}}}]}:'Ordinary complete'},provider,newState:state(freshThread,saved),newWitnesses:[],after:{...structuredClone(baseline),runs:completion?structuredClone(rejected.after.runs):[...structuredClone(oldRuns),run],providerCount:3}};
+ if(completion){accepted.newRuns=[structuredClone(run)];accepted.currentProviderCount=accepted.after.providerCount;accepted.after.counts=structuredClone(rejected.after.counts);for(const stage of ['Create.Forward','Create.Completed','Run.Forward','Serialize.Forward','Serialize.Completed','save-success'])accepted.after.counts[stage]=(accepted.after.counts[stage]??0)+1;}
+ if(!completion){accepted.publicState.messages=[...structuredClone(newInput.messages),{id:'ordinary-answer',role:'assistant',content:facade.startsWith('structured-')||facade.startsWith('ui-')?JSON.parse(answer):answer}];delete accepted.publicState.output;}
+ if(facade==='ui-completion'){accepted.publicState.output={id:'ordinary-answer',role:'assistant',content:JSON.parse(answer)};accepted.publicState.rawOutput=JSON.parse(answer);accepted.renderedText=['Ordinary complete'];}
+ if(facade==='ui-chat')accepted.renderedText=['Ordinary complete'];
+ return {facade,api,configuration,prompt,baseline,...(completion?{rejected,navigation}:{}),accepted};
+}
+`;
+
+test('ordinary completion qualification joins genuine same-thread refusal explicit navigation and fresh accepted prediction across all completion facades and APIs', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+for(const facade of ['completion','structured-completion','ui-completion'])for(const api of ['chat-completions','responses']){
+ const value=ordinaryThreadFacts(facade,api);
+ subject.assertCandidateOrdinaryThreadQualification(value);
+ const disposed=structuredClone(value);disposed.accepted.publicState.transport.pop();subject.assertCandidateOrdinaryThreadQualification(disposed);
+ const angular=structuredClone(value);angular.rejected.publicState.error='TransportError: Bad Request (400)';subject.assertCandidateOrdinaryThreadQualification(angular);
+ subject.assertCandidateFacadeSchema(facade,api,value.configuration,[value.accepted.provider]);
+ subject.assertCandidateProviderTextHistory(value.accepted.provider,api,value.accepted.request.input.messages);
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('completion ordinary receipt guards reject altered refusal bytes HTTP source public identities and evidence order', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+subject.assertCandidateOrdinaryThreadQualification(ordinaryThreadFacts());
+const mutations=[
+ value=>delete value.rejected,
+ value=>value.rejected.request.input.threadId='foreign-thread',
+ value=>value.rejected.receipt.requestId='foreign-proxy',
+ value=>value.rejected.receipt.upstreamStatus=200,
+ value=>value.rejected.receipt.deliveredStatus=409,
+ value=>value.rejected.receipt.bodyText='not empty',
+ value=>value.rejected.receipt.bodyBase64='eA==',
+ value=>value.rejected.receipt.sourceEvents.push({type:'RUN_STARTED',threadId:'retained-thread',runId:'replacement-rejected-run'}),
+ value=>value.rejected.receipt.deliveredEvents.push({type:'RUN_STARTED',threadId:'retained-thread',runId:'replacement-rejected-run'}),
+ value=>value.rejected.publicState.events.push({type:'RUN_STARTED',runId:'replacement-rejected-run',requestId:'replacement-rejected-run'}),
+ value=>value.rejected.publicState.error=null,
+ value=>value.rejected.publicState.isLoading=true,
+ value=>value.rejected.publicState.transport[1].requestId='foreign-run',
+ value=>value.rejected.request.input.messages.push({id:'extra',role:'user',content:'injected'}),
+ value=>value.rejected.request.input.forwardedProps={hashbrown:{recovery:{version:1,serverRevision:8,outcomes:[]}}},
+ value=>value.rejected.request.input.resume=[],
+ value=>value.navigation.startedMs=11,
+ value=>value.accepted.receipt.monotonicMs=19,
+ value=>value.rejected.receipt.completeSeq=value.rejected.receipt.requestSeq,
+ value=>delete value.rejected.receipt.completeSeq,
+ value=>value.rejected.request.input.tools=[],
+ value=>value.rejected.request.input.messages[0].content='changed trusted system',
+];
+for(const mutate of mutations){const value=ordinaryThreadFacts();mutate(value);assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(value));}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('completion explicit new-thread qualification retains original authority counters and witnesses while requiring genuine fresh saved execution', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+subject.assertCandidateOrdinaryThreadQualification(ordinaryThreadFacts());
+const mutations=[
+ value=>delete value.navigation,
+ value=>value.navigation.control='automatic-rewrite',
+ value=>value.navigation.toThreadId='retained-thread',
+ value=>value.navigation.fromThreadId='foreign-thread',
+ value=>value.navigation.afterUrl='http://127.0.0.1:9999/?config=fresh',
+ value=>value.navigation.status.pending={id:'old-token'},
+ value=>value.navigation.status.recovery.required=true,
+ value=>value.navigation.providerCount++,
+ value=>{const url=new URL(value.navigation.afterUrl);const config=JSON.parse(url.searchParams.get('config'));config.observer.entryUrl='http://127.0.0.1:4402/foreign-handler';url.searchParams.set('config',JSON.stringify(config));value.navigation.afterUrl=url.href;},
+ value=>value.navigation.runs.push(structuredClone(value.rejected.request)),
+ value=>value.rejected.after.providerCount++,
+ value=>value.rejected.after.state.session.revision++,
+ value=>value.rejected.after.state.session.generation++,
+ value=>value.rejected.after.state.session.payload='changed canonical history',
+ value=>value.rejected.after.state.effects.push({call_id:'old-browser'}),
+ value=>value.rejected.after.witnesses=[],
+ value=>value.rejected.after.observer.attemptSequences.push(4),
+ value=>value.rejected.after.observer.records.push({seq:5,kind:'rejected',threadId:'explicit-fresh-thread',reason:'unknown scope'}),
+ value=>value.rejected.after.runs.push(structuredClone(value.rejected.request)),
+ value=>value.accepted.request.input.threadId='retained-thread',
+ value=>value.accepted.request.input.runId=value.rejected.request.input.runId,
+ value=>value.accepted.receipt.requestId=value.rejected.request.requestId,
+ value=>value.accepted.receipt.deliveredStatus=400,
+ value=>value.accepted.receipt.sourceEvents.pop(),
+ value=>value.accepted.receipt.deliveredEvents.pop(),
+ value=>value.accepted.request.input.forwardedProps={hashbrown:{recovery:{version:1}}},
+ value=>value.accepted.request.input.resume=[],
+ value=>value.accepted.request.input.messages[0].content='changed trusted system',
+ value=>value.accepted.receipt.sourceEvents.at(-1).runId='foreign-run',
+ value=>value.accepted.receipt.deliveredEvents.at(-1).threadId='foreign-thread',
+ value=>value.accepted.publicState.events.push(structuredClone(value.accepted.publicState.events[0])),
+ value=>value.accepted.publicState.events[1].requestId='foreign-request',
+ value=>value.accepted.publicState.transport[2].requestId='foreign-request',
+ value=>value.accepted.publicState.recovery.required=true,
+ value=>value.accepted.publicState.output='wrong ordinary answer',
+ value=>value.accepted.request.input.messages.splice(1,0,{id:'old-result',role:'tool',toolCallId:'old-browser',content:'known old result'}),
+ value=>value.accepted.after.providerCount++,
+ value=>value.accepted.after.state.session.revision++,
+ value=>value.accepted.after.witnesses.push({callId:'replayed'}),
+ value=>value.accepted.after.observer.computations++,
+ value=>value.accepted.after.observer.records.push({seq:5,kind:'request-received',threadId:'explicit-fresh-thread'}),
+ value=>value.accepted.after.runs=[],
+ value=>value.accepted.newState.session.selector='retained-thread',
+ value=>value.accepted.newState.session.state='Empty',
+ value=>value.accepted.newState.session.ever_saved=false,
+ value=>{const payload=JSON.parse(value.accepted.newState.session.payload);payload.turnCompleted=false;value.accepted.newState.session.payload=JSON.stringify(payload);},
+ value=>{const payload=JSON.parse(value.accepted.newState.session.payload);payload.expectedBrowserCallIds=['old-browser'];value.accepted.newState.session.payload=JSON.stringify(payload);},
+ value=>{const payload=JSON.parse(value.accepted.newState.session.payload);const request=JSON.parse(payload.publicRequest);request.messages[1].content='different saved input';payload.publicRequest=JSON.stringify(request);value.accepted.newState.session.payload=JSON.stringify(payload);},
+ value=>value.accepted.newState.effects.push({call_id:'old-browser'}),
+ value=>value.accepted.newWitnesses.push({callId:'replayed'}),
+];
+for(const mutate of mutations){const value=ordinaryThreadFacts();mutate(value);assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(value));}
+for(const facade of ['structured-completion','ui-completion']){const value=ordinaryThreadFacts(facade);subject.assertCandidateOrdinaryThreadQualification(value);delete value.accepted.provider.response_format;assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(value));}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('chat ordinary qualification preserves same-thread canonical append and rejects completion-style replacement or navigation', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+for(const facade of ['chat','structured-chat','ui-chat']){
+ const value=ordinaryThreadFacts(facade);
+ value.accepted.after.state=structuredClone(value.accepted.newState);
+ subject.assertCandidateOrdinaryThreadQualification(value);
+ for(const mutate of [v=>v.accepted.request.input.messages=v.accepted.request.input.messages.slice(-1),v=>v.accepted.request.input.threadId='unrequested-fresh-thread',v=>v.navigation={control:'new-thread',fromThreadId:'retained-thread',toThreadId:'fresh'},v=>v.rejected=ordinaryThreadFacts().rejected]){const changed=structuredClone(value);mutate(changed);assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed));}
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('completion ordinary qualification retains the entire fresh-selector run set and current provider count through final drain', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+function facts(){const value=ordinaryThreadFacts();value.accepted.newRuns=[structuredClone(value.accepted.request)];value.accepted.currentProviderCount=value.accepted.after.providerCount;return value;}
+subject.assertCandidateOrdinaryThreadQualification(facts());
+const mutations=[
+ value=>value.accepted.newRuns.push(structuredClone(value.accepted.request)),
+ value=>value.accepted.newRuns.push({requestId:'late-refused-proxy',input:{...structuredClone(value.accepted.request.input),runId:'late-refused-run'},status:400}),
+ value=>value.accepted.newRuns=[{...structuredClone(value.accepted.request),input:{...structuredClone(value.accepted.request.input),threadId:'foreign-selector'}}],
+ value=>value.accepted.newRuns=[{...structuredClone(value.accepted.request),requestId:'foreign-proxy'}],
+ value=>value.accepted.newRuns=[],
+ value=>value.accepted.currentProviderCount++,
+];
+for(const mutate of mutations){const value=facts();const beforeProviderCount=value.accepted.after.providerCount;mutate(value);assert.equal(value.accepted.after.providerCount,beforeProviderCount,'Late fresh HTTP membership can change without any provider or native work');assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(value));}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('ordinary thread qualification retains all global proxy refusals including unregistered attempts before final drain', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+function facts(facade){
+ const value=ordinaryThreadFacts(facade);
+ if(!facade.endsWith('completion'))value.accepted.after.state=structuredClone(value.accepted.newState);
+ const prior=[{seq:1,kind:'rejected',requestId:'prior-unregistered-request',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'unregistered-route'}];
+ value.baseline.proxyRejections=structuredClone(prior);
+ if(value.rejected)value.rejected.after.proxyRejections=structuredClone(prior);
+ value.accepted.after.proxyRejections=structuredClone(prior);
+ return value;
+}
+const attempts=[
+ {seq:100,kind:'rejected',requestId:'unregistered-request',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'unregistered-thread-or-principal'},
+ {seq:101,kind:'rejected',requestId:'foreign-principal-request',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'unregistered-thread-or-principal'},
+ {seq:102,kind:'rejected',requestId:'foreign-route-request',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'unregistered-route'},
+ {seq:103,kind:'rejected',requestId:'invalid-body-request',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'invalid-request-json'},
+];
+for(const event of attempts)Object.assign(event,{monotonicMs:event.seq,bytes:Buffer.alloc(0),incomingBody:Buffer.alloc(0),forwardedBody:Buffer.alloc(0)});
+for(const facade of ['chat','structured-chat','ui-chat','completion','structured-completion','ui-completion']){
+ subject.assertCandidateOrdinaryThreadQualification(facts(facade));
+ for(const attempt of attempts){
+  const value=facts(facade);
+  const originalRuns=structuredClone(value.accepted.after.runs);
+  const providerCount=value.accepted.after.providerCount;
+  const nativeState=structuredClone(value.accepted.after.state);
+  const observer=structuredClone(value.accepted.after.observer);
+  value.accepted.after.proxyRejections.push(structuredClone(attempt));
+  assert.deepEqual(value.accepted.after.runs,originalRuns);assert.equal(value.accepted.after.providerCount,providerCount);assert.deepEqual(value.accepted.after.state,nativeState);assert.deepEqual(value.accepted.after.observer,observer);
+  assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(value));
+  if(facade.endsWith('completion')){const beforeNavigation=facts(facade);beforeNavigation.rejected.after.proxyRejections.push(structuredClone(attempt));assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(beforeNavigation));}
+ }
+ const edited=facts(facade);edited.accepted.after.proxyRejections[0].reason='edited retained refusal';assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(edited));
+ const missing=facts(facade);missing.accepted.after.proxyRejections=[];assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(missing));
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('ordinary final-drain refresh reads live membership and provider facts when its callback executes without rebasing captured authority', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+function facts(facade){const value=ordinaryThreadFacts(facade);if(!facade.endsWith('completion'))value.accepted.after.state=structuredClone(value.accepted.newState);return value;}
+for(const facade of ['chat','structured-chat','ui-chat','completion','structured-completion','ui-completion']){
+ const original=facts(facade);
+ subject.assertCandidateOrdinaryThreadQualification(original);
+ const preserved=structuredClone(original);
+ let current={runs:structuredClone(original.accepted.after.runs),providerCount:original.accepted.after.providerCount,proxyRejections:structuredClone(original.accepted.after.proxyRejections),...(facade.endsWith('completion')?{newRuns:structuredClone(original.accepted.newRuns)}:{})};
+ let reads=0;
+ const finalize=()=>{const refreshed=subject.refreshCandidateOrdinaryThreadQualification(original,()=>{reads++;return current;});subject.assertCandidateOrdinaryThreadQualification(refreshed);return refreshed;};
+ assert.equal(reads,0,'Creating the finalizer must not snapshot future evidence');
+ const refreshed=finalize();assert.equal(reads,1);assert.deepEqual(original,preserved,'Refresh must preserve original baseline and captured protocol/native facts');assert.deepEqual(refreshed,original);
+ const mutations=[
+ value=>value.runs.push({requestId:'late-chat-refused-proxy',input:{...structuredClone(original.accepted.request.input),threadId:original.baseline.state.session.selector,runId:'late-chat-refused-run'},status:400}),
+ value=>value.providerCount++,
+ value=>value.proxyRejections.push({seq:500,kind:'rejected',requestId:'late-global-refusal',scenarioId:'',threadId:'',workerId:'',routeEpoch:0,reason:'unregistered-thread-or-principal'}),
+ ];
+ if(facade.endsWith('completion'))mutations.push(value=>value.newRuns.push({requestId:'late-fresh-refused-proxy',input:{...structuredClone(original.accepted.request.input),runId:'late-fresh-refused-run'},status:400}));
+ for(const mutate of mutations){
+  current={runs:structuredClone(original.accepted.after.runs),providerCount:original.accepted.after.providerCount,proxyRejections:structuredClone(original.accepted.after.proxyRejections),...(facade.endsWith('completion')?{newRuns:structuredClone(original.accepted.newRuns)}:{})};
+  mutate(current);
+  assert.throws(()=>finalize());
+  assert.deepEqual(original,preserved,'Late live changes must not be hidden by mutating or rebasing the original record');
+ }
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('completion same-selector refusal permits outer attempt diagnostics but forbids native execution reservation recovery and save counter changes', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+const actualCompletedCounts={"Transport.Typed.Before":2,"Recovery.Provider.Projected":1,"Serialize.Forward":2,"Executable.Typed.Admitted":1,"Deserialize.Forward":1,"Transport.Typed.Admitted":1,"Original.Typed.After":2,"Serialize.Guard":2,"Original.Raw.Before":2,"Transport.Independent":2,"Create.Completed":1,"Acquire.Start":2,"cold-acquire-attempt":1,"Context.Disposed":2,"Deserialize.Completed":1,"Create.Forward":1,"Store.Key":2,"Serialize.Completed":2,"Original.Typed.Before":2,"Transport.Typed.After":2,"Run.Guard":2,"Acquire.Completed":2,"Run.Forward":2,"Deserialize.Guard":1,"Original.Typed.AfterPrepare":2,"Public.Admitted":1,"save-success":2,"Original.Raw.After":2,"status-read":1,"Create.Guard":1,"cold-acquire-success":1};
+const allowedOuter=['Original.Raw.Before','Original.Typed.Before','Transport.Independent','Transport.Typed.Before','Original.Typed.AfterPrepare','Store.Key','Acquire.Start','Acquire.Completed','Original.Raw.After','Original.Typed.After','Transport.Typed.After','Context.Disposed'];
+const forbidden=['Create.Forward','Create.Completed','Deserialize.Forward','Deserialize.Completed','Run.Forward','Serialize.Forward','Serialize.Completed','Evidence.Start','Reserve.Start','Reserve.Committed','Admission.Completed','Executable.Typed.Admitted','Transport.Typed.Admitted','Public.Admitted','Recovery.Provider.Projected','Native.Result.Observed','reservation-attempt','reservation-success','cold-acquire-attempt','cold-acquire-success','save-success'];
+for(const facade of ['completion','structured-completion','ui-completion']){
+ const original=ordinaryThreadFacts(facade);
+ original.baseline.counts=structuredClone(actualCompletedCounts);
+ original.rejected.after.counts=structuredClone(actualCompletedCounts);
+ for(const stage of allowedOuter)original.rejected.after.counts[stage]=(original.rejected.after.counts[stage]??0)+1;
+ original.rejected.after.counts['status-read']+=2;
+ original.accepted.after.counts=structuredClone(original.rejected.after.counts);
+ for(const stage of ['Create.Forward','Create.Completed','Run.Forward','Serialize.Forward','Serialize.Completed','save-success'])original.accepted.after.counts[stage]=(original.accepted.after.counts[stage]??0)+1;
+ subject.assertCandidateOrdinaryThreadQualification(original);
+ for(const invalid of [-1,0.5,Number.MAX_SAFE_INTEGER+1,NaN,Infinity,'1',null])for(const where of ['baseline','refused']){const changed=structuredClone(original);const counts=where==='baseline'?changed.baseline.counts:changed.rejected.after.counts;counts['Acquire.Start']=invalid;assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed));}
+ for(const where of ['baseline','refused']){const changed=structuredClone(original);if(where==='baseline')delete changed.baseline.counts;else delete changed.rejected.after.counts;assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed));}
+ for(const stage of forbidden){
+  const changed=structuredClone(original);
+  changed.rejected.after.counts[stage]=(changed.rejected.after.counts[stage]??0)+1;
+  assert.deepEqual(changed.rejected.after.state,original.rejected.after.state);assert.equal(changed.rejected.after.providerCount,original.rejected.after.providerCount);assert.deepEqual(changed.rejected.after.witnesses,original.rejected.after.witnesses);assert.deepEqual(changed.rejected.after.observer,original.rejected.after.observer);
+  assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed),undefined,'Forbidden native execution counter delta must not disappear: '+stage);
+ }
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});

@@ -4,6 +4,7 @@ import {
   assertCandidateDefinitiveRejection,
   assertCandidateExpiredRead,
   assertCandidateFacadeSchema,
+  assertCandidateOrdinaryThreadQualification,
   assertCandidateProviderTextHistory,
   assertCandidateProxyIntervention,
   assertCandidateReadAdoption,
@@ -19,6 +20,7 @@ import {
   readCandidatePendingBrowserCalls,
   reconcileCandidateBusyReader,
   refreshCandidateFaultObservation,
+  refreshCandidateOrdinaryThreadQualification,
 } from './candidate-browser-acceptance';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -1411,6 +1413,7 @@ class Journey {
     page: Page,
     text = 'Candidate complete',
     runId?: unknown,
+    threadId = this.threadId,
   ): Promise<Status> {
     assert.ok(
       typeof runId === 'string' && runId.length > 0,
@@ -1448,7 +1451,16 @@ class Journey {
       )
       .toBe(true);
     await expect
-      .poll(async () => (await this.state()).session?.state)
+      .poll(async () => {
+        if (threadId === this.threadId)
+          return (await this.state()).session?.state;
+        const response = await fetch(
+          `${this.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(threadId)}`,
+          { headers: auth, signal: AbortSignal.timeout(5000) },
+        );
+        assert.equal(response.status, 200);
+        return ((await response.json()) as NativeState).session?.state;
+      })
       .toBe('Ready');
     const status = await this.status(page);
     if (this.record.facade.startsWith('ui-')) {
@@ -1508,7 +1520,9 @@ class Journey {
       )
       .toBe(stage);
   }
+  readonly finalOrdinaryChecks: Array<() => void> = [];
   validateFinalFaults(): void {
+    for (const check of this.finalOrdinaryChecks) check();
     for (const observation of this.finalDefinitiveObservations)
       assertCandidateDefinitiveRejection({
         ...observation,
@@ -1884,6 +1898,350 @@ async function uncertainty(
   ))
     expect(diagnostic.content).toBe(marker);
 }
+
+/** Captures every observer record, including unknown-scope refusals, without weakening the original baseline. */
+async function ordinaryAuthority(journey: Journey) {
+  const snapshot = await journey.snapshot();
+  return {
+    state: snapshot.state,
+    witnesses: [...journey.witnesses],
+    runs: snapshot.runs.map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    providerCount: snapshot.providerCount,
+    proxyRejections: journey.proxy
+      .records()
+      .filter((record) => record.kind === 'rejected'),
+    observer: {
+      records: journey.observer.records(),
+      entries: journey.observer.entries(journey.scope),
+      computations: journey.computations,
+      attemptSequences: journey.observer
+        .records()
+        .filter((record) => record.kind === 'request-received')
+        .map((record) => record.seq),
+      holdReceiptIds: journey.observer
+        .records()
+        .filter((record) => record.kind === 'hold-received')
+        .map((record) => record.receiptId),
+    },
+    counts: snapshot.counts,
+  };
+}
+
+/** Takes one synchronous live membership snapshot for either ordinary facade lifecycle. */
+function ordinaryCurrentEvidence(journey: Journey, newThreadId?: string) {
+  const runs = (threadId = journey.threadId) =>
+    journey.runs(threadId).map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    }));
+  return {
+    runs: runs(),
+    providerCount: journey.requests.length,
+    proxyRejections: journey.proxy
+      .records()
+      .filter((record) => record.kind === 'rejected'),
+    ...(newThreadId ? { newRuns: runs(newThreadId) } : {}),
+  };
+}
+
+/** Extracts actual scoped HTTP receipts; accepted runs also pass the existing strict byte/protocol classifier. */
+function ordinaryReceipt(
+  journey: Journey,
+  run: CapturedRun,
+  threadId: string,
+  rejected: boolean,
+) {
+  const records = journey.proxy
+    .records(threadId)
+    .filter((record) => record.requestId === run.proxyId);
+  const select = (kind: string) =>
+    records.filter((record) => record.kind === kind);
+  const request = select('request');
+  const upstream = select('upstream-headers');
+  const delivered = select('delivered-headers');
+  assert.equal(request.length, 1);
+  assert.equal(upstream.length, 1);
+  assert.equal(delivered.length, 1);
+  const source = Buffer.concat(
+    select('upstream-body').map((record) => record.bytes),
+  );
+  const body = Buffer.concat(
+    select('delivered-body').map((record) => record.bytes),
+  );
+  let events: readonly Record<string, unknown>[] = [];
+  let deliveredEvents: readonly Record<string, unknown>[] = [];
+  if (rejected) {
+    expect(source.length).toBe(0);
+    expect(body.length).toBe(0);
+    expect(select('complete')).toHaveLength(1);
+    for (const kind of [
+      'upstream-ack',
+      'downstream-ack-write',
+      'mutation',
+      'fault',
+      'rejected',
+    ])
+      expect(select(kind)).toEqual([]);
+  } else {
+    events = captureCandidateOriginalRun(
+      records,
+      run.proxyId,
+      expectNativeRunCapture,
+    );
+    deliveredEvents = expectNativeRunCapture({
+      body: body.toString('utf8'),
+      truncated: false,
+    });
+  }
+  const complete = select('complete')[0];
+  return {
+    requestId: run.proxyId,
+    upstreamStatus: upstream[0].status,
+    deliveredStatus: delivered[0].status,
+    requestSeq: request[0].seq,
+    headersSeq: delivered[0].seq,
+    completeSeq: complete?.seq,
+    monotonicMs: rejected ? complete?.monotonicMs : request[0].monotonicMs,
+    bodyText: body.toString('utf8'),
+    bodyBase64: body.toString('base64'),
+    sourceEvents: events,
+    deliveredEvents,
+  };
+}
+
+/** Qualifies replacement semantics through a refused old selector and an explicitly mounted fresh selector. */
+async function completionOrdinary(
+  journey: Journey,
+  page: Page,
+  prompt: string,
+): Promise<void> {
+  const baseline = await ordinaryAuthority(journey);
+  const configuration = journey.configurations().at(-1);
+  assert.ok(configuration);
+  const record: Record<string, unknown> = {
+    facade: journey.record.facade,
+    api: journey.api,
+    configuration,
+    prompt,
+    baseline,
+  };
+  journey.records.ordinaryThreadQualification = record;
+  await page.getByTestId('next').click();
+  await expect.poll(() => journey.runs().length).toBe(baseline.runs.length + 1);
+  const rejectedRun = journey.runs().at(-1);
+  assert.ok(rejectedRun);
+  await journey.proxy.waitFor(
+    rejectedRun.proxyId,
+    'complete',
+    AbortSignal.timeout(30_000),
+  );
+  await expect
+    .poll(
+      async () => {
+        const status = await journey.status(page);
+        return (
+          !!status.error &&
+          !status.isLoading &&
+          !status.isResuming &&
+          status.transport.some(
+            (entry) =>
+              entry.kind === 'disposed' &&
+              entry.requestId === rejectedRun.input.runId,
+          )
+        );
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  record.rejectedObserved = {
+    request: rejectedRun,
+    publicState: await journey.status(page),
+    proxy: journey.proxy.records(journey.threadId),
+    after: await ordinaryAuthority(journey),
+  };
+  const rejected = {
+    request: {
+      requestId: rejectedRun.proxyId,
+      input: rejectedRun.input,
+      status: journey.runs().at(-1)?.status,
+    },
+    receipt: ordinaryReceipt(journey, rejectedRun, journey.threadId, true),
+    publicState: await journey.status(page),
+    after: await ordinaryAuthority(journey),
+  };
+  record.rejected = rejected;
+  expect(rejected.request.status).toBe(400);
+  expect(rejected.after.state).toEqual(baseline.state);
+  expect(rejected.after.providerCount).toBe(baseline.providerCount);
+  expect(rejected.after.witnesses).toEqual(baseline.witnesses);
+  expect(rejected.after.observer).toEqual(baseline.observer);
+  const beforeUrl = page.url();
+  const startedMs = performance.now();
+  await page.getByTestId('new-thread').click();
+  await expect
+    .poll(async () => (await journey.status(page)).threadId)
+    .not.toBe(journey.threadId);
+  const mounted = await journey.status(page);
+  const completedMs = performance.now();
+  const navigation = {
+    control: 'new-thread',
+    fromThreadId: journey.threadId,
+    toThreadId: mounted.threadId,
+    startedMs,
+    completedMs,
+    beforeUrl,
+    afterUrl: page.url(),
+    status: mounted,
+    runs: journey.runs().map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    providerCount: journey.requests.length,
+  };
+  record.navigation = navigation;
+  const activeWorker = journey.workers.find(
+    (worker) => worker.fixture === journey.active,
+  );
+  assert.ok(activeWorker);
+  journey.proxy.registerThread({
+    scenarioId: journey.record.id,
+    threadId: mounted.threadId,
+    workerId: activeWorker.id,
+    recoveryPath: `/threads/${encodeURIComponent(mounted.threadId)}/native-session`,
+    principal: 'alice',
+  });
+  expect(journey.runs(mounted.threadId)).toEqual([]);
+  await page.getByTestId('next').click();
+  await expect.poll(() => journey.runs(mounted.threadId).length).toBe(1);
+  const freshRun = journey.runs(mounted.threadId)[0];
+  assert.ok(freshRun);
+  await journey.terminal(
+    page,
+    'Ordinary complete',
+    freshRun.input.runId,
+    mounted.threadId,
+  );
+  await expect
+    .poll(
+      async () => {
+        const value = await journey.status(page);
+        return (
+          !value.isLoading &&
+          !value.isResuming &&
+          value.transport.some(
+            (entry) =>
+              entry.kind === 'disposed' &&
+              entry.requestId === freshRun.input.runId,
+          )
+        );
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  const status = await journey.status(page);
+  await expect(async () =>
+    ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+  ).toPass({ timeout: 30_000 });
+  const response = await fetch(
+    `${journey.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(mounted.threadId)}`,
+    { headers: auth, signal: AbortSignal.timeout(5000) },
+  );
+  assert.equal(response.status, 200);
+  const newState: NativeState = await response.json();
+  const evidenceResponse = await fetch(
+    `${journey.active.url}/__test/candidate-native-evidence?threadId=${encodeURIComponent(mounted.threadId)}`,
+    { headers: auth, signal: AbortSignal.timeout(5000) },
+  );
+  assert.equal(evidenceResponse.status, 200);
+  const newEvidence: Evidence = await evidenceResponse.json();
+  assert.equal(newEvidence.faulted, false);
+  const provider = journey.requests.at(-1);
+  assert.ok(provider);
+  const accepted = {
+    request: {
+      requestId: freshRun.proxyId,
+      input: freshRun.input,
+      status: journey.runs(mounted.threadId)[0].status,
+    },
+    receipt: ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+    publicState: status,
+    provider: provider.body,
+    newState,
+    newWitnesses: newEvidence.records,
+    newRuns: journey.runs(mounted.threadId).map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    currentProviderCount: journey.requests.length,
+    after: await ordinaryAuthority(journey),
+    ...(journey.record.facade.startsWith('ui-')
+      ? {
+          renderedText: await page
+            .getByTestId('candidate-card')
+            .allTextContents(),
+        }
+      : {}),
+  };
+  record.accepted = accepted;
+  assertCandidateOrdinaryThreadQualification(record);
+  const observerAtQualification = journey.observer.records();
+  journey.finalOrdinaryChecks.push(() => {
+    const latestObserver = journey.observer.records();
+    expect(latestObserver.slice(0, observerAtQualification.length)).toEqual(
+      observerAtQualification,
+    );
+    expect(
+      latestObserver
+        .slice(observerAtQualification.length)
+        .every(
+          (entry) =>
+            entry.kind === 'stop-start' || entry.kind === 'stop-complete',
+        ),
+    ).toBe(true);
+    const finalRecord = refreshCandidateOrdinaryThreadQualification(
+      {
+        ...record,
+        rejected: {
+          ...rejected,
+          receipt: ordinaryReceipt(
+            journey,
+            rejectedRun,
+            journey.threadId,
+            true,
+          ),
+        },
+        accepted: {
+          ...accepted,
+          receipt: ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+        },
+      },
+      () => ordinaryCurrentEvidence(journey, mounted.threadId),
+    );
+    journey.records.ordinaryThreadQualification = finalRecord;
+    assertCandidateOrdinaryThreadQualification(finalRecord);
+  });
+  assert.ok(newState.session);
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: freshRun.input,
+    configuration,
+    nativeJson: JSON.parse(newState.session.payload).nativeJson,
+  });
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: publicRequest(newState),
+    configuration,
+    nativeJson: JSON.parse(newState.session.payload).nativeJson,
+  });
+  journey.stable();
+  expect(journey.unexpectedRequests).toEqual([]);
+}
+
 async function reloadAndOrdinary(
   journey: Journey,
   context: BrowserContext,
@@ -1902,6 +2260,11 @@ async function reloadAndOrdinary(
   journey.active.mock.onMessage(prompt, {
     content: terminal(journey.record.facade, 'Ordinary complete'),
   });
+  if (journey.record.facade.endsWith('completion')) {
+    await completionOrdinary(journey, next.page, prompt);
+    return;
+  }
+  const ordinaryBaseline = await ordinaryAuthority(journey);
   if (history) {
     await next.page.getByTestId('prompt').fill(prompt);
     await next.page.getByTestId('start').click();
@@ -1964,6 +2327,73 @@ async function reloadAndOrdinary(
     publicRequest: publicRequest(after.state),
     configuration,
     nativeJson: JSON.parse(after.state.session.payload).nativeJson,
+  });
+  const ordinaryAfter = await ordinaryAuthority(journey);
+  const ordinaryRecord = {
+    facade: journey.record.facade,
+    api: journey.api,
+    configuration: originalConfiguration,
+    prompt,
+    baseline: ordinaryBaseline,
+    accepted: {
+      request: {
+        requestId: ordinarySubmitted.proxyId,
+        input: ordinarySubmitted.input,
+        status: ordinary.status,
+      },
+      receipt: ordinaryReceipt(
+        journey,
+        ordinarySubmitted,
+        journey.threadId,
+        false,
+      ),
+      publicState: await journey.status(next.page),
+      provider: ordinaryProvider.body,
+      newState: ordinaryAfter.state,
+      newWitnesses: journey.witnesses.slice(ordinaryBaseline.witnesses.length),
+      after: ordinaryAfter,
+      ...(journey.record.facade.startsWith('ui-')
+        ? {
+            renderedText: await next.page
+              .getByTestId('candidate-card')
+              .allTextContents(),
+          }
+        : {}),
+    },
+  };
+  journey.records.ordinaryThreadQualification = ordinaryRecord;
+  assertCandidateOrdinaryThreadQualification(ordinaryRecord);
+  const observerAtQualification = journey.observer.records();
+  journey.finalOrdinaryChecks.push(() => {
+    const latestObserver = journey.observer.records();
+    expect(latestObserver.slice(0, observerAtQualification.length)).toEqual(
+      observerAtQualification,
+    );
+    expect(
+      latestObserver
+        .slice(observerAtQualification.length)
+        .every(
+          (entry) =>
+            entry.kind === 'stop-start' || entry.kind === 'stop-complete',
+        ),
+    ).toBe(true);
+    const finalRecord = refreshCandidateOrdinaryThreadQualification(
+      {
+        ...ordinaryRecord,
+        accepted: {
+          ...ordinaryRecord.accepted,
+          receipt: ordinaryReceipt(
+            journey,
+            ordinarySubmitted,
+            journey.threadId,
+            false,
+          ),
+        },
+      },
+      () => ordinaryCurrentEvidence(journey),
+    );
+    journey.records.ordinaryThreadQualification = finalRecord;
+    assertCandidateOrdinaryThreadQualification(finalRecord);
   });
   journey.stable();
   expect(journey.unexpectedRequests).toEqual([]);

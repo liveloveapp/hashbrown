@@ -2171,3 +2171,487 @@ export function assertCandidateReadAdoption(
     );
   }
 }
+
+/** Joins an ordinary public-facade prediction to its retained authority and explicit thread lifecycle. */
+export function assertCandidateOrdinaryThreadQualification(
+  value: unknown,
+): void {
+  const obj = (item: unknown): Record<string, unknown> => {
+    assert.ok(
+      candidateAcceptanceObject(item),
+      'Ordinary qualification object required',
+    );
+    return item;
+  };
+  const arr = (item: unknown): unknown[] => {
+    assert.ok(Array.isArray(item), 'Ordinary qualification array required');
+    return item;
+  };
+  const text = (item: unknown): string => {
+    assert.ok(
+      typeof item === 'string' && item.length > 0,
+      'Ordinary qualification identity required',
+    );
+    return item;
+  };
+  const number = (item: unknown): number => {
+    assert.ok(
+      typeof item === 'number' && Number.isFinite(item),
+      'Ordinary qualification finite receipt required',
+    );
+    return item;
+  };
+  const root = obj(value);
+  const facade = text(root.facade);
+  assert.ok(
+    [
+      'chat',
+      'structured-chat',
+      'ui-chat',
+      'completion',
+      'structured-completion',
+      'ui-completion',
+    ].includes(facade),
+  );
+  const completion = facade.endsWith('completion');
+  assert.ok(root.api === 'chat-completions' || root.api === 'responses');
+  const configuration = obj(root.configuration);
+  const baseline = obj(root.baseline);
+  const originalState = obj(baseline.state);
+  const originalSession = obj(originalState.session);
+  const oldThread = text(originalSession.selector);
+  const originalPayload = obj(JSON.parse(text(originalSession.payload)));
+  const originalRequest = obj(JSON.parse(text(originalPayload.publicRequest)));
+  const originalMessages = arr(originalRequest.messages);
+  assert.equal(originalSession.state, 'Ready');
+  assert.equal(originalPayload.turnCompleted, true);
+  assert.equal(originalRequest.threadId, oldThread);
+  const accepted = obj(root.accepted);
+  const request = obj(accepted.request);
+  const input = obj(request.input);
+  const runId = text(input.runId);
+  const proxyId = text(request.requestId);
+  const targetThread = text(input.threadId);
+  const receipt = obj(accepted.receipt);
+  const publicState = obj(accepted.publicState);
+  const after = obj(accepted.after);
+  const newState = obj(accepted.newState);
+  const newSession = obj(newState.session);
+  const expectedAnswer = facade.startsWith('ui-')
+    ? { ui: [{ CandidateCard: { props: { text: 'Ordinary complete' } } }] }
+    : facade.startsWith('structured-')
+      ? { answer: 'Ordinary complete' }
+      : 'Ordinary complete';
+  const ordinaryText =
+    typeof expectedAnswer === 'string'
+      ? expectedAnswer
+      : JSON.stringify(expectedAnswer);
+  const checkInput = (
+    candidate: Record<string, unknown>,
+    thread: string,
+    messages?: unknown[],
+  ) => {
+    assert.equal(candidate.threadId, thread);
+    assert.deepEqual(candidate.tools, configuration.tools);
+    assert.deepEqual(candidate.forwardedProps, configuration.forwardedProps);
+    assert.deepEqual(candidate.context, originalRequest.context);
+    assert.deepEqual(candidate.state ?? null, originalRequest.state ?? null);
+    assert.ok(
+      !Object.hasOwn(candidate, 'resume'),
+      'Ordinary input must not resume',
+    );
+    const list = arr(candidate.messages);
+    if (messages)
+      assert.deepEqual(
+        list,
+        messages,
+        'Chat ordinary input must append the canonical prefix',
+      );
+    else {
+      assert.equal(
+        list.length,
+        2,
+        'Completion replacement must contain only system and one user',
+      );
+      const system = obj(list[0]);
+      assert.equal(system.role, 'system');
+      assert.equal(system.content, configuration.system);
+      text(system.id);
+      assert.ok(
+        !Object.hasOwn(system, 'toolCalls') &&
+          !Object.hasOwn(system, 'toolCallId'),
+      );
+    }
+    const user = obj(list.at(-1));
+    assert.equal(user.role, 'user');
+    assert.equal(user.content, root.prompt);
+    text(user.id);
+    assert.ok(
+      !Object.hasOwn(user, 'toolCalls') && !Object.hasOwn(user, 'toolCallId'),
+    );
+  };
+  const baselineProxyRejections = arr(baseline.proxyRejections);
+  assert.deepEqual(
+    arr(after.proxyRejections),
+    baselineProxyRejections,
+    'Global proxy refusal evidence changed',
+  );
+  const unchanged = (snapshot: Record<string, unknown>) => {
+    assert.deepEqual(
+      arr(snapshot.proxyRejections),
+      baselineProxyRejections,
+      'Global proxy refusal evidence changed',
+    );
+    assert.deepEqual(
+      snapshot.state,
+      baseline.state,
+      'Original native authority changed',
+    );
+    assert.deepEqual(
+      snapshot.witnesses,
+      baseline.witnesses,
+      'Original native witnesses changed',
+    );
+    assert.deepEqual(
+      snapshot.observer,
+      baseline.observer,
+      'Whole browser observer evidence changed',
+    );
+  };
+  let expectedOldRuns = arr(baseline.runs);
+  if (completion) {
+    const rejected = obj(root.rejected);
+    const rejectedRequest = obj(rejected.request);
+    const rejectedInput = obj(rejectedRequest.input);
+    const rejectedReceipt = obj(rejected.receipt);
+    const rejectedPublic = obj(rejected.publicState);
+    const rejectedAfter = obj(rejected.after);
+    const baselineCounts = obj(baseline.counts);
+    const rejectedCounts = obj(rejectedAfter.counts);
+    for (const counts of [baselineCounts, rejectedCounts])
+      for (const count of Object.values(counts))
+        assert.ok(
+          typeof count === 'number' &&
+            Number.isSafeInteger(count) &&
+            count >= 0,
+          'Actual native stage counts must be nonnegative safe integers',
+        );
+    for (const stage of [
+      'Create.Forward',
+      'Create.Completed',
+      'Deserialize.Forward',
+      'Deserialize.Completed',
+      'Run.Forward',
+      'Serialize.Forward',
+      'Serialize.Completed',
+      'Evidence.Start',
+      'Reserve.Start',
+      'Reserve.Committed',
+      'Admission.Completed',
+      'Executable.Typed.Admitted',
+      'Transport.Typed.Admitted',
+      'Public.Admitted',
+      'Recovery.Provider.Projected',
+      'Native.Result.Observed',
+      'reservation-attempt',
+      'reservation-success',
+      'cold-acquire-attempt',
+      'cold-acquire-success',
+      'save-success',
+    ])
+      assert.equal(
+        rejectedCounts[stage] ?? 0,
+        baselineCounts[stage] ?? 0,
+        'Refused ordinary request reached forbidden native stage: ' + stage,
+      );
+    const rejectedRunId = text(rejectedInput.runId);
+    const rejectedProxyId = text(rejectedRequest.requestId);
+    checkInput(rejectedInput, oldThread);
+    assert.notEqual(runId, rejectedRunId);
+    assert.notEqual(proxyId, rejectedProxyId);
+    assert.equal(rejectedRequest.status, 400);
+    assert.equal(rejectedReceipt.requestId, rejectedProxyId);
+    assert.equal(rejectedReceipt.upstreamStatus, 400);
+    assert.equal(rejectedReceipt.deliveredStatus, 400);
+    assert.equal(rejectedReceipt.bodyText, '');
+    assert.equal(rejectedReceipt.bodyBase64, '');
+    assert.deepEqual(rejectedReceipt.sourceEvents, []);
+    assert.deepEqual(rejectedReceipt.deliveredEvents, []);
+    assert.ok(
+      number(rejectedReceipt.requestSeq) < number(rejectedReceipt.headersSeq),
+    );
+    assert.ok(
+      number(rejectedReceipt.headersSeq) < number(rejectedReceipt.completeSeq),
+    );
+    assert.equal(rejectedPublic.threadId, oldThread);
+    assert.equal(rejectedPublic.pending, null);
+    assert.equal(rejectedPublic.isLoading, false);
+    assert.equal(rejectedPublic.isResuming, false);
+    assert.equal(obj(rejectedPublic.recovery).required, false);
+    assert.deepEqual(rejectedPublic.events, []);
+    if (typeof rejectedPublic.error === 'string')
+      assert.equal(rejectedPublic.error, 'TransportError: Bad Request (400)');
+    else {
+      const error = obj(rejectedPublic.error);
+      assert.equal(error.name, 'TransportError');
+      assert.equal(error.message, 'Bad Request (400)');
+    }
+    assert.equal(rejectedPublic.localError, null);
+    assert.equal(rejectedPublic.lastAction, 'next');
+    const lifecycle = arr(rejectedPublic.transport).map(obj);
+    assert.deepEqual(
+      lifecycle.map((item) => item.kind),
+      ['started', 'error', 'disposed'],
+    );
+    for (const item of lifecycle) assert.equal(item.requestId, rejectedRunId);
+    unchanged(rejectedAfter);
+    assert.equal(rejectedAfter.providerCount, baseline.providerCount);
+    expectedOldRuns = [...expectedOldRuns, rejectedRequest];
+    assert.deepEqual(rejectedAfter.runs, expectedOldRuns);
+    const navigation = obj(root.navigation);
+    assert.equal(navigation.control, 'new-thread');
+    assert.equal(navigation.fromThreadId, oldThread);
+    assert.equal(navigation.toThreadId, targetThread);
+    assert.notEqual(targetThread, oldThread);
+    const beforeUrl = new URL(text(navigation.beforeUrl));
+    const afterUrl = new URL(text(navigation.afterUrl));
+    assert.equal(beforeUrl.origin, afterUrl.origin);
+    const beforeConfig = obj(
+      JSON.parse(text(beforeUrl.searchParams.get('config'))),
+    );
+    const afterConfig = obj(
+      JSON.parse(text(afterUrl.searchParams.get('config'))),
+    );
+    assert.equal(beforeConfig.threadId, oldThread);
+    assert.deepEqual(
+      afterConfig,
+      { ...beforeConfig, threadId: targetThread },
+      'Explicit navigation changed trusted configuration',
+    );
+    beforeUrl.searchParams.delete('config');
+    afterUrl.searchParams.delete('config');
+    assert.equal(beforeUrl.href, afterUrl.href);
+    assert.ok(
+      number(rejectedReceipt.monotonicMs) < number(navigation.startedMs),
+    );
+    assert.ok(number(navigation.startedMs) <= number(navigation.completedMs));
+    assert.ok(number(navigation.completedMs) < number(receipt.monotonicMs));
+    const status = obj(navigation.status);
+    assert.equal(status.facade, facade);
+    assert.equal(status.threadId, targetThread);
+    assert.equal(status.pending, null);
+    assert.ok(
+      status.pendingInterrupts === null ||
+        status.pendingInterrupts === undefined,
+    );
+    assert.ok(status.output === null || status.output === undefined);
+    assert.equal(status.isLoading, false);
+    assert.equal(status.isResuming, false);
+    assert.equal(obj(status.recovery).required, false);
+    assert.deepEqual(status.events, []);
+    assert.deepEqual(status.transport, []);
+    assert.deepEqual(navigation.runs, expectedOldRuns);
+    assert.equal(navigation.providerCount, baseline.providerCount);
+    unchanged(after);
+    assert.deepEqual(after.runs, expectedOldRuns);
+    assert.deepEqual(
+      arr(accepted.newRuns),
+      [request],
+      'Fresh selector must retain exactly its sole accepted request',
+    );
+    assert.equal(
+      number(accepted.currentProviderCount),
+      number(baseline.providerCount) + 1,
+      'Current provider total changed after ordinary qualification',
+    );
+    checkInput(input, targetThread);
+  } else {
+    assert.ok(
+      !Object.hasOwn(root, 'navigation') && !Object.hasOwn(root, 'rejected'),
+      'Chat ordinary qualification must remain on its retained thread',
+    );
+    assert.equal(targetThread, oldThread);
+    const messages = arr(input.messages);
+    assert.equal(messages.length, originalMessages.length + 1);
+    checkInput(input, oldThread, [...originalMessages, messages.at(-1)]);
+    assert.deepEqual(after.runs, [...expectedOldRuns, request]);
+    assert.deepEqual(after.state, newState);
+    assert.deepEqual(after.witnesses, baseline.witnesses);
+    assert.deepEqual(after.observer, baseline.observer);
+  }
+  assert.equal(request.status, 200);
+  assert.equal(receipt.requestId, proxyId);
+  assert.equal(receipt.upstreamStatus, 200);
+  assert.equal(receipt.deliveredStatus, 200);
+  assert.ok(number(receipt.requestSeq) < number(receipt.headersSeq));
+  const source = arr(receipt.sourceEvents).map(obj);
+  assert.deepEqual(
+    receipt.deliveredEvents,
+    source,
+    'Actual source/delivered ordinary protocol differs',
+  );
+  for (const type of ['RUN_STARTED', 'RUN_FINISHED']) {
+    const matching = source.filter((item) => item.type === type);
+    assert.equal(matching.length, 1);
+    assert.equal(matching[0].runId, runId);
+    assert.equal(matching[0].threadId, targetThread);
+  }
+  assert.equal(source[0].type, 'RUN_STARTED');
+  assert.equal(source.at(-1)?.type, 'RUN_FINISHED');
+  assert.ok(
+    source.every(
+      (item) =>
+        ![
+          'RUN_ERROR',
+          'TOOL_CALL_START',
+          'TOOL_CALL_ARGS',
+          'TOOL_CALL_END',
+          'TOOL_CALL_RESULT',
+        ].includes(String(item.type)),
+    ),
+  );
+  assert.equal(
+    source
+      .filter((item) => item.type === 'TEXT_MESSAGE_CONTENT')
+      .map((item) => item.delta)
+      .join(''),
+    ordinaryText,
+  );
+  assert.equal(publicState.threadId, targetThread);
+  assert.equal(publicState.pending, null);
+  assert.equal(publicState.isLoading, false);
+  assert.equal(publicState.isResuming, false);
+  assert.equal(publicState.error, null);
+  assert.equal(obj(publicState.recovery).required, false);
+  const publicEvents = arr(publicState.events).map(obj);
+  for (const type of ['RUN_STARTED', 'RUN_FINISHED']) {
+    const matching = publicEvents.filter((item) => item.type === type);
+    assert.equal(matching.length, 1);
+    assert.equal(matching[0].runId, runId);
+    assert.equal(matching[0].requestId, runId);
+  }
+  const lifecycle = arr(publicState.transport).map(obj);
+  assert.deepEqual(
+    lifecycle.map((item) => item.kind),
+    lifecycle.some((item) => item.kind === 'complete')
+      ? ['started', 'disposed', 'complete']
+      : ['started', 'disposed'],
+  );
+  for (const item of lifecycle) assert.equal(item.requestId, runId);
+  if (facade === 'completion' || facade === 'structured-completion')
+    assert.deepEqual(publicState.output, expectedAnswer);
+  else if (facade === 'ui-completion') {
+    const output = obj(publicState.output);
+    assert.equal(output.role, 'assistant');
+    text(output.id);
+    assert.deepEqual(output.content, expectedAnswer);
+    if (publicState.rawOutput !== undefined)
+      assert.deepEqual(publicState.rawOutput, expectedAnswer);
+    if (publicState.value !== undefined)
+      assert.deepEqual(obj(publicState.value).content, expectedAnswer);
+  } else
+    assert.ok(
+      arr(publicState.messages).some((item) => {
+        const message = obj(item);
+        return (
+          message.role === 'assistant' &&
+          JSON.stringify(message.content) === JSON.stringify(expectedAnswer)
+        );
+      }),
+    );
+  if (facade.startsWith('ui-'))
+    assert.ok(arr(accepted.renderedText).includes('Ordinary complete'));
+  assert.equal(after.providerCount, number(baseline.providerCount) + 1);
+  assert.equal(newSession.selector, targetThread);
+  assert.equal(newSession.state, 'Ready');
+  assert.equal(newSession.ever_saved, true);
+  assert.equal(newSession.token, null);
+  assert.equal(newSession.lease_until, null);
+  assert.equal(newSession.admitted_request, null);
+  const payload = obj(JSON.parse(text(newSession.payload)));
+  assert.equal(payload.turnCompleted, true);
+  assert.deepEqual(payload.pendingCalls, []);
+  assert.deepEqual(payload.expectedBrowserCallIds, []);
+  assert.equal(obj(payload.approvals).pendingBatch, null);
+  const saved = obj(JSON.parse(text(payload.publicRequest)));
+  assert.ok(!Object.hasOwn(saved, 'runId'));
+  const { runId: ignoredRun, ...submitted } = input;
+  void ignoredRun;
+  const { messages: savedMessages, ...savedConfiguration } = saved;
+  const { messages: submittedMessages, ...submittedConfiguration } = submitted;
+  if (
+    submittedConfiguration.state === null &&
+    !Object.hasOwn(savedConfiguration, 'state')
+  )
+    delete submittedConfiguration.state;
+  assert.deepEqual(savedConfiguration, submittedConfiguration);
+  const savedHistory = arr(savedMessages);
+  assert.equal(savedHistory.length, arr(submittedMessages).length + 1);
+  assert.deepEqual(savedHistory.slice(0, -1), submittedMessages);
+  const finalMessage = obj(savedHistory.at(-1));
+  const starts = source.filter((item) => item.type === 'TEXT_MESSAGE_START');
+  assert.equal(starts.length, 1);
+  assert.equal(finalMessage.id, starts[0].messageId);
+  assert.equal(finalMessage.role, 'assistant');
+  assert.equal(finalMessage.content, ordinaryText);
+  assert.ok(
+    finalMessage.name === undefined || finalMessage.name === 'HashbrownNative',
+  );
+  assert.ok(
+    Object.keys(finalMessage).every((key) =>
+      ['id', 'role', 'content', 'name'].includes(key),
+    ),
+  );
+  if (completion) {
+    assert.deepEqual(newState.effects, []);
+    assert.deepEqual(newState.invocations, []);
+    assert.deepEqual(newState.members, []);
+    assert.deepEqual(newState.batches, []);
+  } else assert.deepEqual(newState.effects, originalState.effects);
+  assert.deepEqual(accepted.newWitnesses, []);
+  const provider = obj(accepted.provider);
+  assertCandidateFacadeSchema(facade, root.api, configuration, [provider]);
+  assertCandidateProviderTextHistory(
+    provider,
+    root.api,
+    arr(input.messages).map(obj),
+  );
+}
+
+/** Live membership evidence read only after an owned ordinary journey has drained. */
+export interface CandidateOrdinaryCurrentEvidence {
+  readonly runs: readonly unknown[];
+  readonly providerCount: number;
+  readonly proxyRejections: readonly unknown[];
+  readonly newRuns?: readonly unknown[];
+}
+
+/** Refreshes live membership at invocation while preserving captured protocol facts and the original authority baseline. */
+export function refreshCandidateOrdinaryThreadQualification(
+  original: Readonly<Record<string, unknown>>,
+  readCurrent: () => CandidateOrdinaryCurrentEvidence,
+): Record<string, unknown> {
+  assert.ok(candidateAcceptanceObject(original.accepted));
+  const accepted = original.accepted;
+  assert.ok(candidateAcceptanceObject(accepted.after));
+  assert.ok(typeof original.facade === 'string');
+  const current = readCurrent();
+  return {
+    ...original,
+    accepted: {
+      ...accepted,
+      after: {
+        ...accepted.after,
+        runs: [...current.runs],
+        providerCount: current.providerCount,
+        proxyRejections: [...current.proxyRejections],
+      },
+      ...(original.facade.endsWith('completion')
+        ? {
+            newRuns: current.newRuns ? [...current.newRuns] : undefined,
+            currentProviderCount: current.providerCount,
+          }
+        : {}),
+    },
+  };
+}

@@ -541,6 +541,8 @@ budget for compatible expired-authority reconciliation and schema-wide privacy
 purges; its result counts distinct changed sessions. Reads remain inert and
 consumption/dispatch fences survive. Custom journals define their own maintenance.
 
+Completion-family qualification must preserve the current thread until recovered settlement and Completed restoration finish. Completion, structured completion and UI completion replace input history, so the next independent prediction must first prove that replacement on the original native thread receives an actual 400, then use the visible New thread control to supply a fresh caller-owned `threadId` through the existing facade option and prove the fresh prediction receives 200. Retain both request identities and the unchanged original session/effect evidence. Chat qualification instead appends the next turn on the same owned thread. This explicit application lifecycle adds no SDK command and must not silently override a provided selector; the full browser gate remains separately required.
+
 The candidate browser gate has a separate evidence boundary: positively observe
 initial browser-handler entry, then independently measure no additional entry for
 the original call IDs after page destruction, restoration, settlement and reload.
