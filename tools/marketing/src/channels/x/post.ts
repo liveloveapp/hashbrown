@@ -6,7 +6,7 @@ import { X_AUTH_COMMAND, type XAuth } from './auth.ts';
 const TWEETS_URL = 'https://api.x.com/2/tweets';
 
 interface TweetResponse {
-  data: { id: string; text: string };
+  data?: { id?: unknown; text?: string };
 }
 
 interface TweetRequestBody {
@@ -39,6 +39,7 @@ async function prepareMedia(
   let status: number | undefined;
   let timedOut = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let refreshing: Promise<void> | undefined;
   const request = async () => {
     for (let attempt = 0; attempt < 2; attempt++) {
       const response = await (auth.fetch ?? fetch)(
@@ -61,7 +62,8 @@ async function prepareMedia(
       status = response.status;
       if (status === 401 && attempt === 0) {
         void response.body?.cancel().catch(() => undefined);
-        await auth.refresh();
+        refreshing = auth.refresh();
+        await refreshing;
         if (controller.signal.aborted) throw new Error();
         continue;
       }
@@ -95,6 +97,9 @@ async function prepareMedia(
       }),
     ]);
   } catch {
+    // X rotates the refresh token on use. A timeout must not end the tick
+    // while the new pair is unsaved, or the next tick has to re-authorize.
+    await refreshing?.catch(() => undefined);
     const hint =
       status === 401 || status === 403
         ? ` Run \`${X_AUTH_COMMAND}\` to authorize with media.write.`
@@ -169,7 +174,12 @@ async function postTweet(auth: XAuth, body: TweetRequestBody): Promise<string> {
       return { retry: true, headers: { Authorization: await bearer(auth) } };
     },
   });
-  return response.data.id;
+  const id = response?.data?.id;
+  if (typeof id !== 'string' || id.length === 0) {
+    // A 2xx means X accepted the create; only its id is missing.
+    throw new OutcomeUnknownError('X accepted the tweet but returned no id.');
+  }
+  return id;
 }
 
 /**
@@ -178,7 +188,8 @@ async function postTweet(auth: XAuth, body: TweetRequestBody): Promise<string> {
  * the first tweet only. A 401 refreshes the token once and retries.
  *
  * @throws {OutcomeUnknownError} When a create may have gone through (timeout,
- *   network error, 5xx), or any reply fails after the first tweet is live.
+ *   network error, 5xx, 2xx without an id), or any reply fails after the
+ *   first tweet is live.
  */
 export async function postX(auth: XAuth, draft: Draft): Promise<PostResult> {
   const parts = draft.threadParts ?? (draft.text ? [draft.text] : []);
