@@ -6,6 +6,27 @@ import { createGitHubClient } from './github.ts';
 const TOKEN = 'ghp_secret_token';
 const BASE = 'https://api.github.com/repos/liveloveapp/hashbrown';
 
+test.each(['updateBranch', 'pullState', 'merge', 'readFile'] as const)(
+  'missing GitHub credential rejects %s before making a request',
+  async (operation) => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ message: 'unauthorized' }, { status: 401 }),
+    );
+    const github = createGitHubClient(
+      undefined,
+      fetchMock as unknown as typeof fetch,
+    );
+
+    const result =
+      operation === 'readFile'
+        ? github.readFile('www/content/blog/example.md', 'main')
+        : github[operation](12);
+
+    await expect(result).rejects.toThrow('MARKETING_GITHUB_TOKEN');
+    expect(fetchMock).not.toHaveBeenCalled();
+  },
+);
+
 function setup(response: Response | (() => Response)) {
   const fetchMock = vi.fn(async () =>
     typeof response === 'function' ? response() : response,
