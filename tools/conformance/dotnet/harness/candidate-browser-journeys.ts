@@ -13,6 +13,7 @@ import {
   captureCandidateOriginalRun,
   classifyCandidateWarmPhase,
   finalizeCandidateAcceptance,
+  isCandidateMalformedBoundaryReady,
   readCandidatePendingBrowserCalls,
   reconcileCandidateBusyReader,
   refreshCandidateFaultObservation,
@@ -2165,11 +2166,24 @@ async function failedAttempt(
       timeout: 30_000,
     })
     .toBe(true);
-  await journey.proxy.waitFor(
-    run.proxyId,
-    'downstream-closed',
-    AbortSignal.timeout(30_000),
-  );
+  if (journey.record.scenario === 'failure.malformed-ack') {
+    await expect
+      .poll(
+        () =>
+          isCandidateMalformedBoundaryReady(
+            journey.proxy.records(journey.threadId),
+            run.proxyId,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+  } else {
+    await journey.proxy.waitFor(
+      run.proxyId,
+      'downstream-closed',
+      AbortSignal.timeout(30_000),
+    );
+  }
   const failed = await journey.snapshot();
   expect(failed.runs).toHaveLength(before.runs.length + 1);
   expect(failed.providerCount - before.providerCount).toBeLessThanOrEqual(1);
@@ -2209,6 +2223,7 @@ async function failedAttempt(
   );
   const originalFailure = Object.freeze(
     structuredClone({
+      threadId: journey.threadId,
       error: current.error,
       recoveryRequired: current.recovery.required,
       events: current.events,

@@ -6,6 +6,51 @@ const acceptanceUrl = pathToFileURL(
   resolve(__dirname, '../harness/candidate-browser-acceptance.ts'),
 ).href;
 
+test('malformed HTTP completion requires an actual complete entity while aborted readiness waits for its asynchronous fault receipt', () => {
+  const output = probe(`
+const {isCandidateMalformedBoundaryReady:ready,assertCandidateProxyIntervention:check}=subject;
+const requestId='actual-proxy-request',runId='actual-public-run',threadId='actual-thread';
+const frame=value=>Buffer.from('data: '+JSON.stringify(value)+String.fromCharCode(10,10));
+const ack=frame({type:'RUN_STARTED',threadId,runId});const result=frame({type:'TOOL_CALL_RESULT',toolCallId:'protected',content:'native original'});const finish=frame({type:'RUN_FINISHED',threadId,runId});const post=Buffer.concat([result,finish]);const corrupt=Buffer.from(post);corrupt[6]=33;
+const record=(seq,kind,extra={})=>({seq,kind,requestId,bytes:Buffer.alloc(0),...extra});
+const original={scenario:'failure.malformed-ack',requestId,runId,threadId,error:{name:'SyntaxError',message:'Actual malformed JSON'},recoveryRequired:true,records:[record(31,'request'),record(32,'upstream-headers',{status:200}),record(33,'upstream-body',{bytes:ack}),record(34,'upstream-ack'),record(35,'delivered-headers',{status:200}),record(36,'delivered-body',{bytes:ack}),record(37,'downstream-ack-write'),record(38,'upstream-body',{bytes:post}),record(39,'mutation',{reason:'malform-after-upstream-ack'}),record(40,'delivered-body',{bytes:corrupt}),record(41,'complete')],events:[{type:'RUN_STARTED',runId,requestId:runId,monotonicMs:516.7}],transport:[{kind:'started',requestId:runId,monotonicMs:340.4},{kind:'error',requestId:runId,monotonicMs:633.1},{kind:'disposed',requestId:runId,monotonicMs:633.2}]};
+const copy=()=>({...structuredClone(original),records:original.records.map(value=>({...value,bytes:Buffer.from(value.bytes)}))});
+const replacePost=(value,bytes)=>{value.records.find(record=>record.seq===38).bytes=Buffer.from(bytes);const changed=Buffer.from(bytes);changed[6]=33;value.records.find(record=>record.seq===40).bytes=changed;};
+
+assert.equal(ready(original.records,requestId),true,'Actual normal HTTP EOF must unblock malformed validation');
+check(original);
+assert.equal(ready([],requestId),false);assert.equal(ready(original.records,'foreign'),false);
+const closed=original.records.filter(record=>record.kind!=='complete').concat(record(41,'downstream-closed'));
+assert.equal(ready(closed,requestId),false,'Closure alone precedes asynchronous upstream fault recording');
+assert.equal(ready([...closed,record(42,'fault',{reason:'aborted'})],requestId),true);
+check({...original,records:[...closed,record(42,'fault',{reason:'aborted'})]});
+assert.equal(ready([...closed,record(42,'fault',{reason:'unexpected infrastructure failure'})],requestId),true,'Readiness never classifies a fault as acceptable');
+const mutations=[
+ value=>value.records=value.records.filter(record=>record.kind!=='complete'),
+ value=>value.records.push(record(42,'complete')),
+ value=>value.records.find(record=>record.kind==='complete').seq=38,
+ value=>value.records.push(record(42,'downstream-closed')),
+ value=>value.records.push(record(42,'fault',{reason:'aborted'})),
+ value=>replacePost(value,result),
+ value=>replacePost(value,Buffer.concat([result,frame({type:'RUN_FINISHED',threadId,runId:'foreign'})])),
+ value=>replacePost(value,Buffer.concat([result,frame({type:'RUN_FINISHED',threadId:'foreign',runId})])),
+ value=>replacePost(value,Buffer.concat([result,frame({type:'RUN_ERROR',threadId,runId})])),
+ value=>replacePost(value,Buffer.concat([result,finish,finish])),
+ value=>{const row=value.records.find(record=>record.seq===40);row.bytes=row.bytes.subarray(0,row.bytes.length-4);},
+ value=>value.records.push(record(42,'upstream-body',{bytes:finish})),
+ value=>value.records.push(record(42,'delivered-body',{bytes:finish})),
+ value=>{value.records.find(record=>record.seq===40).bytes[7]=33;},
+ value=>delete value.error,
+ value=>value.recoveryRequired=false,
+ value=>value.transport[1].requestId='foreign',
+ value=>value.transport=value.transport.filter(record=>record.kind!=='disposed'),
+];
+for(const mutate of mutations){const value=copy();mutate(value);assert.throws(()=>check(value),/complete|terminal|entity|byte|source|fault|close|malform|mutat|deliver|parser|Syntax|error|dispos|request|run|thread|requir|seq|order|late|equal/i);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
 test('inert snapshot comparison still rejects journal provider run or observer changes independently of status-read accounting', () => {
   const output = probe(`
 const before={state:{session:{state:'Ready',revision:6,generation:1},effects:[],members:[]},runs:[{proxyId:'original',input:{runId:'original-run'}}],providerCount:1,counts:{'status-read':1,'Run.Forward':1},observerAttempts:[]};
@@ -244,11 +289,12 @@ assert.throws(()=>check(completed,null), /journal|session|authority|missing/i);
 test('each failure requires its actual per-run proxy intervention with independentACK domains and rejects unrelated infrastructurefault', () => {
   const result = probe(`
 const { assertCandidateProxyIntervention: check } = subject;
-const record=(kind,extra={})=>({kind,requestId:'actual-request',bytes:Buffer.alloc(0),...extra});
-const source=Buffer.from('data: {"type":"RUN_STARTED","runId":"actual-run"}\\n\\ndata: {"type":"TEXT_MESSAGE_START","messageId":"m"}\\n\\n');
+let sequence=0;const record=(kind,extra={})=>({seq:++sequence,kind,requestId:'actual-request',bytes:Buffer.alloc(0),...extra});
+const frame=value=>'data: '+JSON.stringify(value)+String.fromCharCode(10,10);
+const source=Buffer.from(frame({type:'RUN_STARTED',threadId:'actual-thread',runId:'actual-run'})+frame({type:'TEXT_MESSAGE_START',messageId:'m'})+frame({type:'RUN_FINISHED',threadId:'actual-thread',runId:'actual-run'}));
 const delivered=Buffer.from(source.toString().replace('{"type":"TEXT_MESSAGE_START"','!"type":"TEXT_MESSAGE_START"'));
 const mode='malform-after-upstream-ack';
-const good={scenario:'failure.malformed-ack',requestId:'actual-request',runId:'actual-run',records:[record('upstream-body',{bytes:source}),record('upstream-ack'),record('downstream-ack-write'),record('mutation',{reason:mode}),record('delivered-body',{bytes:delivered})],events:[{type:'RUN_STARTED',runId:'actual-run'}],transport:[]};
+const good={scenario:'failure.malformed-ack',requestId:'actual-request',runId:'actual-run',threadId:'actual-thread',error:{name:'SyntaxError',message:'Actual malformed JSON'},recoveryRequired:true,records:[record('upstream-body',{bytes:source}),record('upstream-ack'),record('downstream-ack-write'),record('mutation',{reason:mode}),record('delivered-body',{bytes:delivered}),record('complete')],events:[{type:'RUN_STARTED',runId:'actual-run',requestId:'actual-run',monotonicMs:2}],transport:[{kind:'started',requestId:'actual-run',monotonicMs:1},{kind:'error',requestId:'actual-run',monotonicMs:3},{kind:'disposed',requestId:'actual-run',monotonicMs:4}]};
 check(good);
 for (const changed of [good.records.filter(r=>r.kind!=='mutation'),good.records.map(r=>r.kind==='mutation'?{...r,reason:'disconnect-after-delivered-ack'}:r),[...good.records,record('fault',{reason:'Actual post-ACK JSON frame required'})],good.records.map(r=>r.kind==='delivered-body'?{...r,bytes:source}:r)]) assert.throws(()=>check({...good,records:changed}), /mutation|intervention|fault|malform|bytes|source|equal/i);
 const pre={...good,scenario:'failure.preack-disconnect',records:[record('upstream-body',{bytes:source}),record('upstream-ack'),record('mutation',{reason:'disconnect-before-delivered-ack'})],events:[]};check(pre);

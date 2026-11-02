@@ -411,6 +411,7 @@ export interface CandidateFaultObservation {
   readonly scenario: string;
   readonly requestId: string;
   readonly runId: unknown;
+  readonly threadId?: string;
   readonly records: readonly Readonly<{
     kind: string;
     requestId: string;
@@ -432,6 +433,19 @@ export interface CandidateFaultObservation {
     requestId?: string;
     monotonicMs?: number;
   }>[];
+}
+
+/** Reports whether actual scoped receipts have reached the malformed-run validation boundary. */
+export function isCandidateMalformedBoundaryReady(
+  records: CandidateFaultObservation['records'],
+  requestId: string,
+): boolean {
+  const scoped = records.filter((record) => record.requestId === requestId);
+  return (
+    scoped.some((record) => record.kind === 'complete') ||
+    (scoped.some((record) => record.kind === 'downstream-closed') &&
+      scoped.some((record) => record.kind === 'fault'))
+  );
 }
 
 /** Combines original parser failure proof with later public iterator/lifecycle observations for retained validation. */
@@ -511,8 +525,8 @@ export function assertCandidateUnchangedSnapshot(
   );
 }
 
-/** Requires exact causal evidence before accepting an upstream abort caused by malformed-frame decoder disposal. */
-function assertCandidateMalformedDisposal(
+/** Requires exact mutation and decoder proof for complete HTTP entities or causal client-disposal aborts. */
+function assertCandidateMalformedOutcome(
   observation: CandidateFaultObservation,
 ): void {
   const records = observation.records.filter(
@@ -536,11 +550,30 @@ function assertCandidateMalformedDisposal(
     assert.equal(found.length, 1, `Unique malformed ${kind} receipt required`);
     return found[0];
   };
-  const fault = only('fault'),
-    close = only('downstream-closed'),
-    mutation = only('mutation'),
+  const mutation = only('mutation'),
     ackWrite = only('downstream-ack-write');
-  assert.equal(fault.reason, 'aborted', 'Unexpected malformed proxy fault');
+  const completed = records.filter((record) => record.kind === 'complete');
+  const normalEof = completed.length > 0;
+  let terminal: (typeof records)[number];
+  if (normalEof) {
+    terminal = only('complete');
+    assert.deepEqual(
+      records.filter(
+        (record) =>
+          record.kind === 'fault' || record.kind === 'downstream-closed',
+      ),
+      [],
+      'Normal malformed HTTP completion cannot include closure or fault receipts',
+    );
+  } else {
+    const fault = only('fault');
+    terminal = only('downstream-closed');
+    assert.equal(fault.reason, 'aborted', 'Unexpected malformed proxy fault');
+    assert.ok(
+      sequence(terminal) < sequence(fault),
+      'Malformed downstream closure must precede its aborted fault',
+    );
+  }
   assert.equal(
     mutation.reason,
     'malform-after-upstream-ack',
@@ -548,8 +581,7 @@ function assertCandidateMalformedDisposal(
   );
   assert.ok(
     sequence(ackWrite) < sequence(mutation) &&
-      sequence(mutation) < sequence(close) &&
-      sequence(close) < sequence(fault),
+      sequence(mutation) < sequence(terminal),
     'Malformed mutation/closure/fault causal order differs',
   );
   const sourceRecords = records.filter(
@@ -560,8 +592,8 @@ function assertCandidateMalformedDisposal(
   );
   for (const record of [...sourceRecords, ...deliveredRecords])
     assert.ok(
-      sequence(record) < sequence(close),
-      'Late malformed source/delivered bytes after closure',
+      sequence(record) < sequence(terminal),
+      'Late malformed source/delivered bytes after terminal boundary',
     );
   const source = Buffer.concat(
     sourceRecords.map((record) => Buffer.from(record.bytes)),
@@ -569,6 +601,78 @@ function assertCandidateMalformedDisposal(
   const delivered = Buffer.concat(
     deliveredRecords.map((record) => Buffer.from(record.bytes)),
   );
+  if (normalEof) {
+    assert.equal(
+      delivered.length,
+      source.length,
+      'Normal malformed HTTP completion requires the entire source entity',
+    );
+    const text = source.toString('utf8');
+    assert.ok(
+      /\r?\n\r?\n$/.test(text),
+      'Complete genuine source SSE terminal required',
+    );
+    const events = text
+      .split(/\r?\n\r?\n/)
+      .filter((frame) => frame.trim())
+      .map(
+        (frame) =>
+          JSON.parse(
+            frame
+              .split(/\r?\n/)
+              .filter((line) => line.startsWith('data:'))
+              .map((line) => line.slice(5).trimStart())
+              .join('\n'),
+          ) as unknown,
+      );
+    assert.ok(
+      events.every(candidateAcceptanceObject),
+      'Genuine source events must be objects',
+    );
+    const first = events[0];
+    const last = events.at(-1);
+    assert.ok(
+      candidateAcceptanceObject(first) && candidateAcceptanceObject(last),
+    );
+    assert.equal(
+      first.type,
+      'RUN_STARTED',
+      'Genuine source ACK must start complete protocol',
+    );
+    const terminals = events.filter(
+      (event) =>
+        candidateAcceptanceObject(event) &&
+        (event.type === 'RUN_FINISHED' || event.type === 'RUN_ERROR'),
+    );
+    assert.equal(
+      terminals.length,
+      1,
+      'Exactly one genuine source terminal required',
+    );
+    assert.equal(last, terminals[0], 'Genuine source terminal must be last');
+    assert.equal(
+      last.type,
+      'RUN_FINISHED',
+      'Normal malformed source must finish a non-error protocol',
+    );
+    assert.ok(
+      typeof observation.threadId === 'string' &&
+        observation.threadId.length > 0,
+      'Actual current source thread identity required',
+    );
+    for (const event of [first, last]) {
+      assert.equal(
+        event.runId,
+        observation.runId,
+        'Source terminal run identity differs',
+      );
+      assert.equal(
+        event.threadId,
+        observation.threadId,
+        'Source terminal thread identity differs',
+      );
+    }
+  }
   const beforeMutation = Buffer.concat(
     sourceRecords
       .filter((record) => sequence(record) < sequence(mutation))
@@ -621,8 +725,8 @@ function assertCandidateMalformedDisposal(
   assert.ok(
     corruptDelivery &&
       sequence(mutation) < sequence(corruptDelivery) &&
-      sequence(corruptDelivery) < sequence(close),
-    'Corrupt delivered frame must precede downstream closure',
+      sequence(corruptDelivery) < sequence(terminal),
+    'Corrupt delivered frame must precede HTTP terminal boundary',
   );
   const error = observation.error;
   assert.ok(
@@ -788,8 +892,8 @@ export function assertCandidateProxyIntervention(
     );
   }
   const faults = records.filter((record) => record.kind === 'fault');
-  if (observation.scenario === 'failure.malformed-ack' && faults.length > 0) {
-    assertCandidateMalformedDisposal(observation);
+  if (observation.scenario === 'failure.malformed-ack') {
+    assertCandidateMalformedOutcome(observation);
     return;
   }
   for (const fault of faults)
