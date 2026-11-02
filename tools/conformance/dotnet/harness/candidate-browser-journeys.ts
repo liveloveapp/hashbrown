@@ -7,6 +7,7 @@ import {
   assertCandidateOrdinaryThreadQualification,
   assertCandidateProviderTextHistory,
   assertCandidateProxyIntervention,
+  assertCandidateRacePublicQualification,
   assertCandidateReadAdoption,
   assertCandidateUnchangedSnapshot,
   assertCandidateUnknownEffectLocalState,
@@ -127,6 +128,8 @@ interface Status {
     reason?: string;
   };
   readonly messages?: readonly Record<string, unknown>[];
+  readonly configuration?: Readonly<Record<string, unknown>>;
+  readonly resourceProbe?: Readonly<Record<string, unknown>>;
   readonly output?: unknown;
   readonly value?: unknown;
   readonly rawOutput?: unknown;
@@ -3233,18 +3236,161 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
       historical,
       2,
     );
-    const losingView = await journey.status(losing.page);
-    expect(losingView.recovery.required).toBe(true);
-    // Public ErrorMessage has no canonical ID and is explicitly a synthetic failed-run display item. Keep it in evidence, compare committed message views separately.
-    expect(
-      losingView.messages?.filter((message) => message.role !== 'error'),
-    ).toEqual(
-      (firstWins ? secondView : firstView).messages?.filter(
-        (message) => message.role !== 'error',
-      ),
+    let losingView = await journey.status(losing.page);
+    const losingRun = journey
+      .runs()
+      .slice(before.runs.length)
+      .find((run) => run.status === 409);
+    assert.ok(losingRun);
+    const losingRunId = losingRun.input.runId;
+    assert.ok(typeof losingRunId === 'string');
+    journey.records.race = {
+      firstView,
+      secondView,
+      losingView,
+      winner,
+      losingRun,
+    };
+    await expect
+      .poll(async () => {
+        const views = await Promise.all([
+          journey.status(winning.page),
+          journey.status(losing.page),
+        ]);
+        return views.every(
+          (view, index) =>
+            !view.isLoading &&
+            !view.isResuming &&
+            view.transport.some(
+              (event) =>
+                event.kind === 'disposed' &&
+                event.requestId ===
+                  (index === 0 ? winner.input.runId : losingRunId),
+            ),
+        );
+      })
+      .toBe(true);
+    const winnerReceipt = ordinaryReceipt(
+      journey,
+      winner,
+      journey.threadId,
+      false,
     );
-    journey.records.race = { firstView, secondView, losingView, winner };
-    await journey.read(losing.page, 'Completed', true);
+    await expect
+      .poll(async () => {
+        await journey.collect();
+        return journey.workers.reduce(
+          (total, worker) => total + (worker.stages['Context.Disposed'] ?? 0),
+          0,
+        );
+      })
+      .toBe((before.counts['Context.Disposed'] ?? 0) + 2);
+    losingView = await journey.status(losing.page);
+    const refusedRecords = journey.proxy
+      .records(journey.threadId)
+      .filter((record) => record.requestId === losingRun.proxyId);
+    const refusedSource = Buffer.concat(
+      refusedRecords
+        .filter((record) => record.kind === 'upstream-body')
+        .map((record) => record.bytes),
+    );
+    const refusedBody = Buffer.concat(
+      refusedRecords
+        .filter((record) => record.kind === 'delivered-body')
+        .map((record) => record.bytes),
+    );
+    const ownBefore = firstWins ? secondView : firstView;
+    const observedBefore = ownBefore;
+    const observedLosing = losingView;
+    journey.records.race = {
+      firstView,
+      secondView,
+      losingView,
+      winner,
+      losingRun,
+      refusedRecords,
+      winnerReceipt,
+    };
+    const beforeReadSnapshot = await journey.snapshot();
+    const beforeWork = {
+      ...beforeReadSnapshot,
+      witnesses: [...journey.witnesses],
+      observer: journey.observer.records(),
+    };
+    const expectedMessages = (await journey.status(winning.page)).messages;
+    const completedStatus = await journey.read(losing.page, 'Completed', true);
+    const completedRead =
+      journey.records[`read-${journey.configurations().length}`];
+    assert.ok(object(completedRead) && object(completedRead.raw));
+    assert.ok(object(completedRead.raw.body));
+    const afterReadSnapshot = await journey.snapshot();
+    const afterWork = {
+      ...afterReadSnapshot,
+      witnesses: [...journey.witnesses],
+      observer: journey.observer.records(),
+    };
+    const qualification = {
+      framework: journey.record.composition.startsWith('angular.')
+        ? 'angular'
+        : 'react',
+      threadId: journey.threadId,
+      losingRunId,
+      before: observedBefore,
+      losing: observedLosing,
+      rejected: {
+        requestId: losingRun.proxyId,
+        runId: losingRunId,
+        threadId: losingRun.input.threadId,
+        status: refusedRecords.find(
+          (record) => record.kind === 'delivered-headers',
+        )?.status,
+        bodyText: refusedBody.toString('utf8'),
+        bodyBase64: refusedBody.toString('base64'),
+        sourceBodyBase64: refusedSource.toString('base64'),
+        upstreamStatus: refusedRecords.find(
+          (record) => record.kind === 'upstream-headers',
+        )?.status,
+        request: (() => {
+          const request = refusedRecords.find(
+            (record) => record.kind === 'request',
+          );
+          assert.ok(request);
+          const input = JSON.parse(
+            request.incomingBody.toString('utf8'),
+          ) as Record<string, unknown>;
+          return {
+            requestId: request.requestId,
+            threadId: input.threadId,
+            runId: input.runId,
+          };
+        })(),
+        requestCount: refusedRecords.filter(
+          (record) => record.kind === 'request',
+        ).length,
+        upstreamHeaderCount: refusedRecords.filter(
+          (record) => record.kind === 'upstream-headers',
+        ).length,
+        deliveredHeaderCount: refusedRecords.filter(
+          (record) => record.kind === 'delivered-headers',
+        ).length,
+        completeCount: refusedRecords.filter(
+          (record) => record.kind === 'complete',
+        ).length,
+        complete: refusedRecords.some((record) => record.kind === 'complete'),
+      },
+      completed: {
+        raw: completedRead.raw.body,
+        status: completedStatus,
+        expectedMessages,
+        beforeWork,
+        afterWork,
+      },
+    };
+    journey.records.race = {
+      ...(journey.records.race as Record<string, unknown>),
+      qualification,
+    };
+    assertCandidateRacePublicQualification(qualification);
     journey.stable();
     return;
   }

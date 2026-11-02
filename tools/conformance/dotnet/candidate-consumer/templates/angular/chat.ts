@@ -51,15 +51,42 @@ export class ChatLeaf {
   });
   readonly data = computed(() => {
     this.observed();
-    const value = this.result.hasValue() ? this.result.value() : [];
+    const hasValue = this.result.hasValue();
+    const resourceError = this.result.error();
+    const snapshot = this.result.snapshot();
+    let valueRead: Record<string, unknown>;
+    try {
+      valueRead = { threw: false, value: this.result.value() };
+    } catch (error) {
+      valueRead = {
+        threw: true,
+        error: candidateError(error),
+        sameResourceError: error === resourceError,
+      };
+    }
+    const resourceProbe = {
+      hasValue,
+      status: this.result.status(),
+      snapshot:
+        snapshot.status === 'error'
+          ? { status: snapshot.status, error: candidateError(snapshot.error) }
+          : { status: snapshot.status, value: snapshot.value },
+      snapshotErrorIsResourceError:
+        snapshot.status === 'error' && snapshot.error === resourceError,
+      valueRead,
+      lastAssistantMessage: this.result.lastAssistantMessage() ?? null,
+    };
+    const value = hasValue ? this.result.value() : [];
     return {
+      resourceProbe,
+      configuration: this.result.getRecoveryConfiguration(),
       messages: value,
       value,
       state: this.result.state(),
       status: this.result.status(),
       isLoading: this.result.isLoading(),
       isResuming: this.result.isResuming(),
-      pendingInterrupts: this.result.pendingInterrupts(),
+      pendingInterrupts: this.result.pendingInterrupts() ?? null,
       error: this.result.error() ? candidateError(this.result.error()) : null,
       ...this.runtime.observations(),
     };

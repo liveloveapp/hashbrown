@@ -970,3 +970,57 @@ for(const facade of ['ui-chat','ui-completion'])for(const framework of ['react',
 
   expect(output.trim()).toBe('passed');
 });
+
+test('same-revision race qualifies actual Angular guarded Resource error and inert Completed adoption while retaining React history', () => {
+  const output = probe(`
+
+const runId='losing-run', error='TransportError: Conflict (409)';
+const user={id:'user',role:'user',content:'Current actual-thread'};
+const assistant={id:'announcement',role:'assistant',content:'',toolCalls:[{toolCallId:'browser',name:'getWeather',args:{city:'PDX'},role:'tool',status:'pending'}],serverToolCalls:[{toolCallId:'protected',name:'lookupAirport',args:{code:'PDX'},status:'inProgress'}]};
+const answer={id:'answer',role:'assistant',content:'Candidate complete',toolCalls:[]};
+const pending={id:'own-losing-token',serverRevision:6,toolCalls:[{id:'browser',name:'getWeather',arguments:{city:'PDX'}}],interrupts:[{id:'ficc_protected',reason:'tool_call',toolCallId:'protected',message:'Approval required for tool call: lookupAirport',responseSchema:{type:'object',properties:{approved:{type:'boolean'}},required:['approved']}}]};
+function resource(messages,failed=false){return {hasValue:!failed,status:failed?'error':'resolved',snapshot:failed?{status:'error',error}:{status:'resolved',value:structuredClone(messages)},snapshotErrorIsResourceError:failed,valueRead:failed?{threw:true,error,sameResourceError:true}:{threw:false,value:structuredClone(messages)},lastAssistantMessage:structuredClone(failed?assistant:messages.at(-1))};}
+function facts(framework){
+ const messages=[user,assistant];
+ const before={threadId:'actual-thread',messages:structuredClone(messages),state:null,pending:structuredClone(pending),pendingInterrupts:{id:'own-native-batch',interrupts:structuredClone(pending.interrupts)},configuration:{system:'trusted',tools:[{name:'getWeather'}]},recovery:{required:false},isLoading:false,isResuming:false,error:null,localError:null,events:[],transport:[],resourceProbe:resource(messages)};
+ const losing={...structuredClone(before),messages:[],error,recovery:{required:true},transport:['started','error','disposed'].map(kind=>({kind,requestId:runId})),resourceProbe:resource(messages,true)};
+ const adopted=[user,{...structuredClone(assistant),toolCalls:[{...structuredClone(assistant.toolCalls[0]),status:'done',result:{status:'fulfilled',value:'null'}}],serverToolCalls:[{...structuredClone(assistant.serverToolCalls[0]),status:'complete',result:{status:'fulfilled',value:JSON.stringify({code:'PDX'})}}]},answer];
+ const status={...structuredClone(before),messages:structuredClone(adopted),pending:null,pendingInterrupts:null,resourceProbe:resource(adopted)};
+ const work={state:{session:{state:'Ready',revision:13,generation:2},effects:[{call_id:'protected'}]},runs:[{input:{threadId:'actual-thread',runId},status:409},{input:{threadId:'actual-thread',runId:'winner'},status:200}],providerCount:2,witnesses:[{runId:'winner',callId:'protected',domain:'handler-return'}],observer:[],counts:{'status-read':2,'Run.Forward':2,'save-success':2}};
+ const canonical=[{id:'system',role:'system',content:'trusted'},user,{id:'announcement',role:'assistant',content:'',toolCalls:[{id:'browser',type:'function',function:{name:'getWeather',arguments:JSON.stringify({city:'PDX'})}},{id:'protected',type:'function',function:{name:'lookupAirport',arguments:JSON.stringify({code:'PDX'})}}]},{id:'browser-result',role:'tool',toolCallId:'browser',content:'null'},{id:'protected-result',role:'tool',toolCallId:'protected',content:JSON.stringify({code:'PDX'})},answer];
+ work.state.session.payload=JSON.stringify({formatVersion:2,publicRequest:JSON.stringify({threadId:'actual-thread',messages:canonical})});
+ if(framework==='react'){losing.messages=structuredClone(messages);losing.error={name:'TransportError',message:'Conflict (409)'};delete before.resourceProbe;delete losing.resourceProbe;delete status.resourceProbe;}
+ return {framework,threadId:'actual-thread',losingRunId:runId,before,losing,rejected:{requestId:'proxy-loser',runId,threadId:'actual-thread',status:409,upstreamStatus:409,request:{requestId:'proxy-loser',threadId:'actual-thread',runId},requestCount:1,upstreamHeaderCount:1,deliveredHeaderCount:1,completeCount:1,bodyText:'',bodyBase64:'',sourceBodyBase64:'',complete:true},completed:{raw:{schemaVersion:2,disposition:'Completed',serverRevision:13,snapshot:{threadId:'actual-thread',configuredSystemMessageId:'system',state:null,messages:canonical}},status,expectedMessages:structuredClone(adopted),beforeWork:work,afterWork:{...structuredClone(work),counts:{...work.counts,'status-read':3}}}};
+}
+for(const framework of ['angular','react']){
+ const original=facts(framework);
+ subject.assertCandidateRacePublicQualification(original);
+ const mutations=[
+ v=>v.rejected.status=200,v=>v.rejected.runId='foreign',v=>v.rejected.threadId='foreign',v=>v.rejected.bodyText='x',v=>v.rejected.sourceBodyBase64='eA==',v=>v.rejected.bodyBase64='eA==',v=>v.rejected.complete=false,
+ v=>delete v.rejected.sourceBodyBase64,v=>v.rejected.upstreamStatus=200,v=>delete v.rejected.upstreamStatus,v=>v.rejected.request.runId='foreign',v=>v.rejected.request.threadId='foreign',v=>v.rejected.request.requestId='foreign',v=>v.rejected.requestCount=2,v=>v.rejected.upstreamHeaderCount=0,v=>v.rejected.deliveredHeaderCount=2,v=>v.rejected.completeCount=0,v=>v.losing.events.push({type:'RUN_STARTED',runId,requestId:runId}),
+ v=>v.losing.transport[1].requestId='foreign',v=>v.losing.transport.push({kind:'error',requestId:runId}),v=>v.losing.transport.reverse(),
+ v=>v.losing.error=null,v=>v.losing.localError='synthetic submit error',v=>v.losing.recovery.required=false,v=>v.losing.isLoading=true,v=>v.losing.isResuming=true,
+ v=>v.losing.pending.id='winner-token',v=>v.losing.pendingInterrupts.id='foreign',v=>v.losing.state={changed:true},v=>delete v.losing.state,v=>v.losing.configuration.system='changed',
+ v=>v.completed.raw.schemaVersion=1,v=>delete v.completed.raw.schemaVersion,v=>v.completed.raw.serverRevision=12,v=>delete v.completed.raw.serverRevision,v=>delete v.completed.raw.snapshot.messages,v=>v.completed.raw.snapshot.messages=[],v=>v.completed.raw.snapshot.messages.at(-1).id='foreign-answer',v=>v.completed.raw.snapshot.messages.at(-1).content='changed canonical answer',v=>v.completed.raw.snapshot.messages[2].toolCalls[0].function.arguments=JSON.stringify({city:'changed'}),v=>v.completed.raw.snapshot.messages[2].toolCalls[1].function.arguments=JSON.stringify({code:'SFO'}),v=>v.completed.raw.snapshot.messages[3].content='42',v=>v.completed.raw.snapshot.messages[4].content=JSON.stringify({code:'SFO'}),v=>v.completed.raw.snapshot.messages[4].toolCallId='foreign-call',v=>v.completed.expectedMessages=[],v=>v.completed.expectedMessages.at(-1).id='self-certified-answer',v=>v.completed.raw.snapshot.state={changed:true},v=>delete v.completed.raw.snapshot.state,v=>v.completed.status.state={changed:true},v=>v.completed.raw.snapshot.configuredSystemMessageId='foreign-system',v=>delete v.completed.raw.snapshot.configuredSystemMessageId,v=>v.completed.raw.snapshot.messages[0].content='changed system',v=>v.completed.raw.snapshot.messages.shift(),v=>v.completed.raw.disposition='Pending',v=>v.completed.raw.snapshot.threadId='foreign',v=>v.completed.status.messages=[],v=>v.completed.status.messages.at(-1).id='forged',
+ v=>v.completed.status.pending=structuredClone(pending),v=>v.completed.status.error=error,v=>v.completed.status.recovery.required=true,
+ v=>{const payload=JSON.parse(v.completed.beforeWork.state.session.payload);const request=JSON.parse(payload.publicRequest);request.messages.at(-1).content='forged physical answer';payload.publicRequest=JSON.stringify(request);v.completed.beforeWork.state.session.payload=JSON.stringify(payload);},
+ v=>{const payload=JSON.parse(v.completed.beforeWork.state.session.payload);const request=JSON.parse(payload.publicRequest);request.threadId='foreign';payload.publicRequest=JSON.stringify(request);v.completed.beforeWork.state.session.payload=JSON.stringify(payload);},
+ v=>{const payload=JSON.parse(v.completed.beforeWork.state.session.payload);const request=JSON.parse(payload.publicRequest);request.state={changed:true};payload.publicRequest=JSON.stringify(request);v.completed.beforeWork.state.session.payload=JSON.stringify(payload);},
+ v=>{v.completed.raw.snapshot.messages.at(-1).content='coherently forged';v.completed.status.messages.at(-1).content='coherently forged';v.completed.expectedMessages.at(-1).content='coherently forged';if(v.framework==='angular'){v.completed.status.resourceProbe.snapshot.value.at(-1).content='coherently forged';v.completed.status.resourceProbe.valueRead.value.at(-1).content='coherently forged';v.completed.status.resourceProbe.lastAssistantMessage.content='coherently forged';}},
+ v=>v.completed.afterWork.providerCount++,v=>v.completed.afterWork.runs.push({status:409}),v=>v.completed.afterWork.state.session.revision++,v=>v.completed.afterWork.witnesses.push({runId}),
+ v=>v.completed.afterWork.observer.push({kind:'request-received'}),v=>v.completed.afterWork.counts['Run.Forward']++,v=>v.completed.afterWork.counts['status-read']++,v=>v.completed.afterWork.counts['status-read']--
+ ];
+ if(framework==='react')mutations.push(v=>v.losing.messages=[]);
+ else mutations.push(
+ v=>delete v.losing.resourceProbe,v=>v.before.resourceProbe.lastAssistantMessage={},v=>v.before.resourceProbe.lastAssistantMessage.id='',v=>{v.before.resourceProbe.lastAssistantMessage={};v.losing.resourceProbe.lastAssistantMessage={};},v=>delete v.before.resourceProbe.lastAssistantMessage,v=>delete v.losing.resourceProbe.lastAssistantMessage,v=>v.losing.resourceProbe.lastAssistantMessage.id='changed',
+ v=>delete v.losing.resourceProbe.hasValue,v=>delete v.losing.resourceProbe.status,v=>delete v.losing.resourceProbe.snapshot,v=>delete v.losing.resourceProbe.valueRead,v=>delete v.before.pending,v=>delete v.losing.pending,v=>delete v.before.pendingInterrupts,v=>delete v.losing.pendingInterrupts,v=>delete v.before.configuration,v=>delete v.losing.configuration,v=>v.losing.resourceProbe.hasValue=true,v=>v.losing.resourceProbe.status='resolved',v=>v.losing.resourceProbe.snapshot.value=[],v=>v.losing.resourceProbe.snapshot.error='other',v=>v.losing.resourceProbe.snapshotErrorIsResourceError=false,
+ v=>v.losing.resourceProbe.valueRead={threw:false,value:[]},v=>v.losing.resourceProbe.valueRead.sameResourceError=false,v=>v.losing.resourceProbe.valueRead.error='unrelated probe error',
+ v=>v.completed.status.resourceProbe.hasValue=false,v=>v.completed.status.resourceProbe.snapshot.value=[],v=>v.completed.status.resourceProbe.valueRead.value=[],v=>v.completed.status.resourceProbe.lastAssistantMessage.id='cached'
+ );
+ for(const mutate of mutations){const changed=structuredClone(original);mutate(changed);assert.throws(()=>subject.assertCandidateRacePublicQualification(changed));}
+}
+
+`);
+
+  expect(output.trim()).toBe('passed');
+});

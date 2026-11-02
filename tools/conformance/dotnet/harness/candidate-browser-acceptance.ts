@@ -2672,3 +2672,280 @@ export function refreshCandidateOrdinaryThreadQualification(
     },
   };
 }
+
+/**
+ * Qualifies the losing plain-chat race view and its authenticated Completed adoption.
+ * Angular's guarded Resource error is observed independently of its unavailable value;
+ * React retains the readable committed-message comparison.
+ */
+export function assertCandidateRacePublicQualification(value: unknown): void {
+  const obj = (item: unknown): Record<string, unknown> => {
+    assert.ok(
+      candidateAcceptanceObject(item),
+      'Actual race evidence object required',
+    );
+    return item;
+  };
+  const arr = (item: unknown): readonly unknown[] => {
+    assert.ok(Array.isArray(item), 'Actual race evidence array required');
+    return item;
+  };
+  const text = (item: unknown): string => {
+    assert.ok(
+      typeof item === 'string' && item.length > 0,
+      'Actual race identity required',
+    );
+    return item;
+  };
+  const own = (item: Record<string, unknown>, key: string): unknown => {
+    assert.ok(
+      Object.hasOwn(item, key),
+      'Missing actual race observation: ' + key,
+    );
+    return item[key];
+  };
+  const facts = obj(value);
+  assert.ok(facts.framework === 'angular' || facts.framework === 'react');
+  const before = obj(facts.before);
+  const losing = obj(facts.losing);
+  const threadId = text(facts.threadId);
+  const runId = text(facts.losingRunId);
+  assert.equal(before.threadId, threadId);
+  assert.equal(losing.threadId, threadId);
+  const rejected = obj(facts.rejected);
+  text(rejected.requestId);
+  assert.equal(rejected.runId, runId);
+  assert.equal(rejected.threadId, threadId);
+  assert.equal(rejected.status, 409);
+  assert.equal(rejected.upstreamStatus, 409);
+  assert.deepEqual(rejected.request, {
+    requestId: rejected.requestId,
+    threadId,
+    runId,
+  });
+  for (const key of [
+    'requestCount',
+    'upstreamHeaderCount',
+    'deliveredHeaderCount',
+    'completeCount',
+  ])
+    assert.equal(rejected[key], 1);
+  assert.equal(rejected.bodyText, '');
+  assert.equal(rejected.bodyBase64, '');
+  assert.equal(rejected.sourceBodyBase64, '');
+  assert.equal(rejected.complete, true);
+  const failure =
+    facts.framework === 'angular'
+      ? text(losing.error)
+      : text(obj(losing.error).name) + ': ' + text(obj(losing.error).message);
+  assert.match(failure, /409/);
+  assert.equal(losing.localError, null);
+  assert.equal(obj(losing.recovery).required, true);
+  assert.equal(losing.isLoading, false);
+  assert.equal(losing.isResuming, false);
+  assert.deepEqual(losing.events, []);
+  const lifecycle = arr(losing.transport).map(obj);
+  assert.deepEqual(
+    lifecycle.map((item) => item.kind),
+    ['started', 'error', 'disposed'],
+  );
+  for (const event of lifecycle) assert.equal(event.requestId, runId);
+  for (const key of ['state', 'pending', 'pendingInterrupts', 'configuration'])
+    assert.deepEqual(
+      own(losing, key),
+      own(before, key),
+      'Own losing public signal changed: ' + key,
+    );
+  const pending = obj(before.pending);
+  text(pending.id);
+  assert.ok(
+    Number.isSafeInteger(pending.serverRevision) &&
+      Number(pending.serverRevision) > 0,
+  );
+  assert.ok(arr(pending.toolCalls).length > 0);
+  text(obj(before.pendingInterrupts).id);
+  const configuration = obj(before.configuration);
+  const configuredNames = arr(configuration.tools).map((tool) =>
+    text(obj(tool).name),
+  );
+  assert.equal(new Set(configuredNames).size, configuredNames.length);
+  if (facts.framework === 'angular') {
+    const initial = obj(before.resourceProbe);
+    const failed = obj(losing.resourceProbe);
+    const initialAssistant = obj(own(initial, 'lastAssistantMessage'));
+    text(initialAssistant.id);
+    assert.equal(initialAssistant.role, 'assistant');
+    assert.deepEqual(own(failed, 'lastAssistantMessage'), initialAssistant);
+    assert.equal(initial.hasValue, true);
+    assert.equal(initial.status, 'resolved');
+    assert.equal(failed.hasValue, false);
+    assert.equal(failed.status, 'error');
+    const failedSnapshot = obj(failed.snapshot);
+    assert.deepEqual(failedSnapshot, { status: 'error', error: failure });
+    assert.equal(failed.snapshotErrorIsResourceError, true);
+    assert.deepEqual(failed.valueRead, {
+      threw: true,
+      error: failure,
+      sameResourceError: true,
+    });
+  } else {
+    const committed = (messages: unknown) =>
+      arr(messages)
+        .map(obj)
+        .filter((message) => message.role !== 'error');
+    assert.ok(
+      committed(before.messages).some(
+        (message) => message.role === 'assistant',
+      ),
+    );
+    assert.deepEqual(committed(losing.messages), committed(before.messages));
+  }
+
+  const completed = obj(facts.completed);
+  const raw = obj(completed.raw);
+  assert.equal(raw.schemaVersion, 2);
+  assert.equal(raw.disposition, 'Completed');
+  const beforeWork = obj(completed.beforeWork);
+  const afterWork = obj(completed.afterWork);
+  const session = obj(obj(beforeWork.state).session);
+  assert.equal(raw.serverRevision, session.revision);
+  assert.ok(
+    Number.isSafeInteger(raw.serverRevision) && Number(raw.serverRevision) > 0,
+  );
+  assert.equal(session.state, 'Ready');
+  const savedPayload = obj(JSON.parse(text(session.payload)));
+  const savedRequest = obj(JSON.parse(text(savedPayload.publicRequest)));
+  assert.equal(savedRequest.threadId, threadId);
+  const snapshot = obj(raw.snapshot);
+  assert.equal(snapshot.threadId, threadId);
+  assert.deepEqual(
+    snapshot.messages,
+    savedRequest.messages,
+    'Completed snapshot must exactly match physical canonical history',
+  );
+  assert.deepEqual(
+    own(snapshot, 'state'),
+    savedRequest.state ?? null,
+    'Completed shared state must match normalized physical request',
+  );
+  const adopted = obj(completed.status);
+  assert.equal(adopted.threadId, threadId);
+  assert.deepEqual(own(adopted, 'state'), own(snapshot, 'state'));
+  const history = arr(snapshot.messages).map(obj);
+  const systemId = text(snapshot.configuredSystemMessageId);
+  const systems = history.filter((message) => message.role === 'system');
+  assert.equal(systems.length, 1);
+  assert.equal(systems[0].id, systemId);
+  assert.equal(systems[0].content, configuration.system);
+  const ids = history.map((message) => text(message.id));
+  assert.equal(new Set(ids).size, ids.length);
+  const toolResults = history.filter((message) => message.role === 'tool');
+  const calls = history.flatMap((message) =>
+    message.role === 'assistant' ? arr(message.toolCalls ?? []).map(obj) : [],
+  );
+  const callIds = calls.map((call) => text(call.id));
+  assert.equal(new Set(callIds).size, callIds.length);
+  assert.equal(toolResults.length, calls.length);
+  assert.deepEqual(
+    toolResults.map((message) => text(message.toolCallId)).sort(),
+    [...callIds].sort(),
+  );
+  const projected = history.flatMap((message): Record<string, unknown>[] => {
+    if (message.role === 'system' || message.role === 'tool') return [];
+    assert.ok(message.role === 'user' || message.role === 'assistant');
+    assert.equal(typeof message.content, 'string');
+    if (message.role === 'user')
+      return [{ id: message.id, role: 'user', content: message.content }];
+    const browserCalls: Record<string, unknown>[] = [];
+    const serverCalls: Record<string, unknown>[] = [];
+    for (const item of arr(message.toolCalls ?? []).map(obj)) {
+      assert.equal(item.type, 'function');
+      const descriptor = obj(item.function);
+      const name = text(descriptor.name);
+      const args = JSON.parse(text(descriptor.arguments)) as unknown;
+      assert.ok(candidateAcceptanceObject(args));
+      const results = toolResults.filter(
+        (result) => result.toolCallId === item.id,
+      );
+      assert.equal(results.length, 1);
+      const result = results[0];
+      assert.equal(typeof result.content, 'string');
+      assert.ok(
+        !Object.hasOwn(result, 'error'),
+        'This accepted race requires fulfilled canonical results',
+      );
+      const common = {
+        toolCallId: item.id,
+        name,
+        args,
+        result: { status: 'fulfilled', value: result.content },
+      };
+      if (configuredNames.includes(name))
+        browserCalls.push({ ...common, role: 'tool', status: 'done' });
+      else serverCalls.push({ ...common, status: 'complete' });
+    }
+    return [
+      {
+        id: message.id,
+        role: 'assistant',
+        content: message.content,
+        ...(serverCalls.length ? { serverToolCalls: serverCalls } : {}),
+        toolCalls: browserCalls,
+      },
+    ];
+  });
+  assert.deepEqual(
+    adopted.messages,
+    projected,
+    'Completed public value must independently match canonical history',
+  );
+  assert.deepEqual(
+    completed.expectedMessages,
+    projected,
+    'Caller expectation cannot self-certify Completed adoption',
+  );
+  assert.equal(adopted.error, null);
+  assert.equal(adopted.localError, null);
+  assert.deepEqual(adopted.configuration, configuration);
+  assert.equal(adopted.pending, null);
+  if (facts.framework === 'angular')
+    assert.equal(adopted.pendingInterrupts, null);
+  else
+    assert.ok(
+      adopted.pendingInterrupts === null ||
+        adopted.pendingInterrupts === undefined,
+    );
+  assert.equal(obj(adopted.recovery).required, false);
+  assert.equal(adopted.isLoading, false);
+  assert.equal(adopted.isResuming, false);
+  if (facts.framework === 'angular') {
+    const probe = obj(adopted.resourceProbe);
+    assert.equal(probe.hasValue, true);
+    assert.equal(probe.status, 'resolved');
+    assert.deepEqual(probe.snapshot, { status: 'resolved', value: projected });
+    assert.deepEqual(probe.valueRead, { threw: false, value: projected });
+    assert.deepEqual(probe.lastAssistantMessage, projected.at(-1));
+    assert.equal(obj(probe.lastAssistantMessage).role, 'assistant');
+  }
+  for (const key of ['state', 'runs', 'providerCount', 'witnesses', 'observer'])
+    assert.deepEqual(
+      own(afterWork, key),
+      own(beforeWork, key),
+      'Completed read introduced work: ' + key,
+    );
+  const counts = (input: unknown): Record<string, number> => {
+    const result: Record<string, number> = {};
+    for (const [key, count] of Object.entries(obj(input))) {
+      assert.ok(
+        typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
+      );
+      result[key] = count;
+    }
+    return result;
+  };
+  assertCandidateStageCounts(
+    counts(beforeWork.counts),
+    counts(afterWork.counts),
+    1,
+  );
+}

@@ -26,6 +26,7 @@ export function ChatLeaf({ config }: { config: CandidateConfiguration }) {
       pending={result.pendingConversationRecovery}
       recovery={result.recovery}
       data={{
+        configuration: result.getRecoveryConfiguration(),
         messages: result.messages,
         state: result.state,
         isLoading: result.isLoading,

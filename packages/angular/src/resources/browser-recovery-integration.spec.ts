@@ -5,6 +5,7 @@ import {
   type Chat,
   type ConversationRecoveryConfiguration,
   type ConversationSnapshot,
+  HttpTransport,
   type PendingConversationRecovery,
   type ResumeConversationRecoveryOptions,
   s,
@@ -707,3 +708,191 @@ test.each(families)(
     }
   },
 );
+
+test('chat Resource keeps independent recovery signals behind a genuine HTTP409 value guard and adopts Completed history inertly', async () => {
+  const requests = vi.fn<typeof fetch>(
+    async () => new Response(null, { status: 409, statusText: 'Conflict' }),
+  );
+  const transport = new HttpTransport({
+    baseUrl: 'https://fixture.invalid/run',
+    fetchImpl: requests,
+  });
+  const handler = vi.fn(async () => 'must not replay');
+  const tools = [
+    {
+      name: 'save',
+      description: 'save',
+      schema: s.object('args', { value: s.number('value') }),
+      handler,
+    },
+  ];
+  const retained = snapshot(true);
+  const original = JSON.stringify(retained);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      system: 'trusted',
+      tools,
+      transport,
+      debounce: 0,
+    }),
+  );
+
+  try {
+    TestBed.tick();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    TestBed.tick();
+    await vi.waitFor(() => expect(resource.isLoading()).toBe(false));
+    expect(requests).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+    resource.restoreConversation(retained, {
+      expectedRevision: resource.recovery().revision,
+    });
+    TestBed.tick();
+    const pending = requirePending(resource.pendingConversationRecovery());
+    const nativePending = resource.pendingInterrupts();
+    const lastAssistant = resource.lastAssistantMessage();
+    const state = resource.state();
+    const configuration = resource.getRecoveryConfiguration();
+    expect(lastAssistant?.id).toBe('original-assistant');
+    expect(resource.hasValue()).toBe(true);
+    expect(requests).not.toHaveBeenCalled();
+
+    resource.resumeConversationRecovery(settlement(pending, true));
+    await vi.waitFor(() => expect(resource.error()).toBeDefined());
+    await vi.waitFor(() => expect(resource.isLoading()).toBe(false));
+    TestBed.tick();
+    const error = resource.error();
+    let thrown: unknown;
+    try {
+      resource.value();
+    } catch (caught) {
+      thrown = caught;
+    }
+    const failedSnapshot = resource.snapshot();
+
+    expect(error?.message).toContain('409');
+    expect(resource.status()).toBe('error');
+    expect(resource.hasValue()).toBe(false);
+    expect(thrown).toBe(error);
+    expect(failedSnapshot.status).toBe('error');
+    if (failedSnapshot.status !== 'error') {
+      throw new Error('Expected actual Resource error snapshot');
+    }
+    expect(failedSnapshot.error).toBe(error);
+    expect(failedSnapshot).not.toHaveProperty('value');
+    expect(resource.lastAssistantMessage()).toEqual(lastAssistant);
+    expect(resource.state()).toEqual(state);
+    expect(resource.pendingConversationRecovery()).toBe(pending);
+    expect(resource.pendingInterrupts()).toBe(nativePending);
+    expect(resource.getRecoveryConfiguration()).toEqual(configuration);
+    expect(resource.recovery().required).toBe(true);
+    expect(resource.isResuming()).toBe(false);
+    expect(requests).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
+
+    const { pendingBrowserRecovery, interrupts, ...completedBase } = retained;
+    expect(pendingBrowserRecovery).toBeDefined();
+    expect(interrupts).toBeDefined();
+    const completed: ConversationSnapshot<{ count: number }> = {
+      ...completedBase,
+      messages: [
+        ...retained.messages,
+        {
+          id: 'browser-one-result',
+          role: 'tool',
+          toolCallId: 'browser-one',
+          content: '{"saved":true}',
+        },
+        {
+          id: 'browser-two-result',
+          role: 'tool',
+          toolCallId: 'browser-two',
+          content: unavailableResult,
+        },
+        {
+          id: 'protected-result',
+          role: 'tool',
+          toolCallId: 'protected-call',
+          content: 'charged',
+        },
+        {
+          id: 'completed-answer',
+          role: 'assistant',
+          content: 'Completed answer',
+        },
+      ],
+    };
+    resource.restoreConversation(completed, {
+      expectedRevision: resource.recovery().revision,
+    });
+    TestBed.tick();
+    await vi.waitFor(() => expect(resource.error()).toBeUndefined());
+    const adopted = resource.value();
+    const adoptedSnapshot = resource.snapshot();
+
+    expect(resource.hasValue()).toBe(true);
+    expect(resource.status()).toBe('resolved');
+    expect(adopted.map((message) => message.id)).toEqual([
+      'original-user',
+      'original-assistant',
+      'completed-answer',
+    ]);
+    expect(adopted[0]).toEqual({
+      id: 'original-user',
+      role: 'user',
+      content: 'save this',
+    });
+    expect(adopted[1]).toMatchObject({
+      id: 'original-assistant',
+      role: 'assistant',
+      toolCalls: [
+        {
+          toolCallId: 'browser-one',
+          name: 'save',
+          args: { value: 7 },
+          status: 'done',
+          result: { status: 'fulfilled', value: '{"saved":true}' },
+        },
+        {
+          toolCallId: 'browser-two',
+          name: 'save',
+          args: { value: 8 },
+          status: 'done',
+          result: { status: 'fulfilled', value: unavailableResult },
+        },
+      ],
+      serverToolCalls: [
+        {
+          toolCallId: 'protected-call',
+          name: 'charge',
+          args: { amount: 2 },
+          status: 'complete',
+          result: { status: 'fulfilled', value: 'charged' },
+        },
+      ],
+    });
+    expect(adopted.at(-1)).toEqual({
+      id: 'completed-answer',
+      role: 'assistant',
+      content: 'Completed answer',
+      toolCalls: [],
+    });
+    expect(adoptedSnapshot).toEqual({ status: 'resolved', value: adopted });
+    expect(resource.lastAssistantMessage()).toEqual(adopted.at(-1));
+    expect(resource.pendingConversationRecovery()).toBeUndefined();
+    expect(resource.pendingInterrupts()).toBeUndefined();
+    expect(resource.recovery().required).toBe(false);
+    expect(resource.state()).toEqual(state);
+    expect(resource.getRecoveryConfiguration()).toEqual(configuration);
+    expect(resource.isLoading()).toBe(false);
+    expect(resource.isResuming()).toBe(false);
+    expect(requests).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
+    expect(JSON.stringify(retained)).toBe(original);
+  } finally {
+    TestBed.resetTestingModule();
+  }
+});
