@@ -12,6 +12,7 @@ import {
   assertCandidateUnknownEffectLocalState,
   type CandidateDefinitiveRejectionObservation,
   type CandidateFaultObservation,
+  candidateResolvedUiAnswer,
   type CandidateWarmPhaseCounters,
   captureCandidateOriginalRun,
   classifyCandidateWarmPhase,
@@ -1464,7 +1465,7 @@ class Journey {
       .toBe('Ready');
     const status = await this.status(page);
     if (this.record.facade.startsWith('ui-')) {
-      const expected = { ui: [{ CandidateCard: { props: { text } } }] };
+      const expected = candidateResolvedUiAnswer(text);
       if (this.record.facade === 'ui-chat')
         expect(
           status.messages?.some(

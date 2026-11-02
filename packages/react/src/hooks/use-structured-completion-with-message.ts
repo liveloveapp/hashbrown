@@ -55,6 +55,7 @@ export function useStructuredCompletionWithMessage<
           Chat.AnyTool
         > =>
           message.role === 'assistant' &&
+          !(message.toolCalls && message.toolCalls.length) &&
           message.content !== null &&
           message.content !== undefined,
       ) ?? null,

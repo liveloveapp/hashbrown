@@ -667,7 +667,7 @@ function ordinaryThreadFacts(facade='completion', api='chat-completions') {
  const answer=facade.startsWith('structured-')?JSON.stringify({answer:'Ordinary complete'}):facade.startsWith('ui-')?JSON.stringify({ui:[{CandidateCard:{props:{text:'Ordinary complete'}}}]}):'Ordinary complete';
  const events=[{type:'RUN_STARTED',threadId:freshThread,runId:newInput.runId},{type:'TEXT_MESSAGE_START',messageId:'ordinary-answer',role:'assistant'},{type:'TEXT_MESSAGE_CONTENT',messageId:'ordinary-answer',delta:answer},{type:'TEXT_MESSAGE_END',messageId:'ordinary-answer'},{type:'RUN_FINISHED',threadId:freshThread,runId:newInput.runId}];
  const saved={...structuredClone(newInput),messages:[...structuredClone(newInput.messages),{id:'ordinary-answer',role:'assistant',content:answer}]};delete saved.runId;
- const provider=api==='responses'?{input:newInput.messages.map(({role,content})=>({role,content:[{type:role==='assistant'?'output_text':'input_text',text:content}]}))}:{messages:newInput.messages.map(({role,content,toolCalls,toolCallId})=>({role,content,...(toolCalls?{tool_calls:toolCalls}:{}),...(toolCallId?{tool_call_id:toolCallId}:{})}))};
+ const provider=api==='responses'?{input:newInput.messages.flatMap(({role,content,toolCalls,toolCallId})=>{if(role==='tool')return [{type:'function_call_output',call_id:toolCallId,output:content}];const textItems=role==='assistant'&&content===''&&toolCalls?.length?[]:[{type:'message',role,content:[{type:role==='assistant'?'output_text':'input_text',text:content}]}];return [...textItems,...(toolCalls??[]).map(call=>({type:'function_call',call_id:call.id,name:call.function.name,arguments:call.function.arguments}))];})}:{messages:newInput.messages.map(({role,content,toolCalls,toolCallId})=>({role,content,...(toolCalls?{tool_calls:toolCalls}:{}),...(toolCallId?{tool_call_id:toolCallId}:{})}))};
  const schema=configuration.forwardedProps.hashbrown?.responseSchema;
  if(schema){if(api==='responses')provider.text={format:{type:'json_schema',name:'hashbrown',schema,strict:true}};else provider.response_format={type:'json_schema',json_schema:{name:'hashbrown',schema,strict:true}};}
  const run={requestId:'accepted-proxy',input:newInput,status:200};
@@ -675,8 +675,9 @@ function ordinaryThreadFacts(facade='completion', api='chat-completions') {
  const accepted={request:run,receipt:{requestId:'accepted-proxy',upstreamStatus:200,deliveredStatus:200,requestSeq:30,headersSeq:31,completeSeq:37,monotonicMs:30,sourceEvents:events,deliveredEvents:structuredClone(events)},publicState:{threadId:freshThread,pending:null,isLoading:false,isResuming:false,error:null,recovery:{required:false},events:[{type:'RUN_STARTED',runId:newInput.runId,requestId:newInput.runId},{type:'RUN_FINISHED',runId:newInput.runId,requestId:newInput.runId}],transport:[{kind:'started',requestId:newInput.runId},{kind:'disposed',requestId:newInput.runId},{kind:'complete',requestId:newInput.runId}],output:facade.startsWith('structured-')?{answer:'Ordinary complete'}:facade.startsWith('ui-')?{ui:[{CandidateCard:{props:{text:'Ordinary complete'}}}]}:'Ordinary complete'},provider,newState:state(freshThread,saved),newWitnesses:[],after:{...structuredClone(baseline),runs:completion?structuredClone(rejected.after.runs):[...structuredClone(oldRuns),run],providerCount:3}};
  if(completion){accepted.newRuns=[structuredClone(run)];accepted.currentProviderCount=accepted.after.providerCount;accepted.after.counts=structuredClone(rejected.after.counts);for(const stage of ['Create.Forward','Create.Completed','Run.Forward','Serialize.Forward','Serialize.Completed','save-success'])accepted.after.counts[stage]=(accepted.after.counts[stage]??0)+1;}
  if(!completion){accepted.publicState.messages=[...structuredClone(newInput.messages),{id:'ordinary-answer',role:'assistant',content:facade.startsWith('structured-')||facade.startsWith('ui-')?JSON.parse(answer):answer}];delete accepted.publicState.output;}
- if(facade==='ui-completion'){accepted.publicState.output={id:'ordinary-answer',role:'assistant',content:JSON.parse(answer)};accepted.publicState.rawOutput=JSON.parse(answer);accepted.renderedText=['Ordinary complete'];}
- if(facade==='ui-chat')accepted.renderedText=['Ordinary complete'];
+ const publicUiAnswer={ui:[{CandidateCard:{props:{complete:true,partialValue:{text:'Ordinary complete'},value:{text:'Ordinary complete'}}}}]};
+ if(facade==='ui-completion'){accepted.publicState.output={id:'ordinary-answer',role:'assistant',content:structuredClone(publicUiAnswer)};accepted.publicState.rawOutput=structuredClone(publicUiAnswer);accepted.renderedText=['Ordinary complete'];}
+ if(facade==='ui-chat'){accepted.publicState.messages.at(-1).content=structuredClone(publicUiAnswer);accepted.renderedText=['Ordinary complete'];}
  return {facade,api,configuration,prompt,baseline,...(completion?{rejected,navigation}:{}),accepted};
 }
 `;
@@ -921,6 +922,49 @@ for(const facade of ['completion','structured-completion','ui-completion']){
   assert.deepEqual(changed.rejected.after.state,original.rejected.after.state);assert.equal(changed.rejected.after.providerCount,original.rejected.after.providerCount);assert.deepEqual(changed.rejected.after.witnesses,original.rejected.after.witnesses);assert.deepEqual(changed.rejected.after.observer,original.rejected.after.observer);
   assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed),undefined,'Forbidden native execution counter delta must not disappear: '+stage);
  }
+}
+`);
+
+  expect(output.trim()).toBe('passed');
+});
+
+test('UI ordinary qualification keeps resolved public component nodes distinct from plain native wire and persisted JSON', () => {
+  const output = probe(`
+${ordinaryThreadFixture}
+const plain={ui:[{CandidateCard:{props:{text:'Ordinary complete'}}}]};
+const resolved={ui:[{CandidateCard:{props:{complete:true,partialValue:{text:'Ordinary complete'},value:{text:'Ordinary complete'}}}}]};
+function facts(facade,framework,api){
+ const value=ordinaryThreadFacts(facade,api);
+ if(facade==='ui-chat'){
+  value.accepted.after.state=structuredClone(value.accepted.newState);
+  value.accepted.publicState.messages.at(-1).content=structuredClone(resolved);
+ }else{
+  value.accepted.publicState.output.content=structuredClone(resolved);
+  if(framework==='react'){value.accepted.publicState.rawOutput=structuredClone(resolved);delete value.accepted.publicState.value;}
+  else{value.accepted.publicState.value=structuredClone(value.accepted.publicState.output);delete value.accepted.publicState.rawOutput;}
+ }
+ return value;
+}
+function publicContent(value){return value.facade==='ui-chat'?value.accepted.publicState.messages.at(-1).content:value.accepted.publicState.output.content;}
+for(const facade of ['ui-chat','ui-completion'])for(const framework of ['react','angular'])for(const api of ['chat-completions','responses']){
+ const original=facts(facade,framework,api);
+ assert.equal(original.accepted.receipt.sourceEvents.filter(event=>event.type==='TEXT_MESSAGE_CONTENT').map(event=>event.delta).join(''),JSON.stringify(plain));
+ assert.equal(JSON.parse(JSON.parse(original.accepted.newState.session.payload).publicRequest).messages.at(-1).content,JSON.stringify(plain));
+ subject.assertCandidateOrdinaryThreadQualification(original);
+ const mutations=[
+  value=>delete publicContent(value).ui[0].CandidateCard.props.complete,
+  value=>publicContent(value).ui[0].CandidateCard.props.complete=false,
+  value=>delete publicContent(value).ui[0].CandidateCard.props.partialValue,
+  value=>publicContent(value).ui[0].CandidateCard.props.partialValue.text='changed partial text',
+  value=>delete publicContent(value).ui[0].CandidateCard.props.value,
+  value=>publicContent(value).ui[0].CandidateCard.props.value.text='changed final text',
+  value=>publicContent(value).ui[0].CandidateCard.props.value={text:{complete:true,value:'Ordinary complete'}},
+  value=>{if(facade==='ui-chat')value.accepted.publicState.messages.at(-1).content=structuredClone(plain);else value.accepted.publicState.output.content=structuredClone(plain);},
+  value=>{for(const key of ['sourceEvents','deliveredEvents'])value.accepted.receipt[key].find(event=>event.type==='TEXT_MESSAGE_CONTENT').delta=JSON.stringify(resolved);},
+  value=>{const payload=JSON.parse(value.accepted.newState.session.payload);const request=JSON.parse(payload.publicRequest);request.messages.at(-1).content=JSON.stringify(resolved);payload.publicRequest=JSON.stringify(request);value.accepted.newState.session.payload=JSON.stringify(payload);if(facade==='ui-chat')value.accepted.after.state=structuredClone(value.accepted.newState);},
+ ];
+ if(facade==='ui-completion')mutations.push(value=>{if(framework==='react')value.accepted.publicState.rawOutput=structuredClone(plain);else value.accepted.publicState.value.content=structuredClone(plain);});
+ for(const mutate of mutations){const changed=structuredClone(original);mutate(changed);assert.throws(()=>subject.assertCandidateOrdinaryThreadQualification(changed));}
 }
 `);
 

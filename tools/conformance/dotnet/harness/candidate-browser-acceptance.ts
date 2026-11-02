@@ -2172,6 +2172,19 @@ export function assertCandidateReadAdoption(
   }
 }
 
+/** Builds the fixture card's resolved public node; native wire and stored JSON retain plain props. */
+export function candidateResolvedUiAnswer(text: string) {
+  return {
+    ui: [
+      {
+        CandidateCard: {
+          props: { complete: true, partialValue: { text }, value: { text } },
+        },
+      },
+    ],
+  };
+}
+
 /** Joins an ordinary public-facade prediction to its retained authority and explicit thread lifecycle. */
 export function assertCandidateOrdinaryThreadQualification(
   value: unknown,
@@ -2237,15 +2250,18 @@ export function assertCandidateOrdinaryThreadQualification(
   const after = obj(accepted.after);
   const newState = obj(accepted.newState);
   const newSession = obj(newState.session);
-  const expectedAnswer = facade.startsWith('ui-')
+  const expectedWireAnswer = facade.startsWith('ui-')
     ? { ui: [{ CandidateCard: { props: { text: 'Ordinary complete' } } }] }
     : facade.startsWith('structured-')
       ? { answer: 'Ordinary complete' }
       : 'Ordinary complete';
+  const expectedPublicAnswer = facade.startsWith('ui-')
+    ? candidateResolvedUiAnswer('Ordinary complete')
+    : expectedWireAnswer;
   const ordinaryText =
-    typeof expectedAnswer === 'string'
-      ? expectedAnswer
-      : JSON.stringify(expectedAnswer);
+    typeof expectedWireAnswer === 'string'
+      ? expectedWireAnswer
+      : JSON.stringify(expectedWireAnswer);
   const checkInput = (
     candidate: Record<string, unknown>,
     thread: string,
@@ -2539,23 +2555,24 @@ export function assertCandidateOrdinaryThreadQualification(
   );
   for (const item of lifecycle) assert.equal(item.requestId, runId);
   if (facade === 'completion' || facade === 'structured-completion')
-    assert.deepEqual(publicState.output, expectedAnswer);
+    assert.deepEqual(publicState.output, expectedPublicAnswer);
   else if (facade === 'ui-completion') {
     const output = obj(publicState.output);
     assert.equal(output.role, 'assistant');
     text(output.id);
-    assert.deepEqual(output.content, expectedAnswer);
+    assert.deepEqual(output.content, expectedPublicAnswer);
     if (publicState.rawOutput !== undefined)
-      assert.deepEqual(publicState.rawOutput, expectedAnswer);
+      assert.deepEqual(publicState.rawOutput, expectedPublicAnswer);
     if (publicState.value !== undefined)
-      assert.deepEqual(obj(publicState.value).content, expectedAnswer);
+      assert.deepEqual(obj(publicState.value).content, expectedPublicAnswer);
   } else
     assert.ok(
       arr(publicState.messages).some((item) => {
         const message = obj(item);
         return (
           message.role === 'assistant' &&
-          JSON.stringify(message.content) === JSON.stringify(expectedAnswer)
+          JSON.stringify(message.content) ===
+            JSON.stringify(expectedPublicAnswer)
         );
       }),
     );
