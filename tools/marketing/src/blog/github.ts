@@ -30,17 +30,27 @@ interface PullResponse {
 /**
  * A GitHub REST client for `liveloveapp/hashbrown`, authenticated with the
  * marketing token. The token is only ever sent as a header; errors carry the
- * status and response body, never the request.
+ * status and response body, never the request. A missing token is rejected
+ * when an operation is called, before any network request, so social-only
+ * dispatch does not need GitHub credentials.
+ *
+ * @param token - Required only when a GitHub operation is invoked.
+ * @param fetchImpl - Optional fetch implementation for GitHub requests.
  */
 export function createGitHubClient(
-  token: string,
+  token: string | undefined,
   fetchImpl?: typeof fetch,
 ): GitHubClient {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'hashbrown-marketing',
+  const headers = () => {
+    if (!token) {
+      throw new Error('Missing environment variable: MARKETING_GITHUB_TOKEN');
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'hashbrown-marketing',
+    };
   };
 
   return {
@@ -49,7 +59,7 @@ export function createGitHubClient(
         await http({
           method: 'PUT',
           url: `${REPO_URL}/pulls/${prNumber}/update-branch`,
-          headers,
+          headers: headers(),
           fetch: fetchImpl,
           retryOn5xx: false,
         });
@@ -66,7 +76,7 @@ export function createGitHubClient(
       const pull = await http<PullResponse>({
         method: 'GET',
         url: `${REPO_URL}/pulls/${prNumber}`,
-        headers,
+        headers: headers(),
         fetch: fetchImpl,
       });
       return {
@@ -81,7 +91,7 @@ export function createGitHubClient(
       await http({
         method: 'PUT',
         url: `${REPO_URL}/pulls/${prNumber}/merge`,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...headers(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ merge_method: 'squash' }),
         fetch: fetchImpl,
         retryOn5xx: false,
@@ -95,7 +105,7 @@ export function createGitHubClient(
           .split('/')
           .map(encodeURIComponent)
           .join('/')}?ref=${ref}`,
-        headers,
+        headers: headers(),
         fetch: fetchImpl,
       });
       return Buffer.from(file.content, 'base64').toString('utf8');

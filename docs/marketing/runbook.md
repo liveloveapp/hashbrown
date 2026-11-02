@@ -97,6 +97,8 @@ Each opens a browser and stores the tokens encrypted in `marketing_channel_crede
 
 ## 5. First week in dry run, then live
 
+Live X and LinkedIn publishing needs their own channel credentials, not a GitHub token. `MARKETING_GITHUB_TOKEN` is required when a blog or dev.to post actually uses GitHub; a missing token fails that operation before a network request, without blocking a social-only tick.
+
 1. With `MARKETING_DRY_RUN=1` on `hashbrown-marketing` (redeployed), set `MARKETING_CRON_ENABLED=true` on `hashbrown-www` and redeploy www. The cron now runs dispatch every 15 minutes in dry run.
    - Vercel runs crons on production deployments only. Nothing ticks a preview deployment, so this dry-run week runs against the production marketing service and the production growth store, and the preview wiring (`PREVIEW_MARKETING_URL`, the preview store) isn't exercised.
 2. Run `/hashbrown-week` and approve a week as usual. Through that week, `npx nx run marketing:week -- status` and `week show` should show each approved post `published` at its time. X, LinkedIn and dev.to rows get a `dry-run://` URL; the blog row shows its real `https://hashbrown.dev/blog/<slug>` URL even though nothing was merged (its `externalId` is `dry-run`).
