@@ -40,6 +40,31 @@ async function state(fixture: DotnetFixture, threadId = 'fixture-thread') {
   return observed;
 }
 
+/** Reads only safe derived lease/session facts from the existing authenticated physical observation. */
+async function abortSavedState(fixture: DotnetFixture, threadId: string) {
+  const response = await fetch(
+    `${fixture.url}/__test/native-recovery-state?threadId=${encodeURIComponent(threadId)}`,
+    { headers: alice },
+  );
+  expect(response.status).toBe(200);
+  const observed = await response.json();
+  const row = observed.session;
+  const session = {
+    id: row.id,
+    state: row.state,
+    generation: row.generation,
+    revision: row.revision,
+    tokenPresent: typeof row.token === 'string' && row.token.length > 0,
+    tokenNull: row.token === null,
+    leasePresent:
+      typeof row.lease_until === 'string' && row.lease_until.length > 0,
+    leaseNull: row.lease_until === null,
+    admittedRequestNull: row.admitted_request === null,
+  };
+  record({ worker: fixture.url, abortSavedSession: session });
+  return { session };
+}
+
 /** Derives exact decisions from genuine public interrupts and validates an event accumulator against saved public history. */
 async function decisionInput(
   fixture: DotnetFixture,
@@ -308,6 +333,38 @@ for (const boundary of [
           try {
             await stage(owner, boundary);
             const held = await state(peer);
+            const cleanupHeld =
+              failure === 'abort' &&
+              boundary === 'after-save-before-publication'
+                ? await (async () => {
+                    const response = await fetch(
+                      `${owner.url}/__test/native-stage`,
+                    );
+                    expect(response.status).toBe(200);
+                    const stage = await response.json();
+                    const physical = await abortSavedState(
+                      owner,
+                      input.threadId,
+                    );
+                    record({ boundary, failure, ownerHeldStage: stage });
+                    expect(physical.session.state).toBe('Saved');
+                    expect(physical.session.revision).toBe(
+                      held.session.revision,
+                    );
+                    expect(physical.session.generation).toBe(
+                      held.session.generation,
+                    );
+                    expect(physical.session.tokenPresent).toBe(true);
+                    expect(physical.session.leasePresent).toBe(true);
+                    expect(stage.cleanupCompleted).toBe(0);
+                    expect(stage.counts['Original.Raw.Before']).toBe(1);
+                    expect(stage.counts['Original.Typed.Before']).toBe(1);
+                    expect(stage.counts['Transport.Typed.Before']).toBe(1);
+                    expect(stage.counts['Context.Disposed'] ?? 0).toBe(0);
+                    return { stage, physical };
+                  })()
+                : undefined;
+
             record({
               boundary,
               ownerRequests: owner.requests,
@@ -373,6 +430,64 @@ for (const boundary of [
             if (failure === 'death') await owner.stop();
             else observed.cancel();
             await observed.done;
+
+            if (cleanupHeld) {
+              let settledStage:
+                | { cleanupCompleted: number; counts: Record<string, number> }
+                | undefined;
+              let cleanupComplete = false;
+              for (let attempt = 0; attempt < 300; attempt++) {
+                const response = await fetch(
+                  `${owner.url}/__test/native-stage`,
+                );
+                expect(response.status).toBe(200);
+                settledStage = await response.json();
+                if (
+                  settledStage?.cleanupCompleted ===
+                    cleanupHeld.stage.cleanupCompleted + 1 &&
+                  [
+                    'Original.Raw.Before',
+                    'Original.Typed.Before',
+                    'Transport.Typed.Before',
+                    'Original.Raw.After',
+                    'Original.Typed.After',
+                    'Transport.Typed.After',
+                    'Context.Disposed',
+                  ].every((name) => settledStage?.counts[name] === 1)
+                ) {
+                  cleanupComplete = true;
+                  break;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 20));
+              }
+              record({
+                boundary,
+                failure,
+                ownerCleanupSettledStage: settledStage,
+                cleanupComplete,
+              });
+              expect(cleanupComplete).toBe(true);
+              const cleaned = await state(peer);
+              const cleanedSession = await abortSavedState(
+                peer,
+                input.threadId,
+              );
+              expect(cleanedSession.session).toEqual({
+                id: cleanupHeld.physical.session.id,
+                state: 'Blocked',
+                tokenPresent: false,
+                tokenNull: true,
+                leasePresent: false,
+                leaseNull: true,
+                admittedRequestNull: true,
+                revision: cleanupHeld.physical.session.revision + 1,
+                generation: cleanupHeld.physical.session.generation + 1,
+              });
+              expect(cleaned.batches).toEqual(held.batches);
+              expect(cleaned.members).toEqual(held.members);
+              expect(cleaned.invocations).toEqual(held.invocations);
+              expect(cleaned.effects).toEqual(held.effects);
+            }
             await control(peer, 'expire-native-lease');
             const retried = await postRun(peer, callback, alice);
 
@@ -382,7 +497,10 @@ for (const boundary of [
               expect((await state(peer)).effects).toHaveLength(1);
             } else {
               expect(retried.response.status).toBe(
-                boundary === 'after-save-before-publication' ? 400 : 409,
+                boundary === 'after-save-before-publication' &&
+                  failure === 'death'
+                  ? 400
+                  : 409,
               );
               expect(peer.requests).toHaveLength(0);
               const fenced = await state(peer);
