@@ -2916,17 +2916,29 @@ async function failedAttempt(
   journey.stable();
   const beforeRepeat = await journey.snapshot();
   await page.getByTestId('negative-repeat-submit').click();
-  expect((await journey.status(page)).lastAction).toBe(
-    'negative-repeat-submit:resumeConversationRecovery',
-  );
   await expect
-    .poll(async () => Boolean((await journey.status(page)).localError))
-    .toBe(true);
+    .poll(async () => {
+      const actual = await journey.status(page);
+      return {
+        lastAction: actual.lastAction,
+        hasLocalError: Boolean(actual.localError),
+      };
+    })
+    .toEqual({
+      lastAction: 'negative-repeat-submit:resumeConversationRecovery',
+      hasLocalError: true,
+    });
   await journey.unchanged(beforeRepeat);
   await page.getByTestId('negative-send').click();
   await expect
-    .poll(async () => Boolean((await journey.status(page)).localError))
-    .toBe(true);
+    .poll(async () => {
+      const actual = await journey.status(page);
+      return {
+        lastAction: actual.lastAction,
+        hasLocalError: Boolean(actual.localError),
+      };
+    })
+    .toEqual({ lastAction: 'negative-send', hasLocalError: true });
   await journey.unchanged(beforeRepeat);
   const beforeReadUi = await journey.status(page);
   const read = await authoritative(journey, page);
@@ -2940,14 +2952,21 @@ async function failedAttempt(
     const afterReadWitnesses = [...journey.witnesses];
     for (const action of ['negative-repeat-submit', 'negative-send']) {
       await page.getByTestId(action).click();
-      expect((await journey.status(page)).lastAction).toBe(
-        action === 'negative-repeat-submit'
-          ? 'negative-repeat-submit:resumeConversationRecovery'
-          : 'negative-send',
-      );
       await expect
-        .poll(async () => Boolean((await journey.status(page)).localError))
-        .toBe(true);
+        .poll(async () => {
+          const actual = await journey.status(page);
+          return {
+            lastAction: actual.lastAction,
+            hasLocalError: Boolean(actual.localError),
+          };
+        })
+        .toEqual({
+          lastAction:
+            action === 'negative-repeat-submit'
+              ? 'negative-repeat-submit:resumeConversationRecovery'
+              : 'negative-send',
+          hasLocalError: true,
+        });
       await journey.unchanged(afterRead);
       expect(journey.witnesses).toEqual(afterReadWitnesses);
       journey.stable();
