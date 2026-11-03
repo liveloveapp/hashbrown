@@ -208,9 +208,9 @@ test('candidate cold recovery uses existing affected selection in an independent
   ).toBe('.nvmrc');
   expect(
     steps.find((step) => step.uses === 'actions/setup-dotnet@v6')?.with?.[
-      'global-json-file'
+      'dotnet-version'
     ],
-  ).toBe('tools/conformance/dotnet/global.json');
+  ).toBe('10.0.402');
   expect(steps.some((step) => step.run === 'npm ci')).toBe(true);
   const scripts = steps.map((step) => step.run ?? '').join('\n');
   expect(scripts).toContain('postgres:18');
@@ -331,9 +331,9 @@ test('full source .NET browser qualification has its own selected pinned uncache
   ).toBe('.nvmrc');
   expect(
     steps.find((step) => step.uses === 'actions/setup-dotnet@v6')?.with?.[
-      'global-json-file'
+      'dotnet-version'
     ],
-  ).toBe('tools/conformance/dotnet/global.json');
+  ).toBe('10.0.402');
   expect(steps.some((step) => step.run === 'npm ci')).toBe(true);
   const scripts = steps.map((step) => step.run ?? '').join('\n');
   expect(scripts).toContain('postgres:18');
@@ -474,4 +474,80 @@ test('feature dispatch retains full affected graph selection without weakening t
   ])
     expect(config).toContain(contract);
   expect(config).not.toMatch(/testMatch:|grep:|shard:|fullyParallel: true/);
+});
+
+test('all four non-release .NET jobs install only the exact historical SDK into an isolated root', () => {
+  const validation = readWorkflow('pr-main');
+  const nightly = readWorkflow('nightly');
+  const currentSdk = JSON.parse(
+    readFileSync('tools/conformance/dotnet/global.json', 'utf8'),
+  ).sdk;
+  const historical = readFileSync(
+    'tools/conformance/dotnet/nuget-consumer/published-recovery-baseline.mjs',
+    'utf8',
+  );
+  const jobs = [
+    validation.jobs.ci,
+    validation.jobs['candidate-cold-recovery'],
+    validation.jobs['dotnet-source-browser'],
+    nightly.jobs.dotnet,
+  ];
+  const dependencyPaths = [
+    [
+      'tools/conformance/dotnet/packages.lock.json',
+      'packages/dotnet/packages.lock.json',
+      'tools/conformance/dotnet/global.json',
+      'packages/dotnet/global.json',
+      'tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json',
+    ],
+    [
+      'tools/conformance/dotnet/packages.lock.json',
+      'packages/dotnet/packages.lock.json',
+      'tools/conformance/dotnet/global.json',
+      'packages/dotnet/global.json',
+      'tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json',
+    ],
+    [
+      'tools/conformance/dotnet/packages.lock.json',
+      'packages/dotnet/packages.lock.json',
+      'tools/conformance/dotnet/global.json',
+      'packages/dotnet/global.json',
+      'tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json',
+    ],
+    ['tools/conformance/dotnet/packages.lock.json'],
+  ];
+
+  expect(currentSdk.version).toBe('10.0.402');
+  expect(currentSdk.rollForward).toBe('latestPatch');
+  expect(historical).toContain("'10.0.402'");
+  expect(historical).toContain(
+    'Historical helper SDK must be exactly 10.0.402',
+  );
+  for (const [index, job] of jobs.entries()) {
+    const setupSteps = job.steps.filter((step: { uses?: string }) =>
+      step.uses?.startsWith('actions/setup-dotnet@'),
+    );
+    expect(setupSteps).toHaveLength(1);
+    const setup = setupSteps[0];
+
+    expect(setup.uses).toBe('actions/setup-dotnet@v6');
+    expect(setup.env).toEqual({
+      DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk',
+    });
+    expect(setup.with['dotnet-version']).toBe(currentSdk.version);
+    expect(Object.keys(setup.with).sort()).toEqual([
+      'cache',
+      'cache-dependency-path',
+      'dotnet-version',
+    ]);
+    expect(setup.with.cache).toBe(true);
+    expect(setup.with['cache-dependency-path'].trim().split(/\r?\n/)).toEqual(
+      dependencyPaths[index],
+    );
+  }
+  expect(
+    jobs[0].steps.find(
+      (step: { uses?: string }) => step.uses === 'actions/setup-dotnet@v6',
+    ).if,
+  ).toBe("steps.setup.outputs.dotnet == 'true'");
 });

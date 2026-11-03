@@ -82,8 +82,10 @@ jobs:
       - name: Setup .NET for affected integration
         if: steps.setup.outputs.dotnet == 'true'
         uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
         with:
-          global-json-file: tools/conformance/dotnet/global.json
+          dotnet-version: '10.0.402'
           cache: true
           cache-dependency-path: |
             tools/conformance/dotnet/packages.lock.json
@@ -200,8 +202,10 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
         with:
-          global-json-file: tools/conformance/dotnet/global.json
+          dotnet-version: '10.0.402'
           cache: true
           cache-dependency-path: |
             tools/conformance/dotnet/packages.lock.json
@@ -292,8 +296,10 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
         with:
-          global-json-file: tools/conformance/dotnet/global.json
+          dotnet-version: '10.0.402'
           cache: true
           cache-dependency-path: |
             tools/conformance/dotnet/packages.lock.json
