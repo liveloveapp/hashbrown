@@ -1,6 +1,6 @@
 # Candidate action observation follows Angular rendering
 
-Status: The original narrow correction passed controlled and eight-composition verification. The follow-up private journey helper passed both controlled probes and 32 focused cases; all 24 special-mapping cases also passed and new full affected gates are active. Complete 372/final qualification, merge and production verification remain PENDING. No SDK or template change is included.
+Status: The original narrow correction passed controlled and eight-composition verification. The follow-up private journey helper passed both controlled probes and 32 focused cases; all 24 special-mapping cases also passed and common-helper full affected gates passed. Complete 372/final qualification, merge and production verification remain PENDING. No SDK or template change is included.
 
 ## Observed failure
 
@@ -29,6 +29,7 @@ Preferred diagnostic seam: Playwright's browser clock, installed before navigati
 This clock seam needs validation against the actual Angular scheduler: if it does not control the render callback, do not claim deterministic delay or add a production delay. Root may instead use an equivalent browser-owned frame gate that delays only actual scheduling and forwards the unchanged callback exactly once. The retained CI failure already supplies the meaningful integration RED; a probe's tooling failure or missing capability is not a second behavioral RED.
 
 The probe must demonstrate:
+
 1. The immediate old assertion can fail before actual rendered publication.
 2. The same single click later produces the actual exact action plus genuine refusal error.
 3. The proposed observation poll succeeds without any second command invocation, request/provider/handler/native work or physical mutation.
@@ -57,7 +58,7 @@ Root completed `npx nx build dotnet-conformance`, `npx nx test dotnet-conformanc
 
 ## Follow-up: close every local-refusal observation site
 
-Status: SPEC-approved follow-up helper and five caller-site changes. Both controlled probes and 32 uninstrumented focused cases passed. The additional disjoint 24-case special-mapping run passed; full affected gates are active and full 372 qualification remains PENDING. The earlier three-site correction and its actual controlled/focused GREEN remain valid within their scope.
+Status: SPEC-approved follow-up helper and five caller-site changes. Both controlled probes and 32 uninstrumented focused cases passed. The additional disjoint 24-case special-mapping run passed; common-helper full affected gates passed; the supplemental Busy fence local verification passed; full 372 qualification remains PENDING. The earlier three-site correction and its actual controlled/focused GREEN remain valid within their scope.
 
 F3 [CI 41578697338](https://github.com/liveloveapp/hashbrown/actions/runs/41578697338), source [5675a90a590da16a10fdad438b3eba4cd50d91da](https://github.com/liveloveapp/hashbrown/commit/5675a90a590da16a10fdad438b3eba4cd50d91da), stopped at angular.openai.chat.chat.server.unknown-effect.dispatch-marker-committed: cold 220 passed, one failed, 151 not run. The remaining UnknownEffect refusal loop directly asserted lastAction after its click. Actual click completion was 924130.478; status read 924131.465–924132.734 still contained lastAction:read and localError:null. No later observation was retained. Native UnknownEffect 200/no snapshot/revision 10, unchanged two runs/one provider and clean page/cleanup/unexpected-request facts had passed before that assertion. Those facts do not prove eventual rendering or complete matrix success.
 
@@ -68,6 +69,7 @@ Source review also found generic localNegative polling localError OR resource er
 The authored correction adds one private TSDoc-documented expectLocalRefusal(journey,page,expectedAction) helper in the existing candidate journey module. It performs only a bounded assertion poll, reading one fresh actual status per attempt and comparing exactly {lastAction:expectedAction,hasLocalError:true}. It neither clicks nor mutates/returns an invented public state, and it does not accept an unrelated resource error as the command's local refusal.
 
 Callers retain their existing single clicks and original pre-action work/pending/witness baselines. Reuse the helper at the three already-correct paired sites, the remaining two-action UnknownEffect loop, and generic localNegative. Exact generic control-to-action mapping is:
+
 - negative-stale-token → negative-stale;
 - negative-incomplete-outcomes → negative-outcomes;
 - negative-incomplete-decisions → negative-decisions;
@@ -89,13 +91,13 @@ The controlled UnknownEffect probe failed the original direct action assertion: 
 
 A separate generic freshness probe first completed the unchanged original journey successfully, with no journey, page or cleanup failure. Its stricter observation audit then failed: five trusted controls had been clicked, but the old error-only guard advanced during the second/third gates while DOM still showed negative-send and its real preceding error. Actual publications for negative-resume/generate were absent before the later config action replaced the display. This is a measured false-positive in the old observation contract, not a product authority failure.
 
-The implementation retains exactly one click at each existing caller and all original snapshots, pending comparisons, witness arrays, observer invariants and transport/read contracts. It shares only the configured-bound same-status action/localError poll. Controlled GREEN and the 32-case selected run passed as recorded below. Additional mapping coverage passed; full affected gates are active and complete 372 remains pending.
+The implementation retains exactly one click at each existing caller and all original snapshots, pending comparisons, witness arrays, observer invariants and transport/read contracts. It shares only the configured-bound same-status action/localError poll. Controlled GREEN and the 32-case selected run passed as recorded below. Additional mapping coverage passed; common-helper full affected gates passed; complete 372 remains pending.
 
 ### Follow-up completed controlled and focused verification
 
 Both root-run controlled probes passed against helper source SHA256 3753b88e913dd024dd1ed761c86b39905fbc96e1b447f530556b90461c9a98e9. UnknownEffect used one trusted click/two actual scheduler interceptions and completed in 21.0s. The five-action sequence used five trusted controls/ten interceptions, observed each current action with its genuine error, and completed in 54.5s. All original native/no-work/cleanup guards and post-qualification checks passed.
 
-The separate uninstrumented 32-case run exited 0 in 7.3 minutes: exactly 32 unique cases once each, zero skips/errors, all eight compositions, with every original journey guard preserved. The disjoint 24-case run (three special-mapping scenarios across eight compositions) subsequently passed as recorded below. Full affected gates are active, and the full 372 result is still unqualified.
+The separate uninstrumented 32-case run exited 0 in 7.3 minutes: exactly 32 unique cases once each, zero skips/errors, all eight compositions, with every original journey guard preserved. The disjoint 24-case run (three special-mapping scenarios across eight compositions) subsequently passed as recorded below. Common-helper full affected gates subsequently passed, and the full 372 result is still unqualified.
 
 The F3 source-browser job separately completed in 30m28s: all 664 exact discovered cases once each, zero skips/flaky outcomes, with outcome inventory and downloaded artifact digest independently verified. That is a successful source-job domain only. F3 workflow/cold failure remains preserved at 220 passed / one failed / 151 not run; these controlled/focused passes do not relabel it.
 
@@ -103,8 +105,30 @@ The F3 source-browser job separately completed in 30m28s: all 664 exact discover
 
 The separate special-mapping profile exited 0 in 4.2 minutes: exactly 24 cases, once each, zero skips/errors. Every original journey/no-work/cleanup guard and both after-run qualifications passed. The combined root proof confirms the 32-case profile and this 24-case profile are disjoint and bind the same helper SHA256 3753b88e913dd024dd1ed761c86b39905fbc96e1b447f530556b90461c9a98e9. Together these are 56 targeted cases in TWO profiles, not a full 372-case run or a replacement for one. All helper branches, including the three special control/action mappings, have actual focused coverage.
 
-Full affected build, aggregate test and lint checks are currently active; their final results and serial hooks remain PENDING before a new committed checkpoint. No recipe recapture is planned because the actual 44 bound inputs remain unchanged; root retains the existing verified E3 pin and must preserve its hashes. The failed F3 cold result remains 220 passed / one failed / 151 not run; current full 372 acceptance is still unqualified.
+Common-helper full affected build, aggregate test and lint checks completed successfully, followed by serial checks and the C4 commit. The supplemental Busy fence has separate verification pending. No recipe recapture is planned because the actual 44 bound inputs remain unchanged; root retains the existing verified E3 pin and must preserve its hashes. The failed F3 cold result remains 220 passed / one failed / 151 not run; current full 372 acceptance is still unqualified.
 
 ### Completed common-helper affected checks
 
 After the controlled GREEN probes and the two disjoint focused profiles (32 and 24 cases), root completed `npx nx build dotnet-conformance`, the full `npx nx test dotnet-conformance` aggregate, and `npx nx lint dotnet-conformance`. Actual unit results were 232 harness tests in 26 suites, 385 runtime tests in 44 suites, and 122 package tests in seven suites, all passed. These results and 56 focused scenarios do not replace a fresh complete 372-case candidate run.
+
+## Supplemental Busy read publication fence
+
+Status: the minimal fixture correction passed SPEC/QUALITY review, actual controlled RED→GREEN, all eight uninstrumented Busy compositions and affected build/test/lint. Complete current CI acceptance remains PENDING.
+
+The Busy read has a distinct HTTP/resource contract from local command refusal. blocked() already waits for actual HTTP completion and unchanged native/network authority, but a fresh page's pending:null can satisfy its existing DOM predicate before Angular publishes lastRead. HTTP completion alone cannot establish that rendered public metadata is visible.
+
+The root-run original-code probe failed the exact Busy disposition assertion: expected Busy, received undefined. It retained one trusted fresh read, one RAF plus one timer interception, old lastRead:null at 288.6ms and actual Busy DOM publication at 1479.7ms. The real response was HTTP 200/schema 2/Busy/revision 7. Page, cleanup and diagnostic errors were empty; postflight retained only the expected test failure. This proves delayed read publication, not a product defect.
+
+The authored change replaces only that immediate Busy lastRead.disposition assertion with a configured bounded poll of the fresh actual status's optional lastRead disposition. It remains before release-native. Existing clicks, held-work/read baselines, native authority, provider/effect/observer/witness guards and release/reconciliation order remain unchanged. There is no new helper, fixed sleep, retry click, timeout override or SDK/template/configuration change. This is not routed through expectLocalRefusal because Busy is a successful metadata read rather than a synchronous local refusal.
+
+Root will freshly bind the changed candidate source, repeat the same actual delayed-render probe for GREEN, execute uninstrumented Busy compositions and affected gates, and retain the complete CI result separately. Existing source-only/full-helper evidence does not qualify the changed whole-file candidate. The common helper body remains byte-identical; the actual 44 recipe inputs remain unchanged.
+
+The prior common-helper full local gates completed successfully: 232 harness tests/26 suites, 385 runtime/44 and 122 package/seven, with build and lint PASS. Those are completed prior-slice checks, not passing gates for this new Busy fence.
+
+### Completed Busy fence verification
+
+The exact controlled probe passed against source SHA256 d29aa4012b460edcb62d12f0208b5d62750065aac77fef7ea93633dde5efb0a5: one trusted read, two app-origin scheduler interceptions, actual old null followed by genuine Busy DOM publication, and the complete original journey/cleanup/post-qualification guards. The test passed in 18.3 seconds. The separate uninstrumented Busy profile passed all eight exact compositions once each in 54.0 seconds, with zero skipped, unexpected or flaky cases and all original guards intact.
+
+Root then completed affected build (including both TypeScript checks), the full test aggregate and lint. Actual results were 232 harness tests/26 suites, 385 runtime/44 and 122 package/seven, all passed. The aggregate took 13 minutes 54 seconds; lint passed in 13.8 seconds. Existing environment color warnings and the Nx Jest executor deprecation remain. These local results do not establish complete 372-case acceptance.
+
+[C4 CI 41592887052](https://github.com/liveloveapp/hashbrown/actions/runs/41592887052) was explicitly cancelled as superseded before source/cold execution. It is neither a functional pass nor a functional failure. A fresh complete workflow at the committed Busy correction remains required before final acceptance.

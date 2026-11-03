@@ -3648,9 +3648,12 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
     expect(held.state.effects).toEqual(before.state.effects);
     const blockedPage = await journey.open();
     await blocked(journey, blockedPage.page, id);
-    expect((await journey.status(blockedPage.page)).lastRead?.disposition).toBe(
-      'Busy',
-    );
+    await expect
+      .poll(
+        async () =>
+          (await journey.status(blockedPage.page)).lastRead?.disposition,
+      )
+      .toBe('Busy');
     await journey.control('release-native');
     await reconcileCandidateBusyReader(
       () =>
