@@ -1,14 +1,14 @@
-data: {"type":"RUN_STARTED","timestamp":1793587341321,"threadId":"capture-approval-deny","runId":"approval-deny-resume","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793663975216,"threadId":"capture-approval-deny","runId":"approval-deny-resume","protocolVersion":"1.0"}
 
-data: {"type":"TOOL_CALL_RESULT","timestamp":1793587341324,"metadata":{"hashbrown.tool":{"v":1,"outcome":"denied"}},"messageId":"04cfbd9f-fccf-4ed6-8db9-217bc98f23e3","toolCallId":"capture-approval-deny-approval","content":"The tool call was denied.","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","timestamp":1793663975219,"metadata":{"hashbrown.tool":{"v":1,"outcome":"denied"}},"messageId":"79be2a14-df56-4951-a320-deb564250920","toolCallId":"capture-approval-deny-approval","content":"The tool call was denied.","role":"tool"}
 
-data: {"type":"REASONING_ENCRYPTED_VALUE","timestamp":1793587341324,"subtype":"message","entityId":"04cfbd9f-fccf-4ed6-8db9-217bc98f23e3","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"denied\"}}"}
+data: {"type":"REASONING_ENCRYPTED_VALUE","timestamp":1793663975219,"subtype":"message","entityId":"79be2a14-df56-4951-a320-deb564250920","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"denied\"}}"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793587341326,"messageId":"69b767da-b9ab-45fe-8c3a-59e470665891","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793663975222,"messageId":"58a3f8ec-e222-4516-9ac2-439fdae8053b","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793587341326,"messageId":"69b767da-b9ab-45fe-8c3a-59e470665891","delta":"Tool result: The tool call was denied."}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793663975222,"messageId":"58a3f8ec-e222-4516-9ac2-439fdae8053b","delta":"Tool result: The tool call was denied."}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793587341326,"messageId":"69b767da-b9ab-45fe-8c3a-59e470665891"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793663975223,"messageId":"58a3f8ec-e222-4516-9ac2-439fdae8053b"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793587341328,"threadId":"capture-approval-deny","runId":"approval-deny-resume","outcome":{"type":"success"}}
+data: {"type":"RUN_FINISHED","timestamp":1793663975226,"threadId":"capture-approval-deny","runId":"approval-deny-resume","outcome":{"type":"success"}}
 

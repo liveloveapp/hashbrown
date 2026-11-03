@@ -1,12 +1,12 @@
-data: {"type":"RUN_STARTED","timestamp":1793587341300,"threadId":"capture-approval-approve","runId":"approval-approve-resume","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793663975167,"threadId":"capture-approval-approve","runId":"approval-approve-resume","protocolVersion":"1.0"}
 
-data: {"type":"TOOL_CALL_RESULT","timestamp":1793587341302,"metadata":{"hashbrown.tool":{"v":1,"outcome":"success"}},"messageId":"a4822bea-f09c-47c5-8303-8f1484537ffc","toolCallId":"capture-approval-approve-approval","content":"approved native action","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","timestamp":1793663975172,"metadata":{"hashbrown.tool":{"v":1,"outcome":"success"}},"messageId":"6bd0870a-9c99-462f-a8af-d7228e3005b9","toolCallId":"capture-approval-approve-approval","content":"approved native action","role":"tool"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793587341303,"messageId":"9afc1e6e-0f3c-439a-b39e-d1da769ab562","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793663975176,"messageId":"8bff6549-0285-4a78-9187-d4e864cdcaa0","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793587341303,"messageId":"9afc1e6e-0f3c-439a-b39e-d1da769ab562","delta":"Tool result: approved native action"}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1793663975177,"messageId":"8bff6549-0285-4a78-9187-d4e864cdcaa0","delta":"Tool result: approved native action"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793587341303,"messageId":"9afc1e6e-0f3c-439a-b39e-d1da769ab562"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793663975178,"messageId":"8bff6549-0285-4a78-9187-d4e864cdcaa0"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793587341305,"threadId":"capture-approval-approve","runId":"approval-approve-resume","outcome":{"type":"success"}}
+data: {"type":"RUN_FINISHED","timestamp":1793663975183,"threadId":"capture-approval-approve","runId":"approval-approve-resume","outcome":{"type":"success"}}
 

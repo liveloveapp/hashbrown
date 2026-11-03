@@ -1,18 +1,18 @@
-data: {"type":"RUN_STARTED","timestamp":1793587341193,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793663975003,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793587341196,"messageId":"9b76b0ad-e914-44f4-a710-974c3293e014","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793663975013,"messageId":"3ef6085a-bf04-4fbe-aa9d-56657496fe46","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793587341196,"messageId":"9b76b0ad-e914-44f4-a710-974c3293e014"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793663975013,"messageId":"3ef6085a-bf04-4fbe-aa9d-56657496fe46"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793587341196,"toolCallId":"capture-cancel-v1-server","toolCallName":"serverTool","parentMessageId":"9b76b0ad-e914-44f4-a710-974c3293e014"}
+data: {"type":"TOOL_CALL_START","timestamp":1793663975013,"toolCallId":"capture-cancel-v1-server","toolCallName":"serverTool","parentMessageId":"3ef6085a-bf04-4fbe-aa9d-56657496fe46"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793587341196,"toolCallId":"capture-cancel-v1-server","delta":"{\"city\":\"London\"}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793663975013,"toolCallId":"capture-cancel-v1-server","delta":"{\"city\":\"London\"}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793587341196,"toolCallId":"capture-cancel-v1-server"}
+data: {"type":"TOOL_CALL_END","timestamp":1793663975015,"toolCallId":"capture-cancel-v1-server"}
 
-data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"cancelled"}},"messageId":"84cf05de-ef6b-4867-b728-6ace13e726a3","toolCallId":"capture-cancel-v1-server","content":"The tool call was interrupted before a result was produced.","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"cancelled"}},"messageId":"c226e464-8413-49c1-8d9a-ff52871003d9","toolCallId":"capture-cancel-v1-server","content":"The tool call was interrupted before a result was produced.","role":"tool"}
 
-data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"84cf05de-ef6b-4867-b728-6ace13e726a3","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"}
+data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"c226e464-8413-49c1-8d9a-ff52871003d9","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793587341219,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","outcome":{"type":"cancelled"}}
+data: {"type":"RUN_FINISHED","timestamp":1793663975041,"threadId":"capture-cancel-v1","runId":"capture-cancel-v1-run","outcome":{"type":"cancelled"}}
 
