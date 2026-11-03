@@ -1093,3 +1093,75 @@ for(const mutate of mutations){
 
   expect(output.trim()).toBe('passed');
 });
+
+test('malformed typed local disposal requires exact stage reason committed close reference and original request scope', () => {
+  const output = probe(`
+const check=subject.assertCandidateProxyIntervention;
+const requestId='actual-owned-proxy-request',runId='actual-owned-public-run',threadId='actual-owned-thread';
+const scope={requestId,scenarioId:'react.openai.responses.chat.failure.malformed-ack',threadId,workerId:'worker-actual-owned',routeEpoch:2};
+const frame=value=>Buffer.from('data: '+JSON.stringify(value)+String.fromCharCode(10,10));
+const ack=frame({type:'RUN_STARTED',threadId,runId});
+const post=Buffer.concat([frame({type:'TOOL_CALL_RESULT',toolCallId:'protected',content:'{"code":"PDX"}'}),frame({type:'RUN_FINISHED',threadId,runId})]);
+const changed=Buffer.from(post);changed[6]=33;
+const record=(seq,kind,extra={})=>({...scope,seq,kind,bytes:Buffer.alloc(0),incomingBody:Buffer.alloc(0),forwardedBody:Buffer.alloc(0),...extra});
+const stageReasons={'before-write':'Downstream closed'};
+function facts(stage='before-write'){
+ return {scenario:'failure.malformed-ack',requestId,runId,threadId,error:{name:'SyntaxError',message:'Unexpected token ! in actual source JSON'},recoveryRequired:true,records:[record(31,'request'),record(32,'upstream-headers',{status:200}),record(33,'upstream-body',{bytes:Buffer.from(ack)}),record(34,'upstream-ack'),record(35,'delivered-headers',{status:200}),record(36,'delivered-body',{bytes:Buffer.from(ack)}),record(37,'downstream-ack-write'),record(38,'upstream-body',{bytes:Buffer.from(post)}),record(39,'mutation',{reason:'malform-after-upstream-ack'}),record(40,'delivered-body',{bytes:Buffer.from(changed)}),record(41,'downstream-closed'),record(42,'fault',{reason:stageReasons[stage],faultCause:'downstream-closed',faultStage:stage,downstreamCloseSeq:41})],events:[{type:'RUN_STARTED',runId,requestId:runId,monotonicMs:10}],transport:[{kind:'started',requestId:runId,monotonicMs:1},{kind:'error',requestId:runId,monotonicMs:20},{kind:'disposed',requestId:runId,monotonicMs:21}]};
+}
+const fault=value=>value.records.find(r=>r.kind==='fault');
+const close=value=>value.records.find(r=>r.kind==='downstream-closed');
+const request=value=>value.records.find(r=>r.kind==='request');
+
+// Only before-write has actual causal producer evidence; other stages remain unsupported.
+check(facts());
+const epochZero=facts();for(const r of epochZero.records)r.routeEpoch=0;check(epochZero);
+const nativeAborted=facts();fault(nativeAborted).reason='aborted';for(const key of ['faultCause','faultStage','downstreamCloseSeq'])delete fault(nativeAborted)[key];check(nativeAborted);
+const mutations=[
+ ['matching raw reason without marker',v=>{for(const key of ['faultCause','faultStage','downstreamCloseSeq'])delete fault(v)[key];}],
+ ...['faultCause','faultStage','downstreamCloseSeq'].map(key=>['missing '+key,v=>delete fault(v)[key]]),
+ ['wrong cause',v=>fault(v).faultCause='upstream-aborted'],
+ ['wrong stage',v=>fault(v).faultStage='unknown-delivery'],
+ ['stage/reason mismatch',v=>fault(v).faultStage='write'],
+ ['unrelated reason with forged marker',v=>fault(v).reason='Response byte limit'],
+ ['write callback error with forged marker',v=>fault(v).reason='genuine write failure'],
+ ...[0,-1,41.5,NaN,'41',40,42].map(seq=>['invalid close reference '+String(seq),v=>fault(v).downstreamCloseSeq=seq]),
+ ['foreign close reference',v=>{fault(v).seq=43;v.records.splice(-1,0,record(42,'downstream-closed',{requestId:'foreign-request'}));fault(v).downstreamCloseSeq=42;}],
+ ['missing actual close',v=>v.records=v.records.filter(r=>r.kind!=='downstream-closed')],
+ ['duplicate close',v=>{fault(v).seq=43;v.records.splice(-1,0,record(42,'downstream-closed'));}],
+ ['duplicate fault',v=>v.records.push({...fault(v),seq:43})],
+ ['fault precedes close',v=>{fault(v).seq=41;close(v).seq=42;fault(v).downstreamCloseSeq=42;v.records.sort((a,b)=>a.seq-b.seq);}],
+ ['close precedes mutation',v=>{close(v).seq=39;v.records.find(r=>r.kind==='mutation').seq=40;v.records.find(r=>r.kind==='delivered-body'&&r.seq===40).seq=41;fault(v).downstreamCloseSeq=39;v.records.sort((a,b)=>a.seq-b.seq);}],
+ ['late source bytes',v=>v.records.push(record(43,'upstream-body',{bytes:Buffer.from(ack)}))],
+ ['late delivered bytes',v=>v.records.push(record(43,'delivered-body',{bytes:Buffer.from('late')}))],
+ ['normal complete plus typed fault',v=>v.records.push(record(43,'complete'))],
+ ['observation thread differs from request',v=>v.threadId='foreign-thread'],
+ ...['scenarioId','threadId','workerId','routeEpoch'].flatMap(key=>[
+  ['close mismatched '+key,v=>close(v)[key]=key==='routeEpoch'?3:'foreign-'+key],
+  ['fault mismatched '+key,v=>fault(v)[key]=key==='routeEpoch'?3:'foreign-'+key],
+  ['both close/fault consistently foreign '+key,v=>{close(v)[key]=key==='routeEpoch'?3:'foreign-'+key;fault(v)[key]=close(v)[key];}],
+ ]),
+ ...['requestId','scenarioId','threadId','workerId','routeEpoch'].flatMap(key=>[
+  ['request missing '+key,v=>delete request(v)[key]],
+  ['close missing '+key,v=>delete close(v)[key]],
+  ['fault missing '+key,v=>delete fault(v)[key]],
+ ]),
+ ...['scenarioId','threadId','workerId'].map(key=>['empty whole scope '+key,v=>{for(const r of v.records)r[key]='';}]),
+ ...[-1,0.5,NaN,'2'].map(epoch=>['invalid whole route epoch '+String(epoch),v=>{for(const r of v.records)r.routeEpoch=epoch;}]),
+ ['missing consumed ACK',v=>v.events=[]],
+ ['missing source ACK',v=>v.records=v.records.filter(r=>r.kind!=='upstream-ack')],
+ ['missing ACK write',v=>v.records=v.records.filter(r=>r.kind!=='downstream-ack-write')],
+ ['missing mutation',v=>v.records=v.records.filter(r=>r.kind!=='mutation')],
+ ['wrong mutation',v=>v.records.find(r=>r.kind==='mutation').reason='another-mutation'],
+ ['missing current SyntaxError',v=>delete v.error],
+ ['wrong current error',v=>v.error={name:'TypeError',message:'unrelated failure'}],
+ ['missing current disposal',v=>v.transport=v.transport.filter(r=>r.kind!=='disposed')],
+ ['foreign disposal',v=>v.transport.find(r=>r.kind==='disposed').requestId='foreign-run'],
+ ['missing recovery requirement',v=>v.recoveryRequired=false],
+ ['uncorrupted delivered source',v=>v.records.find(r=>r.seq===40).bytes=Buffer.from(post)],
+];
+for(const [label,mutate]of mutations){const value=facts();mutate(value);assert.throws(()=>check(value),undefined,label);}
+for(const [stage,reason]of [['write','Downstream closed during write'],['backpressure','Downstream closed during backpressure']]){const value=facts();fault(value).faultStage=stage;fault(value).reason=reason;assert.throws(()=>check(value),undefined,'Unsupported local disposal stage '+stage);}
+`);
+
+  expect(output.trim()).toBe('passed');
+});

@@ -416,6 +416,20 @@ export interface CandidateFaultObservation {
     kind: string;
     requestId: string;
     reason?: string;
+    /** Full proxy case identity on original request and disposal receipts. */
+    scenarioId?: string;
+    /** Proxy request thread identity. */
+    threadId?: string;
+    /** Owned worker selected for the original request. */
+    workerId?: string;
+    /** Nonnegative route version selected for the original request. */
+    routeEpoch?: number;
+    /** Producer-owned local disposal cause; acceptance independently validates its proof. */
+    faultCause?: string;
+    /** Producer-observed delivery boundary; only before-write is supported. */
+    faultStage?: string;
+    /** Actual persisted downstream-close sequence referenced by the fault. */
+    downstreamCloseSeq?: number;
     seq?: number;
     bytes: Uint8Array;
   }>[];
@@ -970,7 +984,84 @@ function assertCandidateMalformedOutcome(
   } else {
     const fault = only('fault');
     terminal = only('downstream-closed');
-    assert.equal(fault.reason, 'aborted', 'Unexpected malformed proxy fault');
+    const typed = ['faultCause', 'faultStage', 'downstreamCloseSeq'].some(
+      (key) => Object.hasOwn(fault, key),
+    );
+    if (typed) {
+      assert.equal(
+        fault.reason,
+        'Downstream closed',
+        'Unexpected malformed proxy fault',
+      );
+      assert.equal(
+        fault.faultCause,
+        'downstream-closed',
+        'Owned disposal cause required',
+      );
+      assert.equal(
+        fault.faultStage,
+        'before-write',
+        'Owned prewrite disposal stage required',
+      );
+      assert.ok(
+        Number.isSafeInteger(fault.downstreamCloseSeq) &&
+          Number(fault.downstreamCloseSeq) > 0,
+        'Actual committed downstream close reference required',
+      );
+      assert.equal(
+        fault.downstreamCloseSeq,
+        sequence(terminal),
+        'Owned disposal must reference the unique actual downstream close',
+      );
+      const original = only('request');
+      for (const key of [
+        'requestId',
+        'scenarioId',
+        'threadId',
+        'workerId',
+      ] as const) {
+        assert.ok(
+          typeof original[key] === 'string' && original[key].length > 0,
+          'Original malformed request scope required',
+        );
+        assert.equal(
+          terminal[key],
+          original[key],
+          'Downstream close request scope differs',
+        );
+        assert.equal(
+          fault[key],
+          original[key],
+          'Owned disposal fault request scope differs',
+        );
+      }
+      assert.ok(
+        Number.isSafeInteger(original.routeEpoch) &&
+          Number(original.routeEpoch) >= 0,
+        'Original malformed request route epoch required',
+      );
+      assert.equal(
+        terminal.routeEpoch,
+        original.routeEpoch,
+        'Downstream close route epoch differs',
+      );
+      assert.equal(
+        fault.routeEpoch,
+        original.routeEpoch,
+        'Owned disposal fault route epoch differs',
+      );
+      assert.equal(
+        observation.threadId,
+        original.threadId,
+        'Malformed observation thread scope differs',
+      );
+      assert.ok(
+        sequence(original) < sequence(ackWrite),
+        'Original malformed request must precede ACK write',
+      );
+    } else {
+      assert.equal(fault.reason, 'aborted', 'Unexpected malformed proxy fault');
+    }
     assert.ok(
       sequence(terminal) < sequence(fault),
       'Malformed downstream closure must precede its aborted fault',

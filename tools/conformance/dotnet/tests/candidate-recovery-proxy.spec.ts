@@ -9,7 +9,7 @@ import {
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { startCandidateRecoveryProxy } from '../harness/candidate-recovery-proxy';
 
 test('candidate proxy persists actual delivered mutation headers separately from upstream headers', async () => {
@@ -1358,4 +1358,765 @@ test('candidate proxy aborts a genuinely backpressured socket without stranding 
       );
     },
   );
+});
+
+/** Exercises the same real persisted-byte race with or without an already-started parent shutdown. */
+async function exercisePrewriteDisposal(shutdownFirst: boolean): Promise<void> {
+  let upstreamRequests = 0;
+  let allowFrame: () => void = () => undefined;
+  let allowLater: () => void = () => undefined;
+  let finishUpstream: () => void = () => undefined;
+  const frameAllowed = new Promise<void>((resolve) => {
+    allowFrame = resolve;
+  });
+  const laterAllowed = new Promise<void>((resolve) => {
+    allowLater = resolve;
+  });
+  const upstreamFinished = new Promise<void>((resolve) => {
+    finishUpstream = resolve;
+  });
+  const frame = Buffer.from(
+    'data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"primitive-message","delta":"actual source"}\r\n\r\n',
+  );
+
+  await withUpstream(
+    async (worker) => {
+      const directory = await mkdtemp(
+        join(tmpdir(), 'candidate-proxy-owned-disposal-'),
+      );
+      const path = join(directory, 'traffic.jsonl');
+      const filesystem =
+        jest.requireActual<typeof import('node:fs/promises')>(
+          'node:fs/promises',
+        );
+      const http = jest.requireActual<typeof import('node:http')>('node:http');
+      const realOpen = filesystem.open;
+      const realCreateServer = http.createServer;
+      let ownedHandle: Awaited<ReturnType<typeof realOpen>> | undefined;
+      let ownedServer: ReturnType<typeof realCreateServer> | undefined;
+      let ownedResponse: ServerResponse | undefined;
+      let releaseAppend: () => void = () => undefined;
+      let appendPersisted: () => void = () => undefined;
+      let responseClosed: () => void = () => undefined;
+      const appendReleased = new Promise<void>((resolve) => {
+        releaseAppend = resolve;
+      });
+      const persisted = new Promise<void>((resolve) => {
+        appendPersisted = resolve;
+      });
+      const closed = new Promise<void>((resolve) => {
+        responseClosed = resolve;
+      });
+      const deadline = AbortSignal.timeout(5000);
+      const bounded = async <T>(promise: Promise<T>): Promise<T> => {
+        deadline.throwIfAborted();
+        let aborted: () => void = () => undefined;
+        const failure = new Promise<never>((_, reject) => {
+          aborted = () => reject(deadline.reason);
+          deadline.addEventListener('abort', aborted, { once: true });
+        });
+        try {
+          return await Promise.race([promise, failure]);
+        } finally {
+          deadline.removeEventListener('abort', aborted);
+        }
+      };
+      const opening = jest
+        .spyOn(filesystem, 'open')
+        .mockImplementation(async (...args: Parameters<typeof realOpen>) => {
+          const handle = await realOpen(...args);
+          if (String(args[0]) === path) ownedHandle = handle;
+          return handle;
+        });
+      const creating = jest
+        .spyOn(http, 'createServer')
+        .mockImplementation((...args: Parameters<typeof realCreateServer>) => {
+          const server = realCreateServer(...args);
+          ownedServer = server;
+          server.on('request', (incoming, response) => {
+            if (incoming.url !== '/run') return;
+            ownedResponse = response;
+            response.once('close', responseClosed);
+          });
+          return server;
+        });
+      let appendBarrier: jest.SpyInstance | undefined;
+      let proxy:
+        Awaited<ReturnType<typeof startCandidateRecoveryProxy>> | undefined;
+      let outgoing: ReturnType<typeof request> | undefined;
+      let client: IncomingMessage | undefined;
+      let parsedAck: () => void = () => undefined;
+      let parsedMalformed: () => void = () => undefined;
+      const ackConsumed = new Promise<void>((resolve) => {
+        parsedAck = resolve;
+      });
+      const malformedConsumed = new Promise<void>((resolve) => {
+        parsedMalformed = resolve;
+      });
+      const parserErrors: unknown[] = [];
+      const parsedEvents: unknown[] = [];
+      const unexpectedClientErrors: Error[] = [];
+      let buffered = '';
+      let targetedAppends = 0;
+      let primaryFailure: unknown;
+      const cleanupFailures: unknown[] = [];
+
+      try {
+        proxy = await startCandidateRecoveryProxy({
+          ownedOrigins: [origin],
+          evidencePath: path,
+          limits: {
+            requestBytes: 8192,
+            responseBytes: 65536,
+            frameBytes: 8192,
+            records: 256,
+            holdTimeoutMs: 2000,
+          },
+        });
+        opening.mockRestore();
+        creating.mockRestore();
+        if (!ownedHandle)
+          throw new Error('Actual owned evidence handle required');
+        const realAppend = ownedHandle.appendFile.bind(ownedHandle);
+        appendBarrier = jest
+          .spyOn(ownedHandle, 'appendFile')
+          .mockImplementation(
+            async (...args: Parameters<typeof realAppend>) => {
+              await realAppend(...args);
+              if (typeof args[0] !== 'string') return;
+              const record = JSON.parse(args[0]);
+              if (
+                record.kind === 'upstream-body' &&
+                record.bytesBase64 === terminal.toString('base64')
+              ) {
+                targetedAppends++;
+                appendPersisted();
+                await appendReleased;
+              }
+            },
+          );
+        proxy.registerWorker({
+          id: 'node-primitive-a',
+          origin: worker,
+          loadedIdentityEvidence: 'unit-node-upstream-only',
+        });
+        proxy.registerThread({
+          scenarioId: 'primitive.proxy',
+          threadId,
+          workerId: 'node-primitive-a',
+          recoveryPath,
+          principal: 'alice',
+        });
+        proxy.armRun(threadId, 'malform-after-upstream-ack');
+        outgoing = request(
+          proxy.origin + '/run',
+          {
+            method: 'POST',
+            headers: {
+              Origin: origin,
+              'Content-Type': 'application/json',
+              'X-Fixture-Principal': 'alice',
+            },
+          },
+          (response) => {
+            client = response;
+            response.on('error', (error: Error) => {
+              if (!parserErrors.length) unexpectedClientErrors.push(error);
+            });
+            response.on('data', (chunk: Buffer) => {
+              buffered += chunk.toString('utf8');
+              for (;;) {
+                const boundary = buffered.indexOf('\r\n\r\n');
+                if (boundary < 0) break;
+                const actualFrame = buffered.slice(0, boundary);
+                buffered = buffered.slice(boundary + 4);
+                const data = actualFrame
+                  .split('\r\n')
+                  .filter((line) => line.startsWith('data:'))
+                  .map((line) => line.slice(5).trimStart())
+                  .join('\n');
+                try {
+                  const actual: unknown = JSON.parse(data);
+                  parsedEvents.push(actual);
+                  if (
+                    typeof actual === 'object' &&
+                    actual !== null &&
+                    'type' in actual &&
+                    actual.type === 'RUN_STARTED'
+                  )
+                    parsedAck();
+                } catch (error) {
+                  parserErrors.push(error);
+                  parsedMalformed();
+                }
+              }
+            });
+          },
+        );
+        outgoing.on('error', (error: Error) => {
+          if (!parserErrors.length) unexpectedClientErrors.push(error);
+        });
+        outgoing.end(input);
+        await bounded(ackConsumed);
+        const ack = await proxy.waitForThread(
+          threadId,
+          'downstream-ack-write',
+          deadline,
+        );
+        allowFrame();
+        proxy.release(ack.requestId);
+        await bounded(malformedConsumed);
+        expect(parserErrors).toHaveLength(1);
+        expect(parserErrors[0]).toBeInstanceOf(SyntaxError);
+        expect(parsedEvents).toEqual([
+          { type: 'RUN_STARTED', threadId, runId: 'primitive-run' },
+        ]);
+        allowLater();
+        await bounded(persisted);
+        if (!client || !ownedResponse)
+          throw new Error('Actual client and owned response required');
+
+        const stopping = shutdownFirst ? proxy.close() : undefined;
+        client.destroy();
+        await bounded(closed);
+        expect(ownedResponse.destroyed).toBe(true);
+        releaseAppend();
+        if (stopping) await stopping;
+        else {
+          await proxy.waitFor(ack.requestId, 'fault', deadline);
+          await proxy.close();
+        }
+
+        const records = proxy
+          .records(threadId)
+          .filter((record) => record.requestId === ack.requestId);
+        const closeRecords = records.filter(
+          (record) => record.kind === 'downstream-closed',
+        );
+        const faults = records.filter((record) => record.kind === 'fault');
+        const late = records.find(
+          (record) =>
+            record.kind === 'upstream-body' && record.bytes.equals(terminal),
+        );
+        const mutation = records.find((record) => record.kind === 'mutation');
+        expect(closeRecords).toHaveLength(1);
+        expect(faults).toHaveLength(1);
+        expect(late).toBeDefined();
+        expect(mutation).toBeDefined();
+        if (!late || !mutation)
+          throw new Error('Actual malformed source and later append required');
+        expect(targetedAppends).toBe(1);
+        expect(upstreamRequests).toBe(1);
+        expect(unexpectedClientErrors).toEqual([]);
+        expect(
+          records.filter((record) => record.kind === 'request'),
+        ).toHaveLength(1);
+        expect(
+          Buffer.concat(
+            records
+              .filter((record) => record.kind === 'upstream-body')
+              .map((record) => record.bytes),
+          ),
+        ).toEqual(Buffer.concat([acknowledgement, frame, terminal]));
+        const delivered = Buffer.concat(
+          records
+            .filter((record) => record.kind === 'delivered-body')
+            .map((record) => record.bytes),
+        );
+        const actualSourcePrefix = Buffer.concat([acknowledgement, frame]);
+        const offset = acknowledgement.length + frame.indexOf('{');
+        const corrupted = Buffer.from(actualSourcePrefix);
+        corrupted[offset] = 33;
+        expect(delivered).toEqual(corrupted);
+        expect(mutation.seq).toBeGreaterThan(ack.seq);
+        expect(late.seq).toBeGreaterThan(mutation.seq);
+        expect(closeRecords[0].seq).toBeGreaterThan(late.seq);
+        expect(faults[0].seq).toBeGreaterThan(closeRecords[0].seq);
+        expect(
+          records.filter(
+            (record) =>
+              ['upstream-body', 'delivered-body'].includes(record.kind) &&
+              record.seq > closeRecords[0].seq,
+          ),
+        ).toEqual([]);
+        expect(records.filter((record) => record.kind === 'complete')).toEqual(
+          [],
+        );
+        expect(faults[0].reason).toBe('Downstream closed');
+        if (shutdownFirst) {
+          const stop = proxy
+            .records()
+            .filter((record) => record.kind === 'stop-start');
+          expect(stop).toHaveLength(1);
+          expect(stop[0].seq).toBeLessThan(closeRecords[0].seq);
+          expect(faults[0]).not.toHaveProperty('faultCause');
+          expect(faults[0]).not.toHaveProperty('faultStage');
+          expect(faults[0]).not.toHaveProperty('downstreamCloseSeq');
+        } else {
+          expect(faults[0]).toMatchObject({
+            faultCause: 'downstream-closed',
+            faultStage: 'before-write',
+            downstreamCloseSeq: closeRecords[0].seq,
+          });
+        }
+      } catch (error) {
+        primaryFailure = error;
+      } finally {
+        releaseAppend();
+        allowFrame();
+        allowLater();
+        finishUpstream();
+        outgoing?.destroy();
+        client?.destroy();
+        opening.mockRestore();
+        creating.mockRestore();
+        appendBarrier?.mockRestore();
+        for (const cleanup of [
+          async () => {
+            await proxy?.close();
+          },
+          async () => {
+            if (!ownedServer) return;
+            const server = ownedServer;
+            server.closeAllConnections();
+            await new Promise<void>((resolve) => server.close(() => resolve()));
+          },
+          async () => {
+            await rm(directory, { recursive: true, force: true });
+          },
+        ]) {
+          try {
+            await cleanup();
+          } catch (error) {
+            cleanupFailures.push(error);
+          }
+        }
+      }
+      if (primaryFailure !== undefined) {
+        if (cleanupFailures.length)
+          throw new AggregateError(
+            [primaryFailure, ...cleanupFailures],
+            'Disposal regression and owned cleanup failed',
+          );
+        throw primaryFailure;
+      }
+      if (cleanupFailures.length)
+        throw new AggregateError(
+          cleanupFailures,
+          'Owned disposal regression cleanup failed',
+        );
+    },
+    async (incoming, response) => {
+      upstreamRequests++;
+      await bytes(incoming);
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      response.write(acknowledgement);
+      await frameAllowed;
+      response.write(frame);
+      await laterAllowed;
+      response.write(terminal);
+      await upstreamFinished;
+      response.end();
+    },
+  );
+}
+
+test('candidate proxy brands actual downstream disposal before a later write after malformed delivery', async () => {
+  await exercisePrewriteDisposal(false);
+});
+
+test('candidate proxy does not brand disposal after shutdown has begun', async () => {
+  await exercisePrewriteDisposal(true);
+});
+
+test('candidate proxy brands actual downstream disposal while delivered headers await persistence', async () => {
+  let upstreamRequests = 0;
+  await withUpstream(
+    async (worker) => {
+      const filesystem =
+        jest.requireActual<typeof import('node:fs/promises')>(
+          'node:fs/promises',
+        );
+      const http = jest.requireActual<typeof import('node:http')>('node:http');
+      const realOpen = filesystem.open;
+      const realCreateServer = http.createServer;
+      let handle: Awaited<ReturnType<typeof realOpen>> | undefined;
+      let openedPath: string | undefined;
+      let server: ReturnType<typeof realCreateServer> | undefined;
+      const opening = jest
+        .spyOn(filesystem, 'open')
+        .mockImplementation(async (...args: Parameters<typeof realOpen>) => {
+          const actual = await realOpen(...args);
+          handle = actual;
+          openedPath = String(args[0]);
+          return actual;
+        });
+      const creating = jest
+        .spyOn(http, 'createServer')
+        .mockImplementation((...args: Parameters<typeof realCreateServer>) => {
+          const actual = realCreateServer(...args);
+          server = actual;
+          return actual;
+        });
+      try {
+        await withProxy(worker, async (proxy, path) => {
+          opening.mockRestore();
+          creating.mockRestore();
+          if (!handle || !server)
+            throw new Error('Actual owned handle/server required');
+          expect(openedPath).toBe(path);
+          const deadline = AbortSignal.timeout(5000);
+          const incoming = once(server, 'request', {
+            signal: deadline,
+          }) as Promise<[IncomingMessage, ServerResponse]>;
+          let releaseHeaders: () => void = () => undefined;
+          let persistedHeaders: () => void = () => undefined;
+          const released = new Promise<void>((resolve) => {
+            releaseHeaders = resolve;
+          });
+          const persisted = new Promise<void>((resolve, reject) => {
+            persistedHeaders = resolve;
+            deadline.addEventListener('abort', () => reject(deadline.reason), {
+              once: true,
+            });
+          });
+          let headerRequestId: string | undefined;
+          let gatedHeaders = 0;
+          const realAppend = handle.appendFile.bind(handle);
+          const appending = jest
+            .spyOn(handle, 'appendFile')
+            .mockImplementation(
+              async (...args: Parameters<typeof realAppend>) => {
+                await realAppend(...args);
+                if (typeof args[0] !== 'string') return;
+                const record = JSON.parse(args[0]);
+                if (
+                  record.kind === 'delivered-headers' &&
+                  record.threadId === threadId
+                ) {
+                  gatedHeaders++;
+                  headerRequestId = record.requestId;
+                  persistedHeaders();
+                  await released;
+                }
+              },
+            );
+          let outgoing: ReturnType<typeof request> | undefined;
+          let explicitClientAbort = false;
+          let clientResponses = 0;
+          const unexpectedClientErrors: Error[] = [];
+          try {
+            outgoing = request(
+              proxy.origin + '/run',
+              {
+                method: 'POST',
+                headers: {
+                  Origin: origin,
+                  'Content-Type': 'application/json',
+                  'X-Fixture-Principal': 'alice',
+                },
+              },
+              (response) => {
+                clientResponses++;
+                response.on('error', (error: Error) => {
+                  if (!explicitClientAbort) unexpectedClientErrors.push(error);
+                });
+                response.resume();
+              },
+            );
+            outgoing.on('error', (error: Error) => {
+              if (!explicitClientAbort) unexpectedClientErrors.push(error);
+            });
+            outgoing.end(input);
+            const [, actualResponse] = await incoming;
+            const actualClosed = once(actualResponse, 'close', {
+              signal: deadline,
+            });
+            await persisted;
+            expect(actualResponse.destroyed).toBe(false);
+            expect(clientResponses).toBe(0);
+            expect(gatedHeaders).toBe(1);
+
+            explicitClientAbort = true;
+            outgoing.destroy();
+            await actualClosed;
+            expect(actualResponse.destroyed).toBe(true);
+            releaseHeaders();
+            if (!headerRequestId)
+              throw new Error('Actual persisted header request required');
+            await proxy.waitFor(headerRequestId, 'fault', deadline);
+            await proxy.close();
+
+            const records = proxy
+              .records(threadId)
+              .filter((record) => record.requestId === headerRequestId);
+            const closes = records.filter(
+              (record) => record.kind === 'downstream-closed',
+            );
+            const faults = records.filter((record) => record.kind === 'fault');
+            expect(closes).toHaveLength(1);
+            expect(faults).toHaveLength(1);
+            expect(upstreamRequests).toBe(1);
+            expect(unexpectedClientErrors).toEqual([]);
+            expect(
+              records.filter((record) => record.kind === 'request'),
+            ).toHaveLength(1);
+            expect(
+              records.filter((record) => record.kind === 'delivered-headers'),
+            ).toHaveLength(1);
+            expect(
+              Buffer.concat(
+                records
+                  .filter((record) => record.kind === 'upstream-body')
+                  .map((record) => record.bytes),
+              ),
+            ).toEqual(Buffer.concat([acknowledgement, terminal]));
+            expect(
+              records.filter((record) => record.kind === 'delivered-body'),
+            ).toEqual([]);
+            expect(
+              records.filter((record) => record.kind === 'complete'),
+            ).toEqual([]);
+            expect(faults[0].seq).toBeGreaterThan(closes[0].seq);
+            expect(faults[0]).toMatchObject({
+              reason: 'Downstream closed',
+              faultCause: 'downstream-closed',
+              faultStage: 'before-write',
+              downstreamCloseSeq: closes[0].seq,
+            });
+          } finally {
+            releaseHeaders();
+            outgoing?.destroy();
+            appending.mockRestore();
+          }
+        });
+      } finally {
+        opening.mockRestore();
+        creating.mockRestore();
+      }
+    },
+    async (incoming, response) => {
+      upstreamRequests++;
+      await bytes(incoming);
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      response.end(Buffer.concat([acknowledgement, terminal]));
+    },
+  );
+});
+
+test('candidate proxy preserves a genuine callback error before close even when its raw message matches disposal', async () => {
+  let upstreamRequests = 0;
+  const injected = new Error('Downstream closed');
+  const http = jest.requireActual<typeof import('node:http')>('node:http');
+  const realCreateServer = http.createServer;
+  let creating: jest.SpyInstance | undefined;
+  let writing: jest.SpyInstance | undefined;
+  let callbackInjections = 0;
+  const destroyedAtCallback: boolean[] = [];
+  const unexpectedWriteErrors: Error[] = [];
+  const unexpectedClientErrors: Error[] = [];
+
+  await withUpstream(
+    async (worker) => {
+      creating = jest
+        .spyOn(http, 'createServer')
+        .mockImplementation((...args: Parameters<typeof realCreateServer>) => {
+          const server = realCreateServer(...args);
+          server.on('request', (incoming, response) => {
+            if (incoming.url !== '/run') return;
+            const realWrite = response.write.bind(response);
+            type Callback = (error?: Error | null) => void;
+            writing = jest
+              .spyOn(response, 'write')
+              .mockImplementation(
+                (
+                  chunk: Uint8Array | string,
+                  encodingOrCallback?: BufferEncoding | Callback,
+                  callback?: Callback,
+                ) => {
+                  const originalCallback =
+                    typeof encodingOrCallback === 'function'
+                      ? encodingOrCallback
+                      : callback;
+                  const observedCallback: Callback = (actualError) => {
+                    if (actualError) {
+                      unexpectedWriteErrors.push(actualError);
+                      originalCallback?.(actualError);
+                      return;
+                    }
+                    callbackInjections++;
+                    destroyedAtCallback.push(response.destroyed);
+                    // Only the real completed write's callback result is deliberately fault-injected.
+                    originalCallback?.(injected);
+                  };
+                  return typeof encodingOrCallback === 'string'
+                    ? realWrite(chunk, encodingOrCallback, observedCallback)
+                    : realWrite(chunk, observedCallback);
+                },
+              );
+          });
+          return server;
+        });
+      try {
+        await withProxy(worker, async (proxy) => {
+          creating?.mockRestore();
+          const deadline = AbortSignal.timeout(5000);
+          let outgoing: ReturnType<typeof request> | undefined;
+          try {
+            outgoing = request(
+              proxy.origin + '/run',
+              {
+                method: 'POST',
+                headers: {
+                  Origin: origin,
+                  'Content-Type': 'application/json',
+                  'X-Fixture-Principal': 'alice',
+                },
+              },
+              (response) => {
+                response.on('error', (error: Error) => {
+                  if (!callbackInjections) unexpectedClientErrors.push(error);
+                });
+                response.resume();
+              },
+            );
+            outgoing.on('error', (error: Error) => {
+              if (!callbackInjections) unexpectedClientErrors.push(error);
+            });
+            outgoing.end(input);
+            const fault = await proxy.waitForThread(
+              threadId,
+              'fault',
+              deadline,
+            );
+            await proxy.waitFor(fault.requestId, 'downstream-closed', deadline);
+            const closed = proxy
+              .records(threadId)
+              .find(
+                (record) =>
+                  record.requestId === fault.requestId &&
+                  record.kind === 'downstream-closed',
+              );
+            if (!closed)
+              throw new Error('Actual downstream close receipt required');
+            await proxy.close();
+
+            const records = proxy
+              .records(threadId)
+              .filter((record) => record.requestId === fault.requestId);
+            expect(upstreamRequests).toBe(1);
+            expect(callbackInjections).toBe(1);
+            expect(destroyedAtCallback).toEqual([false]);
+            expect(unexpectedWriteErrors).toEqual([]);
+            expect(unexpectedClientErrors).toEqual([]);
+            expect(
+              records.filter((record) => record.kind === 'request'),
+            ).toHaveLength(1);
+            expect(
+              records.filter((record) => record.kind === 'fault'),
+            ).toHaveLength(1);
+            expect(fault.reason).toBe(injected.message);
+            expect(fault.seq).toBeLessThan(closed.seq);
+            expect(fault).not.toHaveProperty('faultCause');
+            expect(fault).not.toHaveProperty('faultStage');
+            expect(fault).not.toHaveProperty('downstreamCloseSeq');
+          } finally {
+            outgoing?.destroy();
+            writing?.mockRestore();
+          }
+        });
+      } finally {
+        creating?.mockRestore();
+        writing?.mockRestore();
+      }
+    },
+    async (incoming, response) => {
+      upstreamRequests++;
+      await bytes(incoming);
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      response.end(Buffer.concat([acknowledgement, terminal]));
+    },
+  );
+});
+
+test('candidate proxy close rejects a real record-cap failure that lost downstream-close evidence', async () => {
+  let upstreamRequests = 0;
+  let ownedDirectory: string | undefined;
+  let callbackFailure: unknown;
+  let observedProxy:
+    Awaited<ReturnType<typeof startCandidateRecoveryProxy>> | undefined;
+
+  try {
+    await withUpstream(
+      async (worker) => {
+        await expect(
+          withProxy(
+            worker,
+            async (proxy, path) => {
+              observedProxy = proxy;
+              ownedDirectory = dirname(path);
+              try {
+                const clientAborted = post(proxy.origin + '/run').then(
+                  () => false,
+                  () => true,
+                );
+                await proxy.waitForThread(
+                  threadId,
+                  'fault',
+                  AbortSignal.timeout(5000),
+                );
+                expect(await clientAborted).toBe(true);
+                // Drain queued real response-close rejection handlers, without a timing delay.
+                await new Promise<void>((resolve) => setImmediate(resolve));
+
+                const records = proxy.records(threadId);
+                const faults = records.filter(
+                  (record) => record.kind === 'fault',
+                );
+                expect(faults).toHaveLength(1);
+                expect(faults[0].reason).toBe('Proxy evidence record limit');
+                expect(faults[0]).not.toHaveProperty('faultCause');
+                expect(faults[0]).not.toHaveProperty('faultStage');
+                expect(faults[0]).not.toHaveProperty('downstreamCloseSeq');
+                expect(
+                  records.filter(
+                    (record) => record.kind === 'downstream-closed',
+                  ),
+                ).toEqual([]);
+                expect(
+                  records.filter((record) => record.kind === 'request'),
+                ).toHaveLength(1);
+                expect(upstreamRequests).toBe(1);
+              } catch (error) {
+                callbackFailure = error;
+                throw error;
+              }
+            },
+            { records: 5 },
+          ),
+        ).rejects.toThrow('Proxy evidence record limit');
+        if (callbackFailure !== undefined) throw callbackFailure;
+
+        if (!observedProxy) throw new Error('Actual owned proxy required');
+        const final = observedProxy.records();
+        expect(
+          final.filter((record) => record.kind === 'stop-start'),
+        ).toHaveLength(1);
+        expect(
+          final.filter((record) => record.kind === 'stop-complete'),
+        ).toHaveLength(1);
+        expect(final.at(-1)?.kind).toBe('stop-complete');
+      },
+      async (incoming, response) => {
+        upstreamRequests++;
+        await bytes(incoming);
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        response.end(Buffer.concat([acknowledgement, terminal]));
+      },
+    );
+  } finally {
+    // withProxy's rm follows close and is skipped when close correctly rejects.
+    if (ownedDirectory)
+      await rm(ownedDirectory, { recursive: true, force: true });
+  }
 });

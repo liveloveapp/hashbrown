@@ -82,6 +82,12 @@ export interface CandidateProxyRecord {
   readonly headers?: Readonly<OutgoingHttpHeaders>;
   readonly status?: number;
   readonly reason?: string;
+  /** Owned local cause confirmed by the committed same-request downstream closure. */
+  readonly faultCause?: 'downstream-closed';
+  /** Delivery boundary that directly observed the destroyed downstream response. */
+  readonly faultStage?: 'before-write';
+  /** Sequence returned by persistence of the actual downstream-closed receipt. */
+  readonly downstreamCloseSeq?: number;
 }
 /** Owned resource bounds; safety hold deadlines are infrastructure failures. */
 export interface CandidateRecoveryProxyOptions {
@@ -386,6 +392,24 @@ export async function startCandidateRecoveryProxy(
       workerId: '',
       routeEpoch: 0,
     };
+    const beforeWriteDisposals = new WeakSet<Error>();
+    let observeDownstreamClose!: (
+      observation:
+        | Readonly<{ record: CandidateProxyRecord; closing: boolean }>
+        | undefined,
+    ) => void;
+    const downstreamClose = new Promise<
+      Readonly<{ record: CandidateProxyRecord; closing: boolean }> | undefined
+    >((resolve) => {
+      observeDownstreamClose = resolve;
+    });
+    /** Creates owned identity only at the actual prewrite destroyed observation. */
+    const requireWritableDownstream = () => {
+      if (!response.destroyed) return;
+      const error = new Error('Downstream closed');
+      beforeWriteDisposals.add(error);
+      throw error;
+    };
     let cancellation: (() => void) | undefined;
     const sendHeaders = async (
       status: number,
@@ -673,14 +697,23 @@ export async function startCandidateRecoveryProxy(
       };
       response.once('close', () => {
         if (response.writableFinished) return;
+        const closingAtClose = closing;
         cancellation?.();
         const task = append({ kind: 'downstream-closed', ...context }).then(
-          () => undefined,
+          (record) => {
+            observeDownstreamClose({ record, closing: closingAtClose });
+          },
+          (error: unknown) => {
+            observeDownstreamClose(undefined);
+            throw error;
+          },
         );
         tasks.add(task);
         void task.then(
           () => tasks.delete(task),
-          () => tasks.delete(task),
+          () => {
+            // Retain failed close evidence for cleanup without an unhandled rejection.
+          },
         );
       });
       try {
@@ -718,8 +751,9 @@ export async function startCandidateRecoveryProxy(
         );
         const deliver = async (bytes: Buffer) => {
           if (!bytes.length) return;
-          if (response.destroyed) throw new Error('Downstream closed');
+          requireWritableDownstream();
           await sendHeaders(result.statusCode ?? 502, responseHeaders);
+          requireWritableDownstream();
           let writable = true;
           const completed = new Promise<void>((resolve, reject) => {
             const cleanup = () => {
@@ -867,10 +901,21 @@ export async function startCandidateRecoveryProxy(
     };
     const task = handle().catch(async (error: unknown) => {
       cancellation?.();
+      const closed =
+        error instanceof Error && beforeWriteDisposals.has(error)
+          ? await downstreamClose
+          : undefined;
       try {
         await append({
           kind: 'fault',
           ...context,
+          ...(closed && !closed.closing
+            ? {
+                faultCause: 'downstream-closed' as const,
+                faultStage: 'before-write' as const,
+                downstreamCloseSeq: closed.record.seq,
+              }
+            : {}),
           reason:
             error instanceof Error ? error.message : 'proxy-request-failure',
         });
