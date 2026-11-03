@@ -100,6 +100,20 @@ async function state(fixture: DotnetFixture, page: Page, verify = true) {
   return observed;
 }
 
+/** Captures the same actual Ready observation before later inertness checks, without hiding held states. */
+async function readyState(fixture: DotnetFixture, page: Page) {
+  let ready: Awaited<ReturnType<typeof state>> | undefined;
+  await expect
+    .poll(async () => {
+      const observed = await state(fixture, page);
+      if (observed.session?.state === 'Ready') ready = observed;
+      return observed.session?.state;
+    })
+    .toBe('Ready');
+  if (!ready) throw new Error('Actual Ready publication observation required');
+  return ready;
+}
+
 /** Preserves literal public bytes, original model bodies and independent rows per case. */
 async function evidence(
   info: TestInfo,
@@ -597,7 +611,7 @@ test('native three protected decisions approve decline cancel through the public
           await expect(page.getByTestId('tool-observations')).toHaveText('[]');
           const original = JSON.parse(endpoint.requests[0]);
           for (const request of fixture.requests) schemas(request, original);
-          const completedMixed = await state(fixture, page);
+          const completedMixed = await readyState(fixture, page);
           await page.reload();
           await refresh(page, 'Completed');
           await expect(driver.assistant()).toHaveText(answer);
@@ -808,7 +822,7 @@ for (const decision of ['approve', 'decline', 'cancel'] as const) {
           const oldBatch = await page
             .getByTestId('interrupt-batch-id')
             .textContent();
-          const before = await state(first, page);
+          const before = await readyState(first, page);
           await first.stop();
           const second = await cluster.start();
           continuation(second, [pair(call, decision)], { content: answer });
@@ -839,7 +853,7 @@ for (const decision of ['approve', 'decline', 'cancel'] as const) {
             await expect(driver.assistant()).toHaveText(answer);
             await driver.expectIdle();
             transcript(second.requests[0], [pair(call, decision)]);
-            const completed = await state(second, page);
+            const completed = await readyState(second, page);
             expect(completed.effects).toHaveLength(
               decision === 'approve' ? 1 : 0,
             );
@@ -892,7 +906,7 @@ test('native mixed real persisted pending reload omits snapshot and blocks work 
         const driver = await open(page, endpoint.url);
         await driver.send('Native mixed pending reload');
         await pending(page, 1);
-        const before = await state(first, page);
+        const before = await readyState(first, page);
         await first.stop();
         const second = await cluster.start();
         endpoint.routeTo(`${second.url}/run`);
@@ -980,7 +994,7 @@ for (const variant of [
           try {
             await driver.send('Native adversarial recovery');
             await pending(page, 1);
-            const before = await state(fixture, page);
+            const before = await readyState(fixture, page);
             const genuine = expectNativeRunCapture(endpoint.responses[0]).at(
               -1,
             ) as { outcome: { interrupts: unknown[] } };
@@ -1192,7 +1206,7 @@ for (const winner of ['approve', 'decline', 'cancel'] as const) {
             await driver.expectIdle();
             expect(fixture.requests).toHaveLength(2);
             transcript(fixture.requests[1], [pair(call, winner)]);
-            const completed = await state(fixture, page);
+            const completed = await readyState(fixture, page);
             expect(completed.effects).toHaveLength(
               winner === 'approve' ? 1 : 0,
             );
@@ -1248,7 +1262,7 @@ test('native delayed pending lookup cannot overwrite a newer thread ownership or
         const driver = await open(page, endpoint.url);
         await driver.send('Native delayed lookup');
         await pending(page, 1);
-        const before = await state(fixture, page);
+        const before = await readyState(fixture, page);
         await page.reload();
         let release!: () => void;
         const gate = new Promise<void>((resolve) => {
@@ -1338,7 +1352,7 @@ test('native stale public commands cannot replace current local batch ownership 
             .getByTestId('interrupt-batch-id')
             .textContent();
           await page.getByTestId('capture-resume').click();
-          const before = await state(fixture, page);
+          const before = await readyState(fixture, page);
           await refresh(page, 'Pending');
           const currentToken = await page
             .getByTestId('interrupt-batch-id')
