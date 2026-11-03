@@ -11,7 +11,7 @@
       "parts": [
         {
           "content": "approval",
-          "timestamp": "2026-11-02T23:59:35.166664Z",
+          "timestamp": "2026-11-03T01:58:27.537114Z",
           "part_kind": "user-prompt"
         }
       ],
@@ -56,7 +56,7 @@
       },
       "model_name": null,
       "model_id": null,
-      "timestamp": "2026-11-02T23:59:35.166720Z",
+      "timestamp": "2026-11-03T01:58:27.537157Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -68,7 +68,7 @@
       "conversation_id": null,
       "metadata": {
         "__pydantic_ai__": {
-          "ui_message_id": "ac4fce1c-a703-4c59-bdf5-1adadc646271"
+          "ui_message_id": "dd44b8fa-71d6-4fb9-b658-7d88632400d4"
         }
       },
       "workspace_ref": null,
@@ -84,16 +84,16 @@
           "tool_call_id": "capture-approval-approve-approval",
           "tool_kind": null,
           "metadata": null,
-          "timestamp": "2026-11-02T23:59:35.171202Z",
+          "timestamp": "2026-11-03T01:58:27.539048Z",
           "outcome": "success",
           "retry": null,
           "part_kind": "tool-return"
         }
       ],
-      "timestamp": "2026-11-02T23:59:35.173479Z",
+      "timestamp": "2026-11-03T01:58:27.539551Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19eb4-3eff-70ca-93df-9e0bb0a8238e",
+      "run_id": "01a19f21-13d1-76ca-8a66-3cba07c534da",
       "conversation_id": "capture-approval-approve",
       "metadata": null,
       "state": "complete"
@@ -125,7 +125,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-11-02T23:59:35.176659Z",
+      "timestamp": "2026-11-03T01:58:27.540612Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -133,7 +133,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19eb4-3eff-70ca-93df-9e0bb0a8238e",
+      "run_id": "01a19f21-13d1-76ca-8a66-3cba07c534da",
       "conversation_id": "capture-approval-approve",
       "metadata": null,
       "workspace_ref": null,
@@ -148,14 +148,14 @@
         "parts": [
           {
             "content": "approval",
-            "timestamp": "2026-11-02T23:59:35.150199Z",
+            "timestamp": "2026-11-03T01:58:27.527733Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-02T23:59:35.152644Z",
+        "timestamp": "2026-11-03T01:58:27.529039Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19eb4-3eee-75b4-8abf-0637e7ea2785",
+        "run_id": "01a19f21-13c8-778f-8600-7d82c5d0f0b4",
         "conversation_id": "capture-approval-approve",
         "metadata": {
           "__pydantic_ai__": {
@@ -170,7 +170,7 @@
         "parts": [
           {
             "content": "approval",
-            "timestamp": "2026-11-02T23:59:35.166664Z",
+            "timestamp": "2026-11-03T01:58:27.537114Z",
             "part_kind": "user-prompt"
           }
         ],
@@ -215,7 +215,7 @@
         },
         "model_name": null,
         "model_id": null,
-        "timestamp": "2026-11-02T23:59:35.166720Z",
+        "timestamp": "2026-11-03T01:58:27.537157Z",
         "kind": "response",
         "provider_name": null,
         "provider_url": null,
@@ -227,7 +227,7 @@
         "conversation_id": null,
         "metadata": {
           "__pydantic_ai__": {
-            "ui_message_id": "ac4fce1c-a703-4c59-bdf5-1adadc646271"
+            "ui_message_id": "dd44b8fa-71d6-4fb9-b658-7d88632400d4"
           }
         },
         "workspace_ref": null,
@@ -243,16 +243,16 @@
             "tool_call_id": "capture-approval-approve-approval",
             "tool_kind": null,
             "metadata": null,
-            "timestamp": "2026-11-02T23:59:35.171202Z",
+            "timestamp": "2026-11-03T01:58:27.539048Z",
             "outcome": "success",
             "retry": null,
             "part_kind": "tool-return"
           }
         ],
-        "timestamp": "2026-11-02T23:59:35.173479Z",
+        "timestamp": "2026-11-03T01:58:27.539551Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19eb4-3eff-70ca-93df-9e0bb0a8238e",
+        "run_id": "01a19f21-13d1-76ca-8a66-3cba07c534da",
         "conversation_id": "capture-approval-approve",
         "metadata": null,
         "state": "complete"
@@ -287,7 +287,7 @@
           "content": "approval"
         },
         {
-          "id": "ac4fce1c-a703-4c59-bdf5-1adadc646271",
+          "id": "dd44b8fa-71d6-4fb9-b658-7d88632400d4",
           "role": "assistant",
           "toolCalls": [
             {
@@ -323,7 +323,7 @@
       "content": "approval"
     },
     {
-      "id": "ac4fce1c-a703-4c59-bdf5-1adadc646271",
+      "id": "dd44b8fa-71d6-4fb9-b658-7d88632400d4",
       "role": "assistant",
       "toolCalls": [
         {
@@ -337,7 +337,7 @@
       ]
     },
     {
-      "id": "2900643a-d819-497c-a9d3-0235849da1ce",
+      "id": "20254a64-7584-488a-a0a9-9b89d53aeb3f",
       "role": "tool",
       "content": "approved native action",
       "toolCallId": "capture-approval-approve-approval",
@@ -349,7 +349,7 @@
       }
     },
     {
-      "id": "ddf8ddb4-543a-4a98-93d2-4625545f91c5",
+      "id": "c9adf13b-306e-4d86-89e2-c48359a7ebf0",
       "role": "assistant",
       "content": "Tool result: approved native action"
     }

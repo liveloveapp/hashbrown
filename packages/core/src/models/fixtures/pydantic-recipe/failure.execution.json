@@ -13,14 +13,14 @@
         "parts": [
           {
             "content": "failure",
-            "timestamp": "2026-11-02T23:59:34.951311Z",
+            "timestamp": "2026-11-03T01:58:27.389638Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-02T23:59:34.955808Z",
+        "timestamp": "2026-11-03T01:58:27.391227Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19eb4-3e28-75d9-82f2-75f24993ac55",
+        "run_id": "01a19f21-133e-74d7-807e-52e51f262163",
         "conversation_id": "capture-failure",
         "metadata": {
           "__pydantic_ai__": {

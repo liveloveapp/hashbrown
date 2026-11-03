@@ -11,14 +11,14 @@
       "parts": [
         {
           "content": "client-tool",
-          "timestamp": "2026-11-02T23:59:35.099061Z",
+          "timestamp": "2026-11-03T01:58:27.508116Z",
           "part_kind": "user-prompt"
         }
       ],
-      "timestamp": "2026-11-02T23:59:35.103989Z",
+      "timestamp": "2026-11-03T01:58:27.509751Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19eb4-3ebc-74d5-8b1c-3a0a04b8a602",
+      "run_id": "01a19f21-13b4-711d-9723-e674c1c1ed16",
       "conversation_id": "capture-client-tool",
       "metadata": {
         "__pydantic_ai__": {
@@ -56,7 +56,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-11-02T23:59:35.107947Z",
+      "timestamp": "2026-11-03T01:58:27.510791Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -64,7 +64,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19eb4-3ebc-74d5-8b1c-3a0a04b8a602",
+      "run_id": "01a19f21-13b4-711d-9723-e674c1c1ed16",
       "conversation_id": "capture-client-tool",
       "metadata": null,
       "workspace_ref": null,
@@ -79,14 +79,14 @@
         "parts": [
           {
             "content": "client-tool",
-            "timestamp": "2026-11-02T23:59:35.099061Z",
+            "timestamp": "2026-11-03T01:58:27.508116Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-02T23:59:35.103989Z",
+        "timestamp": "2026-11-03T01:58:27.509751Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19eb4-3ebc-74d5-8b1c-3a0a04b8a602",
+        "run_id": "01a19f21-13b4-711d-9723-e674c1c1ed16",
         "conversation_id": "capture-client-tool",
         "metadata": {
           "__pydantic_ai__": {
@@ -138,7 +138,7 @@
       "content": "client-tool"
     },
     {
-      "id": "2d19868a-fdd6-4242-86ce-c5969f2d702c",
+      "id": "1083275a-d71d-4d4a-8157-bd07dbec010c",
       "role": "assistant",
       "toolCalls": [
         {

@@ -822,7 +822,7 @@
       "transport": "http-sse",
       "execution": {
         "kind": "local",
-        "id": "pydantic-recipe-2026-11-02T23:59:14.508Z"
+        "id": "pydantic-recipe-2026-11-03T01:58:23.626Z"
       },
       "sourceInputs": [
         {
@@ -831,7 +831,7 @@
         },
         {
           "path": ".github/workflows/pr-main.yml",
-          "sha256": "6fe515dadf696b18373e77d0d1b39eb1f3ec8ac2465c2cd5626188d871a6a105"
+          "sha256": "89f2c42c1b7f96fd9e476ab104f90e0ad6f094f00059c89ac1cb5b9c2dbe59a3"
         },
         {
           "path": "packages/core/project.json",
@@ -1008,13 +1008,13 @@
         "id": "hashbrown-pydantic-ai",
         "version": "0.1.0"
       },
-      "qualifiedAt": "2026-11-02",
-      "sourceCommit": "210f08bffb00d7cb1437bb3636315993e422af80",
+      "qualifiedAt": "2026-11-03",
+      "sourceCommit": "95bc1f365e4fd948c001387f659c410baea07d16",
       "recordPath": "tools/conformance/agent-frameworks/program/pydantic-qualification.json",
       "capture": {
         "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-capture.json",
-        "sha256": "84d7691c11cfa7469e7dc079987d264577c660758437991d4deb0da406047cf8",
-        "sourceSha256": "a5f087e24865796d332afeb93e496be5801b8b475267ffe841b4d939d22d1781"
+        "sha256": "c93bfdd2a2cb40870cce62fd658e165a00d14cdc46d185e5cd502aca78dc89c2",
+        "sourceSha256": "c8c87991ca60e275c4c7beaad767b6a8398d41bec53741e3155042d5c43cb94b"
       },
       "sources": [
         {
@@ -1023,7 +1023,7 @@
         },
         {
           "path": ".github/workflows/pr-main.yml",
-          "sha256": "6fe515dadf696b18373e77d0d1b39eb1f3ec8ac2465c2cd5626188d871a6a105"
+          "sha256": "89f2c42c1b7f96fd9e476ab104f90e0ad6f094f00059c89ac1cb5b9c2dbe59a3"
         },
         {
           "path": "packages/core/project.json",
@@ -1195,11 +1195,11 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.events.json",
-          "sha256": "4de27b5891bd93bad39e8c468976f19047423eda3c742e8d1390339cdd7d855d"
+          "sha256": "2664923faa01bb10c70ceb7b38e2cb854d526db186674fcdf4fc94b7be2dfcad"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.execution.json",
-          "sha256": "400578b62e0f37525aa4a870d1c83d20a5224bcab627c05a7e6e2908ddb76765"
+          "sha256": "b87900e3d6ee7a60c7d4470cc1330a3dd8eaa1ec9123b7a96c7b16ee4fa84905"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.request.json",
@@ -1207,31 +1207,31 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve-pending.sse",
-          "sha256": "f35789a1d2e3960bf1f28ffad6dff3bd465c2b816eb4363863ab7b0219ed7b6d"
+          "sha256": "5f272547b192e20b97665c98012b56fb87b3c2c32ea85b04cdb373645d32654f"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.events.json",
-          "sha256": "6160495f6205dc9cf8062d898933a7a86642f4f84caeb290daf6f247294e8776"
+          "sha256": "bedfa2bac51d2d3197f26545f6b0cf7fcfd38c9641e20054ef3581dcd0cab7da"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.execution.json",
-          "sha256": "c058fa38cc534e5617b65d2df4d45540c390fa202aaf1948496ee7f2e6a9f99f"
+          "sha256": "055467991b0faf9f1b8e0a2c8c7e3274260c343f1e8c39c112c2c580e1368f14"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.request.json",
-          "sha256": "d0a16a8ac24ffcef742ae7bddb2a99cdb4deec6c3c760716a7033f5880589bda"
+          "sha256": "1db33645fe0c0f7f5b6873c5558717cd905f8d645e889b358ef7e608e4deb5d8"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-approve.sse",
-          "sha256": "4d18c89cab0fa181ce7b4556d1bd539c781d0a4f0cb6c354013124a6409a15fc"
+          "sha256": "c9e4c64f72b370edbec75df00447aaaa2538de103ea139fd2c8404165d220ea7"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.events.json",
-          "sha256": "647e257d34931379bb61e2c98ae357846502e6320cb9efa6a5d23bf608664140"
+          "sha256": "da2328161242b1cd820d1e7660cbc6af5b23f946a2cd32298a31bb85ceaaa002"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.execution.json",
-          "sha256": "5800a7aa1bd56dccbc9e17a6748ed747b8906c8ba13de9e0e4ca9b2600f35581"
+          "sha256": "a4cfdc9e3f6d8dc57b2afcb37ae26a4d6c9a6497b26a4a7e06aa5d7f25dc47c3"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.request.json",
@@ -1239,31 +1239,31 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny-pending.sse",
-          "sha256": "b5da453cd7053ef8e52cd4a336f5f92c4402b5c73818d8c89c96daf281d23847"
+          "sha256": "cb843675ea4d9a41d6daa250f8d3021db8a696adec4ab0728105bcf703c1b8a3"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.events.json",
-          "sha256": "caf41e281b6135e7ac9df242e35221676758aec56f9e8e3ca466373224609b5a"
+          "sha256": "515853b5a120d42aced7e2dc86f933fbf0e1de61d81c73f0a19ec975a3b10216"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.execution.json",
-          "sha256": "b19f8980ee7263dd0a4533092249f51ef9a107e7617f782abe107897cc7a4c05"
+          "sha256": "ba585ccce7b8dd60797ffb63f47ba53a36b3ec41c76c4979fd704e49aafdf755"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.request.json",
-          "sha256": "34769752202595a00e45e790c28da60ad2ec7ba81e46692d189c7c6b3b294d43"
+          "sha256": "d11c2d84f42d1bd9805d82daa0760f2de7553c56d9facb39be3f079f068ad228"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/approval-deny.sse",
-          "sha256": "6b6594db69e82e003c4d979064b43e020b4cd0e1ed07013792347844ca8356b7"
+          "sha256": "fdfbf433509f6db4154bc3c742337416966fbd6f00f3531a2efbc6c1317065de"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.events.json",
-          "sha256": "64b535f24d214aa2e546ee626f2944de68e47029a4365a3b16c83b5db6eb8acd"
+          "sha256": "42ed256aa76434f41b1e4f2bbfca24a1b9e996e2de7f49e6d78955a7da97b334"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.execution.json",
-          "sha256": "d899395682e084640d7f5f3e15dbf709a93f35cfe76c915ce79219e91730e3d3"
+          "sha256": "db6a69f93fd7aaf574def53442453f11c97a0af205b99ec099bfa7069c55e609"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.request.json",
@@ -1271,15 +1271,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-default.sse",
-          "sha256": "0053362b118b2e9f7a0ffbdc9610cc85175d571e8293b7726f56ee886a834e6a"
+          "sha256": "92f6a4e12819454078fa48650bd4d4eb3d17a24caa5a04b8b782cdbce0f324b4"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.events.json",
-          "sha256": "4a6001f61ba6cccf70928b71036ebe71169d64d9c80d53af3a23a0aecf5327a1"
+          "sha256": "60371447ca6b8336fa258093f8dff55e3a33bae62436d1b3330694c623ecf1be"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.execution.json",
-          "sha256": "849934b7df5884247c96b0d619d42ce99183000a6860c36b1a982f829b6aa534"
+          "sha256": "b79a4f46bd89a7e96e7e309b50df10d9219a8c0c30718169ec7aac62276f890d"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.request.json",
@@ -1287,15 +1287,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/cancel-v1.sse",
-          "sha256": "05eadd2469450d78e471261830eb0ea36e71ed879d149ebbf6e44789398c6d91"
+          "sha256": "d9688c11d7dfc3bf4435a91db534f4480b15a4e0189bfaaa780103a091e58c8d"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.events.json",
-          "sha256": "0d939263ca0eca90babc5c919d047a932531e52f882d28c5e7aa1583ee1cd7bf"
+          "sha256": "bbf60acb312bb51e8d4983b9267ee682dfe708dcc7b554bf206658c3be86a5c9"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.execution.json",
-          "sha256": "fecbedefd4cf6c47c876bfa0dd61a16f3ade5c666707f8ec01901f499d133edd"
+          "sha256": "1301f96bb30315b736faba26397a83bb72bfad47830a0924cd9f4195f452f075"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.request.json",
@@ -1303,15 +1303,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-continuation.sse",
-          "sha256": "4a9a2c6a8562b3c4dfc85764003dba5115800138f16a32fb4d6a7c6f2146b2f3"
+          "sha256": "924acf63f7aa57fa218a64482d962ec989dabd0027a6bda72bc478fa2a7619df"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.events.json",
-          "sha256": "bf85ebd962820ceb444fb55bbbd21b9462d94ae4d84dadaabc4170286a4969c1"
+          "sha256": "25d729da35c66b3395108d51d4dcd207d6e41dadfe710567c99b8f60572bf287"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.execution.json",
-          "sha256": "81e5c2e94267b09b20cc371d5704621773858fa9db0c3201261ed684b2300cd1"
+          "sha256": "aeeb21bfe82881680857d11ddccc8f66433077c48a5613deb32e9948f21cfd54"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.request.json",
@@ -1319,15 +1319,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/client-tool.sse",
-          "sha256": "ca93f40858547639bb9ffe7affd7bb2a99fa526985980b1f6387a446779f34e7"
+          "sha256": "1910708ece4a323e993c35a2191dcf8ccdd564f301f9ef7a3508497bb11462e2"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.events.json",
-          "sha256": "80a14d3c76acb625e711e96f3d043303860329ae547a41f51d4fc071030ac483"
+          "sha256": "09dc9366f3ee13305c39c5d8fd4c24dd53ef7ae931fee20f3143122fda3c1a2f"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.execution.json",
-          "sha256": "cb8a196768c2b624f955480673e79894b268c4f1a953c76cbee25606cc74eb1c"
+          "sha256": "fff9b46a60443a070a79ebbe1509fdeb74df2364f490a831a3974641898b7e1a"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.request.json",
@@ -1335,15 +1335,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/disconnect.sse",
-          "sha256": "cce7823b5639ac7916e80e78da935dc3703a0f82248d8395342cb830d9cded44"
+          "sha256": "dd802ed460d58e8b931a65a6a2fa1d32f48d115a335e2da97970de32a30c8c9c"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.events.json",
-          "sha256": "71cf6dbb438ec4a73bb4432d4910b8ddda0b10661b859c69c70349eb8612e863"
+          "sha256": "1c79b8548bbd161a182625b5e7a2c43d0acd0b97a7e4d33a025f2acccd9fec8a"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.execution.json",
-          "sha256": "5169d89d1a41ed0938bf015dbb65e6427d03771fbc4bfeb7849bed2559923518"
+          "sha256": "fb36fe2b3969fe8a3513b93e67aabcd945d39c449e607ed3e26a709956967e5e"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.request.json",
@@ -1351,15 +1351,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/failure.sse",
-          "sha256": "b7a45842165bae60c85a8718b39b84a7481e738c040ae7401f485701c3a27a08"
+          "sha256": "b4eaf1ce967e878f8b8890fd9ab007be2ea36f34b063b84eee68550bbb933088"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.events.json",
-          "sha256": "391ad39f701a49a0807be0144017a9bcdf5dee0e636151fd3e9704c40a55f6b0"
+          "sha256": "1b8a3ff764e22139c3075ef2601f53ae7965aac42c9c95cde25566b14efaf891"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.execution.json",
-          "sha256": "8cf173dbb0f6abcd50294e8e1489d06084c360fcd026e8db23e415c30c9756b0"
+          "sha256": "fb34b2b7d5b9f4cb58012b9fc3540531a1d4e83e1275745dd5292c05aee4f9f3"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.live.json",
@@ -1371,15 +1371,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-a.sse",
-          "sha256": "3c1c2ba6b13a6d001f04e178bd541eb1b72e86dd206783f87c650eb2585bd34c"
+          "sha256": "ce2df2d9f904acd165883dd4d461829a96fa1fac19893fae6b62976294f7ad72"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.events.json",
-          "sha256": "f61e1ca5b5071a1dc3185bd2df294bc7de5c4befaccfe5a27eed1ff898eb936a"
+          "sha256": "ed80412b33b7f9eeae18f46b4f5f9e9f53f318deebb157a4b54accfbfceee3c8"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.execution.json",
-          "sha256": "65bc98318281e678540aea66a35827256a6ebc1a32a8a68729eddf078bc9faf4"
+          "sha256": "312e9183e862af78c48032efe2d1a3831c62c364602c6f1ebd2003445a9e6257"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.request.json",
@@ -1387,15 +1387,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/isolation-b.sse",
-          "sha256": "65351a941a1f247d2463e1e27a002316ff03ed784ecf5bfd2da0a6ecd0286fa5"
+          "sha256": "d389aae2e9977cc41517f4e71ca64cc432f3976fcca7bd7c0b866ce84b3d06fe"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.events.json",
-          "sha256": "d564f22923488c2d103c65855a05ed659e7821ed984dc02553dc60b67ea78334"
+          "sha256": "43990069fdb9f24e30097ceae28ff3d83b89d67ee1b5b948a609d9a96028f830"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.execution.json",
-          "sha256": "a7d463aea270176b4347aaf9291a280b8cb9f00b4ea98d208ac1ce4f419c4b06"
+          "sha256": "423e6856e3bf60070cf7efaaf137310c51cfbe53f9f82aab175ad1cab947f63b"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.live.json",
@@ -1407,11 +1407,11 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/protocol.sse",
-          "sha256": "7255e5cc019ed0edfafe1f8ee29152b58d3a89819f04944a603c058e3d53fc36"
+          "sha256": "9734e1e0a1d3e4d731be45fb7578836d9521991bb37790346feea454c79416b3"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.events.json",
-          "sha256": "46058240155b07a8a1b6d9ced80c96b1760370900f276d8df2ad316f18472959"
+          "sha256": "944841e87481c384ba239328dd2321f0f59f3fd8efacb071b3a1b3a1f9257936"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.execution.json",
@@ -1423,15 +1423,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-same-name.sse",
-          "sha256": "d3d52dc235e3b5f3f82e7669ea00ae0686977645ded91f8b9b2218358bf0c58f"
+          "sha256": "94da4fa05a881ea03080b8355a81b0416bdb0040d623f726b7099e3e7fc82b9d"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.events.json",
-          "sha256": "73d94a5660e8a69d29eb277249c37fa9ca5a33d399b6c12dd228e276197d96b0"
+          "sha256": "c5192d37726c463c53bbcbec7c9b9a2e529a0a6f16e67dc0ff81ef7d6573f46e"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.execution.json",
-          "sha256": "32d996446a937460913eb6dac45f585b1c2e368e413073c466c8d76494dbdd45"
+          "sha256": "0c9b4b0f719c00cf94533410baf6bceb590935e10f0f50ac946aa9dccdbf414a"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.live.json",
@@ -1443,15 +1443,15 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/server-tool.sse",
-          "sha256": "147771d83f011433cd3ddc428fb4eb5f19503c4d5f8d40626360aa49a18f02cf"
+          "sha256": "77065737cec2d1e995160249e3dd6249d27f2a38259c809c4cc81f422debd2ee"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.events.json",
-          "sha256": "ced8a8782fac01696b7353e87bb4a3cb6252d209a74e4f8b875c83e0f5fbb021"
+          "sha256": "e6f2106bb4eacee19596a767d476d0b9c5d1d756e3e7b87860dc05b8f9a7f4a2"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.execution.json",
-          "sha256": "aac68caf8230ae653a9a7e7871b99263a56f3678b7918afd27aafa36d939ea66"
+          "sha256": "0781b6bcd76b6765d59c9790f8ff8169a6c7dd8aecda26a2f7255ff448ec21c5"
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.live.json",
@@ -1463,7 +1463,7 @@
         },
         {
           "path": "packages/core/src/models/fixtures/pydantic-recipe/streaming.sse",
-          "sha256": "6738496a8e1b166c28dca13297bc4ebdd146be246c155d8998233735a999b48c"
+          "sha256": "4174882d896f818d59030954a3e7700ae5dcf2d14ca8832c459ee29455bcd773"
         },
         {
           "path": "tools/conformance/agent-frameworks/python-recipe/evidence/package-installation.json",
@@ -1471,15 +1471,15 @@
         },
         {
           "path": "tools/conformance/agent-frameworks/python-recipe/evidence/outcome-observations.json",
-          "sha256": "4b3121252fae0daed5699efe9c7aa16580623ead6df506ee1f92a8a52a3fb5ab"
+          "sha256": "5135626b550cc8beff6290c7e44ce4147404aabfe5feb2b287e1f24f40f0ea5e"
         },
         {
           "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-execution.json",
-          "sha256": "1ece484441389276f4dea0d359e21cd12e2b39bae50185c8ccebe029e5bcd3fb"
+          "sha256": "757ed287239645e51484d0a35d50097730f1fd05f1fb3987d04f993f6754db93"
         },
         {
           "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-          "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a"
+          "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff"
         }
       ],
       "claims": [
@@ -1491,13 +1491,13 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             }
@@ -1511,19 +1511,19 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "canonical-persistence",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "next-request",
               "result": "pass"
             }
@@ -1537,19 +1537,19 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             }
@@ -1563,19 +1563,19 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1589,7 +1589,7 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "fail"
             }
@@ -1603,13 +1603,13 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             }
@@ -1630,31 +1630,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1689,13 +1689,13 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             }
@@ -1709,31 +1709,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1747,19 +1747,19 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "next-request",
               "result": "pass"
             }
@@ -1773,31 +1773,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1811,19 +1811,19 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             }
@@ -1858,31 +1858,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1910,37 +1910,37 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "next-request",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1954,31 +1954,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -1992,31 +1992,31 @@
           "evidence": [
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "producer-execution",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "bridge-wire",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "core-consumer",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-react",
               "result": "pass"
             },
             {
               "path": "tools/conformance/agent-frameworks/python-recipe/evidence/qualification-stages.json",
-              "sha256": "26a585d9af1dc213a5d117e944e474873ed60a6797a39a2e6f97deac624dfc6a",
+              "sha256": "346ffa35fc8430e5059c76cc6551fdcd4a0ab4d3440b38387880cfd6149e8fff",
               "stage": "browser-angular",
               "result": "pass"
             }
@@ -2029,8 +2029,7 @@
           "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
           "evidence": []
         }
-      ],
-      "evidenceCommit": "06c5478487dcf167ec174321ebc9ed37ca31c395"
+      ]
     }
   ]
 }

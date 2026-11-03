@@ -1,38 +1,38 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793663974951,
+    "timestamp": 1793671107389,
     "threadId": "capture-failure",
     "runId": "capture-failure-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793663974957,
-    "messageId": "d3a0ec53-f20c-4014-96de-e802a82cd688",
+    "timestamp": 1793671107392,
+    "messageId": "813ba7b5-879a-4852-854c-d8b17ffd0209",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793663974957,
-    "messageId": "d3a0ec53-f20c-4014-96de-e802a82cd688"
+    "timestamp": 1793671107392,
+    "messageId": "813ba7b5-879a-4852-854c-d8b17ffd0209"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793663974957,
+    "timestamp": 1793671107392,
     "toolCallId": "capture-failure-server",
     "toolCallName": "failingTool",
-    "parentMessageId": "d3a0ec53-f20c-4014-96de-e802a82cd688"
+    "parentMessageId": "813ba7b5-879a-4852-854c-d8b17ffd0209"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793663974957,
+    "timestamp": 1793671107392,
     "toolCallId": "capture-failure-server",
     "delta": "{\"city\":\"London\"}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793663974958,
+    "timestamp": 1793671107392,
     "toolCallId": "capture-failure-server"
   },
   {
@@ -46,7 +46,7 @@
         }
       }
     },
-    "messageId": "fae85f42-b8df-4338-9c2f-faab79162992",
+    "messageId": "2c2baeef-ea5e-4172-87e2-3fcba9c5ba74",
     "toolCallId": "capture-failure-server",
     "content": "Tool execution was interrupted by an error.",
     "role": "tool"
@@ -54,12 +54,12 @@
   {
     "type": "REASONING_ENCRYPTED_VALUE",
     "subtype": "message",
-    "entityId": "fae85f42-b8df-4338-9c2f-faab79162992",
+    "entityId": "2c2baeef-ea5e-4172-87e2-3fcba9c5ba74",
     "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"failed\"}}"
   },
   {
     "type": "RUN_ERROR",
-    "timestamp": 1793663974962,
+    "timestamp": 1793671107393,
     "message": "controlled callback failure:London"
   }
 ]

@@ -13,14 +13,14 @@
         "parts": [
           {
             "content": "server-tool",
-            "timestamp": "2026-11-02T23:59:35.057522Z",
+            "timestamp": "2026-11-03T01:58:27.475727Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-02T23:59:35.061874Z",
+        "timestamp": "2026-11-03T01:58:27.477390Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19eb4-3e92-7244-b1b4-cc239cba2dd4",
+        "run_id": "01a19f21-1394-701e-afe9-c1f7ea25e1d4",
         "conversation_id": "capture-disconnect",
         "metadata": {
           "__pydantic_ai__": {

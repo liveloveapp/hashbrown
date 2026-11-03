@@ -1,18 +1,18 @@
-data: {"type":"RUN_STARTED","timestamp":1793663974969,"threadId":"capture-cancel-default","runId":"capture-cancel-default-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793671107399,"threadId":"capture-cancel-default","runId":"capture-cancel-default-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793663974984,"messageId":"d36464df-6919-42a2-9785-25181d8aab16","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793671107401,"messageId":"7687d0b6-9033-45af-9e8d-f609d56b88f6","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793663974984,"messageId":"d36464df-6919-42a2-9785-25181d8aab16"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793671107401,"messageId":"7687d0b6-9033-45af-9e8d-f609d56b88f6"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793663974984,"toolCallId":"capture-cancel-default-server","toolCallName":"serverTool","parentMessageId":"d36464df-6919-42a2-9785-25181d8aab16"}
+data: {"type":"TOOL_CALL_START","timestamp":1793671107401,"toolCallId":"capture-cancel-default-server","toolCallName":"serverTool","parentMessageId":"7687d0b6-9033-45af-9e8d-f609d56b88f6"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793663974985,"toolCallId":"capture-cancel-default-server","delta":"{\"city\":\"London\"}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793671107401,"toolCallId":"capture-cancel-default-server","delta":"{\"city\":\"London\"}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793663974985,"toolCallId":"capture-cancel-default-server"}
+data: {"type":"TOOL_CALL_END","timestamp":1793671107402,"toolCallId":"capture-cancel-default-server"}
 
-data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"cancelled"}},"messageId":"a7f42855-9e35-46cb-921f-6de890ffbc1b","toolCallId":"capture-cancel-default-server","content":"The tool call was interrupted before a result was produced.","role":"tool"}
+data: {"type":"TOOL_CALL_RESULT","metadata":{"hashbrown.tool":{"v":1,"outcome":"cancelled"}},"messageId":"894dd8cc-8ae3-4670-bc8d-3c3bfca83784","toolCallId":"capture-cancel-default-server","content":"The tool call was interrupted before a result was produced.","role":"tool"}
 
-data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"a7f42855-9e35-46cb-921f-6de890ffbc1b","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"}
+data: {"type":"REASONING_ENCRYPTED_VALUE","subtype":"message","entityId":"894dd8cc-8ae3-4670-bc8d-3c3bfca83784","encryptedValue":"{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793663974997,"threadId":"capture-cancel-default","runId":"capture-cancel-default-run"}
+data: {"type":"RUN_FINISHED","timestamp":1793671107429,"threadId":"capture-cancel-default","runId":"capture-cancel-default-run"}
 
