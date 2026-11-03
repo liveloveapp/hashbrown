@@ -1,6 +1,6 @@
 # Candidate action observation follows Angular rendering
 
-Status: SPEC-approved narrow fixture correction. Original CI RED, deterministic actual-browser RED, controlled GREEN and all eight uninstrumented focused compositions are witnessed. Affected build/test/lint checks are active; complete372/current full-source CI, final fresh candidate qualification, merge and production verification remain PENDING. No product/helper/template change is included.
+Status: The original narrow correction passed controlled and eight-composition verification. The follow-up private journey helper passed both controlled probes and 32 focused cases; all 24 special-mapping cases also passed and new full affected gates are active. Complete 372/final qualification, merge and production verification remain PENDING. No SDK or template change is included.
 
 ## Observed failure
 
@@ -14,7 +14,7 @@ CandidatePanel.repeatSubmission calls invoke exactly once. invoke synchronously 
 
 After the one existing button click, use one bounded poll that reads the same actual status observation and requires BOTH the exact expected lastAction and a nonempty actual localError. Only after that observation may the unchanged physical state, stage, provider/run, native witness and observer guards run. Preserve the pre-click baseline; never rebase it after waiting.
 
-Do not retry the click, synthesize an error/action value, read a cached status as fresh, call SDK methods outside the existing control, change scheduling/product behavior, force change detection, extend timeouts, skip cases or loosen no-work counters. The existing candidate policy remains: 15-second configured assertion bound and 180-second case bound, workers1/retries0. The full372 manifest remains unchanged.
+Do not retry the click, synthesize an error/action value, read a cached status as fresh, call SDK methods outside the existing control, change scheduling/product behavior, force change detection, extend timeouts, skip cases or loosen no-work counters. The existing candidate policy remains: 15-second configured assertion bound and 180-second case bound, workers1/retries0. The full 372 manifest remains unchanged.
 
 The same action/error observation is paired at the initial repeat-submit, the first negative-send immediately afterward, and each action in the post-authoritative-read refusal loop. The first negative-send previously polled error only, which could consume the preceding repeat-submit error before its own render. Waiting on error alone can consume a preceding action's retained error; separate reads can describe different renders. In the current failedAttempt sequence each action label differs from the preceding rendered action, including after the authoritative read. No new action epoch or SDK API is needed.
 
@@ -35,7 +35,7 @@ The probe must demonstrate:
 4. Omitting the action, observing an empty error or retaining only the previous action/error cannot satisfy the poll.
 5. All owned browser/worker/proxy/observer cleanup still completes.
 
-No mirror unit test that merely reimplements the polling expression is required. Root executed all eight actual focused ack-disconnect compositions after review and correction; full affected gates and future fresh-candidate qualification remain separate. Neither the focused subset nor the diagnostic probe qualifies the full372 matrix.
+No mirror unit test that merely reimplements the polling expression is required. Root executed all eight actual focused ack-disconnect compositions after review and correction; full affected gates and future fresh-candidate qualification remain separate. Neither the focused subset nor the diagnostic probe qualifies the full 372 matrix.
 
 ## Deterministic actual-browser RED witnessed
 
@@ -49,8 +49,62 @@ The root-run controlled GREEN used the same 200ms scheduling gate, exactly one t
 
 The separate uninstrumented Playwright run passed all eight exact ack-disconnect composition IDs in 51.4 seconds, once each with zero skips/errors. All eight retained journey cleanup and no-work guards passed. This is focused coverage only. The original F2 cold CI remains FAILED at 204 passed / one failed / 167 not run; these focused results do not relabel it.
 
-Full affected build/test/lint checks are active. Complete372 and current full-source CI acceptance, final new-commit candidate preparation/qualification, PR/merge and production verification remain PENDING. The current patch changes selected candidate source; no earlier candidate binding is reused as final qualification for a future commit.
+The original correction subsequently passed affected build/test/lint and serial precommit before its commit. That historical checkpoint did not establish complete 372 acceptance. The follow-up changes selected candidate source; no earlier candidate binding is reused as final qualification for a future commit.
 
 ## Affected-project verification
 
 Root completed `npx nx build dotnet-conformance`, `npx nx test dotnet-conformance` (the full harness/runtime/package aggregate), and `npx nx lint dotnet-conformance` successfully. Build reported three successful tasks; test reported seven successful tasks, two cached; lint reported four successful tasks, two cached. The full test invocation took 12 minutes 45 seconds. Fresh complete browser qualification at the committed correction remains required.
+
+## Follow-up: close every local-refusal observation site
+
+Status: SPEC-approved follow-up helper and five caller-site changes. Both controlled probes and 32 uninstrumented focused cases passed. The additional disjoint 24-case special-mapping run passed; full affected gates are active and full 372 qualification remains PENDING. The earlier three-site correction and its actual controlled/focused GREEN remain valid within their scope.
+
+F3 [CI 41578697338](https://github.com/liveloveapp/hashbrown/actions/runs/41578697338), source [5675a90a590da16a10fdad438b3eba4cd50d91da](https://github.com/liveloveapp/hashbrown/commit/5675a90a590da16a10fdad438b3eba4cd50d91da), stopped at angular.openai.chat.chat.server.unknown-effect.dispatch-marker-committed: cold 220 passed, one failed, 151 not run. The remaining UnknownEffect refusal loop directly asserted lastAction after its click. Actual click completion was 924130.478; status read 924131.465–924132.734 still contained lastAction:read and localError:null. No later observation was retained. Native UnknownEffect 200/no snapshot/revision 10, unchanged two runs/one provider and clean page/cleanup/unexpected-request facts had passed before that assertion. Those facts do not prove eventual rendering or complete matrix success.
+
+Source review also found generic localNegative polling localError OR resource error without binding it to the just-clicked action. In the five-command mutation sequence, a previous refusal's error could satisfy that condition. That is a false-positive risk as well as the direct-read false failure.
+
+### Proposed common observation seam
+
+The authored correction adds one private TSDoc-documented expectLocalRefusal(journey,page,expectedAction) helper in the existing candidate journey module. It performs only a bounded assertion poll, reading one fresh actual status per attempt and comparing exactly {lastAction:expectedAction,hasLocalError:true}. It neither clicks nor mutates/returns an invented public state, and it does not accept an unrelated resource error as the command's local refusal.
+
+Callers retain their existing single clicks and original pre-action work/pending/witness baselines. Reuse the helper at the three already-correct paired sites, the remaining two-action UnknownEffect loop, and generic localNegative. Exact generic control-to-action mapping is:
+- negative-stale-token → negative-stale;
+- negative-incomplete-outcomes → negative-outcomes;
+- negative-incomplete-decisions → negative-decisions;
+- named mutation controls retain their actual identical action labels.
+
+All unchanged snapshot/stage/native witness/provider/run/observer guards remain after the confirmed action/error observation; no baseline rebasing, extra invocation, handler dispatch, wait tolerance or timeout/retry policy change is allowed. The five-command mutation sequence must observe each new label, not merely reuse its predecessor's nonempty error.
+
+Explicitly exclude authoritative reads, blocked read status/error observation, configuration-effect ErrorHandler observation and definitive HTTP 413 handling: those have separate HTTP/resource/effect contracts and must not be relabeled local synchronous refusal.
+
+### Verification and retained recipe boundary
+
+Root reproduced the actual UnknownEffect failure using a fresh F3-bound pair and the existing one-click scheduler-delay technique before authorizing the helper. Both controlled probes subsequently passed against freshly bound changed candidates, and the uninstrumented 32-case run retained all no-work guards. The generic controlled multi-action sequence proved each new label/error was actually observed; disjoint mapping coverage subsequently passed. A mock expression test alone does not verify actual Angular publication.
+
+The helper lives in tools/conformance/dotnet/harness/candidate-browser-journeys.ts. Read-only inspection of qualify.mjs isSourcePath and the actual 44-entry capture sourceInputs shows no tools/conformance/dotnet paths; this helper and this specification are outside those bounded recipe inputs. The workflow and all 44 inputs remain untouched, so E3 is expected to remain valid. Root must verify the actual retained hashes/pin rather than merely infer validity from an unchanged count. No recipe pin rewrite or hash-only recapture is proposed.
+
+### Follow-up actual RED evidence
+
+The controlled UnknownEffect probe failed the original direct action assertion: expected the repeat-submit action but observed read. It retained one trusted click, one RAF plus one timer interception, actual old read/null DOM at 5112ms, then the genuine repeat-submit/refusal publication at 5302ms. Diagnostic errors were empty; postflight retained only the expected test failure. No second command was used.
+
+A separate generic freshness probe first completed the unchanged original journey successfully, with no journey, page or cleanup failure. Its stricter observation audit then failed: five trusted controls had been clicked, but the old error-only guard advanced during the second/third gates while DOM still showed negative-send and its real preceding error. Actual publications for negative-resume/generate were absent before the later config action replaced the display. This is a measured false-positive in the old observation contract, not a product authority failure.
+
+The implementation retains exactly one click at each existing caller and all original snapshots, pending comparisons, witness arrays, observer invariants and transport/read contracts. It shares only the configured-bound same-status action/localError poll. Controlled GREEN and the 32-case selected run passed as recorded below. Additional mapping coverage passed; full affected gates are active and complete 372 remains pending.
+
+### Follow-up completed controlled and focused verification
+
+Both root-run controlled probes passed against helper source SHA256 3753b88e913dd024dd1ed761c86b39905fbc96e1b447f530556b90461c9a98e9. UnknownEffect used one trusted click/two actual scheduler interceptions and completed in 21.0s. The five-action sequence used five trusted controls/ten interceptions, observed each current action with its genuine error, and completed in 54.5s. All original native/no-work/cleanup guards and post-qualification checks passed.
+
+The separate uninstrumented 32-case run exited 0 in 7.3 minutes: exactly 32 unique cases once each, zero skips/errors, all eight compositions, with every original journey guard preserved. The disjoint 24-case run (three special-mapping scenarios across eight compositions) subsequently passed as recorded below. Full affected gates are active, and the full 372 result is still unqualified.
+
+The F3 source-browser job separately completed in 30m28s: all 664 exact discovered cases once each, zero skips/flaky outcomes, with outcome inventory and downloaded artifact digest independently verified. That is a successful source-job domain only. F3 workflow/cold failure remains preserved at 220 passed / one failed / 151 not run; these controlled/focused passes do not relabel it.
+
+### Special mappings and complete targeted helper coverage
+
+The separate special-mapping profile exited 0 in 4.2 minutes: exactly 24 cases, once each, zero skips/errors. Every original journey/no-work/cleanup guard and both after-run qualifications passed. The combined root proof confirms the 32-case profile and this 24-case profile are disjoint and bind the same helper SHA256 3753b88e913dd024dd1ed761c86b39905fbc96e1b447f530556b90461c9a98e9. Together these are 56 targeted cases in TWO profiles, not a full 372-case run or a replacement for one. All helper branches, including the three special control/action mappings, have actual focused coverage.
+
+Full affected build, aggregate test and lint checks are currently active; their final results and serial hooks remain PENDING before a new committed checkpoint. No recipe recapture is planned because the actual 44 bound inputs remain unchanged; root retains the existing verified E3 pin and must preserve its hashes. The failed F3 cold result remains 220 passed / one failed / 151 not run; current full 372 acceptance is still unqualified.
+
+### Completed common-helper affected checks
+
+After the controlled GREEN probes and the two disjoint focused profiles (32 and 24 cases), root completed `npx nx build dotnet-conformance`, the full `npx nx test dotnet-conformance` aggregate, and `npx nx lint dotnet-conformance`. Actual unit results were 232 harness tests in 26 suites, 385 runtime tests in 44 suites, and 122 package tests in seven suites, all passed. These results and 56 focused scenarios do not replace a fresh complete 372-case candidate run.

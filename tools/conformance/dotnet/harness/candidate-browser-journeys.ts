@@ -2403,6 +2403,22 @@ async function reloadAndOrdinary(
   journey.stable();
   expect(journey.unexpectedRequests).toEqual([]);
 }
+/** Waits for the clicked command's own rendered refusal without accepting an earlier error. */
+async function expectLocalRefusal(
+  journey: Journey,
+  page: Page,
+  expectedAction: string,
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const actual = await journey.status(page);
+      return {
+        lastAction: actual.lastAction,
+        hasLocalError: Boolean(actual.localError),
+      };
+    })
+    .toEqual({ lastAction: expectedAction, hasLocalError: true });
+}
 async function localNegative(
   journey: Journey,
   page: Page,
@@ -2411,12 +2427,15 @@ async function localNegative(
   const before = await journey.snapshot();
   const pending = (await journey.status(page)).pending;
   await page.getByTestId(id).click();
-  await expect
-    .poll(async () => {
-      const status = await journey.status(page);
-      return Boolean(status.localError || status.error);
-    })
-    .toBe(true);
+  const expectedAction =
+    id === 'negative-stale-token'
+      ? 'negative-stale'
+      : id === 'negative-incomplete-outcomes'
+        ? 'negative-outcomes'
+        : id === 'negative-incomplete-decisions'
+          ? 'negative-decisions'
+          : id;
+  await expectLocalRefusal(journey, page, expectedAction);
   const after = await journey.status(page);
   expect(after.pending).toEqual(pending);
   await journey.unchanged(before);
@@ -2916,29 +2935,14 @@ async function failedAttempt(
   journey.stable();
   const beforeRepeat = await journey.snapshot();
   await page.getByTestId('negative-repeat-submit').click();
-  await expect
-    .poll(async () => {
-      const actual = await journey.status(page);
-      return {
-        lastAction: actual.lastAction,
-        hasLocalError: Boolean(actual.localError),
-      };
-    })
-    .toEqual({
-      lastAction: 'negative-repeat-submit:resumeConversationRecovery',
-      hasLocalError: true,
-    });
+  await expectLocalRefusal(
+    journey,
+    page,
+    'negative-repeat-submit:resumeConversationRecovery',
+  );
   await journey.unchanged(beforeRepeat);
   await page.getByTestId('negative-send').click();
-  await expect
-    .poll(async () => {
-      const actual = await journey.status(page);
-      return {
-        lastAction: actual.lastAction,
-        hasLocalError: Boolean(actual.localError),
-      };
-    })
-    .toEqual({ lastAction: 'negative-send', hasLocalError: true });
+  await expectLocalRefusal(journey, page, 'negative-send');
   await journey.unchanged(beforeRepeat);
   const beforeReadUi = await journey.status(page);
   const read = await authoritative(journey, page);
@@ -2952,21 +2956,13 @@ async function failedAttempt(
     const afterReadWitnesses = [...journey.witnesses];
     for (const action of ['negative-repeat-submit', 'negative-send']) {
       await page.getByTestId(action).click();
-      await expect
-        .poll(async () => {
-          const actual = await journey.status(page);
-          return {
-            lastAction: actual.lastAction,
-            hasLocalError: Boolean(actual.localError),
-          };
-        })
-        .toEqual({
-          lastAction:
-            action === 'negative-repeat-submit'
-              ? 'negative-repeat-submit:resumeConversationRecovery'
-              : 'negative-send',
-          hasLocalError: true,
-        });
+      await expectLocalRefusal(
+        journey,
+        page,
+        action === 'negative-repeat-submit'
+          ? 'negative-repeat-submit:resumeConversationRecovery'
+          : 'negative-send',
+      );
       await journey.unchanged(afterRead);
       expect(journey.witnesses).toEqual(afterReadWitnesses);
       journey.stable();
@@ -3804,16 +3800,13 @@ async function scenario(journey: Journey, plan: Plan): Promise<void> {
     const blockedState = afterRead;
     for (const action of ['negative-repeat-submit', 'negative-send']) {
       await restored.page.getByTestId(action).click();
-      expect((await journey.status(restored.page)).lastAction).toBe(
+      await expectLocalRefusal(
+        journey,
+        restored.page,
         action === 'negative-repeat-submit'
           ? 'negative-repeat-submit:resumeConversationRecovery'
           : 'negative-send',
       );
-      await expect
-        .poll(async () =>
-          Boolean((await journey.status(restored.page)).localError),
-        )
-        .toBe(true);
       await journey.unchanged(blockedState);
       expect(journey.witnesses).toEqual(witnessesAfterRead);
       journey.stable();
