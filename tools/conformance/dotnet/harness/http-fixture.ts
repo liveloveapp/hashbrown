@@ -65,14 +65,17 @@ export async function withDotnetFixture<T>(
   environment: DotnetFixtureConfiguration = {},
   modelRouter?: StableModelRouter,
   hostSelection?: DotnetHostSelection | HistoricalDotnetHostSelection,
+  packageOrigins?: readonly [string, string],
 ): Promise<T> {
   const host = resolveDotnetHost(hostSelection);
   if (host.loaded || host.controlled) validateHostOverrides(environment);
   const fixtureOrigins = host.loaded
-    ? [
-        process.env['HASHBROWN_PACKAGE_REACT_URL'],
-        process.env['HASHBROWN_PACKAGE_ANGULAR_URL'],
-      ]
+    ? (
+        packageOrigins ?? [
+          process.env['HASHBROWN_PACKAGE_REACT_URL'],
+          process.env['HASHBROWN_PACKAGE_ANGULAR_URL'],
+        ]
+      )
         .map((value) => {
           const url = new URL(value ?? '');
           if (

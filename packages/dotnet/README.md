@@ -38,12 +38,35 @@ and PostgreSQL provisioning, credentials and permissions. Remove copied Integrat
 source and old namespace imports when migrating. Stop and drain old workers before
 upgrading; retain agent, catalog, scope and server configuration identities.
 Workflow schema 3 and native schema 2 remain independent from package versions.
-Recovery lookup performs no model or executor work. Pending mixed browser work cannot
-cold restore; there is no automatic effect retry, exactly-once external-effect claim,
-or mixed-version rolling-operation guarantee.
+Recovery lookup performs no model or executor work. Published `0.1.0-preview.1`
+with npm SDKs `0.8.3` cannot cold-restore unresolved browser work. There is no
+automatic effect retry, exactly-once external-effect claim or mixed-version
+rolling-operation guarantee.
 
-The 54 live-provider cases recorded on 2026-10-27 are historical source-integration
-evidence, not live NuGet qualification. Read current package acceptance evidence
-separately. See https://hashbrown.dev/docs/react/platform/dotnet for the recipe.
+The unreleased source candidate adds V2 native recovery through the optional
+`INativeSessionBrowserRecoveryJournal` contract. PostgreSQL implements that
+capability; custom journals must opt in explicitly. Matching candidate clients
+expose `pendingConversationRecovery` and `resumeConversationRecovery` for one
+complete explicit settlement of known/unavailable browser observations and
+genuine protected decisions. Reads and restoration remain inert. Ambiguous
+delivery or a revision conflict requires an authoritative fresh read. These APIs
+are absent from the published pair above.
+
+In the unreleased PostgreSQL implementation, application-scheduled `MaintainAsync`
+also reconciles expired request authority under the same bounded budget as privacy
+purges. It counts distinct sessions actually changed. Schedule maintenance for
+every compatible registration; custom journals do not inherit that behavior.
+Consumed-decision and dispatch fences remain, and uncertainty never authorizes
+redispatch.
+
+The 54 live-provider cases recorded on 2026-10-27 remain historical source
+evidence. Separate [published-package live qualification](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-31-dotnet-public-live-qualification.md)
+on 2026-10-31 passed 54 browser cases using official NuGet `0.1.0-preview.1` and
+npm `0.8.3` against real OpenAI/Azure Responses, plus three preflights and 93
+model/wire calls. That evidence is distinct from the unreleased
+[durability and compatibility checkpoint](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-01-dotnet-browser-durability-qualification.md)
+and candidate browser acceptance. See the [React native recipe](https://hashbrown.dev/docs/react/platform/dotnet-native-tools)
+or [Angular native recipe](https://hashbrown.dev/docs/angular/platform/dotnet-native-tools)
+for version boundaries and application responsibilities.
 
 Licensed under the MIT license.

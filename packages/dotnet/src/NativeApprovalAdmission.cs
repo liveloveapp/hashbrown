@@ -48,23 +48,28 @@ public static class NativeApprovalAdmission
   /// <summary>Checks exact owned history allowing only characterized interrupted browser cancellation annotations.</summary>
   public static bool AdmitsOwnedPrefix(string canonicalIncoming, NativeSessionSnapshot stored, NativeApprovalEvidence owned)
   {
-    if (!Pending(owned) || stored.TurnCompleted || stored.Approvals.PendingBatch is not { } pending || !JsonNode.DeepEquals(JsonSerializer.SerializeToNode(pending), JsonSerializer.SerializeToNode(owned.Batch))) return false;
+    return Pending(owned) && MatchesBoundPrefix(canonicalIncoming, stored, owned.Batch);
+  }
+  /// <summary>Compares a previously validated bound prefix without asserting or minting any approval state.</summary>
+  internal static bool MatchesBoundPrefix(string canonicalIncoming, NativeSessionSnapshot stored, NativeBoundApprovalBatch bound)
+  {
+    if (stored.TurnCompleted || stored.Approvals.PendingBatch is not { } pending || !JsonNode.DeepEquals(JsonSerializer.SerializeToNode(pending), JsonSerializer.SerializeToNode(bound))) return false;
     try
     {
       var incoming = JsonNode.Parse(canonicalIncoming)!.AsObject();
       var original = JsonNode.Parse(stored.PublicRequest)!.AsObject();
       var messages = incoming["messages"]!.AsArray(); var prefix = original["messages"]!.AsArray();
-      if (messages.Count != prefix.Count || !BoundCallsMatch(prefix, owned.Batch)) return false;
+      if (messages.Count != prefix.Count || !BoundCallsMatch(prefix, bound)) return false;
       incoming.Remove("messages"); original.Remove("messages");
       if (!JsonNode.DeepEquals(incoming, original)) return false;
       for (var index = 0; index < prefix.Count; index++)
       {
         if (NativeSessionHistory.EquivalentMessage(prefix[index], messages[index])) continue;
         var candidate = messages[index]?.DeepClone();
-        foreach (var browser in owned.Batch.Batch.BrowserBindings.Where(item => owned.Batch.PublicLocations[item.RequestId].MessageIndex == index))
+        foreach (var browser in bound.Batch.BrowserBindings.Where(item => bound.PublicLocations[item.RequestId].MessageIndex == index))
         {
           if (!stored.ExpectedBrowserCallIds.Contains(browser.CallId, StringComparer.Ordinal) || prefix.Any(message => message?["role"]?.GetValue<string>() == "tool" && message["toolCallId"]?.GetValue<string>() == browser.CallId)) return false;
-          var location = owned.Batch.PublicLocations[browser.RequestId];
+          var location = bound.PublicLocations[browser.RequestId];
           if (candidate?["toolCalls"] is not JsonArray calls || location.CallIndex >= calls.Count || prefix[index]?["toolCalls"] is not JsonArray originals) return false;
           if (!JsonNode.DeepEquals(calls[location.CallIndex], originals[location.CallIndex]) && !RemoveCancellationAnnotation(calls[location.CallIndex], originals[location.CallIndex])) return false;
         }

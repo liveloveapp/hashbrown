@@ -1,5 +1,9 @@
 import type { PendingInterruptBatch, ResumeOptions } from '../models/interrupt';
-import type { ResumeCheckpoint } from '../reducers/resume-checkpoint';
+import type { PendingConversationRecovery } from '../models/conversation-recovery';
+import type {
+  BrowserRecoveryCheckpoint,
+  ResumeCheckpoint,
+} from '../reducers/resume-checkpoint';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { TransportOrFactory } from '../transport';
@@ -37,8 +41,14 @@ export default createActionGroup('dev', {
     systemMessage?: Readonly<SystemMessage>;
     state: JsonValue | undefined;
     batch?: PendingInterruptBatch;
+    pendingBrowserRecovery?: PendingConversationRecovery;
     responseSchema?: s.SchemaOutput;
     toolsByName: Record<string, Chat.Internal.Tool>;
+  }>(),
+  resumeConversationRecovery: props<{
+    claimId: string;
+    batch: PendingConversationRecovery;
+    checkpoint: BrowserRecoveryCheckpoint;
   }>(),
   resume: props<{
     claimId: string;

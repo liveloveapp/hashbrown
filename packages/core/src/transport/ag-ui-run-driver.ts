@@ -284,7 +284,7 @@ async function consumeResponse({
           const { interrupts } = outcome;
           const ownedEvent = {
             ...event,
-            outcome: Object.freeze({ type: 'interrupt' as const, interrupts }),
+            outcome,
           } as AGUIEvent;
           await invokeCallback(() => onEvent(ownedEvent));
           return { kind: 'interrupted', interrupts };

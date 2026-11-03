@@ -11,7 +11,9 @@
     "live.playwright.config.ts",
     "live-specs/**/*.ts",
     "local-native-approval.playwright.config.ts",
-    "local-specs/**/*.ts"
+    "local-specs/**/*.ts",
+    "candidate-recovery.playwright.config.ts",
+    "candidate-specs/**/*.ts"
   ],
   "exclude": ["tests/**/*.ts"]
 }

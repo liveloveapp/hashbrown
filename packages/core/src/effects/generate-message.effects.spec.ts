@@ -31,6 +31,7 @@ import {
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptOwnedPendingToolCalls,
+  ɵselectBrowserRecoveryState,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
   ɵselectEffectiveCommittedAgUiMessages,
@@ -91,6 +92,10 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const handlers: TestHandler[] = [];
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [ɵselectInterrupts, initialInterruptsState],
+    [
+      ɵselectBrowserRecoveryState,
+      reducers.recovery(undefined, { type: '@@init' }),
+    ],
     [selectResponseSchema, undefined],
     [selectRequestResponseSchema, undefined],
     [

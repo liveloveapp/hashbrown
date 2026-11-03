@@ -89,6 +89,7 @@ export const reducer = createReducer(
   on(
     devActions.setMessages,
     devActions.restoreConversation,
+    internalActions.browserRecoveryAcknowledged,
     (state, action) => {
       const messages =
         action.payload.localProjection?.messages ??

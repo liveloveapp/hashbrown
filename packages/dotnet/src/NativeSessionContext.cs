@@ -21,15 +21,18 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   private readonly ConcurrentDictionary<string, NativeToolCall> _witnesses = new(StringComparer.Ordinal);
   private Task? _heartbeat;
   private AgentSession? _session;
+  private readonly RunAgentInput _originalInput;
   private bool _closed;
   private bool _disposed;
   private bool? _cleanupResult;
-  internal NativeSessionContext(NativeSessionRegistration registration, HttpContext http, RunAgentInput input, string scope, string isolation, string originalRaw, NativeApprovalAdmissionEnvelope? decisions, Action<string>? observer = null)
+  internal NativeSessionContext(NativeSessionRegistration registration, HttpContext http, RunAgentInput input, string scope, string isolation, string originalRaw, NativeApprovalAdmissionEnvelope? decisions, NativeBrowserRecoveryRequest? recovery, Action<string>? observer = null)
   {
     _observer = observer;
-    Registration = registration; Http = http; Input = input; Scope = scope; Isolation = isolation;
-    OriginalRaw = originalRaw; Decisions = decisions;
-    var publicInput = System.Text.Json.Nodes.JsonNode.Parse(originalRaw)!.AsObject(); publicInput.Remove("resume");
+    Registration = registration; Http = http; _originalInput = input; Scope = scope; Isolation = isolation;
+    OriginalRaw = originalRaw; Decisions = decisions; Recovery = recovery;
+    Input = recovery is null ? input : JsonSerializer.Deserialize(NativeBrowserRecoveryAdmission.Sanitize(originalRaw, removeResume: false).ToJsonString(), AGUIJsonSerializerContext.Default.RunAgentInput)!;
+    var publicInput = recovery is null ? System.Text.Json.Nodes.JsonNode.Parse(originalRaw)!.AsObject() : NativeBrowserRecoveryAdmission.Sanitize(originalRaw);
+    publicInput.Remove("resume");
     PublicRequest = publicInput.ToJsonString();
     _work = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
   }
@@ -38,7 +41,7 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   internal RunAgentInput Input { get; }
   internal string Scope { get; }
   internal string Isolation { get; }
-  internal string PublicRequest { get; }
+  internal string PublicRequest { get; private set; }
   internal RunAgentInput? TransportInput { get; set; }
   /// <summary>Emits immutable diagnostic values only; callbacks never grant native authority.</summary>
   internal void Observe(string stage, string? value = null) => NativeSessionObservation.Record(_observer, stage, value);
@@ -48,10 +51,31 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     if (_observer is not null) Observe(stage, JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput));
   }
   internal string OriginalRaw { get; }
-  internal NativeApprovalAdmissionEnvelope? Decisions { get; }
+  internal NativeApprovalAdmissionEnvelope? Decisions { get; private set; }
+  internal NativeBrowserRecoveryRequest? Recovery { get; }
   internal NativeApprovalEvidence? ApprovalEvidence { get; private set; }
+  internal NativeRecoveredProviderInputProjection? RecoveredProviderInput { get; private set; }
+  /// <summary>Captures the fixed current recovery layout after restoration and before native execution.</summary>
+  internal void PrepareRecoveredProviderInput(IReadOnlyList<ChatMessage> prepared)
+  {
+    if (Recovery is null) return;
+    RequireSession(_session);
+    if (RecoveredProviderInput is not null) throw new NativeSessionRequestException(409);
+    RecoveredProviderInput = NativeRecoveredProviderInputProjection.Create(prepared, this);
+  }
   private readonly List<NativeApprovalDescriptor> _protectedRequests = [];
   private readonly List<NativeBrowserRequestBinding> _browserRequests = [];
+  private readonly object _recoveryResultLock = new();
+  private readonly Dictionary<string, NativeBrowserRecoveryResultWitness> _pendingRecoveryResults = new(StringComparer.Ordinal);
+  private readonly Dictionary<string, NativeBrowserRecoveryResultWitness> _completedRecoveryResults = new(StringComparer.Ordinal);
+  private readonly HashSet<string> _observedRecoveryResults = new(StringComparer.Ordinal);
+  private readonly HashSet<string> _durablyCompletedRecoveryCalls = new(StringComparer.Ordinal);
+  private readonly ConcurrentDictionary<string, (NativeToolCall Call, string Token, long Generation)> _completedCurrentDispatches = new(StringComparer.Ordinal);
+  private long _recoveryResultBytes;
+  private long _heldRecoveryEvidenceBytes;
+  private int _heldRecoveryResultReservations;
+  private NativeHeldRecoveryRegistry? _heldRecovery;
+  internal object RecoveryEvidenceSync => _recoveryResultLock;
   private readonly string _batchId = Guid.NewGuid().ToString("N");
   internal NativeApprovalBatch? CapturedApprovalBatch => _protectedRequests.Count == 0 ? null : new(_batchId, _protectedRequests, _browserRequests);
   internal NativeSessionAdmission? Admission { get; private set; }
@@ -71,6 +95,19 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     Admission = await AcquireAsync(ownedKey, cancellationToken);
     Observe("Acquire.Completed", Admission.Status.ToString(System.Globalization.CultureInfo.InvariantCulture));
     if (Admission.Status != 200 || Admission.Lease is null) throw new NativeSessionRequestException(Admission.Status);
+    if (Recovery is not null)
+    {
+      if (Admission.IsNew || Admission.Snapshot is not { NativeJson: not null } saved) throw new NativeSessionRequestException(503);
+      try
+      {
+        var sanitized = NativeBrowserRecoveryAdmission.Sanitize(OriginalRaw, saved.PublicRequest);
+        PublicRequest = sanitized.ToJsonString();
+        Input.ForwardedProperties = JsonSerializer.Deserialize(PublicRequest, AGUIJsonSerializerContext.Default.RunAgentInput)!.ForwardedProperties?.Clone();
+        if (TransportInput is not null) TransportInput.ForwardedProperties = Input.ForwardedProperties?.Clone();
+        if (Decisions is not null) Decisions = new(NativeSessionHistory.Normalize(PublicRequest, ownedKey, Registration.Catalog, Registration.Options), Decisions.Decisions);
+      }
+      catch (Exception exception) when (exception is ArgumentException or JsonException or InvalidOperationException) { throw new NativeSessionRequestException(503); }
+    }
     foreach (var call in Admission.Snapshot?.PendingCalls ?? []) { _pending[call.Id] = call; _witnesses[call.Id] = call; }
     _heartbeat = HeartbeatAsync();
     if (Decisions is not null)
@@ -84,10 +121,21 @@ internal sealed class NativeSessionContext : IAsyncDisposable
       if (ApprovalEvidence.State != NativeApprovalState.DecisionAdmitted || ApprovalEvidence.AdmittedGeneration != Lease.Generation) throw new NativeSessionRequestException(409);
       Observe("Admission.Completed");
     }
+    if (Recovery is not null)
+    {
+      Projection?.AdoptAdmittedForwardedProperties(PublicRequest);
+      ObserveInput("Executable.Typed.Admitted", Input);
+      if (TransportInput is not null) ObserveInput("Transport.Typed.Admitted", TransportInput);
+      Observe("Public.Admitted", PublicRequest);
+    }
   }
   /// <summary>Resolves finalization races with authoritative retries, waiting briefly only on a live Publishing observation.</summary>
   private async ValueTask<NativeSessionAdmission> AcquireAsync(NativeSessionKey key, CancellationToken cancellationToken)
   {
+    if (Recovery is not null)
+      return Registration.Journal is INativeSessionBrowserRecoveryJournal capable
+          ? await capable.TryAcquireBrowserRecoveryAsync(key, OriginalRaw, Recovery, cancellationToken)
+          : new NativeSessionAdmission(406);
     var admission = await Registration.Journal.TryAcquireAsync(key, OriginalRaw, cancellationToken);
     if (admission.Status != 409) return admission;
     var started = Stopwatch.GetTimestamp();
@@ -124,6 +172,7 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     Cancellation.ThrowIfCancellationRequested();
     if (_closed || Admission?.Lease is null || _session is not null) throw new NativeSessionRequestException(409);
     _session = session;
+    if (Recovery is not null) _heldRecovery = NativeHeldRecoveryRegistry.Create(this);
   }
   internal void Require(AIAgent agent, AgentSessionStoreKey key, AgentSession session)
   {
@@ -171,9 +220,158 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   {
     if (CapturedApprovalBatch is { } batch && !await Registration.Journal.CaptureApprovalBatchAsync(Lease, batch, Cancellation)) throw new NativeSessionRequestException(409);
   }
+  /// <summary>Requires the already bound admitted recovery session without invoking application code.</summary>
+  internal void RequireHeldRecoveryAccess()
+  {
+    RequireSession(_session);
+    if (Recovery is null || Admission is not { Status: 200, Lease: not null, Snapshot: not null }) throw new NativeSessionRequestException(409);
+  }
+  /// <summary>Charges retained hidden descriptor/observation bytes against the same protected/held result budget.</summary>
+  internal void ChargeHeldRecoveryEvidence(long bytes)
+  {
+    lock (_recoveryResultLock)
+    {
+      if (bytes < 0 || bytes > Registration.Options.PublicBytes - _recoveryResultBytes - _heldRecoveryEvidenceBytes) throw new NativeSessionRequestException(409);
+      _heldRecoveryEvidenceBytes += bytes;
+    }
+  }
+  /// <summary>Reserves one held actual-return record in the shared protected/held aggregate budget.</summary>
+  internal void ReserveHeldRecoveryResult(int bytes)
+  {
+    lock (_recoveryResultLock)
+    {
+      if (_pendingRecoveryResults.Count + _completedRecoveryResults.Count + _heldRecoveryResultReservations >= Registration.Options.MaximumCalls) throw new NativeSessionRequestException(503);
+      ChargeHeldRecoveryEvidence(bytes); _heldRecoveryResultReservations++;
+    }
+  }
+  /// <summary>Stages an independent fixed held actual return before native durable completion.</summary>
+  internal NativeHeldRecoveryResultWitness? SnapshotHeldRecoveryResult(NativeToolCall call, object? result) => _heldRecovery?.Snapshot(call, result);
+  /// <summary>Publishes only a same-claim durably completed staged held return.</summary>
+  internal void PublishHeldRecoveryResult(NativeToolCall call, NativeHeldRecoveryResultWitness? witness) => _heldRecovery?.Publish(call, witness);
+  /// <summary>Observes genuine fixed P/H call groups before public output filtering.</summary>
+  internal void ObserveHeldRecoveryCalls(AgentResponseUpdate update) => _heldRecovery?.ObserveCalls(update);
+
+  /// <summary>Returns only the fixed hidden manifest captured at this session's Bind boundary.</summary>
+  internal NativeHeldRecoveryManifest ReadHeldRecoveryManifest() => (_heldRecovery ?? throw new NativeSessionRequestException(409)).ReadManifest();
+  /// <summary>Returns only complete immutable hidden evidence bound to the exact owning manifest.</summary>
+  internal NativeHeldRecoverySeal ReadSealedHeldRecovery(NativeHeldRecoveryManifest manifest) => (_heldRecovery ?? throw new NativeSessionRequestException(409)).ReadSeal(manifest);
+
+  /// <summary>Snapshots an actual current approved invocation return before completion, without publishing result authority.</summary>
+  internal NativeBrowserRecoveryResultWitness? SnapshotRecoveryResult(NativeToolCall call, object? result)
+  {
+    if (Recovery is null) return null;
+    RequireSession(_session);
+    var evidence = ApprovalEvidence;
+    var descriptor = evidence?.Batch.Batch.ProtectedRequests.SingleOrDefault(item => item.Call.Id == call.Id);
+    if (descriptor is null) return null;
+    if (evidence!.State != NativeApprovalState.DecisionAdmitted || evidence.AdmittedGeneration != Lease.Generation || evidence.Decisions.Single(item => item.RequestId == descriptor.RequestId).Kind != NativeApprovalDecisionKind.Approved) throw new NativeSessionRequestException(409);
+    var snapshot = NativeBrowserRecoveryResultSnapshot.Create(result, Registration.Options.PublicBytes);
+    var witness = new NativeBrowserRecoveryResultWitness(call.Id, descriptor.RequestId, evidence.Batch.Batch.BatchId, Lease.Token, Lease.Generation, snapshot);
+    lock (_recoveryResultLock)
+    {
+      if (_pendingRecoveryResults.ContainsKey(call.Id) || _completedRecoveryResults.ContainsKey(call.Id) || _pendingRecoveryResults.Count + _completedRecoveryResults.Count + _heldRecoveryResultReservations >= Registration.Options.MaximumCalls || _recoveryResultBytes + _heldRecoveryEvidenceBytes + snapshot.Bytes > Registration.Options.PublicBytes) throw new NativeSessionRequestException(503);
+      _pendingRecoveryResults.Add(call.Id, witness); _recoveryResultBytes += snapshot.Bytes;
+    }
+    return witness;
+  }
+
+  /// <summary>Publishes only the exact staged snapshot after the same owned call has durably completed dispatch.</summary>
+  internal void PublishRecoveryResult(NativeToolCall call, NativeBrowserRecoveryResultWitness? witness)
+  {
+    if (witness is null) return;
+    RequireSession(_session);
+    lock (_recoveryResultLock)
+    {
+      if (!_durablyCompletedRecoveryCalls.Contains(call.Id) || witness.CallId != call.Id || witness.OwnerToken != Lease.Token || witness.Generation != Lease.Generation || ApprovalEvidence?.Batch.Batch.BatchId != witness.BatchId || !_pendingRecoveryResults.TryGetValue(call.Id, out var pending) || !ReferenceEquals(pending, witness) || _completedRecoveryResults.ContainsKey(call.Id)) throw new NativeSessionRequestException(409);
+      _pendingRecoveryResults.Remove(call.Id); _completedRecoveryResults.Add(call.Id, witness);
+    }
+  }
+
+  /// <summary>Recognizes only an exact already-admitted browser observation, never a new native settlement.</summary>
+  internal bool IsRecoveredBrowserResultEcho(FunctionResultContent result)
+  {
+    if (Recovery is null || !Recovery.Outcomes.Any(item => item.ToolCallId == result.CallId)) return false;
+    RequireSession(_session);
+    NativeBrowserRecoveryResultSnapshot.RequirePlain(result);
+    var original = System.Text.Json.Nodes.JsonNode.Parse(PublicRequest)!["messages"]!.AsArray().SingleOrDefault(item => item?["role"]?.GetValue<string>() == "tool" && item["toolCallId"]?.GetValue<string>() == result.CallId);
+    if (original is null || result.Result is not string text || !string.Equals(text, original["content"]!.GetValue<string>(), StringComparison.Ordinal)) throw new NativeSessionRequestException(409);
+    return true;
+  }
+
+  /// <summary>Returns an owned immutable copy only after every original protected result is independently completed, observed and bound to this active claim.</summary>
+  internal IReadOnlyDictionary<string, NativeBrowserRecoveryResultWitness> ReadObservedRecoveryResults()
+  {
+    RequireSession(_session);
+    if (Recovery is null || Admission is not { Status: 200, Lease: not null, Snapshot: { } saved }) throw new NativeSessionRequestException(409);
+    var evidence = ApprovalEvidence;
+    if (evidence is null && saved.Approvals.PendingBatch is not null) throw new NativeSessionRequestException(409);
+    if (evidence is not null && (evidence.State != NativeApprovalState.DecisionAdmitted || evidence.AdmittedGeneration != Lease.Generation || evidence.AdmittedRevision is null || evidence.SessionKeyId != Lease.Key.Id || evidence.CatalogIdentity != Registration.Catalog.Identity || evidence.CurrentOwner.Key.Id != Lease.Key.Id || evidence.CurrentOwner.Token != Lease.Token || evidence.CurrentOwner.Generation != Lease.Generation || evidence.CurrentOwner.Revision != Lease.Revision)) throw new NativeSessionRequestException(409);
+    var descriptors = evidence?.Batch.Batch.ProtectedRequests ?? [];
+    lock (_recoveryResultLock)
+    {
+      if (_pendingRecoveryResults.Count != 0 || _completedRecoveryResults.Count != descriptors.Count || _observedRecoveryResults.Count != descriptors.Count || _recoveryResultBytes + _heldRecoveryEvidenceBytes > Registration.Options.PublicBytes) throw new NativeSessionRequestException(409);
+      var owned = new Dictionary<string, NativeBrowserRecoveryResultWitness>(StringComparer.Ordinal);
+      foreach (var descriptor in descriptors)
+      {
+        if (!_completedRecoveryResults.TryGetValue(descriptor.Call.Id, out var witness) || !_observedRecoveryResults.Contains(descriptor.Call.Id) || witness.CallId != descriptor.Call.Id || witness.RequestId != descriptor.RequestId || witness.BatchId != evidence!.Batch.Batch.BatchId || witness.OwnerToken != Lease.Token || witness.Generation != Lease.Generation || witness.Snapshot.Bytes > Registration.Options.PublicBytes || evidence.Decisions.Single(item => item.RequestId == descriptor.RequestId).Kind == NativeApprovalDecisionKind.Approved && !_durablyCompletedRecoveryCalls.Contains(descriptor.Call.Id)) throw new NativeSessionRequestException(409);
+        owned.Add(descriptor.Call.Id, witness);
+      }
+      return new System.Collections.ObjectModel.ReadOnlyDictionary<string, NativeBrowserRecoveryResultWitness>(owned);
+    }
+  }
+
+  /// <summary>Checks a fresh completed captured descriptor against the received ordinary call without granting current recovery authority.</summary>
+  internal bool MatchesCompletedCapturedCall(string? id, string? name, System.Text.Json.Nodes.JsonNode? arguments)
+  {
+    return MatchesCapturedRecoveryCall(id, name, arguments) && IsCompletedCurrentDispatch(id!);
+  }
+
+  /// <summary>Compares only independently captured immutable descriptor metadata without invoking application validation.</summary>
+  internal bool MatchesCapturedRecoveryCall(string? id, string? name, System.Text.Json.Nodes.JsonNode? arguments)
+  {
+    RequireSession(_session);
+    return id is not null && _witnesses.TryGetValue(id, out var captured) && Registration.Catalog.HasVersion(captured) && captured.Name == name && System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(captured.Arguments.GetRawText()), arguments);
+  }
+
+  /// <summary>Permits ordinary fresh native results only after independent model capture and the same request's durable dispatch completion.</summary>
+  private bool IsCompletedCurrentDispatch(string callId)
+  {
+    if (!_witnesses.TryGetValue(callId, out var captured) || !_completedCurrentDispatches.TryGetValue(callId, out var completed) || completed.Token != Lease.Token || completed.Generation != Lease.Generation) return false;
+    return captured.Name == completed.Call.Name && captured.Version == completed.Call.Version && Registration.Catalog.HasVersion(completed.Call) && System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(captured.Arguments.GetRawText()), System.Text.Json.Nodes.JsonNode.Parse(completed.Call.Arguments.GetRawText()));
+  }
+
+  /// <summary>Accepts an approved outward result only once against its independent completed actual-return snapshot.</summary>
+  private void ObserveCompletedRecoveryResult(NativeApprovalDescriptor descriptor, FunctionResultContent result)
+  {
+    NativeBrowserRecoveryResultSnapshot.RequirePlain(result);
+    lock (_recoveryResultLock)
+    {
+      if (!_completedRecoveryResults.TryGetValue(result.CallId, out var witness) || witness.RequestId != descriptor.RequestId || witness.OwnerToken != Lease.Token || witness.Generation != Lease.Generation || witness.BatchId != ApprovalEvidence?.Batch.Batch.BatchId || !witness.Snapshot.Matches(result.Result) || !_observedRecoveryResults.Add(result.CallId)) throw new NativeSessionRequestException(409);
+    }
+  }
+
+  /// <summary>Records a genuine rejection only after its existing exact durable settlement has succeeded.</summary>
+  private void ObserveSettledRecoveryRejection(NativeApprovalDescriptor descriptor, FunctionResultContent result)
+  {
+    var snapshot = NativeBrowserRecoveryResultSnapshot.Create(result.Result, Registration.Options.PublicBytes);
+    lock (_recoveryResultLock)
+    {
+      if (_pendingRecoveryResults.ContainsKey(result.CallId) || _completedRecoveryResults.ContainsKey(result.CallId) || _pendingRecoveryResults.Count + _completedRecoveryResults.Count + _heldRecoveryResultReservations >= Registration.Options.MaximumCalls || _recoveryResultBytes + _heldRecoveryEvidenceBytes + snapshot.Bytes > Registration.Options.PublicBytes) throw new NativeSessionRequestException(409);
+      var witness = new NativeBrowserRecoveryResultWitness(result.CallId, descriptor.RequestId, ApprovalEvidence!.Batch.Batch.BatchId, Lease.Token, Lease.Generation, snapshot);
+      _completedRecoveryResults.Add(result.CallId, witness); _observedRecoveryResults.Add(result.CallId); _recoveryResultBytes += snapshot.Bytes;
+    }
+  }
+
   /// <summary>Settles only a genuine native no-dispatch rejection against its consumed owned decision.</summary>
   internal async ValueTask ObserveApprovalResultAsync(FunctionResultContent result)
   {
+    if (IsRecoveredBrowserResultEcho(result)) return;
+    if (_heldRecovery?.ObserveResult(result) == true) return;
+    if (Recovery is not null && ApprovalEvidence?.Batch.Batch.ProtectedRequests.Any(item => item.Call.Id == result.CallId) != true)
+    {
+      RequireSession(_session);
+      if (!IsCompletedCurrentDispatch(result.CallId)) throw new NativeSessionRequestException(409);
+    }
     if (ApprovalEvidence is not { } evidence) return;
     var descriptor = evidence.Batch.Batch.ProtectedRequests.SingleOrDefault(item => item.Call.Id == result.CallId);
     if (descriptor is null)
@@ -183,10 +381,65 @@ internal sealed class NativeSessionContext : IAsyncDisposable
       return;
     }
     var decision = evidence.Decisions.Single(item => item.RequestId == descriptor.RequestId);
-    if (decision.Kind == NativeApprovalDecisionKind.Approved) return;
-    if (!await Registration.Journal.SettleApprovalRejectionAsync(Lease, new(evidence.Batch.Batch.BatchId, descriptor.RequestId, descriptor.Call.Id, decision.Kind, JsonSerializer.SerializeToElement(result.Result)), Cancellation)) throw new NativeSessionRequestException(409);
+    if (decision.Kind == NativeApprovalDecisionKind.Approved)
+    {
+      if (Recovery is not null) ObserveCompletedRecoveryResult(descriptor, result);
+      return;
+    }
+    if (Recovery is not null)
+    {
+      NativeBrowserRecoveryResultSnapshot.RequirePlain(result);
+      var expected = decision.Kind == NativeApprovalDecisionKind.Declined ? "Tool call invocation rejected." : "Tool call invocation rejected. Cancelled by caller.";
+      if (result.Result is not string text || !string.Equals(text, expected, StringComparison.Ordinal)) throw new NativeSessionRequestException(409);
+      lock (_recoveryResultLock)
+        if (_pendingRecoveryResults.ContainsKey(result.CallId) || _completedRecoveryResults.ContainsKey(result.CallId) || _observedRecoveryResults.Contains(result.CallId)) throw new NativeSessionRequestException(409);
+    }
+    var serialized = Recovery is null ? JsonSerializer.SerializeToElement(result.Result) : JsonSerializer.SerializeToElement((string)result.Result!);
+    if (!await Registration.Journal.SettleApprovalRejectionAsync(Lease, new(evidence.Batch.Batch.BatchId, descriptor.RequestId, descriptor.Call.Id, decision.Kind, serialized), Cancellation)) throw new NativeSessionRequestException(409);
     _pending.TryRemove(descriptor.Call.Id, out _);
+    if (Recovery is not null) ObserveSettledRecoveryRejection(descriptor, result);
   }
+  /// <summary>Copies only an accepted current protected result for the existing passive test observer before public projection.</summary>
+  internal void ObserveRecoveryResultForTests(FunctionResultContent result)
+  {
+    if (_observer is null || Recovery is null) return;
+    try
+    {
+      var evidence = ApprovalEvidence;
+      var descriptor = evidence?.Batch.Batch.ProtectedRequests.SingleOrDefault(item => item.Call.Id == result.CallId);
+      if (descriptor is null || evidence!.State != NativeApprovalState.DecisionAdmitted || evidence.AdmittedGeneration != Lease.Generation) return;
+      NativeBrowserRecoveryResultWitness witness;
+      lock (_recoveryResultLock)
+      {
+        if (!_observedRecoveryResults.Contains(result.CallId) || !_completedRecoveryResults.TryGetValue(result.CallId, out witness!) || witness.RequestId != descriptor.RequestId || witness.BatchId != evidence.Batch.Batch.BatchId || witness.OwnerToken != Lease.Token || witness.Generation != Lease.Generation) return;
+      }
+      string? rawJson = null, text = null, jsonKind = null;
+      string nativeType;
+      if (result.Result is JsonElement json) { nativeType = "System.Text.Json.JsonElement"; rawJson = witness.Snapshot.WireContent; jsonKind = json.ValueKind.ToString(); }
+      else if (result.Result is string) { nativeType = "System.String"; text = witness.Snapshot.WireContent; }
+      else if (result.Result is null) nativeType = "null";
+      else return;
+      Observe("Native.Result.Observed", JsonSerializer.Serialize(new
+      {
+        scope = Scope,
+        threadId = Input.ThreadId,
+        runId = Input.RunId,
+        callId = result.CallId,
+        requestId = descriptor.RequestId,
+        batchId = evidence.Batch.Batch.BatchId,
+        admittedGeneration = evidence.AdmittedGeneration,
+        admittedRevision = evidence.AdmittedRevision,
+        domain = "native-outward-before-public-projection",
+        nativeType,
+        jsonKind,
+        rawJson,
+        text,
+        isNull = result.Result is null
+      }));
+    }
+    catch (Exception) { /* Passive result diagnostics cannot alter accepted execution or ownership. */ }
+  }
+
   /// <summary>Projects only server-owned captured or admitted witnesses; provider diagnostics grant no approval authority.</summary>
   internal IReadOnlyList<NativeProjectionApproval> ProjectionApprovals()
   {
@@ -221,6 +474,9 @@ internal sealed class NativeSessionContext : IAsyncDisposable
   internal async ValueTask CompleteAsync(NativeToolCall call, CancellationToken cancellationToken)
   {
     if (!await Registration.Journal.CompleteDispatchAsync(Lease, call, cancellationToken)) throw new NativeSessionRequestException(409);
+    if (Recovery is not null && !_completedCurrentDispatches.TryAdd(call.Id, (call, Lease.Token, Lease.Generation))) throw new NativeSessionRequestException(409);
+    lock (_recoveryResultLock)
+      if (_pendingRecoveryResults.ContainsKey(call.Id) && !_durablyCompletedRecoveryCalls.Add(call.Id)) throw new NativeSessionRequestException(409);
     _pending.TryRemove(call.Id, out _);
   }
   internal async ValueTask CancelWorkAsync()
@@ -270,9 +526,10 @@ internal sealed class NativeSessionContext : IAsyncDisposable
     finally
     {
       Observe("Original.Raw.After", OriginalRaw);
-      ObserveInput("Original.Typed.After", Input);
+      ObserveInput("Original.Typed.After", _originalInput);
       if (TransportInput is not null) ObserveInput("Transport.Typed.After", TransportInput);
       Observe("Context.Disposed");
+      lock (_recoveryResultLock) { _pendingRecoveryResults.Clear(); _completedRecoveryResults.Clear(); _observedRecoveryResults.Clear(); _durablyCompletedRecoveryCalls.Clear(); _completedCurrentDispatches.Clear(); RecoveredProviderInput = null; _heldRecovery = null; _recoveryResultBytes = 0; _heldRecoveryEvidenceBytes = 0; _heldRecoveryResultReservations = 0; }
       _heartbeatStop.Dispose(); _work.Dispose();
     }
   }

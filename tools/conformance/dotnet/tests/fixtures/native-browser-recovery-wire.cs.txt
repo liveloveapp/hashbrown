@@ -1,0 +1,552 @@
+#pragma warning disable MAAI001, MEAI001 // Exercises the pinned public native session and function APIs.
+using System.Collections.Concurrent;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using AGUI.Server;
+using AGUI.Abstractions;
+using Hashbrown.AspNetCore;
+using Microsoft.Agents.AI;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+await using var source = NpgsqlDataSource.Create(Environment.GetEnvironmentVariable("DOTNET_TEST_POSTGRES") ?? throw new Exception("Real PostgreSQL is required."));
+var schema = "browser_wire_" + Guid.NewGuid().ToString("N");
+var rows = new List<object>();
+try
+{
+    var manifest = JsonSerializer.Deserialize<WireCase[]>(Environment.GetEnvironmentVariable("HASHBROWN_BROWSER_WIRE_CASES") ?? throw new Exception("Explicit unique legal case manifest is required."), JsonSerializerOptions.Web)!;
+    Check(manifest.Select(item => item.Id).Distinct().Count() == manifest.Length, "Case identities must be unique.");
+    foreach (var subject in manifest)
+    {
+        var provider = subject.Provider; var api = subject.Api;
+        var routeErrors = new ConcurrentQueue<string>();
+        var stages = new ConcurrentQueue<string>();
+        var stageDiagnostics = new ConcurrentQueue<JsonElement>();
+        var initialUpdates = new ConcurrentQueue<JsonElement>();
+        var initialStatus = -1;
+        string? initialWire = null;
+        var effects = 0;
+        var freshEffects = 0;
+        PostgresNativeSessionJournal? caseJournal = null;
+        NativeSessionKey? caseKey = null;
+        try
+        {
+        var getterReads = 0;
+        var codecUnderTest = subject.HeldCodec ?? subject.Codec;
+        const string RawJsonResult = "{\n  \"known\": true,\n  \"unicode\": \"café\",\n  \"nested\": [1, 2]\n}";
+        var getterResult = new GetterResult(() => getterReads++);
+        var mutableReturnBytes = Encoding.UTF8.GetBytes("{\"value\":\"before\"}");
+        using var mutableReturnDocument = codecUnderTest == "mutate-after-complete" ? JsonDocument.Parse((ReadOnlyMemory<byte>)mutableReturnBytes) : null;
+        var mutationBeforeRaw = mutableReturnDocument?.RootElement.GetRawText();
+        AIFunction Marshal(Delegate method) => AIFunctionFactory.Create(method, new AIFunctionFactoryOptions { Name = "backend", MarshalResult = (value, type, cancellation) => ValueTask.FromResult(value) });
+        var function = subject.Codec switch
+        {
+            "unsupported-getter" => Marshal((Func<GetterResult>)(() => { effects++; return getterResult; })),
+            "default-string" => AIFunctionFactory.Create((Func<string>)(() => { effects++; return "exact café \"quoted\" \\ slash"; }), "backend"),
+            "raw-string" => Marshal((Func<string>)(() => { effects++; return "exact café \"quoted\" \\ slash"; })),
+            "raw-json" => Marshal((Func<JsonElement>)(() => { effects++; return JsonDocument.Parse(RawJsonResult).RootElement.Clone(); })),
+            "mutate-after-complete" => Marshal((Func<JsonElement>)(() => { effects++; return mutableReturnDocument!.RootElement; })),
+            "default-null" => AIFunctionFactory.Create((Func<string?>)(() => { effects++; return null; }), "backend"),
+            "default-void" => AIFunctionFactory.Create((Action)(() => { effects++; }), "backend"),
+            "unsupported-ai-content" => Marshal((Func<AIContent>)(() => { effects++; return new TextContent("unsupported content"); })),
+            "unsupported-ai-content-array" => Marshal((Func<AIContent[]>)(() => { effects++; return [new TextContent("unsupported contents")]; })),
+            "oversize-string" => Marshal((Func<string>)(() => { effects++; return new string('é', 4096); })),
+            "deep-json" => Marshal((Func<JsonElement>)(() => { effects++; using var document = JsonDocument.Parse(new string('[', 65) + "null" + new string(']', 65), new JsonDocumentOptions { MaxDepth = 128 }); return document.RootElement.Clone(); })),
+            "aggregate-results" => Marshal((Func<string>)(() => { effects++; return new string('x', 2500); })),
+            _ => AIFunctionFactory.Create(() => { effects++; return "protected effect"; }, "backend")
+        };
+        var protectedOutput = subject.Codec switch
+        {
+            "default-string" => JsonSerializer.Serialize("exact café \"quoted\" \\ slash", AIJsonUtilities.DefaultOptions),
+            "raw-string" => "exact café \"quoted\" \\ slash",
+            "raw-json" => RawJsonResult,
+            "default-null" => "null",
+            "default-void" => "Success: Function completed.",
+            _ => JsonSerializer.Serialize("protected effect")
+        };
+        var hasRead = subject.Flow is "fresh-read" or "deferred-read";
+        var heldCalls = WireHeld.Calls(subject);
+        var heldEffects = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
+        void ReadEffect() { Interlocked.Increment(ref freshEffects); heldEffects.AddOrUpdate("read", 1, (_, count) => count + 1); }
+        AIFunction MarshalHeld(Delegate method) => AIFunctionFactory.Create(method, new AIFunctionFactoryOptions { Name = "read", MarshalResult = (value, type, cancellation) => ValueTask.FromResult(value) });
+        var readFunction = subject.HeldCodec switch
+        {
+            "unsupported-getter" => MarshalHeld((Func<GetterResult>)(() => { ReadEffect(); return getterResult; })),
+            "default-string" => AIFunctionFactory.Create((Func<string>)(() => { ReadEffect(); return "exact café \"quoted\" \\ slash"; }), "read"),
+            "raw-string" => MarshalHeld((Func<string>)(() => { ReadEffect(); return "exact café \"quoted\" \\ slash"; })),
+            "default-null" => AIFunctionFactory.Create((Func<string?>)(() => { ReadEffect(); return null; }), "read"),
+            "default-void" => AIFunctionFactory.Create((Action)(() => { ReadEffect(); }), "read"),
+            "unsupported-ai-content" => MarshalHeld((Func<AIContent>)(() => { ReadEffect(); return new TextContent("unsupported held content"); })),
+            "unsupported-ai-content-array" => MarshalHeld((Func<AIContent[]>)(() => { ReadEffect(); return [new TextContent("unsupported held contents")]; })),
+            "oversize-string" => MarshalHeld((Func<string>)(() => { ReadEffect(); return new string('é', 4096); })),
+            "deep-json" => MarshalHeld((Func<JsonElement>)(() => { ReadEffect(); using var document = JsonDocument.Parse(new string('[', 65) + "null" + new string(']', 65), new JsonDocumentOptions { MaxDepth = 128 }); return document.RootElement.Clone(); })),
+            "aggregate-results" => MarshalHeld((Func<string>)(() => { ReadEffect(); return new string('x', 2500); })),
+            "raw-json" => MarshalHeld((Func<JsonElement>)(() => { ReadEffect(); return JsonDocument.Parse(RawJsonResult).RootElement.Clone(); })),
+            "mutate-after-complete" => MarshalHeld((Func<JsonElement>)(() => { ReadEffect(); return mutableReturnDocument!.RootElement; })),
+            _ => AIFunctionFactory.Create((Func<Task<string>>)(async () => { await Task.Delay(heldCalls.FirstOrDefault()?.Delay ?? 0); ReadEffect(); return "fresh read result"; }), "read")
+        };
+        var heldOutput = subject.HeldCodec switch
+        {
+            "raw-json" => RawJsonResult,
+            "default-string" => JsonSerializer.Serialize("exact café \"quoted\" \\ slash", AIJsonUtilities.DefaultOptions),
+            "raw-string" => "exact café \"quoted\" \\ slash",
+            "default-null" => "null",
+            "default-void" => "Success: Function completed.",
+            "aggregate-results" => new string('x', 2500),
+            _ => JsonSerializer.Serialize("fresh read result", AIJsonUtilities.DefaultOptions)
+        };
+        var extraHeldFunctions = heldCalls.Skip(1).Select(call => AIFunctionFactory.Create((Func<Task<string>>)(async () => { await Task.Delay(call.Delay); Interlocked.Increment(ref freshEffects); heldEffects.AddOrUpdate(call.Name, 1, (_, count) => count + 1); return call.Output; }), call.Name)).ToArray();
+        var definitions = new List<NativeToolDefinition>();
+        if (subject.Mixed) definitions.Add(new("backend", 1, function.JsonSchema, RequiresConfirmation: true));
+        if (hasRead) definitions.Add(new("read", 1, readFunction.JsonSchema));
+        foreach (var extra in extraHeldFunctions) definitions.Add(new(extra.Name, 1, extra.JsonSchema));
+        var catalog = new NativeToolCatalog(definitions);
+        var registered = new List<AIFunction>();
+        if (subject.Mixed) registered.Add(new ApprovalRequiredAIFunction(function));
+        if (hasRead) registered.Add(readFunction);
+        registered.AddRange(extraHeldFunctions);
+        var journal = new PostgresNativeSessionJournal(source, catalog, "wire-v1", schema); caseJournal = journal;
+        await journal.InitializeAsync();
+        var builder = WebApplication.CreateEmptyBuilder(new() { EnvironmentName = "Production", ContentRootPath = AppContext.BaseDirectory });
+        builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0"); builder.Logging.ClearProviders(); builder.Logging.AddProvider(new WireLoggerProvider(routeErrors)); builder.Services.AddRouting();
+        builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, WireAuthentication>("fixture", _ => { });
+        builder.Services.AddAuthorization(options => options.AddPolicy("native", policy => policy.RequireAuthenticatedUser()));
+        var accessor = new HttpContextAccessor(); builder.Services.AddSingleton<IHttpContextAccessor>(accessor);
+        var routeJournal = DispatchProxy.Create<INativeSessionBrowserRecoveryJournal, ResultCompletionGate>();
+        var completionGate = (ResultCompletionGate)(object)routeJournal;
+        completionGate.Inner = journal; completionGate.Refuse = codecUnderTest == "refuse-complete"; completionGate.LoseLease = codecUnderTest == "lease-lost";
+        completionGate.TargetCallId = subject.HeldCodec is null ? null : heldCalls.Single().Id;
+        if (codecUnderTest == "mutate-after-complete") completionGate.AfterComplete = () => Encoding.UTF8.GetBytes("{\"value\":\"after!\"}").CopyTo(mutableReturnBytes, 0);
+        NativeSessionEndpointConfiguration.Configure(builder.Services, "native", routeJournal, catalog, http => http.User.FindFirstValue(ClaimTypes.NameIdentifier)!, codecUnderTest is "oversize-string" or "aggregate-results" ? new NativeSessionOptions { PublicBytes = 4096 } : null);
+        var handler = new CaptureHandler(api, subject.Capture, subject.HeldFresh ? "fresh-read" : subject.Flow);
+        using var providerHttp = new HttpClient(handler);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Provider"] = provider, ["ModelApi"] = api, ["Model"] = "deployment", ["ApiKey"] = "no-network-fixture",
+            ["ModelEndpoint"] = provider == "azure" ? "https://wire.invalid/" : "https://wire.invalid/v1/"
+        }).Build();
+        using var providerClient = ProviderFactory.Create(configuration, new ProviderClientComposition(_ => throw new Exception("No identity credential required."), providerHttp));
+        var captured = new ObservedProvider(providerClient);
+        var hook = typeof(NativeSessionAgentFactory).GetMethod("CreateObservedForTests", BindingFlags.NonPublic | BindingFlags.Static)!;
+        AIAgent Agent(IChatClient client) => (AIAgent)hook.Invoke(null, [client, "native", registered.ToArray(), catalog, accessor, (Action<string>)(value =>
+        {
+            var parsed = JsonNode.Parse(value)!;
+            var stage = parsed["stage"]!.GetValue<string>(); stages.Enqueue(stage);
+            if (Environment.GetEnvironmentVariable("HASHBROWN_BROWSER_WIRE_DIAGNOSTICS") == "1" && stage.StartsWith("Recovery.", StringComparison.Ordinal) && stageDiagnostics.Count < 24) stageDiagnostics.Enqueue(JsonSerializer.Deserialize<JsonElement>(value));
+        })])!;
+        var initialAgent = Agent(new PendingModel(subject, initialUpdates));
+        var restoredAgent = Agent(captured);
+        var ordinaryAgent = Agent(captured);
+        var ordinarySecondAgent = Agent(captured);
+        await using var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
+        app.Use(async (context, next) =>
+        {
+            try { await next(context); }
+            catch (Exception exception) { routeErrors.Enqueue(exception.ToString()); throw; }
+        });
+        NativeSessionEndpointConfiguration.Map(app, "/initial", initialAgent, "native");
+        NativeSessionEndpointConfiguration.Map(app, "/continue", restoredAgent, "native");
+        NativeSessionEndpointConfiguration.Map(app, "/ordinary", ordinaryAgent, "native");
+        NativeSessionEndpointConfiguration.Map(app, "/ordinary-2", ordinarySecondAgent, "native");
+        await app.StartAsync();
+        using var http = new HttpClient { BaseAddress = new Uri(app.Urls.Single()), Timeout = TimeSpan.FromSeconds(20) };
+        var thread = subject.Id;
+        var input = JsonNode.Parse("""{"threadId":"wire","runId":"initial","messages":[{"id":"system","role":"system","content":"exact system"},{"id":"user","role":"user","content":"current question"}],"tools":[{"name":"frontend","description":"declaration only browser","parameters":{"type":"object"}}],"context":[],"state":{},"forwardedProps":{}}""")!.AsObject();
+        input["threadId"] = thread;
+        input["state"] = new JsonObject { ["owned"] = "state" };
+        input["forwardedProps"] = new JsonObject { ["application"] = new JsonObject { ["owned"] = true } };
+        var key = new NativeSessionKey("native", "alice", thread, new Dictionary<string, string> { ["isolation"] = "alice" }); caseKey = key;
+        string? DecisionFor(string id) => subject.Decisions is not null ? subject.Decisions[id == "protected" ? 0 : int.Parse(id["protected-".Length..], System.Globalization.CultureInfo.InvariantCulture) - 1] : subject.Decision;
+        if (subject.Rich)
+        {
+            input["messages"]![1]!["id"] = "prior-user"; input["messages"]![1]!["content"] = "prior question";
+            using (var prior = await http.PostAsync("/initial", new StringContent(input.ToJsonString(), Encoding.UTF8, "application/json")))
+            {
+                var priorWire = await prior.Content.ReadAsStringAsync();
+                Check(prior.IsSuccessStatusCode && priorWire.Contains("RUN_FINISHED"), "Genuine prior browser capture must finish: " + priorWire);
+            }
+            var priorStatus = await Ready();
+            Check(priorStatus.State == "Ready" && priorStatus.BrowserRecoveryCallIds?.SequenceEqual(new[] { "prior-call" }) == true, "Prior history must originate from a genuine pending browser publication.");
+            var warm = JsonNode.Parse(priorStatus.PublicRequest!)!.AsObject(); warm["runId"] = "prior-result";
+            warm["messages"]!.AsArray().Add(new JsonObject { ["id"] = "prior-result", ["role"] = "tool", ["toolCallId"] = "prior-call", ["content"] = "prior result" });
+            using (var completed = await http.PostAsync("/initial", new StringContent(warm.ToJsonString(), Encoding.UTF8, "application/json")))
+            {
+                var completedWire = await completed.Content.ReadAsStringAsync();
+                Check(completed.IsSuccessStatusCode && completedWire.Contains("RUN_FINISHED"), "Genuine warm prior browser completion must finish: " + completedWire);
+            }
+            var priorComplete = await Ready();
+            Check(priorComplete.State == "Ready" && priorComplete.TurnCompleted, "Prior answer must genuinely publish before the next user turn.");
+            input = JsonNode.Parse(priorComplete.PublicRequest!)!.AsObject(); input["runId"] = "initial";
+            input["messages"]!.AsArray().Add(new JsonObject { ["id"] = "user", ["role"] = "user", ["content"] = "current question" });
+        }
+        using var initialRequest = new HttpRequestMessage(HttpMethod.Post, "/initial") { Content = new StringContent(input.ToJsonString(), Encoding.UTF8, "application/json") };
+        using var initial = await http.SendAsync(initialRequest, HttpCompletionOption.ResponseHeadersRead);
+        initialStatus = (int)initial.StatusCode;
+        await using (var stream = await initial.Content.ReadAsStreamAsync())
+        {
+            using var bytes = new MemoryStream();
+            var buffer = new byte[4096];
+            try
+            {
+                int read;
+                while ((read = await stream.ReadAsync(buffer)) > 0) { bytes.Write(buffer, 0, read); initialWire = Encoding.UTF8.GetString(bytes.ToArray()); }
+            }
+            finally { initialWire = Encoding.UTF8.GetString(bytes.ToArray()); }
+        }
+        Check(initial.IsSuccessStatusCode && initialWire.Contains("RUN_FINISHED") && !initialWire.Contains("RUN_ERROR"), "Genuine initial capture must finish: " + initialWire);
+        NativeSessionStatus status = await journal.ReadStatusAsync(key);
+        using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (status.State == "Publishing") { await Task.Delay(10, budget.Token); status = await journal.ReadStatusAsync(key); }
+        Check(status.State == "Ready" && (status.BrowserRecoveryCallIds?.Count ?? 0) == subject.BrowserCount && (status.PendingInterrupts?.Count ?? 0) == subject.ProtectedCount && effects == 0, "Genuine mixed snapshot must be durably pending.");
+        var settlement = JsonNode.Parse(status.PublicRequest!)!.AsObject(); settlement["runId"] = "recovered";
+        var original = JsonNode.Parse(status.PublicRequest!)!;
+        var initialTerminal = initialWire!.Split('\n').Where(line => line.StartsWith("data: ")).Select(line => JsonNode.Parse(line[6..])!).Single(item => item["type"]?.GetValue<string>() == "RUN_FINISHED");
+        var browserResult = subject.Flow == "warm-mixed-cancel" ? "Tool call invocation rejected. No approval response was provided for this approval required tool call." : subject.Outcome switch { "null" => "null", "object" => "{\"known\":true,\"exact\":\"café\"}", "unavailable" => """{"hashbrownRecovery":{"version":1,"status":"result-unavailable","effect":"unknown","message":"The browser result is unavailable after recovery. The operation may already have occurred. No retry was performed."}}""", _ => "exact known browser result" };
+        var browserIds = status.BrowserRecoveryCallIds ?? [];
+        var warmMode = subject.Flow is "warm-native" or "warm-mixed-cancel";
+        if (subject.Flow == "warm-mixed-cancel")
+        {
+            foreach (var message in settlement["messages"]!.AsArray().OfType<JsonObject>())
+                if (message["toolCalls"] is JsonArray calls)
+                    foreach (var call in calls.OfType<JsonObject>().Where(call => browserIds.Contains(call["id"]!.GetValue<string>()))) call["metadata"] = JsonSerializer.SerializeToNode(new Dictionary<string, object> { ["b4.step"] = new { v = 1, kind = "server", status = "cancelled", settledAt = 123L } });
+        }
+        else foreach (var id in browserIds) settlement["messages"]!.AsArray().Add(new JsonObject { ["id"] = "browser-result-" + id, ["role"] = "tool", ["toolCallId"] = id, ["content"] = browserResult });
+        if (subject.Mixed)
+        {
+            settlement["resume"] = new JsonArray(status.PendingInterrupts!.Select(interrupt => (JsonNode)(DecisionFor(interrupt.ToolCallId!) == "cancelled"
+                ? new JsonObject { ["interruptId"] = interrupt.Id, ["status"] = "cancelled" }
+                : new JsonObject { ["interruptId"] = interrupt.Id, ["status"] = "resolved", ["payload"] = new JsonObject { ["approved"] = DecisionFor(interrupt.ToolCallId!) == "approved" } })).ToArray());
+        }
+        if (!warmMode) settlement["forwardedProps"]!["hashbrown"] = JsonSerializer.SerializeToNode(new { recovery = new { version = 1, serverRevision = status.Revision, outcomes = browserIds.Select(id => new { toolCallId = id, status = subject.Outcome == "unavailable" ? "unavailable" : "result" }).ToArray() } });
+        var admittedMessages = settlement["messages"]!.DeepClone();
+        var initialFreshEffects = freshEffects;
+        var initialInspected = await journal.InspectAsync(new HashSet<string> { "alice" }, key);
+        var originalCalls = original["messages"]!.AsArray().OfType<JsonObject>().SelectMany(message => message["toolCalls"] is JsonArray calls ? calls.OfType<JsonObject>() : []).Select(call => new {
+            id = call["id"]!.GetValue<string>(), name = call["function"]!["name"]!.GetValue<string>(), arguments = call["function"]!["arguments"]!.GetValue<string>(),
+            output = call["id"]!.GetValue<string>() == "prior-call" ? "prior result" : call["function"]!["name"]!.GetValue<string>() == "frontend" ? browserResult : DecisionFor(call["id"]!.GetValue<string>()) == "approved" ? protectedOutput : DecisionFor(call["id"]!.GetValue<string>()) == "cancelled" ? "Tool call invocation rejected. Cancelled by caller." : "Tool call invocation rejected."
+        }).ToArray();
+        var initialStageCount = stages.Count;
+        var routeStatus = -1;
+        var routeBody = "";
+        string? transportFailure = null;
+        try
+        {
+            using var continuationRequest = new HttpRequestMessage(HttpMethod.Post, "/continue") { Content = new StringContent(settlement.ToJsonString(), Encoding.UTF8, "application/json") };
+            using var continued = await http.SendAsync(continuationRequest, HttpCompletionOption.ResponseHeadersRead);
+            routeStatus = (int)continued.StatusCode;
+            await using var stream = await continued.Content.ReadAsStreamAsync();
+            using var bytes = new MemoryStream();
+            using var readBudget = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var buffer = new byte[4096];
+            try
+            {
+                int read;
+                while ((read = await stream.ReadAsync(buffer.AsMemory(), readBudget.Token)) > 0) { bytes.Write(buffer, 0, read); routeBody = Encoding.UTF8.GetString(bytes.ToArray()); }
+            }
+            finally { routeBody = Encoding.UTF8.GetString(bytes.ToArray()); }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException or OperationCanceledException) { transportFailure = exception.GetType().Name; routeErrors.Enqueue(exception.ToString()); }
+        JsonNode? saved = null; JsonNode? ordinarySaved = null;
+        string? opaque = null; string? ordinaryOpaque = null; string? ordinaryBody = null;
+        var ordinaryBodies = new List<string?>(); var ordinarySnapshots = new List<JsonNode?>(); var ordinaryOpaques = new List<string?>();
+        if (!subject.Capture && routeBody.Contains("RUN_FINISHED", StringComparison.Ordinal))
+        {
+            var complete = await Ready();
+            saved = complete.PublicRequest is null ? null : JsonNode.Parse(complete.PublicRequest);
+            opaque = await Opaque();
+            if (saved is not null)
+            {
+                var previous = saved;
+                for (var cycle = 1; cycle <= 2; cycle++)
+                {
+                    var ordinary = previous.DeepClone().AsObject(); ordinary["runId"] = "ordinary-" + cycle;
+                    ordinary["messages"]!.AsArray().Add(new JsonObject { ["id"] = "ordinary-user-" + cycle, ["role"] = "user", ["content"] = "ordinary question " + cycle });
+                    string? currentBody = null;
+                    try
+                    {
+                        using var response = await http.PostAsync(cycle == 1 ? "/ordinary" : "/ordinary-2", new StringContent(ordinary.ToJsonString(), Encoding.UTF8, "application/json"));
+                        currentBody = await response.Content.ReadAsStringAsync();
+                    }
+                    catch (HttpRequestException exception) { routeErrors.Enqueue(exception.ToString()); }
+                    var next = await Ready(); var currentSaved = next.PublicRequest is null ? null : JsonNode.Parse(next.PublicRequest); var currentOpaque = await Opaque();
+                    ordinaryBodies.Add(currentBody); ordinarySnapshots.Add(currentSaved); ordinaryOpaques.Add(currentOpaque);
+                    if (cycle == 1) { ordinaryBody = currentBody; ordinarySaved = currentSaved; ordinaryOpaque = currentOpaque; }
+                    if (currentSaved is null || currentBody?.Contains("RUN_FINISHED", StringComparison.Ordinal) != true) break;
+                    previous = currentSaved;
+                }
+            }
+        }
+        var fence = await Ready();
+        if (subject.Codec is "unsupported-getter" or "unsupported-ai-content" or "unsupported-ai-content-array" or "oversize-string" or "deep-json" or "aggregate-results" or "refuse-complete" or "lease-lost" or "mutate-after-complete" || subject.Flow is "warm-mixed-cancel" or "reuse-original-id" or "deferred-read")
+        {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            while (fence.State is "Owned" or "Publishing") { await Task.Delay(10, cleanup.Token); fence = await journal.ReadStatusAsync(key, cleanup.Token); }
+        }
+        var inspected = await journal.InspectAsync(new HashSet<string> { "alice" }, key);
+        var freshPair = new { id = "fresh-read", name = "read", arguments = "{}", output = JsonSerializer.Serialize("fresh read result", AIJsonUtilities.DefaultOptions) };
+        var heldPairs = heldCalls.Select(call => new { id = call.Id, name = call.Name, arguments = "{}", output = call.Name == "read" ? heldOutput : JsonSerializer.Serialize(call.Output, AIJsonUtilities.DefaultOptions) }).ToArray();
+        var expectedCallsByWire = handler.Bodies.Select((_, index) => subject.Flow == "deferred-read" ? subject.HeldFresh && index > 0 ? originalCalls.Concat(heldPairs).Append(freshPair).ToArray() : originalCalls.Concat(heldPairs).ToArray() : subject.Flow == "fresh-read" && index > 0 ? originalCalls.Append(freshPair).ToArray() : originalCalls).ToArray();
+        rows.Add(new { stageDiagnostics = stageDiagnostics.ToArray(), heldEffects = heldEffects.ToDictionary(pair => pair.Key, pair => pair.Value), mutationBeforeRaw, mutationAfterRaw = mutableReturnDocument?.RootElement.GetRawText(), mutationsAfterDurableComplete = completionGate.Mutations, flow = subject.Flow, freshEffects, initialFreshEffects, initialInvocationStates = initialInspected?.Invocations.Select(item => new { item.Id, item.State }).ToArray(), admittedMessages, expectedCallsByWire, ordinaryBodies = ordinaryBodies.ToArray(), ordinarySnapshots = ordinarySnapshots.ToArray(), ordinaryOpaques = ordinaryOpaques.ToArray(), optionsInputs = captured.OptionsInputs.ToArray(), codec = subject.Codec, heldCodec = subject.HeldCodec, getterReads, completeAttempts = completionGate.Attempts, fenceState = fence.State, invocationStates = inspected?.Invocations.Select(item => new { item.Id, item.State }).ToArray(), id = subject.Id, capture = subject.Capture, provider, api, body = handler.Body, effects, stop = captured.Stop, stages = stages.ToArray(), initialStageCount, optionsInput = captured.OptionsInput, declarationOnly = captured.DeclarationOnly, providerCalls = captured.Calls.ToArray(), routeStatus, transportFailure, providerStatus = handler.Status, routeErrors = routeErrors.ToArray(), routeBody, initialWire, initialUpdates = initialUpdates.ToArray(), initialTerminal, original, saved, ordinarySaved, opaque, ordinaryOpaque, ordinaryBody, originalCalls, wires = handler.Bodies.ToArray() });
+        async Task<NativeSessionStatus> Ready()
+        {
+            var current = await journal.ReadStatusAsync(key);
+            using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            while (current.State == "Publishing") { await Task.Delay(10, wait.Token); current = await journal.ReadStatusAsync(key); }
+            return current;
+        }
+        async Task<string?> Opaque()
+        {
+            await using var command = source.CreateCommand($"SELECT payload FROM \"{schema}\".native_sessions WHERE id=@id");
+            command.Parameters.AddWithValue("id", key.Id);
+            var payload = await command.ExecuteScalarAsync();
+            return payload is string text ? JsonNode.Parse(text)?["nativeJson"]?.GetValue<string>() : null;
+        }
+        await app.StopAsync();
+        }
+        catch (Exception exception)
+        {
+            var failedStatus = caseJournal is not null && caseKey is not null ? await caseJournal.ReadStatusAsync(caseKey) : null;
+            rows.Add(new { stageDiagnostics = stageDiagnostics.ToArray(), flow = subject.Flow, effects, freshEffects, id = subject.Id, capture = subject.Capture, provider, api, setupError = exception.ToString(), initialStatus, initialWire, initialUpdates = initialUpdates.ToArray(), stages = stages.ToArray(), routeErrors = routeErrors.ToArray(), failedState = failedStatus?.State, failedPublic = failedStatus?.PublicRequest });
+        }
+    }
+    Console.WriteLine("Recovery wire: " + JsonSerializer.Serialize(rows));
+}
+finally
+{
+    await using var drop = source.CreateCommand($"DROP SCHEMA IF EXISTS {schema} CASCADE");
+    await drop.ExecuteNonQueryAsync();
+}
+
+sealed record WireCase(string Id, string Provider, string Api, bool Capture, bool Mixed, string Outcome, string? Decision, string Order, bool Split, int BrowserCount, int ProtectedCount, bool Rich, bool MissingIds, string? Codec = null, string? Flow = null, string[]? Decisions = null, int HeldCount = 0, bool HeldFresh = false, string? HeldCodec = null);
+sealed class PendingModel(WireCase subject, ConcurrentQueue<JsonElement> observed) : IChatClient
+{
+    private int _calls;
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException("Only genuine streaming capture is supported.");
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        _calls++;
+        if (subject.Rich && _calls <= 2)
+        {
+            var contents = _calls == 1 ? new List<AIContent> { new FunctionCallContent("prior-call", "frontend", new Dictionary<string, object?>()) } : [new TextContent("prior answer")];
+            foreach (var update in Updates(contents, _calls == 1 ? "prior-parent" : "prior-answer", _calls == 1 ? ChatFinishReason.ToolCalls : null)) yield return update;
+            if (_calls == 2) yield return new ChatResponseUpdate { ResponseId = "prior-answer", FinishReason = ChatFinishReason.Stop };
+            yield break;
+        }
+        var browsers = Enumerable.Range(0, subject.BrowserCount).Select(index => new FunctionCallContent(index == 0 ? "browser" : "browser-" + (index + 1), "frontend", new Dictionary<string, object?>())).ToArray();
+        var protectedCalls = Enumerable.Range(0, subject.ProtectedCount).Select(index => new FunctionCallContent(index == 0 ? "protected" : "protected-" + (index + 1), "backend", new Dictionary<string, object?>())).ToArray();
+        var calls = subject.Order == "protected-first" ? protectedCalls.Concat(browsers).ToArray() : subject.Order == "interleaved" ? Enumerable.Range(0, Math.Max(browsers.Length, protectedCalls.Length)).SelectMany(index => (index < browsers.Length ? new[] { browsers[index] } : []).Concat(index < protectedCalls.Length ? new[] { protectedCalls[index] } : [])).ToArray() : browsers.Concat(protectedCalls).ToArray();
+        if (subject.Flow == "deferred-read") calls = [.. calls, .. WireHeld.Calls(subject).Select(call => new FunctionCallContent(call.Id, call.Name, new Dictionary<string, object?>()))];
+        if (subject.Split)
+        {
+            foreach (var call in calls)
+            {
+                foreach (var update in Updates([call], "parent-" + call.CallId, ChatFinishReason.ToolCalls)) yield return update;
+                if (subject.Rich) foreach (var update in Updates([new TextContent("unrelated split text")], "text-" + call.CallId, null)) yield return update;
+            }
+        }
+        else
+        {
+            var contents = new List<AIContent>();
+            if (subject.Rich) contents.Add(new TextContent("current announcement text"));
+            contents.AddRange(calls);
+            foreach (var update in Updates(contents, "original-parent", ChatFinishReason.ToolCalls)) yield return update;
+        }
+        if (subject.Rich) foreach (var update in Updates([new TextContent("unrelated later text")], "later-text", null)) yield return update;
+        yield return new ChatResponseUpdate { ResponseId = "native-terminal", FinishReason = ChatFinishReason.ToolCalls };
+    }
+    private IEnumerable<ChatResponseUpdate> Updates(IList<AIContent> contents, string id, ChatFinishReason? finish)
+    {
+        // Response and message IDs agree whenever the provider supplies an identity.
+        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, contents) { MessageId = subject.MissingIds ? null : id }) { ResponseId = subject.MissingIds ? null : id, FinishReason = finish };
+        return response.ToChatResponseUpdates().Select(update =>
+        {
+            observed.Enqueue(JsonSerializer.SerializeToElement(update));
+            return update;
+        });
+    }
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+sealed class ObservedProvider(IChatClient inner) : DelegatingChatClient(inner)
+{
+    public string? Stop { get; private set; }
+    public string? OptionsInput { get; private set; }
+    public bool DeclarationOnly { get; private set; }
+    public List<string> Calls { get; } = [];
+    public List<string> OptionsInputs { get; } = [];
+    private void Observe(ChatOptions? options, string method)
+    {
+        Calls.Add(method);
+        if (options is not null && options.TryGetRunAgentInput(out var input)) { OptionsInput = JsonSerializer.Serialize(input, AGUIJsonSerializerContext.Default.RunAgentInput); OptionsInputs.Add(OptionsInput); }
+        var frontend = options?.Tools?.Where(tool => tool.Name == "frontend").ToArray() ?? [];
+        DeclarationOnly = (Calls.Count == 1 || DeclarationOnly) && frontend.Length == 1 && frontend[0] is AIFunctionDeclaration && frontend[0] is not AIFunction;
+    }
+    public override async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Observe(options, "GetResponseAsync");
+        try { return await base.GetResponseAsync(messages, options, cancellationToken); }
+        catch (Exception exception) { Stop = exception.GetType().Name; throw; }
+    }
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Observe(options, "GetStreamingResponseAsync");
+        var enumerator = base.GetStreamingResponseAsync(messages, options, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        await using (enumerator)
+        {
+            while (true)
+            {
+                bool next;
+                try { next = await enumerator.MoveNextAsync(); }
+                catch (Exception exception) { Stop = exception.GetType().Name; throw; }
+                if (!next) break;
+                yield return enumerator.Current;
+            }
+        }
+    }
+}
+sealed class CaptureHandler(string api, bool capture, string? flow) : HttpMessageHandler
+{
+    public JsonElement? Body { get; private set; }
+    public int? Status { get; private set; }
+    public List<JsonElement> Bodies { get; } = [];
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Body = JsonSerializer.Deserialize<JsonElement>(await request.Content!.ReadAsStringAsync(cancellationToken));
+        Bodies.Add(Body.Value.Clone());
+        Status = capture ? 400 : 200;
+        if (capture) return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest) { Content = new StringContent("""{"error":{"message":"serialization captured; no provider network","type":"capture_stop"}}""", Encoding.UTF8, "application/json") };
+        var ordinal = Bodies.Count;
+        var id = "response-success-" + ordinal; var messageId = "message-success-" + ordinal;
+        if (ordinal == 1 && flow is "fresh-read" or "reuse-original-id") return FunctionCall(flow == "fresh-read" ? "fresh-read" : "protected", flow == "fresh-read" ? "read" : "backend", ordinal);
+        var text = "finished " + ordinal;
+        var events = new List<string>();
+        if (api == "chat-completions")
+        {
+            events.Add("data: " + JsonSerializer.Serialize(new { id, @object = "chat.completion.chunk", created = 1720000000, model = "deployment", choices = new[] { new { index = 0, delta = new { role = "assistant", content = text }, finish_reason = (string?)null } } }) + "\n\n");
+            events.Add("data: " + JsonSerializer.Serialize(new { id, @object = "chat.completion.chunk", created = 1720000000, model = "deployment", choices = new[] { new { index = 0, delta = new { }, finish_reason = "stop" } } }) + "\n\ndata: [DONE]\n\n");
+        }
+        else
+        {
+            var message = new { type = "message", id = messageId, role = "assistant", status = "completed", content = new[] { new { type = "output_text", text, annotations = Array.Empty<object>() } } };
+            var response = new { id, @object = "response", created_at = 1720000000, model = "deployment", status = "completed", output = new[] { message }, usage = new { input_tokens = 2, output_tokens = 2, total_tokens = 4 } };
+            void Emit(string type, object data)
+            {
+                var payload = JsonSerializer.SerializeToElement(data).EnumerateObject().ToDictionary(item => item.Name, item => (object?)item.Value.Clone());
+                payload["type"] = type; payload["sequence_number"] = events.Count;
+                events.Add($"event: {type}\ndata: {JsonSerializer.Serialize(payload)}\n\n");
+            }
+            Emit("response.created", new { response = new { id, @object = "response", created_at = 1720000000, model = "deployment", status = "in_progress", output = Array.Empty<object>() } });
+            Emit("response.output_item.added", new { output_index = 0, item = new { type = "message", id = messageId, role = "assistant", status = "in_progress", content = Array.Empty<object>() } });
+            Emit("response.content_part.added", new { item_id = messageId, output_index = 0, content_index = 0, part = new { type = "output_text", text = "", annotations = Array.Empty<object>() } });
+            Emit("response.output_text.delta", new { item_id = messageId, output_index = 0, content_index = 0, delta = text, logprobs = Array.Empty<object>() });
+            Emit("response.output_text.done", new { item_id = messageId, output_index = 0, content_index = 0, text, logprobs = Array.Empty<object>() });
+            Emit("response.content_part.done", new { item_id = messageId, output_index = 0, content_index = 0, part = message.content[0] });
+            Emit("response.output_item.done", new { output_index = 0, item = message });
+            Emit("response.completed", new { response });
+        }
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(string.Concat(events), Encoding.UTF8, "text/event-stream") };
+    }
+    private HttpResponseMessage FunctionCall(string callId, string name, int ordinal)
+    {
+        var id = "response-success-" + ordinal;
+        var events = new List<string>();
+        if (api == "chat-completions")
+        {
+            events.Add("data: " + JsonSerializer.Serialize(new { id, @object = "chat.completion.chunk", created = 1720000000, model = "deployment", choices = new[] { new { index = 0, delta = new { role = "assistant", tool_calls = new[] { new { index = 0, id = callId, type = "function", function = new { name, arguments = "{}" } } } }, finish_reason = (string?)null } } }) + "\n\n");
+            events.Add("data: " + JsonSerializer.Serialize(new { id, @object = "chat.completion.chunk", created = 1720000000, model = "deployment", choices = new[] { new { index = 0, delta = new { }, finish_reason = "tool_calls" } } }) + "\n\ndata: [DONE]\n\n");
+        }
+        else
+        {
+            var itemId = "fc_" + callId;
+            var output = new { type = "function_call", id = itemId, call_id = callId, name, arguments = "{}", status = "completed" };
+            var response = new { id, @object = "response", created_at = 1720000000, model = "deployment", status = "completed", output = new[] { output }, usage = new { input_tokens = 2, output_tokens = 2, total_tokens = 4 } };
+            void Emit(string type, object data)
+            {
+                var payload = JsonSerializer.SerializeToElement(data).EnumerateObject().ToDictionary(item => item.Name, item => (object?)item.Value.Clone());
+                payload["type"] = type; payload["sequence_number"] = events.Count;
+                events.Add($"event: {type}\ndata: {JsonSerializer.Serialize(payload)}\n\n");
+            }
+            Emit("response.created", new { response = new { id, @object = "response", created_at = 1720000000, model = "deployment", status = "in_progress", output = Array.Empty<object>() } });
+            Emit("response.output_item.added", new { output_index = 0, item = new { type = "function_call", id = itemId, call_id = callId, name, arguments = "", status = "in_progress" } });
+            Emit("response.function_call_arguments.delta", new { item_id = itemId, output_index = 0, delta = "{}" });
+            Emit("response.function_call_arguments.done", new { item_id = itemId, output_index = 0, arguments = "{}" });
+            Emit("response.output_item.done", new { output_index = 0, item = output });
+            Emit("response.completed", new { response });
+        }
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(string.Concat(events), Encoding.UTF8, "text/event-stream") };
+    }
+
+}
+sealed class WireAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "alice")], "fixture")), "fixture")));
+}
+
+sealed class WireLoggerProvider(ConcurrentQueue<string> errors) : ILoggerProvider
+{
+    public ILogger CreateLogger(string categoryName) => new WireLogger(errors, categoryName);
+    public void Dispose() { }
+    private sealed class WireLogger(ConcurrentQueue<string> errors, string category) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel level) => level >= LogLevel.Warning;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (IsEnabled(level)) errors.Enqueue(category + ": " + formatter(state, exception) + "\n" + exception);
+        }
+    }
+}
+
+sealed class GetterResult(Action observed)
+{
+    public string Value { get { observed(); return "must not be read by recovery witness code"; } }
+}
+
+/// <summary>Delegates genuine optional recovery authority while controlling only the actual completion result for an effect-fence test.</summary>
+public class ResultCompletionGate : DispatchProxy
+{
+    public INativeSessionBrowserRecoveryJournal Inner { get; set; } = null!;
+    public string? TargetCallId { get; set; }
+    public bool Refuse { get; set; }
+    public bool LoseLease { get; set; }
+    public int Attempts { get; private set; }
+    public Action? AfterComplete { get; set; }
+    public int Mutations { get; private set; }
+    protected override object? Invoke(MethodInfo? method, object?[]? arguments)
+    {
+        if (method!.Name == nameof(INativeSessionJournal.CompleteDispatchAsync) && (TargetCallId is null || ((NativeToolCall)arguments![1]!).Id == TargetCallId))
+        {
+            Attempts++;
+            if (Refuse) return ValueTask.FromResult(false);
+            if (LoseLease) return LoseAndComplete((NativeSessionLease)arguments![0]!, (NativeToolCall)arguments[1]!, (CancellationToken)arguments[2]!);
+            if (AfterComplete is not null) return CompleteAndMutate((NativeSessionLease)arguments![0]!, (NativeToolCall)arguments[1]!, (CancellationToken)arguments[2]!);
+        }
+        return method.Invoke(Inner, arguments);
+    }
+    private async ValueTask<bool> CompleteAndMutate(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken)
+    {
+        var completed = await Inner.CompleteDispatchAsync(lease, call, cancellationToken);
+        if (completed) { AfterComplete!.Invoke(); Mutations++; }
+        return completed;
+    }
+    private async ValueTask<bool> LoseAndComplete(NativeSessionLease lease, NativeToolCall call, CancellationToken cancellationToken)
+    {
+        await Inner.FailureCleanupAsync(lease, cancellationToken);
+        return await Inner.CompleteDispatchAsync(lease, call, cancellationToken);
+    }
+}
+
+/// <summary>Explicit legal hidden model tuples; ID order opposes journal lexical order and completion delays differ.</summary>
+static class WireHeld
+{
+    internal sealed record Call(string Id, string Name, string Output, int Delay);
+    internal static Call[] Calls(WireCase subject) => subject.Flow != "deferred-read" ? [] : subject.HeldCount == 0 ? [new("deferred-read", "read", "fresh read result", 0)] : new Call[] { new("z-held", "read", "fresh read result", 30), new("y-held", "readTwo", "held read two", 1), new("a-held", "readThree", "held read three", 10) }.Take(subject.HeldCount).ToArray();
+}

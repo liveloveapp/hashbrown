@@ -546,67 +546,166 @@ test('unknown effects require separate operator authority and terminal reconcili
 test('historical browser tools stay inert through recovered approval and a later complete generation', async ({
   page,
 }, info) => {
-  await withDurableCluster(
-    info.project.metadata['provider'] as 'openai' | 'azure',
-    async (cluster) => {
-      const fixture = await cluster.start({ Workflow: 'after-tool' });
-      fixture.mock.onToolResult('historical-weather', {
-        content: 'Weather result retained',
-      });
-      fixture.mock.onMessage('Weather fixture', {
-        toolCalls: [
-          {
-            id: 'historical-weather',
-            name: 'getWeather',
-            arguments: { city: 'Portland' },
+  let hasPrimaryFailure = false;
+  let primaryFailure: unknown;
+  try {
+    await withRecoveryEvidence(page, info, async () => {
+      try {
+        await withDurableCluster(
+          info.project.metadata['provider'] as 'openai' | 'azure',
+          async (cluster) => {
+            const fixture = await cluster.start({ Workflow: 'after-tool' });
+            fixture.mock.onToolResult('historical-weather', {
+              content: 'Weather result retained',
+            });
+            fixture.mock.onMessage('Weather fixture', {
+              toolCalls: [
+                {
+                  id: 'historical-weather',
+                  name: 'getWeather',
+                  arguments: { city: 'Portland' },
+                },
+              ],
+            });
+            fixture.mock.onMessage('Hello fixture', {
+              content: 'Hello from .NET',
+            });
+            await withRoutedEndpoint(`${fixture.url}/run`, async (endpoint) => {
+              let diagnosticFailure: { error: unknown } | undefined;
+              try {
+                await open(page, endpoint.url, 'tool');
+                await createAppDriver(page).send('Weather fixture');
+                await expect(page.getByTestId('interrupt-count')).toHaveText(
+                  '2',
+                );
+                await expect(page.getByTestId('tool-count')).toHaveText('1');
+                const checkpointRequest = JSON.parse(endpoint.requests[1]);
+                expect(fixture.requests).toHaveLength(1);
+
+                await page.reload();
+                await refresh(page, 'Pending');
+
+                await expect(page.getByTestId('tool-count')).toHaveText('0');
+                expect(fixture.requests).toHaveLength(1);
+                expect(await durableEffects(fixture)).toBe(0);
+                await page.getByTestId('resume').click();
+                await expect(createAppDriver(page).assistant()).toHaveText(
+                  'Weather result retained',
+                );
+                await createAppDriver(page).expectIdle();
+                await expect(page.getByTestId('tool-count')).toHaveText('0');
+                const recoveredRequest = JSON.parse(endpoint.requests[2]);
+                expect(recoveredRequest.messages).toEqual(
+                  checkpointRequest.messages,
+                );
+                expect(recoveredRequest.tools).toEqual(checkpointRequest.tools);
+                expect(recoveredRequest.forwardedProps).toEqual(
+                  checkpointRequest.forwardedProps,
+                );
+                expect(fixture.requests).toHaveLength(2);
+                expect(await durableEffects(fixture)).toBe(1);
+                await createAppDriver(page).send('Hello fixture');
+                await expect(page.getByTestId('interrupt-count')).toHaveText(
+                  '2',
+                );
+                await expect(page.getByTestId('tool-count')).toHaveText('0');
+                expect(fixture.requests).toHaveLength(2);
+                expect(await durableEffects(fixture)).toBe(1);
+                await page.getByTestId('resume').click();
+                await expect(createAppDriver(page).assistant()).toHaveText(
+                  'Hello from .NET',
+                );
+                await createAppDriver(page).expectIdle();
+                await expect(page.getByTestId('tool-count')).toHaveText('0');
+                expect(fixture.requests).toHaveLength(3);
+                expect(await durableEffects(fixture)).toBe(2);
+              } catch (error) {
+                if (!hasPrimaryFailure) {
+                  hasPrimaryFailure = true;
+                  primaryFailure = error;
+                }
+                throw error;
+              } finally {
+                const bounded = (text: string) => ({
+                  text: text.slice(0, 65536),
+                  totalCharacters: text.length,
+                  truncated: text.length > 65536,
+                });
+                const publicFacts = await Promise.all(
+                  [
+                    'status',
+                    'is-resuming',
+                    'error',
+                    'sending-error',
+                    'generating-error',
+                    'interrupt-count',
+                    'interrupt-batch-id',
+                    'tool-count',
+                    'assistant',
+                    'recovery-required',
+                  ].map(async (id) => {
+                    try {
+                      const text = await page
+                        .getByTestId(id)
+                        .innerText({ timeout: 500 });
+                      return { id, available: true, value: bounded(text) };
+                    } catch (error) {
+                      return {
+                        id,
+                        available: false,
+                        errorType:
+                          error instanceof Error ? error.name : typeof error,
+                      };
+                    }
+                  }),
+                );
+                const diagnostic = {
+                  requestCount: endpoint.requests.length,
+                  omittedRequests: Math.max(0, endpoint.requests.length - 8),
+                  requests: endpoint.requests.slice(0, 8).map(bounded),
+                  responseCount: endpoint.responses.length,
+                  omittedResponses: Math.max(0, endpoint.responses.length - 8),
+                  responses: endpoint.responses.slice(0, 8).map((response) => ({
+                    body: bounded(response.body),
+                    complete: response.complete,
+                    upstreamCaptureTruncated: response.truncated,
+                  })),
+                  publicFacts,
+                };
+                try {
+                  await info.attach('historical-browser-owned-endpoint', {
+                    body: JSON.stringify(diagnostic, null, 2),
+                    contentType: 'application/json',
+                  });
+                } catch (error) {
+                  info.annotations.push({
+                    type: 'historical-browser-evidence-attachment-error',
+                    description:
+                      error instanceof Error ? error.name : typeof error,
+                  });
+                  if (!hasPrimaryFailure) {
+                    hasPrimaryFailure = true;
+                    primaryFailure = error;
+                    diagnosticFailure = { error };
+                  }
+                }
+              }
+              if (diagnosticFailure) throw diagnosticFailure.error;
+            });
           },
-        ],
-      });
-      fixture.mock.onMessage('Hello fixture', { content: 'Hello from .NET' });
-      await withRoutedEndpoint(`${fixture.url}/run`, async (endpoint) => {
-        await open(page, endpoint.url, 'tool');
-        await createAppDriver(page).send('Weather fixture');
-        await expect(page.getByTestId('interrupt-count')).toHaveText('2');
-        await expect(page.getByTestId('tool-count')).toHaveText('1');
-        const checkpointRequest = JSON.parse(endpoint.requests[1]);
-        expect(fixture.requests).toHaveLength(1);
-
-        await page.reload();
-        await refresh(page, 'Pending');
-
-        await expect(page.getByTestId('tool-count')).toHaveText('0');
-        expect(fixture.requests).toHaveLength(1);
-        expect(await durableEffects(fixture)).toBe(0);
-        await page.getByTestId('resume').click();
-        await expect(createAppDriver(page).assistant()).toHaveText(
-          'Weather result retained',
         );
-        await createAppDriver(page).expectIdle();
-        await expect(page.getByTestId('tool-count')).toHaveText('0');
-        const recoveredRequest = JSON.parse(endpoint.requests[2]);
-        expect(recoveredRequest.messages).toEqual(checkpointRequest.messages);
-        expect(recoveredRequest.tools).toEqual(checkpointRequest.tools);
-        expect(recoveredRequest.forwardedProps).toEqual(
-          checkpointRequest.forwardedProps,
-        );
-        expect(fixture.requests).toHaveLength(2);
-        expect(await durableEffects(fixture)).toBe(1);
-        await createAppDriver(page).send('Hello fixture');
-        await expect(page.getByTestId('interrupt-count')).toHaveText('2');
-        await expect(page.getByTestId('tool-count')).toHaveText('0');
-        expect(fixture.requests).toHaveLength(2);
-        expect(await durableEffects(fixture)).toBe(1);
-        await page.getByTestId('resume').click();
-        await expect(createAppDriver(page).assistant()).toHaveText(
-          'Hello from .NET',
-        );
-        await createAppDriver(page).expectIdle();
-        await expect(page.getByTestId('tool-count')).toHaveText('0');
-        expect(fixture.requests).toHaveLength(3);
-        expect(await durableEffects(fixture)).toBe(2);
-      });
-    },
-  );
+      } catch (error) {
+        if (!hasPrimaryFailure) {
+          hasPrimaryFailure = true;
+          primaryFailure = error;
+        }
+        throw error;
+      }
+    });
+  } catch (error) {
+    if (hasPrimaryFailure) throw primaryFailure;
+    throw error;
+  }
 });
 
 test('structured assistant history restores through the trusted schema without replaying an action', async ({

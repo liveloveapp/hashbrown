@@ -20,7 +20,9 @@ import {
   createChatRuntime,
   type FinishReason,
   type JsonValue,
+  type PendingConversationRecovery,
   type PendingInterruptBatch,
+  type ResumeConversationRecoveryOptions,
   type ResumeOptions,
   s,
   type SubagentRun,
@@ -63,6 +65,17 @@ export interface StructuredChatResourceRef<
   readonly isResuming: Signal<boolean>;
   /** Submit a complete response batch to resume the interrupted interaction. */
   resume(options: ResumeOptions): void;
+
+  /** The inert browser recovery batch awaiting explicit settlement. */
+  readonly pendingConversationRecovery: Signal<
+    PendingConversationRecovery | undefined
+  >;
+
+  /**
+   * Explicitly settle every recovered browser call and protected decision.
+   * @param options - The complete outcomes and decisions for the current recovery batch.
+   */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
 
   /** The local recovery revision and whether an explicit restore is required. */
   readonly recovery: Signal<ConversationRecoveryState>;
@@ -261,19 +274,22 @@ export function structuredChatResource<
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
-  const resolveTransport = () =>
+  const baseUrl = computed(() =>
+    options.apiUrl !== undefined
+      ? readReactiveOption(options.apiUrl)
+      : config.baseUrl,
+  );
+  const resolveTransport = computed(() =>
     createTransport({
       transport: options.transport ?? config.transport,
-      readBaseUrl: () =>
-        options.apiUrl !== undefined
-          ? readReactiveOption(options.apiUrl)
-          : config.baseUrl,
+      readBaseUrl: baseUrl,
       createMiddleware: () =>
         config.middleware?.map((middleware): Chat.Middleware => {
           return (requestInit) =>
             runInInjectionContext(injector, () => middleware(requestInit));
         }),
-    });
+    }),
+  );
   const collector = ɵinjectDevelopmentCollector();
   const runtime = createChatRuntime<Schema, Tools, Output, State>({
     system: readReactiveOption(options.system),
@@ -498,6 +514,10 @@ export function structuredChatResource<
     pendingInterrupts,
     isResuming,
     resume: runtime.resume,
+    pendingConversationRecovery: toNgSignal(
+      runtime.pendingConversationRecovery,
+    ),
+    resumeConversationRecovery: runtime.resumeConversationRecovery,
     recovery: toNgSignal(runtime.recovery),
     restoreConversation: runtime.restoreConversation,
     getRecoveryConfiguration: runtime.getRecoveryConfiguration,

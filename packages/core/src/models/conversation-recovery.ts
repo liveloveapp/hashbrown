@@ -1,5 +1,80 @@
 import type { Message, Tool } from '@ag-ui/core';
-import type { Interrupt } from './interrupt';
+import type { JsonValue } from '../utils/types';
+import type { Interrupt, ResumeEntry } from './interrupt';
+
+/**
+ * Server capability for explicitly settling unresolved browser calls after recovery.
+ *
+ * @public
+ */
+export interface PendingBrowserRecovery {
+  /** Supported browser recovery capability version. */
+  readonly protocolVersion: 1;
+  /** Positive server revision captured by the authoritative recovery lookup. */
+  readonly serverRevision: number;
+  /** Every unresolved browser call, identified by its original canonical ID. */
+  readonly callIds: readonly string[];
+}
+
+/**
+ * Inert browser recovery batch owned by the current local restoration epoch.
+ *
+ * @public
+ */
+export interface PendingConversationRecovery {
+  /** Fresh local restoration token; never a server ownership token. */
+  readonly id: string;
+  /** Server revision required for the explicit continuation. */
+  readonly serverRevision: number;
+  /** Original browser calls derived from validated canonical history. */
+  readonly toolCalls: readonly Readonly<{
+    /** Original canonical browser call identity. */
+    id: string;
+    /** Registered browser tool name. */
+    name: string;
+    /** Owned JSON arguments, without an executable handler. */
+    arguments: Readonly<Record<string, JsonValue>>;
+  }>[];
+  /** Genuine protected decisions required alongside all browser outcomes. */
+  readonly interrupts: readonly Interrupt[];
+}
+
+/**
+ * Explicit application observation for one recovered browser call.
+ *
+ * An unavailable result does not establish whether its external effect occurred.
+ *
+ * @public
+ */
+export type BrowserRecoveryOutcome =
+  | {
+      /** Original browser call being settled. */
+      readonly toolCallId: string;
+      /** Supply the result already known by the application. */
+      readonly status: 'result';
+      /** Known JSON result; strings retain their exact content. */
+      readonly value: JsonValue;
+    }
+  | {
+      /** Original browser call being settled. */
+      readonly toolCallId: string;
+      /** Explicitly acknowledge that the original result is unavailable. */
+      readonly status: 'unavailable';
+    };
+
+/**
+ * Complete browser outcomes and protected decisions for one local recovery batch.
+ *
+ * @public
+ */
+export interface ResumeConversationRecoveryOptions {
+  /** Current local pending recovery token. */
+  readonly batchId: string;
+  /** Exactly one explicit observation for every pending browser call. */
+  readonly outcomes: readonly BrowserRecoveryOutcome[];
+  /** Every genuine protected decision; absent or empty for browser-only batches. */
+  readonly entries?: readonly ResumeEntry[];
+}
 
 /** Canonical retained conversation data, validated against trusted runtime configuration. @public */
 export interface ConversationSnapshot<State = unknown> {
@@ -13,6 +88,8 @@ export interface ConversationSnapshot<State = unknown> {
   readonly interrupts?: readonly Interrupt[];
   /** Original first configured system message identity, when configured. */
   readonly configuredSystemMessageId?: string;
+  /** Negotiated capability for inert explicit settlement of pending browser calls. */
+  readonly pendingBrowserRecovery?: PendingBrowserRecovery;
 }
 
 /** Options for atomically restoring retained native history. @public */
@@ -23,17 +100,36 @@ export interface ConversationRestoreOptions {
   readonly structuredHistory?: 'strict' | 'preserve-diagnostics';
 }
 
-/** Plain text excluded from typed/UI projection, without cancellation authority. @public */
-export interface ConversationRecoveryDiagnostic {
-  /** Historical assistant text did not satisfy the configured response schema. */
-  readonly kind: 'unstructured-assistant-history';
-  /** Canonical thread containing the historical record. */
-  readonly threadId: string;
-  /** Canonical identity of the historical record. */
-  readonly messageId: string;
-  /** Exact historical text; applications must render it as ordinary escaped text. */
-  readonly content: string;
-}
+/**
+ * Canonical recovery observations for display as ordinary escaped text.
+ *
+ * Diagnostics do not grant cancellation or execution authority.
+ *
+ * @public
+ */
+export type ConversationRecoveryDiagnostic =
+  | {
+      /** Historical assistant text did not satisfy the configured response schema. */
+      readonly kind: 'unstructured-assistant-history';
+      /** Canonical thread containing the historical record. */
+      readonly threadId: string;
+      /** Canonical identity of the historical record. */
+      readonly messageId: string;
+      /** Exact historical text; render as ordinary escaped text. */
+      readonly content: string;
+    }
+  | {
+      /** The exact reserved browser result marker records an unknown external effect. */
+      readonly kind: 'browser-result-unavailable';
+      /** Canonical thread containing the browser result. */
+      readonly threadId: string;
+      /** Canonical identity of the browser result message. */
+      readonly messageId: string;
+      /** Original browser call associated with the canonical result. */
+      readonly toolCallId: string;
+      /** Exact reserved content; render as ordinary escaped text without retry authority. */
+      readonly content: string;
+    };
 
 /** Local compare-and-swap revision and recovery-required disposition. @public */
 export interface ConversationRecoveryState {

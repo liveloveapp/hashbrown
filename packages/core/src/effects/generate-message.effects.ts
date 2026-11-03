@@ -25,6 +25,7 @@ import {
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptOwnedPendingToolCalls,
+  ɵselectBrowserRecoveryState,
   ɵselectCommittedAgentState,
   ɵselectEffectiveCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
@@ -268,6 +269,18 @@ export const generateMessage = createEffect((store) => {
       onCommit,
     );
     if (interrupted) {
+      // Accept the cold continuation in the same terminal transaction before
+      // retiring its generation; the newly published native batch remains owned.
+      if (
+        store.read(ɵselectBrowserRecoveryState).claimId ===
+        generation.generationId
+      )
+        dispatch(
+          internalActions.browserRecoverySettled({
+            claimId: generation.generationId,
+            outcome: 'success',
+          }),
+        );
       dispatch(
         internalActions.logicalGenerationSettled({
           generationId: generation.generationId,
@@ -358,6 +371,43 @@ export const generateMessage = createEffect((store) => {
       }
 
       if (
+        store.read(ɵselectBrowserRecoveryState).claimId ===
+        generation.generationId
+      ) {
+        void store.dispatchAndWait(
+          internalActions.browserRecoverySettled({
+            claimId: generation.generationId,
+            // Same-thread cleanup can follow an issued request. An explicit
+            // new thread invalidates this claim before old cleanup can reach here.
+            outcome: 'cancelled',
+          }),
+          (followUps) => {
+            if (!ownsGeneration(generation)) return;
+            const attempt = generation.activeAttempt;
+            if (attempt)
+              releaseAttempt(
+                generation,
+                attempt.context,
+                true,
+                followUps.dispatch,
+                followUps.onCommit,
+              );
+            if (interruption === 'retire')
+              followUps.dispatch(internalActions.generationSilentlyRetired());
+            followUps.dispatch(
+              internalActions.logicalGenerationSettled({
+                generationId: generation.generationId,
+              }),
+            );
+            followUps.onCommit(() => {
+              generation.settled = true;
+              if (activeGeneration === generation) activeGeneration = undefined;
+            });
+          },
+        );
+        return;
+      }
+      if (
         store.read(ɵselectInterrupts).generationId === generation.generationId
       ) {
         settleUnclaimedToolSnapshot(generation);
@@ -427,29 +477,48 @@ export const generateMessage = createEffect((store) => {
     devActions.sendMessage,
     devActions.resendMessages,
     devActions.resume,
+    devActions.resumeConversationRecovery,
     (action) => {
+      const recoveryAction =
+        action.type === devActions.resumeConversationRecovery.type
+          ? action.payload
+          : undefined;
+      const recoveryState = store.read(ɵselectBrowserRecoveryState);
       if (
         disposed ||
+        ((recoveryState.pendingBrowserRecovery !== undefined ||
+          recoveryState.claimId !== undefined ||
+          recoveryState.required) &&
+          !recoveryAction) ||
         (action.type === internalActions.start.type &&
           store.read(ɵselectRestorationBarrier))
       ) {
         return;
       }
 
+      if (
+        recoveryAction &&
+        (recoveryState.claimId !== recoveryAction.claimId ||
+          recoveryState.checkpoint !== recoveryAction.checkpoint ||
+          store.read(ɵselectGenerationId) !== undefined)
+      )
+        return;
       const resumeAction =
         action.type === devActions.resume.type ? action.payload : undefined;
       const interruptState = store.read(ɵselectInterrupts);
       if (
         interruptState.recoveryRequired ||
-        (interruptState.pending && !resumeAction)
+        (interruptState.pending && !resumeAction && !recoveryAction)
       )
         return;
       if (resumeAction && interruptState.claimId !== resumeAction.claimId)
         return;
       let initialResume = resumeAction;
+      let initialRecovery = recoveryAction;
       const configuredThreadId = store.read(selectThreadId);
       const threadId = configuredThreadId ?? _createRequestId();
-      const generationId = resumeAction?.claimId ?? _createRequestId();
+      const generationId =
+        recoveryAction?.claimId ?? resumeAction?.claimId ?? _createRequestId();
       const supersededGeneration = activeGeneration;
       if (supersededGeneration) {
         // Claimed tools settle synchronously while their exact ownership is
@@ -485,43 +554,46 @@ export const generateMessage = createEffect((store) => {
             return { kind: 'cancelled' };
           }
           const resumedRun = initialResume;
+          const recoveredRun = initialRecovery;
           initialResume = undefined;
-          if (!resumedRun && !store.read(selectShouldGenerateMessage)) {
+          initialRecovery = undefined;
+          const checkpoint = recoveredRun?.checkpoint ?? resumedRun?.checkpoint;
+          if (!checkpoint && !store.read(selectShouldGenerateMessage)) {
             return { kind: 'cancelled' };
           }
 
-          const responseSchema = resumedRun
-            ? resumedRun.checkpoint.responseSchema
+          const responseSchema = checkpoint
+            ? checkpoint.responseSchema
             : store.read(selectResponseSchema);
-          const messages = resumedRun
-            ? resumedRun.checkpoint.messages
+          const messages = checkpoint
+            ? checkpoint.messages
             : store.read(ɵselectEffectiveCommittedAgUiMessages);
-          const state = resumedRun
-            ? resumedRun.checkpoint.state
+          const state = checkpoint
+            ? checkpoint.state
             : store.read(ɵselectCommittedAgentState);
-          const debounce = resumedRun
-            ? resumedRun.checkpoint.debounce
+          const debounce = checkpoint
+            ? checkpoint.debounce
             : store.read(selectDebounce);
-          const retries = resumedRun
-            ? resumedRun.checkpoint.retries
+          const retries = checkpoint
+            ? checkpoint.retries
             : store.read(selectRetries);
-          const internalTools = resumedRun
-            ? resumedRun.checkpoint.internalTools
+          const internalTools = checkpoint
+            ? checkpoint.internalTools
             : store.read(selectTools);
           const tools = Chat.helpers.toApiToolsFromInternal(internalTools);
-          const toolsByName = resumedRun
-            ? resumedRun.checkpoint.toolsByName
+          const toolsByName = checkpoint
+            ? checkpoint.toolsByName
             : store.read(selectToolEntities);
           // The model may be offered a narrower schema than the one used to
           // parse responses and history.
-          const requestResponseSchema = resumedRun
-            ? resumedRun.checkpoint.requestResponseSchema
+          const requestResponseSchema = checkpoint
+            ? checkpoint.requestResponseSchema
             : store.read(selectRequestResponseSchema);
           const responseJsonSchema = requestResponseSchema
             ? s.toJsonSchema(requestResponseSchema)
             : undefined;
-          const uiRequested = resumedRun
-            ? resumedRun.checkpoint.uiRequested
+          const uiRequested = checkpoint
+            ? checkpoint.uiRequested
             : store.read(selectUiRequested);
           if (activeGeneration?.coordinator === coordinator) {
             activeGeneration.threadId = threadId;
@@ -535,8 +607,8 @@ export const generateMessage = createEffect((store) => {
             return { kind: 'cancelled' };
           }
 
-          const transportProvider = resumedRun
-            ? resumedRun.checkpoint.transportProvider
+          const transportProvider = checkpoint
+            ? checkpoint.transportProvider
             : store.read(selectTransport);
           let transport;
           try {
@@ -564,15 +636,18 @@ export const generateMessage = createEffect((store) => {
             };
           }
 
+          const interruptBatch =
+            recoveredRun?.checkpoint.nativeBatch ?? resumedRun?.batch;
           const outcome = await executeLogicalRun({
             transport,
             retries,
+            isRecovery: recoveredRun !== undefined,
             isResume: resumedRun !== undefined,
-            beforeSend: resumedRun
+            beforeSend: interruptBatch
               ? () => {
                   try {
                     assertInterruptsNotExpired(
-                      resumedRun.batch.interrupts,
+                      interruptBatch.interrupts,
                       Date.now(),
                     );
                   } catch (error) {
@@ -586,19 +661,22 @@ export const generateMessage = createEffect((store) => {
             cancelSignal,
             retiredSignal,
             createRequest: ({ attempt, maxAttempts, signal }) => {
-              const requestId = _createRequestId();
+              const requestId =
+                recoveredRun?.checkpoint.request.runId ?? _createRequestId();
 
               return {
-                input: createCanonicalRunAgentInput({
-                  threadId,
-                  runId: requestId,
-                  messages,
-                  state,
-                  tools,
-                  responseSchema: responseJsonSchema,
-                  ui: uiRequested,
-                  resume: resumedRun?.options.entries,
-                }),
+                input:
+                  recoveredRun?.checkpoint.request ??
+                  createCanonicalRunAgentInput({
+                    threadId,
+                    runId: requestId,
+                    messages,
+                    state,
+                    tools,
+                    responseSchema: responseJsonSchema,
+                    ui: uiRequested,
+                    resume: resumedRun?.options.entries,
+                  }),
                 signal,
                 attempt,
                 maxAttempts,
@@ -642,6 +720,22 @@ export const generateMessage = createEffect((store) => {
                 return;
               }
 
+              if (recoveredRun) {
+                await store.dispatchAndWait(
+                  internalActions.browserRecoveryAcknowledged({
+                    claimId: recoveredRun.claimId,
+                    checkpoint: recoveredRun.checkpoint,
+                    canonicalMessages:
+                      recoveredRun.checkpoint.canonicalMessages,
+                    responseSchema: recoveredRun.checkpoint.responseSchema,
+                    toolsByName: recoveredRun.checkpoint.toolsByName,
+                  }),
+                );
+                if (!ownsAttempt(generation, context)) return;
+                await store.dispatchAndWait(
+                  internalActions.generationAttemptStarted(),
+                );
+              }
               if (resumedRun) {
                 store.dispatch(
                   internalActions.resumeAcknowledged({
@@ -818,7 +912,9 @@ export const generateMessage = createEffect((store) => {
         unclaimedToolSnapshot: undefined,
         activeAttempt: undefined,
         cancellable:
-          resumeAction !== undefined || store.read(selectShouldGenerateMessage),
+          recoveryAction !== undefined ||
+          resumeAction !== undefined ||
+          store.read(selectShouldGenerateMessage),
         finalAccepted: false,
         cancellationMarkerId: _createRequestId(),
         settled: false,
@@ -831,6 +927,25 @@ export const generateMessage = createEffect((store) => {
           return;
         }
 
+        if (recoveryAction) {
+          return store
+            .dispatchAndWait(
+              internalActions.browserRecoverySettled({
+                claimId: recoveryAction.claimId,
+                outcome:
+                  outcome.kind === 'finished'
+                    ? 'success'
+                    : outcome.kind === 'cancelled'
+                      ? 'cancelled'
+                      : 'failed',
+              }),
+            )
+            .then(() => {
+              if (outcome.kind === 'server-error' || outcome.kind === 'failed')
+                store.dispatch(apiActions.generateMessageError(outcome.error));
+              settleLogicalGeneration(generation);
+            });
+        }
         if (resumeAction) {
           return store.dispatchAndWait(
             internalActions.resumeSettlementStarted(),

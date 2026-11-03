@@ -6,6 +6,17 @@ public sealed class FixtureNativeGate(string selected)
     private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _renewalFailed;
     private int _cleanupCompleted;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _counts = new(StringComparer.Ordinal);
+    /// <summary>Actual journal and passive native-stage observations in this worker.</summary>
+    public IReadOnlyDictionary<string, int> Counts => new Dictionary<string, int>(_counts);
+    /// <summary>Counts a reached real operation independently of its success.</summary>
+    public void Record(string operation) => _counts.AddOrUpdate(operation, 1, (_, count) => count + 1);
+    /// <summary>Counts an immutable native observation by stage without retaining raw data.</summary>
+    public void Observe(string observation)
+    {
+        using var value = System.Text.Json.JsonDocument.Parse(observation);
+        Record(value.RootElement.GetProperty("stage").GetString()!);
+    }
     private string _stage = "pending";
     /// <summary>Last observed selected native boundary.</summary>
     public string Stage => Volatile.Read(ref _stage);

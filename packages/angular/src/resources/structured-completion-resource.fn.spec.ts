@@ -39,6 +39,8 @@ const createChatStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    pendingConversationRecovery: signal(undefined),
+    resumeConversationRecovery: vi.fn(),
     recovery: signal({ revision: 0, required: false }),
     restoreConversation: vi.fn(),
     getRecoveryConfiguration: vi.fn(),

@@ -12,6 +12,15 @@ import type { JsonValue } from '../utils';
 export interface HashbrownRunAgentExtension {
   responseSchema?: object;
   ui?: boolean;
+  /** Request-local explicit cold settlement evidence; values remain in tool messages. */
+  recovery?: {
+    readonly version: 1;
+    readonly serverRevision: number;
+    readonly outcomes: readonly {
+      readonly toolCallId: string;
+      readonly status: 'result' | 'unavailable';
+    }[];
+  };
 }
 
 /**
@@ -57,6 +66,7 @@ export interface CreateCanonicalRunAgentInputOptions {
   readonly ui?: boolean;
   /** Owned protocol responses for the initial resumed model run. */
   readonly resume?: readonly ResumeEntry[];
+  readonly recovery?: HashbrownRunAgentExtension['recovery'];
 }
 
 function mapTool(tool: Chat.Api.Tool): Tool {
@@ -110,8 +120,10 @@ export function createCanonicalRunAgentInput({
   responseSchema,
   ui,
   resume,
+  recovery,
 }: CreateCanonicalRunAgentInputOptions): HashbrownRunAgentInput {
-  const hashbrown = createHashbrownExtension(responseSchema, ui);
+  const base = createHashbrownExtension(responseSchema, ui);
+  const hashbrown = recovery ? { ...base, recovery } : base;
 
   return {
     threadId,

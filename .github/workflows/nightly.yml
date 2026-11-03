@@ -75,8 +75,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
         with:
-          global-json-file: tools/conformance/dotnet/global.json
+          dotnet-version: '10.0.402'
           cache: true
           cache-dependency-path: tools/conformance/dotnet/packages.lock.json
       - run: npm ci

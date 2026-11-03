@@ -18,3 +18,13 @@ export interface ResumeCheckpoint {
   readonly uiRequested: boolean;
   readonly transportProvider: TransportOrFactory | undefined;
 }
+
+/** Exact immutable initial request for a claimed cold browser continuation. @internal */
+export interface BrowserRecoveryCheckpoint extends ResumeCheckpoint {
+  /** Genuine owned native decision batch; absent for browser-only recovery. */
+  readonly nativeBatch?: import('../models/interrupt').PendingInterruptBatch;
+  /** Fully serialized, capped and privately marked initial run input. */
+  readonly request: import('../transport/hashbrown-run-agent-input').HashbrownRunAgentInput;
+  /** Original canonical history followed by explicit browser results. */
+  readonly canonicalMessages: readonly Readonly<Message>[];
+}

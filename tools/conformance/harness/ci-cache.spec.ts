@@ -6,7 +6,7 @@ const {
   dotnetTestSuites,
 }: {
   dotnetTestSuites: Record<
-    'harness' | 'runtime' | 'package',
+    'harness' | 'runtime' | 'package' | 'recovery-compatibility',
     readonly string[]
   >;
 } = require(join(process.cwd(), 'tools/conformance/dotnet/test-suites'));
@@ -157,6 +157,7 @@ test('package qualification remains fresh and SDK builds retain commit provenanc
     'package-acceptance',
     'package-pr-acceptance',
     'check-docs',
+    'test-recovery-compatibility',
   ];
 
   const cacheable = gates.filter(

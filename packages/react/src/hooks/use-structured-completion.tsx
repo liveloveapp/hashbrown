@@ -6,7 +6,9 @@ import {
   type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
+  type PendingConversationRecovery,
   type PendingInterruptBatch,
+  type ResumeConversationRecoveryOptions,
   type ResumeOptions,
   s,
   type TokenUsage,
@@ -100,6 +102,15 @@ export interface UseStructuredCompletionResult<Output, State = unknown> {
   readonly isResuming: boolean;
   /** Submits a complete response batch for the current interruption. */
   resume(options: ResumeOptions): void;
+
+  /** The inert browser recovery batch awaiting explicit settlement. */
+  readonly pendingConversationRecovery: PendingConversationRecovery | undefined;
+
+  /**
+   * Explicitly settle every recovered browser call and protected decision.
+   * @param options - The complete outcomes and decisions for the current recovery batch.
+   */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
 
   /** The local recovery revision and whether an explicit restore is required. */
   readonly recovery: ConversationRecoveryState;

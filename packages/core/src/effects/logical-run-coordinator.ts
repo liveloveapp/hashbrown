@@ -35,6 +35,8 @@ export type LogicalRunRequestContext = LogicalRunAttemptContext;
 export interface ExecuteLogicalRunOptions {
   /** Disables replay after an identity-validated start for this resumed model run. */
   readonly isResume?: boolean;
+  /** Initial cold recovery sends once, even when admission is ambiguous before acknowledgement. */
+  readonly isRecovery?: boolean;
   /** Rechecks eligibility immediately before every transport send. */
   readonly beforeSend?: () => void;
   readonly transport: Transport;
@@ -83,6 +85,7 @@ export type LogicalRunOutcome =
 export async function executeLogicalRun({
   transport,
   isResume = false,
+  isRecovery = false,
   beforeSend,
   retries,
   cancelSignal,
@@ -93,7 +96,7 @@ export async function executeLogicalRun({
   onEvent,
   onAttemptRolledBack,
 }: ExecuteLogicalRunOptions): Promise<LogicalRunOutcome> {
-  let retryState = createLogicalRunRetryState(retries);
+  let retryState = createLogicalRunRetryState(isRecovery ? 0 : retries);
 
   while (true) {
     const interruption = getInterruption(retiredSignal, cancelSignal);
@@ -165,7 +168,7 @@ export async function executeLogicalRun({
         code: 'PROTOCOL_ERROR',
       });
     onAttemptRolledBack?.(context, error);
-    if (isResume && acknowledged) {
+    if (isRecovery || (isResume && acknowledged)) {
       return { kind: 'failed', error, exhaustedRetries: false };
     }
     const failureDecision = decideLogicalRunFailure(retryState, error);

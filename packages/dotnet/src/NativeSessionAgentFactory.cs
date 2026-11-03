@@ -52,7 +52,11 @@ public static class NativeSessionAgentFactory
                 JsonSerializer.SerializeToElement(invocation.Arguments), AIAgent.CurrentRunContext?.Session, cancellationToken);
         context.Cancellation.ThrowIfCancellationRequested();
         var result = await next(invocation, context.Cancellation);
+        var witness = context.SnapshotRecoveryResult(call, result);
+        var heldWitness = context.SnapshotHeldRecoveryResult(call, result);
         await context.CompleteAsync(call, context.Cancellation);
+        context.PublishRecoveryResult(call, witness);
+        context.PublishHeldRecoveryResult(call, heldWitness);
         return result;
       }
       catch { await context.CancelWorkAsync(); throw; }

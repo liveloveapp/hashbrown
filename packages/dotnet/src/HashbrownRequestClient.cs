@@ -42,7 +42,12 @@ public sealed class HashbrownRequestClient : DelegatingChatClient
     }
     var sawBrowser = false;
     var sawServer = false;
-    await foreach (var update in base.GetStreamingResponseAsync(messages, configured, cancellationToken).WithCancellation(cancellationToken))
+    var context = _nativeContext?.Invoke();
+    var projected = context?.Recovery is not null
+        ? (context.RecoveredProviderInput ?? throw new NativeSessionRequestException(409)).Project(messages.ToArray(), context)
+        : messages;
+    if (context?.Recovery is not null) context.Observe("Recovery.Provider.Projected");
+    await foreach (var update in base.GetStreamingResponseAsync(projected, configured, cancellationToken).WithCancellation(cancellationToken))
     {
       foreach (var call in update.Contents.OfType<FunctionCallContent>())
       {

@@ -144,6 +144,17 @@ export const reducer = createReducer(
     committed: action.payload.canonicalMessages,
     systemMessage: action.payload.systemMessage,
   })),
+  on(
+    internalActions.browserRecoveryAcknowledged,
+    (state, action): AgUiMessagesState => ({
+      ...state,
+      committed: action.payload.canonicalMessages,
+      draft: Object.freeze([]),
+      attemptActive: false,
+      protocolError: undefined,
+      ...seedSubagents(action.payload.canonicalMessages),
+    }),
+  ),
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
     const committed = ownRestored(action.payload.canonicalMessages);

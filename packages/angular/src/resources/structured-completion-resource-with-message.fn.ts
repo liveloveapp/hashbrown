@@ -94,6 +94,8 @@ export function structuredCompletionResourceWithMessage<
     pendingInterrupts: resource.pendingInterrupts,
     isResuming: resource.isResuming,
     resume: resource.resume,
+    pendingConversationRecovery: resource.pendingConversationRecovery,
+    resumeConversationRecovery: resource.resumeConversationRecovery,
     recovery: resource.recovery,
     restoreConversation: resource.restoreConversation,
     getRecoveryConfiguration: resource.getRecoveryConfiguration,

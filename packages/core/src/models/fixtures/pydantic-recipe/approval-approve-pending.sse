@@ -1,14 +1,14 @@
-data: {"type":"RUN_STARTED","timestamp":1793476710212,"threadId":"capture-approval-approve","runId":"approval-approve-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793679458141,"threadId":"capture-approval-approve","runId":"approval-approve-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793476710214,"messageId":"3b1a246c-d75a-4c00-91ba-5fa63a61b5d4","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793679458143,"messageId":"07a281ff-dcc2-4770-8687-4aa76a81c1e0","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793476710214,"messageId":"3b1a246c-d75a-4c00-91ba-5fa63a61b5d4"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793679458143,"messageId":"07a281ff-dcc2-4770-8687-4aa76a81c1e0"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793476710214,"toolCallId":"capture-approval-approve-approval","toolCallName":"approvalTool","parentMessageId":"3b1a246c-d75a-4c00-91ba-5fa63a61b5d4"}
+data: {"type":"TOOL_CALL_START","timestamp":1793679458143,"toolCallId":"capture-approval-approve-approval","toolCallName":"approvalTool","parentMessageId":"07a281ff-dcc2-4770-8687-4aa76a81c1e0"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793476710214,"toolCallId":"capture-approval-approve-approval","delta":"{}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793679458143,"toolCallId":"capture-approval-approve-approval","delta":"{}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793476710215,"toolCallId":"capture-approval-approve-approval"}
+data: {"type":"TOOL_CALL_END","timestamp":1793679458144,"toolCallId":"capture-approval-approve-approval"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793476710217,"threadId":"capture-approval-approve","runId":"approval-approve-run","outcome":{"type":"interrupt","interrupts":[{"id":"int-capture-approval-approve-approval","reason":"tool_call","message":"Approve approvalTool({})?","toolCallId":"capture-approval-approve-approval","responseSchema":{"properties":{"approved":{"type":"boolean"},"editedArgs":{"type":"object"},"reason":{"type":"string"}},"required":["approved"],"type":"object"}}]}}
+data: {"type":"RUN_FINISHED","timestamp":1793679458145,"threadId":"capture-approval-approve","runId":"approval-approve-run","outcome":{"type":"interrupt","interrupts":[{"id":"int-capture-approval-approve-approval","reason":"tool_call","message":"Approve approvalTool({})?","toolCallId":"capture-approval-approve-approval","responseSchema":{"properties":{"approved":{"type":"boolean"},"editedArgs":{"type":"object"},"reason":{"type":"string"}},"required":["approved"],"type":"object"}}]}}
 

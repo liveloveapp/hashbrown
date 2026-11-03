@@ -13,11 +13,16 @@ import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
  */
 export type ValidatedRunFinishedOutcome =
   | { readonly type: 'success' }
-  | { readonly type: 'interrupt'; readonly interrupts: readonly Interrupt[] }
+  | {
+      readonly type: 'interrupt';
+      readonly interrupts: readonly Interrupt[];
+      /** Kept-open call observations; these identifiers grant no approval authority. */
+      readonly pendingToolCallIds?: readonly string[];
+    }
   | { readonly type: 'cancelled' };
 
 /**
- * Validates a `RUN_FINISHED.outcome` and owns its interrupts.
+ * Validates a `RUN_FINISHED.outcome` and owns its interrupts and kept-open calls.
  *
  * An absent outcome is success, as AG-UI 1.0 defines it. A cancelled outcome
  * carries nothing else: the run stopped without failing, so there is neither
@@ -41,8 +46,12 @@ export function validateRunFinishedOutcome(
     )
       throw new TypeError();
     const ids = new Set<string>();
+    const pending = value['pendingToolCallIds'];
+    const pendingToolCallIds =
+      pending === undefined ? undefined : ownPendingToolCallIds(pending);
     return Object.freeze({
       type: 'interrupt',
+      ...(pendingToolCallIds === undefined ? {} : { pendingToolCallIds }),
       interrupts: Object.freeze(
         Array.from(interrupts, (item): Interrupt => {
           if (
@@ -83,6 +92,27 @@ export function validateRunFinishedOutcome(
   } catch {
     throw new TypeError('Invalid run outcome.');
   }
+}
+
+/** Owns dense, unique call observations without interpreting them as permissions. */
+function ownPendingToolCallIds(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) throw new TypeError();
+  const ids = new Set<string>();
+  const owned: string[] = [];
+  for (let index = 0; index < value.length; index++) {
+    const item = Object.getOwnPropertyDescriptor(value, String(index));
+    if (
+      !item ||
+      !('value' in item) ||
+      typeof item.value !== 'string' ||
+      item.value.trim().length === 0 ||
+      ids.has(item.value)
+    )
+      throw new TypeError();
+    ids.add(item.value);
+    owned.push(item.value);
+  }
+  return Object.freeze(owned);
 }
 
 const SUCCESS: ValidatedRunFinishedOutcome = Object.freeze({

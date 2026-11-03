@@ -1,0 +1,4192 @@
+import {
+  assertCandidateAuthoritativeResponse,
+  assertCandidateCorruptionEvidence,
+  assertCandidateDefinitiveRejection,
+  assertCandidateExpiredRead,
+  assertCandidateFacadeSchema,
+  assertCandidateOrdinaryThreadQualification,
+  assertCandidateProviderTextHistory,
+  assertCandidateProxyIntervention,
+  assertCandidateRacePublicQualification,
+  assertCandidateReadAdoption,
+  assertCandidateUnchangedSnapshot,
+  assertCandidateUnknownEffectLocalState,
+  type CandidateDefinitiveRejectionObservation,
+  type CandidateFaultObservation,
+  candidateResolvedUiAnswer,
+  type CandidateWarmPhaseCounters,
+  captureCandidateOriginalRun,
+  classifyCandidateWarmPhase,
+  finalizeCandidateAcceptance,
+  isCandidateMalformedBoundaryReady,
+  isCandidateNativeCleanupComplete,
+  readCandidatePendingBrowserCalls,
+  reconcileCandidateBusyReader,
+  refreshCandidateFaultObservation,
+  refreshCandidateOrdinaryThreadQualification,
+} from './candidate-browser-acceptance';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import {
+  type Browser,
+  type BrowserContext,
+  expect,
+  type Page,
+} from '@playwright/test';
+import {
+  type DurableFixtureCluster,
+  withDurableCluster,
+} from './durable-fixture';
+import { type DotnetFixture, type ModelRequest } from './http-fixture';
+import {
+  resolveDotnetHost,
+  selectDotnetHost,
+  verifyLoadedDotnetHost,
+} from './dotnet-host';
+import {
+  type CandidateHandlerObserver,
+  type CandidateObservedJson,
+  startCandidateHandlerObserver,
+} from './candidate-handler-observer';
+import {
+  type CandidateReadIntervention,
+  type CandidateRecoveryProxy,
+  type CandidateRunIntervention,
+  startCandidateRecoveryProxy,
+} from './candidate-recovery-proxy';
+import {
+  assertCandidateContinuation,
+  assertCandidateMixedContinuation,
+  assertCandidateObserverUnchanged,
+  assertCandidatePersistedRecoveryAbsent,
+  bindCandidateObserverBaseline,
+  type CandidateExpectedBrowserOutcome,
+  type CandidateExpectedProtectedDecision,
+  type CandidateObserverBaseline,
+  captureCandidatePausedObserverBaseline,
+} from './candidate-browser-evidence';
+import {
+  expectNativeRunCapture,
+  expectNativeToolPairs,
+  type NativeToolPair,
+} from './native-wire';
+import type { CandidateBrowserRecord } from './candidate-browser-manifest';
+import { runCandidateObserverPositiveControl } from './candidate-browser-observer-control';
+
+const knownString = '  Known café 🛫\n';
+const marker =
+  '{"hashbrownRecovery":{"version":1,"status":"result-unavailable","effect":"unknown","message":"The browser result is unavailable after recovery. The operation may already have occurred. No retry was performed."}}';
+const auth = { 'X-Fixture-Principal': 'alice' };
+const objectResult = {
+  known: true,
+  nested: [null, true, { label: 'café 🛫' }],
+  exact: '  text\n',
+};
+type Decision = 'approve' | 'decline' | 'cancel';
+interface BrowserCall {
+  readonly id: string;
+  readonly city: string;
+  readonly value: CandidateObservedJson;
+  readonly status: 'result' | 'unavailable';
+}
+interface ProtectedCall {
+  readonly id: string;
+  readonly code: string;
+  readonly decision: Decision;
+}
+interface Pending {
+  readonly id: string;
+  readonly serverRevision: number;
+  readonly toolCalls: readonly {
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }[];
+  readonly interrupts: readonly { id: string; toolCallId: string }[];
+}
+interface Status {
+  readonly threadId: string;
+  readonly facade: string;
+  readonly pending: Pending | null;
+  readonly pendingInterrupts?: Readonly<{
+    id: string;
+    interrupts: readonly Record<string, unknown>[];
+  }> | null;
+  readonly recovery: {
+    readonly revision: number;
+    readonly required: boolean;
+    readonly diagnostics?: readonly {
+      kind: string;
+      toolCallId?: string;
+      content?: string;
+    }[];
+  };
+  readonly lastRead?: {
+    schemaVersion: number;
+    disposition: string;
+    serverRevision: number;
+    reason?: string;
+  };
+  readonly messages?: readonly Record<string, unknown>[];
+  readonly configuration?: Readonly<Record<string, unknown>>;
+  readonly resourceProbe?: Readonly<Record<string, unknown>>;
+  readonly output?: unknown;
+  readonly value?: unknown;
+  readonly rawOutput?: unknown;
+  readonly localError?: string;
+  readonly error?: unknown;
+  readonly state?: unknown;
+  readonly lastAction?: string;
+  readonly isLoading: boolean;
+  readonly isResuming: boolean;
+  readonly transport: readonly {
+    kind: string;
+    requestId: string;
+    monotonicMs: number;
+    abortSource?: 'caller' | 'deadline';
+    abortReason?: string | Readonly<{ name: string; message: string }>;
+  }[];
+  readonly events: readonly {
+    type: string;
+    requestId: string;
+    runId: string;
+    monotonicMs: number;
+  }[];
+}
+interface NativeState {
+  readonly session: {
+    id: string;
+    state: string;
+    revision: number;
+    generation: number;
+    payload: string;
+    claim_revision?: number;
+    admitted_request?: string | null;
+  } | null;
+  readonly batches: readonly {
+    batch_id: string;
+    state: string;
+    published_revision: number;
+    admitted_generation: number | null;
+    admitted_revision: number | null;
+  }[];
+  readonly members: readonly {
+    call_id: string;
+    request_id: string;
+    batch_id: string;
+    admitted_generation: number | null;
+    admitted_revision: number | null;
+  }[];
+  readonly invocations: readonly { call_id: string; state: string }[];
+  readonly effects: readonly {
+    session_id: string;
+    call_id: string;
+    request_id: string;
+    batch_id: string;
+    admitted_generation: number;
+    admitted_revision: number;
+    code: string;
+  }[];
+}
+interface Witness {
+  readonly workerId: string;
+  readonly seq: number;
+  readonly threadId: string;
+  readonly runId: string;
+  readonly callId: string;
+  readonly requestId: string;
+  readonly batchId: string;
+  readonly admittedGeneration: number;
+  readonly admittedRevision: number;
+  readonly domain: string;
+  readonly nativeType: string;
+  readonly jsonKind?: string;
+  readonly rawJson?: string;
+  readonly text?: string;
+}
+interface Evidence {
+  readonly workerId: string;
+  readonly faulted: boolean;
+  readonly records: readonly Witness[];
+}
+interface WorkerEvidence {
+  readonly fixture: DotnetFixture;
+  readonly id: string;
+  stages: Record<string, number>;
+  evidence: Evidence;
+}
+interface Phase {
+  readonly browsers: readonly BrowserCall[];
+  readonly protected: readonly ProtectedCall[];
+  readonly prompt: string;
+  readonly split: boolean;
+}
+interface Plan {
+  readonly browsers: readonly BrowserCall[];
+  readonly protected: readonly ProtectedCall[];
+  readonly history: boolean;
+  readonly split: boolean;
+}
+interface Snapshot {
+  readonly state: NativeState;
+  readonly runs: readonly CapturedRun[];
+  readonly providerCount: number;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly observerAttempts: readonly number[];
+}
+type PhaseCounters = CandidateWarmPhaseCounters &
+  Readonly<{
+    runCount: number;
+    sessionRevision: number;
+    sessionGeneration: number;
+  }>;
+interface CapturedRun {
+  readonly proxyId: string;
+  readonly status?: number;
+  readonly input: Record<string, unknown>;
+}
+
+/** Narrows only parsed structured data; strings are never treated as metadata. */
+function object(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function content(call: BrowserCall): string {
+  return call.status === 'unavailable'
+    ? marker
+    : typeof call.value === 'string'
+      ? call.value
+      : JSON.stringify(call.value);
+}
+function plans(record: CandidateBrowserRecord): Plan {
+  const scenario = record.scenario;
+  let values: readonly CandidateObservedJson[] = [knownString];
+  let unavailable = scenario.includes('unavailable');
+  let decisions: readonly Decision[] = [];
+  if (scenario.includes('known-object')) values = [objectResult];
+  if (scenario.includes('known-null')) values = [null];
+  if (scenario === 'mixed.decline.known') values = [objectResult];
+  if (scenario === 'mixed.cancel.known') values = [null];
+  if (scenario.startsWith('mixed.'))
+    decisions = [
+      scenario.includes('.approve.')
+        ? 'approve'
+        : scenario.includes('.decline.')
+          ? 'decline'
+          : 'cancel',
+    ];
+  if (scenario === 'multiple.grouped.history') {
+    values = [
+      knownString,
+      objectResult,
+      'Observed unavailable original operation',
+    ];
+    decisions = ['approve', 'decline', 'cancel'];
+    unavailable = false;
+  }
+  if (scenario === 'multiple.split.history') {
+    values = [null, knownString];
+    decisions = ['approve', 'approve'];
+  }
+  if (
+    [
+      'restart.before-restore',
+      'race.same-revision',
+      'local.stale-token',
+      'local.pending-mutation-gate',
+      'failure.ack-disconnect',
+      'failure.malformed-ack',
+      'failure.timeout',
+      'failure.definitive-rejection',
+      'version.v1',
+      'server.busy',
+      'server.expired',
+      'server.corrupt',
+      'thread.explicit-new',
+    ].includes(scenario) ||
+    scenario.startsWith('server.unknown-effect.')
+  )
+    decisions = ['approve'];
+  if (
+    [
+      'replica.before-settlement',
+      'failure.preack-disconnect',
+      'failure.cancel-after-ack',
+      'display.html',
+    ].includes(scenario)
+  )
+    decisions = ['decline'];
+  if (scenario === 'local.incomplete-outcomes') {
+    values = [knownString, 'Second exact string'];
+    decisions = ['approve', 'approve'];
+  }
+  if (scenario === 'local.incomplete-decisions') {
+    values = [null];
+    decisions = ['approve', 'decline'];
+  }
+  if (scenario === 'replica.before-settlement') values = [objectResult];
+  if (scenario === 'failure.definitive-rejection')
+    values = [{ padding: 'x'.repeat(32_768), exact: true }];
+  if (scenario === 'display.html')
+    values = [
+      'Unicode café <img src=x onerror="fetch(\'/__candidate_html_probe\')">',
+    ];
+  if (scenario === 'display.reserved-marker') values = [marker];
+  if (scenario === 'display.near-marker') values = [marker + ' '];
+  if (
+    [
+      'restart.before-restore',
+      'local.pending-mutation-gate',
+      'failure.ack-disconnect',
+      'failure.malformed-ack',
+      'failure.timeout',
+      'version.v1',
+      'version.downgrade',
+      'server.expired',
+      'server.corrupt',
+      'thread.explicit-new',
+    ].includes(scenario) ||
+    scenario.startsWith('server.unknown-effect.')
+  )
+    unavailable = true;
+  if (
+    scenario === 'sibling.known-object' &&
+    record.facade === 'structured-chat'
+  )
+    decisions = ['approve'];
+  if (scenario === 'sibling.known-null') decisions = ['decline'];
+  if (scenario === 'sibling.with-message-unavailable-cancel')
+    decisions = ['cancel'];
+  if (scenario === 'sibling.unavailable') decisions = ['approve'];
+  const browsers = values.map((value, index) => ({
+    id: `current-browser-${index + 1}`,
+    city:
+      scenario === 'display.html'
+        ? '<img src=x onerror="fetch(\'/__candidate_html_probe\')">'
+        : `Owned current city ${index + 1}`,
+    value,
+    status:
+      unavailable || (scenario === 'multiple.grouped.history' && index === 2)
+        ? ('unavailable' as const)
+        : ('result' as const),
+  }));
+  return {
+    browsers,
+    protected: decisions.map((decision, index) => ({
+      id: `current-protected-${index + 1}`,
+      code: ['PDX', 'SEA', 'SFO'][index],
+      decision,
+    })),
+    history: scenario.startsWith('multiple.'),
+    split: scenario === 'multiple.split.history',
+  };
+}
+function terminal(facade: string, text: string): string {
+  return facade.startsWith('ui-')
+    ? JSON.stringify({ ui: [{ CandidateCard: { props: { text } } }] })
+    : facade.startsWith('structured-')
+      ? JSON.stringify({ answer: text })
+      : text;
+}
+function publicRequest(
+  state: NativeState,
+): Record<string, unknown> & { messages: Record<string, unknown>[] } {
+  assert.ok(state.session?.payload, 'Actual persisted native payload required');
+  const payload = JSON.parse(state.session.payload);
+  assert.equal(typeof payload.publicRequest, 'string');
+  return JSON.parse(payload.publicRequest);
+}
+
+/** Owns one actual legal journey's pages, observer, stable route and independently qualified native workers. */
+class Journey {
+  readonly threadId = `candidate-${crypto.randomUUID()}`;
+  readonly scope: { scenarioId: string; threadId: string };
+  readonly contexts: BrowserContext[] = [];
+  readonly warmAdmissions = new Map<
+    string,
+    'entered-browser-handler' | 'paused-for-protected-interrupt'
+  >();
+  readonly finalFaultObservations: Omit<
+    CandidateFaultObservation,
+    'records'
+  >[] = [];
+  readonly finalDefinitiveObservations: Omit<
+    CandidateDefinitiveRejectionObservation,
+    'records'
+  >[] = [];
+  readonly workers: WorkerEvidence[] = [];
+  readonly pageErrors: { url: string; error: string }[] = [];
+  readonly unexpectedRequests: string[] = [];
+  readonly records: Record<string, unknown> = {};
+  readonly bindings = new Map<
+    string,
+    {
+      correlation: string;
+      canonicalCallId: string;
+      toolName: string;
+      arguments: { city: string };
+    }
+  >();
+  private activeWorker: DotnetFixture | undefined;
+  private handler: CandidateHandlerObserver | undefined;
+  private route: CandidateRecoveryProxy | undefined;
+  private configuration:
+    | {
+        facade: string;
+        scenarioId: string;
+        threadId: string;
+        principal: string;
+        endpoint: string;
+        observer: { entryUrl: string; holdBaseUrl: string };
+        prompt: string;
+        nextPrompt: string;
+        deadlineMs: number;
+      }
+    | undefined;
+  private observerBaseline: CandidateObserverBaseline | undefined;
+  get active(): DotnetFixture {
+    assert.ok(this.activeWorker);
+    return this.activeWorker;
+  }
+  set active(value: DotnetFixture) {
+    this.activeWorker = value;
+  }
+  get observer(): CandidateHandlerObserver {
+    assert.ok(this.handler);
+    return this.handler;
+  }
+  set observer(value: CandidateHandlerObserver) {
+    this.handler = value;
+  }
+  get proxy(): CandidateRecoveryProxy {
+    assert.ok(this.route);
+    return this.route;
+  }
+  set proxy(value: CandidateRecoveryProxy) {
+    this.route = value;
+  }
+  get config(): NonNullable<Journey['configuration']> {
+    assert.ok(this.configuration);
+    return this.configuration;
+  }
+  set config(value: NonNullable<Journey['configuration']>) {
+    this.configuration = value;
+  }
+  get baseline(): CandidateObserverBaseline {
+    assert.ok(this.observerBaseline);
+    return this.observerBaseline;
+  }
+  set baseline(value: CandidateObserverBaseline) {
+    this.observerBaseline = value;
+  }
+  observedRecords(): unknown {
+    return this.handler?.records();
+  }
+  routedRecords(): unknown {
+    return this.route?.records();
+  }
+  computations = 0;
+  constructor(
+    readonly browser: Browser,
+    readonly cluster: DurableFixtureCluster,
+    readonly record: CandidateBrowserRecord,
+    readonly root: string,
+    readonly origins: readonly [string, string],
+    readonly api: 'chat-completions' | 'responses',
+  ) {
+    this.scope = { scenarioId: record.id, threadId: this.threadId };
+  }
+  async start(
+    environment: Readonly<Record<string, string>> = {},
+  ): Promise<DotnetFixture> {
+    const fixture = await this.cluster.start(environment);
+    const host = resolveDotnetHost(selectDotnetHost());
+    assert.ok(
+      host.loaded,
+      'Qualified native package required for every worker',
+    );
+    verifyLoadedDotnetHost(host, fixture.diagnostics());
+    const id = `worker-${fixture.process.pid}-${crypto.randomUUID()}`;
+    const proof = join(this.root, id + '.json');
+    await writeFile(
+      proof,
+      JSON.stringify(
+        {
+          process: fixture.process,
+          loaded: host.loaded,
+          diagnostics: fixture.diagnostics(),
+          schema: this.cluster.schema,
+        },
+        null,
+        2,
+      ),
+    );
+    this.workers.push({
+      fixture,
+      id,
+      stages: {},
+      evidence: { workerId: '', faulted: false, records: [] },
+    });
+    if (this.route)
+      this.route.registerWorker({
+        id,
+        origin: fixture.url,
+        loadedIdentityEvidence: proof,
+      });
+    return fixture;
+  }
+  async initialize(
+    plan: Plan,
+    environment: Readonly<Record<string, string>>,
+  ): Promise<void> {
+    this.active = await this.start(environment);
+    this.observer = await startCandidateHandlerObserver({
+      ownedOrigins: this.origins,
+      evidencePath: join(this.root, 'observer.jsonl'),
+      limits: {
+        requestBytes: 65_536,
+        resultBytes: 1024 * 1024,
+        records: 16_384,
+        holdTimeoutMs: 150_000,
+      },
+    });
+    this.proxy = await startCandidateRecoveryProxy({
+      ownedOrigins: this.origins,
+      evidencePath: join(this.root, 'proxy.jsonl'),
+      limits: {
+        requestBytes: 2 * 1024 * 1024,
+        responseBytes: 8 * 1024 * 1024,
+        frameBytes: 1024 * 1024,
+        records: 32_768,
+        holdTimeoutMs: 150_000,
+      },
+    });
+    const worker = this.workers[0];
+    this.proxy.registerWorker({
+      id: worker.id,
+      origin: this.active.url,
+      loadedIdentityEvidence: join(this.root, worker.id + '.json'),
+    });
+    this.proxy.registerThread({
+      ...this.scope,
+      workerId: worker.id,
+      recoveryPath: `/threads/${encodeURIComponent(this.threadId)}/native-session`,
+      principal: 'alice',
+    });
+    const previous: readonly BrowserCall[] = plan.history
+      ? [
+          {
+            id: 'history-entered-browser',
+            city: 'Owned entered history city',
+            value: 'Entered history exact browser result',
+            status: 'result',
+          },
+          {
+            id: 'prior-browser',
+            city: 'Owned prior city',
+            value: 'Earlier exact browser result',
+            status: 'result',
+          },
+        ]
+      : [];
+    const observer = this.observer.register({
+      scope: this.scope,
+      operations: [...previous, ...plan.browsers].map((call) => ({
+        correlation: call.city,
+        toolName: 'getWeather',
+        arguments: { city: call.city },
+        compute: () => {
+          this.computations++;
+          return call.value;
+        },
+      })),
+    });
+    this.config = {
+      facade: this.record.facade,
+      scenarioId: this.record.id,
+      threadId: this.threadId,
+      principal: 'alice',
+      endpoint: this.proxy.origin,
+      observer,
+      prompt: plan.history
+        ? `Entered history ${this.threadId}`
+        : `Current ${this.threadId}`,
+      nextPrompt: plan.history
+        ? `Current ${this.threadId}`
+        : `Ordinary ${this.threadId}`,
+      deadlineMs: this.record.scenario === 'failure.timeout' ? 5000 : 60_000,
+    };
+  }
+  get origin(): string {
+    return this.record.composition.startsWith('react.')
+      ? this.origins[0]
+      : this.origins[1];
+  }
+  get url(): string {
+    return `${this.origin}/?config=${encodeURIComponent(JSON.stringify(this.config))}`;
+  }
+  async open(): Promise<{ page: Page; context: BrowserContext }> {
+    const context = await this.browser.newContext();
+    this.contexts.push(context);
+    const page = await context.newPage();
+    page.on('pageerror', (error) =>
+      this.pageErrors.push({ url: page.url(), error: String(error) }),
+    );
+    page.on('request', (request) => {
+      if (request.url().includes('/__candidate_html_probe'))
+        this.unexpectedRequests.push(request.url());
+    });
+    const response = await page.goto(this.url);
+    assert.ok(response?.ok(), 'Qualified actual packed facade must load');
+    assert.equal(new URL(page.url()).origin, this.origin);
+    await expect(page.getByTestId('start')).toBeVisible();
+    const current = await this.status(page);
+    expect(current.facade).toBe(this.record.facade);
+    expect(current.threadId).toBe(this.threadId);
+    expect(await page.getByTestId('config-error').count()).toBe(0);
+    expect(await page.getByTestId('runtime-error').count()).toBe(0);
+    return { page, context };
+  }
+  async status(page: Page): Promise<Status> {
+    return JSON.parse(await page.getByTestId('status').innerText());
+  }
+  async state(): Promise<NativeState> {
+    const response = await fetch(
+      `${this.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(this.threadId)}`,
+      { headers: auth, signal: AbortSignal.timeout(5000) },
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  }
+  async collect(): Promise<void> {
+    for (const worker of this.workers) {
+      if (worker.fixture.process.exited()) continue;
+      const stage = await fetch(`${worker.fixture.url}/__test/native-stage`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      assert.equal(stage.status, 200);
+      worker.stages = (
+        (await stage.json()) as { counts: Record<string, number> }
+      ).counts;
+      const evidence = await fetch(
+        `${worker.fixture.url}/__test/candidate-native-evidence?threadId=${encodeURIComponent(this.threadId)}`,
+        { headers: auth, signal: AbortSignal.timeout(5000) },
+      );
+      assert.equal(evidence.status, 200);
+      worker.evidence = await evidence.json();
+      expect(worker.evidence.faulted).toBe(false);
+      assert.ok(worker.evidence.workerId);
+      for (const record of worker.evidence.records)
+        expect(record).toMatchObject({
+          workerId: worker.evidence.workerId,
+          threadId: this.threadId,
+        });
+      const seq = worker.evidence.records.map((record) => record.seq);
+      expect(seq).toEqual([...seq].sort((a, b) => a - b));
+      expect(new Set(seq).size).toBe(seq.length);
+    }
+  }
+  get requests(): readonly ModelRequest[] {
+    return this.workers.flatMap((worker) => [...worker.fixture.requests]);
+  }
+  get witnesses(): readonly Witness[] {
+    return this.workers.flatMap((worker) => [...worker.evidence.records]);
+  }
+  runs(thread = this.threadId): readonly CapturedRun[] {
+    const records = this.proxy.records(thread);
+    return records
+      .filter(
+        (record) => record.kind === 'request' && record.incomingBody.length > 0,
+      )
+      .flatMap((record) => {
+        const input = JSON.parse(record.incomingBody.toString('utf8'));
+        return input.threadId === thread && Array.isArray(input.messages)
+          ? [
+              {
+                proxyId: record.requestId,
+                input,
+                status: records.find(
+                  (later) =>
+                    later.requestId === record.requestId &&
+                    later.kind === 'upstream-headers',
+                )?.status,
+              },
+            ]
+          : [];
+      });
+  }
+  configurations(): readonly Record<string, unknown>[] {
+    return this.proxy
+      .records(this.threadId)
+      .filter(
+        (record) => record.kind === 'request' && record.incomingBody.length > 0,
+      )
+      .map(
+        (record) =>
+          JSON.parse(record.incomingBody.toString('utf8')) as Record<
+            string,
+            unknown
+          >,
+      )
+      .filter(
+        (input) => Array.isArray(input.tools) && !Array.isArray(input.messages),
+      );
+  }
+  async phaseCounters(): Promise<PhaseCounters> {
+    await this.collect();
+    const state = await this.state();
+    return {
+      entries: this.observer.entries(this.scope),
+      attemptSequences: this.observer
+        .records()
+        .filter(
+          (record) =>
+            record.kind === 'request-received' &&
+            record.scenarioId === this.scope.scenarioId &&
+            record.threadId === this.threadId,
+        )
+        .map((record) => record.seq),
+      holdReceiptIds: this.observer
+        .records()
+        .filter(
+          (record) =>
+            record.kind === 'hold-received' &&
+            record.scenarioId === this.scope.scenarioId &&
+            record.threadId === this.threadId,
+        )
+        .map((record) => {
+          const receiptId = record.receiptId;
+          assert.ok(
+            typeof receiptId === 'string' && receiptId.length > 0,
+            'Actual scoped hold receipt identity required',
+          );
+          return receiptId;
+        }),
+      computations: this.computations,
+      providerRequests: [...this.requests],
+      effects: state.effects,
+      nativeWitnesses: [...this.witnesses],
+      runCount: this.runs().length,
+      sessionRevision: state.session?.revision ?? 0,
+      sessionGeneration: state.session?.generation ?? 0,
+    };
+  }
+  async snapshot(): Promise<Snapshot> {
+    await this.collect();
+    const counts: Record<string, number> = {};
+    for (const worker of this.workers)
+      for (const [name, value] of Object.entries(worker.stages))
+        counts[name] = (counts[name] ?? 0) + value;
+    return {
+      state: await this.state(),
+      runs: this.runs(),
+      providerCount: this.requests.length,
+      counts,
+      observerAttempts: this.observer
+        .records()
+        .filter((record) => record.kind === 'request-received')
+        .map((record) => record.seq),
+    };
+  }
+  async unchanged(
+    before: Snapshot,
+    expectedStatusReadDelta: 0 | 1 = 0,
+  ): Promise<void> {
+    const after = await this.snapshot();
+    assertCandidateUnchangedSnapshot(before, after, expectedStatusReadDelta);
+  }
+  async control(name: string, fixture = this.active): Promise<unknown> {
+    const response = await fetch(`${fixture.url}/__test/${name}`, {
+      method: 'POST',
+      headers: auth,
+      signal: AbortSignal.timeout(5000),
+    });
+    const body = await response.text();
+    const previous = Array.isArray(this.records.controls)
+      ? this.records.controls
+      : [];
+    this.records.controls = [
+      ...previous,
+      {
+        name,
+        method: 'POST',
+        worker: fixture.process.pid,
+        status: response.status,
+        headers: Object.fromEntries(response.headers),
+        bodyText: body,
+        bodyBase64: Buffer.from(body).toString('base64'),
+      },
+    ];
+    assert.ok(response.ok, `Actual fixture control failed: ${name}`);
+    return body ? JSON.parse(body) : undefined;
+  }
+  script(
+    fixture: DotnetFixture,
+    phase: Phase,
+    text = 'Candidate complete',
+  ): void {
+    // Match only the current real user turn; historical tool results must not shadow a later original run.
+    fixture.mock.on(
+      { userMessage: phase.prompt, hasToolResult: true },
+      { content: terminal(this.record.facade, text) },
+    );
+    const calls: {
+      id: string;
+      name: string;
+      arguments: Record<string, string>;
+    }[] = [
+      ...phase.browsers.map((call) => ({
+        id: call.id,
+        name: 'getWeather',
+        arguments: { city: call.city },
+      })),
+      ...phase.protected.map((call) => ({
+        id: call.id,
+        name: 'lookupAirport',
+        arguments: { code: call.code },
+      })),
+    ];
+    const interleaved = phase.browsers.flatMap((call, index) => [
+      calls[index],
+      ...(phase.protected[index] ? [calls[phase.browsers.length + index]] : []),
+    ]);
+    for (const call of phase.protected.slice(phase.browsers.length))
+      interleaved.push({
+        id: call.id,
+        name: 'lookupAirport',
+        arguments: { code: call.code },
+      });
+    if (phase.split)
+      fixture.mock.on(
+        { userMessage: phase.prompt, hasToolResult: false },
+        {
+          blocks: [
+            { type: 'text', text: 'First actual current announcement café ' },
+            ...interleaved
+              .slice(0, 2)
+              .map((call) => ({ type: 'toolCall' as const, ...call })),
+            { type: 'text', text: 'Second actual current announcement 🛫 ' },
+            ...interleaved
+              .slice(2)
+              .map((call) => ({ type: 'toolCall' as const, ...call })),
+          ],
+        },
+      );
+    else if (
+      this.record.scenario === 'multiple.grouped.history' &&
+      phase.browsers[0]?.id.startsWith('current-')
+    )
+      fixture.mock.on(
+        { userMessage: phase.prompt, hasToolResult: false },
+        {
+          blocks: [
+            {
+              type: 'text',
+              text: 'Grouped actual current announcement café 🛫 ',
+            },
+            ...interleaved.map((call) => ({
+              type: 'toolCall' as const,
+              ...call,
+            })),
+          ],
+        },
+      );
+    else
+      fixture.mock.on(
+        { userMessage: phase.prompt, hasToolResult: false },
+        { toolCalls: interleaved },
+      );
+  }
+  async published(
+    phase: Phase,
+    page: Page,
+    before: PhaseCounters,
+  ): Promise<NativeState> {
+    const key = `publication-${phase.prompt}`;
+    this.records[key] = {
+      before,
+      stateBeforeReady: await this.state(),
+      publicBeforeReady: await this.status(page),
+    };
+    await expect
+      .poll(() => this.runs().length, { timeout: 30_000 })
+      .toBe(before.runCount + 1);
+    const initialRun = this.runs().at(-1);
+    assert.ok(initialRun);
+    await expect
+      .poll(
+        async () => {
+          const session = (await this.state()).session;
+          return (
+            session?.state === 'Ready' &&
+            session.revision > before.sessionRevision &&
+            session.generation > before.sessionGeneration
+          );
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const state = await this.state();
+    assert.ok(state.session);
+    this.records[key] = {
+      before,
+      initialRun,
+      state,
+      publicAtReady: await this.status(page),
+      sourceRecords: this.proxy
+        .records(this.threadId)
+        .filter((record) => record.requestId === initialRun.proxyId),
+    };
+    const request = publicRequest(state);
+    const locations = request.messages
+      .flatMap((message, messageIndex) =>
+        Array.isArray(message.toolCalls)
+          ? (message.toolCalls as Record<string, unknown>[]).map(
+              (call, callIndex) => ({
+                messageId: message.id,
+                messageIndex,
+                callIndex,
+                call,
+              }),
+            )
+          : [],
+      )
+      .filter((item) =>
+        [...phase.browsers, ...phase.protected].some(
+          (call) => call.id === item.call.id,
+        ),
+      );
+    expect(locations.map((item) => item.call.id).sort()).toEqual(
+      [...phase.browsers, ...phase.protected].map((call) => call.id).sort(),
+    );
+    // A genuine mixed interrupt is a complete non-error terminal; normal terminal disposal is classified independently of HTTP EOF.
+    await expect(async () => {
+      captureCandidateOriginalRun(
+        this.proxy.records(this.threadId),
+        initialRun.proxyId,
+        expectNativeRunCapture,
+      );
+    }).toPass({ timeout: 30_000 });
+    const wireRecords = this.proxy
+      .records(this.threadId)
+      .filter((record) => record.requestId === initialRun.proxyId);
+    const body = Buffer.concat(
+      wireRecords
+        .filter((record) => record.kind === 'upstream-body')
+        .map((record) => record.bytes),
+    ).toString('utf8');
+    const events = captureCandidateOriginalRun(
+      wireRecords,
+      initialRun.proxyId,
+      expectNativeRunCapture,
+    );
+    this.records[key] = {
+      before,
+      initialRun,
+      state,
+      locations,
+      sourceEvents: events,
+      sourceBody: body,
+      publicAtProtocol: await this.status(page),
+    };
+    await expect
+      .poll(
+        async () =>
+          (await this.status(page)).events.filter(
+            (event) =>
+              event.type === 'RUN_FINISHED' &&
+              event.runId === initialRun.input.runId,
+          ).length,
+      )
+      .toBe(1);
+    const terminal = events.at(-1);
+    assert.ok(terminal);
+    const interrupted =
+      object(terminal.outcome) && terminal.outcome.type === 'interrupt';
+    if (interrupted)
+      await expect
+        .poll(async () =>
+          Boolean((await this.status(page)).pendingInterrupts?.id),
+        )
+        .toBe(true);
+    else {
+      await expect
+        .poll(
+          () =>
+            this.observer
+              .entries(this.scope)
+              .filter((entry) =>
+                phase.browsers.some((call) => call.city === entry.correlation),
+              ).length,
+          { timeout: 30_000 },
+        )
+        .toBe(phase.browsers.length);
+      for (const call of phase.browsers) {
+        const entry = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        assert.ok(
+          entry,
+          'Actual current entered browser receipt required before hold observation',
+        );
+        await expect
+          .poll(() =>
+            this.observer
+              .records()
+              .some(
+                (record) =>
+                  record.kind === 'hold-received' &&
+                  record.scenarioId === this.scope.scenarioId &&
+                  record.threadId === this.threadId &&
+                  record.receiptId === entry.receiptId,
+              ),
+          )
+          .toBe(true);
+      }
+    }
+    const after = await this.phaseCounters();
+    const warm = await this.status(page);
+    const facts = {
+      expected: {
+        runId: String(initialRun.input.runId),
+        threadId: this.threadId,
+        browsers: phase.browsers.map((call) => ({
+          id: call.id,
+          name: 'getWeather',
+          arguments: { city: call.city },
+          correlation: call.city,
+        })),
+        protected: phase.protected.map((call) => ({
+          id: call.id,
+          name: 'lookupAirport',
+          arguments: { code: call.code },
+        })),
+      },
+      sourceEvents: events,
+      publicState: {
+        threadId: warm.threadId,
+        pendingInterrupts: warm.pendingInterrupts,
+        pendingConversationRecovery: warm.pending,
+        events: warm.events,
+      },
+      savedSession: state.session,
+      before,
+      after,
+    };
+    this.records[key] = {
+      before,
+      after,
+      initialRun,
+      state,
+      locations,
+      sourceEvents: events,
+      sourceBody: body,
+      warmPublicState: warm,
+      facts,
+      observerRecords: this.observer.records(),
+    };
+    expect(
+      this.observer
+        .records()
+        .filter(
+          (record) => record.kind === 'fault' || record.kind === 'rejected',
+        ),
+    ).toEqual([]);
+    const mode = classifyCandidateWarmPhase(facts);
+    this.warmAdmissions.set(phase.prompt, mode);
+    if (phase.split) {
+      expect(new Set(locations.map((item) => item.messageId)).size).toBe(2);
+      const first = locations.find(
+        (item) => item.call.id === phase.browsers[0].id,
+      );
+      const second = locations.find(
+        (item) => item.call.id === phase.browsers[1].id,
+      );
+      assert.ok(first && second);
+      expect(first.messageId).not.toBe(second.messageId);
+      expect(
+        locations.find((item) => item.call.id === phase.protected[0].id)
+          ?.messageId,
+      ).toBe(first.messageId);
+      expect(
+        locations.find((item) => item.call.id === phase.protected[1].id)
+          ?.messageId,
+      ).toBe(second.messageId);
+      expect(
+        request.messages.find((message) => message.id === first.messageId)
+          ?.content,
+      ).toBe('First actual current announcement café ');
+      expect(
+        request.messages.find((message) => message.id === second.messageId)
+          ?.content,
+      ).toBe('Second actual current announcement 🛫 ');
+      for (const location of locations)
+        expect(
+          events.find(
+            (event) =>
+              event.type === 'TOOL_CALL_START' &&
+              event.toolCallId === location.call.id,
+          )?.parentMessageId,
+        ).toBe(location.messageId);
+    }
+    if (
+      this.record.scenario === 'multiple.grouped.history' &&
+      phase.browsers[0]?.id.startsWith('current-')
+    ) {
+      expect(new Set(locations.map((item) => item.messageId)).size).toBe(1);
+      const parent = locations[0].messageId;
+      expect(
+        request.messages.find((message) => message.id === parent)?.content,
+      ).toBe('Grouped actual current announcement café 🛫 ');
+      for (const location of locations)
+        expect(
+          events.find(
+            (event) =>
+              event.type === 'TOOL_CALL_START' &&
+              event.toolCallId === location.call.id,
+          )?.parentMessageId,
+        ).toBe(parent);
+    }
+    if (mode === 'entered-browser-handler') {
+      for (const call of phase.browsers) {
+        const location = locations.find((item) => item.call.id === call.id);
+        assert.ok(location);
+        const fn = location.call.function as {
+          name: string;
+          arguments: string;
+        };
+        expect(fn.name).toBe('getWeather');
+        expect(JSON.parse(fn.arguments)).toEqual({ city: call.city });
+        const entry = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        assert.ok(entry);
+        expect(entry.result).toEqual(call.value);
+        this.bindings.set(call.city, {
+          correlation: call.city,
+          canonicalCallId: call.id,
+          toolName: 'getWeather',
+          arguments: { city: call.city },
+        });
+      }
+      this.baseline = await bindCandidateObserverBaseline(
+        this.observer,
+        this.scope,
+        [...this.bindings.values()],
+      );
+    } else {
+      this.baseline = await captureCandidatePausedObserverBaseline(
+        this.observer,
+        this.scope,
+        this.computations,
+        this.observerBaseline
+          ? {
+              baseline: this.observerBaseline,
+              computations: before.computations,
+            }
+          : undefined,
+      );
+    }
+    this.records[key] = {
+      before,
+      after,
+      initialRun,
+      state,
+      locations,
+      sourceEvents: events,
+      sourceBody: body,
+      warmPublicState: warm,
+      facts,
+      warmAdmission: mode,
+      entries: this.baseline,
+      currentEnteredCallIds:
+        mode === 'entered-browser-handler'
+          ? phase.browsers.map((call) => call.id)
+          : [],
+      currentUnenteredCallIds:
+        mode === 'paused-for-protected-interrupt'
+          ? phase.browsers.map((call) => call.id)
+          : [],
+    };
+    this.stable();
+    return state;
+  }
+  async abandon(context: BrowserContext, phase: Phase): Promise<void> {
+    const entries = this.observer
+      .entries(this.scope)
+      .filter((entry) =>
+        phase.browsers.some((call) => call.city === entry.correlation),
+      );
+    await context.close();
+    for (const entry of entries) {
+      await expect
+        .poll(() =>
+          this.observer
+            .records()
+            .some(
+              (record) =>
+                record.kind === 'downstream-closed' &&
+                record.receiptId === entry.receiptId,
+            ),
+        )
+        .toBe(true);
+      this.observer.release(entry.receiptId);
+    }
+    this.stable();
+  }
+  stable(): void {
+    expect(this.computations).toBe(this.baseline.boundEntries.length);
+    assertCandidateObserverUnchanged(this.observer, this.scope, this.baseline);
+    expect(
+      this.observer
+        .records()
+        .filter(
+          (record) => record.kind === 'fault' || record.kind === 'rejected',
+        ),
+    ).toEqual([]);
+  }
+  async read(
+    page: Page,
+    expected: 'Pending' | 'Completed' | 'blocked' = 'Pending',
+    fresh = false,
+  ): Promise<Status> {
+    const before = this.runs().length;
+    const providers = this.requests.length;
+    const previousToken = (await this.status(page)).pending?.id;
+    const raw = await rawRead(this, fresh, page);
+    if (expected === 'blocked')
+      await expect
+        .poll(async () => {
+          const status = await this.status(page);
+          return (
+            status.pending === null &&
+            (!!status.localError ||
+              !!status.error ||
+              (!!status.lastRead && status.lastRead.disposition !== 'Pending'))
+          );
+        })
+        .toBe(true);
+    else {
+      expect(raw.status).toBe(200);
+      assert.ok(object(raw.body));
+      expect(raw.body.schemaVersion).toBe(2);
+      expect(raw.body.disposition).toBe(expected);
+      await expect
+        .poll(async () => (await this.status(page)).lastRead?.disposition)
+        .toBe(expected);
+      if (expected === 'Pending') {
+        const state = await this.state();
+        assert.ok(state.session);
+        assert.ok(object(raw.body.snapshot));
+        expect(raw.body.serverRevision).toBe(state.session.revision);
+        expect(state.session.state).toBe('Ready');
+        expect(state.session.revision).toBeGreaterThan(0);
+        const capability = raw.body.snapshot.pendingBrowserRecovery;
+        assert.ok(object(capability));
+        const currentCalls = readCandidatePendingBrowserCalls(
+          state.session.payload,
+        );
+        expect(capability).toEqual({
+          protocolVersion: 1,
+          serverRevision: state.session.revision,
+          callIds: currentCalls.map((call) => call.id),
+        });
+        await expect
+          .poll(async () => (await this.status(page)).pending?.serverRevision)
+          .toBe(state.session.revision);
+        if (fresh && previousToken)
+          await expect
+            .poll(async () => (await this.status(page)).pending?.id)
+            .not.toBe(previousToken);
+        const pending = (await this.status(page)).pending;
+        assert.ok(pending);
+        expect(pending.toolCalls.map((call) => call.id)).toEqual(
+          capability.callIds,
+        );
+        for (const interrupt of pending.interrupts) {
+          const member = state.members.find(
+            (member) => member.call_id === interrupt.toolCallId,
+          );
+          assert.ok(member);
+          expect(member.request_id).toBe(interrupt.id);
+        }
+        const batches = state.batches.filter(
+          (batch) => batch.state === 'Pending',
+        );
+        if (pending.interrupts.length) {
+          expect(batches).toHaveLength(1);
+          expect(batches[0].published_revision).toBeGreaterThan(0);
+          expect(batches[0].published_revision).toBeLessThanOrEqual(
+            state.session.revision,
+          );
+          const members = state.members.filter(
+            (member) => member.batch_id === batches[0].batch_id,
+          );
+          expect(members.map((member) => member.call_id).sort()).toEqual(
+            [
+              ...pending.toolCalls.map((call) => call.id),
+              ...pending.interrupts.map((interrupt) => interrupt.toolCallId),
+            ].sort(),
+          );
+        }
+      }
+    }
+    const status = await this.status(page);
+    expect(this.runs()).toHaveLength(before);
+    expect(this.requests).toHaveLength(providers);
+    this.stable();
+    this.records[`read-${this.configurations().length}`] = { raw, status };
+    return status;
+  }
+  async fill(page: Page, phase: Phase): Promise<Pending> {
+    const status = await this.status(page);
+    assert.ok(status.pending, 'Actual pending browser recovery required');
+    expect(status.pending.toolCalls.map((call) => call.id).sort()).toEqual(
+      phase.browsers.map((call) => call.id).sort(),
+    );
+    expect(
+      status.pending.interrupts.map((interrupt) => interrupt.toolCallId).sort(),
+    ).toEqual(phase.protected.map((call) => call.id).sort());
+    for (const call of phase.browsers) {
+      await page
+        .getByTestId(`outcome-status-${call.id}`)
+        .selectOption(call.status);
+      if (call.status === 'result')
+        await page
+          .getByTestId(`outcome-value-${call.id}`)
+          .fill(JSON.stringify(call.value));
+    }
+    for (const call of phase.protected) {
+      const interrupt = status.pending.interrupts.find(
+        (entry) => entry.toolCallId === call.id,
+      );
+      assert.ok(interrupt);
+      await page
+        .getByTestId(`decision-${interrupt.id}`)
+        .selectOption(call.decision);
+    }
+    const mode = this.warmAdmissions.get(phase.prompt);
+    assert.ok(mode, 'Actual original phase admission evidence required');
+    this.records[`browser-input-${phase.prompt}`] = await Promise.all(
+      phase.browsers.map(async (call) => {
+        const receipt = this.observer
+          .entries(this.scope)
+          .find((entry) => entry.correlation === call.city);
+        return {
+          toolCallId: call.id,
+          warmAdmission: mode,
+          status: call.status,
+          provenance:
+            call.status === 'unavailable'
+              ? 'operator-declared-unavailable'
+              : mode === 'entered-browser-handler'
+                ? 'observed-original-handler-return'
+                : 'operator-declared-known',
+          ...(call.status === 'result'
+            ? {
+                declaredValue: call.value,
+                actualEditorJson: await page
+                  .getByTestId(`outcome-value-${call.id}`)
+                  .inputValue(),
+              }
+            : {}),
+          ...(receipt ? { originalReceipt: receipt } : {}),
+        };
+      }),
+    );
+    return status.pending;
+  }
+  decisions(
+    pending: Pending,
+    phase: Phase,
+  ): readonly CandidateExpectedProtectedDecision[] {
+    return pending.interrupts.map((interrupt) => {
+      const call = phase.protected.find(
+        (entry) => entry.id === interrupt.toolCallId,
+      );
+      assert.ok(call);
+      return call.decision === 'cancel'
+        ? { interruptId: interrupt.id, status: 'cancelled' as const }
+        : {
+            interruptId: interrupt.id,
+            status: 'resolved' as const,
+            payload: { approved: call.decision === 'approve' },
+          };
+    });
+  }
+  async terminal(
+    page: Page,
+    text = 'Candidate complete',
+    runId?: unknown,
+    threadId = this.threadId,
+  ): Promise<Status> {
+    assert.ok(
+      typeof runId === 'string' && runId.length > 0,
+      'Actual current run identity required for terminal observation',
+    );
+    await expect
+      .poll(
+        async () => {
+          const status = await this.status(page);
+          if (this.record.facade.startsWith('ui-'))
+            return (
+              await page.getByTestId('candidate-card').allTextContents()
+            ).some((value) => value.includes(text));
+          if (this.record.facade === 'completion')
+            return status.output === text;
+          if (this.record.facade === 'structured-completion')
+            return object(status.output) && status.output.answer === text;
+          return (
+            status.messages?.some(
+              (message) =>
+                message.role === 'assistant' &&
+                (message.content === text ||
+                  (object(message.content) && message.content.answer === text)),
+            ) ?? false
+          );
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect
+      .poll(async () =>
+        (await this.status(page)).events.some(
+          (event) => event.type === 'RUN_FINISHED' && event.runId === runId,
+        ),
+      )
+      .toBe(true);
+    await expect
+      .poll(async () => {
+        if (threadId === this.threadId)
+          return (await this.state()).session?.state;
+        const response = await fetch(
+          `${this.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(threadId)}`,
+          { headers: auth, signal: AbortSignal.timeout(5000) },
+        );
+        assert.equal(response.status, 200);
+        return ((await response.json()) as NativeState).session?.state;
+      })
+      .toBe('Ready');
+    const status = await this.status(page);
+    if (this.record.facade.startsWith('ui-')) {
+      const expected = candidateResolvedUiAnswer(text);
+      if (this.record.facade === 'ui-chat')
+        expect(
+          status.messages?.some(
+            (message) =>
+              message.role === 'assistant' &&
+              object(message.content) &&
+              JSON.stringify(message.content) === JSON.stringify(expected),
+          ),
+        ).toBe(true);
+      else {
+        assert.ok(object(status.output));
+        expect(status.output.role).toBe('assistant');
+        expect(status.output.content).toEqual(expected);
+        assert.ok(
+          typeof status.output.id === 'string' && status.output.id.length > 0,
+        );
+        if (this.record.composition.startsWith('react.'))
+          expect(status.rawOutput).toEqual(expected);
+        else {
+          assert.ok(object(status.value));
+          expect(status.value.content).toEqual(expected);
+        }
+      }
+      await expect(
+        page.getByTestId('candidate-card').filter({ hasText: text }).last(),
+      ).toBeVisible();
+    }
+    this.stable();
+    return status;
+  }
+  async switch(fixture: DotnetFixture): Promise<void> {
+    const worker = this.workers.find((worker) => worker.fixture === fixture);
+    assert.ok(worker);
+    await this.proxy.switchWorker(this.threadId, worker.id);
+    this.active = fixture;
+  }
+  async stop(fixture: DotnetFixture): Promise<void> {
+    await this.collect();
+    await fixture.stop();
+    expect(fixture.process.exited()?.signal).toBe('SIGKILL');
+  }
+  async barrier(stage: string): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          const response = await fetch(
+            `${this.active.url}/__test/native-stage`,
+            { signal: AbortSignal.timeout(5000) },
+          );
+          return ((await response.json()) as { stage: string }).stage;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(stage);
+  }
+  readonly finalOrdinaryChecks: Array<() => void> = [];
+  validateFinalFaults(): void {
+    for (const check of this.finalOrdinaryChecks) check();
+    for (const observation of this.finalDefinitiveObservations)
+      assertCandidateDefinitiveRejection({
+        ...observation,
+        records: this.proxy.records(this.threadId),
+      });
+    for (const observation of this.finalFaultObservations)
+      assertCandidateProxyIntervention({
+        ...observation,
+        records: this.proxy.records(this.threadId),
+      });
+  }
+  async close(): Promise<void> {
+    const errors: unknown[] = [];
+    for (const context of [...this.contexts].reverse())
+      try {
+        await context.close();
+      } catch (error) {
+        errors.push(error);
+      }
+    try {
+      await this.route?.close();
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      await this.handler?.close();
+    } catch (error) {
+      errors.push(error);
+    }
+    if (errors.length)
+      throw new AggregateError(
+        errors,
+        'Candidate journey resource cleanup failed',
+      );
+  }
+}
+
+function expectedOutcomes(
+  phase: Phase,
+): readonly CandidateExpectedBrowserOutcome[] {
+  return phase.browsers.map((call) => ({
+    toolCallId: call.id,
+    status: call.status,
+    content: content(call),
+  }));
+}
+function readCallPairs(
+  request: Record<string, unknown>,
+  outputs: ReadonlyMap<string, string>,
+): readonly NativeToolPair[] {
+  assert.ok(Array.isArray(request.messages));
+  return (request.messages as Record<string, unknown>[])
+    .flatMap((message) =>
+      Array.isArray(message.toolCalls)
+        ? (message.toolCalls as {
+            id: string;
+            function: { name: string; arguments: string };
+          }[])
+        : [],
+    )
+    .map((call) => {
+      const output = outputs.get(call.id);
+      assert.notEqual(
+        output,
+        undefined,
+        `Independent original result missing for ${call.id}`,
+      );
+      assert.ok(typeof output === 'string');
+      return {
+        id: call.id,
+        name: call.function.name,
+        arguments: call.function.arguments,
+        output,
+      };
+    });
+}
+async function checkNativeResults(
+  journey: Journey,
+  phase: Phase,
+  submitted: CapturedRun,
+  state: NativeState,
+): Promise<ReadonlyMap<string, string>> {
+  await journey.collect();
+  const outputs = new Map<string, string>();
+  const records = journey.witnesses.filter(
+    (record) => record.runId === submitted.input.runId,
+  );
+  for (const call of phase.protected) {
+    const selected = records.filter((record) => record.callId === call.id);
+    const handler = selected.filter(
+      (record) => record.domain === 'handler-return',
+    );
+    const invocation = selected.filter(
+      (record) => record.domain === 'native-invocation-return',
+    );
+    const outward = selected.filter(
+      (record) => record.domain === 'native-outward-before-public-projection',
+    );
+    expect(handler).toHaveLength(call.decision === 'approve' ? 1 : 0);
+    expect(invocation).toHaveLength(call.decision === 'approve' ? 1 : 0);
+    expect(outward).toHaveLength(1);
+    const current = outward[0];
+    const member = state.members.find((member) => member.call_id === call.id);
+    assert.ok(member);
+    for (const record of selected)
+      expect(record).toMatchObject({
+        threadId: journey.threadId,
+        runId: submitted.input.runId,
+        requestId: member.request_id,
+        batchId: member.batch_id,
+        admittedGeneration: member.admitted_generation,
+        admittedRevision: member.admitted_revision,
+      });
+    if (call.decision === 'approve') {
+      expect(handler[0].nativeType).not.toBe('System.Text.Json.JsonElement');
+      expect(JSON.parse(handler[0].rawJson ?? 'null')).toEqual({
+        code: call.code,
+        name: 'Portland International Airport',
+      });
+      expect(JSON.parse(invocation[0].rawJson ?? 'null')).toEqual(
+        JSON.parse(handler[0].rawJson ?? 'null'),
+      );
+      expect(handler[0].seq).toBeLessThan(invocation[0].seq);
+      expect(invocation[0].seq).toBeLessThan(current.seq);
+      expect(current).toMatchObject({
+        nativeType: invocation[0].nativeType,
+        jsonKind: invocation[0].jsonKind,
+        rawJson: invocation[0].rawJson,
+      });
+      assert.equal(current.nativeType, 'System.Text.Json.JsonElement');
+      assert.ok(current.rawJson);
+      outputs.set(call.id, current.rawJson);
+      expect(
+        state.effects.filter((effect) => effect.call_id === call.id),
+      ).toEqual([
+        expect.objectContaining({
+          session_id: state.session?.id,
+          call_id: call.id,
+          request_id: member.request_id,
+          batch_id: member.batch_id,
+          admitted_generation: member.admitted_generation,
+          admitted_revision: member.admitted_revision,
+          code: call.code,
+        }),
+      ]);
+    } else {
+      expect(current).toMatchObject({
+        nativeType: 'System.String',
+        text:
+          call.decision === 'decline'
+            ? 'Tool call invocation rejected.'
+            : 'Tool call invocation rejected. Cancelled by caller.',
+      });
+      assert.ok(current.text);
+      outputs.set(call.id, current.text);
+      expect(
+        state.effects.filter((effect) => effect.call_id === call.id),
+      ).toEqual([]);
+    }
+  }
+  expect(
+    records
+      .filter(
+        (record) => record.domain === 'native-outward-before-public-projection',
+      )
+      .map((record) => record.callId)
+      .sort(),
+  ).toEqual(phase.protected.map((call) => call.id).sort());
+  return outputs;
+}
+async function complete(
+  journey: Journey,
+  page: Page,
+  phase: Phase,
+  published: NativeState,
+  pending: Pending,
+  before: Snapshot,
+  historical: ReadonlyMap<string, string> = new Map(),
+  attempts = 1,
+  text = 'Candidate complete',
+): Promise<ReadonlyMap<string, string>> {
+  await expect
+    .poll(() => journey.runs().length)
+    .toBe(before.runs.length + attempts);
+  const newRuns = journey.runs().slice(before.runs.length);
+  await expect
+    .poll(() =>
+      newRuns.some((run) =>
+        journey.proxy
+          .records(journey.threadId)
+          .some(
+            (record) =>
+              record.requestId === run.proxyId &&
+              record.kind === 'upstream-headers' &&
+              record.status === 200,
+          ),
+      ),
+    )
+    .toBe(true);
+  const submitted = journey
+    .runs()
+    .slice(before.runs.length)
+    .find((run) => run.status === 200);
+  assert.ok(submitted, 'Actual successful recovery request required');
+  await journey.terminal(page, text, submitted.input.runId);
+  await expect
+    .poll(async () =>
+      (await journey.status(page)).events.some(
+        (event) =>
+          event.type === 'RUN_FINISHED' &&
+          event.runId === submitted.input.runId,
+      ),
+    )
+    .toBe(true);
+  const after = await journey.snapshot();
+  const original = publicRequest(published);
+  const saved = publicRequest(after.state);
+  assert.ok(published.session);
+  expect(pending.serverRevision).toBe(published.session.revision);
+  const originalForwarded: Record<string, unknown> = object(
+    original.forwardedProps,
+  )
+    ? original.forwardedProps
+    : {};
+  const originalHashbrown: Record<string, unknown> = object(
+    originalForwarded.hashbrown,
+  )
+    ? originalForwarded.hashbrown
+    : {};
+  expect(submitted.input.forwardedProps).toEqual({
+    ...originalForwarded,
+    hashbrown: {
+      ...originalHashbrown,
+      recovery: {
+        version: 1,
+        serverRevision: pending.serverRevision,
+        outcomes: expectedOutcomes(phase).map((outcome) => ({
+          toolCallId: outcome.toolCallId,
+          status: outcome.status,
+        })),
+      },
+    },
+  });
+  expect(saved.forwardedProps).toEqual(original.forwardedProps);
+  const decisions = journey.decisions(pending, phase);
+  if (decisions.length)
+    assertCandidateMixedContinuation(
+      original.messages,
+      expectedOutcomes(phase),
+      pending.serverRevision,
+      decisions,
+      submitted.input,
+      saved.messages,
+    );
+  else
+    assertCandidateContinuation(
+      original.messages,
+      expectedOutcomes(phase),
+      pending.serverRevision,
+      submitted.input,
+      saved.messages,
+    );
+  const nativeOutputs = await checkNativeResults(
+    journey,
+    phase,
+    submitted,
+    after.state,
+  );
+  const outputs = new Map(historical);
+  for (const call of phase.browsers) outputs.set(call.id, content(call));
+  for (const [id, output] of nativeOutputs) outputs.set(id, output);
+  for (const [id, output] of outputs)
+    expect(
+      saved.messages.filter(
+        (message) => message.role === 'tool' && message.toolCallId === id,
+      ),
+    ).toEqual([expect.objectContaining({ content: output })]);
+  expect(after.state.effects.length - before.state.effects.length).toBe(
+    phase.protected.filter((call) => call.decision === 'approve').length,
+  );
+  expect(after.providerCount - before.providerCount).toBe(1);
+  expect(
+    (after.counts['cold-acquire-success'] ?? 0) -
+      (before.counts['cold-acquire-success'] ?? 0),
+  ).toBe(1);
+  expect(
+    (after.counts['Run.Forward'] ?? 0) - (before.counts['Run.Forward'] ?? 0),
+  ).toBe(1);
+  if (phase.protected.length)
+    expect(
+      (after.counts['reservation-success'] ?? 0) -
+        (before.counts['reservation-success'] ?? 0),
+    ).toBe(1);
+  const provider = journey.requests.at(-1);
+  assert.ok(provider);
+  expect(provider.authentication).not.toBe('missing');
+  expect(provider.path).toContain(
+    journey.api === 'responses' ? '/responses' : '/chat/completions',
+  );
+  expectNativeToolPairs(
+    provider,
+    journey.api,
+    readCallPairs(original, outputs),
+  );
+  assertCandidateProviderTextHistory(
+    provider.body,
+    journey.api,
+    original.messages,
+  );
+  const configBefore = journey.configurations()[0];
+  assert.ok(configBefore);
+  const initialProvider = journey.requests[before.providerCount - 1];
+  assert.ok(initialProvider);
+  assertCandidateFacadeSchema(
+    journey.record.facade,
+    journey.api,
+    configBefore,
+    [initialProvider.body, provider.body],
+  );
+  await journey.read(page, 'Completed', true);
+  const currentConfiguration = journey.configurations().at(-1);
+  expect(currentConfiguration).toEqual(configBefore);
+  assert.ok(after.state.session);
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: { saved, actualProviderRequest: provider.body },
+    configuration: currentConfiguration,
+    nativeJson: JSON.parse(after.state.session.payload).nativeJson,
+  });
+  journey.records[`completed-${phase.prompt}`] = {
+    before,
+    after,
+    submitted,
+    pending,
+    nativeOutputs: [...nativeOutputs],
+    outputs: [...outputs],
+    historicalProjection: [...historical].map(
+      ([callId, canonicalPublicContent]) => ({
+        callId,
+        canonicalPublicContent,
+        expectedNativeProjectionValue: {
+          nativeType: 'System.String',
+          text: canonicalPublicContent,
+        },
+        expectedProviderWireOutput: canonicalPublicContent,
+      }),
+    ),
+    currentConfiguration,
+  };
+  journey.stable();
+  return outputs;
+}
+async function uncertainty(
+  journey: Journey,
+  page: Page,
+  phase: Phase,
+): Promise<void> {
+  const diagnostics = (await journey.status(page)).recovery.diagnostics ?? [];
+  const expected = phase.browsers
+    .filter((call) => call.status === 'unavailable' || content(call) === marker)
+    .map((call) => call.id)
+    .sort();
+  const actual = diagnostics
+    .filter(
+      (item) =>
+        item.kind === 'browser-result-unavailable' &&
+        phase.browsers.some((call) => call.id === item.toolCallId),
+    )
+    .map((item) => item.toolCallId)
+    .sort();
+  expect(actual).toEqual(expected);
+  for (const diagnostic of diagnostics.filter((item) =>
+    expected.includes(item.toolCallId ?? ''),
+  ))
+    expect(diagnostic.content).toBe(marker);
+}
+
+/** Captures every observer record, including unknown-scope refusals, without weakening the original baseline. */
+async function ordinaryAuthority(journey: Journey) {
+  const snapshot = await journey.snapshot();
+  return {
+    state: snapshot.state,
+    witnesses: [...journey.witnesses],
+    runs: snapshot.runs.map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    providerCount: snapshot.providerCount,
+    proxyRejections: journey.proxy
+      .records()
+      .filter((record) => record.kind === 'rejected'),
+    observer: {
+      records: journey.observer.records(),
+      entries: journey.observer.entries(journey.scope),
+      computations: journey.computations,
+      attemptSequences: journey.observer
+        .records()
+        .filter((record) => record.kind === 'request-received')
+        .map((record) => record.seq),
+      holdReceiptIds: journey.observer
+        .records()
+        .filter((record) => record.kind === 'hold-received')
+        .map((record) => record.receiptId),
+    },
+    counts: snapshot.counts,
+  };
+}
+
+/** Takes one synchronous live membership snapshot for either ordinary facade lifecycle. */
+function ordinaryCurrentEvidence(journey: Journey, newThreadId?: string) {
+  const runs = (threadId = journey.threadId) =>
+    journey.runs(threadId).map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    }));
+  return {
+    runs: runs(),
+    providerCount: journey.requests.length,
+    proxyRejections: journey.proxy
+      .records()
+      .filter((record) => record.kind === 'rejected'),
+    ...(newThreadId ? { newRuns: runs(newThreadId) } : {}),
+  };
+}
+
+/** Extracts actual scoped HTTP receipts; accepted runs also pass the existing strict byte/protocol classifier. */
+function ordinaryReceipt(
+  journey: Journey,
+  run: CapturedRun,
+  threadId: string,
+  rejected: boolean,
+) {
+  const records = journey.proxy
+    .records(threadId)
+    .filter((record) => record.requestId === run.proxyId);
+  const select = (kind: string) =>
+    records.filter((record) => record.kind === kind);
+  const request = select('request');
+  const upstream = select('upstream-headers');
+  const delivered = select('delivered-headers');
+  assert.equal(request.length, 1);
+  assert.equal(upstream.length, 1);
+  assert.equal(delivered.length, 1);
+  const source = Buffer.concat(
+    select('upstream-body').map((record) => record.bytes),
+  );
+  const body = Buffer.concat(
+    select('delivered-body').map((record) => record.bytes),
+  );
+  let events: readonly Record<string, unknown>[] = [];
+  let deliveredEvents: readonly Record<string, unknown>[] = [];
+  if (rejected) {
+    expect(source.length).toBe(0);
+    expect(body.length).toBe(0);
+    expect(select('complete')).toHaveLength(1);
+    for (const kind of [
+      'upstream-ack',
+      'downstream-ack-write',
+      'mutation',
+      'fault',
+      'rejected',
+    ])
+      expect(select(kind)).toEqual([]);
+  } else {
+    events = captureCandidateOriginalRun(
+      records,
+      run.proxyId,
+      expectNativeRunCapture,
+    );
+    deliveredEvents = expectNativeRunCapture({
+      body: body.toString('utf8'),
+      truncated: false,
+    });
+  }
+  const complete = select('complete')[0];
+  return {
+    requestId: run.proxyId,
+    upstreamStatus: upstream[0].status,
+    deliveredStatus: delivered[0].status,
+    requestSeq: request[0].seq,
+    headersSeq: delivered[0].seq,
+    completeSeq: complete?.seq,
+    monotonicMs: rejected ? complete?.monotonicMs : request[0].monotonicMs,
+    bodyText: body.toString('utf8'),
+    bodyBase64: body.toString('base64'),
+    sourceEvents: events,
+    deliveredEvents,
+  };
+}
+
+/** Qualifies replacement semantics through a refused old selector and an explicitly mounted fresh selector. */
+async function completionOrdinary(
+  journey: Journey,
+  page: Page,
+  prompt: string,
+): Promise<void> {
+  const baseline = await ordinaryAuthority(journey);
+  const configuration = journey.configurations().at(-1);
+  assert.ok(configuration);
+  const record: Record<string, unknown> = {
+    facade: journey.record.facade,
+    api: journey.api,
+    configuration,
+    prompt,
+    baseline,
+  };
+  journey.records.ordinaryThreadQualification = record;
+  await page.getByTestId('next').click();
+  await expect.poll(() => journey.runs().length).toBe(baseline.runs.length + 1);
+  const rejectedRun = journey.runs().at(-1);
+  assert.ok(rejectedRun);
+  await journey.proxy.waitFor(
+    rejectedRun.proxyId,
+    'complete',
+    AbortSignal.timeout(30_000),
+  );
+  await expect
+    .poll(
+      async () => {
+        const status = await journey.status(page);
+        return (
+          !!status.error &&
+          !status.isLoading &&
+          !status.isResuming &&
+          status.transport.some(
+            (entry) =>
+              entry.kind === 'disposed' &&
+              entry.requestId === rejectedRun.input.runId,
+          )
+        );
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  record.rejectedObserved = {
+    request: rejectedRun,
+    publicState: await journey.status(page),
+    proxy: journey.proxy.records(journey.threadId),
+    after: await ordinaryAuthority(journey),
+  };
+  const rejected = {
+    request: {
+      requestId: rejectedRun.proxyId,
+      input: rejectedRun.input,
+      status: journey.runs().at(-1)?.status,
+    },
+    receipt: ordinaryReceipt(journey, rejectedRun, journey.threadId, true),
+    publicState: await journey.status(page),
+    after: await ordinaryAuthority(journey),
+  };
+  record.rejected = rejected;
+  expect(rejected.request.status).toBe(400);
+  expect(rejected.after.state).toEqual(baseline.state);
+  expect(rejected.after.providerCount).toBe(baseline.providerCount);
+  expect(rejected.after.witnesses).toEqual(baseline.witnesses);
+  expect(rejected.after.observer).toEqual(baseline.observer);
+  const beforeUrl = page.url();
+  const startedMs = performance.now();
+  await page.getByTestId('new-thread').click();
+  await expect
+    .poll(async () => (await journey.status(page)).threadId)
+    .not.toBe(journey.threadId);
+  const mounted = await journey.status(page);
+  const completedMs = performance.now();
+  const navigation = {
+    control: 'new-thread',
+    fromThreadId: journey.threadId,
+    toThreadId: mounted.threadId,
+    startedMs,
+    completedMs,
+    beforeUrl,
+    afterUrl: page.url(),
+    status: mounted,
+    runs: journey.runs().map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    providerCount: journey.requests.length,
+  };
+  record.navigation = navigation;
+  const activeWorker = journey.workers.find(
+    (worker) => worker.fixture === journey.active,
+  );
+  assert.ok(activeWorker);
+  journey.proxy.registerThread({
+    scenarioId: journey.record.id,
+    threadId: mounted.threadId,
+    workerId: activeWorker.id,
+    recoveryPath: `/threads/${encodeURIComponent(mounted.threadId)}/native-session`,
+    principal: 'alice',
+  });
+  expect(journey.runs(mounted.threadId)).toEqual([]);
+  await page.getByTestId('next').click();
+  await expect.poll(() => journey.runs(mounted.threadId).length).toBe(1);
+  const freshRun = journey.runs(mounted.threadId)[0];
+  assert.ok(freshRun);
+  await journey.terminal(
+    page,
+    'Ordinary complete',
+    freshRun.input.runId,
+    mounted.threadId,
+  );
+  await expect
+    .poll(
+      async () => {
+        const value = await journey.status(page);
+        return (
+          !value.isLoading &&
+          !value.isResuming &&
+          value.transport.some(
+            (entry) =>
+              entry.kind === 'disposed' &&
+              entry.requestId === freshRun.input.runId,
+          )
+        );
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  const status = await journey.status(page);
+  await expect(async () =>
+    ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+  ).toPass({ timeout: 30_000 });
+  const response = await fetch(
+    `${journey.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(mounted.threadId)}`,
+    { headers: auth, signal: AbortSignal.timeout(5000) },
+  );
+  assert.equal(response.status, 200);
+  const newState: NativeState = await response.json();
+  const evidenceResponse = await fetch(
+    `${journey.active.url}/__test/candidate-native-evidence?threadId=${encodeURIComponent(mounted.threadId)}`,
+    { headers: auth, signal: AbortSignal.timeout(5000) },
+  );
+  assert.equal(evidenceResponse.status, 200);
+  const newEvidence: Evidence = await evidenceResponse.json();
+  assert.equal(newEvidence.faulted, false);
+  const provider = journey.requests.at(-1);
+  assert.ok(provider);
+  const accepted = {
+    request: {
+      requestId: freshRun.proxyId,
+      input: freshRun.input,
+      status: journey.runs(mounted.threadId)[0].status,
+    },
+    receipt: ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+    publicState: status,
+    provider: provider.body,
+    newState,
+    newWitnesses: newEvidence.records,
+    newRuns: journey.runs(mounted.threadId).map((run) => ({
+      requestId: run.proxyId,
+      input: run.input,
+      status: run.status,
+    })),
+    currentProviderCount: journey.requests.length,
+    after: await ordinaryAuthority(journey),
+    ...(journey.record.facade.startsWith('ui-')
+      ? {
+          renderedText: await page
+            .getByTestId('candidate-card')
+            .allTextContents(),
+        }
+      : {}),
+  };
+  record.accepted = accepted;
+  assertCandidateOrdinaryThreadQualification(record);
+  const observerAtQualification = journey.observer.records();
+  journey.finalOrdinaryChecks.push(() => {
+    const latestObserver = journey.observer.records();
+    expect(latestObserver.slice(0, observerAtQualification.length)).toEqual(
+      observerAtQualification,
+    );
+    expect(
+      latestObserver
+        .slice(observerAtQualification.length)
+        .every(
+          (entry) =>
+            entry.kind === 'stop-start' || entry.kind === 'stop-complete',
+        ),
+    ).toBe(true);
+    const finalRecord = refreshCandidateOrdinaryThreadQualification(
+      {
+        ...record,
+        rejected: {
+          ...rejected,
+          receipt: ordinaryReceipt(
+            journey,
+            rejectedRun,
+            journey.threadId,
+            true,
+          ),
+        },
+        accepted: {
+          ...accepted,
+          receipt: ordinaryReceipt(journey, freshRun, mounted.threadId, false),
+        },
+      },
+      () => ordinaryCurrentEvidence(journey, mounted.threadId),
+    );
+    journey.records.ordinaryThreadQualification = finalRecord;
+    assertCandidateOrdinaryThreadQualification(finalRecord);
+  });
+  assert.ok(newState.session);
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: freshRun.input,
+    configuration,
+    nativeJson: JSON.parse(newState.session.payload).nativeJson,
+  });
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: publicRequest(newState),
+    configuration,
+    nativeJson: JSON.parse(newState.session.payload).nativeJson,
+  });
+  journey.stable();
+  expect(journey.unexpectedRequests).toEqual([]);
+}
+
+async function reloadAndOrdinary(
+  journey: Journey,
+  context: BrowserContext,
+  phase: Phase,
+  history: boolean,
+): Promise<void> {
+  const before = await journey.snapshot();
+  await context.close();
+  const next = await journey.open();
+  await journey.read(next.page, 'Completed');
+  await uncertainty(journey, next.page, phase);
+  await next.page.getByTestId('rerender').click();
+  journey.stable();
+  expect(journey.runs()).toHaveLength(before.runs.length);
+  const prompt = `Ordinary ${journey.threadId}`;
+  journey.active.mock.onMessage(prompt, {
+    content: terminal(journey.record.facade, 'Ordinary complete'),
+  });
+  if (journey.record.facade.endsWith('completion')) {
+    await completionOrdinary(journey, next.page, prompt);
+    return;
+  }
+  const ordinaryBaseline = await ordinaryAuthority(journey);
+  if (history) {
+    await next.page.getByTestId('prompt').fill(prompt);
+    await next.page.getByTestId('start').click();
+  } else await next.page.getByTestId('next').click();
+  await expect.poll(() => journey.runs().length).toBe(before.runs.length + 1);
+  const ordinarySubmitted = journey.runs().at(-1);
+  assert.ok(ordinarySubmitted);
+  await journey.terminal(
+    next.page,
+    'Ordinary complete',
+    ordinarySubmitted.input.runId,
+  );
+  const after = await journey.snapshot();
+  expect(after.runs).toHaveLength(before.runs.length + 1);
+  expect(after.providerCount - before.providerCount).toBe(1);
+  expect(after.state.effects).toEqual(before.state.effects);
+  const configuration = journey.configurations().at(-1);
+  const originalConfiguration = journey.configurations()[0];
+  assert.ok(originalConfiguration);
+  expect(configuration).toEqual(originalConfiguration);
+  const ordinaryProvider = journey.requests.at(-1);
+  assert.ok(ordinaryProvider);
+  assertCandidateFacadeSchema(
+    journey.record.facade,
+    journey.api,
+    originalConfiguration,
+    [ordinaryProvider.body],
+  );
+  assert.ok(Array.isArray(ordinarySubmitted.input.messages));
+  assertCandidateProviderTextHistory(
+    ordinaryProvider.body,
+    journey.api,
+    ordinarySubmitted.input.messages as Record<string, unknown>[],
+  );
+  const ordinaryOutputs = new Map(
+    (ordinarySubmitted.input.messages as Record<string, unknown>[])
+      .filter((message) => message.role === 'tool')
+      .map((message) => {
+        assert.ok(
+          typeof message.toolCallId === 'string' &&
+            typeof message.content === 'string',
+        );
+        return [message.toolCallId, message.content] as const;
+      }),
+  );
+  expectNativeToolPairs(
+    ordinaryProvider,
+    journey.api,
+    readCallPairs(ordinarySubmitted.input, ordinaryOutputs),
+  );
+  assert.ok(after.state.session);
+  const ordinary = after.runs.at(-1);
+  assert.ok(ordinary);
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: ordinary.input,
+    configuration,
+    nativeJson: JSON.parse(after.state.session.payload).nativeJson,
+  });
+  assertCandidatePersistedRecoveryAbsent({
+    publicRequest: publicRequest(after.state),
+    configuration,
+    nativeJson: JSON.parse(after.state.session.payload).nativeJson,
+  });
+  const ordinaryAfter = await ordinaryAuthority(journey);
+  const ordinaryRecord = {
+    facade: journey.record.facade,
+    api: journey.api,
+    configuration: originalConfiguration,
+    prompt,
+    baseline: ordinaryBaseline,
+    accepted: {
+      request: {
+        requestId: ordinarySubmitted.proxyId,
+        input: ordinarySubmitted.input,
+        status: ordinary.status,
+      },
+      receipt: ordinaryReceipt(
+        journey,
+        ordinarySubmitted,
+        journey.threadId,
+        false,
+      ),
+      publicState: await journey.status(next.page),
+      provider: ordinaryProvider.body,
+      newState: ordinaryAfter.state,
+      newWitnesses: journey.witnesses.slice(ordinaryBaseline.witnesses.length),
+      after: ordinaryAfter,
+      ...(journey.record.facade.startsWith('ui-')
+        ? {
+            renderedText: await next.page
+              .getByTestId('candidate-card')
+              .allTextContents(),
+          }
+        : {}),
+    },
+  };
+  journey.records.ordinaryThreadQualification = ordinaryRecord;
+  assertCandidateOrdinaryThreadQualification(ordinaryRecord);
+  const observerAtQualification = journey.observer.records();
+  journey.finalOrdinaryChecks.push(() => {
+    const latestObserver = journey.observer.records();
+    expect(latestObserver.slice(0, observerAtQualification.length)).toEqual(
+      observerAtQualification,
+    );
+    expect(
+      latestObserver
+        .slice(observerAtQualification.length)
+        .every(
+          (entry) =>
+            entry.kind === 'stop-start' || entry.kind === 'stop-complete',
+        ),
+    ).toBe(true);
+    const finalRecord = refreshCandidateOrdinaryThreadQualification(
+      {
+        ...ordinaryRecord,
+        accepted: {
+          ...ordinaryRecord.accepted,
+          receipt: ordinaryReceipt(
+            journey,
+            ordinarySubmitted,
+            journey.threadId,
+            false,
+          ),
+        },
+      },
+      () => ordinaryCurrentEvidence(journey),
+    );
+    journey.records.ordinaryThreadQualification = finalRecord;
+    assertCandidateOrdinaryThreadQualification(finalRecord);
+  });
+  journey.stable();
+  expect(journey.unexpectedRequests).toEqual([]);
+}
+/** Waits for the clicked command's own rendered refusal without accepting an earlier error. */
+async function expectLocalRefusal(
+  journey: Journey,
+  page: Page,
+  expectedAction: string,
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const actual = await journey.status(page);
+      return {
+        lastAction: actual.lastAction,
+        hasLocalError: Boolean(actual.localError),
+      };
+    })
+    .toEqual({ lastAction: expectedAction, hasLocalError: true });
+}
+async function localNegative(
+  journey: Journey,
+  page: Page,
+  id: string,
+): Promise<void> {
+  const before = await journey.snapshot();
+  const pending = (await journey.status(page)).pending;
+  await page.getByTestId(id).click();
+  const expectedAction =
+    id === 'negative-stale-token'
+      ? 'negative-stale'
+      : id === 'negative-incomplete-outcomes'
+        ? 'negative-outcomes'
+        : id === 'negative-incomplete-decisions'
+          ? 'negative-decisions'
+          : id;
+  await expectLocalRefusal(journey, page, expectedAction);
+  const after = await journey.status(page);
+  expect(after.pending).toEqual(pending);
+  await journey.unchanged(before);
+}
+async function rawRead(
+  journey: Journey,
+  fresh: boolean,
+  page: Page,
+): Promise<Record<string, unknown>> {
+  const before = journey.proxy
+    .records(journey.threadId)
+    .filter((record) => record.kind === 'request')
+    .map((record) => record.requestId);
+  await page.getByTestId(fresh ? 'fresh-read' : 'read').click();
+  await expect
+    .poll(() =>
+      journey.proxy
+        .records(journey.threadId)
+        .some(
+          (record) =>
+            record.kind === 'complete' && !before.includes(record.requestId),
+        ),
+    )
+    .toBe(true);
+  const records = journey.proxy.records(journey.threadId);
+  const request = records.find(
+    (record) => record.kind === 'request' && !before.includes(record.requestId),
+  );
+  assert.ok(request);
+  const configuration = JSON.parse(request.incomingBody.toString('utf8'));
+  const originalConfiguration = journey.configurations()[0];
+  assert.ok(originalConfiguration);
+  expect(configuration).toEqual(originalConfiguration);
+  const sentHeaders = request.rawHeaders ?? [];
+  const versionHeaders: string[] = [];
+  for (let index = 0; index < sentHeaders.length; index += 2)
+    if (sentHeaders[index].toLowerCase() === 'hashbrown-recovery-version')
+      versionHeaders.push(sentHeaders[index + 1]);
+  expect(versionHeaders).toEqual(['2']);
+  expect(
+    records.filter(
+      (record) =>
+        record.requestId === request.requestId && record.kind === 'request',
+    ),
+  ).toHaveLength(1);
+  const bytes = Buffer.concat(
+    records
+      .filter(
+        (record) =>
+          record.requestId === request.requestId &&
+          record.kind === 'delivered-body',
+      )
+      .map((record) => record.bytes),
+  );
+  const headers = records.find(
+    (record) =>
+      record.requestId === request.requestId &&
+      record.kind === 'delivered-headers',
+  );
+  assert.ok(headers?.status, 'Actual delivered recovery status required');
+  let body: unknown = null;
+  if (bytes.length) {
+    try {
+      body = JSON.parse(bytes.toString('utf8'));
+    } catch (error) {
+      if (headers.status < 400) throw error;
+    }
+  }
+  return {
+    requestId: request.requestId,
+    deliveredHeaders: headers,
+    status: headers.status,
+    body,
+    bodyText: bytes.toString('utf8'),
+    bodyBase64: bytes.toString('base64'),
+  };
+}
+async function blocked(
+  journey: Journey,
+  page: Page,
+  scenario: string,
+): Promise<void> {
+  const before = await journey.snapshot();
+  const beforeUi = await journey.status(page);
+  const beforeWitnesses = [...journey.witnesses];
+  const response = await rawRead(journey, false, page);
+  journey.records.blockedReadStart = {
+    response,
+    before,
+    beforeUi,
+    beforeWitnesses,
+    publicState: await journey.status(page),
+  };
+  await expect
+    .poll(async () => (await journey.status(page)).pending)
+    .toBeNull();
+  if (
+    scenario.startsWith('version.') ||
+    scenario === 'server.expired' ||
+    scenario === 'server.corrupt'
+  )
+    await expect
+      .poll(async () =>
+        Boolean(
+          (await journey.status(page)).localError ||
+          (await journey.status(page)).error,
+        ),
+      )
+      .toBe(true);
+  expect(journey.runs()).toEqual(before.runs);
+  expect(journey.requests).toHaveLength(before.providerCount);
+  expect((await journey.state()).effects).toEqual(before.state.effects);
+  journey.stable();
+  const after = await journey.snapshot();
+  const afterUi = await journey.status(page);
+  expect(afterUi.messages).toEqual(beforeUi.messages);
+  expect(afterUi.state).toEqual(beforeUi.state);
+  expect(afterUi.recovery.revision).toBe(beforeUi.recovery.revision);
+  for (const name of [
+    'cold-acquire-success',
+    'reservation-success',
+    'Run.Forward',
+    'Deserialize.Forward',
+  ])
+    expect(after.counts[name] ?? 0).toBe(before.counts[name] ?? 0);
+  journey.records.blockedRead = {
+    response,
+    before,
+    after,
+    status: afterUi,
+    beforeWitnesses,
+    afterWitnesses: [...journey.witnesses],
+  };
+}
+
+async function authoritative(
+  journey: Journey,
+  page: Page,
+  fresh = true,
+): Promise<Record<string, unknown>> {
+  const beforeUi = await journey.status(page);
+  const previousPendingId = beforeUi.pending?.id;
+  const response = await rawRead(journey, fresh, page);
+  const session = (await journey.state()).session;
+  journey.records[`authoritative-${String(response.requestId)}`] = {
+    response,
+    session,
+    beforeUi,
+    adopted: await journey.status(page),
+  };
+  assertCandidateAuthoritativeResponse(
+    { status: response.status, body: response.body },
+    session,
+  );
+  assert.ok(object(response.body));
+  const { snapshot, ...metadata } = response.body;
+  await expect
+    .poll(async () => (await journey.status(page)).lastAction)
+    .toBe('read');
+  await expect
+    .poll(async () => (await journey.status(page)).lastRead)
+    .toEqual(metadata);
+  await expect
+    .poll(async () => (await journey.status(page)).localError)
+    .toBeNull();
+  if (metadata.disposition === 'Pending') {
+    await expect
+      .poll(async () => (await journey.status(page)).pending?.serverRevision)
+      .toBe(metadata.serverRevision);
+    if (previousPendingId)
+      await expect
+        .poll(async () => (await journey.status(page)).pending?.id)
+        .not.toBe(previousPendingId);
+  }
+  const adopted = await journey.status(page);
+  journey.records[`authoritative-${String(response.requestId)}`] = {
+    response,
+    session,
+    beforeUi,
+    adopted,
+    hasSnapshot: snapshot !== null && snapshot !== undefined,
+  };
+  assertCandidateReadAdoption(
+    { disposition: String(metadata.disposition), snapshot },
+    beforeUi,
+    adopted,
+  );
+  journey.stable();
+  return response;
+}
+
+/** Waits the exact source-proven owned native contexts before measuring later inert commands. */
+async function waitForCandidateNativeCleanup(
+  journey: Journey,
+  page: Page,
+  run: CapturedRun,
+): Promise<void> {
+  const current = {
+    requestId: run.proxyId,
+    runId: run.input.runId,
+    threadId: journey.threadId,
+    scenarioId: journey.record.id,
+  };
+  const received = () => {
+    const records = journey.proxy.records();
+    return records
+      .filter(
+        (record) => record.kind === 'request' && record.incomingBody.length > 0,
+      )
+      .flatMap((record) => {
+        const input = JSON.parse(
+          record.incomingBody.toString('utf8'),
+        ) as Record<string, unknown>;
+        if (!Array.isArray(input.messages)) return [];
+        assert.equal(record.threadId, input.threadId);
+        const owner = journey.workers.find(
+          (worker) => worker.id === record.workerId,
+        );
+        assert.ok(
+          owner,
+          'Actual request must name a qualified owned native worker',
+        );
+        const scoped = records.filter(
+          (item) => item.requestId === record.requestId,
+        );
+        for (const item of scoped) {
+          assert.equal(
+            item.threadId,
+            record.threadId,
+            'Native boundary thread changed',
+          );
+          assert.equal(
+            item.scenarioId,
+            record.scenarioId,
+            'Native boundary scenario changed',
+          );
+          assert.equal(
+            item.workerId,
+            record.workerId,
+            'Native boundary worker changed',
+          );
+          assert.equal(
+            item.routeEpoch,
+            record.routeEpoch,
+            'Native boundary route epoch changed',
+          );
+        }
+        const headers = scoped.filter(
+          (item) => item.kind === 'upstream-headers',
+        );
+        return [
+          {
+            requestId: record.requestId,
+            runId: input.runId,
+            threadId: input.threadId,
+            scenarioId: record.scenarioId,
+            workerId: record.workerId,
+            routeEpoch: record.routeEpoch,
+            origin: owner.fixture.url,
+            loadedIdentityEvidence: join(journey.root, owner.id + '.json'),
+            upstreamStatus: headers[0]?.status,
+            upstreamHeaderCount: headers.length,
+            sourceAcknowledgementCount: scoped.filter(
+              (item) => item.kind === 'upstream-ack',
+            ).length,
+            sourceBody: Buffer.concat(
+              scoped
+                .filter((item) => item.kind === 'upstream-body')
+                .map((item) => item.bytes),
+            ).toString('utf8'),
+          },
+        ];
+      });
+  };
+  const initialRequests = received();
+  const currentRequest = initialRequests.find(
+    (request) => request.requestId === run.proxyId,
+  );
+  assert.ok(currentRequest, 'Current failed request must be retained');
+  const owner = journey.workers.find(
+    (worker) => worker.id === currentRequest.workerId,
+  );
+  assert.ok(owner);
+  const membership = initialRequests.map((request) => ({
+    requestId: request.requestId,
+    runId: request.runId,
+    threadId: request.threadId,
+    scenarioId: request.scenarioId,
+    workerId: request.workerId,
+    routeEpoch: request.routeEpoch,
+    origin: request.origin,
+    loadedIdentityEvidence: request.loadedIdentityEvidence,
+  }));
+  const allReceived = () =>
+    journey.proxy
+      .records()
+      .filter((record) => record.kind === 'request')
+      .map((record) => ({
+        requestId: record.requestId,
+        threadId: record.threadId,
+        scenarioId: record.scenarioId,
+        workerId: record.workerId,
+        routeEpoch: record.routeEpoch,
+        incomingBodyBase64: record.incomingBody.toString('base64'),
+        forwardedBodyBase64: record.forwardedBody.toString('base64'),
+      }));
+  const receivedMembership = allReceived();
+  const rejections = journey.proxy
+    .records()
+    .filter((record) => record.kind === 'rejected');
+  const capture = async () => {
+    await journey.collect();
+    const publicState = await journey.status(page);
+    return {
+      current,
+      membership,
+      requests: received(),
+      receivedRequests: allReceived(),
+      worker: {
+        id: owner.id,
+        origin: owner.fixture.url,
+        loadedIdentityEvidence: join(journey.root, owner.id + '.json'),
+        counts: { ...owner.stages },
+      },
+      publicState,
+    };
+  };
+  const prefence = await capture();
+  let pollCount = 0;
+  let observations: readonly unknown[] = [];
+  journey.records.nativeCleanup = { prefence, pollCount, observations };
+  await expect
+    .poll(
+      async () => {
+        const facts = await capture();
+        pollCount++;
+        observations = [...observations.slice(-31), facts];
+        journey.records.nativeCleanup = { prefence, pollCount, observations };
+        assert.deepEqual(
+          allReceived(),
+          receivedMembership,
+          'Every received request, including non-run/unbegun reads, must stay unchanged during cleanup',
+        );
+        assert.deepEqual(
+          journey.proxy
+            .records()
+            .filter((record) => record.kind === 'rejected'),
+          rejections,
+          'A new global rejected request cannot disappear during cleanup',
+        );
+        const ready = isCandidateNativeCleanupComplete(facts);
+        if (ready)
+          journey.records.nativeCleanup = {
+            prefence,
+            pollCount,
+            observations,
+            settled: facts,
+          };
+        return ready;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+}
+
+async function failedAttempt(
+  journey: Journey,
+  page: Page,
+  phase: Phase,
+  pending: Pending,
+  before: Snapshot,
+): Promise<void> {
+  await expect.poll(() => journey.runs().length).toBe(before.runs.length + 1);
+  const run = journey.runs().at(-1);
+  assert.ok(run);
+  await expect
+    .poll(async () => (await journey.status(page)).recovery.required, {
+      timeout: 30_000,
+    })
+    .toBe(true);
+  if (journey.record.scenario === 'failure.malformed-ack') {
+    await expect
+      .poll(
+        () =>
+          isCandidateMalformedBoundaryReady(
+            journey.proxy.records(journey.threadId),
+            run.proxyId,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+  } else {
+    await journey.proxy.waitFor(
+      run.proxyId,
+      'downstream-closed',
+      AbortSignal.timeout(30_000),
+    );
+  }
+  const failed = await journey.snapshot();
+  expect(failed.runs).toHaveLength(before.runs.length + 1);
+  expect(failed.providerCount - before.providerCount).toBeLessThanOrEqual(1);
+  expect(
+    failed.state.effects.length - before.state.effects.length,
+  ).toBeLessThanOrEqual(
+    phase.protected.filter((call) => call.decision === 'approve').length,
+  );
+  expect(
+    (failed.counts['cold-acquire-success'] ?? 0) -
+      (before.counts['cold-acquire-success'] ?? 0),
+  ).toBeLessThanOrEqual(1);
+  journey.records.failureAtClosure = {
+    failed,
+    publicState: await journey.status(page),
+    proxy: journey.proxy.records(journey.threadId),
+  };
+  if (journey.record.scenario === 'failure.malformed-ack') {
+    await expect
+      .poll(async () => {
+        const status = await journey.status(page);
+        return (
+          Boolean(status.error) &&
+          ['error', 'disposed'].every((kind) =>
+            status.transport.some(
+              (record) =>
+                record.kind === kind && record.requestId === run.input.runId,
+            ),
+          )
+        );
+      })
+      .toBe(true);
+  }
+  const current = await journey.status(page);
+  const began = current.events.filter(
+    (event) => event.type === 'RUN_STARTED' && event.runId === run.input.runId,
+  );
+  const originalFailure = Object.freeze(
+    structuredClone({
+      threadId: journey.threadId,
+      error: current.error,
+      recoveryRequired: current.recovery.required,
+      events: current.events,
+      transport: current.transport,
+    }),
+  );
+  journey.records.ambiguity = {
+    before,
+    failed,
+    rawRun: run,
+    pending,
+    consumedAcknowledgements: began,
+    lifecycle: current.transport,
+    publicState: current,
+    originalFailure,
+    proxy: journey.proxy.records(journey.threadId),
+  };
+  assertCandidateProxyIntervention({
+    scenario: journey.record.scenario,
+    requestId: run.proxyId,
+    runId: run.input.runId,
+    records: journey.proxy.records(journey.threadId),
+    ...originalFailure,
+  });
+  await waitForCandidateNativeCleanup(journey, page, run);
+  const afterNativeCleanup = await journey.snapshot();
+  journey.records.nativeCleanupLimits = {
+    before,
+    after: afterNativeCleanup,
+    witnesses: [...journey.witnesses],
+  };
+  expect(afterNativeCleanup.runs).toHaveLength(before.runs.length + 1);
+  expect(
+    afterNativeCleanup.providerCount - before.providerCount,
+  ).toBeLessThanOrEqual(1);
+  expect(
+    afterNativeCleanup.state.effects.length - before.state.effects.length,
+  ).toBeLessThanOrEqual(
+    phase.protected.filter((call) => call.decision === 'approve').length,
+  );
+  expect(
+    (afterNativeCleanup.counts['cold-acquire-success'] ?? 0) -
+      (before.counts['cold-acquire-success'] ?? 0),
+  ).toBeLessThanOrEqual(1);
+  for (const witness of journey.witnesses) {
+    expect(witness.threadId).toBe(journey.threadId);
+    expect(witness.runId).toBe(run.input.runId);
+    expect(phase.protected.some((call) => call.id === witness.callId)).toBe(
+      true,
+    );
+    expect(
+      pending.interrupts.some(
+        (interrupt) =>
+          interrupt.toolCallId === witness.callId &&
+          interrupt.id === witness.requestId,
+      ),
+    ).toBe(true);
+  }
+  journey.stable();
+  const beforeRepeat = await journey.snapshot();
+  await page.getByTestId('negative-repeat-submit').click();
+  await expectLocalRefusal(
+    journey,
+    page,
+    'negative-repeat-submit:resumeConversationRecovery',
+  );
+  await journey.unchanged(beforeRepeat);
+  await page.getByTestId('negative-send').click();
+  await expectLocalRefusal(journey, page, 'negative-send');
+  await journey.unchanged(beforeRepeat);
+  const beforeReadUi = await journey.status(page);
+  const read = await authoritative(journey, page);
+  journey.records.reconciliation = read;
+  assert.ok(object(read.body));
+  if (
+    (read.body.snapshot === undefined || read.body.snapshot === null) &&
+    beforeReadUi.recovery.required
+  ) {
+    const afterRead = await journey.snapshot();
+    const afterReadWitnesses = [...journey.witnesses];
+    for (const action of ['negative-repeat-submit', 'negative-send']) {
+      await page.getByTestId(action).click();
+      await expectLocalRefusal(
+        journey,
+        page,
+        action === 'negative-repeat-submit'
+          ? 'negative-repeat-submit:resumeConversationRecovery'
+          : 'negative-send',
+      );
+      await journey.unchanged(afterRead);
+      expect(journey.witnesses).toEqual(afterReadWitnesses);
+      journey.stable();
+    }
+    journey.records.snapshotlessRefusals = {
+      beforeReadUi,
+      afterRead,
+      publicState: await journey.status(page),
+    };
+    if (read.body.disposition === 'UnknownEffect') {
+      const beforeFreshWitnesses = [...journey.witnesses];
+      const fresh = await journey.open();
+      const freshRead = await authoritative(journey, fresh.page, false);
+      assert.ok(object(freshRead.body));
+      expect(freshRead.body.disposition).toBe('UnknownEffect');
+      expect(freshRead.body.snapshot).toBeUndefined();
+      expect((await journey.status(fresh.page)).pending).toBeNull();
+      const afterFreshRead = await journey.snapshot();
+      expect(afterFreshRead.runs).toEqual(afterRead.runs);
+      expect(afterFreshRead.providerCount).toBe(afterRead.providerCount);
+      expect(afterFreshRead.state).toEqual(afterRead.state);
+      expect(journey.witnesses).toEqual(beforeFreshWitnesses);
+      for (const stage of [
+        'cold-acquire-success',
+        'reservation-success',
+        'Run.Forward',
+        'Deserialize.Forward',
+      ])
+        expect(afterFreshRead.counts[stage] ?? 0).toBe(
+          afterRead.counts[stage] ?? 0,
+        );
+      journey.records.freshUnknownEffect = {
+        response: freshRead,
+        publicState: await journey.status(fresh.page),
+        before: afterRead,
+        after: afterFreshRead,
+      };
+    }
+  }
+  const reconciledUi = await journey.status(page);
+  const reconciledObservation = refreshCandidateFaultObservation(
+    {
+      scenario: journey.record.scenario,
+      requestId: run.proxyId,
+      runId: run.input.runId,
+      ...originalFailure,
+    },
+    reconciledUi,
+  );
+  assertCandidateProxyIntervention({
+    ...reconciledObservation,
+    records: journey.proxy.records(journey.threadId),
+  });
+  journey.finalFaultObservations.push(reconciledObservation);
+  journey.records.reconciledPublicState = reconciledUi;
+  const reread = await journey.snapshot();
+  expect(reread.runs).toHaveLength(before.runs.length + 1);
+  expect(
+    (reread.counts['cold-acquire-success'] ?? 0) -
+      (before.counts['cold-acquire-success'] ?? 0),
+  ).toBeLessThanOrEqual(1);
+  expect(
+    reread.state.effects.length - before.state.effects.length,
+  ).toBeLessThanOrEqual(
+    phase.protected.filter((call) => call.decision === 'approve').length,
+  );
+  journey.stable();
+}
+async function scenario(journey: Journey, plan: Plan): Promise<void> {
+  const id = journey.record.scenario;
+  const current: Phase = {
+    browsers: plan.browsers,
+    protected: plan.protected,
+    prompt: `Current ${journey.threadId}`,
+    split: plan.split,
+  };
+  journey.script(journey.active, current);
+  let historical: ReadonlyMap<string, string> = new Map();
+  let original = await journey.open();
+  expect(journey.requests).toHaveLength(0);
+  expect(journey.runs()).toHaveLength(0);
+  let beforeCurrent: PhaseCounters;
+  if (plan.history) {
+    const entered: Phase = {
+      browsers: [
+        {
+          id: 'history-entered-browser',
+          city: 'Owned entered history city',
+          value: 'Entered history exact browser result',
+          status: 'result',
+        },
+      ],
+      protected: [],
+      prompt: journey.config.prompt,
+      split: false,
+    };
+    const prior: Phase = {
+      browsers: [
+        {
+          id: 'prior-browser',
+          city: 'Owned prior city',
+          value: 'Earlier exact browser result',
+          status: 'result',
+        },
+      ],
+      protected: [{ id: 'prior-protected', code: 'ATL', decision: 'approve' }],
+      prompt: `Prior ${journey.threadId}`,
+      split: false,
+    };
+    journey.script(journey.active, entered, 'Entered history complete');
+    journey.script(journey.active, prior, 'Prior complete');
+    let beforePhase = await journey.phaseCounters();
+    await original.page.getByTestId('start').click();
+    const enteredPublication = await journey.published(
+      entered,
+      original.page,
+      beforePhase,
+    );
+    await journey.abandon(original.context, entered);
+    original = await journey.open();
+    await journey.read(original.page);
+    let pending = await journey.fill(original.page, entered);
+    let before = await journey.snapshot();
+    await original.page.getByTestId('submit').click();
+    historical = await complete(
+      journey,
+      original.page,
+      entered,
+      enteredPublication,
+      pending,
+      before,
+      historical,
+      1,
+      'Entered history complete',
+    );
+    beforePhase = await journey.phaseCounters();
+    await original.page.getByTestId('prompt').fill(prior.prompt);
+    await original.page.getByTestId('start').click();
+    const priorPublication = await journey.published(
+      prior,
+      original.page,
+      beforePhase,
+    );
+    await journey.abandon(original.context, prior);
+    original = await journey.open();
+    await journey.read(original.page);
+    pending = await journey.fill(original.page, prior);
+    before = await journey.snapshot();
+    await original.page.getByTestId('submit').click();
+    historical = await complete(
+      journey,
+      original.page,
+      prior,
+      priorPublication,
+      pending,
+      before,
+      historical,
+      1,
+      'Prior complete',
+    );
+    beforeCurrent = await journey.phaseCounters();
+    await original.page.getByTestId('prompt').fill(current.prompt);
+    await original.page.getByTestId('start').click();
+  } else {
+    beforeCurrent = await journey.phaseCounters();
+    await original.page.getByTestId('start').click();
+  }
+  const published = await journey.published(
+    current,
+    original.page,
+    beforeCurrent,
+  );
+  const publication = await journey.snapshot();
+  const currentEffects = published.effects.filter((effect) =>
+    current.protected.some((call) => call.id === effect.call_id),
+  );
+  expect(currentEffects).toEqual([]);
+  await journey.abandon(original.context, current);
+  if (id === 'restart.before-restore') {
+    await journey.stop(journey.active);
+    const peer = await journey.start();
+    journey.script(peer, current);
+    await journey.switch(peer);
+  }
+  if (id === 'server.expired') {
+    await journey.control('expire-native-payload');
+    await journey.control('maintain-native');
+  }
+  if (id === 'server.corrupt') {
+    const before = await journey.state();
+    const receipt = await journey.control(
+      `native-recovery-corruption/missing-browser-binding?threadId=${encodeURIComponent(journey.threadId)}`,
+    );
+    journey.records.corruption = {
+      before,
+      after: await journey.state(),
+      receipt,
+      actualControlReceipt: Array.isArray(journey.records.controls)
+        ? journey.records.controls.at(-1)
+        : undefined,
+    };
+  }
+  let restored = await journey.open();
+  if (
+    id === 'version.v1' ||
+    id === 'version.downgrade' ||
+    id.startsWith('version.malformed.')
+  ) {
+    const mode: CandidateReadIntervention =
+      id === 'version.v1'
+        ? 'real-v1'
+        : id === 'version.downgrade'
+          ? 'downgrade-real-v2'
+          : (id.slice(
+              'version.malformed.'.length,
+            ) as CandidateReadIntervention);
+    journey.proxy.armRead(journey.threadId, mode);
+    await blocked(journey, restored.page, id);
+    const observed = journey.records.blockedRead as {
+      response: { body: unknown };
+    };
+    if (id === 'version.v1' || id === 'version.downgrade') {
+      assert.ok(object(observed.response.body));
+      expect(observed.response.body.schemaVersion).toBe(1);
+    }
+    if (id === 'version.v1') {
+      await journey.read(restored.page, 'Pending', true);
+      const pending = await journey.fill(restored.page, current);
+      const before = await journey.snapshot();
+      await restored.page.getByTestId('submit').click();
+      await complete(
+        journey,
+        restored.page,
+        current,
+        published,
+        pending,
+        before,
+      );
+    }
+    return;
+  }
+  if (id === 'server.expired' || id === 'server.corrupt') {
+    await blocked(journey, restored.page, id);
+    const observed = journey.records.blockedRead as {
+      response: {
+        status: number;
+        body: unknown;
+        bodyText: string;
+        bodyBase64: string;
+      };
+      before: Snapshot;
+      after: Snapshot;
+      status: Status;
+      beforeWitnesses: readonly Witness[];
+      afterWitnesses: readonly Witness[];
+    };
+    if (id === 'server.corrupt') {
+      const mutation = journey.records.corruption as {
+        before: NativeState;
+        after: NativeState;
+      };
+      assert.ok(mutation.before.session && mutation.after.session);
+      assertCandidateCorruptionEvidence(
+        mutation.before.session.payload,
+        mutation.after.session.payload,
+        observed.response,
+      );
+      expect({
+        ...mutation.after,
+        session: {
+          ...mutation.after.session,
+          payload: mutation.before.session.payload,
+        },
+      }).toEqual(mutation.before);
+    }
+    if (id === 'server.expired') {
+      assertCandidateExpiredRead({
+        response: observed.response,
+        publishedState: published,
+        before: observed.before,
+        after: observed.after,
+        beforeWitnesses: observed.beforeWitnesses,
+        afterWitnesses: observed.afterWitnesses,
+        controls: journey.records.controls,
+        publicState: observed.status,
+      });
+    }
+    if (
+      object(observed.response.body) &&
+      object(observed.response.body.snapshot)
+    )
+      expect(observed.response.body.snapshot.pendingBrowserRecovery).toBeNull();
+    return;
+  }
+  const actualRead = await journey.read(restored.page);
+  expect(actualRead.lastRead).toMatchObject({
+    schemaVersion: 2,
+    disposition: 'Pending',
+    serverRevision: published.session?.revision,
+  });
+  expect(actualRead.pending?.serverRevision).toBe(published.session?.revision);
+  if (id === 'replica.before-settlement') {
+    const peer = await journey.start();
+    journey.script(peer, current);
+    await journey.switch(peer);
+    expect((await journey.status(restored.page)).pending?.id).toBe(
+      actualRead.pending?.id,
+    );
+  }
+  if (id === 'thread.explicit-new') {
+    const before = await journey.snapshot();
+    await restored.page.getByTestId('new-thread').click();
+    await expect
+      .poll(async () => (await journey.status(restored.page)).threadId)
+      .not.toBe(journey.threadId);
+    const newThread = (await journey.status(restored.page)).threadId;
+    expect((await journey.status(restored.page)).pending).toBeNull();
+    const activeWorker = journey.workers.find(
+      (worker) => worker.fixture === journey.active,
+    );
+    assert.ok(activeWorker);
+    journey.proxy.registerThread({
+      scenarioId: journey.record.id,
+      threadId: newThread,
+      workerId: activeWorker.id,
+      recoveryPath: `/threads/${encodeURIComponent(newThread)}/native-session`,
+      principal: 'alice',
+    });
+    journey.active.mock.onMessage(journey.config.nextPrompt, {
+      content: terminal(journey.record.facade, 'New thread complete'),
+    });
+    await restored.page.getByTestId('next').click();
+    await expect.poll(() => journey.runs(newThread).length).toBe(1);
+    await expect
+      .poll(async () =>
+        (await journey.status(restored.page)).messages?.some(
+          (message) =>
+            message.role === 'assistant' &&
+            message.content === 'New thread complete',
+        ),
+      )
+      .toBe(true);
+    expect(journey.runs()).toEqual(before.runs);
+    expect((await journey.state()).effects).toEqual(before.state.effects);
+    journey.stable();
+    const next = journey.runs(newThread)[0];
+    expect(next.input.threadId).toBe(newThread);
+    assert.ok(
+      !object(next.input.forwardedProps) ||
+        !object(next.input.forwardedProps.hashbrown) ||
+        !Object.hasOwn(next.input.forwardedProps.hashbrown, 'recovery'),
+    );
+    await expect
+      .poll(async () =>
+        (await journey.status(restored.page)).events.some(
+          (event) =>
+            event.type === 'RUN_FINISHED' && event.runId === next.input.runId,
+        ),
+      )
+      .toBe(true);
+    expect(journey.requests.length - before.providerCount).toBe(1);
+    const newStateResponse = await fetch(
+      `${journey.active.url}/__test/native-recovery-state?threadId=${encodeURIComponent(newThread)}`,
+      { headers: auth, signal: AbortSignal.timeout(5000) },
+    );
+    assert.equal(newStateResponse.status, 200);
+    const newState: NativeState = await newStateResponse.json();
+    expect(newState.session?.state).toBe('Ready');
+    expect(newState.effects).toEqual([]);
+    const oldIds = new Set(current.browsers.map((call) => call.id));
+    assert.ok(Array.isArray(next.input.messages));
+    expect(
+      (next.input.messages as Record<string, unknown>[]).filter(
+        (message) =>
+          (message.role === 'tool' && oldIds.has(String(message.toolCallId))) ||
+          (Array.isArray(message.toolCalls) &&
+            (message.toolCalls as Record<string, unknown>[]).some((call) =>
+              oldIds.has(String(call.id)),
+            )),
+      ),
+    ).toEqual([]);
+    journey.records.newThread = {
+      oldThread: journey.threadId,
+      newThread,
+      next,
+      newState,
+    };
+    return;
+  }
+  if (id === 'local.stale-token') {
+    const priorToken = actualRead.pending?.id;
+    await journey.read(restored.page, 'Pending', true);
+    expect((await journey.status(restored.page)).pending?.id).not.toBe(
+      priorToken,
+    );
+    await localNegative(journey, restored.page, 'negative-stale-token');
+  }
+  if (id === 'local.incomplete-outcomes')
+    await localNegative(journey, restored.page, 'negative-incomplete-outcomes');
+  if (id === 'local.incomplete-decisions')
+    await localNegative(
+      journey,
+      restored.page,
+      'negative-incomplete-decisions',
+    );
+  if (id === 'local.pending-mutation-gate') {
+    for (const action of [
+      'negative-send',
+      'negative-resume',
+      'negative-generate',
+      'negative-set-messages',
+      'negative-set-state',
+    ])
+      await localNegative(journey, restored.page, action);
+    const before = await journey.snapshot();
+    const publicBefore = await journey.status(restored.page);
+    await restored.page.getByTestId('negative-config').click();
+    await expect(restored.page.getByTestId('config-error')).toBeVisible();
+    const failure = JSON.parse(
+      await restored.page.getByTestId('config-error').innerText(),
+    ) as {
+      classification: string;
+      epoch: number;
+      error: string;
+      stack: string;
+    };
+    const after = await journey.snapshot();
+    const statusElements = await restored.page.getByTestId('status').count();
+    const retainsPublicView = journey.record.composition.startsWith('angular.');
+    const publicAfter = retainsPublicView
+      ? await journey.status(restored.page)
+      : undefined;
+    journey.records.pendingConfigurationRejection = {
+      failure,
+      before,
+      after,
+      publicBefore,
+      statusElements,
+      ...(publicAfter ? { publicAfter } : {}),
+    };
+    expect(failure.classification).toBe('config-error');
+    expect(failure.epoch).toBeGreaterThan(0);
+    expect(failure.error).toMatch(/browser recovery is pending/i);
+    expect(failure.stack).toBeTruthy();
+    assertCandidateUnchangedSnapshot(before, after, 0);
+    expect(statusElements).toBe(retainsPublicView ? 1 : 0);
+    if (retainsPublicView) {
+      assert.ok(publicAfter, 'Angular retains its actual public resource view');
+      expect(publicAfter.configuration).toEqual(publicBefore.configuration);
+      expect(publicAfter.pending).toEqual(publicBefore.pending);
+    }
+    await restored.context.close();
+    restored = await journey.open();
+    await journey.read(restored.page);
+  }
+  if (id === 'display.html') {
+    await expect(restored.page.getByTestId('pending')).toContainText('<img');
+    expect(await restored.page.locator('img[src="x"]').count()).toBe(0);
+    expect(journey.unexpectedRequests).toEqual([]);
+  }
+  const pending = await journey.fill(restored.page, current);
+  const before = await journey.snapshot();
+  if (id === 'race.same-revision') {
+    const second = await journey.open();
+    await journey.read(second.page);
+    const secondPending = await journey.fill(second.page, current);
+    expect(secondPending.id).not.toBe(pending.id);
+    expect(secondPending.serverRevision).toBe(pending.serverRevision);
+    const firstView = await journey.status(restored.page);
+    const secondView = await journey.status(second.page);
+    await Promise.all([
+      restored.page.getByTestId('submit').click(),
+      second.page.getByTestId('submit').click(),
+    ]);
+    await expect
+      .poll(() =>
+        journey
+          .runs()
+          .slice(before.runs.length)
+          .map((run) => run.status)
+          .sort(),
+      )
+      .toEqual([200, 409]);
+    const winner = journey
+      .runs()
+      .slice(before.runs.length)
+      .find((run) => run.status === 200);
+    assert.ok(winner);
+    await expect
+      .poll(async () =>
+        (
+          await Promise.all([
+            journey.status(restored.page),
+            journey.status(second.page),
+          ])
+        ).some((status) =>
+          status.events.some(
+            (event) =>
+              event.type === 'RUN_FINISHED' &&
+              event.runId === winner.input.runId,
+          ),
+        ),
+      )
+      .toBe(true);
+    const firstWins = (await journey.status(restored.page)).events.some(
+      (event) =>
+        event.type === 'RUN_FINISHED' && event.runId === winner.input.runId,
+    );
+    const winning = firstWins ? restored : second;
+    const losing = firstWins ? second : restored;
+    await complete(
+      journey,
+      winning.page,
+      current,
+      published,
+      firstWins ? pending : secondPending,
+      before,
+      historical,
+      2,
+    );
+    let losingView = await journey.status(losing.page);
+    const losingRun = journey
+      .runs()
+      .slice(before.runs.length)
+      .find((run) => run.status === 409);
+    assert.ok(losingRun);
+    const losingRunId = losingRun.input.runId;
+    assert.ok(typeof losingRunId === 'string');
+    journey.records.race = {
+      firstView,
+      secondView,
+      losingView,
+      winner,
+      losingRun,
+    };
+    await expect
+      .poll(async () => {
+        const views = await Promise.all([
+          journey.status(winning.page),
+          journey.status(losing.page),
+        ]);
+        return views.every(
+          (view, index) =>
+            !view.isLoading &&
+            !view.isResuming &&
+            view.transport.some(
+              (event) =>
+                event.kind === 'disposed' &&
+                event.requestId ===
+                  (index === 0 ? winner.input.runId : losingRunId),
+            ),
+        );
+      })
+      .toBe(true);
+    const winnerReceipt = ordinaryReceipt(
+      journey,
+      winner,
+      journey.threadId,
+      false,
+    );
+    await expect
+      .poll(async () => {
+        await journey.collect();
+        return journey.workers.reduce(
+          (total, worker) => total + (worker.stages['Context.Disposed'] ?? 0),
+          0,
+        );
+      })
+      .toBe((before.counts['Context.Disposed'] ?? 0) + 2);
+    losingView = await journey.status(losing.page);
+    const refusedRecords = journey.proxy
+      .records(journey.threadId)
+      .filter((record) => record.requestId === losingRun.proxyId);
+    const refusedSource = Buffer.concat(
+      refusedRecords
+        .filter((record) => record.kind === 'upstream-body')
+        .map((record) => record.bytes),
+    );
+    const refusedBody = Buffer.concat(
+      refusedRecords
+        .filter((record) => record.kind === 'delivered-body')
+        .map((record) => record.bytes),
+    );
+    const ownBefore = firstWins ? secondView : firstView;
+    const observedBefore = ownBefore;
+    const observedLosing = losingView;
+    journey.records.race = {
+      firstView,
+      secondView,
+      losingView,
+      winner,
+      losingRun,
+      refusedRecords,
+      winnerReceipt,
+    };
+    const beforeReadSnapshot = await journey.snapshot();
+    const beforeWork = {
+      ...beforeReadSnapshot,
+      witnesses: [...journey.witnesses],
+      observer: journey.observer.records(),
+    };
+    const expectedMessages = (await journey.status(winning.page)).messages;
+    const completedStatus = await journey.read(losing.page, 'Completed', true);
+    const completedRead =
+      journey.records[`read-${journey.configurations().length}`];
+    assert.ok(object(completedRead) && object(completedRead.raw));
+    assert.ok(object(completedRead.raw.body));
+    const afterReadSnapshot = await journey.snapshot();
+    const afterWork = {
+      ...afterReadSnapshot,
+      witnesses: [...journey.witnesses],
+      observer: journey.observer.records(),
+    };
+    const qualification = {
+      framework: journey.record.composition.startsWith('angular.')
+        ? 'angular'
+        : 'react',
+      threadId: journey.threadId,
+      losingRunId,
+      before: observedBefore,
+      losing: observedLosing,
+      rejected: {
+        requestId: losingRun.proxyId,
+        runId: losingRunId,
+        threadId: losingRun.input.threadId,
+        status: refusedRecords.find(
+          (record) => record.kind === 'delivered-headers',
+        )?.status,
+        bodyText: refusedBody.toString('utf8'),
+        bodyBase64: refusedBody.toString('base64'),
+        sourceBodyBase64: refusedSource.toString('base64'),
+        upstreamStatus: refusedRecords.find(
+          (record) => record.kind === 'upstream-headers',
+        )?.status,
+        request: (() => {
+          const request = refusedRecords.find(
+            (record) => record.kind === 'request',
+          );
+          assert.ok(request);
+          const input = JSON.parse(
+            request.incomingBody.toString('utf8'),
+          ) as Record<string, unknown>;
+          return {
+            requestId: request.requestId,
+            threadId: input.threadId,
+            runId: input.runId,
+          };
+        })(),
+        requestCount: refusedRecords.filter(
+          (record) => record.kind === 'request',
+        ).length,
+        upstreamHeaderCount: refusedRecords.filter(
+          (record) => record.kind === 'upstream-headers',
+        ).length,
+        deliveredHeaderCount: refusedRecords.filter(
+          (record) => record.kind === 'delivered-headers',
+        ).length,
+        completeCount: refusedRecords.filter(
+          (record) => record.kind === 'complete',
+        ).length,
+        complete: refusedRecords.some((record) => record.kind === 'complete'),
+      },
+      completed: {
+        raw: completedRead.raw.body,
+        status: completedStatus,
+        expectedMessages,
+        beforeWork,
+        afterWork,
+      },
+    };
+    journey.records.race = {
+      ...(journey.records.race as Record<string, unknown>),
+      qualification,
+    };
+    assertCandidateRacePublicQualification(qualification);
+    journey.stable();
+    return;
+  }
+  if (id === 'server.busy') {
+    await restored.page.getByTestId('submit').click();
+    await journey.barrier('cold-acquired');
+    const held = await journey.snapshot();
+    expect(held.state.effects).toEqual(before.state.effects);
+    const blockedPage = await journey.open();
+    await blocked(journey, blockedPage.page, id);
+    await expect
+      .poll(
+        async () =>
+          (await journey.status(blockedPage.page)).lastRead?.disposition,
+      )
+      .toBe('Busy');
+    await journey.control('release-native');
+    await reconcileCandidateBusyReader(
+      () =>
+        complete(
+          journey,
+          restored.page,
+          current,
+          published,
+          pending,
+          before,
+          historical,
+        ),
+      async () => {
+        const beforeRead = await journey.snapshot();
+        const witnessesBeforeRead = [...journey.witnesses];
+        journey.records.busyReadStart = {
+          before: beforeRead,
+          witnessesBeforeRead,
+          publicState: await journey.status(blockedPage.page),
+        };
+        const response = await authoritative(journey, blockedPage.page);
+        const afterRead = await journey.snapshot();
+        const witnessesAfterRead = [...journey.witnesses];
+        journey.records.busyReconciled = {
+          response,
+          before: beforeRead,
+          after: afterRead,
+          witnessesBeforeRead,
+          witnessesAfterRead,
+        };
+        assert.ok(object(response.body));
+        expect(response.body.disposition).toBe('Completed');
+        expect(
+          (await journey.status(blockedPage.page)).messages?.some(
+            (message) =>
+              message.role === 'assistant' &&
+              message.content === 'Candidate complete',
+          ),
+        ).toBe(true);
+        assertCandidateUnchangedSnapshot(beforeRead, afterRead, 1);
+        expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+        journey.stable();
+      },
+    );
+    return;
+  }
+  if (id.startsWith('server.unknown-effect.')) {
+    const stage = id.slice('server.unknown-effect.'.length);
+    await restored.page.getByTestId('submit').click();
+    await journey.barrier(stage);
+    const held = await journey.snapshot();
+    const unknownRun = journey.runs().at(-1);
+    assert.ok(
+      unknownRun && typeof unknownRun.input.runId === 'string',
+      'Actual unknown-effect continuation run required',
+    );
+    journey.records.unknownEffectCrash = {
+      stage,
+      held,
+      run: unknownRun,
+      originalPending: pending,
+    };
+    expect(
+      held.state.invocations.find(
+        (call) => call.call_id === current.protected[0].id,
+      )?.state,
+    ).toBe('Started');
+    expect(held.state.effects.length - before.state.effects.length).toBe(
+      stage === 'effect-persisted' ? 1 : 0,
+    );
+    await journey.stop(journey.active);
+    journey.records.unknownEffectAfterStop = {
+      publicState: await journey.status(restored.page),
+      proxy: journey.proxy.records(journey.threadId),
+      nativeWitnesses: [...journey.witnesses],
+    };
+    await expect
+      .poll(
+        async () => {
+          const status = await journey.status(restored.page);
+          const lifecycle = status.transport.filter(
+            (record) => record.requestId === unknownRun.input.runId,
+          );
+          return (
+            status.recovery.required &&
+            !status.isLoading &&
+            !status.isResuming &&
+            lifecycle.some((record) => record.kind === 'disposed') &&
+            lifecycle.some((record) =>
+              ['error', 'aborted', 'deadline', 'complete'].includes(
+                record.kind,
+              ),
+            )
+          );
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const retiredLocal = await journey.status(restored.page);
+    journey.records.unknownEffectAfterKill = {
+      stage,
+      held,
+      run: unknownRun,
+      originalPending: pending,
+      publicState: retiredLocal,
+      proxy: journey.proxy.records(journey.threadId),
+      nativeWitnesses: [...journey.witnesses],
+    };
+    assertCandidateUnknownEffectLocalState({
+      runId: unknownRun.input.runId,
+      originalPending: pending,
+      status: retiredLocal,
+    });
+    const peer = await journey.start();
+    journey.script(peer, current);
+    await journey.switch(peer);
+    await journey.control('expire-native-lease');
+    await journey.control('maintain-native');
+    const beforeRead = await journey.snapshot();
+    const witnessesBeforeRead = [...journey.witnesses];
+    journey.records.unknownEffectReadStart = {
+      before: beforeRead,
+      witnessesBeforeRead,
+      publicState: await journey.status(restored.page),
+    };
+    const response = await authoritative(journey, restored.page);
+    const afterRead = await journey.snapshot();
+    const witnessesAfterRead = [...journey.witnesses];
+    journey.records.unknownEffectRead = {
+      response,
+      before: beforeRead,
+      after: afterRead,
+      witnessesBeforeRead,
+      witnessesAfterRead,
+      publicState: await journey.status(restored.page),
+    };
+    assert.ok(object(response.body));
+    expect(response.body.disposition).toBe('UnknownEffect');
+    expect(response.body.snapshot).toBeUndefined();
+    assertCandidateUnchangedSnapshot(beforeRead, afterRead, 1);
+    expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+    assertCandidateUnknownEffectLocalState({
+      runId: unknownRun.input.runId,
+      originalPending: pending,
+      status: await journey.status(restored.page),
+    });
+    const blockedState = afterRead;
+    for (const action of ['negative-repeat-submit', 'negative-send']) {
+      await restored.page.getByTestId(action).click();
+      await expectLocalRefusal(
+        journey,
+        restored.page,
+        action === 'negative-repeat-submit'
+          ? 'negative-repeat-submit:resumeConversationRecovery'
+          : 'negative-send',
+      );
+      await journey.unchanged(blockedState);
+      expect(journey.witnesses).toEqual(witnessesAfterRead);
+      journey.stable();
+    }
+    const fresh = await journey.open();
+    const beforeFreshRead = await journey.snapshot();
+    const witnessesBeforeFreshRead = [...journey.witnesses];
+    const newRead = await authoritative(journey, fresh.page, false);
+    const afterFreshRead = await journey.snapshot();
+    journey.records.unknownEffectFreshRead = {
+      response: newRead,
+      before: beforeFreshRead,
+      after: afterFreshRead,
+      witnessesBefore: witnessesBeforeFreshRead,
+      witnessesAfter: [...journey.witnesses],
+      publicState: await journey.status(fresh.page),
+    };
+    assert.ok(object(newRead.body));
+    expect(newRead.body.disposition).toBe('UnknownEffect');
+    expect(newRead.body.snapshot).toBeUndefined();
+    expect((await journey.status(fresh.page)).pending).toBeNull();
+    assertCandidateUnchangedSnapshot(beforeFreshRead, afterFreshRead, 1);
+    expect(journey.witnesses).toEqual(witnessesBeforeFreshRead);
+    journey.stable();
+    const final = await journey.snapshot();
+    expect(final.state.effects).toEqual(held.state.effects);
+    expect(final.runs).toHaveLength(before.runs.length + 1);
+    expect(
+      (final.counts['cold-acquire-success'] ?? 0) -
+        (before.counts['cold-acquire-success'] ?? 0),
+    ).toBe(1);
+    expect(final.providerCount - before.providerCount).toBe(0);
+    journey.records.unknownEffect = {
+      held,
+      final,
+      stage,
+      retiredLocal,
+      response,
+      newRead,
+    };
+    return;
+  }
+  if (id.startsWith('failure.')) {
+    const modes: Readonly<Record<string, CandidateRunIntervention>> = {
+      'failure.ack-disconnect': 'disconnect-after-delivered-ack',
+      'failure.preack-disconnect': 'disconnect-before-delivered-ack',
+      'failure.malformed-ack': 'malform-after-upstream-ack',
+      'failure.timeout': 'hold-before-delivery',
+      'failure.cancel-after-ack': 'hold-after-delivered-ack',
+      'failure.definitive-rejection': 'pass',
+    };
+    journey.proxy.armRun(journey.threadId, modes[id]);
+    await restored.page.getByTestId('submit').click();
+    await expect.poll(() => journey.runs().length).toBe(before.runs.length + 1);
+    const run = journey.runs().at(-1);
+    assert.ok(run);
+    if (id === 'failure.definitive-rejection') {
+      expect(
+        Buffer.byteLength(JSON.stringify(run.input), 'utf8'),
+      ).toBeGreaterThan(16_384);
+      await expect.poll(() => journey.runs().at(-1)?.status).toBe(413);
+      const after = await journey.snapshot();
+      journey.records.definitiveRejection = {
+        before,
+        after,
+        rawRun: run,
+        status: await journey.status(restored.page),
+        nativeWitnesses: [...journey.witnesses],
+      };
+      expect(after.providerCount).toBe(before.providerCount);
+      expect(after.counts).toEqual(before.counts);
+      expect(after.state).toEqual(before.state);
+      journey.stable();
+      await expect
+        .poll(async () =>
+          Boolean(
+            (await journey.status(restored.page)).localError ||
+            (await journey.status(restored.page)).error,
+          ),
+        )
+        .toBe(true);
+      const witnessesBeforeRead = [...journey.witnesses];
+      journey.records.definitiveReadStart = {
+        before: after,
+        witnessesBeforeRead,
+        publicState: await journey.status(restored.page),
+      };
+      const reconciliation = await authoritative(journey, restored.page);
+      const afterReconciliation = await journey.snapshot();
+      const witnessesAfterRead = [...journey.witnesses];
+      journey.records.definitiveRejection = {
+        before,
+        after,
+        rawRun: run,
+        status: await journey.status(restored.page),
+        reconciliation,
+        afterReconciliation,
+        witnessesBeforeRead,
+        witnessesAfterRead,
+        bytes: journey.proxy
+          .records(journey.threadId)
+          .filter((record) => record.requestId === run.proxyId),
+      };
+      // This one actual authoritative lookup invokes journal ReadStatusAsync once.
+      assertCandidateUnchangedSnapshot(after, afterReconciliation, 1);
+      expect(witnessesAfterRead).toEqual(witnessesBeforeRead);
+      journey.stable();
+      journey.finalDefinitiveObservations.push({
+        requestId: run.proxyId,
+        runId: run.input.runId,
+      });
+      return;
+    }
+    if (id === 'failure.cancel-after-ack') {
+      await journey.proxy.waitFor(
+        run.proxyId,
+        'downstream-ack-write',
+        AbortSignal.timeout(30_000),
+      );
+      await expect
+        .poll(async () =>
+          (await journey.status(restored.page)).events.some(
+            (event) =>
+              event.type === 'RUN_STARTED' && event.runId === run.input.runId,
+          ),
+        )
+        .toBe(true);
+      await restored.page.getByTestId('stop').click();
+      await expect
+        .poll(async () =>
+          (await journey.status(restored.page)).transport.some(
+            (record) =>
+              record.kind === 'aborted' && record.abortSource === 'caller',
+          ),
+        )
+        .toBe(true);
+    }
+    if (id === 'failure.timeout') {
+      await expect
+        .poll(
+          async () =>
+            (await journey.status(restored.page)).transport.some(
+              (record) => record.kind === 'deadline',
+            ),
+          { timeout: 15_000 },
+        )
+        .toBe(true);
+      const lifecycle = (await journey.status(restored.page)).transport;
+      const deadline = lifecycle.find((record) => record.kind === 'deadline');
+      const started = lifecycle.find(
+        (record) =>
+          record.kind === 'started' && record.requestId === deadline?.requestId,
+      );
+      assert.ok(started && deadline);
+      expect(deadline.monotonicMs - started.monotonicMs).toBeGreaterThanOrEqual(
+        journey.config.deadlineMs,
+      );
+      expect(deadline).toMatchObject({
+        abortSource: 'deadline',
+        abortReason: {
+          name: 'TimeoutError',
+          message: 'Candidate transport deadline exceeded',
+        },
+      });
+      expect(
+        lifecycle.find(
+          (record) =>
+            record.kind === 'deadline' &&
+            record.requestId === deadline.requestId,
+        ),
+      ).toMatchObject({
+        abortSource: 'deadline',
+        abortReason: deadline.abortReason,
+      });
+    }
+    if (id !== 'failure.preack-disconnect' && id !== 'failure.timeout') {
+      await journey.proxy.waitFor(
+        run.proxyId,
+        'upstream-ack',
+        AbortSignal.timeout(30_000),
+      );
+      await expect
+        .poll(async () =>
+          (await journey.status(restored.page)).events.some(
+            (event) =>
+              event.type === 'RUN_STARTED' && event.runId === run.input.runId,
+          ),
+        )
+        .toBe(true);
+      if (id === 'failure.ack-disconnect' || id === 'failure.malformed-ack') {
+        await journey.proxy.waitFor(
+          run.proxyId,
+          'downstream-ack-write',
+          AbortSignal.timeout(30_000),
+        );
+        const publicState = await journey.status(restored.page);
+        const records = journey.proxy
+          .records(journey.threadId)
+          .filter((record) => record.requestId === run.proxyId);
+        journey.records.ackBeforeIntervention = {
+          requestId: run.proxyId,
+          runId: run.input.runId,
+          publicState,
+          records,
+        };
+        expect(publicState.threadId).toBe(journey.threadId);
+        expect(
+          publicState.events.filter(
+            (event) =>
+              event.type === 'RUN_STARTED' && event.runId === run.input.runId,
+          ),
+        ).toHaveLength(1);
+        expect(
+          records.filter(
+            (record) =>
+              record.kind === 'mutation' ||
+              record.kind === 'downstream-closed' ||
+              record.kind === 'fault',
+          ),
+        ).toEqual([]);
+        const delivered = Buffer.concat(
+          records
+            .filter((record) => record.kind === 'delivered-body')
+            .map((record) => record.bytes),
+        );
+        const source = Buffer.concat(
+          records
+            .filter((record) => record.kind === 'upstream-body')
+            .map((record) => record.bytes),
+        );
+        expect(delivered.length).toBeGreaterThan(0);
+        expect(delivered).toEqual(source.subarray(0, delivered.length));
+        const frame = delivered.toString('utf8').trim();
+        assert.ok(
+          frame.startsWith('data:'),
+          'Actual delivered ACK SSE data frame required',
+        );
+        expect(JSON.parse(frame.slice(5).trim())).toMatchObject({
+          type: 'RUN_STARTED',
+          threadId: journey.threadId,
+          runId: run.input.runId,
+        });
+        journey.proxy.release(run.proxyId);
+      }
+    }
+    await failedAttempt(journey, restored.page, current, pending, before);
+    return;
+  }
+  await restored.page.getByTestId('submit').click();
+  await complete(
+    journey,
+    restored.page,
+    current,
+    published,
+    pending,
+    before,
+    historical,
+  );
+  await uncertainty(journey, restored.page, current);
+  if (id === 'display.html') {
+    expect(await restored.page.locator('img[src="x"]').count()).toBe(0);
+    expect(journey.unexpectedRequests).toEqual([]);
+  }
+  await restored.page.getByTestId('rerender').click();
+  journey.stable();
+  await reloadAndOrdinary(journey, restored.context, current, plan.history);
+  journey.records.publication = publication;
+}
+
+/** Executes one exact approved full-matrix row with actual isolated packed facades and native authority. */
+export async function runCandidateBrowserJourney(
+  browser: Browser,
+  record: CandidateBrowserRecord,
+): Promise<void> {
+  if (record.id === 'react.openai.chat.chat.browser.known-string')
+    await runCandidateObserverPositiveControl(browser);
+  const base = process.env['HASHBROWN_CANDIDATE_EVIDENCE'];
+  const react = process.env['HASHBROWN_PACKAGE_REACT_URL'];
+  const angular = process.env['HASHBROWN_PACKAGE_ANGULAR_URL'];
+  assert.ok(base && react && angular);
+  const [framework, provider, selected] = record.composition.split('.');
+  assert.ok(framework === 'react' || framework === 'angular');
+  assert.ok(provider === 'openai' || provider === 'azure');
+  assert.ok(selected === 'chat' || selected === 'responses');
+  const api = selected === 'chat' ? 'chat-completions' : 'responses';
+  const plan = plans(record);
+  const root = join(base, record.id);
+  await mkdir(root);
+  const gate =
+    record.scenario === 'server.busy'
+      ? 'cold-acquired'
+      : record.scenario.startsWith('server.unknown-effect.')
+        ? record.scenario.slice('server.unknown-effect.'.length)
+        : undefined;
+  const environment = {
+    Workflow: '',
+    FixtureNativeSessions: 'true',
+    FixtureNativeApprovals: 'true',
+    FixtureCandidateRecoveryEvidence: 'true',
+    ModelApi: api,
+    ...(gate ? { NativeGate: gate } : {}),
+    ...(record.scenario === 'failure.definitive-rejection'
+      ? { NativePublicBytes: '16384' }
+      : {}),
+  };
+  await withDurableCluster(
+    provider,
+    async (cluster) => {
+      const journey = new Journey(
+        browser,
+        cluster,
+        record,
+        root,
+        [react, angular],
+        api,
+      );
+      let failure: unknown;
+      const errors: unknown[] = [];
+      try {
+        await journey.initialize(plan, environment);
+        await scenario(journey, plan);
+        expect(journey.pageErrors).toEqual([]);
+        expect(journey.unexpectedRequests).toEqual([]);
+      } catch (error) {
+        failure = error;
+      } finally {
+        try {
+          await journey.collect();
+        } catch (error) {
+          errors.push(error);
+        }
+        try {
+          await finalizeCandidateAcceptance(
+            () => journey.close(),
+            () => journey.validateFinalFaults(),
+          );
+        } catch (error) {
+          errors.push(error);
+        }
+        try {
+          await writeFile(
+            join(root, 'journey.json'),
+            JSON.stringify(
+              {
+                kind: 'actual-source-candidate-browser-journey',
+                record,
+                threadId: journey.threadId,
+                plan,
+                records: journey.records,
+                computations: journey.computations,
+                pageErrors: journey.pageErrors,
+                unexpectedRequests: journey.unexpectedRequests,
+                workers: journey.workers.map((worker) => ({
+                  process: worker.fixture.process,
+                  stages: worker.stages,
+                  evidence: worker.evidence,
+                })),
+                providerRequests: journey.requests,
+                observer: journey.observedRecords(),
+                proxy: journey.routedRecords(),
+                failure: failure instanceof Error ? failure.stack : failure,
+                cleanupErrors: errors.map(String),
+              },
+              null,
+              2,
+            ),
+          );
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (failure || errors.length)
+        throw new AggregateError(
+          [...(failure ? [failure] : []), ...errors],
+          `Candidate journey ${record.id} failed: ${failure instanceof Error ? failure.message : String(failure ?? '')}`,
+        );
+    },
+    environment,
+  );
+}

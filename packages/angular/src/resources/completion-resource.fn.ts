@@ -19,7 +19,9 @@ import {
   createChatRuntime,
   type FinishReason,
   type JsonValue,
+  type PendingConversationRecovery,
   type PendingInterruptBatch,
+  type ResumeConversationRecoveryOptions,
   type ResumeOptions,
   type TokenUsage,
   type TransportOrFactory,
@@ -30,6 +32,7 @@ import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { createTransport } from '../utils/create-transport.fn';
 import { connectCompletionInput } from './completion-input.fn';
 import { ReactiveOption } from '../utils/types';
+import { bindToolToInjector } from '../utils/create-tool.fn';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
 import {
   createResourceSnapshot,
@@ -51,6 +54,17 @@ export interface CompletionResourceRef<State = unknown> extends Resource<
   readonly isResuming: Signal<boolean>;
   /** Submits a complete response batch for the current interruption. */
   resume(options: ResumeOptions): void;
+
+  /** The inert browser recovery batch awaiting explicit settlement. */
+  readonly pendingConversationRecovery: Signal<
+    PendingConversationRecovery | undefined
+  >;
+
+  /**
+   * Explicitly settle every recovered browser call and protected decision.
+   * @param options - The complete outcomes and decisions for the current recovery batch.
+   */
+  resumeConversationRecovery(options: ResumeConversationRecoveryOptions): void;
 
   /** The local recovery revision and whether an explicit restore is required. */
   readonly recovery: Signal<ConversationRecoveryState>;
@@ -143,6 +157,12 @@ export interface CompletionResourceOptions<Input, State = unknown> {
   state?: State;
 
   /**
+   * The tools available to the completion. Handlers run in the resource's
+   * injection context. Defaults to an empty array.
+   */
+  tools?: Chat.AnyTool[];
+
+  /**
    * The API URL to use for the completion.
    */
   apiUrl?: ReactiveOption<string>;
@@ -177,28 +197,34 @@ export function completionResource<Input, State = unknown>(
 ): CompletionResourceRef<State> {
   const { input, system } = options;
   const injector = inject(Injector);
+  const tools = (options.tools ?? []).map((tool) =>
+    bindToolToInjector(tool, injector),
+  );
   const destroyRef = inject(DestroyRef);
   const config = ɵinjectHashbrownConfig();
-  const resolveTransport = () =>
+  const baseUrl = computed(() =>
+    options.apiUrl !== undefined
+      ? readReactiveOption(options.apiUrl)
+      : config.baseUrl,
+  );
+  const resolveTransport = computed(() =>
     createTransport({
       transport: options.transport ?? config.transport,
-      readBaseUrl: () =>
-        options.apiUrl !== undefined
-          ? readReactiveOption(options.apiUrl)
-          : config.baseUrl,
+      readBaseUrl: baseUrl,
       createMiddleware: () =>
         config.middleware?.map((middleware): Chat.Middleware => {
           return (requestInit) =>
             runInInjectionContext(injector, () => middleware(requestInit));
         }),
-    });
+    }),
+  );
   const collector = ɵinjectDevelopmentCollector();
   const runtime = createChatRuntime({
     debugName: options.debugName,
     system: readReactiveOption(system),
     state: options.state,
     messages: [],
-    tools: [],
+    tools,
     retries: 3,
     transport: resolveTransport(),
     threadId:
@@ -222,7 +248,7 @@ export function completionResource<Input, State = unknown>(
     runtime.updateOptions({
       debugName: options.debugName,
       system: readReactiveOption(system),
-      tools: [],
+      tools,
       retries: 3,
       transport: resolveTransport(),
       ...(Object.hasOwn(options, 'threadId') &&
@@ -352,6 +378,10 @@ export function completionResource<Input, State = unknown>(
     pendingInterrupts: toNgSignal(runtime.pendingInterrupts),
     isResuming: toNgSignal(runtime.isResuming),
     resume: runtime.resume,
+    pendingConversationRecovery: toNgSignal(
+      runtime.pendingConversationRecovery,
+    ),
+    resumeConversationRecovery: runtime.resumeConversationRecovery,
     recovery: toNgSignal(runtime.recovery),
     restoreConversation: runtime.restoreConversation,
     getRecoveryConfiguration: runtime.getRecoveryConfiguration,
