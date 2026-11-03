@@ -34,7 +34,7 @@ The transparent callback-error control forwards actual response.write bytes, the
 
 The attempted strengthening of the existing 16MB backpressure test failed because observing its FIRST backpressure receipt does not prove a write/drain is still pending when the client later closes. That was an invalid stage-coverage assumption, not a new demonstrated proxy defect. Its original cleanup/no-retry assertions are restored. It does not establish typed write/backpressure coverage.
 
-Root's combined run recorded four failures/one pass, including separate consumer-data assertions; only the supported producer scope above is approved for future implementation. The narrowed maintained controls were subsequently verified RED against unchanged C5 producer code and GREEN after implementation, including the shutdown exclusion. The record-limit regression also proves failed close evidence remains a fatal cleanup failure.
+Root's combined run recorded four failures/one pass, including separate consumer-data assertions; only the supported producer scope above is approved for future implementation. The new positive causal paths were verified RED against unchanged C5 producer code and GREEN after implementation. Ordinary callback-error and shutdown exclusion controls passed both implementations. The record-limit regression also proves failed close evidence remains a fatal cleanup failure.
 
 ## Parent-shutdown negative boundary
 
@@ -44,13 +44,13 @@ A practical same-fixture control can start real parent shutdown first, then expl
 
 ## Remaining qualification
 
-All tests are actual owned Node HTTP primitives, not a qualified .NET/browser matrix. Deferred barriers and owned resources must always release/drain with primary failures preserved. Root owns focused RED/GREEN, source reviews, fresh candidates and full qualification. C5 source-browser and package ABI domains remain separate; package-profile ABI proof cannot be assigned to the different cold loaded DLL.
+The maintained primitive regression tests use actual owned Node HTTP primitives; they are not a qualified .NET/browser matrix. Deferred barriers and owned resources must always release/drain with primary failures preserved. Root owns focused RED/GREEN, source reviews, fresh candidates and full qualification. C5 source-browser and package ABI domains remain separate; package-profile ABI proof cannot be assigned to the different cold loaded DLL.
 
 ## Reviewed implementation and verification
 
 The implementation uses request-local owned Error identities and an actual committed close receipt. It checks destruction both before delivery and after awaited header evidence persistence. Failed close-evidence tasks remain visible to owned cleanup. The strict consumer validates the three typed fields, original request scope, unique referenced close and close-before-fault ordering. Ordinary same-text errors, shutdown, unsupported stages and incomplete evidence remain rejected.
 
-Root ran affected build, test and lint successfully: 238 harness tests, 385 runtime tests and 122 package tests. Seven selected maintained causal/negative controls passed after their tests-first failures. An additional real record-limit control failed against C5 and passed against the implementation.
+Root ran affected build, test and lint successfully: 238 harness tests, 385 runtime tests and 122 package tests. Seven selected maintained causal/negative controls passed; the positive paths had intended tests-first failures, while callback-error and shutdown exclusions remained passing controls. An additional real record-limit control failed against C5 and passed against the implementation.
 
 All 48 unmodified focused browser fault cases passed once, with zero retries; their malformed cases naturally exercised Node's existing aborted path. A separate one-case actual React/OpenAI Responses/.NET browser probe deterministically delayed only real read/append promise delivery. The actual SDK consumed corrupt bytes, raised its parser error and closed its real response before the genuine later source append resumed. The producer emitted raw Downstream closed with before-write metadata referring to the actual committed close. The unchanged original journey passed its native cleanup, no-work, reconciliation and teardown guards; no client abort was forced. Both candidate package qualifications passed afterward. This controlled case establishes the added causal path; it is not full 372-case acceptance.
 
