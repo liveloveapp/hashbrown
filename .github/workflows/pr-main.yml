@@ -260,6 +260,7 @@ jobs:
           path: test-results/dotnet-candidate-recovery
           retention-days: 7
           if-no-files-found: error
+          include-hidden-files: true
 
       - name: Stop owned PostgreSQL
         if: always()

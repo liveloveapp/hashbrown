@@ -230,6 +230,7 @@ test('candidate cold recovery uses existing affected selection in an independent
     path: 'test-results/dotnet-candidate-recovery',
     'retention-days': 7,
     'if-no-files-found': 'error',
+    'include-hidden-files': true,
   });
   expect(
     steps.some(
@@ -550,4 +551,36 @@ test('all four non-release .NET jobs install only the exact historical SDK into 
       (step: { uses?: string }) => step.uses === 'actions/setup-dotnet@v6',
     ).if,
   ).toBe("steps.setup.outputs.dotnet == 'true'");
+});
+
+test('cold artifact upload preserves hidden allowlisted receipts without broadening other uploads', () => {
+  const workflow = readWorkflow('pr-main');
+  const job = workflow.jobs['candidate-cold-recovery'];
+  const uploads = job.steps.filter(
+    (step: { uses?: string }) => step.uses === 'actions/upload-artifact@v7',
+  );
+  const exporter = readFileSync(
+    'tools/conformance/dotnet/candidate-consumer/ci.mjs',
+    'utf8',
+  );
+
+  expect(uploads).toHaveLength(1);
+  expect(uploads[0].if).toBe('always()');
+  expect(uploads[0].with).toEqual({
+    name: 'dotnet-candidate-cold-recovery',
+    path: 'test-results/dotnet-candidate-recovery',
+    'retention-days': 7,
+    'if-no-files-found': 'error',
+    'include-hidden-files': true,
+  });
+  expect(exporter).toContain('\\.last-run\\.json');
+  for (const [id, other] of Object.entries(workflow.jobs)) {
+    if (id === 'candidate-cold-recovery') continue;
+    for (const step of (
+      other as { steps?: { uses?: string; with?: Record<string, unknown> }[] }
+    ).steps ?? []) {
+      if (step.uses === 'actions/upload-artifact@v7')
+        expect(step.with?.['include-hidden-files']).toBeUndefined();
+    }
+  }
 });
