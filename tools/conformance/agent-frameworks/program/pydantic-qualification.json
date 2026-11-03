@@ -2029,7 +2029,8 @@
           "detail": "Not qualified in this bounded recipe. Ordinary tools and client JSON restore do not establish this capability.",
           "evidence": []
         }
-      ]
+      ],
+      "evidenceCommit": "06c5478487dcf167ec174321ebc9ed37ca31c395"
     }
   ]
 }
