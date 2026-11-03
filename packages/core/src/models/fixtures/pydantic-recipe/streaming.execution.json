@@ -11,14 +11,14 @@
       "parts": [
         {
           "content": "streaming",
-          "timestamp": "2026-11-03T01:58:27.311762Z",
+          "timestamp": "2026-11-03T04:17:37.914505Z",
           "part_kind": "user-prompt"
         }
       ],
-      "timestamp": "2026-11-03T01:58:27.337315Z",
+      "timestamp": "2026-11-03T04:17:37.942028Z",
       "instructions": null,
       "kind": "request",
-      "run_id": "01a19f21-1306-72f2-a14e-1d5c83edc893",
+      "run_id": "01a19fa0-7e93-716e-9f99-2ee810afb86a",
       "conversation_id": "capture-streaming",
       "metadata": {
         "__pydantic_ai__": {
@@ -54,7 +54,7 @@
       },
       "model_name": "function::model_stream",
       "model_id": "function:function::model_stream",
-      "timestamp": "2026-11-03T01:58:27.360447Z",
+      "timestamp": "2026-11-03T04:17:37.969261Z",
       "kind": "response",
       "provider_name": null,
       "provider_url": null,
@@ -62,7 +62,7 @@
       "provider_details": null,
       "provider_response_id": null,
       "finish_reason": null,
-      "run_id": "01a19f21-1306-72f2-a14e-1d5c83edc893",
+      "run_id": "01a19fa0-7e93-716e-9f99-2ee810afb86a",
       "conversation_id": "capture-streaming",
       "metadata": null,
       "workspace_ref": null,
@@ -77,14 +77,14 @@
         "parts": [
           {
             "content": "streaming",
-            "timestamp": "2026-11-03T01:58:27.311762Z",
+            "timestamp": "2026-11-03T04:17:37.914505Z",
             "part_kind": "user-prompt"
           }
         ],
-        "timestamp": "2026-11-03T01:58:27.337315Z",
+        "timestamp": "2026-11-03T04:17:37.942028Z",
         "instructions": null,
         "kind": "request",
-        "run_id": "01a19f21-1306-72f2-a14e-1d5c83edc893",
+        "run_id": "01a19fa0-7e93-716e-9f99-2ee810afb86a",
         "conversation_id": "capture-streaming",
         "metadata": {
           "__pydantic_ai__": {
@@ -120,7 +120,7 @@
       "content": "streaming"
     },
     {
-      "id": "3222df7e-4168-4d3c-b9d2-f9ca020cb580",
+      "id": "c865414f-b3af-4957-8d0d-80bae4a3c74e",
       "role": "assistant",
       "content": "Pydantic streaming answer."
     }

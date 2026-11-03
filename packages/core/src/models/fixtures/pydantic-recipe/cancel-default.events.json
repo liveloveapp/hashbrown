@@ -1,38 +1,38 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793671107399,
+    "timestamp": 1793679458013,
     "threadId": "capture-cancel-default",
     "runId": "capture-cancel-default-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793671107401,
-    "messageId": "7687d0b6-9033-45af-9e8d-f609d56b88f6",
+    "timestamp": 1793679458016,
+    "messageId": "e2cd200b-a7f3-4cd5-963c-3c78e8bd82c0",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793671107401,
-    "messageId": "7687d0b6-9033-45af-9e8d-f609d56b88f6"
+    "timestamp": 1793679458016,
+    "messageId": "e2cd200b-a7f3-4cd5-963c-3c78e8bd82c0"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793671107401,
+    "timestamp": 1793679458016,
     "toolCallId": "capture-cancel-default-server",
     "toolCallName": "serverTool",
-    "parentMessageId": "7687d0b6-9033-45af-9e8d-f609d56b88f6"
+    "parentMessageId": "e2cd200b-a7f3-4cd5-963c-3c78e8bd82c0"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793671107401,
+    "timestamp": 1793679458016,
     "toolCallId": "capture-cancel-default-server",
     "delta": "{\"city\":\"London\"}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793671107402,
+    "timestamp": 1793679458016,
     "toolCallId": "capture-cancel-default-server"
   },
   {
@@ -43,7 +43,7 @@
         "outcome": "cancelled"
       }
     },
-    "messageId": "894dd8cc-8ae3-4670-bc8d-3c3bfca83784",
+    "messageId": "9f0f13d1-6e51-45e3-95de-f672c6797f22",
     "toolCallId": "capture-cancel-default-server",
     "content": "The tool call was interrupted before a result was produced.",
     "role": "tool"
@@ -51,12 +51,12 @@
   {
     "type": "REASONING_ENCRYPTED_VALUE",
     "subtype": "message",
-    "entityId": "894dd8cc-8ae3-4670-bc8d-3c3bfca83784",
+    "entityId": "9f0f13d1-6e51-45e3-95de-f672c6797f22",
     "encryptedValue": "{\"pydantic_ai\": {\"outcome\": \"interrupted\"}}"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793671107429,
+    "timestamp": 1793679458040,
     "threadId": "capture-cancel-default",
     "runId": "capture-cancel-default-run"
   }

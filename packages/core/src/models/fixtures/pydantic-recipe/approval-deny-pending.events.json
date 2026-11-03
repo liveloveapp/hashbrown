@@ -1,43 +1,43 @@
 [
   {
     "type": "RUN_STARTED",
-    "timestamp": 1793671107547,
+    "timestamp": 1793679458163,
     "threadId": "capture-approval-deny",
     "runId": "approval-deny-run",
     "protocolVersion": "1.0"
   },
   {
     "type": "TEXT_MESSAGE_START",
-    "timestamp": 1793671107550,
-    "messageId": "75ee4460-d36b-408a-a3f6-832a49054062",
+    "timestamp": 1793679458165,
+    "messageId": "a507807c-f0a7-4b2e-a51e-18068216a6a8",
     "role": "assistant"
   },
   {
     "type": "TEXT_MESSAGE_END",
-    "timestamp": 1793671107550,
-    "messageId": "75ee4460-d36b-408a-a3f6-832a49054062"
+    "timestamp": 1793679458165,
+    "messageId": "a507807c-f0a7-4b2e-a51e-18068216a6a8"
   },
   {
     "type": "TOOL_CALL_START",
-    "timestamp": 1793671107550,
+    "timestamp": 1793679458165,
     "toolCallId": "capture-approval-deny-approval",
     "toolCallName": "approvalTool",
-    "parentMessageId": "75ee4460-d36b-408a-a3f6-832a49054062"
+    "parentMessageId": "a507807c-f0a7-4b2e-a51e-18068216a6a8"
   },
   {
     "type": "TOOL_CALL_ARGS",
-    "timestamp": 1793671107550,
+    "timestamp": 1793679458165,
     "toolCallId": "capture-approval-deny-approval",
     "delta": "{}"
   },
   {
     "type": "TOOL_CALL_END",
-    "timestamp": 1793671107550,
+    "timestamp": 1793679458166,
     "toolCallId": "capture-approval-deny-approval"
   },
   {
     "type": "RUN_FINISHED",
-    "timestamp": 1793671107552,
+    "timestamp": 1793679458168,
     "threadId": "capture-approval-deny",
     "runId": "approval-deny-run",
     "outcome": {

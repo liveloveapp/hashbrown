@@ -1,14 +1,14 @@
-data: {"type":"RUN_STARTED","timestamp":1793671107547,"threadId":"capture-approval-deny","runId":"approval-deny-run","protocolVersion":"1.0"}
+data: {"type":"RUN_STARTED","timestamp":1793679458163,"threadId":"capture-approval-deny","runId":"approval-deny-run","protocolVersion":"1.0"}
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1793671107550,"messageId":"75ee4460-d36b-408a-a3f6-832a49054062","role":"assistant"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1793679458165,"messageId":"a507807c-f0a7-4b2e-a51e-18068216a6a8","role":"assistant"}
 
-data: {"type":"TEXT_MESSAGE_END","timestamp":1793671107550,"messageId":"75ee4460-d36b-408a-a3f6-832a49054062"}
+data: {"type":"TEXT_MESSAGE_END","timestamp":1793679458165,"messageId":"a507807c-f0a7-4b2e-a51e-18068216a6a8"}
 
-data: {"type":"TOOL_CALL_START","timestamp":1793671107550,"toolCallId":"capture-approval-deny-approval","toolCallName":"approvalTool","parentMessageId":"75ee4460-d36b-408a-a3f6-832a49054062"}
+data: {"type":"TOOL_CALL_START","timestamp":1793679458165,"toolCallId":"capture-approval-deny-approval","toolCallName":"approvalTool","parentMessageId":"a507807c-f0a7-4b2e-a51e-18068216a6a8"}
 
-data: {"type":"TOOL_CALL_ARGS","timestamp":1793671107550,"toolCallId":"capture-approval-deny-approval","delta":"{}"}
+data: {"type":"TOOL_CALL_ARGS","timestamp":1793679458165,"toolCallId":"capture-approval-deny-approval","delta":"{}"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1793671107550,"toolCallId":"capture-approval-deny-approval"}
+data: {"type":"TOOL_CALL_END","timestamp":1793679458166,"toolCallId":"capture-approval-deny-approval"}
 
-data: {"type":"RUN_FINISHED","timestamp":1793671107552,"threadId":"capture-approval-deny","runId":"approval-deny-run","outcome":{"type":"interrupt","interrupts":[{"id":"int-capture-approval-deny-approval","reason":"tool_call","message":"Approve approvalTool({})?","toolCallId":"capture-approval-deny-approval","responseSchema":{"properties":{"approved":{"type":"boolean"},"editedArgs":{"type":"object"},"reason":{"type":"string"}},"required":["approved"],"type":"object"}}]}}
+data: {"type":"RUN_FINISHED","timestamp":1793679458168,"threadId":"capture-approval-deny","runId":"approval-deny-run","outcome":{"type":"interrupt","interrupts":[{"id":"int-capture-approval-deny-approval","reason":"tool_call","message":"Approve approvalTool({})?","toolCallId":"capture-approval-deny-approval","responseSchema":{"properties":{"approved":{"type":"boolean"},"editedArgs":{"type":"object"},"reason":{"type":"string"}},"required":["approved"],"type":"object"}}]}}
 
