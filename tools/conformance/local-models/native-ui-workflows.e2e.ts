@@ -552,6 +552,16 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
           ]);
           value = operations[0].token;
         }
+        if (live) {
+          await info.attach('native-ui-before-validation.json', {
+            contentType: 'application/json',
+            body: JSON.stringify({
+              scenario,
+              evidence: await evidence(page),
+              history: await page.getByTestId('history').innerText(),
+            }),
+          });
+        }
         await expect(page.getByTestId('ui-value')).toHaveText(
           scenario === 'nested' ? [value, value] : [value],
         );
