@@ -592,47 +592,66 @@ async function verifyCancellationHistory(page: Page) {
   });
 }
 
-test('native Stop releases its session and permits a fresh lookup', async ({
-  page,
-}, info) => {
-  await workflow(page, info, 'stop', async () => {
-    await send(page, prompts.stop);
+for (const boundary of live
+  ? (['first-chunk', 'pending-generation'] as const)
+  : (['first-chunk'] as const)) {
+  test(
+    boundary === 'first-chunk'
+      ? 'native Stop releases its session and permits a fresh lookup'
+      : 'native Stop before first output cancels pending generation and recovers exactly',
+    async ({ page }, info) => {
+      await workflow(page, info, 'stop', async () => {
+        await send(page, prompts.stop);
 
-    if (live)
-      await expect
-        .poll(async () =>
-          (await evidence(page)).nativeEvents?.some((event) => {
-            const part = event as { phase: string; value?: unknown };
-            return part.phase === 'chunk' && typeof part.value === 'string';
-          }),
-        )
-        .toBe(true);
-    else await expect.poll(async () => (await evidence(page)).active).toBe(1);
+        if (live)
+          await expect
+            .poll(async () =>
+              (await evidence(page)).nativeEvents?.some((event) => {
+                const part = event as { phase: string; value?: unknown };
+                return boundary === 'pending-generation'
+                  ? part.phase === 'prompt'
+                  : part.phase === 'chunk' && typeof part.value === 'string';
+              }),
+            )
+            .toBe(true);
+        else
+          await expect.poll(async () => (await evidence(page)).active).toBe(1);
+        if (boundary === 'pending-generation') {
+          const pending = await evidence(page);
+          expect(pending.active).toBe(1);
+          expect(
+            (pending.nativeEvents ?? []).filter(
+              (event) => (event as { phase: string }).phase === 'chunk',
+            ),
+          ).toEqual([]);
+        }
 
-    await page.getByTestId('stop').click();
+        await page.getByTestId('stop').click();
 
-    await expect(page.getByTestId('status')).toHaveText('idle');
-    await expect.poll(async () => (await evidence(page)).active).toBe(0);
-    await expect
-      .poll(async () => {
-        const sessions = (await evidence(page)).sessions;
-        return !!sessions && sessions.created === sessions.destroyed;
-      })
-      .toBe(true);
-    await expect(page.getByTestId('operation-count')).toHaveText('0');
-    await expect(page.getByTestId('assistant')).not.toContainText(
-      '[Hashbrown runtime:',
-    );
-    if (!live) expect((await evidence(page)).requests).toHaveLength(1);
+        await expect(page.getByTestId('status')).toHaveText('idle');
+        await expect.poll(async () => (await evidence(page)).active).toBe(0);
+        await expect
+          .poll(async () => {
+            const sessions = (await evidence(page)).sessions;
+            return !!sessions && sessions.created === sessions.destroyed;
+          })
+          .toBe(true);
+        await expect(page.getByTestId('operation-count')).toHaveText('0');
+        await expect(page.getByTestId('assistant')).not.toContainText(
+          '[Hashbrown runtime:',
+        );
+        if (!live) expect((await evidence(page)).requests).toHaveLength(1);
 
-    await send(page, prompts.lookup);
+        await send(page, prompts.lookup);
 
-    await verifyCancellationHistory(page);
-    await settled(page);
-    if (live) await verifyNativeStopBoundary(page);
-    await expect(page.getByTestId('operation-count')).toHaveText('1', {
-      timeout: 1000,
-    });
-    await exactAnswer(page, (await operations(page))[0].token);
-  });
-});
+        await verifyCancellationHistory(page);
+        await settled(page);
+        if (live) await verifyNativeStopBoundary(page);
+        await expect(page.getByTestId('operation-count')).toHaveText('1', {
+          timeout: 1000,
+        });
+        await exactAnswer(page, (await operations(page))[0].token);
+      });
+    },
+  );
+}

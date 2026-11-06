@@ -149,8 +149,7 @@ image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
 model, or native inference session, and does not validate model vision quality.
 The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
 
-This image API requires this feature branch's source changes or a future SDK release; published
-version 0.8.2 does not include it. Applications opt in with
+The image and structured-tool opt-ins shipped in Hashbrown 0.8.3. Applications opt in with
 `experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
 unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
 Every image source is resolved by the application into `{ blob, dispose? }`,
@@ -436,8 +435,8 @@ shared native test-profile default and supports `LOCAL_LLM_PROFILE`.
 
 Normal defaults left typed constructors absent and ignored declarations.
 With the official flag, fresh and preserved-profile probes exposed all three
-constructors and read the `tools` member. Chrome 155 uses `callID`, while the
-newer draft uses `callId`; the probe records the returned spelling. Exact
+constructors and read the `tools` member. Chrome 155 recorded `callID`, while the
+November 6 Chrome 157 probe recorded `callId`; the probe records the returned spelling. Exact
 text/tool-call/tool-response input and text/tool-call output availability was
 `downloadable`, including in the preserved dedicated profile. The retained
 target passed both interface checks with this status and no model creation. The v4 model
@@ -764,8 +763,11 @@ Set an absolute `WEBLLM_MODULE_PATH` to an application-provided browser bundle
 and explicitly select `WEBLLM_MODEL`; neither has a default. Model selection and
 any required download remain an application decision. The dedicated persistent
 profile is `hashbrown-webllm-vision-profile` beneath the system temporary
-directory, sharing the existing vision model cache, and the production hosts
-use ports 4451/4452. Personal/native browser profiles are never selected.
+directory. The production hosts default to ports 4451/4452. To reuse a vision
+run’s origin-scoped model caches, set `RUNTIME_SMOKE_ANGULAR_PORT=4411` and
+`RUNTIME_SMOKE_REACT_PORT=4412` for this suite too, and run the suites sequentially.
+Sharing a profile alone does not share caches across different origins.
+Personal/native browser profiles are never selected.
 
 ```sh
 LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS_LIVE=1 LOCAL_LLM_DOWNLOAD=1 \
@@ -794,3 +796,14 @@ immutable model artifact identities, estimated VRAM is not measured GPU
 allocation, and optional browser process RSS may double-count shared pages.
 No image data is retained by this text-only target. Broad/nested UI, media,
 other model choices, and other hardware require separate qualification.
+
+### November 6 release-candidate check
+
+WebLLM 0.2.87 passed the bounded image rerun and all six structured-tool cases.
+Chrome 157 with the same observed Gemma 2B base/component passed four of eight
+bounded phase cases; dependent and replay fixtures failed exact output gates.
+The strict raw native canary still rejected an empty call ID. Keep these results
+separate from the October Chrome 155 passes. The
+[dated candidate report](../../docs/superpowers/research/2026-11-06-local-model-rc-qualification.md)
+retains initial preparation failures, raw evidence, cleanup limits and exact commands.
+Audio and cross-hardware qualification remain deferred.
