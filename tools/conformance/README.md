@@ -435,8 +435,8 @@ shared native test-profile default and supports `LOCAL_LLM_PROFILE`.
 
 Normal defaults left typed constructors absent and ignored declarations.
 With the official flag, fresh and preserved-profile probes exposed all three
-constructors and read the `tools` member. Chrome 155 uses `callID`, while the
-newer draft uses `callId`; the probe records the returned spelling. Exact
+constructors and read the `tools` member. Chrome 155 recorded `callID`, while the
+November 6 Chrome 157 probe recorded `callId`; the probe records the returned spelling. Exact
 text/tool-call/tool-response input and text/tool-call output availability was
 `downloadable`, including in the preserved dedicated profile. The retained
 target passed both interface checks with this status and no model creation. The v4 model
@@ -796,3 +796,14 @@ immutable model artifact identities, estimated VRAM is not measured GPU
 allocation, and optional browser process RSS may double-count shared pages.
 No image data is retained by this text-only target. Broad/nested UI, media,
 other model choices, and other hardware require separate qualification.
+
+### November 6 release-candidate check
+
+WebLLM 0.2.87 passed the bounded image rerun and all six structured-tool cases.
+Chrome 157 with the same observed Gemma 2B base/component passed four of eight
+bounded phase cases; dependent and replay fixtures failed exact output gates.
+The strict raw native canary still rejected an empty call ID. Keep these results
+separate from the October Chrome 155 passes. The
+[dated candidate report](../../docs/superpowers/research/2026-11-06-local-model-rc-qualification.md)
+retains initial preparation failures, raw evidence, cleanup limits and exact commands.
+Audio and cross-hardware qualification remain deferred.

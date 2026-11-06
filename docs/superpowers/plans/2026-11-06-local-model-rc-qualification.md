@@ -19,8 +19,8 @@ Use the previously authorized Phi-3.5 Vision model for generated images and text
 - [x] Run baseline core/conformance tests, then core/Angular/React/conformance build, test and lint. Fix any proven regression with a failing top-level test first.
 - [x] Build both production smoke hosts. Run local text contracts, native tool/schema/UI-phase contracts and WebLLM image/tool contracts sequentially; no live audio. Preserve reports before each overwrite.
 - [x] Qualify WebLLM 0.2.87 using local-webllm-vision-smoke and local-webllm-tools-live with explicit bundle/model/download flags, zero retries. Preserve full output and teardown evidence. Run installed-type consumers and packed candidate API checks.
-- [ ] Probe the existing Chrome model route and rerun the approved single-component phase subset if the exact model is available. Preserve failed nested research cases and upstream limitations.
-- [ ] Update both local-model recipes, conformance README and a dated research report with exact tested versions/results. Remove historical unreleased-image wording and unsupported new claims; keep short explanations followed by working examples in Brian's technical voice.
+- [x] Probe the existing Chrome model route and rerun the approved single-component phase subset if the exact model is available. Preserve failed nested research cases and upstream limitations.
+- [x] Update both local-model recipes, conformance README and a dated research report with exact tested versions/results. Remove historical unreleased-image wording and unsupported new claims; keep short explanations followed by working examples in Brian's technical voice.
 - [ ] Run www build/test/lint and affected package checks. Review the complete diff independently, address feedback, create PR, merge only after required CI passes at the reviewed head, verify main tree and public docs.
 
 ## Decision boundary

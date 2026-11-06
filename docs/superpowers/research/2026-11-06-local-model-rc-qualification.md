@@ -62,11 +62,39 @@ First-token times across the 14 requests were 1.13–3.28 seconds. Temperature w
 
 These results qualify text-only application-selected tool phases and the measured schema/one-Status workflows. They do not qualify native WebLLM tool calling, broad catalogs, nested tool/UI composition, media-conditioned tools, audio or other hardware.
 
-## Chrome 157 qualification status
+## Chrome 157 qualification
 
-Both framework capability probes passed interface/option inspection and reported the existing experimental v4 route as `downloadable`. They created no model session and performed no inference. Fresh-model preparation and the native round-trip canary are still in progress; the October Chrome 155 phase results remain historical evidence, not a new Chrome 157 pass.
+Both framework capability probes passed interface/option inspection and reported the existing experimental v4 route as `downloadable`. These probes created no model session and performed no inference.
+
+Explicit preparation then downloaded the observed `gemma4-2b-it`, base `2026.06.10.0000`, component `2026.8.7.929`. This is the same manifest identity recorded in October, not a selectable Nano 4B. Preparation took approximately 897.61 seconds. The strict raw native success canary failed because Chrome emitted an empty `callId`; one created session was destroyed. The earlier Chrome 155 strict failures had the same empty-ID boundary using `callID`. Hashbrown already normalizes a sole empty-ID call; the strict raw result remains failed.
+
+The unchanged eight-case bounded phase run passed **4/8** with zero retries/skips: lookup and no-tools in both frameworks passed. The four failed cases were:
+
+- Angular dependent: both required handlers ran with the exact token and receipt. The canonical assistant content contained two Status nodes, both with the correct receipt/count, where exactly one was required. The UI reflected those two nodes. The assertion reached the overall test deadline, so its final raw-native snapshot and lifecycle counters were unavailable; the trace retains canonical history. This does not establish whether the initial duplication originated in model output or parsing/state processing.
+- React dependent: native finalization emitted another `lookup_secret` call. Hashbrown rejected it before another handler ran.
+- Both replay fixtures: first-turn finalization emitted a tool call (`lookup_secret` in Angular, `follow_secret` in React). Both were rejected before execution. A second user turn was never reached; these are not passing cross-turn replay checks.
+
+All seven available terminal snapshots reported zero active streams and matching created/destroyed sessions. The timed-out Angular dependent case has no terminal counter snapshot; it is unavailable, not a cleanup pass. Original reports/traces are retained under `chrome-phase-attempt-1/`.
+
+A single explicitly labeled Angular dependent diagnostic sample was run after adding evidence capture before UI validation. It also failed: finalization emitted a native tool call that the transport rejected. Its raw prompts, constraint, chunks and cleanup are retained under `chrome-dependent-diagnostic/`. It does not replace or repair the original failed gate. No semantics-preserving SDK defect has been established by these failures.
+
+A separate option-dictionary probe used the already available model with an already-aborted signal. Chrome read the `responseConstraint`, `omitResponseConstraintInput` and `signal` getters, ignored the `toolChoice` getter, and raised `AbortError`; the session was destroyed. This observed configuration does not provide a verified `toolChoice: 'none'` fix. The probe performed no inference or download and is retained as `chrome-tool-choice-probe.json`. The upstream [tool-choice request](https://github.com/webmachinelearning/prompt-api/issues/140) was still open when checked; an unsupported option is not a control guarantee.
+
+The current Chrome 157 configuration is unqualified for dependent tool-plus-UI and the replay fixture. The October Chrome 155 phase results remain historical. Nested UI was not rerun and remains unqualified.
+
+## Cancellation boundaries
+
+The original first-output Stop run passed in React. Its Angular sample failed the cancellation-history assertion, but the retained native events show the model naturally completed after `One`: the stream settled and the session was destroyed with no abort. The following prompt correctly retained that completed answer. This is not evidence of an active Angular cancellation failure, and it is not counted as a passing partial-output cancellation sample.
+
+A separate live case now waits for native prompt generation to start, verifies one active stream and no output chunks, then clicks Stop. Both framework cases passed. Each independently verified an `AbortError`, source cancellation, destruction before fresh creation, no late old-session chunks, an explicit runtime cancellation marker in fresh model history, exactly one fresh lookup and its exact hidden result. Both ended with zero active streams and three created/destroyed sessions. Reports are retained under `chrome-stop-pending/`; the original samples remain under `chrome-stop/`.
+
+The original first-output test remains unchanged in behavior. The new case qualifies cancellation during pending generation; it does not turn the invalid Angular partial-output sample into a pass.
 
 ## Findings addressed
+
+The Stop harness now distinguishes first-output and pending-generation boundaries without changing the original assertions or expected cancellation history.
+
+The native UI harness now attaches a terminal snapshot before UI assertions, preserving raw evidence when a later cardinality assertion reaches the overall test deadline. Prompts, model requests, handlers and assertions are unchanged. A separate Angular lookup verification passed and retained an early snapshot with 90 raw native events (`chrome-snapshot-verification/`). The original eight-case result remains 4/8; this diagnostic does not replace it.
 
 React had no `nx lint react` target. Direct ESLint also failed because existing hook-rule comments referenced an unregistered `react-hooks` plugin. The fix adds the Nx target and registers the already installed plugin; it adds no dependency and changes no runtime behavior. Lint passes with 10 existing warnings, including hook dependencies, explicit `any` and overload redeclarations. These warnings remain visible.
 
@@ -79,6 +107,8 @@ The first React test invocation incorrectly inherited `NODE_ENV=production` from
 The first core test run warned about a worker being force-exited. A diagnostic run with `--detectOpenHandles --runInBand` passed all 2,657 tests with no open handle reported. The final site test run passed 2,434 tests and timed out in the search-index JSON test under local concurrent load. A complete rerun with `--maxWorkers=4` passed all 2,435 tests with the original five-second timeout. Both logs are retained; no assertion or timeout was relaxed.
 
 Existing Nx/Vite deprecations, build chunk-size notices and API-extractor warnings are retained in logs; they are not suppressed by this change.
+
+The first local commit hook completed lint/format checks but could not apply its backup while the worktree index contained unrelated entries. The pre-hook index tree restored exactly the nine intended paths, and the retry with `NX_DAEMON=false` passed all hooks. Candidate files and evidence were preserved. The cause of the index replacement was not established.
 
 ## Reproduction
 
@@ -94,3 +124,14 @@ LOCAL_LLM_WEBLLM_TOOLS_LIVE=1 npx nx local-webllm-tools-live conformance --outpu
 Also export `RUNTIME_SMOKE_ANGULAR_PORT=4411` and `RUNTIME_SMOKE_REACT_PORT=4412` to reuse the same origin caches across these sequential suites. The shared variables must be exported in the calling shell; the two opt-ins select separate suites. The image and tool contract targets instead need `LOCAL_LLM_WEBLLM_IMAGES=1` and `LOCAL_LLM_WEBLLM_TOOLS=1`, respectively, alongside `LOCAL_LLM_E2E=1`.
 
 No answer repair, hidden retry, hosted inference fallback, audio qualification or additional hardware claim is part of this run.
+
+For the native phase sample, prepare the separate v4 profile with the explicit download opt-in, retain its actual manifest, then run:
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/separate-v4-test-profile \
+  npx nx local-native-ui-phase-workflow-smoke conformance -- --grep-invert='native UI nested'
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/separate-v4-test-profile \
+  npx nx local-native-tool-workflow-smoke conformance -- --grep='native Stop before first output'
+```
+
+These use the already prepared model, do not initiate downloads, and refuse CI. The first command retains the failed bounded phase gate. The second selects the separate pending-generation cancellation cases. Audio and other hardware remain outside this qualification.

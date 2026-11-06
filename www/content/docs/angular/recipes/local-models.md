@@ -36,24 +36,27 @@ The browser manages model updates and can remove or replace downloaded models. J
 
 ## What has actually been tested?
 
-The following is a **dated qualification snapshot**, reviewed November 6, 2026. It combines the October 24–26 runs with a new WebLLM 0.2.87 release-candidate check. All used an Apple M1 Max with 32 GB RAM and macOS 26.5. The October browser runs used Chrome 155.0.8059.85; the November WebLLM runs used Chrome 157.0.8103.38. These fixed samples do not establish results for every model, browser or device. Audio and cross-hardware qualification remain deferred.
+The following is a **dated qualification snapshot**, reviewed November 6, 2026. It combines the October 24–26 runs with a new WebLLM 0.2.87 release-candidate check. All used an Apple M1 Max with 32 GB RAM and macOS 26.5. The October browser runs used Chrome 155.0.8059.85; the November browser runs used Chrome 157.0.8103.38. These fixed samples do not establish results for every model, browser or device. Audio and cross-hardware qualification remain deferred.
 
 The October Chrome v4 experiment used manifest `gemma4-2b-it`; it is not evidence of Gemini Nano 4B. Both WebLLM rows below use 0.2.87 with `Phi-3.5-vision-instruct-q4f16_1-MLC`, tested November 6. The Ollama row retains the October results for server 0.40.11 with `qwen2.5:14b` Q4_K_M.
 
 | Tested configuration           | Fixed-sample result                                    | Remaining boundary                                                        |
 | ------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------- |
-| Chrome v4 / Gemma 2B phases    | Single-component cases: 16/16 across two samples.      | Each full sample: 8/10. Nested UI remains unqualified.                    |
+| Chrome 155 / Gemma 2B phases   | Single-component cases: 16/16 across two samples.      | Each full sample: 8/10. Nested UI remains unqualified.                    |
+| Chrome 157 / Gemma 2B phases   | Four of eight bounded cases passed on November 6.     | Lookup/no-tools passed; dependent and replay fixtures failed.             |
 | Chrome default Nano (`v3Nano`) | No-tool smoke: 6/6. Image/audio fixtures: 4/4.         | Tool-session creation failed; parameter count unknown.                    |
 | Chrome Gemma E4B               | No-tool text/UI smoke: 6/6.                            | Tool creation failed in Stable and Canary.                                |
 | WebLLM images                  | Four exact image responses across two framework cases. | Arbitrary vision and image-conditioned tools/UI unqualified.              |
 | WebLLM structured tools        | Six cases; 14 model requests; eight handlers.          | Text-only, application-selected tools and single-component/schema output. |
 | Ollama                         | Provider/compatibility: 7/10. Frameworks: 12/20.       | Required calls, exact receipts and truncation status still failed.        |
 
-The [November 6 candidate report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) retains the new WebLLM reports, package checks and initial preparation failure. The Chrome, Nano, E4B and Ollama rows remain historical results.
+The [November 6 candidate report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) retains the new WebLLM reports, package checks and initial preparation failure. The Chrome 155, Nano, E4B and Ollama rows remain historical results.
 
-The Chrome phase samples failed nested workflows either before a handler ran or by returning the wrong heading. Nano and E4B reported availability but did not establish a native tool session in these tests. The WebLLM image requests used small generated red/blue squares; the tool cases required six exact final outputs. None of these results qualifies broad catalogs, arbitrary nested UI or media-conditioned tool composition. The complete failed gates remain failed.
+The October Chrome phase samples failed nested workflows either before a handler ran or by returning the wrong heading. Nano and E4B reported availability but did not establish a native tool session in these tests. The WebLLM image requests used small generated red/blue squares; the tool cases required six exact final outputs. None of these results qualifies broad catalogs, arbitrary nested UI or media-conditioned tool composition. The complete failed gates remain failed.
 
 Read the retained [Chrome phase results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-chrome-tool-phases.md), [Nano results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-default-nano-qualification.md), [E4B results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-gemma4b-qualification.md), [WebLLM vision results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-webllm-vision-qualification.md), [WebLLM tool results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-26-webllm-structured-tool-qualification.md) and [Ollama results](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-model-qualification.md) for model identities, exact assertions and failures. Their release-status paragraphs are historical snapshots; the WebLLM image and structured-tool APIs shipped in [Hashbrown 0.8.3](https://github.com/liveloveapp/hashbrown/releases/tag/v0.8.3).
+
+The November 6 Chrome 157 run used the same observed `gemma4-2b-it` base and component version. Lookup and no-tools cases passed in both frameworks. The dependent fixtures failed: Angular's canonical response contained two Status nodes where one was required, and React emitted a tool call during constrained finalization. Both replay fixtures stopped during first-turn finalization, before a second user turn. Hashbrown rejected those finalization calls before executing another handler. This configuration remains unqualified for the failed workflows. The [candidate report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) keeps these failures separate from the earlier Chrome 155 passes.
 
 ### Choose a bounded workflow first
 
@@ -950,8 +953,11 @@ Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime
 cancellation marker before subsequent input. The marker stays in model
 history and is omitted from ordinary assistant rendering and schema/UI parsing.
-Both real v4 Stop cases returned the exact new lookup token with that marker;
-cleanup and history assertions passed independently. Keep testing follow-up
+Both October Chrome 155 Stop cases returned the exact new lookup token with that marker;
+cleanup and history assertions passed independently. On November 6, both frameworks
+also passed cancellation during pending generation and an exact fresh lookup on
+Chrome 157. React passed its first-output Stop sample; Angular’s sample completed
+naturally before Stop, so it does not establish partial-output cancellation. Keep testing follow-up
 instructions on the actual model; a marker does not guarantee model obedience.
 
 `detectChromeToolsCapabilities()` reports serializable exact-option and model
@@ -966,7 +972,7 @@ for opt-in native and aimock targets; all local-model suites refuse CI.
 
 <hb-expander title="Advanced: application-owned WebLLM engines">
 
-Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. Structural consumer checks cover WebLLM 0.2.85, 0.2.86 and 0.2.87 direct and worker engine declarations. These checks establish assignability, with upstream declaration-body checking skipped; they do not establish model capability.
+Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. Earlier structural consumer checks covered WebLLM 0.2.85 and 0.2.86. The November 6 candidate check covers 0.2.87 direct, worker and engine-interface declarations. These checks establish assignability, with upstream declaration-body checking skipped; they do not establish model capability.
 
 Create the worker in the application:
 
