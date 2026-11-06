@@ -52,16 +52,48 @@ test('the catalog holds the API reference pages and the api and blog index pages
 });
 
 test('every known page survives the content id filter', () => {
-  const expected =
-    2 +
-    2 +
-    listSitemapEntries().length +
-    listBlogPosts().length +
-    listApiReferenceEntries().length;
+  const expected = new Set([
+    '/',
+    '/docs',
+    '/api',
+    '/blog',
+    ...listSitemapEntries().map((entry) => entry.url),
+    ...listBlogPosts().map((post) => '/blog/' + post.slug),
+    ...listApiReferenceEntries().map((entry) => entry.url.split('#')[0]),
+  ]);
 
   const catalog = websiteContentCatalog();
 
-  expect(Object.keys(catalog).length).toBe(expected);
+  expect(Object.keys(catalog).sort()).toEqual([...expected].sort());
+});
+
+test('C# reference pages have bounded content ids and member search anchors are not pages', () => {
+  const entries = listApiReferenceEntries().filter(
+    (entry) => entry.package === 'Hashbrown.AspNetCore',
+  );
+
+  const catalog = websiteContentCatalog();
+
+  expect(entries.length).toBeGreaterThan(73);
+  const pageIds = [
+    ...new Set(entries.map((entry) => entry.url.split('#')[0])),
+  ].map(contentIdFor);
+  expect(pageIds).toHaveLength(73);
+  expect(new Set(pageIds).size).toBe(pageIds.length);
+  for (const entry of entries) {
+    const page = entry.url.split('#')[0];
+    expect(catalog[page]).toEqual({
+      contentId: contentIdFor(page),
+      topic: 'reference',
+    });
+    expect(contentIdFor(page)).toMatch(/^[a-z0-9][a-z0-9_/-]{0,119}$/);
+    if (entry.url.includes('#')) expect(catalog[entry.url]).toBeUndefined();
+  }
+  expect(
+    contentIdFor('/api/dotnet/Hashbrown.AspNetCore.NativeSessionOptions'),
+  ).toBe('api/dotnet/hashbrown-aspnetcore-nativesessionoptions');
+  expect(contentIdFor('/unrecognized.dotted/path')).toBeUndefined();
+  expect(contentIdFor('/api/dotnet/unsafe?query=1')).toBeUndefined();
 });
 
 test('topics follow the path rules', () => {

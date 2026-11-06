@@ -25,7 +25,7 @@ test('groups the API menu by package, without the @hashbrownai scope', () => {
 
   const titles = sections.map((section) => section.title);
 
-  expect(titles).toEqual(['angular', 'core', 'react']);
+  expect(titles).toEqual(['angular', 'core', 'react', 'dotnet']);
 });
 
 test('lists every symbol in the API report with an /api/<pkg>/<symbol> href', () => {
@@ -40,7 +40,11 @@ test('lists every symbol in the API report with an /api/<pkg>/<symbol> href', ()
 
   const sections = apiMenuSections();
 
-  expect(sections.map((section) => section.children)).toEqual(expected);
+  expect(
+    sections
+      .filter((section) => section.title !== 'dotnet')
+      .map((section) => section.children),
+  ).toEqual(expected);
   expect(expected.flat().length).toBeGreaterThan(150);
 });
 
@@ -74,7 +78,7 @@ test('toggling a section opens it without mutating the input', () => {
   const opened = toggleSection(sections, 'core');
   const closed = toggleSection(opened, 'core');
 
-  expect(opened.map((s) => s.active)).toEqual([false, true, false]);
-  expect(closed.map((s) => s.active)).toEqual([false, false, false]);
-  expect(sections.map((s) => s.active)).toEqual([false, false, false]);
+  expect(opened.map((s) => s.active)).toEqual([false, true, false, false]);
+  expect(closed.map((s) => s.active)).toEqual([false, false, false, false]);
+  expect(sections.map((s) => s.active)).toEqual([false, false, false, false]);
 });

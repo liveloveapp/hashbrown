@@ -36,7 +36,7 @@ export function websiteContentCatalog(): WebsiteCatalog {
   add('/api');
   add('/blog');
   for (const entry of listSitemapEntries()) add(entry.url);
-  for (const entry of listApiReferenceEntries()) add(entry.url);
+  for (const entry of listApiReferenceEntries()) add(entry.url.split('#')[0]);
   for (const post of listBlogPosts()) add(`/blog/${post.slug}`);
   cached = Object.freeze(catalog);
   return cached;

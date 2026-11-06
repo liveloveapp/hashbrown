@@ -3,6 +3,14 @@ using System.Runtime.Loader;
 using System.Text.Json;
 using System.Xml.Linq;
 
+var referenceArguments = args;
+var referenceMode = args.Length > 0 && args[0] is "--reference" or "--reference-check";
+if (referenceMode)
+{
+  if (args.Length != 6) throw new ArgumentException("Reference mode requires assembly, namespace, XML, reviewed API and output paths.");
+  args = [args[1], args[2]];
+}
+
 var assemblyPath = Path.GetFullPath(args[0]);
 AssemblyLoadContext.Default.Resolving += (_, name) =>
 {
@@ -42,6 +50,12 @@ var snapshot = new
     }).Order().ToArray()
   }).ToArray()
 };
+if (referenceMode)
+{
+  ReferenceWriter.Write(assembly, types, snapshot, referenceArguments[3], referenceArguments[4], referenceArguments[5], referenceArguments[0] == "--reference-check");
+  return;
+}
+
 File.WriteAllText(args[2], JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 if (args.Length > 3)
 {

@@ -1,3 +1,4 @@
+import { listDotnetSymbols } from '../../src/lib/dotnet-reference';
 import { expect, test } from 'vitest';
 import robots from '../../src/app/robots';
 import sitemap from '../../src/app/sitemap';
@@ -25,7 +26,8 @@ test('has one entry per page and no duplicates', () => {
     listBlogPosts().length +
     listDocs('react').length +
     listDocs('angular').length +
-    listSymbolPages().length;
+    listSymbolPages().length +
+    listDotnetSymbols().length;
 
   const urls = sitemap().map((entry) => entry.url);
 

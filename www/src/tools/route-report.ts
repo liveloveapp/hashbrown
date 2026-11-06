@@ -1,3 +1,4 @@
+import { listDotnetSymbols } from '../lib/dotnet-reference';
 /**
  * Route report (the site's `e2e` target): every custom element the docs and
  * blog markdown use has a component, and every public URL (docs from
@@ -121,6 +122,10 @@ console.log('\nRoute parity (source → prerendered by Next):');
 for (const [label, routes] of [
   ['docs (llms.txt)', llmsDocs],
   ['api (api-report.min.json)', apiRoutes],
+  [
+    'C# API (compiled XML)',
+    listDotnetSymbols().map((type) => '/api/dotnet/' + type.slug),
+  ],
   ['blog (content files)', blogRoutes],
   ['home, api index, privacy', otherRoutes],
   ['share cards', cardRoutes],

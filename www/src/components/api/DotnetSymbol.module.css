@@ -1,0 +1,52 @@
+.article {
+  width: 100%;
+  min-width: 0;
+  max-width: 960px;
+  padding: var(--page-top) var(--gutter) var(--section-gap);
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.article h1 {
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.2;
+}
+.article h2 {
+  font-size: 24px;
+  margin: 24px 0 12px;
+}
+.article h3 {
+  font-size: 20px;
+  margin: 16px 0 8px;
+}
+.article a {
+  display: inline-block;
+  padding: 5px 0;
+}
+.article ul {
+  padding-left: 24px;
+}
+.article dd {
+  margin: 0 0 12px 16px;
+}
+.prose {
+  white-space: pre-wrap;
+}
+.code {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 16px;
+  border: 1px solid var(--gray-300, #a4a3a1);
+  border-radius: 8px;
+}
+.code pre {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.member {
+  margin-top: 32px;
+  scroll-margin-top: 96px;
+  border-top: 1px solid var(--gray-300, #a4a3a1);
+}

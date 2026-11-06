@@ -38,7 +38,8 @@
         "commands": [
           "mkdir -p ../../dist/packages/dotnet",
           "dotnet tools/bin/Release/net10.0/ApiSnapshot.dll bin/Release/net10.0/Hashbrown.AspNetCore.dll Hashbrown.AspNetCore ../../dist/packages/dotnet/public-api.json bin/Release/net10.0/Hashbrown.AspNetCore.xml",
-          "node tools/verify-package.mjs --api-only"
+          "node tools/verify-package.mjs --api-only",
+          "dotnet tools/bin/Release/net10.0/ApiSnapshot.dll --reference-check bin/Release/net10.0/Hashbrown.AspNetCore.dll Hashbrown.AspNetCore bin/Release/net10.0/Hashbrown.AspNetCore.xml api/public-api.json api/reference-docs.json"
         ],
         "cwd": "packages/dotnet"
       },
@@ -64,7 +65,9 @@
       "cache": false,
       "options": {
         "parallel": false,
-        "commands": ["node --test tools/package.test.mjs"],
+        "commands": [
+          "node --test tools/package.test.mjs tools/reference.test.mjs"
+        ],
         "cwd": "packages/dotnet"
       },
       "dependsOn": ["pack"]

@@ -90,8 +90,7 @@
 }
 
 .packages > h2 {
-  font:
-    500 14px/18px var(--font-code);
+  font: 500 14px/18px var(--font-code);
   color: var(--color-accent);
   margin-top: 32px;
 }
@@ -132,4 +131,17 @@
   .symbols {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+.dotnet {
+  padding: 0 var(--gutter) var(--section-gap);
+  max-width: 1024px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dotnet h2 {
+  font-size: 24px;
+}
+.dotnet p {
+  margin: 16px 0;
 }
