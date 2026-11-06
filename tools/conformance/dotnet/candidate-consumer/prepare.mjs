@@ -16,6 +16,8 @@ import {
 import { validateArchiveFiles, validateManifest } from './verify.mjs';
 import {
   consumerInventory,
+  createCandidateLock,
+  validatePackageGraph,
   qualifyNugetCandidate,
   verifyCandidate,
 } from './qualify.mjs';
@@ -218,6 +220,7 @@ export async function prepareNpmCandidate(pointerPath) {
   const sources = await sourceInventory();
   const producer = {};
   const archives = {};
+  const packages = {};
   const baseline = JSON.parse(
     await fs.readFile(path.join(here, '../live-consumer/package.json')),
   );
@@ -254,20 +257,7 @@ export async function prepareNpmCandidate(pointerPath) {
     const files = archiveFiles(bytes);
     const pkg = JSON.parse(files['package.json']);
     assert.equal(pkg.name, name, 'Packed SDK identity differs');
-    const previous = baselineLock.packages[`node_modules/${name}`];
-    for (const field of [
-      'dependencies',
-      'optionalDependencies',
-      'peerDependencies',
-      'peerDependenciesMeta',
-      'bundleDependencies',
-      'bundledDependencies',
-    ])
-      assert.deepEqual(
-        pkg[field],
-        previous[field],
-        `Packed ${name} ${field} conflicts with retained graph`,
-      );
+    packages[name] = pkg;
     archives[name] = {
       name,
       version: pkg.version,
@@ -277,6 +267,13 @@ export async function prepareNpmCandidate(pointerPath) {
     };
     await fs.chmod(archive, 0o444);
   }
+  for (const name of sdkNames)
+    validatePackageGraph(
+      packages[name],
+      baselineLock.packages[`node_modules/${name}`],
+      baselineLock,
+      archives,
+    );
   const manifest = {
     ...baseline,
     name: 'hashbrown-dotnet-candidate-consumer',
@@ -288,19 +285,7 @@ export async function prepareNpmCandidate(pointerPath) {
     },
   };
   validateManifest(manifest, archives, baseline);
-  const lock = structuredClone(baselineLock);
-  lock.name = manifest.name;
-  lock.packages[''] = {
-    ...lock.packages[''],
-    name: manifest.name,
-    dependencies: manifest.dependencies,
-  };
-  for (const name of sdkNames)
-    Object.assign(lock.packages[`node_modules/${name}`], {
-      version: archives[name].version,
-      resolved: 'file:' + archives[name].archive,
-      integrity: archives[name].integrity,
-    });
+  const lock = createCandidateLock(baselineLock, archives, manifest);
   await fs.writeFile(
     path.join(root, 'package.json'),
     JSON.stringify(manifest, null, 2),

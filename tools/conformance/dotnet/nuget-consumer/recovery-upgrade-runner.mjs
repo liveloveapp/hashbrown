@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { hashFile, verifyConsumer } from './verify.mjs';
+import { hashFile, verifyHistoricalConsumer } from './verify.mjs';
 import {
   preparePublishedRecoveryBaseline,
   verifyPublishedRecoveryBaseline,
@@ -144,7 +144,7 @@ export async function runRecoveryUpgrade(
             baseline.loaded.sha256,
           );
         }
-        await verifyConsumer(
+        await verifyHistoricalConsumer(
           JSON.parse(await fs.readFile(baseline.nuget, 'utf8')),
         );
         await child('published-post-qualification', process.execPath, [

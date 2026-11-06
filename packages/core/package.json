@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/core",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "Runtime helpers for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,

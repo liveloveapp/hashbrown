@@ -259,3 +259,50 @@ try {
 
   expect(result.trim()).toBe('passed');
 });
+
+test('candidate package graphs remap only exact retained internal pins and generate consistent SDK lock metadata', () => {
+  const body = `
+const { createCandidateLock, validatePackageGraph } = await import(${JSON.stringify(qualifier)});
+const baselineLock = JSON.parse(await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'), 'utf8'));
+const selected = Object.fromEntries(Object.entries(archives).map(([name, record]) => [name, { ...record, version: '0.9.0' }]));
+const lock = createCandidateLock(baselineLock, selected, manifest);
+validateLockGraph(lock, baselineLock, selected, manifest);
+for (const name of names) {
+  const previous = baselineLock.packages['node_modules/' + name];
+  const packed = structuredClone(previous);
+  packed.version = '0.9.0';
+  for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const dependency of Object.keys(packed[field] ?? {})) {
+      if (names.includes(dependency)) packed[field][dependency] = selected[dependency].version;
+    }
+  }
+  validatePackageGraph(packed, previous, baselineLock, selected);
+  for (const field of ['dependencies', 'peerDependencies']) {
+    assert.deepEqual(lock.packages['node_modules/' + name][field], packed[field]);
+  }
+  const stale = structuredClone(lock);
+  stale.packages['node_modules/' + name] = { ...stale.packages['node_modules/' + name], ...Object.fromEntries(['dependencies', 'peerDependencies'].filter(field => previous[field]).map(field => [field, previous[field]])) };
+  if (JSON.stringify(stale) !== JSON.stringify(lock)) assert.throws(() => validateLockGraph(stale, baselineLock, selected, manifest), /frozen graph/i);
+}
+const previous = { peerDependencies: { '@hashbrownai/core': '0.8.3', react: '^19.0.0' }, dependencies: { rxjs: '7.8.2' } };
+const packed = { peerDependencies: { '@hashbrownai/core': '0.9.0', react: '^19.0.0' }, dependencies: { rxjs: '7.8.2' } };
+validatePackageGraph(packed, previous, baselineLock, selected);
+for (const changed of [
+  { ...packed, dependencies: { rxjs: '7.8.3' } },
+  { ...packed, peerDependencies: { ...packed.peerDependencies, react: '^20.0.0' } },
+  { ...packed, peerDependencies: { ...packed.peerDependencies, '@hashbrownai/core': '^0.9.0' } },
+]) assert.throws(() => validatePackageGraph(changed, previous, baselineLock, selected), /graph|pin/i);
+assert.throws(() => validatePackageGraph(packed, { ...previous, peerDependencies: { ...previous.peerDependencies, '@hashbrownai/core': '^0.8.3' } }, baselineLock, selected), /graph|pin/i);
+for (const field of ['version', 'integrity', 'dependencies']) {
+  const changed = structuredClone(lock);
+  changed.packages['node_modules/react'][field] = field === 'dependencies' ? { injected: '1.0.0' } : 'altered';
+  assert.throws(() => validateLockGraph(changed, baselineLock, selected, manifest), /frozen graph/i);
+}
+`;
+
+  const result = probe(
+    `const { validateLockGraph } = await import(${JSON.stringify(qualifier)});\n${body}`,
+  );
+
+  expect(result.trim()).toBe('passed');
+});
