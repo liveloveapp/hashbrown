@@ -7,9 +7,9 @@ meta:
 
 # Local models
 
-A local model generates on the user’s device instead of sending prompts to a hosted provider. Use it when on-device processing fits your privacy, latency, or connectivity requirements and the supported devices can run the model. Availability, downloads, preparation, inference, and cancellation are separate application states.
+A local model runs on the user’s device. This can keep prompts on-device and reduce reliance on a hosted provider, but the device still needs enough memory and a supported runtime. Your application needs to handle model availability, downloads, preparation, generation, and cancellation.
 
-Let’s extract a trip destination and duration from a short request. We will explicitly prepare the browser-managed model, stream a typed draft, and check successful completion and validate the parsed destination and day count before showing a ready brief. A local transport uses the same structured chat contract; it does not remove validation or authorization requirements.
+Let’s extract a trip destination and duration from a short request. We will prepare the browser-managed model, stream a typed draft, and validate the destination and day count after generation completes. The transport changes where the model runs. We still need to validate its output and check permissions in our application.
 
 <hb-diagram diagram="recipe-native-model-preparation"> </hb-diagram>
 
@@ -36,9 +36,9 @@ The browser manages model updates and can remove or replace downloaded models. J
 
 ## What has actually been tested?
 
-The following is a **dated qualification snapshot**, reviewed October 30, 2026. It is not a promise that every model, browser or supported device will produce the same result. The October 24–26 inference runs used an Apple M1 Max with 32 GB RAM, macOS 26.5 and Chrome 155.0.8059.85 unless noted. No new model inference or cross-hardware tests were run for this documentation update.
+The following is a **dated qualification snapshot**, reviewed November 6, 2026. It combines the October 24–26 runs with a new WebLLM 0.2.87 release-candidate check. All used an Apple M1 Max with 32 GB RAM and macOS 26.5. The October browser runs used Chrome 155.0.8059.85; the November WebLLM runs used Chrome 157.0.8103.38. These fixed samples do not establish results for every model, browser or device. Audio and cross-hardware qualification remain deferred.
 
-The Chrome v4 experiment below used manifest `gemma4-2b-it`; it is not evidence of Gemini Nano 4B. Both WebLLM rows used 0.2.86 with `Phi-3.5-vision-instruct-q4f16_1-MLC`. The Ollama row used server 0.40.11 with `qwen2.5:14b` Q4_K_M.
+The October Chrome v4 experiment used manifest `gemma4-2b-it`; it is not evidence of Gemini Nano 4B. Both WebLLM rows below use 0.2.87 with `Phi-3.5-vision-instruct-q4f16_1-MLC`, tested November 6. The Ollama row retains the October results for server 0.40.11 with `qwen2.5:14b` Q4_K_M.
 
 | Tested configuration           | Fixed-sample result                                    | Remaining boundary                                                        |
 | ------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -48,6 +48,8 @@ The Chrome v4 experiment below used manifest `gemma4-2b-it`; it is not evidence 
 | WebLLM images                  | Four exact image responses across two framework cases. | Arbitrary vision and image-conditioned tools/UI unqualified.              |
 | WebLLM structured tools        | Six cases; 14 model requests; eight handlers.          | Text-only, application-selected tools and single-component/schema output. |
 | Ollama                         | Provider/compatibility: 7/10. Frameworks: 12/20.       | Required calls, exact receipts and truncation status still failed.        |
+
+The [November 6 candidate report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) retains the new WebLLM reports, package checks and initial preparation failure. The Chrome, Nano, E4B and Ollama rows remain historical results.
 
 The Chrome phase samples failed nested workflows either before a handler ran or by returning the wrong heading. Nano and E4B reported availability but did not establish a native tool session in these tests. The WebLLM image requests used small generated red/blue squares; the tool cases required six exact final outputs. None of these results qualifies broad catalogs, arbitrary nested UI or media-conditioned tool composition. The complete failed gates remain failed.
 
@@ -69,7 +71,7 @@ Availability, session creation, inference, schema validity and semantic correctn
 
 Repeat Stop followed by a new request, token-limit truncation, dependent tools and a fresh conversation. Check that no old result can apply state, every owned session/reader is released, and no hosted inference fallback occurs. A small passing sample is evidence for those fixtures, not a reliability percentage for arbitrary prompts.
 
-The vision run's first-token times were 14.57–16.52 seconds; the text-only tool run's were 1.23–3.03 seconds across its 14 requests. These are different fixed workloads, not a controlled speed comparison. Catalog VRAM estimates and process RSS are not measured peak GPU allocation. Budget for initial download, cold preparation and warm inference separately.
+The November 6 image requests took 17.87–19.80 seconds to the first token; the 14 text-only tool requests took 1.13–3.28 seconds. These are different fixed workloads, not a controlled speed comparison. Catalog VRAM estimates and process RSS are not measured peak GPU allocation. Budget for initial download, cold preparation and warm inference separately.
 
 Local inference does not make a whole application offline or private by itself. Tool handlers, image resolvers, analytics, application assets and model downloads can still use the network. Keep those destinations and permissions explicit. Cross-hardware qualification remains deferred; WebLLM audio is not implemented or qualified by these results.
 
@@ -919,7 +921,7 @@ for opt-in native and aimock targets; all local-model suites refuse CI.
 
 <hb-expander title="Advanced: application-owned WebLLM engines">
 
-Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. Structural consumer checks cover WebLLM 0.2.85 and 0.2.86 direct and worker engine declarations. These checks establish assignability, with upstream declaration-body checking skipped; they do not establish model capability.
+Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. Structural consumer checks cover WebLLM 0.2.85, 0.2.86 and 0.2.87 direct and worker engine declarations. These checks establish assignability, with upstream declaration-body checking skipped; they do not establish model capability.
 
 Create the worker in the application:
 
@@ -978,11 +980,11 @@ Declare `lookup_record` through the normal tool API and supply a final response 
 
 Tool phases accept text input only. Argument schemas must use closed objects with every property required, plus supported primitive, array, enum, and `anyOf` shapes and constraints. References, optional object fields, format annotations, and reserved property names (`__proto__`, `constructor`, `prototype`) are rejected before inference. Final response schemas retain the normal structured-output/UI path. Invalid, truncated, oversized, or cancelled argument generation dispatches no complete tool call; arguments are not streamed into handlers or repaired automatically. Keep component catalogs and workflows small and qualify them on the selected model.
 
-WebLLM 0.2.86 with `Phi-3.5-vision-instruct-q4f16_1-MLC` passed six fixed text-only cases: lookup to schema, dependent lookup to schema, and lookup to one trusted Status component in both frameworks on an M1 Max. See the [structured tool qualification report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-26-webllm-structured-tool-qualification.md) for exact assertions, timings, and limits. Broader catalogs, nested tool-plus-UI, and other devices remain unqualified.
+WebLLM 0.2.87 with `Phi-3.5-vision-instruct-q4f16_1-MLC` passed six fixed text-only cases on November 6: lookup to schema, dependent lookup to schema, and lookup to one trusted Status component in both frameworks on an M1 Max. The run made 14 model requests and eight handler calls, with six exact final outputs and complete cleanup. See the [release-candidate qualification report](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) for exact assertions, timings, and limits. Broader catalogs, nested tool-plus-UI, and other devices remain unqualified.
 
 The image and structured-tool opt-ins are available since [Hashbrown 0.8.3](https://github.com/liveloveapp/hashbrown/releases/tag/v0.8.3). All engines remain application-owned; no WebLLM dependency is added to Hashbrown. The [local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) separate deterministic contracts from opt-in real-model qualification. Hashbrown WebLLM audio interop and cross-hardware qualification remain deferred. Upstream [WebLLM 0.2.86](https://github.com/mlc-ai/web-llm/releases/tag/v0.2.86) already lists Gemma E2B text/audio prebuilds; that availability does not add an audio transport to Hashbrown or qualify a model on your device. The earlier research assumption that no upstream prebuilt audio model existed was incomplete.
 
-Upstream releases and Hashbrown qualification are separate records. The [npm registry](https://registry.npmjs.org/@mlc-ai%2Fweb-llm) published WebLLM 0.2.87 on October 30, 2026; the [Qwen JSON-termination fix](https://github.com/mlc-ai/web-llm/pull/876) is an example of why runtime/model/library versions matter for constrained output. Our retained real-model runs used 0.2.86, so 0.2.87 is not a newly qualified configuration here.
+Upstream releases and Hashbrown qualification are separate records. The [npm registry](https://registry.npmjs.org/@mlc-ai%2Fweb-llm) published WebLLM 0.2.87 on October 30, 2026; the [Qwen JSON-termination fix](https://github.com/mlc-ai/web-llm/pull/876) is an example of why runtime/model/library versions matter for constrained output. The [November 6 qualification](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-11-06-local-model-rc-qualification.md) reran the bounded image and text-only structured-tool cases on 0.2.87. The first image attempt failed during an Angular model download before inference; React passed. After retaining that report, the unchanged suite passed in both frameworks using the partial cache. This qualifies the measured workflows, not every model or a failure-free download experience.
 
 Native WebLLM tool mode is not interchangeable with the structured-phase transport. The [0.2.87 upstream protocol](https://github.com/mlc-ai/web-llm/blob/6897fadc2bed9a5a7940265dd80220f83ca184e7/src/openai_api_protocols/chat_completion.ts) still restricts tool models and rejects caller-supplied system messages and response formats in that mode. Passing `tools` through would not preserve Hashbrown's system/schema/history contract. The application-selected protocol above keeps those contracts explicit.
 

@@ -5,7 +5,10 @@ import { requireWebLlmToolsLive } from './harness/webllm-tools-live-mode';
 
 requireWebLlmToolsLive(process.env);
 
-const ports = { angular: 4451, react: 4452 };
+const ports = {
+  angular: Number(process.env['RUNTIME_SMOKE_ANGULAR_PORT'] ?? 4451),
+  react: Number(process.env['RUNTIME_SMOKE_REACT_PORT'] ?? 4452),
+};
 export default defineConfig({
   ...conformance,
   testDir: resolve(__dirname, 'local-models'),

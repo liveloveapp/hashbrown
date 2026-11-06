@@ -149,8 +149,7 @@ image count, MIME, byte count and dimensions. The target loads no WebLLM bundle,
 model, or native inference session, and does not validate model vision quality.
 The existing `local-webllm-smoke` remains a separate text-only real-runtime test.
 
-This image API requires this feature branch's source changes or a future SDK release; published
-version 0.8.2 does not include it. Applications opt in with
+The image and structured-tool opt-ins shipped in Hashbrown 0.8.3. Applications opt in with
 `experimental_webllm({ engine, media: { images: {}, resolve } })`. The engine must accept `WebLlmRequest<WebLlmImageContent>`;
 unparameterized `WebLlmRequest` and `WebLlmEngine` retain string user content.
 Every image source is resolved by the application into `{ blob, dispose? }`,
@@ -764,8 +763,11 @@ Set an absolute `WEBLLM_MODULE_PATH` to an application-provided browser bundle
 and explicitly select `WEBLLM_MODEL`; neither has a default. Model selection and
 any required download remain an application decision. The dedicated persistent
 profile is `hashbrown-webllm-vision-profile` beneath the system temporary
-directory, sharing the existing vision model cache, and the production hosts
-use ports 4451/4452. Personal/native browser profiles are never selected.
+directory. The production hosts default to ports 4451/4452. To reuse a vision
+run’s origin-scoped model caches, set `RUNTIME_SMOKE_ANGULAR_PORT=4411` and
+`RUNTIME_SMOKE_REACT_PORT=4412` for this suite too, and run the suites sequentially.
+Sharing a profile alone does not share caches across different origins.
+Personal/native browser profiles are never selected.
 
 ```sh
 LOCAL_LLM_E2E=1 LOCAL_LLM_WEBLLM_TOOLS_LIVE=1 LOCAL_LLM_DOWNLOAD=1 \
