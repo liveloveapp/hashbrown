@@ -1,0 +1,64 @@
+{
+  "kind": "recorded-deterministic-control-subsets",
+  "note": "Root-captured subsets from separate unchanged-v2 deterministic diagnostic runs, joined for a unit control; not a single live qualification receipt. Provider identity strings are synthetic.",
+  "sources": {
+    "emitted": "task4-original-call-diagnostic-v2.json:actual",
+    "payloadAndInvocations": "task4-full-pending-physical-v2.json:payload,physical.invocations,physical.session.generation",
+    "effects": "task4-pending-physical-facts-v2.json:effects"
+  },
+  "emitted": [
+    {
+      "arguments": {
+        "city": "Paris"
+      },
+      "id": "control-browser-1",
+      "name": "getWeather"
+    },
+    {
+      "arguments": {
+        "code": "PDX"
+      },
+      "id": "control-server-1",
+      "name": "lookupAirport"
+    }
+  ],
+  "pending": {
+    "generation": 1,
+    "payload": {
+      "formatVersion": 2,
+      "nativeJson": "{\"stateBag\":{\"_bypassedInvocableFunctionCalls\":[{\"name\":\"lookupAirport\",\"arguments\":{\"code\":\"PDX\"},\"informationalOnly\":false,\"callId\":\"control-server-1\"}],\"InMemoryChatHistoryProvider\":{\"messages\":[]}}}",
+      "publicRequest": "{\"context\":[],\"forwardedProps\":{},\"messages\":[{\"content\":\"Candidate isolation probe\",\"id\":\"2b06f4f2-3fde-4d90-aa4d-3a29f1432523\",\"role\":\"system\"},{\"content\":\"In one response call BOTH getWeather with city Paris AND lookupAirport with code PDX. Do not answer before both tools. Call each exactly once.\",\"id\":\"baaf2784-989d-494b-ae78-af566ede9cc5\",\"role\":\"user\"},{\"content\":\"\",\"id\":\"assistant-control-browser-1\",\"role\":\"assistant\",\"toolCalls\":[{\"function\":{\"arguments\":\"{\\u0022city\\u0022:\\u0022Paris\\u0022}\",\"name\":\"getWeather\"},\"id\":\"control-browser-1\",\"type\":\"function\"}]}],\"threadId\":\"release-recovery-ad4bfe33-7e8d-41cf-8783-895612254e93\",\"tools\":[{\"description\":\"Read the weather for a city\",\"name\":\"getWeather\",\"parameters\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"description\":\"Weather request\",\"properties\":{\"city\":{\"description\":\"Trusted operation correlation\",\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}]}",
+      "pendingCalls": [
+        {
+          "id": "control-server-1",
+          "name": "lookupAirport",
+          "version": 1,
+          "arguments": {
+            "code": "PDX"
+          }
+        }
+      ],
+      "expectedBrowserCallIds": ["control-browser-1"],
+      "turnCompleted": false,
+      "approvals": {
+        "pendingBatch": null
+      }
+    },
+    "invocations": [
+      {
+        "name": "lookupAirport",
+        "state": "Captured",
+        "call_id": "control-server-1",
+        "version": 1,
+        "descriptor": "{\"id\":\"control-server-1\",\"name\":\"lookupAirport\",\"version\":1,\"arguments\":{\"code\":\"PDX\"}}",
+        "session_id": "6D5DFD0901DABFECD7151FCBB4620D8936F837E643173AC5BD6946A69087C965",
+        "captured_generation": 1,
+        "dispatch_generation": null
+      }
+    ],
+    "effects": {
+      "count": 0,
+      "rows": []
+    }
+  }
+}

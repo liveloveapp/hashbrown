@@ -79,10 +79,27 @@ source fallback. Do not invent future signed hashes. Because publication is held
 actual verification of those versions on public registries is a documented
 post-publication action, not an acceptance claim for this PR.
 
-Existing full source (664), candidate cold (372), isolation (20), cleanup fences
-(40), package documentation compilation (32), old-server compatibility and ABI
-checks remain required. New checks supplement their semantics and do not weaken
-inventories, timeouts or retry policies.
+For this profile's mixed browser/native turn, the pinned native SDK defers the
+server invocation while browser work is pending. Deterministic execution confirms
+an exact native bypass descriptor and a `Captured` durable invocation, with zero
+server effects before worker loss. Bind both genuine emitted call IDs and arguments
+to their separate public-browser and saved-native surfaces. Recovery must execute
+the original deferred server call exactly once, then independently agree on both
+actual result bodies and original IDs in committed history and provider input.
+Completed reads and the ordinary follow-up must preserve that single completed
+effect. Do not assume a server result existed in the browser-only pending public
+projection or manufacture one for a comparison. This clarifies the evidence
+surfaces; the existing broader cold matrix remains required.
+
+Existing full source (664), candidate cold (372), isolation (20), package
+documentation compilation (32), old-server compatibility and ABI checks remain
+required. Cleanup and ownership fences remain required through the full
+`npx nx test-harness dotnet-conformance`, `npx nx test-runtime dotnet-conformance`
+and `npx nx test core` targets, including the core cold recovery cleanup/remount
+coverage. `40 cleanup fences` is not a verified acceptance inventory or a separate
+executable manifest; full-target totals must not be reported as cleanup-case
+counts. New checks supplement these suites without weakening tests, timeouts or
+retry policies.
 
 ## Runnable public .NET starter
 

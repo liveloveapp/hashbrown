@@ -299,7 +299,16 @@ test('rejects missing extra drifted or malformed blocks and dependency substitut
 
       assert.throws(
         () => readNativeRecipes(workspace),
-        /three tested C# examples|Recipe must reference exactly the candidate package/,
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(
+            error.message.split('\n')[0],
+            index === 3
+              ? 'Recipe must reference exactly the published package'
+              : 'Native framework recipes must contain the same three tested C# examples.',
+          );
+          return true;
+        },
       );
     }
   } finally {

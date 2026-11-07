@@ -1,0 +1,33 @@
+using System.Net;
+using Hashbrown.Conformance.Testing;
+using Microsoft.Extensions.AI;
+
+using var evidence = new FixtureLiveRecoveryEvidence("preflight", TimeSpan.FromSeconds(60), () => new("scope", "thread", "run"));
+evidence.Begin([new(ChatRole.User, "body cancellation control")]);
+var transport = new UnenteredTransport();
+using var http = new HttpClient(new FixtureLiveRecoveryHttpHandler(evidence, "gpt-4.1-mini", "responses", transport));
+using var cancel = new CancellationTokenSource();
+using var content = new BlockingBody();
+using var request = new HttpRequestMessage(HttpMethod.Post, "https://native-unit.invalid/v1/responses") { Content = content };
+request.Headers.Authorization = new("Bearer", "control-token");
+var sending = http.SendAsync(request, cancel.Token);
+await content.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+cancel.Cancel();
+try { await sending; throw new Exception("Body-read cancellation was ignored."); }
+catch (OperationCanceledException) { }
+if (transport.Calls != 0) throw new Exception("Cancelled native input reached HTTP transport.");
+Console.WriteLine("Release recovery body-read cancellation preserved.");
+
+sealed class BlockingBody : HttpContent
+{
+    public TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    protected override bool TryComputeLength(out long length) { length = 0; return false; }
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => throw new NotSupportedException();
+    protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+    { Entered.TrySetResult(); await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); }
+}
+sealed class UnenteredTransport : HttpMessageHandler
+{
+    public int Calls;
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) { Calls++; throw new Exception("Unexpected HTTP acquisition."); }
+}

@@ -146,13 +146,56 @@ if (source is not null)
 var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 nativeAccessor = accessor;
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
+FixtureLiveRecoveryScope RecoveryScope()
+{
+    var http = accessor.HttpContext;
+    if (builder.Configuration["FixtureLiveRecoveryPhase"] == "preflight") return new("preflight", "preflight", "preflight");
+    var scope = http?.User.FindFirst("scope")?.Value ?? throw new InvalidOperationException("RECOVERY_SCOPE_REQUIRED");
+    var context = FixtureIntegrationReflection.Call(null, FixtureIntegrationReflection.Type("NativeSessionContext"), "Get", http);
+    if (context is null) return new(scope, "", "");
+    var input = FixtureIntegrationReflection.Read<AGUI.Abstractions.RunAgentInput>(context, "Input");
+    return new(scope, input.ThreadId, input.RunId);
+}
+using var recoveryEvidence = builder.Configuration["FixtureLiveRecoveryPhase"] is { Length: > 0 } recoveryPhase
+    ? new FixtureLiveRecoveryEvidence(recoveryPhase, TimeSpan.FromMilliseconds(int.Parse(builder.Configuration["FixtureLiveRecoveryRemainingMs"] ?? "0", System.Globalization.CultureInfo.InvariantCulture)), RecoveryScope, builder.Configuration["FixtureLiveRecoveryControl"] == "true") : null;
+Uri RecoveryDestination()
+{
+    var endpoint = new Uri(builder.Configuration["ModelEndpoint"]!);
+    return builder.Configuration["Provider"] == "azure" && builder.Configuration["ModelApi"] == "responses" && endpoint.AbsolutePath.TrimEnd('/') == ""
+        ? new Uri(endpoint, "openai/v1/") : endpoint;
+}
+using var recoveryHttp = recoveryEvidence is null ? null : new HttpClient(new FixtureLiveRecoveryHttpHandler(recoveryEvidence,
+    builder.Configuration["Model"]!, builder.Configuration["ModelApi"] ?? "responses", expectedDestination: RecoveryDestination()));
+recoveryEvidence?.Map(app);
 using var liveState = builder.Configuration["FixtureLive"] == "true"
     ? new FixtureLiveGate(builder.Configuration["FixtureLiveGroup"] ?? "", approval: liveApproval) : null;
 using var liveHttp = liveState is null ? null : new HttpClient(new FixtureLiveHttpHandler(liveState,
     builder.Configuration["Model"]!, builder.Configuration["ModelApi"] ?? "responses"));
-IChatClient native = liveState is null ? ProviderFactory.Create(builder.Configuration)
+IChatClient RecoveryNative()
+{
+    var provider = ProviderFactory.Create(builder.Configuration,
+        new ProviderClientComposition(authentication => authentication.CreateCredential(), recoveryHttp!));
+    if (recoveryEvidence!.DeterministicControl && builder.Configuration["FixtureLiveRecoveryMutation"] is { } mutation &&
+        mutation is ("wrong-original-result" or "missing-original-result" or "duplicate-original-call" or "duplicate-original-result"))
+        provider = new FixtureLiveRecoveryControlClient(provider, mutation, enabled: true);
+    return new FixtureLiveRecoveryClient(provider, recoveryEvidence);
+}
+IChatClient native = recoveryEvidence is not null ? RecoveryNative()
+    : liveState is null ? ProviderFactory.Create(builder.Configuration)
     : new FixtureLiveModelClient(ProviderFactory.Create(builder.Configuration,
         new ProviderClientComposition(authentication => authentication.CreateCredential(), liveHttp!)), liveState);
+if (recoveryEvidence?.DeterministicControl == true)
+    app.MapPost("/__test/live-recovery-control/replay-effect", async (HttpContext context) =>
+    {
+        await tools.LookupNativeAirport("PDX", context.RequestAborted);
+        return Results.Ok();
+    }).RequireAuthorization("recovery");
+if (recoveryEvidence?.Phase == "preflight")
+    app.MapPost("/__test/live-recovery-preflight", async (HttpContext context) =>
+    {
+        await foreach (var update in native.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "Reply with OK.")], cancellationToken: context.RequestAborted)) { }
+        return Results.Json(recoveryEvidence.Snapshot("preflight", "preflight"));
+    });
 if (liveState is not null)
 {
     app.MapGet("/__test/live-stats", async (HttpContext context) =>
@@ -290,7 +333,7 @@ if (nativeJournal is not null)
             return Results.Content((string)(await command.ExecuteScalarAsync())!, "application/json");
         }).RequireAuthorization("recovery");
     }
-    Action<string> observeNative = value => { nativeGate.Observe(value); candidateEvidence?.Observe(value); };
+    Action<string> observeNative = value => { nativeGate.Observe(value); candidateEvidence?.Observe(value); recoveryEvidence?.Observe(value); };
     var observedAgent = (AIAgent)FixtureIntegrationReflection.Call(null, typeof(NativeSessionAgentFactory), "CreateObservedForTests", native, nativeName, new[] { nativeFunction }, nativeCatalog, accessor, observeNative)!;
     NativeSessionEndpointConfiguration.Map(app, "/run", observedAgent, "recovery");
 }
