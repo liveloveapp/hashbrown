@@ -5,12 +5,38 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { inflateRawSync } from 'node:zlib';
 
-/** Independent NuGet/SDK identity approved for the first public package. */
+/** Current candidate NuGet/SDK identity, independent of published compatibility baselines. */
 export const IDENTITY = Object.freeze({
+  id: 'Hashbrown.AspNetCore',
+  version: '0.1.0-preview.2',
+  sdk: '10.0.402',
+});
+
+const historicalIdentity = Object.freeze({
   id: 'Hashbrown.AspNetCore',
   version: '0.1.0-preview.1',
   sdk: '10.0.402',
 });
+const historicalProducer = 'df1340f713d3b65165a494eb09e53246298df858';
+
+/** Requires the explicitly selected fixed identity; metadata cannot choose its own verifier policy. */
+export function validateConsumerIdentity(metadata, profile = 'current') {
+  assert.ok(
+    ['current', 'published-preview1'].includes(profile),
+    'Unknown consumer verification profile',
+  );
+  assert.deepEqual(
+    metadata.identity,
+    profile === 'current' ? IDENTITY : historicalIdentity,
+    'Candidate identity differs',
+  );
+  if (profile === 'published-preview1')
+    assert.equal(
+      metadata.revision,
+      historicalProducer,
+      'Historical producer differs',
+    );
+}
 
 const SDK_VERSION = /^(\d+)\.(\d+)\.(\d)(\d\d)$/;
 
@@ -478,9 +504,19 @@ export function validateArchive(buffer, identity, revision) {
 
 /** Qualifies an existing immutable consumer before invoking any caller-owned effect. */
 export async function verifyConsumer(pointer, effect) {
+  return verifyConsumerProfile(pointer, effect, 'current');
+}
+
+/** Verifies only the immutable preview1 package from its independently pinned historical producer. */
+export async function verifyHistoricalConsumer(pointer, effect) {
+  return verifyConsumerProfile(pointer, effect, 'published-preview1');
+}
+
+/** Applies the selected trusted policy before validating any consumer files or running an effect. */
+async function verifyConsumerProfile(pointer, effect, profile) {
   const metadata = await readAnchoredMetadata(pointer);
+  validateConsumerIdentity(metadata, profile);
   assertPackageRoles(metadata);
-  assert.deepEqual(metadata.identity, IDENTITY, 'Candidate identity differs');
   assert.equal(
     await fs.realpath(metadata.root),
     metadata.root,

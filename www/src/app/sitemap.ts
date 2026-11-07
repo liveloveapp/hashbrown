@@ -1,3 +1,4 @@
+import { listDotnetSymbols } from '../lib/dotnet-reference';
 import type { MetadataRoute } from 'next';
 import { listSymbolPages } from '../lib/api-reference';
 import { listBlogPosts, listDocs, SDKS } from '../lib/content';
@@ -18,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page('/brand'),
     page('/privacy'),
     page('/api'),
+    ...listDotnetSymbols().map((type) => page('/api/dotnet/' + type.slug)),
     ...listBlogPosts().map((post) => page(`/blog/${post.slug}`, post.date)),
     ...SDKS.flatMap((sdk) =>
       listDocs(sdk).map((slug) => page(`/docs/${sdk}/${slug.join('/')}`)),

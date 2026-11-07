@@ -21,5 +21,5 @@ const recipe = taskIds.some((id) =>
   id.startsWith('pydantic-ai-recipe-conformance:'),
 );
 console.log(
-  `dotnet=${setup.dotnet}\nbrowser=${setup.browser}\npython=${setup.python}\npython_native=${native}\npython_recipe=${recipe}`,
+  `starter=${setup.starter}\ndotnet=${setup.dotnet}\nbrowser=${setup.browser}\npython=${setup.python}\npython_native=${native}\npython_recipe=${recipe}`,
 );

@@ -1,6 +1,19 @@
 /** Explicit source test ownership; the conformance guard rejects missing or duplicate specs. */
 export const dotnetTestSuites = {
   harness: [
+    'tests/live-recovery-qualifier-process.spec.ts',
+    'tests/live-recovery-owner.spec.ts',
+    'tests/live-recovery-control-cleanup.spec.ts',
+    'tests/live-recovery-manifest.spec.ts',
+    'tests/live-recovery-budget.spec.ts',
+    'tests/live-recovery-runner.spec.ts',
+    'tests/live-recovery-selection.spec.ts',
+    'tests/live-recovery-transport.spec.ts',
+    'tests/live-recovery-evidence.spec.ts',
+    'tests/live-recovery-ledger.spec.ts',
+    'tests/live-recovery-public-source.spec.ts',
+    'tests/live-recovery-memory.spec.ts',
+
     'tests/candidate-ci.spec.ts',
     'tests/candidate-browser-evidence.spec.ts',
     'tests/candidate-browser-acceptance.spec.ts',
@@ -29,6 +42,7 @@ export const dotnetTestSuites = {
     'tests/wait-for-native-recovery.spec.ts',
   ],
   runtime: [
+    'tests/live-recovery-native.spec.ts',
     'tests/candidate-native-evidence.spec.ts',
     'tests/candidate-split-producer.spec.ts',
     'tests/candidate-native-text-transition.spec.ts',

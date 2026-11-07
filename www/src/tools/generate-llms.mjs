@@ -1,3 +1,4 @@
+import { readReferenceInput } from '../lib/dotnet-reference-input.mjs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -234,6 +235,64 @@ async function buildSectionLinks({ slug }) {
   return links.sort((a, b) => a.title.localeCompare(b.title));
 }
 
+/** Add validated compiled C# documentation without requiring the SDK during a website build. */
+function appendDotnetReference(lines, full = false) {
+  const reference = readReferenceInput(
+    path.join(WORKSPACE_ROOT, 'packages/dotnet/api/reference-docs.json'),
+  );
+  const urls = new Map(
+    reference.types.flatMap((type) => {
+      const url = BASE_URL + '/api/dotnet/' + type.slug;
+      return [
+        [type.id, url],
+        ...type.members.map((member) => [member.id, url + '#' + member.anchor]),
+      ];
+    }),
+  );
+  lines.push(
+    '## Hashbrown.AspNetCore C# API',
+    '',
+    'Upcoming ' + reference.package.version + ' · Unreleased',
+    '',
+  );
+  const prose = (docs) => {
+    if (docs.summary) lines.push(docs.summary, '');
+    if (docs.remarks) lines.push('Remarks:', docs.remarks, '');
+    for (const param of docs.typeParams)
+      lines.push('- Type parameter ' + param.name + ': ' + param.description);
+    for (const param of docs.params)
+      lines.push('- Parameter ' + param.name + ': ' + param.description);
+    if (docs.returns) lines.push('Returns: ' + docs.returns, '');
+    for (const ref of docs.references) {
+      const url = urls.get(ref.target);
+      lines.push(
+        url
+          ? '- See [' + ref.text + '](' + url + ')'
+          : '- See ' + ref.text + ' (' + ref.target + ')',
+      );
+    }
+    lines.push('');
+  };
+  for (const type of reference.types) {
+    const url = urls.get(type.id);
+    lines.push((full ? '### ' : '- ') + '[' + type.name + '](' + url + ')', '');
+    if (!full) continue;
+    lines.push('~~~csharp', type.declaration, '~~~', '');
+    prose(type.docs);
+    for (const member of type.members) {
+      lines.push(
+        '#### [' + member.name + '](' + urls.get(member.id) + ')',
+        '',
+        '~~~csharp',
+        member.declaration,
+        '~~~',
+        '',
+      );
+      prose(member.docs);
+    }
+  }
+}
+
 async function buildLlmsFile(outputDir) {
   const sectionsWithLinks = await Promise.all(
     DOC_SECTIONS.map(async (section) => ({
@@ -264,6 +323,7 @@ async function buildLlmsFile(outputDir) {
     lines.push('');
   }
 
+  appendDotnetReference(lines);
   await mkdir(outputDir, { recursive: true });
   await writeFile(path.join(outputDir, 'llms.txt'), lines.join('\n'));
 }
@@ -320,6 +380,7 @@ async function buildLlmsFullFile(outputDir) {
   }
 
   await mkdir(outputDir, { recursive: true });
+  appendDotnetReference(lines, true);
   await writeFile(
     path.join(outputDir, 'llms-full.txt'),
     `${lines.join('\n')}\n`,

@@ -29,7 +29,7 @@ test('library project exists independently of the executable host', () => {
     /<TargetFrameworks>|<OutputType>(?:Exe|WinExe)<\/OutputType>/,
   );
   assert.match(xml, /<PackageId>Hashbrown\.AspNetCore<\/PackageId>/);
-  assert.match(xml, /<Version>0\.1\.0-preview\.1<\/Version>/);
+  assert.match(xml, /<Version>0\.1\.0-preview\.2<\/Version>/);
 });
 
 test('package provides library, XML, reference, symbols and ASP.NET framework metadata', async () => {
@@ -37,7 +37,7 @@ test('package provides library, XML, reference, symbols and ASP.NET framework me
 
   assert.ok(
     existsSync(
-      resolve(artifacts, 'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg'),
+      resolve(artifacts, 'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg'),
     ),
     'missing NuGet artifact',
   );
@@ -48,7 +48,7 @@ test('package provides library, XML, reference, symbols and ASP.NET framework me
 test('packaged README gives release-ready exact NuGet.org installation without stale publication claims', () => {
   const archive = resolve(
     root,
-    '../../dist/packages/dotnet/Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
+    '../../dist/packages/dotnet/Hashbrown.AspNetCore.0.1.0-preview.2.nupkg',
   );
 
   const readme = execFileSync('unzip', ['-p', archive, 'README.md'], {
@@ -60,15 +60,21 @@ test('packaged README gives release-ready exact NuGet.org installation without s
     readme,
     /\b(?:is|has been)\s+(?:published|available)\s+(?:to|on|from)\s+NuGet\.org/i,
   );
-  assert.ok(readme.includes('Version `0.1.0-preview.1` is a prerelease.'));
+  assert.ok(readme.includes('Once coordinated publication is complete'));
+  assert.ok(readme.includes('historical'));
+  assert.ok(readme.includes('NuGet `0.1.0-preview.1` and npm `0.8.3`'));
+  assert.match(
+    readme,
+    /Published `0\.1\.0-preview\.1`[\s\S]*?cannot cold-restore unresolved browser work/,
+  );
   assert.ok(
     readme.includes(
-      'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json',
+      'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.2]" --source https://api.nuget.org/v3/index.json',
     ),
   );
   assert.ok(
     readme.includes(
-      '<PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />',
+      '<PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.2]" />',
     ),
   );
   assert.ok(
@@ -306,8 +312,8 @@ test('package rejects an additional target framework payload', async () => {
 
   try {
     for (const file of [
-      'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
-      'Hashbrown.AspNetCore.0.1.0-preview.1.snupkg',
+      'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg',
+      'Hashbrown.AspNetCore.0.1.0-preview.2.snupkg',
       'public-api.json',
     ])
       cpSync(resolve(artifacts, file), resolve(directory, file));
@@ -320,7 +326,7 @@ test('package rejects an additional target framework payload', async () => {
       'zip',
       [
         '-q',
-        'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
+        'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg',
         'lib/net9.0/Extra.dll',
       ],
       { cwd: directory },
@@ -339,7 +345,7 @@ test('packed candidate supports the immutable optional browser recovery public c
   const artifacts = resolve(root, '../../dist/packages/dotnet');
   const archive = resolve(
     artifacts,
-    'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
+    'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg',
   );
   const reference = resolve(
     root,

@@ -56,7 +56,8 @@
         },
         {
           "env": "VERCEL"
-        }
+        },
+        "{workspaceRoot}/packages/dotnet/api/reference-docs.json"
       ]
     },
     "serve": {
@@ -90,7 +91,12 @@
         }
       ],
       "cache": true,
-      "inputs": ["default", "^production", "ciTooling"]
+      "inputs": [
+        "default",
+        "^production",
+        "ciTooling",
+        "{workspaceRoot}/packages/dotnet/api/reference-docs.json"
+      ]
     },
     "lint": {
       "executor": "nx:run-commands",
@@ -128,7 +134,8 @@
         "default",
         "^production",
         "ciTooling",
-        "{workspaceRoot}/tsconfig.docs.json"
+        "{workspaceRoot}/tsconfig.docs.json",
+        "{workspaceRoot}/packages/dotnet/api/reference-docs.json"
       ],
       "outputs": [
         "{projectRoot}/content/reference",
@@ -143,7 +150,12 @@
         "command": "node www/src/tools/generate-llms.mjs --baseUrl=https://hashbrown.dev"
       },
       "cache": true,
-      "inputs": ["default", "^production", "ciTooling"],
+      "inputs": [
+        "default",
+        "^production",
+        "ciTooling",
+        "{workspaceRoot}/packages/dotnet/api/reference-docs.json"
+      ],
       "outputs": [
         "{projectRoot}/public/llms.txt",
         "{projectRoot}/public/llms-full.txt"

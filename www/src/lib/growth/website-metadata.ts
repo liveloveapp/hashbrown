@@ -31,14 +31,18 @@ export function websiteTopic(path: string): WebsiteTopic {
 
 /**
  * The content id a collector reports for a pathname: the pathname without its
- * leading slash and trailing slash, lowercased, `home` for `/`.
+ * leading slash and trailing slash, lowercased, `home` for `/`. C# API
+ * namespace separators become hyphens to fit the collection ID format.
  *
  * @param pathname - A URL pathname.
  * @returns The id, or `undefined` when the pathname cannot be a valid id.
  */
 export function contentIdFor(pathname: string): string | undefined {
   if (pathname === '/') return 'home';
-  const id = pathname.replace(/^\/+/u, '').replace(/\/+$/u, '').toLowerCase();
+  const normalized = pathname.startsWith('/api/dotnet/')
+    ? pathname.replaceAll('.', '-')
+    : pathname;
+  const id = normalized.replace(/^\/+/u, '').replace(/\/+$/u, '').toLowerCase();
   return /^[a-z0-9][a-z0-9_/-]{0,119}$/u.test(id) ? id : undefined;
 }
 

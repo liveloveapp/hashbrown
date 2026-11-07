@@ -18,6 +18,8 @@ export const DOCS_REFERENCE_PAGES: Readonly<Record<string, string>> = {
  */
 export const WORKBENCH_FREE_PAGES: Readonly<Record<string, string>> = {
   ...DOCS_REFERENCE_PAGES,
+  'platform/dotnet-starter':
+    'onboarding for an external application; run the real starter instead of an unrelated workbench lesson',
   'migrations/prose':
     'an API and selector rename guide; the prose recipe contains its workbench',
   'migrations/threadplane': 'threadplane has its own video, not a lesson',

@@ -1,0 +1,537 @@
+name: PR / Main CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+concurrency:
+  # One group per pull request, and one shared group for every run on main
+  # (push or manual dispatch) so production runs are strictly ordered.
+  group: pr-main-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, Test, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      dotnet: ${{ steps.setup.outputs.dotnet }}
+    env:
+      # Only protected main runs may populate the shared cache. PRs retain
+      # the workspace's anonymous read-only access and isolated writes.
+      NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && github.ref_protected && github.event_name != 'pull_request' && secrets.NX_CLOUD_ACCESS_TOKEN || '' }}
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Determine affected base
+        uses: nrwl/nx-set-shas@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test NuGet release proof validation
+        run: node --test scripts/nuget-release.spec.mjs
+
+      - name: Select required CI fixtures
+        id: setup
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e,example-e2e,package-pr-acceptance --graph="$RUNNER_TEMP/ci-tasks.json"
+          npx tsx tools/conformance/harness/select-ci-setup.ts "$RUNNER_TEMP/ci-tasks.json" >> "$GITHUB_OUTPUT"
+          echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Setup uv for affected Pydantic qualification
+        if: steps.setup.outputs.python == 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.11.3'
+          enable-cache: false
+
+      - name: Install pinned Python for affected Pydantic qualification
+        if: steps.setup.outputs.python == 'true'
+        run: uv python install "$(cat tools/conformance/agent-frameworks/python/.python-version)"
+
+      - name: Install frozen isolated Pydantic dependencies
+        if: steps.setup.outputs.python_native == 'true'
+        run: npx nx install pydantic-ai-conformance
+
+      - name: Build and install isolated Python recipe wheel
+        if: steps.setup.outputs.python_recipe == 'true'
+        run: npx nx install pydantic-ai-recipe-conformance
+
+      - name: Setup .NET for affected integration
+        if: steps.setup.outputs.dotnet == 'true'
+        uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
+        with:
+          dotnet-version: '10.0.402'
+          cache: true
+          cache-dependency-path: |
+            tools/conformance/dotnet/packages.lock.json
+            packages/dotnet/packages.lock.json
+            tools/conformance/dotnet/global.json
+            packages/dotnet/global.json
+            tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
+
+      - name: Start PostgreSQL for .NET contracts
+        if: steps.setup.outputs.dotnet == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres
+          exit 1
+
+      - name: Cache Playwright browsers
+        if: steps.setup.outputs.browser == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup.outputs.playwright }}
+
+      - name: Install and check Playwright Chromium
+        if: steps.setup.outputs.browser == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          # Hosted runners usually have the runtime libraries. Install OS
+          # dependencies only if launching Chromium proves they are missing.
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
+
+      - name: Validate dependency tree
+        run: npm ls --all
+
+      - name: Validate affected projects
+        env:
+          NX_VERBOSE_LOGGING: 'true'
+        run: npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e --parallel=3
+
+      - name: Run affected conformance suites
+        run: npx tsx tools/conformance/harness/run-browser-suites.ts "$RUNNER_TEMP/ci-tasks.json"
+
+      - name: Run required .NET package acceptance
+        if: steps.setup.outputs.dotnet == 'true'
+        run: npx nx package-pr-acceptance dotnet-conformance
+
+      - name: Upload .NET package acceptance and bounded provenance
+        if: always() && steps.setup.outputs.dotnet == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-package-acceptance
+          path: test-results/dotnet-package
+          retention-days: 7
+          if-no-files-found: error
+      - name: Stop PostgreSQL
+        if: always() && steps.setup.outputs.dotnet == 'true'
+        run: docker rm --force hashbrown-postgres || true
+
+      - name: Upload runtime smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: canonical-example-diagnostics
+          path: |
+            test-results/examples
+            playwright-report/examples
+            test-results/conformance
+            test-results/pydantic-ai
+            test-results/pydantic-recipe-compatibility
+            playwright-report/conformance
+            test-results/atc
+            dist/docs-workbench/verification
+            dist/docs-diagrams/ci
+            playwright-report/atc
+          retention-days: 7
+          if-no-files-found: ignore
+
+  candidate-cold-recovery:
+    name: .NET candidate cold recovery
+    needs: [ci]
+    if: ${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
+        with:
+          dotnet-version: '10.0.402'
+          cache: true
+          cache-dependency-path: |
+            tools/conformance/dotnet/packages.lock.json
+            packages/dotnet/packages.lock.json
+            tools/conformance/dotnet/global.json
+            packages/dotnet/global.json
+            tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
+
+      - name: Select pinned Playwright cache
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install and check Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
+
+      - name: Start owned PostgreSQL18
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres-cold \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres-cold pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres-cold
+          exit 1
+
+      - name: Run fresh candidate isolation and all cold recovery journeys
+        run: node tools/conformance/dotnet/candidate-consumer/ci.mjs --evidence="$GITHUB_WORKSPACE/test-results/dotnet-candidate-recovery"
+
+      - name: Upload allowlisted candidate cold evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-candidate-cold-recovery
+          path: test-results/dotnet-candidate-recovery
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: true
+
+      - name: Stop owned PostgreSQL
+        if: always()
+        run: docker rm --force hashbrown-postgres-cold || true
+
+  dotnet-source-browser:
+    name: .NET full source browser qualification
+    needs: [ci]
+    if: ${{ !cancelled() && needs.ci.result == 'success' && needs.ci.outputs.dotnet == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      DOTNET_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=postgres;Password=fixture-only;Database=postgres
+      HASHBROWN_DOTNET_HOST_MODE: 'source'
+      NX_NO_CLOUD: 'true'
+      NX_DAEMON: 'false'
+      NX_PARALLEL: '1'
+      PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/dotnet-source-browser/report.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: '${{ runner.temp }}/hashbrown-dotnet-sdk'
+        with:
+          dotnet-version: '10.0.402'
+          cache: true
+          cache-dependency-path: |
+            tools/conformance/dotnet/packages.lock.json
+            packages/dotnet/packages.lock.json
+            tools/conformance/dotnet/global.json
+            packages/dotnet/global.json
+            tools/conformance/dotnet/tests/fixtures/pre-extraction-host.json
+
+      - name: Select pinned Playwright cache
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install and check Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install chromium
+          if ! node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'; then
+            npx playwright install-deps chromium
+            node -e 'const { chromium } = require("@playwright/test"); (async () => { const browser = await chromium.launch(); await browser.close(); })().catch(error => { console.error(error); process.exit(1); });'
+          fi
+
+      - name: Start owned source PostgreSQL18
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --rm --name hashbrown-postgres-source \
+            -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
+          for attempt in {1..30}; do
+            if docker exec hashbrown-postgres-source pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hashbrown-postgres-source
+          exit 1
+
+      - name: Run complete uncached source browser suite
+        run: npx nx provider-e2e dotnet-conformance --skipNxCache --reporter=list,json
+
+      - name: Upload actual source browser inventory and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-source-browser
+          path: |
+            test-results/dotnet-source-browser
+            test-results/conformance/dotnet
+            playwright-report/conformance/dotnet
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Stop owned source PostgreSQL
+        if: always()
+        run: docker rm --force hashbrown-postgres-source || true
+
+  targets:
+    name: Select deployment targets
+    if: >-
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'preview') &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login != 'dependabot[bot]') ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    uses: ./.github/workflows/select-deployment-targets.yml
+    with:
+      event: ${{ github.event_name }}
+      base: ${{ github.event.pull_request.base.sha }}
+      head: ${{ github.event.pull_request.head.sha }}
+
+  # Previews are opt-in (label a PR `preview`) and never block a merge: the
+  # Vercel Hobby plan allows 5000 file uploads a day per account, and a
+  # refused upload shouldn't hold up CI.
+  preview:
+    name: Preview
+    needs: [ci, targets]
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'preview') &&
+      needs.targets.outputs.matrix != '' &&
+      needs.targets.outputs.matrix != '[]'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: preview
+      targets: ${{ needs.targets.outputs.matrix }}
+      ref: ${{ github.event.pull_request.head.sha }}
+      branch: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+
+  production:
+    name: Production
+    needs: [ci, targets]
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      needs.targets.outputs.matrix != '' &&
+      needs.targets.outputs.matrix != '[]'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      targets: ${{ needs.targets.outputs.matrix }}
+      ref: ${{ github.sha }}
+      branch: main
+    secrets: inherit
+
+  # Dashboards-as-code drift check. Runs only when tools/posthog changed, with
+  # the read-only key; forks and runs without the secret skip it (neutral).
+  # Not part of the PR gate: PostHog being unreachable must not block a merge.
+  posthog-sync-plan:
+    name: PostHog sync plan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DO_NOT_TRACK: '1'
+      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY_READONLY }}
+      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+      POSTHOG_HOST: https://us.i.posthog.com
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect PostHog changes
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --name-only "$BASE...$HEAD" | grep -qE '^tools/posthog/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tools/posthog did not change; skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for read-only credentials
+        id: secrets
+        if: steps.changed.outputs.run == 'true'
+        run: |
+          if [ -z "${POSTHOG_PERSONAL_API_KEY:-}" ] || [ -z "${POSTHOG_PROJECT_ID:-}" ]; then
+            echo "::notice::PostHog secrets are not available; skipping the sync plan."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.secrets.outputs.run == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.secrets.outputs.run == 'true'
+        run: npm ci
+
+      - name: Plan dashboard sync
+        if: steps.secrets.outputs.run == 'true'
+        run: npx nx run posthog:sync:plan
+
+  pr-gate:
+    name: PR Gate
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs:
+      [ci, targets, preview, candidate-cold-recovery, dotnet-source-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify required jobs
+        env:
+          CI_RESULT: ${{ needs.ci.result }}
+          TARGETS_RESULT: ${{ needs.targets.result }}
+          PREVIEW_RESULT: ${{ needs.preview.result }}
+          CANDIDATE_REQUIRED: ${{ needs.ci.outputs.dotnet }}
+          CANDIDATE_RESULT: ${{ needs.candidate-cold-recovery.result }}
+          SOURCE_BROWSER_RESULT: ${{ needs.dotnet-source-browser.result }}
+        run: |
+          if [[ "$CI_RESULT" != "success" ]]; then
+            echo "Validation result: $CI_RESULT"
+            exit 1
+          fi
+
+          if [[ "$CANDIDATE_REQUIRED" == "true" ]]; then
+            if [[ "$CANDIDATE_RESULT" != "success" ]]; then
+              echo "Required candidate cold recovery result: $CANDIDATE_RESULT"
+              exit 1
+            fi
+            if [[ "$SOURCE_BROWSER_RESULT" != "success" ]]; then
+              echo "Required full source browser result: $SOURCE_BROWSER_RESULT"
+              exit 1
+            fi
+          elif [[ "$CANDIDATE_REQUIRED" == "false" ]]; then
+            if [[ "$CANDIDATE_RESULT" != "success" && "$CANDIDATE_RESULT" != "skipped" ]]; then
+              echo "Unexpected candidate cold recovery result: $CANDIDATE_RESULT"
+              exit 1
+            fi
+            if [[ "$SOURCE_BROWSER_RESULT" != "success" && "$SOURCE_BROWSER_RESULT" != "skipped" ]]; then
+              echo "Unexpected full source browser result: $SOURCE_BROWSER_RESULT"
+              exit 1
+            fi
+          else
+            echo "Missing or invalid affected .NET selection: $CANDIDATE_REQUIRED"
+            exit 1
+          fi
+
+          if [[ "$TARGETS_RESULT" != "success" && "$TARGETS_RESULT" != "skipped" ]]; then
+            echo "Target selection result: $TARGETS_RESULT"
+            exit 1
+          fi
+
+          # Previews are informational: a failed deploy (for example Vercel's
+          # daily upload limit) is reported but doesn't block the merge.
+          if [[ "$PREVIEW_RESULT" != "success" && "$PREVIEW_RESULT" != "skipped" ]]; then
+            echo "::warning::Preview deployment result: $PREVIEW_RESULT (not required for merge)."
+          fi

@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { run } from './prepare.mjs';
 import { qualifyConsumer } from './qualify.mjs';
 import {
+  IDENTITY,
   verifyConsumer,
   validateAssets,
   validateLock,
@@ -18,7 +19,7 @@ import {
 
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Requires the one exact candidate dependency and the public package namespace. */
+/** Validates the currently published installation instructions independently of candidate compilation. */
 export function validateRecipePackage(text) {
   const references = [
     ...text.matchAll(
@@ -44,7 +45,7 @@ export function validateRecipePackage(text) {
   assert.deepEqual(
     references,
     [['Hashbrown.AspNetCore', '[0.1.0-preview.1]']],
-    'Recipe must reference exactly the candidate package',
+    'Recipe must reference exactly the published package',
   );
   assert.ok(
     text.includes('using Hashbrown.AspNetCore;'),
@@ -53,6 +54,26 @@ export function validateRecipePackage(text) {
   assert.doesNotMatch(
     text,
     /<ProjectReference|<HintPath|Hashbrown.Conformance.Integration/,
+  );
+}
+
+/** Selects the current exact candidate PackageReference without changing published installation prose. */
+export function selectedRecipeProject(template, identity) {
+  assert.deepEqual(
+    identity,
+    { id: IDENTITY.id, version: IDENTITY.version },
+    'Exact current candidate identity required',
+  );
+  const reference =
+    /<PackageReference Include="Hashbrown\.AspNetCore" Version="\[[^\]]+\]"\s*\/>/g;
+  assert.equal(
+    [...template.matchAll(reference)].length,
+    1,
+    'Exactly one SDK PackageReference required',
+  );
+  return template.replace(
+    reference,
+    `<PackageReference Include="${identity.id}" Version="[${identity.version}]" />`,
   );
 }
 
@@ -85,7 +106,13 @@ export async function compileRecipes(variants, metadata, kind) {
     join(source, 'nuget-consumer/templates/Consumer.csproj.txt'),
     'utf8',
   );
-  await fs.writeFile(join(absolute, 'Consumer.csproj'), template);
+  await fs.writeFile(
+    join(absolute, 'Consumer.csproj'),
+    selectedRecipeProject(template, {
+      id: baseline.identity.id,
+      version: baseline.identity.version,
+    }),
+  );
   const variantHash = async (file) =>
     hashFile(await safeFile(baseline.root, `${directory}/${file}`));
   const projectHash = await variantHash('Consumer.csproj');

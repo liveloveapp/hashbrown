@@ -12,7 +12,7 @@ meta:
 
 The replay shows the current prose renderer using an existing OpenAI capture. It does not run the earlier APIs in the table below.
 
-The next minor release renames Magic Text to **prose**. This is a breaking rename with no deprecated exports or compatibility aliases. Rendering, streaming, parser completion and citation behavior stay the same. This guide describes the upcoming release; install its matching core and framework package versions together when it is published.
+The upcoming npm `0.9.0` release renames Magic Text to **prose**. This is a breaking rename with no deprecated exports or compatibility aliases. Rendering, streaming, parser completion and citation behavior stay the same. This guide describes the upcoming release; install its matching core and framework package versions together when it is published.
 
 ## Update imports and templates
 

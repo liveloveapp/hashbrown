@@ -26,14 +26,22 @@ The build restores with `--locked-mode`. Only deliberate dependency updates use
 The default targets need no live model credentials or account. OpenAI uses a public model name;
 Azure uses a separate deployment name: Chat Completions retains its native deployment URL/API-key wire, while Responses uses the native OpenAI-compatible `/openai/v1/` route and client authentication.
 
-Durable tests require real PostgreSQL 18. Without `DOTNET_TEST_POSTGRES`, the
-harness starts one owned disposable Docker container on a dynamic loopback port,
-waits for readiness, and removes it on success or failure. CI supplies the
-PostgreSQL 18 service through `DOTNET_TEST_POSTGRES`; local runs can also supply an
-explicit test connection string. Every cluster creates and drops only its own
-random `durable_` schema. The database identity needs schema/table creation and
-cleanup permissions. These tests do not silently skip when PostgreSQL is missing.
-The service password in CI is a fixture-only credential.
+Durable tests require real PostgreSQL 18. The C# runtime probe tests in
+`npx nx test dotnet-conformance` require an explicit `DOTNET_TEST_POSTGRES`
+connection string; they do not acquire the TypeScript browser harness's disposable
+container. Set it for the whole test batch, not just one fixture:
+
+```sh
+DOTNET_TEST_POSTGRES='Host=127.0.0.1;Port=<port>;Database=<test-db>;Username=<test-user>;Password=<test-password>' npx nx test dotnet-conformance
+```
+
+The TypeScript durable HTTP/browser harness can instead start one owned disposable
+Docker container on a dynamic loopback port when that variable is absent. It waits
+for readiness and removes its container on success or failure. CI supplies its
+PostgreSQL 18 service explicitly through `DOTNET_TEST_POSTGRES`. Schemas are owned
+by their fixture/probe and cleaned up independently; the database identity needs
+schema/table creation and cleanup permissions. Missing PostgreSQL is a prerequisite
+failure, never a silent skip. The CI service password is a fixture-only credential.
 
 The browser matrix defaults to ports 4431 (Angular) and 4432 (React); override them with `RUNTIME_SMOKE_ANGULAR_PORT` / `RUNTIME_SMOKE_REACT_PORT`. When using different origins, supply the matching comma-separated `FixtureOrigins` to the fixture workers. The native model
 fixture, capture proxy, and .NET server use dynamic loopback ports. Reports and

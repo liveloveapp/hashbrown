@@ -48,11 +48,11 @@ export function verifyXmlDocumentation(
 export function verifyPackage(directory = artifacts) {
   const packagePath = resolve(
     directory,
-    'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg',
+    'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg',
   );
   const symbolsPath = resolve(
     directory,
-    'Hashbrown.AspNetCore.0.1.0-preview.1.snupkg',
+    'Hashbrown.AspNetCore.0.1.0-preview.2.snupkg',
   );
   const entries = execFileSync('unzip', ['-Z1', packagePath], {
     encoding: 'utf8',

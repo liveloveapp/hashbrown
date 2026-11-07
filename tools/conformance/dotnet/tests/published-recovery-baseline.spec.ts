@@ -128,3 +128,31 @@ test('candidate role source closure includes the actual recovery control referen
     'FixtureNativeRecoveryControls.cs',
   );
 });
+
+test('historical verification selects a fixed preview1 producer while current identity is preview2', async () => {
+  const module = pathToFileURL(
+    resolve('tools/conformance/dotnet/nuget-consumer/verify.mjs'),
+  ).href;
+  const script = `import assert from 'node:assert/strict';
+import { IDENTITY, validateConsumerIdentity } from ${JSON.stringify(module)};
+assert.equal(IDENTITY.version, '0.1.0-preview.2');
+const historical = { identity: { ...IDENTITY, version: '0.1.0-preview.1' }, revision: 'df1340f713d3b65165a494eb09e53246298df858' };
+validateConsumerIdentity(historical, 'published-preview1');
+assert.throws(() => validateConsumerIdentity(historical), /identity/i);
+validateConsumerIdentity({ ...historical, identity: IDENTITY });
+assert.throws(() => validateConsumerIdentity({ ...historical, revision: '0'.repeat(40) }, 'published-preview1'), /producer/i);
+for (const identity of [{ ...IDENTITY, version: '0.1.0-preview.999' }, { ...IDENTITY, id: 'Wrong.Id' }]) {
+  assert.throws(() => validateConsumerIdentity({ ...historical, identity, expectedIdentity: identity }), /identity/i);
+  assert.throws(() => validateConsumerIdentity({ ...historical, identity }, 'published-preview1'), /identity/i);
+}
+assert.throws(() => validateConsumerIdentity(historical, historical.identity), /profile/i);
+console.log('fixed-identities');`;
+
+  const result = await execute(process.execPath, [
+    '--input-type=module',
+    '-e',
+    script,
+  ]);
+
+  expect(result.stdout).toContain('fixed-identities');
+});

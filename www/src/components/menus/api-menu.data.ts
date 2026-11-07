@@ -1,3 +1,4 @@
+import { listDotnetSymbols } from '../../lib/dotnet-reference';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repoRoot } from '../../lib/repo-root';
@@ -21,13 +22,24 @@ export function apiMenuSections(): Section[] {
     readFileSync(reportFile(), 'utf-8'),
   ) as MinimizedApiReport;
 
-  return Object.entries(report.packages).map(([pkg, api]) => {
-    const name = pkg.replace(/^@hashbrownai\//, '');
-    return section(
-      name,
-      Object.keys(api.symbols).map((symbol) =>
-        link(symbol, `/api/${name}/${symbol}`),
+  const typescriptSections = Object.entries(report.packages).map(
+    ([pkg, api]) => {
+      const name = pkg.replace(/^@hashbrownai\//, '');
+      return section(
+        name,
+        Object.keys(api.symbols).map((symbol) =>
+          link(symbol, `/api/${name}/${symbol}`),
+        ),
+      );
+    },
+  );
+  return [
+    ...typescriptSections,
+    section(
+      'dotnet',
+      listDotnetSymbols().map((type) =>
+        link(type.name, '/api/dotnet/' + type.slug),
       ),
-    );
-  });
+    ),
+  ];
 }

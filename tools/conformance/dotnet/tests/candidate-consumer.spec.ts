@@ -259,3 +259,122 @@ try {
 
   expect(result.trim()).toBe('passed');
 });
+
+test('candidate package graphs remap only exact retained internal pins and generate consistent SDK lock metadata', () => {
+  const body = `
+const { createCandidateLock, validatePackageGraph } = await import(${JSON.stringify(qualifier)});
+const baselineLock = JSON.parse(await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'), 'utf8'));
+const selected = Object.fromEntries(Object.entries(archives).map(([name, record]) => [name, { ...record, version: '0.9.0' }]));
+const lock = createCandidateLock(baselineLock, selected, manifest);
+validateLockGraph(lock, baselineLock, selected, manifest);
+for (const name of names) {
+  const previous = baselineLock.packages['node_modules/' + name];
+  const packed = structuredClone(previous);
+  packed.version = '0.9.0';
+  for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const dependency of Object.keys(packed[field] ?? {})) {
+      if (names.includes(dependency)) packed[field][dependency] = selected[dependency].version;
+    }
+  }
+  validatePackageGraph(packed, previous, baselineLock, selected);
+  for (const field of ['dependencies', 'peerDependencies']) {
+    assert.deepEqual(lock.packages['node_modules/' + name][field], packed[field]);
+  }
+  const stale = structuredClone(lock);
+  stale.packages['node_modules/' + name] = { ...stale.packages['node_modules/' + name], ...Object.fromEntries(['dependencies', 'peerDependencies'].filter(field => previous[field]).map(field => [field, previous[field]])) };
+  if (JSON.stringify(stale) !== JSON.stringify(lock)) assert.throws(() => validateLockGraph(stale, baselineLock, selected, manifest), /frozen graph/i);
+}
+const previous = { peerDependencies: { '@hashbrownai/core': '0.8.3', react: '^19.0.0' }, dependencies: { rxjs: '7.8.2' } };
+const packed = { peerDependencies: { '@hashbrownai/core': '0.9.0', react: '^19.0.0' }, dependencies: { rxjs: '7.8.2' } };
+validatePackageGraph(packed, previous, baselineLock, selected);
+for (const changed of [
+  { ...packed, dependencies: { rxjs: '7.8.3' } },
+  { ...packed, peerDependencies: { ...packed.peerDependencies, react: '^20.0.0' } },
+  { ...packed, peerDependencies: { ...packed.peerDependencies, '@hashbrownai/core': '^0.9.0' } },
+]) assert.throws(() => validatePackageGraph(changed, previous, baselineLock, selected), /graph|pin/i);
+assert.throws(() => validatePackageGraph(packed, { ...previous, peerDependencies: { ...previous.peerDependencies, '@hashbrownai/core': '^0.8.3' } }, baselineLock, selected), /graph|pin/i);
+for (const field of ['version', 'integrity', 'dependencies']) {
+  const changed = structuredClone(lock);
+  changed.packages['node_modules/react'][field] = field === 'dependencies' ? { injected: '1.0.0' } : 'altered';
+  assert.throws(() => validateLockGraph(changed, baselineLock, selected, manifest), /frozen graph/i);
+}
+`;
+
+  const result = probe(
+    `const { validateLockGraph } = await import(${JSON.stringify(qualifier)});\n${body}`,
+  );
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('only an explicit exact old-public SDK API control bypasses incompatible peer resolution', () => {
+  const checker = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/check.mjs'),
+  ).href;
+  const body = `
+const { negativeInstallPolicy } = await import(${JSON.stringify(checker)});
+const baselineLock = JSON.parse(await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'), 'utf8'));
+const selected = Object.fromEntries(names.map(name => [name, { ...archives[name], version: '0.9.0' }]));
+const selectedCandidate = { baselineLock, archives: selected };
+for (const name of names) {
+  const previous = baselineLock.packages['node_modules/' + name];
+  const selections = { [name]: { archive: '/private/tmp/owned-old/' + name.split('/')[1] + '.tgz', version: previous.version, integrity: previous.integrity } };
+  const policy = negativeInstallPolicy(selectedCandidate, selections, 'old-public-missing-api');
+  assert.deepEqual(policy.args, ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--legacy-peer-deps']);
+  assert.match(policy.reason, /intentional.*old.*SDK.*peer/i);
+  assert.equal(policy.sdk, name);
+  for (const mode of ['strict', 'offline']) {
+    const ordinary = negativeInstallPolicy(selectedCandidate, selections, mode);
+    assert.ok(!ordinary.args.includes('--legacy-peer-deps'));
+    assert.equal(ordinary.args.includes('--offline'), mode === 'offline');
+    assert.equal(ordinary.reason, undefined);
+  }
+  for (const mutation of [
+    { version: '0.9.0' }, { version: '^0.8.3' }, { integrity: 'altered' },
+    { resolved: 'https://registry.npmjs.org/@hashbrownai/core/-/core-0.8.3.tgz' },
+    { archive: '../core.tgz' }, { expectedFiles: {} },
+  ]) assert.throws(() => negativeInstallPolicy(selectedCandidate, { [name]: { ...selections[name], ...mutation } }, 'old-public-missing-api'), /old|archive|selection|control/i);
+  assert.throws(() => negativeInstallPolicy(selectedCandidate, { ...selections, react: { version: '19.3.1' } }, 'old-public-missing-api'), /old|selection|control/i);
+}
+assert.ok(!negativeInstallPolicy(selectedCandidate, {}, 'strict').args.includes('--legacy-peer-deps'));
+assert.throws(() => negativeInstallPolicy(selectedCandidate, {}, 'old-public-missing-api'), /old|selection|control/i);
+assert.throws(() => negativeInstallPolicy(selectedCandidate, selected, 'old-public-missing-api'), /old|selection|control/i);
+assert.throws(() => negativeInstallPolicy(selectedCandidate, {}, 'legacy'), /policy|mode/i);
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('negative SDK installs retain every required external lock identity integrity and dependency edge', () => {
+  const checker = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/check.mjs'),
+  ).href;
+  const body = `
+const { validateNegativeExternalGraph } = await import(${JSON.stringify(checker)});
+const expected = JSON.parse(await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'), 'utf8'));
+const installed = structuredClone(expected);
+delete installed.packages[''];
+validateNegativeExternalGraph(installed, expected);
+for (const field of ['version', 'resolved', 'integrity', 'dependencies', 'peerDependencies', 'peerDependenciesMeta', 'optionalDependencies']) {
+  const changed = structuredClone(installed);
+  changed.packages['node_modules/react'][field] = field.endsWith('Dependencies') || field === 'peerDependenciesMeta' ? { unapproved: '1.0.0' } : 'altered';
+  assert.throws(() => validateNegativeExternalGraph(changed, expected), /external|frozen|graph/i);
+}
+const missing = structuredClone(installed);
+delete missing.packages['node_modules/react'];
+assert.throws(() => validateNegativeExternalGraph(missing, expected), /external|required|graph/i);
+const added = structuredClone(installed);
+added.packages['node_modules/unapproved'] = { version: '1.0.0', integrity: 'unknown' };
+assert.throws(() => validateNegativeExternalGraph(added, expected), /external|unexpected|graph/i);
+const optional = structuredClone(installed);
+for (const [location, record] of Object.entries(expected.packages)) if (record.optional) delete optional.packages[location];
+validateNegativeExternalGraph(optional, expected);
+assert.deepEqual(expected, JSON.parse(await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'), 'utf8')));
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});

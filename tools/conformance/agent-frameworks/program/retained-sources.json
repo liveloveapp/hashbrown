@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "profileId": "pydantic-ai/asgi-compatibility",
+      "sourceCommit": "321ed09862352de985091d401efc11c000d4d4e1",
+      "path": ".github/workflows/pr-main.yml",
+      "sha256": "e6a51f2bf2804d28ad26f2040e7042dfa35bf602a8240316586a952c6bbb543f",
+      "snapshot": "retained-sources/e6a51f2bf2804d28ad26f2040e7042dfa35bf602a8240316586a952c6bbb543f.txt"
+    },
+    {
+      "profileId": "pydantic-ai/asgi-compatibility",
+      "sourceCommit": "321ed09862352de985091d401efc11c000d4d4e1",
+      "path": "tools/conformance/harness/ci-selection.ts",
+      "sha256": "40f8d4d061386f37c9e43d6b1d10ac5f7d367b9782510d4469450b02a667d0bd",
+      "snapshot": "retained-sources/40f8d4d061386f37c9e43d6b1d10ac5f7d367b9782510d4469450b02a667d0bd.txt"
+    },
+    {
+      "profileId": "pydantic-ai/asgi-compatibility",
+      "sourceCommit": "321ed09862352de985091d401efc11c000d4d4e1",
+      "path": "tools/conformance/harness/select-ci-setup.ts",
+      "sha256": "ca4017d699f5be846e88992605d263cd0b59a3cf6948fbd6ed3ff18253baa682",
+      "snapshot": "retained-sources/ca4017d699f5be846e88992605d263cd0b59a3cf6948fbd6ed3ff18253baa682.txt"
+    }
+  ]
+}

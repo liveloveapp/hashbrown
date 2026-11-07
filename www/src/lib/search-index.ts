@@ -1,3 +1,4 @@
+import { listDotnetSymbols } from './dotnet-reference';
 import { listSymbols, readSymbol } from './api-reference';
 import { listDocs, readDoc, SDKS } from './content';
 
@@ -102,6 +103,25 @@ export function listApiReferenceEntries(): ApiReferenceEntry[] {
         : [];
     })
     .filter((entry) => entry.kind !== 'Namespace')
+    .concat(
+      listDotnetSymbols().flatMap((type) => {
+        const url = '/api/dotnet/' + type.slug;
+        return [
+          {
+            url,
+            symbol: type.name,
+            kind: 'C# Type',
+            package: 'Hashbrown.AspNetCore',
+          },
+          ...type.members.map((member) => ({
+            url: url + '#' + member.anchor,
+            symbol: type.name + '.' + member.name,
+            kind: 'C# Member',
+            package: 'Hashbrown.AspNetCore',
+          })),
+        ];
+      }),
+    )
     .sort((a, b) => a.url.localeCompare(b.url));
 }
 

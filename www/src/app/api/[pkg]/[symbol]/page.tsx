@@ -1,3 +1,8 @@
+import { DotnetSymbol } from '../../../../components/api/DotnetSymbol';
+import {
+  listDotnetSymbols,
+  readDotnetSymbol,
+} from '../../../../lib/dotnet-reference';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Symbol } from '../../../../components/api/Symbol';
@@ -19,7 +24,13 @@ type Params = { pkg: string; symbol: string };
  * Angular site served (`/api/core/s.string`).
  */
 export function generateStaticParams(): Params[] {
-  return listSymbolPages();
+  return [
+    ...listSymbolPages(),
+    ...listDotnetSymbols().map((type) => ({
+      pkg: 'dotnet',
+      symbol: type.slug,
+    })),
+  ];
 }
 
 export const dynamicParams = false;
@@ -32,7 +43,10 @@ export async function generateMetadata({
   const { pkg, symbol } = await params;
   // Same title as the Analog symbol page's routeMeta.
   return pageMetadata({
-    title: `@hashbrownai/${pkg}.${symbol}: Hashbrown API`,
+    title:
+      pkg === 'dotnet'
+        ? `${symbol}: Hashbrown C# API`
+        : `@hashbrownai/${pkg}.${symbol}: Hashbrown API`,
     description: 'Hashbrown API documentation.',
     image: DEFAULT_CARD_IMAGE,
     path: `/api/${pkg}/${symbol}`,
@@ -46,6 +60,13 @@ export default async function SymbolPage({
   params: Promise<Params>;
 }) {
   const { pkg, symbol } = await params;
+  if (pkg === 'dotnet') {
+    const type = readDotnetSymbol(decodeURIComponent(symbol));
+    if (!type) notFound();
+    return (
+      <div className={styles.page}>{await DotnetSymbol({ symbol: type })}</div>
+    );
+  }
   const summary = loadReferenceData(pkg, decodeURIComponent(symbol));
   if (!summary) {
     notFound();

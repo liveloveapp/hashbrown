@@ -23,6 +23,12 @@ The recovery examples below require Hashbrown SDK **0.8.1 or later**, which incl
 
 This page uses the stateless tool mode and application workflow confirmations. For a single model response containing browser and server calls with durable native session ownership, use [native .NET mixed tools](/docs/angular/platform/dotnet-native-tools).
 
+## Start with a runnable application
+
+The [ASP.NET Core starter](/docs/angular/platform/dotnet-starter) includes real React and Angular clients, a native approval tool, browser tools, explicit interrupt/resume and cold settlement controls. It uses the upcoming npm `0.9.0` / NuGet `0.1.0-preview.2` pair through explicitly qualified local archives until coordinated publication. The installation commands below remain for the published `0.8.3` / `0.1.0-preview.1` pair.
+
+See the starter's [composition and compatibility tables](/docs/angular/platform/dotnet-starter#choose-the-composition) before choosing a store or upgrading. Browse the generated [C# API reference](/api/dotnet/Hashbrown.AspNetCore.NativeSessionAgentFactory) for the maintained public contracts.
+
 ## Server dependencies
 
 Use SDK `10.0.402`. Add this single exact reference to a `Microsoft.NET.Sdk.Web` project targeting `net10.0`, then restore and commit its NuGet lockfile:
@@ -39,7 +45,7 @@ dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
 
 </hb-code-example>
 
-Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only. Published NuGet `0.1.0-preview.1` with npm SDKs `0.8.3` cannot cold-restore unresolved browser work; the [unreleased native recovery workflow](/docs/angular/platform/dotnet-native-tools#pending-browser-recovery-unreleased) requires matching candidate client and server packages. Uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
+Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only. Published NuGet `0.1.0-preview.1` with npm SDKs `0.8.3` cannot cold-restore unresolved browser work; the [unreleased native recovery workflow](</docs/angular/platform/dotnet-native-tools#pending-browser-recovery-(unreleased)>) requires matching candidate client and server packages. Uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
 
 <hb-code-example header="Package reference">
 
@@ -532,7 +538,7 @@ The [internal conformance suite](https://github.com/liveloveapp/hashbrown/tree/m
 
 Separate [published-package live qualification](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-31-dotnet-public-live-qualification.md) passed all 54 browser cases across React and Angular against real OpenAI and Azure Responses using `Hashbrown.AspNetCore` `0.1.0-preview.1`, npm SDKs `0.8.3`, and `gpt-4.1-mini`. It covers API-key and Azure CLI authentication, browser/server tools, application confirmations, cancellation/recovery, native mixed tools and native approval. Three live preflights also passed, including Azure CLI Chat Completions. The full browser matrix uses Responses; Azure-hosted managed identity and pending-browser cold recovery remain separate work.
 
-Azure API-key, Azure CLI, and managed-identity authentication configuration is implemented and covered by deterministic checks. The deterministic suite uses aimock for the model API; passing it does not establish live OpenAI or Azure account behavior. Managed identity on an actual Azure host remains separately deferred qualification. .NET 8/9, automatic native tool approval, provider-hosted tools, general chat-session persistence, reasoning/continuation recovery, activities, and Hashbrown finish-reason metadata remain outside this tested baseline. Pending-browser cold recovery is outside the published-package qualification. Its [unreleased native workflow](/docs/angular/platform/dotnet-native-tools#pending-browser-recovery-unreleased) has separate candidate acceptance requirements; continuing an existing runtime does not establish cold recovery of unresolved browser results. Other AG-UI backends can use the [custom provider contract](/docs/angular/platform/custom); AG-UI transport compatibility by itself does not establish all Hashbrown features.
+Azure API-key, Azure CLI, and managed-identity authentication configuration is implemented and covered by deterministic checks. The deterministic suite uses aimock for the model API; passing it does not establish live OpenAI or Azure account behavior. Managed identity on an actual Azure host remains separately deferred qualification. .NET 8/9, automatic native tool approval, provider-hosted tools, general chat-session persistence, reasoning/continuation recovery, activities, and Hashbrown finish-reason metadata remain outside this tested baseline. Pending-browser cold recovery is outside the published-package qualification. Its [unreleased native workflow](</docs/angular/platform/dotnet-native-tools#pending-browser-recovery-(unreleased)>) has separate candidate acceptance requirements; continuing an existing runtime does not establish cold recovery of unresolved browser results. Other AG-UI backends can use the [custom provider contract](/docs/angular/platform/custom); AG-UI transport compatibility by itself does not establish all Hashbrown features.
 
 ## Explore it in the workbench
 

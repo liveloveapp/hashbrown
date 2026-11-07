@@ -19,6 +19,93 @@ import { candidateEnvironment, run } from './prepare.mjs';
 import { qualifyNpmCandidate, qualifyNugetCandidate } from './qualify.mjs';
 import { validateArchiveFiles } from './verify.mjs';
 
+/** Limits peer bypass to one intentional exact old SDK API control, never ordinary or offline installs. */
+export function negativeInstallPolicy(candidate, selections, mode = 'strict') {
+  assert.ok(
+    ['strict', 'offline', 'old-public-missing-api'].includes(mode),
+    'Unknown negative install policy mode',
+  );
+  const args = ['ci', '--ignore-scripts', '--no-audit', '--no-fund'];
+  if (mode === 'offline') return { args: [...args, '--offline'] };
+  if (mode === 'strict') return { args };
+  const names = Object.keys(selections);
+  assert.equal(names.length, 1, 'Exactly one old SDK selection required');
+  const sdk = names[0];
+  assert.ok(sdkNames.includes(sdk), 'Old control requires an SDK selection');
+  const record = selections[sdk];
+  const previous = candidate.baselineLock.packages[`node_modules/${sdk}`];
+  assert.deepEqual(
+    Object.keys(record).sort(),
+    ['archive', 'integrity', 'version'],
+    'Old SDK control requires only an exact archive selection',
+  );
+  assert.ok(
+    typeof record.archive === 'string' &&
+      path.isAbsolute(record.archive) &&
+      path.resolve(record.archive) === record.archive &&
+      record.archive.endsWith('.tgz'),
+    'Old SDK control requires an absolute exact archive',
+  );
+  assert.equal(previous.version, '0.8.3', 'Fixed old SDK baseline required');
+  assert.equal(
+    record.version,
+    previous.version,
+    'Old SDK selection version differs',
+  );
+  assert.equal(
+    record.integrity,
+    previous.integrity,
+    'Old SDK selection integrity differs',
+  );
+  assert.notEqual(
+    record.version,
+    candidate.archives[sdk].version,
+    'Old SDK control must select a different version',
+  );
+  return {
+    args: [...args, '--legacy-peer-deps'],
+    sdk,
+    reason:
+      'Intentional old SDK API control ignores incompatible candidate peer pins; all external packages remain frozen.',
+  };
+}
+
+/** Requires the frozen external lock identities, integrity and graph after an actual negative install. */
+export function validateNegativeExternalGraph(installed, baseline) {
+  const isSdk = (location) =>
+    sdkNames.some((name) => location === `node_modules/${name}`);
+  for (const [location, record] of Object.entries(installed.packages)) {
+    if (!location || isSdk(location)) continue;
+    const previous = baseline.packages[location];
+    assert.ok(
+      previous && !record.link,
+      `Unexpected external graph package: ${location}`,
+    );
+    for (const field of [
+      'version',
+      'resolved',
+      'integrity',
+      'dependencies',
+      'optionalDependencies',
+      'peerDependencies',
+      'peerDependenciesMeta',
+      'bundleDependencies',
+      'bundledDependencies',
+    ])
+      assert.deepEqual(
+        record[field],
+        previous[field],
+        `External frozen graph ${field} differs: ${location}`,
+      );
+  }
+  for (const [location, record] of Object.entries(baseline.packages))
+    if (location && !isSdk(location) && !record.optional)
+      assert.ok(
+        installed.packages[location],
+        `Required external graph package missing: ${location}`,
+      );
+}
+
 /** Creates a fresh cache/home outside repository ancestry for each actual negative consumer. */
 async function negativeRoot(parent, name, candidate) {
   const root = path.join(parent, name);
@@ -43,8 +130,9 @@ async function installSelection(
   subject,
   candidate,
   selections,
-  offline = false,
+  mode = 'strict',
 ) {
+  const policy = negativeInstallPolicy(candidate, selections, mode);
   const manifest = JSON.parse(
     await fs.readFile(path.join(candidate.root, 'package.json')),
   );
@@ -70,16 +158,18 @@ async function installSelection(
   );
   await run(
     'npm',
-    [
-      'ci',
-      '--ignore-scripts',
-      '--no-audit',
-      '--no-fund',
-      ...(offline ? ['--offline'] : []),
-    ],
+    policy.args,
     subject.root,
     subject.environment,
     path.join(subject.root, 'logs/npm-ci.log'),
+  );
+  validateNegativeExternalGraph(
+    JSON.parse(
+      await fs.readFile(
+        path.join(subject.root, 'node_modules/.package-lock.json'),
+      ),
+    ),
+    candidate.baselineLock,
   );
   for (const [name, record] of Object.entries(selections)) {
     const expected =
@@ -95,6 +185,7 @@ async function installSelection(
       'Negative control did not install the selected actual package bytes',
     );
   }
+  return policy;
 }
 
 /** Seeds an exact candidate tarball through a separate owned HTTP cache-control identity. */
@@ -276,9 +367,18 @@ export async function checkCandidateConsumers(
     const pkg = JSON.parse(archiveFiles(bytes)['package.json']);
     assert.equal(pkg.name, name);
     assert.equal(pkg.version, '0.8.3');
-    await installSelection(subject, candidate, {
-      [name]: { archive, version: pkg.version, integrity: expected.integrity },
-    });
+    const installPolicy = await installSelection(
+      subject,
+      candidate,
+      {
+        [name]: {
+          archive,
+          version: pkg.version,
+          integrity: expected.integrity,
+        },
+      },
+      'old-public-missing-api',
+    );
     const log = path.join(subject.root, 'logs/missing-feature.log');
     const result = await typecheck(subject, log);
     assert.notEqual(
@@ -303,6 +403,7 @@ export async function checkCandidateConsumers(
       status: 'passed',
       archive,
       archiveSha256: digest(bytes),
+      installPolicy,
       log,
     });
   }
@@ -341,7 +442,7 @@ export async function checkCandidateConsumers(
           expectedFiles,
         },
       },
-      true,
+      'offline',
     );
     const usable = await typecheck(
       control,

@@ -712,7 +712,11 @@ export async function prepareConsumer(pointerPath, imported = {}) {
     await validateRestoredConsumer(root, IDENTITY, closure, sha512);
     const apiDirectory = path.join(root, 'api-tool');
     await fs.mkdir(apiDirectory);
-    for (const file of ['ApiSnapshot.csproj', 'Program.cs'])
+    for (const file of [
+      'ApiSnapshot.csproj',
+      'Program.cs',
+      'ReferenceWriter.cs',
+    ])
       await fs.copyFile(
         path.join(repository, 'packages/dotnet/tools', file),
         path.join(apiDirectory, file),

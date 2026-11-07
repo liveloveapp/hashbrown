@@ -1,0 +1,57 @@
+:root {
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+  color: #172526;
+  background: #faf9f5;
+}
+body {
+  margin: 0 auto;
+  max-width: 58rem;
+  padding: 1.25rem;
+}
+h1 {
+  font-size: 1.7rem;
+}
+section {
+  border: 1px solid #d4dcd8;
+  padding: 1rem;
+  margin-block: 1rem;
+  border-radius: 0.5rem;
+}
+label {
+  display: block;
+  margin-block: 0.5rem;
+}
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  padding: 0.6rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+input,
+textarea {
+  width: 100%;
+}
+button {
+  margin: 0.25rem;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.error {
+  color: #a02020;
+}
+small {
+  display: block;
+}

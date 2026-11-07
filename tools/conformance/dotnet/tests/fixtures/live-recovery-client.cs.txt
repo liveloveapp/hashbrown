@@ -1,0 +1,109 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Hashbrown.Conformance.Testing;
+using Microsoft.Extensions.AI;
+
+static void Check(bool value, string reason) { if (!value) throw new Exception(reason); }
+static JsonElement View(FixtureLiveRecoveryEvidence value) => JsonSerializer.SerializeToElement(value.Snapshot("scope", "thread"));
+static async Task Drain(IChatClient client, ChatMessage[] messages, ChatOptions? options = null) { await foreach (var _ in client.GetStreamingResponseAsync(messages, options)) { } }
+var calls = new FunctionCallContent[] {
+    new("original-browser", "getWeather", new Dictionary<string, object?> { ["city"] = "Paris" }),
+    new("original-server", "lookupAirport", new Dictionary<string, object?> { ["code"] = "PDX" }) };
+var usage = new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = 10, OutputTokenCount = 20, TotalTokenCount = 30 })] };
+var emitted = new ChatResponseUpdate { Contents = [.. calls] };
+var scope = new FixtureLiveRecoveryScope("scope", "thread", "run");
+using (var evidence = new FixtureLiveRecoveryEvidence("original", TimeSpan.FromSeconds(60), () => scope))
+using (var inner = new RecoveryProbe([emitted, usage]))
+using (var client = new FixtureLiveRecoveryClient(inner, evidence))
+{
+    var options = new ChatOptions { Temperature = .8f, MaxOutputTokens = 1000 };
+    var actual = new List<ChatResponseUpdate>();
+    await foreach (var update in client.GetStreamingResponseAsync([new(ChatRole.User, "call tools")], options)) actual.Add(update);
+    Check(ReferenceEquals(actual[0], emitted) && ReferenceEquals(actual[1], usage), "native outputs replaced");
+    Check(options.MaxOutputTokens == 1000 && options.Temperature == .8f, "mutated caller options");
+    Check(inner.Options!.MaxOutputTokens == 384 && inner.Options.Temperature == 0 && inner.Options.AllowMultipleToolCalls == true && inner.Options.ToolMode is RequiredChatToolMode, "initial native tool policy absent");
+    Check(View(evidence).GetProperty("healthy").GetBoolean(), "genuine native proof unhealthy");
+    try { await Drain(client, [new(ChatRole.User, "again")]); throw new Exception("original cap reset"); }
+    catch (InvalidOperationException e) when (e.Message == "RECOVERY_WORKER_CALL_CAP") { }
+    Check(inner.Calls == 1 && inner.Disposals == 1, "unexpected acquisition or missing disposal");
+}
+var restored = new ChatMessage[] {
+    new(ChatRole.User, "original"), new(ChatRole.Assistant, [.. calls]),
+    new(ChatRole.Tool, [new FunctionResultContent(calls[0].CallId, "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}"),
+        new FunctionResultContent(calls[1].CallId, "{\"code\":\"PDX\",\"name\":\"Portland International Airport\"}")]) };
+using (var evidence = new FixtureLiveRecoveryEvidence("replacement", TimeSpan.FromSeconds(60), () => scope))
+using (var inner = new RecoveryProbe([new ChatResponseUpdate(ChatRole.Assistant, "genuine answer"), usage]))
+using (var client = new FixtureLiveRecoveryClient(inner, evidence))
+{
+    await Drain(client, restored);
+    Check(ReferenceEquals(inner.Messages![0], restored[0]), "native input rebuilt");
+    Check(inner.Options!.ToolMode is NoneChatToolMode, "replacement warm-counter tool policy");
+    Check(View(evidence).GetProperty("calls")[0].GetProperty("history")[1].GetProperty("calls")[0].GetProperty("id").GetString() == "original-browser", "original restored input missing");
+    Check(View(evidence).GetProperty("healthy").GetBoolean(), "cold input rejected");
+}
+foreach (var updates in new[] {
+    new[] { emitted },
+    new[] { emitted, usage, usage },
+    new[] { emitted, new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = -1, OutputTokenCount = 1 })] } },
+    new[] { emitted, new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = 10, OutputTokenCount = 385 })] } },
+    new[] { emitted, new ChatResponseUpdate { Contents = [new UsageContent(new UsageDetails { InputTokenCount = 10, OutputTokenCount = 20, TotalTokenCount = 31 })] } } })
+{
+    using var evidence = new FixtureLiveRecoveryEvidence("original", TimeSpan.FromSeconds(60), () => scope);
+    using var inner = new RecoveryProbe(updates);
+    using var client = new FixtureLiveRecoveryClient(inner, evidence);
+    await Drain(client, [new(ChatRole.User, "tools")]);
+    Check(!View(evidence).GetProperty("healthy").GetBoolean(), "invalid usage certified");
+    Check(inner.Disposals == 1, "invalid usage iterator not drained");
+}
+using (var evidence = new FixtureLiveRecoveryEvidence("original", TimeSpan.FromSeconds(60), () => scope))
+using (var inner = new RecoveryProbe([emitted, usage]))
+using (var client = new FixtureLiveRecoveryClient(inner, evidence))
+{
+    await using (var iterator = client.GetStreamingResponseAsync([new(ChatRole.User, "tools")]).GetAsyncEnumerator()) Check(await iterator.MoveNextAsync(), "actual item missing");
+    Check(inner.Disposals == 1, "abandoned native iterator not disposed");
+    Check(!View(evidence).GetProperty("healthy").GetBoolean(), "abandoned native work certified");
+}
+using (var evidence = new FixtureLiveRecoveryEvidence("original", TimeSpan.FromSeconds(60), () => scope))
+using (var inner = new HangingRecoveryProbe(emitted))
+using (var client = new FixtureLiveRecoveryClient(inner, evidence))
+using (var cancel = new CancellationTokenSource())
+{
+    await using var iterator = client.GetStreamingResponseAsync([new(ChatRole.User, "cancel")], cancellationToken: cancel.Token).GetAsyncEnumerator(cancel.Token);
+    Check(await iterator.MoveNextAsync(), "actual native prefix missing");
+    cancel.Cancel();
+    try { await iterator.MoveNextAsync(); throw new Exception("native cancellation ignored"); }
+    catch (OperationCanceledException) { }
+    Check(inner.Disposals == 1 && !View(evidence).GetProperty("healthy").GetBoolean(), "cancelled native iterator certified or undisposed");
+    Check(View(evidence).GetProperty("calls")[0].GetProperty("terminal").GetString() == "cancelled", "cancelled native accounting lost");
+}
+Console.WriteLine("Release recovery native client controls passed.");
+
+sealed class RecoveryProbe(ChatResponseUpdate[] updates) : IChatClient
+{
+    public int Calls, Disposals;
+    public ChatOptions? Options;
+    public ChatMessage[]? Messages;
+    public ChatClientMetadata Metadata => new("recovery-deterministic-control");
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Calls++; Options = options; Messages = messages.ToArray();
+        try { foreach (var update in updates) { cancellationToken.ThrowIfCancellationRequested(); await Task.Yield(); yield return update; } }
+        finally { Disposals++; }
+    }
+}
+
+sealed class HangingRecoveryProbe(ChatResponseUpdate first) : IChatClient
+{
+    public int Disposals;
+    public object? GetService(Type type, object? key = null) => null;
+    public void Dispose() { }
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken token = default) => throw new NotSupportedException();
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [EnumeratorCancellation] CancellationToken token = default)
+    {
+        try { yield return first; await Task.Delay(Timeout.InfiniteTimeSpan, token); }
+        finally { Disposals++; }
+    }
+}

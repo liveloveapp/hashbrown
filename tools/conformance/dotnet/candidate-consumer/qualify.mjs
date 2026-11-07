@@ -23,6 +23,71 @@ import { validateSourceImports } from '../live-consumer/verify.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const inside = (root, file) => file.startsWith(root + path.sep);
 
+const graphFields = [
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'peerDependenciesMeta',
+  'bundleDependencies',
+  'bundledDependencies',
+];
+
+/** Remaps only exact retained SDK pins, preserving all external graph declarations. */
+function remapPackageGraph(record, baseline, archives) {
+  return Object.fromEntries(
+    Object.entries(record).map(([field, value]) => [
+      field,
+      ['dependencies', 'optionalDependencies', 'peerDependencies'].includes(
+        field,
+      )
+        ? Object.fromEntries(
+            Object.entries(value).map(([name, version]) => {
+              if (!sdkNames.includes(name)) return [name, version];
+              assert.equal(
+                version,
+                baseline.packages[`node_modules/${name}`].version,
+                `Internal SDK graph pin must be exact: ${name}`,
+              );
+              return [name, archives[name].version];
+            }),
+          )
+        : structuredClone(value),
+    ]),
+  );
+}
+
+/** Requires the packed graph to differ only by exact internal SDK version substitution. */
+export function validatePackageGraph(pkg, previous, baseline, archives) {
+  const expected = remapPackageGraph(previous, baseline, archives);
+  for (const field of graphFields)
+    assert.deepEqual(
+      pkg[field],
+      expected[field],
+      `Packed SDK ${field} conflicts with retained graph`,
+    );
+}
+
+/** Creates a fresh lock preserving the complete external graph and remapping exact SDK pins. */
+export function createCandidateLock(baseline, archives, manifest) {
+  const lock = structuredClone(baseline);
+  lock.name = manifest.name;
+  lock.packages[''] = {
+    ...lock.packages[''],
+    name: manifest.name,
+    dependencies: manifest.dependencies,
+  };
+  for (const name of sdkNames) {
+    const location = `node_modules/${name}`;
+    lock.packages[location] = {
+      ...remapPackageGraph(baseline.packages[location], baseline, archives),
+      version: archives[name].version,
+      resolved: 'file:' + archives[name].archive,
+      integrity: archives[name].integrity,
+    };
+  }
+  return lock;
+}
+
 /** Requires the selected installed package resolution without altering identity or integrity checks. */
 export function validateInstalledResolution(installed, selected, context) {
   const sdk = sdkNames.find(
@@ -126,7 +191,7 @@ export function validateLockGraph(lock, baseline, archives, manifest) {
     const name = sdkNames.find((sdk) => location === `node_modules/${sdk}`);
     const expected = name
       ? {
-          ...record,
+          ...remapPackageGraph(record, baseline, archives),
           version: archives[name].version,
           resolved: 'file:' + archives[name].archive,
           integrity: archives[name].integrity,

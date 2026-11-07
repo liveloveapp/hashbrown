@@ -12,6 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />
+    <PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.2]" />
   </ItemGroup>
 </Project>

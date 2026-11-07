@@ -38,7 +38,7 @@ async function json(root, name, value) {
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'nuget-release-test-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const archive = 'Hashbrown.AspNetCore.0.1.0-preview.1.nupkg';
+  const archive = 'Hashbrown.AspNetCore.0.1.0-preview.2.nupkg';
   const symbols = archive.replace('.nupkg', '.snupkg');
   await fs.writeFile(path.join(root, archive), 'package');
   await fs.writeFile(path.join(root, symbols), 'symbols');
@@ -51,7 +51,7 @@ async function fixture(t) {
     revision,
     identity: {
       id: 'Hashbrown.AspNetCore',
-      version: '0.1.0-preview.1',
+      version: '0.1.0-preview.2',
       sdk: '10.0.402',
     },
     archive: 'candidate-feed/' + archive,
@@ -425,4 +425,16 @@ test('workflow confines identity write to publication after full immutable quali
     assert.equal(cleanup.if, 'always()');
     assert.match(cleanup.run, /docker rm --force "\$PG_CONTAINER"/);
   }
+});
+
+test('a historical preview1 proof cannot authorize current preview2 publication', async (t) => {
+  const f = await fixture(t);
+  await mutate(f.root, 'candidate-provenance.json', (proof) => {
+    proof.identity.version = '0.1.0-preview.1';
+  });
+
+  await assert.rejects(
+    validateReleaseProof(f.root, options),
+    /identity|preview/i,
+  );
 });

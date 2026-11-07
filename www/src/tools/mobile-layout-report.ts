@@ -32,8 +32,12 @@ const PAGES = [
   '/unstuck',
   '/api',
   '/api/react/useUiChat',
+  '/api/dotnet/Hashbrown.AspNetCore.NativeSessionEndpointConfiguration',
+  '/api/dotnet/Hashbrown.AspNetCore.PostgresNativeSessionJournal',
   '/docs/react/start/quick',
   '/docs/react/platform/openai',
+  '/docs/react/platform/dotnet-starter',
+  '/docs/angular/platform/dotnet-starter',
   '/docs/react/migrations/v0-7',
   '/docs/react/concept/components',
   '/docs/angular/start/quick',
@@ -95,7 +99,10 @@ function measure(): Measured {
 
   const clipped: Measured['clipped'][number][] = [];
   for (const el of document.body.querySelectorAll('*')) {
-    if (!visible(el) || /^(absolute|fixed)$/.test(getComputedStyle(el).position)) {
+    if (
+      !visible(el) ||
+      /^(absolute|fixed)$/.test(getComputedStyle(el).position)
+    ) {
       continue;
     }
     const r = el.getBoundingClientRect();
@@ -194,7 +201,11 @@ function edges(root: string | null): Pick<LayoutSnapshot, 'gutter' | 'edges'> {
   };
   // The column an element sits in: its nearest scroller, else the window.
   const column = (el: Element) => {
-    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    for (
+      let p = el.parentElement;
+      p && p !== document.body;
+      p = p.parentElement
+    ) {
       if (/(auto|scroll)/.test(getComputedStyle(p).overflowY)) {
         const r = p.getBoundingClientRect();
         return { left: r.left, right: r.left + p.clientWidth, el: p };
@@ -210,8 +221,10 @@ function edges(root: string | null): Pick<LayoutSnapshot, 'gutter' | 'edges'> {
       if (!p) break;
       const s = getComputedStyle(p);
       const pr = p.getBoundingClientRect();
-      const left = pr.left + parseFloat(s.paddingLeft) + parseFloat(s.borderLeftWidth);
-      const right = pr.right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth);
+      const left =
+        pr.left + parseFloat(s.paddingLeft) + parseFloat(s.borderLeftWidth);
+      const right =
+        pr.right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth);
       const r = a.getBoundingClientRect();
       if (
         r.width < right - left - 2 &&
@@ -227,7 +240,9 @@ function edges(root: string | null): Pick<LayoutSnapshot, 'gutter' | 'edges'> {
     !!el && el.getBoundingClientRect().width > 0;
   const header = scope?.querySelector('header, [class*="_header"]');
   const logo = header?.querySelector('a svg, a img');
-  const controls = [...(header?.querySelectorAll('a, button') ?? [])].filter(visible);
+  const controls = [...(header?.querySelectorAll('a, button') ?? [])].filter(
+    visible,
+  );
   // The open menu's close button floats over its header row.
   const end = root
     ? scope?.querySelector('button[aria-label="Close menu"]')
@@ -258,13 +273,17 @@ function edges(root: string | null): Pick<LayoutSnapshot, 'gutter' | 'edges'> {
   }
   // The heading's box, not its text, which may be centred in it.
   if (h1) {
-    left(`h1 "${h1.textContent?.trim().slice(0, 24)}"`, h1, h1.getBoundingClientRect());
+    left(
+      `h1 "${h1.textContent?.trim().slice(0, 24)}"`,
+      h1,
+      h1.getBoundingClientRect(),
+    );
   }
   // The first heading or link row; the framework picker above it is a
   // bordered control, so its text sits inside its box.
-  const row = [...(side?.querySelectorAll('h2, summary, a, li > button') ?? [])].find(
-    visible,
-  );
+  const row = [
+    ...(side?.querySelectorAll('h2, summary, a, li > button') ?? []),
+  ].find(visible);
   const rowText = firstText(row);
   if (side && rowText) {
     // From the sidebar column, not the menu scroller inside its padding.

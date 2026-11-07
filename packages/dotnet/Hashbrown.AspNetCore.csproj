@@ -6,7 +6,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <PackageId>Hashbrown.AspNetCore</PackageId>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.0-preview.2</Version>
     <Authors>Hashbrown</Authors>
     <Description>ASP.NET Core integration for Hashbrown generative UI.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>

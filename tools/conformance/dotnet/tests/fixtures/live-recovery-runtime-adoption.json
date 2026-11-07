@@ -1,0 +1,118 @@
+{
+  "kind": "recorded-deterministic-runtime-adoption-pair",
+  "source": "task4-positive-browser-v3.json:actual,expected",
+  "note": "Actual joint runtime view and canonical AG-UI messages from the same root-owned synthetic v3 control failure; not live provider evidence.",
+  "runtime": [
+    {
+      "id": "f9788515-97e1-4262-a7c2-ebf04c75c6fe",
+      "role": "user",
+      "content": "In one response call BOTH getWeather with city Paris AND lookupAirport with code PDX. Do not answer before both tools. Call each exactly once."
+    },
+    {
+      "id": "assistant-control-browser-1",
+      "role": "assistant",
+      "content": "",
+      "toolCalls": [
+        {
+          "role": "tool",
+          "status": "done",
+          "name": "getWeather",
+          "toolCallId": "control-browser-1",
+          "args": {
+            "city": "Paris"
+          },
+          "result": {
+            "status": "fulfilled",
+            "value": "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6fa21e6ab3f849cf845d1d7f5fa602e9",
+      "role": "assistant",
+      "content": "",
+      "serverToolCalls": [
+        {
+          "toolCallId": "control-server-1",
+          "name": "lookupAirport",
+          "status": "complete",
+          "args": {
+            "code": "PDX"
+          },
+          "result": {
+            "status": "fulfilled",
+            "value": "{\n  \"code\": \"PDX\",\n  \"name\": \"Portland International Airport\"\n}"
+          }
+        }
+      ],
+      "toolCalls": []
+    },
+    {
+      "id": "msg_control_2",
+      "role": "assistant",
+      "content": "Paris is sunny and PDX is Portland International Airport.",
+      "toolCalls": []
+    }
+  ],
+  "canonical": [
+    {
+      "content": "Candidate isolation probe",
+      "id": "70f558a1-4da5-448c-adee-29c7882b10f4",
+      "role": "system"
+    },
+    {
+      "content": "In one response call BOTH getWeather with city Paris AND lookupAirport with code PDX. Do not answer before both tools. Call each exactly once.",
+      "id": "f9788515-97e1-4262-a7c2-ebf04c75c6fe",
+      "role": "user"
+    },
+    {
+      "content": "",
+      "id": "assistant-control-browser-1",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "function": {
+            "arguments": "{\"city\":\"Paris\"}",
+            "name": "getWeather"
+          },
+          "id": "control-browser-1",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "{\"city\":\"Paris\",\"temperatureC\":21,\"condition\":\"sunny\"}",
+      "id": "9759a4c3-106e-437e-8602-b82a7fd27017",
+      "role": "tool",
+      "toolCallId": "control-browser-1"
+    },
+    {
+      "content": "",
+      "id": "6fa21e6ab3f849cf845d1d7f5fa602e9",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "function": {
+            "arguments": "{\"code\":\"PDX\"}",
+            "name": "lookupAirport"
+          },
+          "id": "control-server-1",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "{\n  \"code\": \"PDX\",\n  \"name\": \"Portland International Airport\"\n}",
+      "id": "control-server-1",
+      "role": "tool",
+      "toolCallId": "control-server-1"
+    },
+    {
+      "content": "Paris is sunny and PDX is Portland International Airport.",
+      "id": "msg_control_2",
+      "name": "HashbrownNative",
+      "role": "assistant"
+    }
+  ]
+}

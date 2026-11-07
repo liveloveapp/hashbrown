@@ -1,0 +1,85 @@
+{
+  "name": "dotnet-starter",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "examples/dotnet-starter",
+  "targets": {
+    "prepare-candidate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/prepare-candidate.mjs"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/run.mjs build"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/run.mjs test"
+      },
+      "dependsOn": [
+        {
+          "target": "build",
+          "projects": ["dotnet-starter"],
+          "params": "forward"
+        }
+      ]
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "forwardAllArgs": false,
+        "commands": [
+          "eslint \"examples/dotnet-starter/**/*.{ts,tsx,mjs,mts}\"",
+          "prettier --check \"examples/dotnet-starter/**/*.{ts,tsx,mjs,mts,json,css,html,md}\""
+        ]
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "continuous": true,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/run.mjs serve"
+      }
+    },
+    "smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/smoke.mjs"
+      }
+    },
+    "lint-candidate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node examples/dotnet-starter/tools/run.mjs lint-candidate"
+      }
+    }
+  },
+  "implicitDependencies": ["core", "react", "angular", "dotnet-sdk"],
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/tools/conformance/dotnet/candidate-consumer/**/*",
+      "{workspaceRoot}/tools/conformance/dotnet/nuget-consumer/**/*",
+      "{workspaceRoot}/tools/conformance/dotnet/live-consumer/**/*",
+      "{workspaceRoot}/packages/dotnet/**/*",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/.github/workflows/pr-main.yml",
+      "{workspaceRoot}/tools/conformance/harness/ci-selection*",
+      "{workspaceRoot}/tools/conformance/harness/select-ci-setup.ts"
+    ]
+  }
+}

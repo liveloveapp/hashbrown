@@ -10,7 +10,7 @@ import {
   readArchive,
   buildEnvironment,
   hashFile,
-  verifyConsumer,
+  verifyHistoricalConsumer,
 } from './verify.mjs';
 import { sanitize } from './run.mjs';
 
@@ -297,7 +297,7 @@ export async function preparePublishedRecoveryBaseline(evidenceDirectory) {
     packageDirectory,
   );
   const pointer = JSON.parse(await fs.readFile(nuget, 'utf8'));
-  const metadata = await verifyConsumer(pointer);
+  const metadata = await verifyHistoricalConsumer(pointer);
   assert.equal(metadata.loaded.sha256, dllSha);
   assert.equal(metadata.revision, revision);
   assert.equal(metadata.published.signatureVerification, 'passed');

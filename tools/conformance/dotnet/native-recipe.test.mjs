@@ -299,7 +299,16 @@ test('rejects missing extra drifted or malformed blocks and dependency substitut
 
       assert.throws(
         () => readNativeRecipes(workspace),
-        /three tested C# examples|Recipe must reference exactly the candidate package/,
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(
+            error.message.split('\n')[0],
+            index === 3
+              ? 'Recipe must reference exactly the published package'
+              : 'Native framework recipes must contain the same three tested C# examples.',
+          );
+          return true;
+        },
       );
     }
   } finally {
@@ -629,4 +638,37 @@ test('README native approval browser examples select both prepared NuGet and npm
       'Browser command must retain its explicit prepared npm selection or the documented preceding environment setting',
     );
   }
+});
+
+test('published recipe pins stay preview1 while selected compilation references preview2', async () => {
+  const { selectedRecipeProject, validateRecipePackage } =
+    await import('./nuget-consumer/recipes.mjs');
+  const text = readFileSync(
+    new URL(
+      '../../../www/content/docs/react/platform/dotnet.md',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const template = readFileSync(
+    new URL('./nuget-consumer/templates/Consumer.csproj.txt', import.meta.url),
+    'utf8',
+  );
+
+  validateRecipePackage(text);
+  const project = selectedRecipeProject(template, {
+    id: 'Hashbrown.AspNetCore',
+    version: '0.1.0-preview.2',
+  });
+
+  assert.ok(text.includes('--version "[0.1.0-preview.1]"'));
+  assert.ok(project.includes('Version="[0.1.0-preview.2]"'));
+  assert.throws(
+    () =>
+      selectedRecipeProject(template, {
+        id: 'Hashbrown.AspNetCore',
+        version: 'latest',
+      }),
+    /identity|exact/i,
+  );
 });
