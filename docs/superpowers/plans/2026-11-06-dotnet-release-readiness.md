@@ -13,7 +13,7 @@ Specification: `docs/superpowers/specs/2026-11-06-dotnet-release-readiness-desig
 ## Execution rules
 
 - [ ] Use the already isolated worktree and `blove/dotnet-release-readiness-20261106` branch. Preserve other worktrees.
-- [ ] Keep root logs and receipts in `/private/tmp/hashbrown-release-090-20261106`. Use pinned Node 24.18.0; .NET 10.0.403 is permitted by current latestPatch policy. Preserve the initial Node24.20 cleanup-test failure; investigate before attributing it to changes.
+- [ ] Keep root logs and receipts in `/private/tmp/hashbrown-release-090-20261106`. Use pinned Node 24.18.0 and official .NET SDK 10.0.402. The system Homebrew SDK injects an additional restore feed rejected by package isolation; retain that guard. Preserve the initial Node24.20 cleanup-test failure; investigate before attributing it to changes.
 - [ ] Each behavioral slice: write a meaningful failing top-level test, root runs it and records the failure, implement the smallest complete change, root verifies GREEN. No weakening existing strict assertions or counts.
 - [ ] Each implementer owns a bounded slice and does not commit, publish or acquire shared services. Root commits reviewed work and executes integrations. Reviewers receive concrete paths/spec rather than conversation history.
 - [ ] Do not publish, create release tags/releases, move channel tags or invoke publisher workflows. Publication evidence stays pending until the new release session.
@@ -22,40 +22,46 @@ Specification: `docs/superpowers/specs/2026-11-06-dotnet-release-readiness-desig
 
 **Files:** ten `packages/*/package.json` release manifests, root `package-lock.json`, React/Angular package-version constants; `packages/dotnet/Hashbrown.AspNetCore.csproj`; `packages/dotnet/tools/{verify-package.mjs,package.test.mjs}`; `tools/conformance/dotnet/{candidate-consumer,nuget-consumer}` preparation, qualification, templates and tests; `scripts/nuget-release.spec.mjs`.
 
-- [ ] Add failing tests for exact internal SDK dependency/peer version substitution and generated lock consistency, while altered external graph/version/integrity remains rejected.
-- [ ] Add failing tests for explicit historical preview1 verification after current identity becomes preview2; ordinary current verification must reject old or metadata-selected identity.
-- [ ] Bump only the existing npm release group to0.9.0 with exact internal graph pins; update the root lock intentionally. Set current NuGet identity topreview2 and keep third-party pins/SDK policy unchanged.
-- [ ] Update current-package helpers, consumer templates, recipe compilation and proof fixtures to select current identity. Historical verifier selection must use trusted pinned producer information, not supplied metadata.
-- [ ] Preserve baseline live-consumer manifest/lock/verifier, preview1 archives/provenance, old qualification reports and all original frozen compatibility inputs byte-for-byte.
-- [ ] Reconcile published-guide preview1 install examples with candidate compilation explicitly: validate truthful published instructions separately from building extracted C# programs with the selected candidate reference. Do not claim preview2 is on NuGet.org.
-- [ ] Root verifies `node scripts/verify-release-versions.mjs --tag v0.9.0`, helper tests, `npx nx test-package dotnet-conformance`, `npx nx build dotnet-sdk`, `npx nx test dotnet-sdk`, `npx nx lint dotnet-sdk`, and exact candidate preparation/isolation.
-- [ ] Independent SPEC review, fix/review loop, then QUALITY review; root commits only green reviewed slice.
+- [x] Add failing tests for exact internal SDK dependency/peer version substitution and generated lock consistency, while altered external graph/version/integrity remains rejected.
+- [x] Add failing tests for explicit historical preview1 verification after current identity becomes preview2; ordinary current verification must reject old or metadata-selected identity.
+- [x] Bump only the existing npm release group to0.9.0 with exact internal graph pins; update the root lock intentionally. Set current NuGet identity topreview2 and keep third-party pins/SDK policy unchanged.
+- [x] Update current-package helpers, consumer templates, recipe compilation and proof fixtures to select current identity. Historical verifier selection must use trusted pinned producer information, not supplied metadata.
+- [x] Preserve baseline live-consumer manifest/lock/verifier, preview1 archives/provenance, old qualification reports and all original frozen compatibility inputs byte-for-byte.
+- [x] Reconcile published-guide preview1 install examples with candidate compilation explicitly: validate truthful published instructions separately from building extracted C# programs with the selected candidate reference. Do not claim preview2 is on NuGet.org.
+- [x] Root verifies `node scripts/verify-release-versions.mjs --tag v0.9.0`, helper tests, `npx nx test-package dotnet-conformance`, `npx nx build dotnet-sdk`, `npx nx test dotnet-sdk`, `npx nx lint dotnet-sdk`, and exact candidate preparation/isolation.
+- [x] Independent SPEC review, fix/review loop, then QUALITY review; root commits only green reviewed slice.
 
 ## Task 2: C# reference generation and website discovery
 
 **Files:** `packages/dotnet/tools/ApiSnapshot*` or a focused SDK-only sibling tool; generated `packages/dotnet/api/reference-docs.json`; SDK project targets/tests; `www/src/lib/dotnet-reference.ts`; API route integration under `www/src/app/api`; menu, search and llms generators; focused `www/test` tests.
 
-- [ ] Write failing tests for authored XML member coverage, overloaded IDs/anchors, parameter/returns/remarks and cross-reference preservation, escaped content, missing/stale generated input and deterministic output.
-- [ ] Build reference input from compiled XML and reviewed exported types. Preserve compatibility snapshots and exclude synthesized members without authored prose from human reference lists without changing the ABI baseline.
-- [ ] Generate readable type/member presentation; never label raw reflection metadata as valid C#. Keep overload identities distinct and links valid.
-- [ ] Commit generated input outside the TypeScript collector's reset directory. SDK validation checks freshness; website builds use the committed input with no .NET process.
-- [ ] Integrate static API pages, API navigation, search and llms content using existing Next/Shiki rendering. Ensure `collect-docs` cannot delete this input or silently omit C# routes.
-- [ ] Root verifies SDK build/test/lint and website focused tests/build/test/lint plus route/layout coverage for representative reference types and anchors.
-- [ ] SPEC then QUALITY review and reviewed root commit.
+- [x] Write failing tests for authored XML member coverage, overloaded IDs/anchors, parameter/returns/remarks and cross-reference preservation, escaped content, missing/stale generated input and deterministic output.
+- [x] Build reference input from compiled XML and reviewed exported types. Preserve compatibility snapshots and exclude synthesized members without authored prose from human reference lists without changing the ABI baseline.
+- [x] Generate readable type/member presentation; never label raw reflection metadata as valid C#. Keep overload identities distinct and links valid.
+- [x] Commit generated input outside the TypeScript collector's reset directory. SDK validation checks freshness; website builds use the committed input with no .NET process.
+- [x] Integrate static API pages, API navigation, search and llms content using existing Next/Shiki rendering. Ensure `collect-docs` cannot delete this input or silently omit C# routes.
+- [x] Root verifies SDK build/test/lint and website focused tests/build/test/lint plus route/layout coverage for representative reference types and anchors.
+- [x] SPEC then QUALITY review and reviewed root commit.
+
+Task 1 evidence: commits `91157367` / `aedf9e2f`; the root lock has no internal SDK records and remains intentionally unchanged. All 20 isolation controls passed with actual retained old archives.
+
+Task 2 evidence: commit `ac948127`; compiled reference has 73 types and 272 authored public members. SDK build/API/pack/test (12)/lint passed; website build/lint and all 2,444 tests passed with two workers. Website e2e passed, including workbench, route parity, 16 pages at six viewports, and diagram reports. Earlier failures remain recorded in the task-owned verification logs.
 
 ## Task 3: Runnable .NET starter and bounded maintenance
 
 **Files:** new `examples/dotnet-starter/{README.md,global.json,project.json,server,react,angular,tools}` and targeted tests; use exact current SDK PackageReference and existing framework dependency versions.
 
-- [ ] Write failing tests for disabled/non-Development/nonloopback development identity, unsafe origins, caller-controlled scope rejection, and production configuration refusal.
-- [ ] Write failing meaningful maintenance tests for host cancellation, one bounded pass per tick, deadline/failure observation, shared registration and absence of model/tool dispatch.
-- [ ] Implement the actual native PostgreSQL server composition with Responses startup default, server-owned configuration, real browser/server tool and native approval, recovery endpoint and explicit new-thread lifecycle. Do not import internal Testing sources.
-- [ ] Implement small pure React and signal-driven standalone Angular clients with trusted components, escaped messages/diagnostics, explicit interrupt/resume and cold-recovery settlement controls. Serve either built client from ASP.NET Core on the same origin.
-- [ ] Add application-owned bounded maintenance BackgroundService using the exact endpoint journal/catalog/configuration registration. Document application production authentication and downstream idempotency requirements.
-- [ ] Add exact-archive candidate preparation and honest future registry instructions. Candidate outputs are owned/external, use explicit local feeds/mapping and integrity/loaded-identity checks, and do not rewrite public manifests to imply publication.
-- [ ] Integrate Nx build/test/lint/serve and both real client smoke paths. Build and run the public starter against actual candidate packages, not workspace source aliases or substitute fixture endpoints.
-- [ ] Root verifies both framework browser paths, actual starter server/DB readiness, authentication refusals, maintenance and cleanup, plus example build/test/lint.
-- [ ] SPEC then QUALITY review and reviewed root commit.
+- [x] Write failing tests for disabled/non-Development/nonloopback development identity, unsafe origins, caller-controlled scope rejection, and production configuration refusal.
+- [x] Write failing meaningful maintenance tests for host cancellation, one bounded pass per tick, deadline/failure observation, shared registration and absence of model/tool dispatch.
+- [x] Implement the actual native PostgreSQL server composition with Responses startup default, server-owned configuration, real browser/server tool and native approval, recovery endpoint and explicit new-thread lifecycle. Do not import internal Testing sources.
+- [x] Implement small pure React and signal-driven standalone Angular clients with trusted components, escaped messages/diagnostics, explicit interrupt/resume and cold-recovery settlement controls. Serve either built client from ASP.NET Core on the same origin.
+- [x] Add application-owned bounded maintenance BackgroundService using the exact endpoint journal/catalog/configuration registration. Document application production authentication and downstream idempotency requirements.
+- [x] Add exact-archive candidate preparation and honest future registry instructions. Candidate outputs are owned/external, use explicit local feeds/mapping and integrity/loaded-identity checks, and do not rewrite public manifests to imply publication.
+- [x] Integrate Nx build/test/lint/serve and both real client smoke paths. Build and run the public starter against actual candidate packages, not workspace source aliases or substitute fixture endpoints.
+- [x] Root verifies both framework browser paths, actual starter server/DB readiness, authentication refusals, maintenance and cleanup, plus example build/test/lint.
+- [x] SPEC then QUALITY review and reviewed root commit.
+
+Task 3 evidence: external archive-only preparation/build passed; 26 Node and 20 BCL tests, candidate lint/format and static SPEC/QUALITY review passed. Fresh v11 real React/Angular smoke passed all four cold known/unavailable journeys with distinct workers, original call results, inert browser handlers and cleanup; 22 synthetic Responses calls. Logs and physical consumer receipt are retained under `/private/tmp/hashbrown-release-090-20261106`. Earlier failed runs remain recorded; no cloud or published-package success is claimed.
 
 ## Task 4: Release recovery qualification profile
 

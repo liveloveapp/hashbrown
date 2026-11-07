@@ -3,8 +3,23 @@ export function selectCiSetup(taskIds: readonly string[]): {
   readonly dotnet: boolean;
   readonly browser: boolean;
   readonly python: boolean;
+  readonly starter: boolean;
 } {
+  const starter = taskIds.some((id) => {
+    const [project, target] = id.split(':');
+    return (
+      project === 'dotnet-starter' &&
+      [
+        'build',
+        'test',
+        'smoke',
+        'lint-candidate',
+        'prepare-candidate',
+      ].includes(target)
+    );
+  });
   return {
+    starter,
     python: taskIds.some((id) => {
       const [project, target] = id.split(':');
       return (
@@ -30,19 +45,22 @@ export function selectCiSetup(taskIds: readonly string[]): {
           ].includes(target))
       );
     }),
-    dotnet: taskIds.some((id) => id.startsWith('dotnet-conformance:')),
-    browser: taskIds.some((id) => {
-      const target = id.split(':')[1];
-      return (
-        id.startsWith('atc-e2e:e2e') ||
-        target === 'example-e2e' ||
-        target === 'provider-e2e' ||
-        target === 'provider-smoke' ||
-        target === 'package-pr-acceptance' ||
-        target === 'package-acceptance' ||
-        target === 'workbench-check' ||
-        target === 'workbench-e2e'
-      );
-    }),
+    dotnet:
+      starter || taskIds.some((id) => id.startsWith('dotnet-conformance:')),
+    browser:
+      starter ||
+      taskIds.some((id) => {
+        const target = id.split(':')[1];
+        return (
+          id.startsWith('atc-e2e:e2e') ||
+          target === 'example-e2e' ||
+          target === 'provider-e2e' ||
+          target === 'provider-smoke' ||
+          target === 'package-pr-acceptance' ||
+          target === 'package-acceptance' ||
+          target === 'workbench-check' ||
+          target === 'workbench-e2e'
+        );
+      }),
   };
 }

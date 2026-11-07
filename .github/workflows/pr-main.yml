@@ -133,10 +133,31 @@ jobs:
       - name: Validate dependency tree
         run: npm ls --all
 
+      - name: Prepare exact archives for affected public .NET starter
+        if: steps.setup.outputs.starter == 'true'
+        timeout-minutes: 30
+        shell: bash
+        run: |
+          set -euo pipefail
+          owned=$(mktemp -d "$RUNNER_TEMP/hashbrown-starter-ci.XXXXXX")
+          npx nx prepare-candidate-npm dotnet-conformance -- --metadata="$owned/npm.json"
+          npx nx prepare-candidate-nuget dotnet-conformance -- --metadata="$owned/nuget.json"
+          npx nx prepare-candidate dotnet-starter -- --npm="$owned/npm.json" --nuget="$owned/nuget.json" --metadata="$owned/starter.json"
+          printf 'HASHBROWN_STARTER_METADATA=%s\n' "$owned/starter.json" >> "$GITHUB_ENV"
+
       - name: Validate affected projects
         env:
           NX_VERBOSE_LOGGING: 'true'
         run: npx nx affected -t lint,test,typecheck,build,e2e,install-pack-e2e --parallel=3
+
+      - name: Qualify and smoke the affected public .NET starter
+        if: steps.setup.outputs.starter == 'true'
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx nx lint-candidate dotnet-starter -- --metadata="$HASHBROWN_STARTER_METADATA"
+          npx nx smoke dotnet-starter -- --metadata="$HASHBROWN_STARTER_METADATA"
 
       - name: Run affected conformance suites
         run: npx tsx tools/conformance/harness/run-browser-suites.ts "$RUNNER_TEMP/ci-tasks.json"

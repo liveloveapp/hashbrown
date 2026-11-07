@@ -5,7 +5,12 @@ test('source-only checks do not provision browsers or PostgreSQL', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: false, browser: false, python: false });
+  expect(result).toEqual({
+    dotnet: false,
+    browser: false,
+    python: false,
+    starter: false,
+  });
 });
 
 test('cached workbench verification still provisions a browser on a cache miss', () => {
@@ -13,7 +18,12 @@ test('cached workbench verification still provisions a browser on a cache miss',
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: false, browser: true, python: false });
+  expect(result).toEqual({
+    dotnet: false,
+    browser: true,
+    python: false,
+    starter: false,
+  });
 });
 
 test('a .NET browser smoke needs both browser and database fixtures', () => {
@@ -24,7 +34,12 @@ test('a .NET browser smoke needs both browser and database fixtures', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: true, python: false });
+  expect(result).toEqual({
+    dotnet: true,
+    browser: true,
+    python: false,
+    starter: false,
+  });
 });
 
 test('a .NET HTTP contract run does not require browser installation', () => {
@@ -32,7 +47,12 @@ test('a .NET HTTP contract run does not require browser installation', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: false, python: false });
+  expect(result).toEqual({
+    dotnet: true,
+    browser: false,
+    python: false,
+    starter: false,
+  });
 });
 
 test('all browser suite entry points provision Chromium', () => {
@@ -48,7 +68,12 @@ test('packaged PR acceptance provisions PostgreSQL and Chromium', () => {
 
   const result = selectCiSetup(tasks);
 
-  expect(result).toEqual({ dotnet: true, browser: true, python: false });
+  expect(result).toEqual({
+    dotnet: true,
+    browser: true,
+    python: false,
+    starter: false,
+  });
 });
 
 test('Pydantic producer and live browser execution require Python', () => {
@@ -94,4 +119,36 @@ test('Python adapter packaging and all recipe targets provision Python', () => {
   expect(
     selectCiSetup(['pydantic-ai-recipe-conformance:example-e2e']).browser,
   ).toBe(true);
+});
+
+test('actual starter build test and smoke provision explicit package qualification and browser fixtures', () => {
+  const tasks = [
+    'dotnet-starter:build',
+    'dotnet-starter:test',
+    'dotnet-starter:smoke',
+  ];
+
+  const results = tasks.map((task) => selectCiSetup([task]));
+
+  expect(results).toEqual(
+    tasks.map(() => ({
+      dotnet: true,
+      browser: true,
+      python: false,
+      starter: true,
+    })),
+  );
+});
+
+test('ordinary starter lint does not acquire packages databases or browsers', () => {
+  const tasks = ['dotnet-starter:lint'];
+
+  const result = selectCiSetup(tasks);
+
+  expect(result).toEqual({
+    dotnet: false,
+    browser: false,
+    python: false,
+    starter: false,
+  });
 });

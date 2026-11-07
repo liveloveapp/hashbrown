@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "types": []
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true
+  },
+  "files": ["src/main.ts", "../shared/styles.d.ts"]
+}
