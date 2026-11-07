@@ -33,6 +33,7 @@
   white-space: pre-wrap;
 }
 .code {
+  background: var(--color-code-bg);
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
