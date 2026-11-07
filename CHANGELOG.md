@@ -1,8 +1,15 @@
-## Unreleased (next minor)
+## 0.9.0 (Unreleased)
 
 ### Breaking changes
 
 - Rename Magic Text to prose throughout the React and Angular APIs, docs, workbench and examples. React: `MagicTextRenderer` → `ProseRenderer`, `createMagicTextNodeRenderers` → `createProseNodeRenderers`, and `MagicText*` types → `Prose*`. Angular: `MagicText` → `Prose`, `MagicTextRender*` directives → `ProseRender*`, `injectMagicTextParser` → `injectProseParser`, and `MagicText*` types → `Prose*`. Angular selectors use `hb-prose` and `hbProseRender*`; CSS hooks use `hb-prose-*`. Recipe URLs and workbench lesson/endpoint IDs use `prose`. Old names are removed without compatibility aliases. See the [React](https://hashbrown.dev/docs/react/migrations/prose) and [Angular](https://hashbrown.dev/docs/angular/migrations/prose) migration guides.
+
+### .NET coordinated preview and onboarding
+
+- Prepare npm `0.9.0` with `Hashbrown.AspNetCore` `0.1.0-preview.2`. Publication is separate; current published installation instructions remain npm `0.8.3` / NuGet preview.1 until both new versions are published and verified.
+- Add explicit V2 cold browser settlement and native approval recovery through matching clients and capable journals, plus bounded PostgreSQL request-authority maintenance. Reads/restoration remain inert; uncertain effects are never automatically replayed. Stop and drain old workers before upgrading; custom journals must opt into browser recovery explicitly.
+- Add a runnable same-origin ASP.NET Core starter with React and Angular clients, development-only loopback identity, real PostgreSQL storage, native approval/browser tools, explicit interrupt/resume and application-owned maintenance. Add generated C# API reference and mirrored composition/compatibility guidance.
+- Preserve the official preview.1 / npm 0.8.3 historical evidence independently from local candidate qualification. Registry-installed qualification of the new pair remains a post-publication action. Cloud-hosted managed identity, .NET 8/9 and mixed-version rolling upgrades remain follow-ups.
 
 ## 0.8.3 (2026-10-26)
 
@@ -231,7 +238,7 @@
 - www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
 - middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
 - better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
-- 🎸 context for webstorm in  www  #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
+- 🎸 context for webstorm in www #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
 - Add experimental support for Ollama ([#295](https://github.com/liveloveapp/project-cassini/pull/295))
 - Add anthropic adapter ([#282](https://github.com/liveloveapp/project-cassini/pull/282), [#349](https://github.com/liveloveapp/project-cassini/pull/349))
 - allow compatibility with prerelease versions (v21) of Angular ([#382](https://github.com/liveloveapp/project-cassini/pull/382))
@@ -416,7 +423,7 @@
 - www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
 - middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
 - better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
-- 🎸 context for webstorm in  www  #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
+- 🎸 context for webstorm in www #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
 - Add experimental support for Ollama ([#295](https://github.com/liveloveapp/project-cassini/pull/295))
 - Add anthropic adapter ([#282](https://github.com/liveloveapp/project-cassini/pull/282), [#349](https://github.com/liveloveapp/project-cassini/pull/349))
 - allow compatibility with prerelease versions (v21) of Angular ([#382](https://github.com/liveloveapp/project-cassini/pull/382))
@@ -601,7 +608,7 @@
 - www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
 - middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
 - better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
-- 🎸 context for webstorm in  www  #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
+- 🎸 context for webstorm in www #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
 - Add experimental support for Ollama ([#295](https://github.com/liveloveapp/project-cassini/pull/295))
 - Add anthropic adapter ([#282](https://github.com/liveloveapp/project-cassini/pull/282), [#349](https://github.com/liveloveapp/project-cassini/pull/349))
 - allow compatibility with prerelease versions (v21) of Angular ([#382](https://github.com/liveloveapp/project-cassini/pull/382))
@@ -764,7 +771,7 @@
 - www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
 - middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
 - better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
-- 🎸 context for webstorm in  www  #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
+- 🎸 context for webstorm in www #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
 - Add experimental support for Ollama ([#295](https://github.com/liveloveapp/project-cassini/pull/295))
 - Add anthropic adapter ([#282](https://github.com/liveloveapp/project-cassini/pull/282), [#349](https://github.com/liveloveapp/project-cassini/pull/349))
 - allow compatibility with prerelease versions (v21) of Angular ([#382](https://github.com/liveloveapp/project-cassini/pull/382))
@@ -930,7 +937,7 @@ This was a version bump only, there were no code changes.
 - www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
 - middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
 - better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
-- 🎸 context for webstorm in  www  #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
+- 🎸 context for webstorm in www #279 ([#292](https://github.com/liveloveapp/project-cassini/pull/292), [#279](https://github.com/liveloveapp/project-cassini/issues/279))
 - Add experimental support for Ollama ([#295](https://github.com/liveloveapp/project-cassini/pull/295))
 - Add anthropic adapter ([#282](https://github.com/liveloveapp/project-cassini/pull/282), [#349](https://github.com/liveloveapp/project-cassini/pull/349))
 - allow compatibility with prerelease versions (v21) of Angular ([#382](https://github.com/liveloveapp/project-cassini/pull/382))

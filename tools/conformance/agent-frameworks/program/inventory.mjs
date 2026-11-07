@@ -9,6 +9,7 @@ import {
   verifyProfileProvenance,
   producerSourcePaths,
 } from './inventory-evidence.mjs';
+import { loadRetainedSources } from './retained-sources.mjs';
 
 import {
   additionalReferences,
@@ -310,6 +311,9 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
     const capture = JSON.parse(await readFile(resolve(root, path), 'utf8'));
     references.push(capture.wire, capture.executionSummary);
   }
+  const retainedSources = additionalQualifications.length
+    ? await loadRetainedSources(root, additionalQualifications)
+    : {};
   const evidence = Object.fromEntries(
     await Promise.all(
       [...new Set(references.map((reference) => reference.path))].map(
@@ -320,7 +324,9 @@ export async function loadInventory(root = resolve(directory, '../../../..')) {
               !relative(root, absolute).startsWith('..'),
             'Evidence path escapes root',
           );
-          const content = await readFile(absolute, 'utf8');
+          const content = Object.hasOwn(retainedSources, path)
+            ? retainedSources[path].content
+            : await readFile(absolute, 'utf8');
           return [path, { content, sha256: sha256(content) }];
         },
       ),

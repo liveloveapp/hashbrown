@@ -12,11 +12,11 @@ Specification: `docs/superpowers/specs/2026-11-06-dotnet-release-readiness-desig
 
 ## Execution rules
 
-- [ ] Use the already isolated worktree and `blove/dotnet-release-readiness-20261106` branch. Preserve other worktrees.
-- [ ] Keep root logs and receipts in `/private/tmp/hashbrown-release-090-20261106`. Use pinned Node 24.18.0 and official .NET SDK 10.0.402. The system Homebrew SDK injects an additional restore feed rejected by package isolation; retain that guard. Preserve the initial Node24.20 cleanup-test failure; investigate before attributing it to changes.
-- [ ] Each behavioral slice: write a meaningful failing top-level test, root runs it and records the failure, implement the smallest complete change, root verifies GREEN. No weakening existing strict assertions or counts.
-- [ ] Each implementer owns a bounded slice and does not commit, publish or acquire shared services. Root commits reviewed work and executes integrations. Reviewers receive concrete paths/spec rather than conversation history.
-- [ ] Do not publish, create release tags/releases, move channel tags or invoke publisher workflows. Publication evidence stays pending until the new release session.
+- [x] Use the already isolated worktree and `blove/dotnet-release-readiness-20261106` branch. Preserve other worktrees.
+- [x] Keep root logs and receipts in `/private/tmp/hashbrown-release-090-20261106`. Use pinned Node 24.18.0 and official .NET SDK 10.0.402. The system Homebrew SDK injects an additional restore feed rejected by package isolation; retain that guard. Preserve the initial Node24.20 cleanup-test failure; investigate before attributing it to changes.
+- [x] Each behavioral slice: write a meaningful failing top-level test, root runs it and records the failure, implement the smallest complete change, root verifies GREEN. No weakening existing strict assertions or counts.
+- [x] Each implementer owns a bounded slice and does not commit, publish or acquire shared services. Root commits reviewed work and executes integrations. Reviewers receive concrete paths/spec rather than conversation history.
+- [x] Do not publish, create release tags/releases, move channel tags or invoke publisher workflows. Publication evidence stays pending until the new release session.
 
 ## Task 1: Candidate versions and preserved historical baselines
 
@@ -67,29 +67,33 @@ Task 3 evidence: external archive-only preparation/build passed; 26 Node and 20 
 
 **Files:** focused new `tools/conformance/dotnet/release-consumer` and/or `harness/live-recovery-*` modules; explicit CLI/profile targets and tests; reuse existing owned worker/archive/provenance helpers where their contracts fit.
 
-- [ ] Add failing selection tests: exact current public versions or current candidate archives accepted only with their required provenance; reject ranges/latest/mixed origins/missing publication receipt/altered package or loaded-DLL anchors/source fallback. Preserve historical54 selection unchanged.
-- [ ] Add failing inventory/budget tests for six existing framework/auth projects ×cold-restore/result-reconciliation (12cases),3preflights,39reserved calls,384output tokens,60s case/900s run,serial/zero retries. Provider-free `--list` must precede credential loading.
-- [ ] Implement candidate and future-public selectors with before/after qualification. Public selection requires actual official registry/integrity/signature/payload/producer witnesses; no invented future signed hashes or relabeling candidates as published.
-- [ ] Implement separate passive recovery observations and real cold-worker lifecycle. Verify genuine Pending/V2, drained original worker, distinct replacement worker/same schema/package, original call/result input, one complete settlement, no replay and genuine usage.
-- [ ] Implement genuine post-commit delivery suppression followed by Completed adoption/repeated inert reads, with no provider dispatch/effects/native run events from recovery. Validate canonical history and cleanup independently.
+- [x] Add failing selection tests: exact current public versions or current candidate archives accepted only with their required provenance; reject ranges/latest/mixed origins/missing publication receipt/altered package or loaded-DLL anchors/source fallback. Preserve historical54 selection unchanged.
+- [x] Add failing inventory/budget tests for six existing framework/auth projects ×cold-restore/result-reconciliation (12cases),3preflights,39reserved calls,384output tokens,60s case/900s run,serial/zero retries. Provider-free `--list` must precede credential loading.
+- [x] Implement candidate and future-public selectors with before/after qualification. Public selection requires actual official registry/integrity/signature/payload/producer witnesses; no invented future signed hashes or relabeling candidates as published.
+- [x] Implement separate passive recovery observations and real cold-worker lifecycle. Verify genuine Pending/V2, drained original worker, distinct replacement worker/same schema/package, original call/result input, one complete settlement, no replay and genuine usage.
+- [x] Implement genuine post-commit delivery suppression followed by Completed adoption/repeated inert reads, with no provider dispatch/effects/native run events from recovery. Validate canonical history and cleanup independently.
 - [ ] Root runs selector/profile tests and both deterministic new journey controls through actual owned workers; existing complete source/cold suites remain unchanged and required. Candidate-live execution may use previously authorized root.env OpenAI/Azure CLI credentials if available; retain failures honestly and never claim future official-registry success.
-- [ ] Write exact publication-session commands, required receipts, credential sourcing and bounded live budget. Keep registry publication/actual published preview2 qualification explicitly pending.
-- [ ] SPEC then QUALITY review and reviewed root commit.
+- [x] Write exact publication-session commands, required receipts, credential sourcing and bounded live budget. Keep registry publication/actual published preview2 qualification explicitly pending.
+- [x] SPEC then QUALITY review and reviewed root commit.
+
+Task 4 implementation: commit `1b859d84`; four output/cache ownership regressions failed before the correction and passed afterward. The uncached harness passes 349 tests; build/typechecks/lint and 17 recipe guards pass. Final serial artifact qualification remains required. Earlier source (661 passed/3 failed), control (11 passed/5 unrun) and external warm (551 passed/6 failed/107 unrun) attempts remain failed or incomplete; the v6 cold matrix separately passed all 372 cases with postqualification. No publication occurred.
 
 ## Task 5: Documentation, release notes and compatibility matrix
 
 **Files:** mirrored `www/content/docs/{react,angular}/platform/dotnet{,-native-tools,-starter}.md`, composition sections/menu entries; `packages/dotnet/README.md`; existing conformance README; upcoming release/migration notes and release-session handoff.
 
-- [ ] Add exact published-vs-upcoming client/server compatibility table and stopped-worker/custom-journal/uncertainty upgrade guidance. Keep old install commands truthful until publication.
-- [ ] Link runnable starter, maintenance sample, composition choice and generated C# reference from both framework guides and package README.
-- [ ] Add next-release notes for npm0.9.0/NuGetpreview2 and the prose rename with existing migration links. Label supported features versus separately deferred managed identity/runtime/rolling-upgrade gaps.
-- [ ] Preserve the workbench teaser's honest client-replay description; do not claim it runs the new starter or native server.
+- [x] Add exact published-vs-upcoming client/server compatibility table and stopped-worker/custom-journal/uncertainty upgrade guidance. Keep old install commands truthful until publication.
+- [x] Link runnable starter, maintenance sample, composition choice and generated C# reference from both framework guides and package README.
+- [x] Add next-release notes for npm0.9.0/NuGetpreview2 and the prose rename with existing migration links. Label supported features versus separately deferred managed identity/runtime/rolling-upgrade gaps.
+- [x] Preserve the workbench teaser's honest client-replay description; do not claim it runs the new starter or native server.
 - [ ] Root compiles all32 documented programs against exact candidate package and runs website build/test/lint and route/layout checks including new pages. SPEC then QUALITY review and root commit.
+
+Task 5 implementation is reviewed. Formatting preserves all 14 C# fence bodies; the formatted onboarding checks pass all nine tests. The earlier full website run passed 2,455 tests and complete route/layout/diagram checks; final post-format build/lint and affected rendering checks remain pending. Published baseline instructions remain separate from upcoming release identities.
 
 ## Task 6: Integrated acceptance, PR and merge
 
 - [ ] Review all changed paths and frozen baseline hashes; run required build/test/lint for every affected npm release project plus dotnet-sdk, dotnet-conformance, starter and www. Run API reports where required.
-- [ ] Run full exact-package acceptance, source664, candidate cold372/isolation20/cleanup40, ABI/old-server compatibility and startup/browser checks. Reuse already qualified exact artifacts only where their source/provenance still match; never present stale receipts as new runs.
+- [ ] Run full exact-package acceptance, source664, candidate cold372/isolation20, ABI/old-server compatibility and startup/browser checks. Include cleanup and ownership fences through the full `npx nx test-harness dotnet-conformance`, `npx nx test-runtime dotnet-conformance` and `npx nx test core` targets, including core cold recovery cleanup/remount coverage. No separate 40-case cleanup inventory is verified. Reuse already qualified exact artifacts only where their source/provenance still match; never present stale receipts as new runs.
 - [ ] Finish independent whole-change SPEC and QUALITY review. Fix important findings, rerun affected checks and record actual results/warnings.
 - [ ] Create concrete PR with exact target versions, publication hold, tested scope and post-publication checklist. Push no tags. Resync latest main as needed; do not ask other chats to hold merges.
 - [ ] Merge only the exact green reviewed head through normal rules. Verify actual merge/main CI and deployed documentation revision/routes/C# highlighting.

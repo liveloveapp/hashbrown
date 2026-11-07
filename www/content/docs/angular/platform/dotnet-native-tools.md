@@ -19,6 +19,12 @@ Use this opt-in recipe when one model response needs both browser tools and regi
 
 The [stateless .NET recipe](/docs/angular/platform/dotnet) remains available for separate browser/server model turns and application workflow confirmations. This native composition also supports genuine MAF `ApprovalRequiredAIFunction` requests through Hashbrown's generic interrupt controls. Application workflow confirmation and its checkpoint store remain a separate composition.
 
+## Start with a runnable application
+
+The [ASP.NET Core starter](/docs/angular/platform/dotnet-starter) includes real React and Angular clients, a native approval tool, browser tools, explicit interrupt/resume and cold settlement controls. It uses the upcoming npm `0.9.0` / NuGet `0.1.0-preview.2` pair through explicitly qualified local archives until coordinated publication. The installation commands below remain for the published `0.8.3` / `0.1.0-preview.1` pair.
+
+See the starter's [composition and compatibility tables](/docs/angular/platform/dotnet-starter#choose-the-composition) before choosing a store or upgrading. Browse the generated [C# API reference](/api/dotnet/Hashbrown.AspNetCore.NativeSessionAgentFactory) for the maintained public contracts.
+
 ## Install the pinned preview from NuGet.org
 
 Use .NET SDK `10.0.402` and a `Microsoft.NET.Sdk.Web` application targeting `net10.0`, with nullable and implicit usings enabled. Add this single exact package reference; its nuspec supplies the tested dependencies. Commit the generated lockfile and restore with `--locked-mode`:
@@ -35,7 +41,7 @@ dotnet restore --source https://api.nuget.org/v3/index.json --locked-mode
 
 </hb-code-example>
 
-Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only. Published NuGet `0.1.0-preview.1` with npm SDKs `0.8.3` cannot cold-restore unresolved browser work; [candidate recovery](#pending-browser-recovery-unreleased) below is unreleased. Uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
+Your application owns authentication, authorization, PostgreSQL credentials and permissions, provider secrets, and configuration. The package does not provision these services. Stop and drain old workers before the source-to-package upgrade; retain the same agent, catalog, scope and configuration identities. Package versions do not replace workflow schema 3 or native schema 2. Recovery remains read-only. Published NuGet `0.1.0-preview.1` with npm SDKs `0.8.3` cannot cold-restore unresolved browser work; [candidate recovery](<#pending-browser-recovery-(unreleased)>) below is unreleased. Uncertain external effects must not be retried automatically. This is a stopped-worker upgrade, with no mixed-version rolling-operation guarantee.
 
 <hb-code-example header="Package reference">
 
@@ -237,7 +243,7 @@ Operators can inspect `GET /native-sessions/{scope}/{threadId}` and submit `Nati
 
 ## Pending browser recovery (unreleased)
 
-This workflow is absent from published npm `0.8.3` and NuGet `0.1.0-preview.1`. It requires separately qualified, matching candidate server, core and framework packages. A locally packed package retaining a published version number is still a source candidate. The [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) separates candidate acceptance from the published-package live qualification.
+This workflow is absent from published npm `0.8.3` and NuGet `0.1.0-preview.1`. It targets the upcoming npm `0.9.0` and NuGet `0.1.0-preview.2` pair and requires separately qualified, matching candidate server, core and framework packages until publication. Local archives are source candidates, regardless of their version labels. The [conformance reference](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance/dotnet) separates candidate acceptance from the published-package live qualification.
 
 PostgreSQL opts into `INativeSessionBrowserRecoveryJournal`. A custom journal must explicitly implement that optional contract; the base `INativeSessionJournal` interface alone supplies no browser recovery capability. Keep both recovery reads and continuation requests on the same compatible V2-capable deployment. Stop and drain incompatible workers before upgrading; a V2 advertisement does not qualify an older worker's continuation handling.
 
@@ -253,9 +259,9 @@ Only a valid `Pending` snapshot with `pendingBrowserRecovery` enables this path.
 
 Start a fresh form for each local pending ID. Collect one choice for every original browser call and every genuine protected interrupt before enabling its single Submit action:
 
-| Pending item | Explicit choices |
-| --- | --- |
-| Browser call | A result already known by the application: `{ toolCallId, status: 'result', value }`; or an explicit `{ toolCallId, status: 'unavailable' }` choice |
+| Pending item        | Explicit choices                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser call        | A result already known by the application: `{ toolCallId, status: 'result', value }`; or an explicit `{ toolCallId, status: 'unavailable' }` choice                                       |
 | Protected interrupt | Approve with `{ interruptId, status: 'resolved', payload: { approved: true } }`; decline with `{ approved: false }`; or cancel with `{ interruptId, status: 'cancelled' }` and no payload |
 
 These protected payloads apply to this recipe's boolean-object approval contract; validate a different agent's own interrupt schema. Do not call original handlers to reconstruct results, silently default missing choices to unavailable, or turn browser call IDs into `ResumeEntry` values. Known strings retain their exact content; object, array and null values are JSON serialized. Values must be plain, noncyclic JSON. The client limits JSON depth to 64 and the complete serialized request to 1 MiB of UTF-8; server limits may be smaller.
@@ -292,7 +298,8 @@ function recoveryOptions(
     draft.batchId !== pending.id ||
     draft.outcomes.size !== pending.toolCalls.length ||
     draft.decisions.size !== pending.interrupts.length
-  ) throw Error('Complete the current recovery form');
+  )
+    throw Error('Complete the current recovery form');
   return {
     batchId: pending.id,
     outcomes: pending.toolCalls.map(({ id }) => {
@@ -318,8 +325,10 @@ function recoveryOptions(
 
 /** Call once from the form's Submit event and display synchronous form errors. */
 export function submitRecovery(
-  chat: Pick<ChatResourceRef<Chat.AnyTool>,
-    'pendingConversationRecovery' | 'resumeConversationRecovery'>,
+  chat: Pick<
+    ChatResourceRef<Chat.AnyTool>,
+    'pendingConversationRecovery' | 'resumeConversationRecovery'
+  >,
   draft: RecoveryDraft,
 ): void {
   const pending = chat.pendingConversationRecovery();

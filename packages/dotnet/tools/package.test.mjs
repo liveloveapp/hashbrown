@@ -60,15 +60,21 @@ test('packaged README gives release-ready exact NuGet.org installation without s
     readme,
     /\b(?:is|has been)\s+(?:published|available)\s+(?:to|on|from)\s+NuGet\.org/i,
   );
-  assert.ok(readme.includes('Version `0.1.0-preview.1` is a prerelease.'));
+  assert.ok(readme.includes('Once coordinated publication is complete'));
+  assert.ok(readme.includes('historical'));
+  assert.ok(readme.includes('NuGet `0.1.0-preview.1` and npm `0.8.3`'));
+  assert.match(
+    readme,
+    /Published `0\.1\.0-preview\.1`[\s\S]*?cannot cold-restore unresolved browser work/,
+  );
   assert.ok(
     readme.includes(
-      'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.1]" --source https://api.nuget.org/v3/index.json',
+      'dotnet add package Hashbrown.AspNetCore --version "[0.1.0-preview.2]" --source https://api.nuget.org/v3/index.json',
     ),
   );
   assert.ok(
     readme.includes(
-      '<PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.1]" />',
+      '<PackageReference Include="Hashbrown.AspNetCore" Version="[0.1.0-preview.2]" />',
     ),
   );
   assert.ok(

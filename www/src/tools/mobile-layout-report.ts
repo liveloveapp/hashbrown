@@ -36,6 +36,8 @@ const PAGES = [
   '/api/dotnet/Hashbrown.AspNetCore.PostgresNativeSessionJournal',
   '/docs/react/start/quick',
   '/docs/react/platform/openai',
+  '/docs/react/platform/dotnet-starter',
+  '/docs/angular/platform/dotnet-starter',
   '/docs/react/migrations/v0-7',
   '/docs/react/concept/components',
   '/docs/angular/start/quick',

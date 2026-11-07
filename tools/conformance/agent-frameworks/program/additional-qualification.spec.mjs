@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -391,10 +391,16 @@ for (const [name, change] of invalid) {
 
 test('loads optional additional records and their nested retained evidence as data only', async () => {
   const input = fixture();
-  const root = await mkdtemp(join(tmpdir(), 'additional-inventory-'));
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), 'additional-inventory-')),
+  );
   const folder = 'tools/conformance/agent-frameworks/program/';
   const files = {
     [folder + 'catalog.json']: JSON.stringify(input.catalog),
+    [folder + 'retained-sources.json']: JSON.stringify({
+      schemaVersion: 1,
+      sources: [],
+    }),
     [folder + 'qualification.json']: JSON.stringify(input.qualification),
     [folder + 'pydantic-qualification.json']: JSON.stringify({
       schemaVersion: 1,
