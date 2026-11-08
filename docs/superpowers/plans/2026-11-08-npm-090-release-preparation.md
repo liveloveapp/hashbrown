@@ -48,3 +48,7 @@ PR #881's first CI run rejected AG-UI 1.0.4 against the immutable published 0.8.
 ### CI follow-up: deterministic SDK artifact cache
 
 The final-head affected run restored remote SDK artifacts with a different core module layout and missing OpenAI README, invalidating sealed producer provenance and two package checks. Anchor core module output to its absolute source directory; include platform/architecture and NODE_ENV in library build inputs. Keep all inventory and package assertions. Verify fresh builds, cache population, deleted-output warm restore, all ten package inventories/checks and the exact seal → restored build → starter qualification sequence before another CI run. The missing README cache origin is unproven; do not describe it as a runtime SDK defect.
+
+### CI follow-up: bounded package acceptance diagnostics
+
+The cache correction cleared all three regressions in CI. A later package acceptance phase rejected a fresh NuGet preparation before producing a pointer, while its public artifact exposed only a raw-log hash. Preserve all guards; add closed stage/status/tool-code failure evidence independent of successful metadata, regress secret exclusion and early export, and use the next CI evidence before selecting any root-cause correction. npm and NuGet publication remain held/separate.

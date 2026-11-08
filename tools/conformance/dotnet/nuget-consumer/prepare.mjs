@@ -35,6 +35,73 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repository = path.resolve(here, '../../../..');
 
+const preparationStages = [
+  'isolation',
+  'source-inventory',
+  'revision',
+  'sdk-version',
+  'sdk-location',
+  'source-identity',
+  'dependency-closure',
+  'preparation',
+];
+const failureCodes = [
+  'ENOENT',
+  'ENOSPC',
+  'ETIMEDOUT',
+  'EACCES',
+  'EPERM',
+  'EIO',
+  'ENOMEM',
+  'ENOEXEC',
+];
+
+/** Returns closed failure facts without child text, paths, environments or assertion values. */
+export function preparationFailure(stage, error) {
+  const child = error?.preparationDiagnostic;
+  const select = (values, value) => (values.includes(value) ? value : null);
+  return {
+    schema: 1,
+    stage: select(preparationStages, stage) ?? 'unknown',
+    kind: child ? 'command' : 'guard',
+    command: select(['dotnet', 'git'], child?.command),
+    operation: select(
+      [
+        'restore',
+        'build',
+        'pack',
+        'msbuild',
+        'nuget',
+        '--version',
+        '--list-sdks',
+        'rev-parse',
+        'execute',
+      ],
+      child?.operation,
+    ),
+    status:
+      Number.isInteger(child?.status) &&
+      child.status >= 0 &&
+      child.status <= 255
+        ? child.status
+        : null,
+    signal: select(['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV'], child?.signal),
+    errorCode: select(failureCodes, child?.errorCode ?? error?.code),
+    diagnosticCodes: [
+      ...new Set(
+        (Array.isArray(child?.diagnosticCodes)
+          ? child.diagnosticCodes
+          : []
+        ).filter(
+          (value) =>
+            typeof value === 'string' &&
+            /^(?:NU|MSB|NETSDK)[0-9]{4}$/.test(value),
+        ),
+      ),
+    ].slice(0, 16),
+  };
+}
+
 /** Runs a bounded SDK command and retains its complete bounded output in owned diagnostics. */
 export async function run(
   command,
@@ -70,8 +137,35 @@ export async function run(
     result.error ||
     (expectedFailure ? result.status === 0 : result.status !== 0)
   )
-    throw Error(
-      `Consumer command ${expectedFailure ? 'unexpectedly succeeded' : 'failed'}: ${log}`,
+    throw Object.assign(
+      new Error(
+        `Consumer command ${expectedFailure ? 'unexpectedly succeeded' : 'failed'}: ${log}`,
+      ),
+      {
+        preparationDiagnostic: {
+          command,
+          operation: [
+            'restore',
+            'build',
+            'pack',
+            'msbuild',
+            'nuget',
+            '--version',
+            '--list-sdks',
+            'rev-parse',
+          ].includes(args[0])
+            ? args[0]
+            : 'execute',
+          status: result.status,
+          signal: result.signal,
+          errorCode: result.error?.code,
+          diagnosticCodes: [
+            ...((result.stdout ?? '') + (result.stderr ?? '')).matchAll(
+              /\b(?:NU|MSB|NETSDK)[0-9]{4}\b/g,
+            ),
+          ].map((match) => match[0]),
+        },
+      },
     );
   return result.stdout;
 }
@@ -391,6 +485,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       path.join(await fs.realpath(os.tmpdir()), 'hashbrown-nuget-consumer-'),
     ),
   );
+  let stage = 'isolation';
   try {
     validateIsolation(root, repository);
     await validateAncestors(root);
@@ -409,8 +504,10 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       await fs.mkdir(path.join(root, directory));
     const environment = buildEnvironment(process.env, root);
     validateEnvironment(environment, root);
+    stage = 'source-inventory';
     const sourceFiles = await listSourceFiles(repository);
     const sources = await fingerprintFiles(repository, sourceFiles);
+    stage = 'revision';
     const revision = (
       await run(
         'git',
@@ -420,6 +517,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
         path.join(root, 'logs/revision.log'),
       )
     ).trim();
+    stage = 'sdk-version';
     const sdkVersion = (
       await run(
         'dotnet',
@@ -430,6 +528,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       )
     ).trim();
     assert.ok(acceptsSdk(sdkVersion, IDENTITY.sdk), 'Unexpected SDK');
+    stage = 'sdk-location';
     const sdkInfo = await run(
       'dotnet',
       ['--list-sdks'],
@@ -443,6 +542,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       ?.match(/\[(.+)\]/)?.[1];
     assert.ok(sdkDirectory, 'SDK install path missing');
     const sdkRoot = await fs.realpath(path.dirname(sdkDirectory));
+    stage = 'source-identity';
     const projectText = await fs.readFile(
       path.join(repository, 'packages/dotnet/Hashbrown.AspNetCore.csproj'),
       'utf8',
@@ -452,6 +552,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
         projectText.includes(`<Version>${IDENTITY.version}</Version>`),
       'Source package identity differs',
     );
+    stage = 'dependency-closure';
     const reviewed = JSON.parse(
       await fs.readFile(
         path.join(repository, 'packages/dotnet/packages.lock.json'),
@@ -465,6 +566,7 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       }),
     );
     assert.equal(closure.length, 28, 'Reviewed dependency closure differs');
+    stage = 'preparation';
     const config = createConfig(root, closure);
     validateConfig(config, root, closure);
     await fs.writeFile(path.join(root, 'NuGet.Config'), config);
@@ -948,6 +1050,15 @@ export async function prepareConsumer(pointerPath, imported = {}) {
       revision,
     };
   } catch (error) {
+    try {
+      await fs.writeFile(
+        pointerPath + '.failure.json',
+        JSON.stringify(preparationFailure(stage, error)) + '\n',
+        { flag: 'wx' },
+      );
+    } catch {
+      // Preserve the original rejection if writing diagnostic evidence also fails.
+    }
     throw Error(`${error.message}\nRetained failed preparation: ${root}`, {
       cause: error,
     });
