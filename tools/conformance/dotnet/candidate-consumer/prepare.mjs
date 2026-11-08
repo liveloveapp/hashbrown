@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from './dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -221,12 +222,12 @@ export async function prepareNpmCandidate(pointerPath) {
   const producer = {};
   const archives = {};
   const packages = {};
-  const baseline = JSON.parse(
-    await fs.readFile(path.join(here, '../live-consumer/package.json')),
-  );
-  const baselineLock = JSON.parse(
-    await fs.readFile(path.join(here, '../live-consumer/package-lock.json')),
-  );
+  const {
+    manifest: baseline,
+    historicalLock: baselineLock,
+    lock: dependencyBaselineLock,
+    identity: dependencyBaselineIdentity,
+  } = await readCandidateDependencyBaseline();
   for (const name of sdkNames) {
     const short = name.split('/')[1];
     const directory = path.join(repository, 'dist/packages', short);
@@ -270,8 +271,8 @@ export async function prepareNpmCandidate(pointerPath) {
   for (const name of sdkNames)
     validatePackageGraph(
       packages[name],
-      baselineLock.packages[`node_modules/${name}`],
-      baselineLock,
+      dependencyBaselineLock.packages[`node_modules/${name}`],
+      dependencyBaselineLock,
       archives,
     );
   const manifest = {
@@ -285,7 +286,7 @@ export async function prepareNpmCandidate(pointerPath) {
     },
   };
   validateManifest(manifest, archives, baseline);
-  const lock = createCandidateLock(baselineLock, archives, manifest);
+  const lock = createCandidateLock(dependencyBaselineLock, archives, manifest);
   await fs.writeFile(
     path.join(root, 'package.json'),
     JSON.stringify(manifest, null, 2),
@@ -343,6 +344,8 @@ export async function prepareNpmCandidate(pointerPath) {
     },
     baselineManifest: baseline,
     baselineLock,
+    dependencyBaselineLock,
+    dependencyBaselineIdentity,
     consumer: await consumerInventory(root),
     artifacts: {
       react: path.join(root, 'dist/react'),

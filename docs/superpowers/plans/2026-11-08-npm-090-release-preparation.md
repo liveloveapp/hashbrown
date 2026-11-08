@@ -40,3 +40,7 @@
 - [ ] Verify merged tree, complete main CI, production deployment when applicable and unchanged public registry/tag state. Do not create v0.9.0 or move npm/latest, publish packages, dispatch npm/NuGet workflows, or deploy a release announcement. Report concrete approval-ready state.
 
 Local preparation and independent review are complete. PR/merge/main deployment execution receipts are maintained separately in the sibling release artifact directory after this preparation commit. npm publication remains held and NuGet publication remains separate.
+
+### CI follow-up: candidate-only security dependency graph
+
+PR #881's first CI run rejected AG-UI 1.0.4 against the immutable published 0.8.3 consumer graph. Preserve that historical manifest/lock and archive integrities. Add a narrowly reviewed candidate graph overlay anchored to original lock bytes and exact old-record hashes; preparation and qualification independently derive it. Keep original historical metadata separate from the candidate graph and its identity. Do not weaken graph/archive/source checks. Old-core negative controls must install the historical AG-UI graph; old framework and tamper controls use the candidate external graph, with the actual selected old SDK metadata. Cover exact graph delta, input immutability, stale/rejected overlays, and old-core/framework graph selection before exercising real candidate preparation and missing-API controls. NuGet package versions/source/publication remain separate.

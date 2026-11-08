@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from './dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -281,12 +282,12 @@ export async function verifyCandidate(metadata) {
       'Candidate executable check evidence changed',
     );
   }
-  const baseline = JSON.parse(
-    await readPhysical(path.join(here, '../live-consumer/package.json')),
-  );
-  const baselineLock = JSON.parse(
-    await readPhysical(path.join(here, '../live-consumer/package-lock.json')),
-  );
+  const {
+    manifest: baseline,
+    historicalLock: baselineLock,
+    lock: dependencyBaselineLock,
+    identity: dependencyBaselineIdentity,
+  } = await readCandidateDependencyBaseline();
   assert.deepEqual(
     metadata.baselineManifest,
     baseline,
@@ -296,6 +297,16 @@ export async function verifyCandidate(metadata) {
     metadata.baselineLock,
     baselineLock,
     'Frozen dependency lock changed',
+  );
+  assert.deepEqual(
+    metadata.dependencyBaselineLock,
+    dependencyBaselineLock,
+    'Candidate dependency graph changed',
+  );
+  assert.deepEqual(
+    metadata.dependencyBaselineIdentity,
+    dependencyBaselineIdentity,
+    'Candidate dependency graph identity changed',
   );
   const manifest = JSON.parse(
     await readPhysical(path.join(root, 'package.json')),
@@ -320,7 +331,7 @@ export async function verifyCandidate(metadata) {
   const lock = JSON.parse(
     await readPhysical(path.join(root, 'package-lock.json')),
   );
-  validateLockGraph(lock, baselineLock, metadata.archives, manifest);
+  validateLockGraph(lock, dependencyBaselineLock, metadata.archives, manifest);
   const installedLock = JSON.parse(
     await readPhysical(path.join(root, 'node_modules/.package-lock.json')),
   );

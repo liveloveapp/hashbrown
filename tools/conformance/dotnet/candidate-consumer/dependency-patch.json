@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "historicalLockSha256": "f42f0e837e70276e7ca6c56de4d4a4f9d4c6d0ea5a455891447b1fe1d6a2ca76",
+  "replacements": {
+    "node_modules/@ag-ui/client": {
+      "previousSha256": "b4ebfc7c9d6fce4e2ab07610e46e294a4c980d44b889d41a03f1b5045c557f23",
+      "record": {
+        "version": "1.0.4",
+        "resolved": "https://registry.npmjs.org/@ag-ui/client/-/client-1.0.4.tgz",
+        "integrity": "sha512-bACZj5CG/B6coQL54/LT0b29RjoyZf7k+XTs1c4+PBpsZbCYCNQ/TVDE5ffvmZvZ4NnH2Zc+JjbIeGdNdYJu8w==",
+        "license": "MIT",
+        "dependencies": {
+          "@ag-ui/core": "1.0.4",
+          "@ag-ui/encoder": "1.0.4",
+          "@ag-ui/proto": "1.0.4",
+          "@types/uuid": "^10.0.0",
+          "compare-versions": "^6.1.1",
+          "fast-json-patch": "^3.1.1",
+          "rxjs": "7.8.1",
+          "untruncate-json": "^0.0.1",
+          "uuid": "^11.1.0"
+        },
+        "peerDependencies": {
+          "zod": "^3.25.18 || ^4.0.0"
+        }
+      }
+    },
+    "node_modules/@ag-ui/core": {
+      "previousSha256": "f96259959d51ea359b34e04d48d773ecf48f613db1a4efe5f2d52f5cfe65886c",
+      "record": {
+        "version": "1.0.4",
+        "resolved": "https://registry.npmjs.org/@ag-ui/core/-/core-1.0.4.tgz",
+        "integrity": "sha512-Z/G3UXYRyZ/1LcOtCCf6RJiFPTjRqaNublW/kQ7wsfiP4Qw5oIVmvO6NkUQYoqCoMXuXggyD3MMH2Td5OVKECQ==",
+        "license": "MIT",
+        "peerDependencies": {
+          "zod": "^3.25.18 || ^4.0.0"
+        },
+        "peerDependenciesMeta": {
+          "zod": {
+            "optional": true
+          }
+        }
+      }
+    },
+    "node_modules/@ag-ui/encoder": {
+      "previousSha256": "caeb7fa34869ce0b6f6c92078d23b86c9981a41fd7c9af30dcec3e7004356277",
+      "record": {
+        "version": "1.0.4",
+        "resolved": "https://registry.npmjs.org/@ag-ui/encoder/-/encoder-1.0.4.tgz",
+        "integrity": "sha512-fq5kqj+kCFtpLhBhfLjv55DRTKdbduFg6Wcsw4VL3uCABSQhH+PLC36vMjbjZdDp9q+mgVrGhRvaW+JdkdfVog==",
+        "license": "MIT",
+        "dependencies": {
+          "@ag-ui/core": "1.0.4",
+          "@ag-ui/proto": "1.0.4"
+        },
+        "peerDependencies": {
+          "zod": "^3.25.18 || ^4.0.0"
+        }
+      }
+    },
+    "node_modules/@ag-ui/proto": {
+      "previousSha256": "5f9c05071ac18179399d9e34e8a3182ac6b98597b5313f16e22b462ce27173cc",
+      "record": {
+        "version": "1.0.4",
+        "resolved": "https://registry.npmjs.org/@ag-ui/proto/-/proto-1.0.4.tgz",
+        "integrity": "sha512-+OAa2w1ELijSwNgNGvMDCIx5rFO+1NQDpwzoq1oXwE4L0qWciZnhIisocVzAKjtH7Ac/ONSyYR1t4qG3kMzRkw==",
+        "license": "MIT",
+        "dependencies": {
+          "@ag-ui/core": "1.0.4",
+          "@bufbuild/protobuf": "^2.2.5",
+          "@protobuf-ts/protoc": "^2.11.1"
+        },
+        "peerDependencies": {
+          "zod": "^3.25.18 || ^4.0.0"
+        }
+      }
+    }
+  },
+  "removals": {
+    "node_modules/@ag-ui/client/node_modules/zod": "7fac6f27be8893bac54a032597eefa41e5f2c4808e7fd4a1bf4492b2124e0609",
+    "node_modules/@ag-ui/proto/node_modules/zod": "7fac6f27be8893bac54a032597eefa41e5f2c4808e7fd4a1bf4492b2124e0609"
+  }
+}
