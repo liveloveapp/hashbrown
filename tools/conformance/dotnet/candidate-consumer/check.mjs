@@ -70,6 +70,58 @@ export function negativeInstallPolicy(candidate, selections, mode = 'strict') {
   };
 }
 
+/**
+ * Selects exact negative archives while retaining their matching external graph.
+ *
+ * @param candidate - Qualified candidate with separate historical and candidate graphs.
+ * @param positiveLock - Actual positive consumer lock before substitutions.
+ * @param positiveManifest - Actual positive consumer manifest.
+ * @param selections - Explicit alternate archive identities.
+ * @param mode - Existing strict, offline or exact old-SDK control policy.
+ * @returns Fresh lock and manifest, matching external baseline and install policy.
+ */
+export function createNegativeSelection(
+  candidate,
+  positiveLock,
+  positiveManifest,
+  selections,
+  mode = 'strict',
+) {
+  const policy = negativeInstallPolicy(candidate, selections, mode);
+  const historicalCore =
+    mode === 'old-public-missing-api' && policy.sdk === '@hashbrownai/core';
+  const baseline = historicalCore
+    ? candidate.baselineLock
+    : candidate.dependencyBaselineLock;
+  assert.ok(baseline?.packages, 'Selected candidate external graph required');
+  const manifest = structuredClone(positiveManifest);
+  const lock = structuredClone(positiveLock);
+  lock.packages = structuredClone({
+    ...baseline.packages,
+    ...Object.fromEntries(
+      Object.entries(positiveLock.packages).filter(
+        ([location]) =>
+          !location ||
+          sdkNames.some((name) => location === `node_modules/${name}`),
+      ),
+    ),
+  });
+  for (const [name, record] of Object.entries(selections)) {
+    manifest.dependencies[name] = record.resolved ?? 'file:' + record.archive;
+    lock.packages[''].dependencies[name] = manifest.dependencies[name];
+    const location = `node_modules/${name}`;
+    lock.packages[location] = {
+      ...(mode === 'old-public-missing-api'
+        ? structuredClone(candidate.baselineLock.packages[location])
+        : lock.packages[location]),
+      resolved: manifest.dependencies[name],
+      integrity: record.integrity,
+      version: record.version,
+    };
+  }
+  return { manifest, lock, baseline, policy };
+}
+
 /** Requires the frozen external lock identities, integrity and graph after an actual negative install. */
 export function validateNegativeExternalGraph(installed, baseline) {
   const isSdk = (location) =>
@@ -132,22 +184,16 @@ async function installSelection(
   selections,
   mode = 'strict',
 ) {
-  const policy = negativeInstallPolicy(candidate, selections, mode);
-  const manifest = JSON.parse(
-    await fs.readFile(path.join(candidate.root, 'package.json')),
+  const selected = createNegativeSelection(
+    candidate,
+    JSON.parse(
+      await fs.readFile(path.join(candidate.root, 'package-lock.json')),
+    ),
+    JSON.parse(await fs.readFile(path.join(candidate.root, 'package.json'))),
+    selections,
+    mode,
   );
-  const lock = JSON.parse(
-    await fs.readFile(path.join(candidate.root, 'package-lock.json')),
-  );
-  for (const [name, record] of Object.entries(selections)) {
-    manifest.dependencies[name] = record.resolved ?? 'file:' + record.archive;
-    lock.packages[''].dependencies[name] = manifest.dependencies[name];
-    Object.assign(lock.packages[`node_modules/${name}`], {
-      resolved: manifest.dependencies[name],
-      integrity: record.integrity,
-      version: record.version,
-    });
-  }
+  const { manifest, lock, baseline, policy } = selected;
   await fs.writeFile(
     path.join(subject.root, 'package.json'),
     JSON.stringify(manifest, null, 2),
@@ -169,7 +215,7 @@ async function installSelection(
         path.join(subject.root, 'node_modules/.package-lock.json'),
       ),
     ),
-    candidate.baselineLock,
+    baseline,
   );
   for (const [name, record] of Object.entries(selections)) {
     const expected =
@@ -185,7 +231,7 @@ async function installSelection(
       'Negative control did not install the selected actual package bytes',
     );
   }
-  return policy;
+  return { ...policy, externalGraphSha256: digest(JSON.stringify(baseline)) };
 }
 
 /** Seeds an exact candidate tarball through a separate owned HTTP cache-control identity. */

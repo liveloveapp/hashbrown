@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from '../../../tools/conformance/dotnet/candidate-consumer/dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -25,7 +26,6 @@ import {
   digest,
   inventory,
   options,
-  repository,
   run,
   sourceRoot,
   writePointer,
@@ -84,22 +84,8 @@ export async function prepareCandidate(selection) {
     path.join(root, 'tools/build.mjs'),
     path.join(root, 'build.mjs'),
   );
-  const baseline = JSON.parse(
-    await fs.readFile(
-      path.join(
-        repository,
-        'tools/conformance/dotnet/live-consumer/package.json',
-      ),
-    ),
-  );
-  const baselineLock = JSON.parse(
-    await fs.readFile(
-      path.join(
-        repository,
-        'tools/conformance/dotnet/live-consumer/package-lock.json',
-      ),
-    ),
-  );
+  const { manifest: baseline, lock: baselineLock } =
+    await readCandidateDependencyBaseline();
   const archives = {};
   for (const [name, archive] of Object.entries(npm.archives)) {
     const target = path.join(root, 'archives', path.basename(archive.archive));

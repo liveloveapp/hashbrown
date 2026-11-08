@@ -720,10 +720,13 @@ test('bootstrap puts LIFECYCLE_CRON_ENABLED on www, which serves the cron route'
   assert.ok(!lifecycle?.env.includes('LIFECYCLE_CRON_ENABLED'));
 });
 
-test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secret', () => {
+test('shared deployment catalog lists lifecycle as optional with the lifecycle project secret', () => {
   const workflow = readFileSync(
     fileURLToPath(
-      new URL('../../.github/workflows/pr-main.yml', import.meta.url),
+      new URL(
+        '../../.github/workflows/select-deployment-targets.yml',
+        import.meta.url,
+      ),
     ),
     'utf8',
   );

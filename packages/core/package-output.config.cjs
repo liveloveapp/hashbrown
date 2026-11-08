@@ -1,3 +1,5 @@
+const { resolve } = require('node:path');
+
 /**
  * Emits one output file per source module instead of a single bundle.
  *
@@ -30,7 +32,7 @@ module.exports = (config) => {
       return {
         ...output,
         preserveModules: true,
-        preserveModulesRoot: 'packages/core/src',
+        preserveModulesRoot: resolve(__dirname, 'src'),
         entryFileNames: toFileName,
         chunkFileNames: toFileName,
       };

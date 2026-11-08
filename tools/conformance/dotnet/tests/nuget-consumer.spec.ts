@@ -1061,3 +1061,86 @@ try {
 
   expect(result.trim()).toBe('passed');
 });
+
+test('preparation failure evidence keeps closed diagnostic facts without private child text', () => {
+  const script = `
+import assert from 'node:assert/strict';
+import { preparationFailure } from ${JSON.stringify('file://' + resolve(__dirname, '../nuget-consumer/prepare.mjs'))};
+const secret = 'private-token-value';
+const error = Object.assign(new Error(secret), {
+  code: 'ENOSPC',
+  preparationDiagnostic: {
+    command: 'dotnet', operation: 'restore', status: 1, signal: null,
+    errorCode: 'ENOSPC', diagnosticCodes: ['NU1101', 'MSB1009', 'NETSDK1045', secret],
+    output: secret, environment: { TOKEN: secret },
+  },
+});
+
+const result = preparationFailure('source-inventory', error);
+
+assert.deepEqual(result, { schema: 1, stage: 'source-inventory', kind: 'command',
+  command: 'dotnet', operation: 'restore', status: 1, signal: null,
+  errorCode: 'ENOSPC', diagnosticCodes: ['NU1101', 'MSB1009', 'NETSDK1045'] });
+assert.ok(!JSON.stringify(result).includes(secret));
+const untrusted = preparationFailure(secret, { code: secret, preparationDiagnostic: {
+  command: secret, operation: secret, status: secret, signal: secret,
+  errorCode: secret, diagnosticCodes: [secret],
+} });
+assert.ok(!JSON.stringify(untrusted).includes(secret));
+assert.equal(untrusted.stage, 'unknown');
+assert.equal(untrusted.command, null);
+assert.equal(untrusted.errorCode, null);
+`;
+
+  const output = execFileSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      encoding: 'utf8',
+    },
+  );
+
+  expect(output).toBe('');
+});
+
+test('preparation exports bounded failure evidence before a candidate pointer exists', () => {
+  const script = `
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { prepareConsumer } from ${JSON.stringify('file://' + resolve(__dirname, '../nuget-consumer/prepare.mjs'))};
+const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'preparation-failure-'));
+const pointer = path.join(parent, 'candidate.json');
+let retained;
+try {
+  process.env.PATH = parent;
+  await assert.rejects(() => prepareConsumer(pointer), error => {
+    retained = error.message.split('Retained failed preparation: ')[1];
+    return Boolean(retained);
+  });
+
+  const result = JSON.parse(await fs.readFile(pointer + '.failure.json', 'utf8'));
+
+  assert.equal(result.stage, 'revision');
+  assert.equal(result.command, 'git');
+  assert.equal(result.operation, 'rev-parse');
+  assert.equal(result.errorCode, 'ENOENT');
+  await assert.rejects(() => fs.stat(pointer), { code: 'ENOENT' });
+} finally {
+  await fs.rm(parent, { recursive: true, force: true });
+  if (retained && path.dirname(retained) === await fs.realpath(os.tmpdir()) && path.basename(retained).startsWith('hashbrown-nuget-consumer-'))
+    await fs.rm(retained, { recursive: true, force: true });
+}
+`;
+
+  const output = execFileSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      encoding: 'utf8',
+    },
+  );
+
+  expect(output).toBe('');
+});

@@ -33,9 +33,9 @@
     ]
   },
   "dependencies": {
-    "@ag-ui/client": "1.0.3",
-    "@ag-ui/core": "1.0.3",
-    "@ag-ui/encoder": "1.0.3",
+    "@ag-ui/client": "1.0.4",
+    "@ag-ui/core": "1.0.4",
+    "@ag-ui/encoder": "1.0.4",
     "@angular/common": "22.2.3",
     "@angular/compiler": "22.2.3",
     "@angular/core": "22.2.3",
@@ -152,7 +152,7 @@
     "tsx": "^4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.72.0",
-    "vercel": "59.26.0",
+    "vercel": "65.12.1",
     "verdaccio": "6.10.7",
     "vite": "8.3.4",
     "vite-plugin-dts": "~4.5.4",
@@ -183,6 +183,10 @@
     "undici@>=7.0.0 <7.30.1": "7.30.1",
     "vite@>=8.3.0 <8.3.4": "8.3.4",
     "vite@8.1.5": "8.1.6",
-    "zod@>=4.0.0 <4.6.6": "4.6.7"
+    "zod@>=4.0.0 <4.6.6": "4.6.7",
+    "@ag-ui/core": "1.0.4",
+    "@ag-ui/client": "1.0.4",
+    "@ag-ui/encoder": "1.0.4",
+    "@ag-ui/proto": "1.0.4"
   }
 }

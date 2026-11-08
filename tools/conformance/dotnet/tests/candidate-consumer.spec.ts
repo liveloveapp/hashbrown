@@ -378,3 +378,108 @@ assert.deepEqual(expected, JSON.parse(await fs.readFile(path.join(path.dirname($
 
   expect(result.trim()).toBe('passed');
 });
+
+test('candidate security baseline changes only the reviewed AG-UI graph and preserves published evidence', () => {
+  const policy = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/dependency-baseline.mjs'),
+  ).href;
+  const body = `
+const { readCandidateDependencyBaseline } = await import(${JSON.stringify(policy)});
+const originalPath = path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json');
+const before = await fs.readFile(originalPath);
+const original = JSON.parse(before);
+const selected = await readCandidateDependencyBaseline();
+assert.deepEqual(selected.manifest, baseline);
+assert.deepEqual(await fs.readFile(originalPath), before);
+assert.equal(selected.lock.packages['node_modules/@hashbrownai/core'].dependencies['@ag-ui/core'], '1.0.4');
+assert.equal(selected.lock.packages['node_modules/@hashbrownai/core'].dependencies['@ag-ui/client'], '1.0.4');
+const changed = new Set(['node_modules/@hashbrownai/core', ...['client', 'core', 'encoder', 'proto'].map(name => 'node_modules/@ag-ui/' + name)]);
+const removed = new Set(['node_modules/@ag-ui/client/node_modules/zod', 'node_modules/@ag-ui/proto/node_modules/zod']);
+for (const [location, record] of Object.entries(original.packages)) {
+  if (removed.has(location)) assert.equal(selected.lock.packages[location], undefined);
+  else if (!changed.has(location)) assert.deepEqual(selected.lock.packages[location], record);
+}
+assert.deepEqual(Object.keys(selected.lock.packages).sort(), Object.keys(original.packages).filter(name => !removed.has(name)).sort());
+for (const name of ['client', 'core', 'encoder', 'proto']) assert.equal(selected.lock.packages['node_modules/@ag-ui/' + name].version, '1.0.4');
+assert.equal(original.packages['node_modules/@ag-ui/client'].version, '1.0.3');
+assert.equal(selected.lock.packages['node_modules/zod'].version, '4.6.7');
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('old-core controls keep the real historical graph while old-framework controls use the candidate graph', () => {
+  const checker = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/check.mjs'),
+  ).href;
+  const policy = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/dependency-baseline.mjs'),
+  ).href;
+  const body = `
+const { createNegativeSelection } = await import(${JSON.stringify(checker)});
+const { createCandidateLock } = await import(${JSON.stringify(qualifier)});
+const { readCandidateDependencyBaseline } = await import(${JSON.stringify(policy)});
+const selected = await readCandidateDependencyBaseline();
+const current = Object.fromEntries(Object.entries(archives).map(([name, record]) => [name, { ...record, version: '0.9.0' }]));
+const owner = { baselineLock: selected.historicalLock, dependencyBaselineLock: selected.lock, archives: current };
+const lock = createCandidateLock(selected.lock, current, manifest);
+const before = JSON.stringify({ lock, manifest });
+for (const name of names) {
+  const previous = selected.historicalLock.packages['node_modules/' + name];
+  const choices = { [name]: { archive: '/private/tmp/old-' + name.split('/')[1] + '.tgz', version: '0.8.3', integrity: previous.integrity } };
+  const result = createNegativeSelection(owner, lock, manifest, choices, 'old-public-missing-api');
+  const oldCore = name === '@hashbrownai/core';
+  assert.equal(result.lock.packages['node_modules/@ag-ui/core'].version, oldCore ? '1.0.3' : '1.0.4');
+  assert.equal(Boolean(result.lock.packages['node_modules/@ag-ui/client/node_modules/zod']), oldCore);
+  assert.deepEqual(result.lock.packages['node_modules/' + name].dependencies, previous.dependencies);
+  assert.deepEqual(result.lock.packages['node_modules/' + name].peerDependencies, previous.peerDependencies);
+  assert.equal(result.lock.packages['node_modules/' + name].integrity, previous.integrity);
+  assert.deepEqual(result.baseline, oldCore ? selected.historicalLock : selected.lock);
+  assert.equal(result.manifest.dependencies[name], 'file:' + choices[name].archive);
+  assert.equal(JSON.stringify({ lock, manifest }), before);
+  assert.throws(() => createNegativeSelection(owner, lock, manifest, { [name]: { ...choices[name], integrity: 'different' } }, 'old-public-missing-api'), /integrity/i);
+}
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
+
+test('candidate security policy rejects changed historical bytes and unreviewed record inventories', () => {
+  const policyModule = pathToFileURL(
+    resolve(__dirname, '../candidate-consumer/dependency-baseline.mjs'),
+  ).href;
+  const policyFile = resolve(
+    __dirname,
+    '../candidate-consumer/dependency-patch.json',
+  );
+  const body = `
+const { applyCandidateDependencyPatch } = await import(${JSON.stringify(policyModule)});
+const bytes = await fs.readFile(path.join(path.dirname(${JSON.stringify(baseline)}), 'package-lock.json'));
+const policy = JSON.parse(await fs.readFile(${JSON.stringify(policyFile)}));
+const before = JSON.stringify(policy);
+for (const mutate of [
+  value => { value.historicalLockSha256 = '0'.repeat(64); },
+  value => { delete value.replacements['node_modules/@ag-ui/core']; },
+  value => { value.replacements['node_modules/unreviewed'] = value.replacements['node_modules/@ag-ui/core']; },
+  value => { value.replacements['node_modules/@ag-ui/core'].previousSha256 = '0'.repeat(64); },
+  value => { value.replacements['node_modules/@ag-ui/core'].record.version = '1.0.5'; },
+  value => { delete value.removals['node_modules/@ag-ui/client/node_modules/zod']; },
+  value => { value.removals['node_modules/@ag-ui/client/node_modules/zod'] = '0'.repeat(64); },
+]) {
+  const changed = structuredClone(policy);
+  mutate(changed);
+  assert.throws(() => applyCandidateDependencyPatch(bytes, changed), /historical|candidate|reviewed/i);
+}
+assert.throws(() => applyCandidateDependencyPatch(Buffer.concat([bytes, Buffer.from('\\n')]), policy), /hash/i);
+applyCandidateDependencyPatch(bytes, policy);
+assert.equal(JSON.stringify(policy), before);
+`;
+
+  const result = probe(body);
+
+  expect(result.trim()).toBe('passed');
+});
